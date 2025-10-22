@@ -1692,4 +1692,109 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get refreshFailed => 'Refresh failed';
+
+  @override
+  String get shareButtonTooltip => 'Share';
+
+  @override
+  String get soonLabel => 'Coming soon';
+
+  @override
+  String get detailsSectionTitle => 'Details';
+
+  @override
+  String get workVisitSectionTitle => 'Work Visit';
+
+  @override
+  String get rawFieldsSectionTitle => 'Raw Fields';
+
+  @override
+  String get eventWhenLabel => 'When';
+
+  @override
+  String get clientLabel => 'Client';
+
+  @override
+  String get servicePrimaryLabel => 'Primary Service';
+
+  @override
+  String get workVisitBadge => 'Work Visit';
+
+  @override
+  String get editButtonLabel => 'Edit Event';
+
+  @override
+  String get editAction => 'Edit';
+
+  @override
+  String get duplicateAction => 'Duplicate';
+
+  @override
+  String get analyticsSectionTitle => 'Insights';
+
+  @override
+  String get graphsComingSoon => 'Charts coming soon';
+
+  @override
+  String get timeTrackingEnabled => 'Time tracking enabled';
+
+  @override
+  String get timeTrackingDisabled => 'Time tracking disabled';
+
+  @override
+  String get exportSuccess => 'Exported Excel successfully';
+
+  @override
+  String get exportFailed => 'Export failed';
+
+  @override
+  String get exportToExcelTooltip => 'Export to Excel';
+
+  @override
+  String get exportToExcelCta => 'Export Excel';
+
+  @override
+  String trackHoursFor(Object groupName) {
+    return 'Track hours for $groupName';
+  }
+
+  @override
+  String get timeTrackingHeaderHint =>
+      'Enable tracking and manage workers. Export a timesheet anytime.';
+
+  @override
+  String get enableTrackingCta => 'Enable';
+
+  @override
+  String get disableTrackingCta => 'Disable';
+
+  @override
+  String get employeesHeader => 'Employees';
+
+  @override
+  String get unknownWorker => 'Unnamed worker';
+
+  @override
+  String get noTrackedYet => 'No tracked time yet';
+
+  @override
+  String trackedTotal(Object tracked) {
+    return 'Tracked: $tracked';
+  }
+
+  @override
+  String get somethingWentWrong => 'Something went wrong';
+
+  @override
+  String get tryAgain => 'Try again';
+
+  @override
+  String get noWorkersYetTitle => 'No workers yet';
+
+  @override
+  String get noWorkersYetSubtitle =>
+      'Enable tracking to start counting hours and add workers.';
+
+  @override
+  String get timeTrackingTitle => 'Time tracking';
 }

@@ -8,6 +8,7 @@ class AppRoutes {
   static const groupDashboard = '/group-dashboard';
   static const groupServicesClients = '/group-services-clients';
   static const groupMembers = '/group-members';
+  static const groupTimeTracking = '/group/time-tracking';
 
   // View (details) + Edit
   static const profileDetails = '/profile-details';

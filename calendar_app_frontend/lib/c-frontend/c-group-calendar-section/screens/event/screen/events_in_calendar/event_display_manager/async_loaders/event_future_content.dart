@@ -1,3 +1,4 @@
+// lib/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/event_display_manager/async_loaders/event_future_content.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/logic/actions/event_actions_manager.dart';
@@ -12,7 +13,9 @@ class EventFutureContentWidget extends StatelessWidget {
   final CalendarAppointmentDetails details;
   final String userRole;
   final EventActionManager? actionManager;
-  final ColorManager colorManager; // ✅ NEW
+  final ColorManager colorManager;
+
+  // ✅ NEW: resolvers (id → name)
 
   const EventFutureContentWidget({
     super.key,
@@ -21,7 +24,7 @@ class EventFutureContentWidget extends StatelessWidget {
     required this.details,
     required this.userRole,
     required this.actionManager,
-    required this.colorManager, // ✅ NEW
+    required this.colorManager,
   });
 
   @override
@@ -46,7 +49,7 @@ class EventFutureContentWidget extends StatelessWidget {
               appointment: details.appointments.first,
               userRole: userRole,
               actionManager: actionManager,
-              colorManager: colorManager,
+              colorManager: colorManager
             );
           } else {
             return Text(

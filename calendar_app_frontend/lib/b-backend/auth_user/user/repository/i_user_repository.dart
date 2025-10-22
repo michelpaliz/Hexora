@@ -1,3 +1,4 @@
+// lib/b-backend/auth_user/user/repository/i_user_repository.dart
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/a-models/user_model/user.dart';
@@ -5,6 +6,9 @@ import 'package:hexora/a-models/user_model/user.dart';
 abstract class IUserRepository {
   // Blobs / Avatars
   Future<String> getFreshAvatarUrl({required String blobName});
+
+  // 🔐 Auth
+  Future<String> getAuthToken({bool forceRefresh = false}); // <-- ADD
 
   // CRUD
   Future<User> createUser(User user);

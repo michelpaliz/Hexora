@@ -1,8 +1,8 @@
-import 'package:hexora/a-models/group_model/event/model/event.dart';
-import 'package:hexora/c-frontend/d-event-section/utils/color_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:hexora/a-models/group_model/event/model/event.dart';
+import 'package:hexora/c-frontend/d-event-section/utils/color_manager.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 Widget buildMonthCell({
@@ -11,121 +11,167 @@ Widget buildMonthCell({
   required DateTime? selectedDate,
   required List<Event> events,
 }) {
-  final isSelected = selectedDate != null &&
-      selectedDate.year == details.date.year &&
-      selectedDate.month == details.date.month &&
-      selectedDate.day == details.date.day;
+  final scheme = Theme.of(context).colorScheme;
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final typo = AppTypography.of(context);
 
-  // ✅ UPDATED: Include any event that overlaps this day
-  final cellStart =
+  // --- date helpers ---
+  final date =
       DateTime(details.date.year, details.date.month, details.date.day);
-  final cellEnd = cellStart.add(const Duration(days: 1));
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
 
+  final isSelected = selectedDate != null &&
+      selectedDate.year == date.year &&
+      selectedDate.month == date.month &&
+      selectedDate.day == date.day;
+
+  final isToday = date.year == today.year &&
+      date.month == today.month &&
+      date.day == today.day;
+
+  final isWeekend =
+      date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
+
+  final isPast = date.isBefore(today);
+
+  // --- events overlap this day ---
+  final dayStart = date;
+  final dayEnd = dayStart.add(const Duration(days: 1));
   final eventsForDay = events
-      .where(
-        (e) => e.startDate.isBefore(cellEnd) && e.endDate.isAfter(cellStart),
-      )
+      .where((e) => e.startDate.isBefore(dayEnd) && e.endDate.isAfter(dayStart))
       .toList();
 
-  final textColor =
-      Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
-  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-  // final cellColor = isSelected
-  //     ? (isDarkMode ? Colors.blue[700] : Colors.blue[300])
-  //     : Colors.transparent;
-  final isWeekend = details.date.weekday == DateTime.saturday ||
-      details.date.weekday == DateTime.sunday;
+  // --- palette (Material 3 flavored) ---
+  final baseBg = Colors.transparent;
+  final baseFg = (isPast ? typo.bodyMedium : typo.bodyLarge).color ??
+      scheme.onSurface.withOpacity(isPast ? 0.55 : 0.87);
 
-  final cellColor = isSelected
-      ? (isDarkMode ? Colors.blue[700] : Colors.blue[300])
-      : isWeekend
-          ? (isDarkMode
-              ? Colors.teal[900]?.withOpacity(0.3)
-              : Colors.teal[100]?.withOpacity(0.6))
-          : Colors.transparent;
+  final selectedBg = scheme.primaryContainer; // strong but soft
+  final selectedFg = scheme.onPrimaryContainer;
+
+  final weekendBg = scheme.secondaryContainer
+      .withOpacity(isDark ? 0.18 : 0.26); // gentle weekend tint
+
+  final todayRing = scheme.primary.withOpacity(0.90); // ring around “today”
+  final todayFill = scheme.primary.withOpacity(isDark ? 0.08 : 0.10);
+
+  // Busy overlay (very subtle tint if many events)
+  final isBusy = eventsForDay.length >= 4;
+  final busyTint = scheme.tertiary.withOpacity(isDark ? 0.10 : 0.08);
+
+  // --- decide background ---
+  Color bg = baseBg;
+  if (isSelected) {
+    bg = selectedBg;
+  } else if (isToday) {
+    bg = todayFill;
+  } else if (isWeekend) {
+    bg = weekendBg;
+  }
+  if (!isSelected && isBusy) {
+    bg = Color.alphaBlend(busyTint, bg);
+  }
+
+  // --- text styles from AppTypography ---
+  final countStyle = (isSelected
+          ? typo.caption.copyWith(color: selectedFg)
+          : typo.caption.copyWith(color: baseFg.withOpacity(0.70)))
+      .copyWith(fontSize: 10, fontWeight: FontWeight.w400);
+
+  final dayNumberStyle = (isSelected
+          ? typo.displayMedium.copyWith(color: selectedFg)
+          : typo.titleLarge.copyWith(color: baseFg))
+      .copyWith(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600);
 
   return LayoutBuilder(
     builder: (context, constraints) {
       final isCompact = constraints.maxHeight < 56;
-      final isWeekend = details.date.weekday == DateTime.saturday ||
-          details.date.weekday == DateTime.sunday;
 
       return Container(
-        margin: const EdgeInsets.all(1.5),
+        margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: cellColor?.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(6),
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+          border: isSelected
+              ? Border.all(color: scheme.primary, width: 1)
+              : Border.all(
+                  color: scheme.outlineVariant.withOpacity(0.35), width: 0.6),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 4,
-                    spreadRadius: 0.5,
+                    color: scheme.primary.withOpacity(0.22),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ]
               : null,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            if (!isCompact && eventsForDay.isNotEmpty)
-              Text(
-                '${eventsForDay.length} Event${eventsForDay.length > 1 ? 's' : ''}',
-                style: TextStyle(
-                  fontSize: 10,
-                  color:
-                      isSelected ? Colors.white70 : textColor.withOpacity(0.6),
-                  fontWeight: FontWeight.w400,
+            // Today ring (behind content)
+            if (!isSelected && isToday)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: todayRing, width: 1.2),
+                    ),
+                  ),
                 ),
               ),
-            Text(
-              details.date.day.toString(),
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                // color: isSelected ? Colors.white : textColor,
-                color: isSelected
-                    ? Colors.white
-                    : isWeekend
-                        ? (isDarkMode ? Colors.teal[100] : Colors.teal[900])
-                        : (isDarkMode ? Colors.white : Colors.black87),
+
+            // Content
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (!isCompact && eventsForDay.isNotEmpty)
+                    Text(
+                      '${eventsForDay.length} event${eventsForDay.length > 1 ? 's' : ''}',
+                      style: countStyle,
+                    ),
+                  Text(
+                    '${date.day}',
+                    style: dayNumberStyle,
+                  ),
+                  if (eventsForDay.isNotEmpty)
+                    SizedBox(
+                      height: 12,
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 3,
+                        runSpacing: 2,
+                        children: eventsForDay.take(4).map((event) {
+                          final color = (event.eventColorIndex >= 0 &&
+                                  event.eventColorIndex <
+                                      ColorManager.eventColors.length)
+                              ? ColorManager.eventColors[event.eventColorIndex]
+                              : (isDark ? Colors.white70 : Colors.black38);
+                          return Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark ? Colors.black : Colors.white,
+                                width: 0.8, // keeps dots visible over tinted bg
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                ],
               ),
             ),
-            if (eventsForDay.isNotEmpty)
-              SizedBox(
-                height: 10,
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 2,
-                  runSpacing: 1,
-                  children: eventsForDay.take(3).map((event) {
-                    final color = (event.eventColorIndex >= 0 &&
-                            event.eventColorIndex <
-                                ColorManager.eventColors.length)
-                        ? ColorManager.eventColors[event.eventColorIndex]
-                        : Colors.grey;
-                    return Container(
-                      width: 5,
-                      height: 5,
-                      margin: const EdgeInsets.all(0.5),
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: color.withOpacity(0.3),
-                            blurRadius: 2,
-                            spreadRadius: 0.3,
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
           ],
         ),
-      ).animate().scale(duration: 200.ms, curve: Curves.easeInOut);
+      ).animate().fadeIn(duration: 200.ms, curve: Curves.easeInOut);
     },
   );
 }

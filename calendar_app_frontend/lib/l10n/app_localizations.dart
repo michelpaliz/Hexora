@@ -3026,6 +3026,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Refresh failed'**
   String get refreshFailed;
+
+  /// No description provided for @shareButtonTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get shareButtonTooltip;
+
+  /// No description provided for @soonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get soonLabel;
+
+  /// No description provided for @detailsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get detailsSectionTitle;
+
+  /// No description provided for @workVisitSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Work Visit'**
+  String get workVisitSectionTitle;
+
+  /// No description provided for @rawFieldsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw Fields'**
+  String get rawFieldsSectionTitle;
+
+  /// No description provided for @eventWhenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get eventWhenLabel;
+
+  /// No description provided for @clientLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Client'**
+  String get clientLabel;
+
+  /// No description provided for @servicePrimaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary Service'**
+  String get servicePrimaryLabel;
+
+  /// No description provided for @workVisitBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Work Visit'**
+  String get workVisitBadge;
+
+  /// No description provided for @editButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Event'**
+  String get editButtonLabel;
+
+  /// No description provided for @editAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editAction;
+
+  /// No description provided for @duplicateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get duplicateAction;
+
+  /// No description provided for @analyticsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights'**
+  String get analyticsSectionTitle;
+
+  /// No description provided for @graphsComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Charts coming soon'**
+  String get graphsComingSoon;
+
+  /// No description provided for @timeTrackingEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Time tracking enabled'**
+  String get timeTrackingEnabled;
+
+  /// No description provided for @timeTrackingDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Time tracking disabled'**
+  String get timeTrackingDisabled;
+
+  /// No description provided for @exportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported Excel successfully'**
+  String get exportSuccess;
+
+  /// No description provided for @exportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed'**
+  String get exportFailed;
+
+  /// No description provided for @exportToExcelTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Export to Excel'**
+  String get exportToExcelTooltip;
+
+  /// No description provided for @exportToExcelCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Excel'**
+  String get exportToExcelCta;
+
+  /// No description provided for @trackHoursFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Track hours for {groupName}'**
+  String trackHoursFor(Object groupName);
+
+  /// No description provided for @timeTrackingHeaderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable tracking and manage workers. Export a timesheet anytime.'**
+  String get timeTrackingHeaderHint;
+
+  /// No description provided for @enableTrackingCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get enableTrackingCta;
+
+  /// No description provided for @disableTrackingCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get disableTrackingCta;
+
+  /// No description provided for @employeesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Employees'**
+  String get employeesHeader;
+
+  /// No description provided for @unknownWorker.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed worker'**
+  String get unknownWorker;
+
+  /// No description provided for @noTrackedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No tracked time yet'**
+  String get noTrackedYet;
+
+  /// No description provided for @trackedTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracked: {tracked}'**
+  String trackedTotal(Object tracked);
+
+  /// No description provided for @somethingWentWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get somethingWentWrong;
+
+  /// No description provided for @tryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get tryAgain;
+
+  /// No description provided for @noWorkersYetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No workers yet'**
+  String get noWorkersYetTitle;
+
+  /// No description provided for @noWorkersYetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable tracking to start counting hours and add workers.'**
+  String get noWorkersYetSubtitle;
+
+  /// No description provided for @timeTrackingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Time tracking'**
+  String get timeTrackingTitle;
 }
 
 class _AppLocalizationsDelegate

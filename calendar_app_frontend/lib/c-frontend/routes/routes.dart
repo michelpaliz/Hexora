@@ -9,6 +9,7 @@ import 'package:hexora/c-frontend/b-dashboard-section/dashboard_screen/group_das
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/group_insights_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/group_members_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/services_clients/services_clients_screen.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create-group/search-bar/screens/create_group_data.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/edit_group_data.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/utils/edit_group_arg.dart';
@@ -16,7 +17,7 @@ import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/group-s
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_screen/group_section.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/event_screen/event_detail.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/event_screen/event_detail_screen.dart';
 import 'package:hexora/c-frontend/e-log-user-section/forgot_password.dart';
 import 'package:hexora/c-frontend/e-log-user-section/login/form/login_view.dart';
 import 'package:hexora/c-frontend/e-log-user-section/register/ui/register_view.dart';
@@ -69,7 +70,7 @@ final Map<String, WidgetBuilder> routes = {
   },
   AppRoutes.eventDetail: (context) {
     final event = ModalRoute.of(context)?.settings.arguments as Event?;
-    return event != null ? EventDetail(event: event) : SizedBox.shrink();
+    return event != null ? EventDetailScreen(event: event) : SizedBox.shrink();
   },
   AppRoutes.editGroupData: (context) {
     final args =
@@ -98,5 +99,10 @@ final Map<String, WidgetBuilder> routes = {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     if (group == null) return const SizedBox.shrink();
     return GroupMembersScreen(group: group);
-  }
+  },
+  AppRoutes.groupTimeTracking: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    if (group == null) return const SizedBox.shrink();
+    return GroupTimeTrackingScreen(group: group);
+  },
 };

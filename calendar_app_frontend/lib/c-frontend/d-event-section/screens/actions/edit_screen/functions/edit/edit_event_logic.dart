@@ -22,12 +22,6 @@ abstract class EditEventLogic<T extends StatefulWidget>
 
   bool isLoading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    initializeBaseDefaults();
-  }
-
   Future<void> initLogic({
     required Event event,
     required GroupDomain gm,
@@ -61,6 +55,16 @@ abstract class EditEventLogic<T extends StatefulWidget>
     users
       ..clear()
       ..addAll(fetchedUsers);
+
+    // (Optional) If you can load clients/services here, do it before seeding values:
+    // final fetchedClients = await gm.clientRepository.getClientsForGroup(_group);
+    // final fetchedServices = await gm.serviceRepository.getServicesForGroup(_group);
+    // setAvailableClients(fetchedClients.map((c)=>ClientLite(id:c.id,name:c.name)).toList());
+    // setAvailableServices(fetchedServices.map((s)=>ServiceLite(id:s.id,name:s.name)).toList());
+
+    // 🔧 Preselect client & service from the event being edited
+    setClientId?.call(event.clientId);
+    setPrimaryServiceId?.call(event.primaryServiceId);
 
     if (mounted) {
       isLoading = false;
@@ -122,15 +126,19 @@ abstract class EditEventLogic<T extends StatefulWidget>
       ownerId: _event.ownerId,
       reminderTime: reminderMinutes,
       calendarId: _event.calendarId,
+
       // keep other custom fields if your model has them
       type: _event.type,
-      clientId: _event.clientId,
-      primaryServiceId: _event.primaryServiceId,
+
+      // 🔧 use current UI selections instead of stale _event values
+      clientId: clientId,
+      primaryServiceId: primaryServiceId,
+
       categoryId: _event.categoryId,
       subcategoryId: _event.subcategoryId,
-      visitServices: _event.visitServices,
+      visitServices:
+          _event.visitServices, // keep as-is unless you also edit these in UI
       rawRuleId: _event.rawRuleId,
-      // rule: _event.rule,
     );
 
     await eventDomain.updateEvent(context, updated);

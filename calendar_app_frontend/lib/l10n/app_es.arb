@@ -1013,8 +1013,40 @@
   "refreshFailed": "Error al actualizar",
   "@refreshFailed": {
     "description": "Mensaje de aviso cuando falla la actualización del calendario"
-  }
-
+  },
+  "shareButtonTooltip": "Compartir",
+  "soonLabel": "Próximamente",
+  "detailsSectionTitle": "Detalles",
+  "workVisitSectionTitle": "Visita de trabajo",
+  "rawFieldsSectionTitle": "Campos sin procesar",
+  "eventWhenLabel": "Cuándo",
+  "clientLabel": "Cliente",
+  "servicePrimaryLabel": "Servicio principal",
+  "workVisitBadge": "Visita de trabajo",
+  "editButtonLabel": "Editar evento",
+  "editAction": "Editar",
+  "duplicateAction": "Duplicar",
+  "analyticsSectionTitle": "Estadísticas",
+  "graphsComingSoon": "Gráficas próximamente",
+  "timeTrackingEnabled": "Seguimiento de tiempo habilitado",
+  "timeTrackingDisabled": "Seguimiento de tiempo deshabilitado",
+  "exportSuccess": "Archivo Excel exportado correctamente",
+  "exportFailed": "Error al exportar",
+  "exportToExcelTooltip": "Exportar a Excel",
+  "exportToExcelCta": "Exportar Excel",
+  "trackHoursFor": "Registrar horas para {groupName}",
+  "timeTrackingHeaderHint": "Activa el seguimiento y gestiona a los trabajadores. Exporta una hoja de horas en cualquier momento.",
+  "enableTrackingCta": "Habilitar",
+  "disableTrackingCta": "Deshabilitar",
+  "employeesHeader": "Empleados",
+  "unknownWorker": "Trabajador sin nombre",
+  "noTrackedYet": "Aún no se ha registrado tiempo",
+  "trackedTotal": "Registrado: {tracked}",
+  "somethingWentWrong": "Algo salió mal",
+  "tryAgain": "Intentar de nuevo",
+  "noWorkersYetTitle": "Aún no hay trabajadores",
+  "noWorkersYetSubtitle": "Habilita el seguimiento para comenzar a contar las horas y añadir trabajadores.",
+  "timeTrackingTitle": "Seguimiento de tiempo"
 
 
 }

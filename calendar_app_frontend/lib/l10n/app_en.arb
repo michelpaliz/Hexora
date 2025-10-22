@@ -1006,8 +1006,41 @@
   "refreshFailed": "Refresh failed",
   "@refreshFailed": {
     "description": "Snackbar text shown when the calendar refresh fails"
-  }
+  },
+  "shareButtonTooltip": "Share",
+  "soonLabel": "Coming soon",
+  "detailsSectionTitle": "Details",
+  "workVisitSectionTitle": "Work Visit",
+  "rawFieldsSectionTitle": "Raw Fields",
+  "eventWhenLabel": "When",
+  "clientLabel": "Client",
+  "servicePrimaryLabel": "Primary Service",
+  "workVisitBadge": "Work Visit",
+  "editButtonLabel": "Edit Event",
+  "editAction": "Edit",
+  "duplicateAction": "Duplicate",
+  "analyticsSectionTitle": "Insights",
+  "graphsComingSoon": "Charts coming soon",
 
+  "timeTrackingEnabled": "Time tracking enabled",
+  "timeTrackingDisabled": "Time tracking disabled",
+  "exportSuccess": "Exported Excel successfully",
+  "exportFailed": "Export failed",
+  "exportToExcelTooltip": "Export to Excel",
+  "exportToExcelCta": "Export Excel",
+  "trackHoursFor": "Track hours for {groupName}",
+  "timeTrackingHeaderHint": "Enable tracking and manage workers. Export a timesheet anytime.",
+  "enableTrackingCta": "Enable",
+  "disableTrackingCta": "Disable",
+  "employeesHeader": "Employees",
+  "unknownWorker": "Unnamed worker",
+  "noTrackedYet": "No tracked time yet",
+  "trackedTotal": "Tracked: {tracked}",
+  "somethingWentWrong": "Something went wrong",
+  "tryAgain": "Try again",
+  "noWorkersYetTitle": "No workers yet",
+  "noWorkersYetSubtitle": "Enable tracking to start counting hours and add workers.",
+  "timeTrackingTitle": "Time tracking"
 
 
 }

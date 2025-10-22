@@ -1,22 +1,23 @@
 // lib/c-frontend/b-calendar-section/screens/calendar/event_screen_logic/ui/events_in_calendar/event_display_manager/event_display_manager.dart
 import 'package:flutter/material.dart';
-
-
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/logic/actions/event_actions_manager.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/widgets/event_content_builder.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/event_display_manager/async_loaders/event_future_content.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/event_display_manager/widgets/event_compact_view.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/event_display_manager/widgets/event_details_card.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/event_display_manager/widgets/schedule_card_view.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/event_display_manager/widgets/timeline_strip_widget.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/widgets/event_content_builder.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
-
-//  It knows how to build the different event widgets (details card, compact strip, timeline strip, schedule card, async future content). It optionally holds an `EventActionManager` and always needs an `EventContentBuilder` (mainly for colors/content bits). It directly returns Widgets.
+/// Knows how to build the different event widgets (details card, compact strip,
+/// timeline strip, schedule card, async future content). Optionally holds an
+/// `EventActionManager` and always needs an `EventContentBuilder`.
 class EventDisplayManager {
   EventActionManager? _actionManager;
   final EventContentBuilder _builder;
+
+  // ✅ NEW: keep resolvers so all widgets can show names instead of IDs
 
   EventDisplayManager(
     EventActionManager? actionMgr, {
@@ -78,6 +79,8 @@ class EventDisplayManager {
       actionManager: _actionManager,
       colorManager: _builder.colorManager,
       userRole: userRole,
+      // If your compact view also opens the action sheet,
+      // add resolver fields there too (similar to EventDetailsCard).
     );
   }
 
@@ -95,6 +98,7 @@ class EventDisplayManager {
       actionManager: _actionManager,
       colorManager: _builder.colorManager,
       userRole: userRole,
+      // Same note as above if it triggers the sheet.
     );
   }
 

@@ -44,6 +44,10 @@ class UserDomain extends ChangeNotifier {
     }
   }
 
+  Future<String> getAuthToken({bool forceRefresh = false}) {
+    return userRepository.getAuthToken(forceRefresh: forceRefresh);
+  }
+
   // ---------- Helpers for other parts of the app ----------
   Future<List<User>> getUsersForGroup(Group group) =>
       userRepository.getUsersForGroup(group);

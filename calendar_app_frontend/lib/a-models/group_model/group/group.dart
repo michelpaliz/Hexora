@@ -1,4 +1,5 @@
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
+import 'package:hexora/a-models/group_model/group/group_features.dart';
 
 class Group {
   // ---------- Core ----------
@@ -27,6 +28,9 @@ class Group {
   String? defaultCalendarId; // set by backend
   Calendar? defaultCalendar; // optional snapshot
 
+  // ---------- Features / Plugins ----------
+  GroupFeatures? features; // <— NEW (mirrors backend `features`)
+
   Group({
     required this.id,
     required this.name,
@@ -42,6 +46,7 @@ class Group {
     this.lastInviteAt,
     this.defaultCalendarId,
     this.defaultCalendar,
+    this.features, // <— NEW
   });
 
   // ---------- JSON ----------
@@ -54,6 +59,11 @@ class Group {
     Calendar? defaultCal;
     if (json['defaultCalendar'] is Map<String, dynamic>) {
       defaultCal = Calendar.fromJson(json['defaultCalendar']);
+    }
+
+    GroupFeatures? fx;
+    if (json['features'] is Map<String, dynamic>) {
+      fx = GroupFeatures.fromJson(json['features'] as Map<String, dynamic>);
     }
 
     return Group(
@@ -77,6 +87,7 @@ class Group {
           : null,
       defaultCalendarId: json['defaultCalendarId']?.toString(),
       defaultCalendar: defaultCal,
+      features: fx, // <— NEW
     );
   }
 
@@ -89,6 +100,7 @@ class Group {
       if (photoBlobName != null) 'photoBlobName': photoBlobName,
       'userRoles': userRoles, // userId -> role
       'userIds': userIds,
+      if (features != null) 'features': features!.toJson(), // <— optional
       // inviteCount/lastInviteAt are server-managed; omit on updates
     };
   }
@@ -104,6 +116,7 @@ class Group {
       'createdTime': createdTime.toIso8601String(),
       if (photoUrl != null) 'photoUrl': photoUrl,
       if (photoBlobName != null) 'photoBlobName': photoBlobName,
+      if (features != null) 'features': features!.toJson(), // <— optional
     };
   }
 
@@ -123,6 +136,7 @@ class Group {
     DateTime? lastInviteAt,
     String? defaultCalendarId,
     Calendar? defaultCalendar,
+    GroupFeatures? features, // <— NEW
   }) {
     return Group(
       id: id ?? this.id,
@@ -139,6 +153,7 @@ class Group {
       lastInviteAt: lastInviteAt ?? this.lastInviteAt,
       defaultCalendarId: defaultCalendarId ?? this.defaultCalendarId,
       defaultCalendar: defaultCalendar ?? this.defaultCalendar,
+      features: features ?? this.features, // <— NEW
     );
   }
 
@@ -188,7 +203,8 @@ class Group {
         computedPhotoUrl == other.computedPhotoUrl &&
         defaultCalendarId == other.defaultCalendarId &&
         inviteCount == other.inviteCount &&
-        _dtEq(lastInviteAt, other.lastInviteAt);
+        _dtEq(lastInviteAt, other.lastInviteAt) &&
+        _featuresEq(features, other.features);
   }
 
   static bool _listEq(List<String> a, List<String> b) {
@@ -205,6 +221,12 @@ class Group {
     return a.toIso8601String() == b.toIso8601String();
   }
 
+  static bool _featuresEq(GroupFeatures? a, GroupFeatures? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.toString() == b.toString(); // simple: relies on toString above
+  }
+
   // ---------- Defaults ----------
   static Group createDefaultGroup() {
     return Group(
@@ -217,6 +239,14 @@ class Group {
       description: 'Default Description',
       inviteCount: 0,
       lastInviteAt: null,
+      features: const GroupFeatures(
+        // <— default mirrors backend defaults
+        timeTracking: TimeTrackingSettings(
+          enabled: false,
+          roundingPreset: TimeRoundingPreset.nearest5_tie05_down,
+          currency: 'EUR',
+        ),
+      ),
     );
   }
 
@@ -226,15 +256,12 @@ class Group {
         'userRoles: $userRoles, userIds: $userIds, description: $description, '
         'photoUrl: $photoUrl, photoBlobName: $photoBlobName, '
         'computedPhotoUrl: $computedPhotoUrl, inviteCount: $inviteCount, lastInviteAt: $lastInviteAt, '
-        'defaultCalendarId: $defaultCalendarId, defaultCalendar: $defaultCalendar}';
+        'defaultCalendarId: $defaultCalendarId, defaultCalendar: $defaultCalendar, '
+        'features: $features}';
   }
 }
 
-extension GroupCalendarX on Group {
-  String? get calendarId =>
-      (defaultCalendarId != null && defaultCalendarId!.isNotEmpty)
-          ? defaultCalendarId
-          : defaultCalendar?.id;
-
-  bool get hasCalendar => calendarId != null;
-}
+// NOTE: you already define calendarId/hasCalendar inside the class,
+// so avoid duplicating the same getters in an extension to prevent conflicts.
+// If you still want the extension for ergonomics across types, remove the
+// in-class getters first or rename the extension getters.

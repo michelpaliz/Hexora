@@ -1706,4 +1706,109 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get refreshFailed => 'Error al actualizar';
+
+  @override
+  String get shareButtonTooltip => 'Compartir';
+
+  @override
+  String get soonLabel => 'Próximamente';
+
+  @override
+  String get detailsSectionTitle => 'Detalles';
+
+  @override
+  String get workVisitSectionTitle => 'Visita de trabajo';
+
+  @override
+  String get rawFieldsSectionTitle => 'Campos sin procesar';
+
+  @override
+  String get eventWhenLabel => 'Cuándo';
+
+  @override
+  String get clientLabel => 'Cliente';
+
+  @override
+  String get servicePrimaryLabel => 'Servicio principal';
+
+  @override
+  String get workVisitBadge => 'Visita de trabajo';
+
+  @override
+  String get editButtonLabel => 'Editar evento';
+
+  @override
+  String get editAction => 'Editar';
+
+  @override
+  String get duplicateAction => 'Duplicar';
+
+  @override
+  String get analyticsSectionTitle => 'Estadísticas';
+
+  @override
+  String get graphsComingSoon => 'Gráficas próximamente';
+
+  @override
+  String get timeTrackingEnabled => 'Seguimiento de tiempo habilitado';
+
+  @override
+  String get timeTrackingDisabled => 'Seguimiento de tiempo deshabilitado';
+
+  @override
+  String get exportSuccess => 'Archivo Excel exportado correctamente';
+
+  @override
+  String get exportFailed => 'Error al exportar';
+
+  @override
+  String get exportToExcelTooltip => 'Exportar a Excel';
+
+  @override
+  String get exportToExcelCta => 'Exportar Excel';
+
+  @override
+  String trackHoursFor(Object groupName) {
+    return 'Registrar horas para $groupName';
+  }
+
+  @override
+  String get timeTrackingHeaderHint =>
+      'Activa el seguimiento y gestiona a los trabajadores. Exporta una hoja de horas en cualquier momento.';
+
+  @override
+  String get enableTrackingCta => 'Habilitar';
+
+  @override
+  String get disableTrackingCta => 'Deshabilitar';
+
+  @override
+  String get employeesHeader => 'Empleados';
+
+  @override
+  String get unknownWorker => 'Trabajador sin nombre';
+
+  @override
+  String get noTrackedYet => 'Aún no se ha registrado tiempo';
+
+  @override
+  String trackedTotal(Object tracked) {
+    return 'Registrado: $tracked';
+  }
+
+  @override
+  String get somethingWentWrong => 'Algo salió mal';
+
+  @override
+  String get tryAgain => 'Intentar de nuevo';
+
+  @override
+  String get noWorkersYetTitle => 'Aún no hay trabajadores';
+
+  @override
+  String get noWorkersYetSubtitle =>
+      'Habilita el seguimiento para comenzar a contar las horas y añadir trabajadores.';
+
+  @override
+  String get timeTrackingTitle => 'Seguimiento de tiempo';
 }

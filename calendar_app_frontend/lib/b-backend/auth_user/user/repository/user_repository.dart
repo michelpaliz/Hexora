@@ -4,7 +4,6 @@ import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/user/api/i_user_api_client.dart';
 import 'package:hexora/b-backend/auth_user/user/repository/i_user_repository.dart';
 
-
 typedef TokenSupplier = Future<String?> Function();
 
 class UserRepository implements IUserRepository {
@@ -25,12 +24,27 @@ class UserRepository implements IUserRepository {
     return token;
   }
 
+  // 🔐 Auth
+  @override
+  Future<String> getAuthToken({bool forceRefresh = false}) async {
+    // If your token supplier can force-refresh, call it here.
+    // Otherwise just return the current token.
+    return _token();
+  }
+
   // -------- Blobs / Avatars --------
   @override
   Future<String> getFreshAvatarUrl({required String blobName}) async {
     final t = await _token();
     return _svc.getFreshAvatarUrl(blobName: blobName, token: t);
-    }
+  }
+
+  // -------- Blobs / Avatars --------
+  // @override
+  // Future<String> getFreshAvatarUrl({required String blobName}) async {
+  //   final t = await _token();
+  //   return _svc.getFreshAvatarUrl(blobName: blobName, token: t);
+  // }
 
   // -------- Create / Read / Update / Delete --------
   @override
@@ -87,7 +101,8 @@ class UserRepository implements IUserRepository {
 
   // -------- Notifications --------
   @override
-  Future<List<NotificationUser>> getNotificationsByUser(String userName) async =>
+  Future<List<NotificationUser>> getNotificationsByUser(
+          String userName) async =>
       _svc.getNotificationsByUser(userName, token: await _token());
 
   // -------- Generic selector --------
