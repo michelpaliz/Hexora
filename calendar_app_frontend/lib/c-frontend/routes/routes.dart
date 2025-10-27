@@ -3,13 +3,18 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/a-home-section/home_page.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/dashboard_screen/group_dashboard.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/dashboard_screen/header/header_section.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/group_insights_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/group_members_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/services_clients/services_clients_screen.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/time_tracking_screen_state.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/create_worker/form/create_worker_screen.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/entry_screen/functions/create_time_entry_screen.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/entry_screen/tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create-group/search-bar/screens/create_group_data.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/edit_group_data.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/utils/edit_group_arg.dart';
@@ -104,5 +109,32 @@ final Map<String, WidgetBuilder> routes = {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     if (group == null) return const SizedBox.shrink();
     return GroupTimeTrackingScreen(group: group);
+  },
+  AppRoutes.headerSection: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    return group != null
+        ? GroupHeaderScreen(group: group)
+        : const SizedBox.shrink();
+  },
+  AppRoutes.createWorker: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    if (group == null) return const SizedBox.shrink();
+    return CreateWorkerScreen(group: group);
+  },
+  AppRoutes.createTimeEntry: (context) {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args == null) return const SizedBox.shrink();
+    final group = args['group'] as Group;
+    final workers = args['workers'] as List<Worker>;
+    return CreateTimeEntryScreen(group: group, workers: workers);
+  },
+  AppRoutes.workerTimeTracking: (context) {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args == null) return const SizedBox.shrink();
+    final group = args['group'] as Group;
+    final worker = args['worker'] as Worker;
+    return WorkerTimeTrackingScreen(group: group, worker: worker);
   },
 };

@@ -13,6 +13,9 @@ import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/auth_user/user/presence_domain.dart';
 import 'package:hexora/b-backend/auth_user/user/repository/i_user_repository.dart';
 import 'package:hexora/b-backend/auth_user/user/repository/user_repository.dart';
+import 'package:hexora/b-backend/business_logic/worker/api/i_time_tracking_api_client.dart';
+import 'package:hexora/b-backend/business_logic/worker/api/time_tracking_api_client.dart';
+import 'package:hexora/b-backend/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/api/event_api_client.dart';
 // ---- Events (interfaces) ----------------------------------------------------
 import 'package:hexora/b-backend/group_mng_flow/event/api/i_event_api_client.dart';
@@ -63,6 +66,17 @@ void main() async {
             apiClient: ctx.read<IUserApiClient>(),
             tokenSupplier: () =>
                 TokenStorage.loadToken(), // ✅ no AuthService here
+          ),
+        ),
+        // (A) API client
+        Provider<ITimeTrackingApiClient>(
+          create: (_) => TimeTrackingApiClient(), // <-- your concrete impl
+        ),
+
+        // (B) Repository that GroupTimeTrackingScreen reads
+        Provider<ITimeTrackingRepository>(
+          create: (ctx) => TimeTrackingRepository(
+            ctx.read<ITimeTrackingApiClient>(),
           ),
         ),
 

@@ -1811,4 +1811,229 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get timeTrackingTitle => 'Seguimiento de tiempo';
+
+  @override
+  String get sectionWorkersHours => 'Horas del personal';
+
+  @override
+  String get timeTrackingDisabledTitle =>
+      'El seguimiento de tiempo está desactivado';
+
+  @override
+  String get timeTrackingDisabledSubtitle =>
+      'Actívalo para comenzar a registrar las horas de tu equipo.';
+
+  @override
+  String get createWorkerTitle => 'Crear trabajador';
+
+  @override
+  String get linkExistingUserLabel => 'Vincular a un usuario existente';
+
+  @override
+  String get linkExistingUserHint =>
+      'Si el trabajador ya tiene cuenta, vincúlala aquí.';
+
+  @override
+  String get userIdLabel => 'ID de usuario';
+
+  @override
+  String get userIdHint => 'Pega el ID del usuario existente';
+
+  @override
+  String get userIdRequired =>
+      'El ID de usuario es obligatorio al vincular una cuenta.';
+
+  @override
+  String get displayNameLabel => 'Nombre';
+
+  @override
+  String get displayNameHint => 'Introduce el nombre del trabajador';
+
+  @override
+  String get displayNameRequired =>
+      'El nombre es obligatorio para trabajadores externos.';
+
+  @override
+  String get roleLabel => 'Rol';
+
+  @override
+  String get roleHint => 'Ejemplo: Barista';
+
+  @override
+  String get hourlyRateLabel => 'Tarifa por hora';
+
+  @override
+  String get hourlyRateHint => 'Ejemplo: 15.00';
+
+  @override
+  String get currencyLabel => 'Moneda';
+
+  @override
+  String get saveWorkerCta => 'Guardar trabajador';
+
+  @override
+  String get workerCreated => '¡Trabajador creado con éxito!';
+
+  @override
+  String get createWorkerCta => 'Agregar trabajador';
+
+  @override
+  String get createTimeEntryTitle => 'Registrar horas';
+
+  @override
+  String get workerLabel => 'Trabajador';
+
+  @override
+  String get workerRequired => 'Seleccione un trabajador.';
+
+  @override
+  String get startLabel => 'Hora de inicio';
+
+  @override
+  String get endLabel => 'Hora de fin';
+
+  @override
+  String get notesLabel => 'Notas';
+
+  @override
+  String get notesHint => 'Notas opcionales sobre este trabajador';
+
+  @override
+  String get saveTimeEntryCta => 'Guardar registro';
+
+  @override
+  String get timeEntryCreated => '¡Horas registradas correctamente!';
+
+  @override
+  String get addTimeEntryCta => 'Registrar horas';
+
+  @override
+  String get timeTrackingActionsCta => 'Acciones';
+
+  @override
+  String get noTimeEntriesYetTitle => 'Aún no hay registros de tiempo';
+
+  @override
+  String get noTimeEntriesYetSubtitle =>
+      'Agrega tus primeras horas registradas para este trabajador.';
+
+  @override
+  String get inProgress => 'En progreso';
+
+  @override
+  String get totalEntries => 'Entradas';
+
+  @override
+  String get totalHours => 'Horas';
+
+  @override
+  String get ongoing => 'En curso';
+
+  @override
+  String get errorLoadingData => 'Error cargando datos';
+
+  @override
+  String get totalEarnings => 'Total Ganado';
+
+  @override
+  String get editWorker => 'Editar trabajador';
+
+  @override
+  String get linkedUser => 'Usuario vinculado';
+
+  @override
+  String get externalWorker => 'Trabajador externo';
+
+  @override
+  String get viewWorker => 'Ver trabajador';
+
+  @override
+  String get workerUpdated => 'Trabajador actualizado';
+
+  @override
+  String get workerNameLabel => 'Nombre';
+
+  @override
+  String get statusLabel => 'Estado';
+
+  @override
+  String get statusActive => 'Activo';
+
+  @override
+  String get statusInactive => 'Inactivo';
+
+  @override
+  String get invalidRate => 'Introduce una tarifa válida';
+
+  @override
+  String get editTimeEntry => 'Editar registro de tiempo';
+
+  @override
+  String get startTime => 'Hora de inicio';
+
+  @override
+  String get endTime => 'Hora de fin';
+
+  @override
+  String get breakMinutesLabel => 'Descanso (minutos)';
+
+  @override
+  String get timeEntryUpdated => 'Registro de tiempo actualizado correctamente';
+
+  @override
+  String get pickStartTime => 'Seleccionar hora de inicio';
+
+  @override
+  String get pickEndTime => 'Seleccionar hora de fin';
+
+  @override
+  String get noTimeEntries => 'Aún no hay registros de tiempo.';
+
+  @override
+  String totalHoursFormat(Object hours, Object minutes) {
+    return 'Total: ${hours}h ${minutes}m';
+  }
+
+  @override
+  String totalHoursAndPayFormat(Object hours, Object pay) {
+    return 'Total: ${hours}h – $pay';
+  }
+
+  @override
+  String get pickMonth => 'Selecciona el mes';
+
+  @override
+  String get selectMonthPrompt =>
+      'Porfavor, selecciona un mes para ver los registros.';
+
+  @override
+  String get selectMonthFirst => 'Seleccionar mes';
+
+  @override
+  String get next => 'Siguiente';
+
+  @override
+  String get previous => 'Anterior';
+
+  @override
+  String get deletedSuccessfully => 'Eliminado correctamente';
+
+  @override
+  String get areYouSureDelete =>
+      '¿Seguro que quieres eliminar este parte de tiempo?';
+
+  @override
+  String get entries => 'partes';
+
+  @override
+  String get exportExcel => 'Exportar';
+
+  @override
+  String get exportReady => 'Exportación lista — elige dónde compartir/guardar';
+
+  @override
+  String get previousMonth => 'Mes anterior';
+
+  @override
+  String get nextMonth => 'Mes siguiente';
 }

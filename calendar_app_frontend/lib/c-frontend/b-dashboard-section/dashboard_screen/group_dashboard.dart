@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/dashboard_screen/header/group_header_view.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/Members_count.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/upcoming_events/group_upcoming_events.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
-import 'package:hexora/f-themes/app_utilities/image/avatar_utils.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +24,6 @@ class GroupDashboard extends StatefulWidget {
 class _GroupDashboardState extends State<GroupDashboard> {
   late GroupDomain _gm;
   MembersCount? _counts;
-  bool _loadingCounts = false;
 
   @override
   void initState() {
@@ -33,17 +33,12 @@ class _GroupDashboardState extends State<GroupDashboard> {
   }
 
   Future<void> _loadCounts() async {
-    setState(() => _loadingCounts = true);
-    try {
-      final c = await _gm.groupRepository.getMembersCount(
-        widget.group.id,
-        mode: 'union',
-      );
-      if (!mounted) return;
-      setState(() => _counts = c);
-    } finally {
-      if (mounted) setState(() => _loadingCounts = false);
-    }
+    final c = await _gm.groupRepository.getMembersCount(
+      widget.group.id,
+      mode: 'union',
+    );
+    if (!mounted) return;
+    setState(() => _counts = c);
   }
 
   @override
@@ -58,17 +53,9 @@ class _GroupDashboardState extends State<GroupDashboard> {
     final tileTitleStyle = t.accentText.copyWith(fontWeight: FontWeight.w600);
     final tileSubtitleStyle = t.bodySmall;
 
-    final createdStr = DateFormat.yMMMd(l.localeName).format(group.createdTime);
-
-    // Fallbacks
+    // Fallbacks / server-first for members shown in the Manage tile
     final fallbackMembers = group.userIds.length;
-    const fallbackPending = 0;
-    final fallbackTotal = fallbackMembers + fallbackPending;
-
-    // Server-first
     final showMembers = _counts?.accepted ?? fallbackMembers;
-    final showPending = _counts?.pending ?? fallbackPending;
-    final showTotal = _counts?.union ?? fallbackTotal;
 
     return Scaffold(
       appBar: AppBar(
@@ -81,64 +68,17 @@ class _GroupDashboardState extends State<GroupDashboard> {
           padding: const EdgeInsets.all(16),
           children: [
             _SectionHeader(title: l.sectionOverview, style: sectionTitleStyle),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                AvatarUtils.groupAvatar(context, group.photoUrl, radius: 30),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(group.name,
-                          style: t.titleLarge
-                              .copyWith(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Text(
-                        l.createdOnDay(createdStr),
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _InfoPill(
-                            icon: Icons.group_outlined,
-                            label:
-                                '${NumberFormat.decimalPattern(l.localeName).format(showMembers)} ${l.membersTitle.toLowerCase()}',
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                AppRoutes.groupMembers,
-                                arguments: group,
-                              );
-                            },
-                          ),
-                          _InfoPill(
-                            icon: Icons.hourglass_top_outlined,
-                            label:
-                                '${NumberFormat.decimalPattern(l.localeName).format(showPending)} ${l.statusPending.toLowerCase()}',
-                          ),
-                          _InfoPill(
-                            icon: Icons.all_inbox_outlined,
-                            label:
-                                '${NumberFormat.decimalPattern(l.localeName).format(showTotal)} total',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+
+            // ✅ Header shows automatically, no navigation/tap
+            GroupHeaderView(group: group),
+
             const SizedBox(height: 20),
             _SectionHeader(title: l.sectionUpcoming, style: sectionTitleStyle),
             GroupUpcomingEventsCard(groupId: group.id),
+
             const SizedBox(height: 20),
             _SectionHeader(title: l.sectionManage, style: sectionTitleStyle),
+
             Card(
               color: ThemeColors.getListTileBackgroundColor(context),
               child: ListTile(
@@ -175,6 +115,7 @@ class _GroupDashboardState extends State<GroupDashboard> {
                 },
               ),
             ),
+
             const SizedBox(height: 8),
             _SectionHeader(title: l.sectionInsights, style: sectionTitleStyle),
             Card(
@@ -192,6 +133,7 @@ class _GroupDashboardState extends State<GroupDashboard> {
                 },
               ),
             ),
+
             const SizedBox(height: 20),
             if (!group.hasCalendar) ...[
               _SectionHeader(title: l.sectionStatus, style: sectionTitleStyle),
@@ -206,6 +148,30 @@ class _GroupDashboardState extends State<GroupDashboard> {
                 ),
               ),
             ],
+
+            const SizedBox(height: 20),
+            // ⬇️ Workers Hours section
+            _SectionHeader(
+              title: l.sectionWorkersHours,
+              style: sectionTitleStyle,
+            ),
+            Card(
+              color: ThemeColors.getListTileBackgroundColor(context),
+              child: ListTile(
+                leading: const Icon(Icons.access_time_rounded),
+                title: Text(l.timeTrackingTitle, style: tileTitleStyle),
+                subtitle:
+                    Text(l.timeTrackingHeaderHint, style: tileSubtitleStyle),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => GroupTimeTrackingScreen(group: group),
+                    ),
+                  );
+                },
+              ),
+            ),
+
             const SizedBox(height: 96),
           ],
         ),
@@ -262,53 +228,6 @@ class _SectionHeader extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _InfoPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  const _InfoPill({
-    required this.icon,
-    required this.label,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final bg = cs.surfaceVariant.withOpacity(0.6);
-    final fg = cs.onSurface.withOpacity(0.8);
-    final t = AppTypography.of(context);
-
-    final pill = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: fg),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: t.bodySmall.copyWith(color: fg, fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-    );
-
-    if (onTap == null) return pill;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: pill,
     );
   }
 }

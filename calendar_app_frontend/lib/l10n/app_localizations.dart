@@ -3224,6 +3224,432 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Time tracking'**
   String get timeTrackingTitle;
+
+  /// No description provided for @sectionWorkersHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Workers\' hours'**
+  String get sectionWorkersHours;
+
+  /// No description provided for @timeTrackingDisabledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Time tracking is off'**
+  String get timeTrackingDisabledTitle;
+
+  /// No description provided for @timeTrackingDisabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable it to start tracking hours for your team.'**
+  String get timeTrackingDisabledSubtitle;
+
+  /// No description provided for @createWorkerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Worker'**
+  String get createWorkerTitle;
+
+  /// No description provided for @linkExistingUserLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Link to existing user'**
+  String get linkExistingUserLabel;
+
+  /// No description provided for @linkExistingUserHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If the worker already has an account, link it here.'**
+  String get linkExistingUserHint;
+
+  /// No description provided for @userIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'User ID'**
+  String get userIdLabel;
+
+  /// No description provided for @userIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the existing user’s ID'**
+  String get userIdHint;
+
+  /// No description provided for @userIdRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'User ID is required when linking an account.'**
+  String get userIdRequired;
+
+  /// No description provided for @displayNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get displayNameLabel;
+
+  /// No description provided for @displayNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter worker’s name'**
+  String get displayNameHint;
+
+  /// No description provided for @displayNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required for external workers.'**
+  String get displayNameRequired;
+
+  /// No description provided for @roleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get roleLabel;
+
+  /// No description provided for @roleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., Barista'**
+  String get roleHint;
+
+  /// No description provided for @hourlyRateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hourly Rate'**
+  String get hourlyRateLabel;
+
+  /// No description provided for @hourlyRateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., 15.00'**
+  String get hourlyRateHint;
+
+  /// No description provided for @currencyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get currencyLabel;
+
+  /// No description provided for @saveWorkerCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Worker'**
+  String get saveWorkerCta;
+
+  /// No description provided for @workerCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Worker created successfully!'**
+  String get workerCreated;
+
+  /// No description provided for @createWorkerCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Worker'**
+  String get createWorkerCta;
+
+  /// No description provided for @createTimeEntryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Time Entry'**
+  String get createTimeEntryTitle;
+
+  /// No description provided for @workerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Worker'**
+  String get workerLabel;
+
+  /// No description provided for @workerRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a worker.'**
+  String get workerRequired;
+
+  /// No description provided for @startLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get startLabel;
+
+  /// No description provided for @endLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get endLabel;
+
+  /// No description provided for @notesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notesLabel;
+
+  /// No description provided for @notesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional notes about this shift'**
+  String get notesHint;
+
+  /// No description provided for @saveTimeEntryCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Entry'**
+  String get saveTimeEntryCta;
+
+  /// No description provided for @timeEntryCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Time entry added successfully!'**
+  String get timeEntryCreated;
+
+  /// No description provided for @addTimeEntryCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Time Entry'**
+  String get addTimeEntryCta;
+
+  /// No description provided for @timeTrackingActionsCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get timeTrackingActionsCta;
+
+  /// No description provided for @noTimeEntriesYetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No time entries yet'**
+  String get noTimeEntriesYetTitle;
+
+  /// No description provided for @noTimeEntriesYetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first recorded hours for this worker.'**
+  String get noTimeEntriesYetSubtitle;
+
+  /// No description provided for @inProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In Progress'**
+  String get inProgress;
+
+  /// No description provided for @totalEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries'**
+  String get totalEntries;
+
+  /// No description provided for @totalHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get totalHours;
+
+  /// No description provided for @ongoing.
+  ///
+  /// In en, this message translates to:
+  /// **'Ongoing'**
+  String get ongoing;
+
+  /// No description provided for @errorLoadingData.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading data'**
+  String get errorLoadingData;
+
+  /// No description provided for @totalEarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Earnings'**
+  String get totalEarnings;
+
+  /// No description provided for @editWorker.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit worker'**
+  String get editWorker;
+
+  /// No description provided for @linkedUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked user'**
+  String get linkedUser;
+
+  /// No description provided for @externalWorker.
+  ///
+  /// In en, this message translates to:
+  /// **'External worker'**
+  String get externalWorker;
+
+  /// No description provided for @viewWorker.
+  ///
+  /// In en, this message translates to:
+  /// **'View worker'**
+  String get viewWorker;
+
+  /// No description provided for @workerUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Worker updated'**
+  String get workerUpdated;
+
+  /// No description provided for @workerNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get workerNameLabel;
+
+  /// No description provided for @statusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get statusLabel;
+
+  /// No description provided for @statusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get statusActive;
+
+  /// No description provided for @statusInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get statusInactive;
+
+  /// No description provided for @invalidRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid hourly rate'**
+  String get invalidRate;
+
+  /// No description provided for @editTimeEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit time entry'**
+  String get editTimeEntry;
+
+  /// No description provided for @startTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get startTime;
+
+  /// No description provided for @endTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get endTime;
+
+  /// No description provided for @breakMinutesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Break (minutes)'**
+  String get breakMinutesLabel;
+
+  /// No description provided for @timeEntryUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Time entry updated successfully'**
+  String get timeEntryUpdated;
+
+  /// No description provided for @pickStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick start time'**
+  String get pickStartTime;
+
+  /// No description provided for @pickEndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick end time'**
+  String get pickEndTime;
+
+  /// No description provided for @noTimeEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'No time entries yet.'**
+  String get noTimeEntries;
+
+  /// No description provided for @totalHoursFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {hours}h {minutes}m'**
+  String totalHoursFormat(Object hours, Object minutes);
+
+  /// No description provided for @totalHoursAndPayFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {hours}h – {pay}'**
+  String totalHoursAndPayFormat(Object hours, Object pay);
+
+  /// No description provided for @pickMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Select month'**
+  String get pickMonth;
+
+  /// No description provided for @selectMonthPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a month to view entries.'**
+  String get selectMonthPrompt;
+
+  /// No description provided for @selectMonthFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Select month'**
+  String get selectMonthFirst;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @previous.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get previous;
+
+  /// No description provided for @deletedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted successfully'**
+  String get deletedSuccessfully;
+
+  /// No description provided for @areYouSureDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this time entry?'**
+  String get areYouSureDelete;
+
+  /// No description provided for @entries.
+  ///
+  /// In en, this message translates to:
+  /// **'entries'**
+  String get entries;
+
+  /// No description provided for @exportExcel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get exportExcel;
+
+  /// No description provided for @exportReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Export ready — choose where to share/save'**
+  String get exportReady;
+
+  /// No description provided for @previousMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous month'**
+  String get previousMonth;
+
+  /// No description provided for @nextMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Next month'**
+  String get nextMonth;
 }
 
 class _AppLocalizationsDelegate
