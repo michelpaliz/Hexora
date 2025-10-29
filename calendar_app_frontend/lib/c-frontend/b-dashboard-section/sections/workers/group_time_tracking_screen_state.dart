@@ -111,6 +111,23 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     }
   }
 
+  Future<void> _addWorker() async {
+    final created = await Navigator.pushNamed(
+      context,
+      AppRoutes.createWorker,
+      arguments: widget.group,
+    );
+    if (created == true) {
+      await _load();
+      if (mounted) {
+        final l = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.workerCreated)),
+        );
+      }
+    }
+  }
+
   Future<bool?> _openEditWorkerDialog(
       BuildContext context, Group group, Worker worker) {
     return showModalBottomSheet<bool>(
@@ -133,15 +150,49 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     );
   }
 
+  Widget _countChip(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+
+    // Example: "3 workers" / "3 trabajadores"
+    final countLabel = '${_workers.length} ${l.membersTitle.toLowerCase()}';
+
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.primary.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.primary.withOpacity(0.18)),
+      ),
+      child: Text(
+        countLabel,
+        style: t.bodySmall.copyWith(
+          fontWeight: FontWeight.w700,
+          color: cs.primary,
+          letterSpacing: .2,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
-
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: Text(l.timeTrackingTitle, style: t.titleLarge),
+        backgroundColor: cs.surface,
+        actions: [
+          // 👉 Replaced the add button with a total workers chip
+          if (!_loading && !_pluginDisabled && _error == null)
+            _countChip(context),
+        ],
       ),
+
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
@@ -162,16 +213,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                             title: l.noWorkersYetTitle,
                             subtitle: l.noWorkersYetSubtitle,
                             cta: l.createWorkerCta,
-                            onPressed: _toggling
-                                ? null
-                                : () async {
-                                    final created = await Navigator.pushNamed(
-                                      context,
-                                      AppRoutes.createWorker,
-                                      arguments: widget.group,
-                                    );
-                                    if (created == true) _load();
-                                  },
+                            onPressed: _toggling ? null : _addWorker,
                           )
                         : ListView(
                             padding: const EdgeInsets.all(16),
@@ -183,6 +225,8 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                                 busy: _toggling,
                               ),
                               const SizedBox(height: 16),
+
+                              // 👉 Header row WITHOUT the add button (kept compact)
                               Text(
                                 l.employeesHeader,
                                 style: t.titleLarge.copyWith(
@@ -190,6 +234,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                                 ),
                               ),
                               const SizedBox(height: 8),
+
                               ..._workers.map((w) {
                                 final isLinked =
                                     (w.userId != null && w.userId!.isNotEmpty);
@@ -227,8 +272,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                                           widget.group,
                                           w,
                                         );
-                                        if (updated == true)
-                                          _load(); // reload list after editing
+                                        if (updated == true) _load();
                                       },
                                     ),
                                     onTap: () {
@@ -249,6 +293,12 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                               const SizedBox(height: 100),
                             ],
                           ),
+      ),
+      // ✅ Keep only the bottom FAB for adding workers
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addWorker,
+        icon: const Icon(Icons.person_add_alt_1),
+        label: Text(l.createWorkerCta),
       ),
     );
   }

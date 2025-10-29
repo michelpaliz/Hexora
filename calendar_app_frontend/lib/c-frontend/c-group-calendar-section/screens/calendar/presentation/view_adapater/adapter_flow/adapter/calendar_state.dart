@@ -2,8 +2,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/presentation/view_adapater/adapter_flow/event_data_source/event_data_source.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/presentation/view_adapater/adapter_flow/event_data_source/event_data_source.dart';
 
 class CalendarState {
   // UI notifiers
@@ -12,6 +12,23 @@ class CalendarState {
   final ValueNotifier<List<Event>> allEvents = ValueNotifier([]);
   final ValueNotifier<EventDataSource> dataSource =
       ValueNotifier(EventDataSource(const []));
+
+  // /// NEW: current view mode ('day' | 'week' | 'month' | 'agenda')
+  // final ValueNotifier<String> viewMode = ValueNotifier<String>('week');
+
+  final ValueNotifier<String> viewMode = ValueNotifier('week');
+  void setViewMode(String mode) {
+    if (viewMode.value != mode) {
+      viewMode.value = mode;
+      calendarRefreshKey.value++;
+    }
+  }
+
+  String get currentViewMode => viewMode.value;
+
+  /// NEW: view navigation anchor — CalendarSurface listens to this and scrolls/jumps
+  final ValueNotifier<DateTime> anchorDate =
+      ValueNotifier<DateTime>(DateTime.now());
 
   // snapshot + signature
   List<Event> _last = const [];
@@ -27,6 +44,8 @@ class CalendarState {
     allEvents.dispose();
     dataSource.dispose();
     calendarRefreshKey.dispose();
+    anchorDate.dispose();
+    viewMode.dispose(); // NEW
   }
 
   bool applyEvents(List<Event> events) {
@@ -71,4 +90,30 @@ class CalendarState {
         ));
     return Object.hashAllUnordered(parts);
   }
+
+  // -------- Navigation API --------
+  /// Jump the logical selection and signal the view to move to [date].
+  void jumpTo(DateTime date) {
+    final d = DateTime(date.year, date.month, date.day);
+    selectedDate = d;
+    dailyEvents.value = eventsForDate(d, _last); // keep side/day list in sync
+    anchorDate.value = d; // tell CalendarSurface to scroll/jump
+    // Optionally bump a rebuild if your surface needs it:
+    // calendarRefreshKey.value = calendarRefreshKey.value + 1;
+  }
+
+  /// Convenience: jump to today.
+  void jumpToToday() => jumpTo(DateTime.now());
+
+  // // -------- NEW: View Mode API --------
+  // /// Set the current view ('day' | 'week' | 'month' | 'agenda') and force a rebuild tick.
+  // void setViewMode(String mode) {
+  //   if (viewMode.value == mode) return;
+  //   viewMode.value = mode;
+  //   // Nudge listeners that rely on a simple int key:
+  //   calendarRefreshKey.value = calendarRefreshKey.value + 1;
+  // }
+
+  // /// Read the current view mode.
+  // String get currentViewMode => viewMode.value;
 }

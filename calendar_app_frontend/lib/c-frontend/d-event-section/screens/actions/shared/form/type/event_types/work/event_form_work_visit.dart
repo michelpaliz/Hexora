@@ -1,4 +1,5 @@
 // event_form_work_visit.dart
+import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/screen/widgets/repetition_toggle_widget.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/dialog/user_expandable_card.dart';
@@ -8,8 +9,9 @@ import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/uti
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/form/reminder_options.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/simple/client_service_pickers.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:flutter/material.dart';
 
 class EventFormWorkVisit extends StatefulWidget {
   final BaseEventLogic logic;
@@ -20,6 +22,9 @@ class EventFormWorkVisit extends StatefulWidget {
   /// Optional: lets the parent/router provide a dialog implementation.
   final EventDialogs? dialogs;
 
+  /// NEW: show/hide the client & service pickers section
+  final bool enableClientServicePickers;
+
   const EventFormWorkVisit({
     super.key,
     required this.logic,
@@ -27,6 +32,7 @@ class EventFormWorkVisit extends StatefulWidget {
     required this.ownerUserId,
     this.isEditing = false,
     this.dialogs,
+    this.enableClientServicePickers = true, // default to ON for work visits
   });
 
   @override
@@ -60,13 +66,11 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
       if (widget.dialogs != null &&
           widget.logic.onShowRepetitionDialog == null) {
         widget.logic.onShowRepetitionDialog = (
-          BuildContext _,
-          {
-            required DateTime selectedStartDate,
-            required DateTime selectedEndDate,
-            LegacyRecurrenceRule? initialRule,
-          }
-        ) {
+          BuildContext _, {
+          required DateTime selectedStartDate,
+          required DateTime selectedEndDate,
+          LegacyRecurrenceRule? initialRule,
+        }) {
           return widget.dialogs!.showRepetitionDialog(
             context,
             selectedStartDate: selectedStartDate,
@@ -93,52 +97,55 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
-    final clients = widget.logic.clients;
-    final services = widget.logic.services;
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+
+    final clients = widget.logic.clients; // assume non-null lists from logic
+    final services = widget.logic.services; // "
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // CLIENT
-        DropdownButtonFormField<String>(
-          value: _clientId,
-          items: clients
-              .map((c) => DropdownMenuItem(
-                    value: c.id,
-                    child: Text( c.name ?? 'Client'),
-                  ))
-              .toList(),
-          onChanged: (v) {
+        // SECTION TITLE (bodySmall)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            loc.workVisit, // or a more specific string like "Client & Service"
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
+        ClientServicePickers(
+          clients: clients,
+          services: services,
+          clientId: _clientId,
+          serviceId: _primaryServiceId,
+          onClientChanged: (v) {
             setState(() => _clientId = v);
             widget.logic.setClientId?.call(v);
           },
-          decoration: InputDecoration(
-            labelText: loc.client,
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // PRIMARY SERVICE
-        DropdownButtonFormField<String>(
-          value: _primaryServiceId,
-          items: services
-              .map((s) => DropdownMenuItem(
-                    value: s.id,
-                    child: Text(s.name ?? 'Service'),
-                  ))
-              .toList(),
-          onChanged: (v) {
+          onServiceChanged: (v) {
             setState(() => _primaryServiceId = v);
             widget.logic.setPrimaryServiceId?.call(v);
           },
-          decoration: InputDecoration(
-            labelText: loc.primaryService,
-          ),
         ),
         const SizedBox(height: 12),
 
-        // Optional: visit services editor can be added later
-
+        // COLOR
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            loc.colorLabel, // ensure exists in l10n, or replace with a literal
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         ColorPickerWidget(
           selectedEventColor: widget.logic.selectedEventColor == null
               ? null
@@ -150,12 +157,36 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
         ),
         const SizedBox(height: 10),
 
-        // Title can be auto-generated later; keep a minimal description for now
+        // DESCRIPTION
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6, top: 2),
+          child: Text(
+            loc.descriptionLabel,
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         DescriptionInputWidget(
           descriptionController: widget.logic.descriptionController,
+          // The field’s own text is typically bodyMedium by default.
         ),
         const SizedBox(height: 12),
 
+        // DATES
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            loc.date, // or something like "Date & Time"
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         DatePickersWidget(
           startDate: startDate,
           endDate: endDate,
@@ -164,13 +195,18 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
         ),
         const SizedBox(height: 8),
 
+        // REMINDER
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          value: _notifyMe,
-          title: Text(loc.notifyMe),
+          title: Text(
+            loc.notifyMe,
+            style: typo.bodyMedium,
+          ),
           subtitle: Text(
             _notifyMe ? loc.notifyMeOnSubtitle : loc.notifyMeOffSubtitle,
+            style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
           ),
+          value: _notifyMe,
           onChanged: (v) {
             setState(() {
               _notifyMe = v;
@@ -187,6 +223,19 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
         ],
 
         const SizedBox(height: 10),
+
+        // USERS
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6, top: 6),
+          child: Text(
+            loc.assignedUsers, // add to l10n if needed
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         UserExpandableCard(
           usersAvailable: widget.logic.users,
           initiallySelected: widget.logic.selectedUsers,
@@ -199,6 +248,18 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
 
         const SizedBox(height: 10),
 
+        // REPETITION
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6, top: 6),
+          child: Text(
+            loc.repetition, // add to l10n if needed
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         RepetitionToggleWidget(
           key: ValueKey(widget.logic.isRepetitive),
           isRepetitive: widget.logic.isRepetitive,
@@ -261,7 +322,10 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
                         await widget.onSubmit();
                       }
                     : null,
-                child: Text(widget.isEditing ? loc.save : loc.addEvent),
+                child: Text(
+                  widget.isEditing ? loc.save : loc.addEvent,
+                  style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                ),
               );
             },
           ),

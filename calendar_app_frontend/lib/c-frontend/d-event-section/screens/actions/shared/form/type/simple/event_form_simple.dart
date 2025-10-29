@@ -1,4 +1,5 @@
 // event_form_simple.dart
+import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
 import 'package:hexora/b-backend/group_mng_flow/category/category_api_client.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/screen/widgets/repetition_toggle_widget.dart';
@@ -13,8 +14,8 @@ import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/uti
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/utils/category_picker.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:flutter/material.dart';
 
 class EventFormSimple extends StatefulWidget {
   final Future<void> Function() onSubmit;
@@ -23,7 +24,7 @@ class EventFormSimple extends StatefulWidget {
   final CategoryApi categoryApi;
   final String ownerUserId;
 
-  /// Optional: let the parent/router provide the repetition dialog implementation.
+  /// Optional: repetition dialog implementation from parent/router.
   final EventDialogs? dialogs;
 
   const EventFormSimple({
@@ -54,13 +55,11 @@ class _EventFormSimpleState extends State<EventFormSimple> {
     _reminder = widget.logic.reminderMinutes;
     _notifyMe = (_reminder ?? 0) > 0;
 
-    // Defer to after first frame to avoid setState-in-build issues.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
       widget.logic.setEventType?.call('simple');
 
-      // If a dialog provider is passed and the logic hook isn't wired yet, wire it.
       if (widget.dialogs != null &&
           widget.logic.onShowRepetitionDialog == null) {
         widget.logic.onShowRepetitionDialog = (
@@ -90,22 +89,51 @@ class _EventFormSimpleState extends State<EventFormSimple> {
 
   @override
   Widget build(BuildContext context) {
-    final loc = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // CATEGORY
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            l.category, // ensure in l10n
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         CategoryPicker(
           api: widget.categoryApi,
-          label: 'Category',
+          label: l.category,
           initialCategoryId: widget.logic.categoryId,
           initialSubcategoryId: widget.logic.subcategoryId,
           onChanged: (sel) {
             widget.logic.categoryId = sel.categoryId;
             widget.logic.subcategoryId = sel.subcategoryId;
+            setState(() {});
           },
         ),
-        const SizedBox(height: 10),
+
+        const SizedBox(height: 14),
+
+        // COLOR
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            l.color,
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         ColorPickerWidget(
           selectedEventColor: widget.logic.selectedEventColor == null
               ? null
@@ -115,32 +143,111 @@ class _EventFormSimpleState extends State<EventFormSimple> {
           },
           colorList: widget.logic.colorList.map((c) => Color(c)).toList(),
         ),
-        const SizedBox(height: 10),
-        TitleInputWidget(titleController: widget.logic.titleController),
-        const SizedBox(height: 10),
+
+        const SizedBox(height: 14),
+
+        // TITLE
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            l.title(15), // make sure this exists in l10n
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
+        TitleInputWidget(
+          titleController: widget.logic.titleController,
+          // field text typically bodyMedium by default; keep as-is
+        ),
+
+        const SizedBox(height: 12),
+
+        // DESCRIPTION
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            l.description(50), // add if missing
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         DescriptionInputWidget(
           descriptionController: widget.logic.descriptionController,
         ),
-        const SizedBox(height: 10),
-        NoteInputWidget(noteController: widget.logic.noteController),
-        const SizedBox(height: 10),
-        LocationInputWidget(
-          locationController: widget.logic.locationController,
+
+        const SizedBox(height: 12),
+
+        // NOTE
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            l.note(20), // add if missing
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
         ),
-        const SizedBox(height: 15),
+        NoteInputWidget(noteController: widget.logic.noteController),
+
+        const SizedBox(height: 12),
+
+        // LOCATION
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            l.location, // add if missing
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
+        LocationInputWidget(
+            locationController: widget.logic.locationController),
+
+        const SizedBox(height: 16),
+
+        // DATES
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            l.date,
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         DatePickersWidget(
           startDate: startDate,
           endDate: endDate,
           onStartDateTap: () => _handleDateSelection(true),
           onEndDateTap: () => _handleDateSelection(false),
         ),
+
         const SizedBox(height: 8),
+
+        // REMINDER
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           value: _notifyMe,
-          title: Text(loc.notifyMe),
+          title: Text(
+            l.notifyMe,
+            style: typo.bodyMedium,
+          ),
           subtitle: Text(
-            _notifyMe ? loc.notifyMeOnSubtitle : loc.notifyMeOffSubtitle,
+            _notifyMe ? l.notifyMeOnSubtitle : l.notifyMeOffSubtitle,
+            style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
           ),
           onChanged: (v) {
             setState(() {
@@ -156,7 +263,21 @@ class _EventFormSimpleState extends State<EventFormSimple> {
             onChanged: (val) => _reminder = val,
           ),
         ],
-        const SizedBox(height: 10),
+
+        const SizedBox(height: 12),
+
+        // USERS
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            l.assignedUsers, // add if missing
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         UserExpandableCard(
           usersAvailable: widget.logic.users,
           initiallySelected: widget.logic.selectedUsers,
@@ -166,7 +287,21 @@ class _EventFormSimpleState extends State<EventFormSimple> {
             setState(() {});
           },
         ),
-        const SizedBox(height: 10),
+
+        const SizedBox(height: 12),
+
+        // REPETITION
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            l.repetition,
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
         RepetitionToggleWidget(
           key: ValueKey(widget.logic.isRepetitive),
           isRepetitive: widget.logic.isRepetitive,
@@ -201,7 +336,10 @@ class _EventFormSimpleState extends State<EventFormSimple> {
             setState(() => widget.logic.toggleRepetition(isRepeated, rule));
           },
         ),
+
         const SizedBox(height: 24),
+
+        // SUBMIT
         Center(
           child: ValueListenableBuilder<bool>(
             valueListenable: widget.logic.canSubmit,
@@ -217,7 +355,10 @@ class _EventFormSimpleState extends State<EventFormSimple> {
                         await widget.onSubmit();
                       }
                     : null,
-                child: Text(widget.isEditing ? loc.save : loc.addEvent),
+                child: Text(
+                  widget.isEditing ? l.save : l.addEvent,
+                  style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                ),
               );
             },
           ),

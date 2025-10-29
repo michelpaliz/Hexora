@@ -11,6 +11,7 @@ import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_manager.dart
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/presentation/coordinator/app_screen_manager.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/presentation/icapability/supports_view_mode.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/presentation/view_adapater/adapter_flow/adapter/calendar_view_adapter.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/logic/actions/event_actions_manager.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/bridge/event_display_manager.dart';
@@ -26,6 +27,9 @@ class CalendarScreenCoordinator {
   final ValueNotifier<bool> loading = ValueNotifier<bool>(true);
   bool get isLoading => loading.value;
   void _setLoading(bool v) => loading.value = v;
+
+  String _currentViewMode = 'week';
+  String get currentViewMode => _currentViewMode;
 
   // UI helpers
   final AppScreenManager _screenManager = AppScreenManager();
@@ -52,6 +56,24 @@ class CalendarScreenCoordinator {
     final colorManager = ColorManager();
     final contentBuilder = EventContentBuilder(colorManager: colorManager);
     _displayManager = EventDisplayManager(null, builder: contentBuilder);
+  }
+
+  void jumpToToday() {
+    calendarUI?.jumpToToday();
+  }
+
+// calendar_screen_controller.dart
+
+  void setViewMode(String mode) {
+    _currentViewMode = mode;
+
+    final ui = calendarUI;
+    if (ui == null) {
+      devtools.log('[Calendar] setViewMode before init (mode=$mode)');
+      return;
+    }
+    (ui as SupportsViewMode).setViewMode(mode);
+    devtools.log('[Calendar] View mode -> $mode');
   }
 
   Future<void> initSockets() async {

@@ -8,6 +8,7 @@ enum UserRole { admin, coAdmin, member }
 UserRole parseUserRole(String? roleString) {
   switch (roleString?.toLowerCase()) {
     case 'administrator':
+    case 'admin':
       return UserRole.admin;
     case 'co-administrator':
     case 'coadmin':

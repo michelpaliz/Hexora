@@ -4,6 +4,7 @@ import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/me
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/empty_hint.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/member_list/members_row_widgets/parent/members_row.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/section_header.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class MembersList extends StatelessWidget {
@@ -32,7 +33,6 @@ class MembersList extends StatelessWidget {
 
   bool _isCoAdminRole(String role) {
     final s = _norm(role);
-    // handles: "co-admin", "coadmin", "co administrator", "co administrator (something)"
     return s.contains('co-admin') ||
         s.contains('coadmin') ||
         s.contains('co administrator');
@@ -40,11 +40,10 @@ class MembersList extends StatelessWidget {
 
   bool _isAdminRole(String role) {
     final s = _norm(role);
-    // treat "owner" and "administrator" as admin; exclude co-admins here so they get their own bucket
     if (_isCoAdminRole(role)) return false;
     return s == 'admin' ||
         s.contains('administrator') ||
-        s.contains('owner') || // e.g. "administrator (owner)"
+        s.contains('owner') ||
         s == 'manager' ||
         s == 'moderator';
   }
@@ -59,6 +58,7 @@ class MembersList extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final l = AppLocalizations.of(context)!;
+    final typo = AppTypography.of(context); // ✅ Typo font access
 
     final nothing = accepted.isEmpty && pending.isEmpty && notAccepted.isEmpty;
 
@@ -79,10 +79,6 @@ class MembersList extends StatelessWidget {
         accepted.where((r) => _isCoAdminRole(r.role)).toList();
     final regularMembers =
         accepted.where((r) => _isMemberRole(r.role)).toList();
-    // (optional) anything else (custom roles) could be bucketed here if needed:
-    // final otherRoleMembers = accepted.where((r) =>
-    //   !_isAdminRole(r.role) && !_isCoAdminRole(r.role) && !_isMemberRole(r.role)
-    // ).toList();
 
     List<Widget> buildSection(
       String title,
@@ -96,9 +92,11 @@ class MembersList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: SectionHeader(
             title: title,
-            textStyle: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+            textStyle: typo.bodyMedium.copyWith(
+              // ✅ Typo for section headers
+              fontWeight: FontWeight.w800,
               color: color ?? colors.onSurface,
+              letterSpacing: .2,
             ),
           ),
         ),
@@ -117,11 +115,17 @@ class MembersList extends StatelessWidget {
               ),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 68),
-                child: MemberRow(
-                  ref: ref,
-                  ownerId: ref.ownerId,
-                  // SHOW the role chip for *all* sections so Admins/Co-Admins are labeled
-                  showRoleChip: true,
+                child: DefaultTextStyle(
+                  // ✅ Ensure rows inherit Typo body
+                  style: typo.bodyMedium.copyWith(
+                    color: colors.onSurface,
+                    letterSpacing: .1,
+                  ),
+                  child: MemberRow(
+                    ref: ref,
+                    ownerId: ref.ownerId,
+                    showRoleChip: true,
+                  ),
                 ),
               ),
             ),
@@ -135,7 +139,7 @@ class MembersList extends StatelessWidget {
       children: [
         // 1) Admins
         ...buildSection(
-          l.roleAdmin, // make sure you have this key localized (e.g., "Administrador")
+          l.roleAdmin,
           adminMembers,
           color: colors.secondary,
           sectionType: 'admins',
@@ -143,7 +147,7 @@ class MembersList extends StatelessWidget {
 
         // 2) Co-Admins
         ...buildSection(
-          l.roleCoAdmin, // add localization key (e.g., "Co-administrador")
+          l.roleCoAdmin,
           coAdminMembers,
           color: colors.tertiary,
           sectionType: 'coadmins',
@@ -151,18 +155,13 @@ class MembersList extends StatelessWidget {
 
         // 3) Members
         ...buildSection(
-          acceptedLabel, // typically something like l.members
+          acceptedLabel,
           regularMembers,
           color: colors.primary,
           sectionType: 'members',
         ),
 
-        // (Optional) Other roles if you decide to surface them:
-        // if (otherRoleMembers.isNotEmpty)
-        //   ...buildSection(l.otherRoles, otherRoleMembers,
-        //       color: colors.onTertiaryContainer, sectionType: 'other'),
-
-        // Pending / Not accepted (kept unsplit by role on purpose)
+        // Pending / Not accepted
         ...buildSection(pendingLabel, pending, color: colors.onSurfaceVariant),
         ...buildSection(notAcceptedLabel, notAccepted,
             color: colors.onSurfaceVariant),

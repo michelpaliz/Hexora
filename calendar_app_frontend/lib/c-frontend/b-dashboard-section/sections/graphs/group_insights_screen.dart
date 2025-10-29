@@ -8,9 +8,12 @@ import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/enum/insig
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/sections/bar/insights_bar_section.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/sections/filter/insights_filter_section.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/sections/past_hint/insights_past_hint.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+import 'widgets/dimension_tabs.dart';
 
 class GroupInsightsScreen extends StatefulWidget {
   final Group group;
@@ -30,7 +33,7 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
   Map<String, String> _clientNames = {};
   Map<String, String> _serviceNames = {};
 
-  // Only “Clientes / Servicios” for this screen
+  // Only “Clients / Services” for this screen
   Dimension _dimension = Dimension.clients;
 
   List<Event> _events = const [];
@@ -41,80 +44,15 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
     _load();
   }
 
+  Map<String, String> _idToLabelMap() =>
+      _dimension == Dimension.clients ? _clientNames : _serviceNames;
+
   Map<String, int> _applyLabels(Map<String, int> minutesById) {
-    if (_dimension == Dimension.clients) {
-      return {
-        for (final e in minutesById.entries)
-          (_clientNames[e.key] ?? e.key): e.value,
-      };
-    } else {
-      return {
-        for (final e in minutesById.entries)
-          (_serviceNames[e.key] ?? e.key): e.value,
-      };
-    }
+    final names = _idToLabelMap();
+    return {
+      for (final e in minutesById.entries) (names[e.key] ?? e.key): e.value,
+    };
   }
-
-  // Future<void> _load() async {
-  //   setState(() {
-  //     _loading = true;
-  //     _error = null;
-  //   });
-
-  //   try {
-  //     final userDomain = context.read<userDomain>();
-  //     final range = _resolveRange(DateTime.now());
-
-  //     // 1) Fetch events from the new agenda endpoint
-  //     final eventsFuture = userDomain.fetchWorkInRange(
-  //       groupId: widget.group.id,
-  //       from: range.start,
-  //       to: range.end,
-  //       types: const ['work_visit', 'work_service'],
-  //     );
-
-  //     // 2) In parallel, fetch catalogs for names (nice labels)
-  //     final clientsApi = ClientsApi();
-  //     final servicesApi = ServiceApi();
-  //     final clientsFuture =
-  //         clientsApi.list(groupId: widget.group.id, active: null);
-  //     final servicesFuture =
-  //         servicesApi.list(groupId: widget.group.id, active: null);
-
-  //     final results =
-  //         await Future.wait([eventsFuture, clientsFuture, servicesFuture]);
-
-  //     final events = results[0] as List<Event>;
-  //     final clients = results[1] as List<dynamic>; // Client
-  //     final services = results[2] as List<dynamic>; // Service
-
-  //     // (Optional) guard if backend ever returns other groups by mistake
-  //     final onlyThisGroup =
-  //         events.where((e) => e.groupId == widget.group.id).toList();
-
-  //     // Build ID → name maps
-  //     final clientNames = <String, String>{
-  //       for (final c in clients)
-  //         c.id: (c.name?.trim().isNotEmpty == true ? c.name!.trim() : c.id),
-  //     };
-  //     final serviceNames = <String, String>{
-  //       for (final s in services)
-  //         s.id: (s.name?.trim().isNotEmpty == true ? s.name!.trim() : s.id),
-  //     };
-
-  //     setState(() {
-  //       _events = onlyThisGroup;
-  //       _clientNames = clientNames;
-  //       _serviceNames = serviceNames;
-  //       _loading = false;
-  //     });
-  //   } catch (e) {
-  //     setState(() {
-  //       _error = e.toString();
-  //       _loading = false;
-  //     });
-  //   }
-  // }
 
   DateTime _endExclusive(DateTime d) =>
       DateTime(d.year, d.month, d.day).add(const Duration(days: 1));
@@ -129,18 +67,17 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
       final userDomain = context.read<UserDomain>();
       final range = _resolveRange(DateTime.now());
 
-      // ⚠️ Use end-exclusive to include the whole last day in the backend query
       final endExclusive = _endExclusive(range.end);
 
-      // 1) Fetch events from the unified agenda endpoint
+      // 1) Unified agenda events
       final eventsFuture = userDomain.fetchWorkItems(
         groupId: widget.group.id,
         from: range.start,
-        to: endExclusive, // ← end-exclusive
+        to: endExclusive, // end-exclusive
         types: const ['work_visit', 'work_service'],
       );
 
-      // 2) In parallel, fetch catalogs for names (nice labels)
+      // 2) Catalogs
       final clientsApi = ClientsApi();
       final servicesApi = ServiceApi();
       final clientsFuture =
@@ -155,11 +92,9 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
       final clients = results[1] as List<dynamic>;
       final services = results[2] as List<dynamic>;
 
-      // (Optional) guard if backend ever returns other groups by mistake
       final onlyThisGroup =
           events.where((e) => e.groupId == widget.group.id).toList();
 
-      // Build ID → name maps
       final clientNames = <String, String>{
         for (final c in clients)
           c.id: (c.name?.trim().isNotEmpty == true ? c.name!.trim() : c.id),
@@ -264,6 +199,9 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+
     final range = _resolveRange(DateTime.now());
     final minutesById = _aggregateMinutes(_dimension, range);
     final minutesLabeled = _sortDesc(_applyLabels(minutesById));
@@ -272,7 +210,12 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.insightsTitle),
+        title: Text(
+          l.insightsTitle,
+          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
+        ),
+        backgroundColor: cs.surface,
+        iconTheme: IconThemeData(color: cs.onSurface),
         actions: [
           IconButton(
             onPressed: _load,
@@ -284,12 +227,17 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
+              ? Center(
+                  child: Text(
+                    _error!,
+                    style: typo.bodySmall.copyWith(color: cs.error),
+                  ),
+                )
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                   children: [
-                    // BIG TABS (Clientes / Servicios)
-                    _DimensionTabs(
+                    // BIG TABS (Clients / Services)
+                    DimensionTabs(
                       value: _dimension,
                       onChanged: (d) => setState(() => _dimension = d),
                     ),
@@ -313,8 +261,7 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
                       title: _dimension == Dimension.clients
                           ? l.timeByClient
                           : l.timeByService,
-                      minutesByKey:
-                          minutesLabeled, // 👈 human-readable names now
+                      minutesByKey: minutesLabeled, // human-readable names
                     ),
 
                     const SizedBox(height: 24),
@@ -327,56 +274,6 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
                       const InsightsPastDataHint(),
                   ],
                 ),
-    );
-  }
-}
-
-/// Large, rounded tabs for Clientes / Servicios
-class _DimensionTabs extends StatelessWidget {
-  final Dimension value;
-  final ValueChanged<Dimension> onChanged;
-  const _DimensionTabs({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-
-    Widget tab(String text, bool selected, VoidCallback onTap) {
-      return Expanded(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          height: 44,
-          decoration: BoxDecoration(
-            color: selected ? cs.primary : cs.surfaceVariant,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: onTap,
-            child: Center(
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        tab(l.filterDimensionClients, value == Dimension.clients,
-            () => onChanged(Dimension.clients)),
-        const SizedBox(width: 10),
-        tab(l.filterDimensionServices, value == Dimension.services,
-            () => onChanged(Dimension.services)),
-      ],
     );
   }
 }

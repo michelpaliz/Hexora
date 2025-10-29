@@ -1,16 +1,17 @@
+import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/service/service.dart';
 import 'package:hexora/b-backend/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/business_logic/service/service_api_client.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:flutter/material.dart';
 
 import 'sheets/add_client_sheet.dart';
 import 'sheets/add_service_sheet.dart';
-import 'tabs/clients_tab.dart';
-import 'tabs/services_tab.dart';
+import 'tabs/clients/clients_tab.dart';
+import 'tabs/services/services_tab.dart';
 
 class ServicesClientsScreen extends StatefulWidget {
   final Group group;
@@ -88,8 +89,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     if (created != null && mounted) {
       setState(() => _clients.insert(0, created));
       final l = AppLocalizations.of(context)!;
+      final typo = AppTypography.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.clientCreatedWithName(created.name))),
+        SnackBar(
+            content: Text(l.clientCreatedWithName(created.name),
+                style: typo.bodySmall)),
       );
     }
   }
@@ -105,8 +109,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     if (created != null && mounted) {
       setState(() => _services.insert(0, created));
       final l = AppLocalizations.of(context)!;
+      final typo = AppTypography.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.serviceCreatedWithName(created.name))),
+        SnackBar(
+            content: Text(l.serviceCreatedWithName(created.name),
+                style: typo.bodySmall)),
       );
     }
   }
@@ -130,8 +137,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         if (i != -1) _clients[i] = updated;
       });
       final l = AppLocalizations.of(context)!;
+      final typo = AppTypography.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.clientUpdatedWithName(updated.name))),
+        SnackBar(
+            content: Text(l.clientUpdatedWithName(updated.name),
+                style: typo.bodySmall)),
       );
     }
   }
@@ -154,8 +164,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         if (i != -1) _services[i] = updated;
       });
       final l = AppLocalizations.of(context)!;
+      final typo = AppTypography.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.serviceUpdatedWithName(updated.name))),
+        SnackBar(
+            content: Text(l.serviceUpdatedWithName(updated.name),
+                style: typo.bodySmall)),
       );
     }
   }
@@ -165,6 +178,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final l = AppLocalizations.of(context)!;
+    final typo = AppTypography.of(context); // ✅ Typo font
 
     final primary = cs.primary;
     final selectedText = ThemeColors.getContrastTextColor(context, primary);
@@ -178,7 +192,14 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: Navigator.of(context).canPop(),
-        title: Text(l.screenServicesClientsTitle),
+        title: Text(
+          l.screenServicesClientsTitle,
+
+          // use Typo bodySmall as requested, bolded for prominence
+          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
+        ),
+        iconTheme: IconThemeData(color: cs.onSurface),
+        backgroundColor: cs.surface,
         elevation: 0,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
@@ -201,8 +222,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                 dividerColor: Colors.transparent,
                 labelColor: selectedText,
                 unselectedLabelColor: unselectedText,
-                labelStyle: theme.textTheme.labelLarge,
-                unselectedLabelStyle: theme.textTheme.labelLarge,
+                // ✅ Typo font for tabs (use bodySmall instead of titleSmall)
+                labelStyle: typo.bodySmall
+                    .copyWith(fontWeight: FontWeight.w700, letterSpacing: .2),
+                unselectedLabelStyle: typo.bodySmall
+                    .copyWith(fontWeight: FontWeight.w600, letterSpacing: .2),
                 indicator: BoxDecoration(
                   color: primary,
                   borderRadius: BorderRadius.circular(10),
@@ -242,8 +266,12 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
             icon: const Icon(Icons.add),
             label: AnimatedBuilder(
               animation: _tab,
-              builder: (_, __) =>
-                  Text(_tab.index == 0 ? l.addClient : l.addService),
+              builder: (_, __) => Text(
+                _tab.index == 0 ? l.addClient : l.addService,
+                // ✅ Typo bodySmall for CTA text
+                style: typo.bodySmall
+                    .copyWith(color: cs.onPrimary, fontWeight: FontWeight.w700),
+              ),
             ),
             onPressed: () =>
                 _tab.index == 0 ? _openAddClient() : _openAddService(),

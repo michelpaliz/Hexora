@@ -2036,4 +2036,133 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get nextMonth => 'Mes siguiente';
+
+  @override
+  String get info => 'Info';
+
+  @override
+  String get overviewInfoTitle => 'Resumen mensual';
+
+  @override
+  String get overviewInfoBody =>
+      'Cada tarjeta muestra el mes, horas totales y pago de este trabajador. Toca un mes para ver los partes detallados. Usa las flechas para cambiar de año. Desliza hacia abajo para actualizar.';
+
+  @override
+  String get hours => 'Horas';
+
+  @override
+  String get pay => 'Pago';
+
+  @override
+  String get tipTapMonthToOpen => 'Toca un mes para ver detalles';
+
+  @override
+  String get tipPullToRefresh => 'Desliza hacia abajo para actualizar';
+
+  @override
+  String get addWorker => 'Añadir trabajador';
+
+  @override
+  String get addWorkerSubtitle =>
+      'Crea un perfil para empezar a registrar horas y pagos.';
+
+  @override
+  String get membersInfoAccepted => 'Usuarios que forman parte de este grupo.';
+
+  @override
+  String get membersInfoPending =>
+      'Invitaciones enviadas y a la espera de aceptación.';
+
+  @override
+  String get membersInfoNotAccepted =>
+      'Invitaciones rechazadas, revocadas o caducadas.';
+
+  @override
+  String get contact => 'Contacto';
+
+  @override
+  String get e_gJohnDoe => 'p.ej., Corte básico';
+
+  @override
+  String get e_gPhone => 'p.ej., +34 600-123-456';
+
+  @override
+  String get e_gEmail => 'p.ej., juan.perez@ejemplo.com';
+
+  @override
+  String get clientWillBeActive => 'El cliente estará activo';
+
+  @override
+  String get clientWillBeInactive => 'El cliente estará inactivo';
+
+  @override
+  String get noContactInfo => 'Sin datos de contacto';
+
+  @override
+  String get activeStatus => 'Activo';
+
+  @override
+  String get inactiveStatus => 'Inactivo';
+
+  @override
+  String get serviceWillBeActive => 'El servicio estará activo';
+
+  @override
+  String get serviceWillBeInactive => 'El servicio estará inactivo';
+
+  @override
+  String get chooseType => 'Elige tipo';
+
+  @override
+  String get simpleEventHint =>
+      'Crea un evento rápido sin seleccionar cliente/servicio.';
+
+  @override
+  String get workVisitHint =>
+      'Registra una visita seleccionando un cliente y uno o más servicios.';
+
+  @override
+  String get color => 'Color';
+
+  @override
+  String get date => 'Fecha';
+
+  @override
+  String get assignedUsers => 'Usuarios asignados';
+
+  @override
+  String get repetition => 'Repetición';
+
+  @override
+  String get category => 'Categoría';
+
+  @override
+  String get workVisitHintShort =>
+      'Elige un cliente y servicios para esta visita.';
+
+  @override
+  String get simpleEventHintShort => 'Evento simple sin cliente ni servicio.';
+
+  @override
+  String get newCategory => 'Nueva categoría';
+
+  @override
+  String get newSubcategory => 'Nueva subcategoría';
+
+  @override
+  String failedToCreate(String error) {
+    return 'No se pudo crear: $error';
+  }
+
+  @override
+  String get noCategoriesYet => 'Aún no hay categorías';
+
+  @override
+  String get addCategory => 'Agregar categoría';
+
+  @override
+  String get addSubcategory => 'Agregar subcategoría';
+
+  @override
+  String get subcategory => 'Subcategoría';
 }

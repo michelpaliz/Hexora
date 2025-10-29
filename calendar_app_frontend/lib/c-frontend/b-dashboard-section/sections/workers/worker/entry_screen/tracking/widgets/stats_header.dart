@@ -19,15 +19,24 @@ class StatsHeader extends StatelessWidget {
     return v.toString();
   }
 
+  num _toNum(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v;
+    return num.tryParse(v.toString()) ?? 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
     final totalHours = _fmt(totals?['totalHours']);
-    final totalPay = _fmt(totals?['totalPay']);
+    final totalPayStr = _fmt(totals?['totalPay']);
+    final totalPayNum = _toNum(totals?['totalPay']);
     final currency = (totals?['currency'] ?? '').toString();
 
+    // compute avg hours/day (compact, informative)
     final minutes = entries.fold<int>(
       0,
       (sum, e) =>
@@ -39,17 +48,42 @@ class StatsHeader extends StatelessWidget {
         .length;
     final avgHours = activeDays == 0 ? 0.0 : (minutes / 60.0) / activeDays;
 
+    // income color logic
+    final Color incomeColor = totalPayNum > 0
+        ? Colors.green.shade600
+        : totalPayNum < 0
+            ? Colors.red.shade600
+            : cs.secondary; // neutral
+
+    final Color incomeBg = totalPayNum > 0
+        ? Colors.green.withOpacity(0.12)
+        : totalPayNum < 0
+            ? Colors.red.withOpacity(0.12)
+            : cs.secondary.withOpacity(0.12);
+
+    final Color incomeBorder = totalPayNum > 0
+        ? Colors.green.withOpacity(0.18)
+        : totalPayNum < 0
+            ? Colors.red.withOpacity(0.18)
+            : cs.secondary.withOpacity(0.18);
+
+    final IconData incomeIcon = totalPayNum > 0
+        ? Icons.trending_up
+        : totalPayNum < 0
+            ? Icons.trending_down
+            : Icons.attach_money;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.55),
+        color: cs.surfaceVariant.withOpacity(0.55),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title
+          // Title (slightly larger)
           Text(
             l.totalHours,
             style: t.bodyMedium.copyWith(
@@ -58,34 +92,39 @@ class StatsHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          // Big number
+          // Big number (noticeably larger than before)
           Text(
             '$totalHours h',
-            style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+            style: t.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 10),
-          // Pills
+
+          // Pills row (entries • income colored • avg h/day)
           Row(
             children: [
               _pill(
                 context,
                 icon: Icons.list_alt,
                 label: '${entries.length} ${l.entries}',
-                color: Theme.of(context).colorScheme.primary,
+                color: cs.primary,
               ),
               const SizedBox(width: 8),
-              _pill(
+              _pillCustom(
                 context,
-                icon: Icons.attach_money,
-                label: '$totalPay $currency',
-                color: Theme.of(context).colorScheme.secondary,
+                icon: incomeIcon,
+                label: '$totalPayStr $currency',
+                fg: incomeColor,
+                bg: incomeBg,
+                border: incomeBorder,
               ),
               const SizedBox(width: 8),
               _pill(
                 context,
                 icon: Icons.timeline,
                 label: '${avgHours.toStringAsFixed(2)} h/day',
-                color: Theme.of(context).colorScheme.tertiary,
+                color: cs.tertiary,
               ),
             ],
           ),
@@ -94,8 +133,12 @@ class StatsHeader extends StatelessWidget {
     );
   }
 
-  Widget _pill(BuildContext context,
-      {required IconData icon, required String label, required Color color}) {
+  Widget _pill(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
     final t = AppTypography.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -114,6 +157,40 @@ class StatsHeader extends StatelessWidget {
             style: t.bodySmall.copyWith(
               fontWeight: FontWeight.w700,
               color: color,
+              letterSpacing: .2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pillCustom(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color fg,
+    required Color bg,
+    required Color border,
+  }) {
+    final t = AppTypography.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: fg),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: t.bodySmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: fg,
               letterSpacing: .2,
             ),
           ),

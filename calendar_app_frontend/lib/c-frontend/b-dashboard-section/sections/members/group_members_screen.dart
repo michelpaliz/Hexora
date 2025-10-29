@@ -1,4 +1,3 @@
-// group_members_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/invite/invite.dart';
@@ -7,13 +6,12 @@ import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/Members_count.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/members_ref.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/count_pills.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/member_list/member_list.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/utils/selected_users/filter_chips.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/filters_panel.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/hero_header.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/members_section.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
-
-import 'widgets/section_header.dart';
 
 class GroupMembersScreen extends StatefulWidget {
   final Group group;
@@ -29,18 +27,18 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
   bool showNotAccepted = true;
 
   MembersCount? _counts;
-  bool _loadingCounts = false;
+  bool _loadingCounts = false; // now used for UI state
 
   late GroupDomain _gm;
 
   // Invitations
   List<Invitation> _invitations = const [];
-  bool _loadingInvitations = false;
+  bool _loadingInvitations = false; // now used for UI state
 
   @override
   void initState() {
     super.initState();
-    _gm = context.read<GroupDomain>(); // ✅ Management → Repository
+    _gm = context.read<GroupDomain>();
     _loadCounts();
     _loadInvitations();
   }
@@ -50,7 +48,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     try {
       final c = await _gm.groupRepository.getMembersCount(
         widget.group.id,
-        mode: 'union', // or 'accepted'
+        mode: 'union',
       );
       if (!mounted) return;
       setState(() => _counts = c);
@@ -72,9 +70,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
       if (!mounted) return;
       if (res is RepoSuccess<List<Invitation>>) {
         setState(() => _invitations = res.data);
-      } else if (res is RepoFailure<List<Invitation>>) {
-        // keep empty fallback silently
-      }
+      } // else: keep empty fallback silently
     } catch (_) {
       // ignore for now
     } finally {
@@ -82,11 +78,47 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     }
   }
 
+  void _showInfo() {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.verified_user, color: cs.primary),
+              title: Text(l.membersTitle),
+              subtitle: Text(l.membersInfoAccepted),
+            ),
+            ListTile(
+              leading: Icon(Icons.hourglass_bottom, color: cs.tertiary),
+              title: Text(l.statusPending),
+              subtitle: Text(l.membersInfoPending),
+            ),
+            ListTile(
+              leading: Icon(Icons.block, color: cs.error),
+              title: Text(l.statusNotAccepted),
+              subtitle: Text(l.membersInfoNotAccepted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final typo = AppTypography.of(context); // ✅ use the Typo font extension
 
     // ---- Build Accepted / Pending / NotAccepted sets ----
     final acceptedIds = widget.group.userIds.toSet();
@@ -102,18 +134,16 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     }).toList();
 
     // Convert to MemberRef for the list widget
-    // Accepted (members from group.userIds)
     final accepted = acceptedIds.map((userId) {
       final role = widget.group.userRoles[userId] ?? 'member';
       return MemberRef(
-        username: userId, // if you want names, resolve user profile upstream
+        username: userId,
         role: role,
         statusToken: 'Accepted',
         ownerId: widget.group.ownerId,
       );
     }).toList();
 
-    // Pending (from invitations)
     final pending = pendingInvites.map((inv) {
       final display = inv.email ?? inv.userId ?? 'unknown';
       final role = switch (inv.role) {
@@ -129,7 +159,6 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
       );
     }).toList();
 
-    // NotAccepted (declined/revoked/expired)
     final notAccepted = notAcceptedInvites.map((inv) {
       final display = inv.email ?? inv.userId ?? 'unknown';
       final role = switch (inv.role) {
@@ -154,16 +183,26 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     final fallbackMembers = accepted.length;
     final fallbackPending = pending.length;
 
+    final totalMembers = _counts?.accepted ?? fallbackMembers;
+    final totalPending = _counts?.pending ?? fallbackPending;
+    final totalUnion = _counts?.union ?? (fallbackMembers + fallbackPending);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           l.membersTitle,
-          style: theme.textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w600),
+          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
         backgroundColor: colors.surface,
         elevation: 0.5,
         iconTheme: IconThemeData(color: colors.onSurface),
+        actions: [
+          IconButton(
+            tooltip: l.info,
+            onPressed: _showInfo,
+            icon: const Icon(Icons.info_outline),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         color: colors.primary,
@@ -174,81 +213,38 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
         },
         child: Column(
           children: [
-            const SizedBox(height: 20),
+            // Thin progress bar whenever counts or invites are loading
+            if (_loadingCounts || _loadingInvitations)
+              const LinearProgressIndicator(minHeight: 2),
 
-            // COUNTS
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: CountsPills(
-                loading: _loadingCounts || _loadingInvitations,
-                members: _counts?.accepted,
-                pending: _counts?.pending,
-                total: _counts?.union,
-                fallbackMembers: fallbackMembers,
-                fallbackPending: fallbackPending,
-                membersLabel: l.membersTitle,
-                pendingLabel: l.statusPending,
-                totalLabel: 'Total', // localize if desired
-              ),
+            // HERO HEADER (gradient)
+            HeroHeader(
+              groupName: widget.group.name,
+              totalMembers: totalMembers,
+              totalPending: totalPending,
+              totalUnion: totalUnion,
             ),
-
-            const SizedBox(height: 24),
 
             // FILTERS
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colors.surfaceVariant.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SectionHeader(
-                    title: l.sectionFilters,
-                    textStyle: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  FilterChips(
-                    showAccepted: showAccepted,
-                    showPending: showPending,
-                    showNotWantedToJoin: showNotAccepted,
-                    acceptedText: l.membersTitle, // “Accepted” → “Members”
-                    pendingText: l.statusPending,
-                    notAcceptedText: l.statusNotAccepted,
-                    onFilterChange: (token, selected) {
-                      setState(() {
-                        if (token == 'Accepted') showAccepted = selected;
-                        if (token == 'Pending') showPending = selected;
-                        if (token == 'NotAccepted') showNotAccepted = selected;
-                      });
-                    },
-                  ),
-                ],
-              ),
+            FiltersPanel(
+              onFilterChange: (token, selected) {
+                setState(() {
+                  if (token == 'Accepted') showAccepted = selected;
+                  if (token == 'Pending') showPending = selected;
+                  if (token == 'NotAccepted') showNotAccepted = selected;
+                });
+              },
+              showAccepted: showAccepted,
+              showPending: showPending,
+              showNotAccepted: showNotAccepted,
             ),
 
-            const SizedBox(height: 20),
-
-            // LIST
+            // LISTS
             Expanded(
-              child: MembersList(
-                accepted: filteredAccepted
-                  ..sort((a, b) => a.username
-                      .toLowerCase()
-                      .compareTo(b.username.toLowerCase())),
-                pending: filteredPending
-                  ..sort((a, b) => a.username
-                      .toLowerCase()
-                      .compareTo(b.username.toLowerCase())),
-                notAccepted: filteredNotAccepted
-                  ..sort((a, b) => a.username
-                      .toLowerCase()
-                      .compareTo(b.username.toLowerCase())),
+              child: Members(
+                accepted: filteredAccepted,
+                pending: filteredPending,
+                notAccepted: filteredNotAccepted,
                 acceptedLabel: l.membersTitle,
                 pendingLabel: l.statusPending,
                 notAcceptedLabel: l.statusNotAccepted,

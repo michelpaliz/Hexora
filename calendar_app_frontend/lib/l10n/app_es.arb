@@ -1119,7 +1119,59 @@
   "exportExcel": "Exportar",
   "exportReady": "Exportación lista — elige dónde compartir/guardar",
   "previousMonth": "Mes anterior",
-  "nextMonth": "Mes siguiente"
+  "nextMonth": "Mes siguiente",
+  "info": "Info",
+  "overviewInfoTitle": "Resumen mensual",
+  "overviewInfoBody": "Cada tarjeta muestra el mes, horas totales y pago de este trabajador. Toca un mes para ver los partes detallados. Usa las flechas para cambiar de año. Desliza hacia abajo para actualizar.",
+  "hours": "Horas",
+  "pay": "Pago",
+  "tipTapMonthToOpen": "Toca un mes para ver detalles",
+  "tipPullToRefresh": "Desliza hacia abajo para actualizar",
+  "addWorker": "Añadir trabajador",
+  "addWorkerSubtitle": "Crea un perfil para empezar a registrar horas y pagos.",
+"membersInfoAccepted": "Usuarios que forman parte de este grupo.",
+"membersInfoPending": "Invitaciones enviadas y a la espera de aceptación.",
+"membersInfoNotAccepted": "Invitaciones rechazadas, revocadas o caducadas.",
+"contact": "Contacto",
+  "e_gPhone": "p.ej., +34 600-123-456",
+  "e_gEmail": "p.ej., juan.perez@ejemplo.com",
+  "clientWillBeActive": "El cliente estará activo",
+  "clientWillBeInactive": "El cliente estará inactivo",
+  "noContactInfo": "Sin datos de contacto",
+  "activeStatus": "Activo",
+  "inactiveStatus": "Inactivo",
+  "serviceWillBeActive": "El servicio estará activo",
+  "serviceWillBeInactive": "El servicio estará inactivo",
+  "e_gJohnDoe": "p.ej., Corte básico",
+  "chooseType": "Elige tipo",
+  "simpleEventHint": "Crea un evento rápido sin seleccionar cliente/servicio.",
+  "workVisitHint": "Registra una visita seleccionando un cliente y uno o más servicios.",
+  "color": "Color",
+  "date": "Fecha",
+  "assignedUsers": "Usuarios asignados",
+  "repetition": "Repetición",
+
+  "category": "Categoría",
+ 
+  "workVisitHintShort": "Elige un cliente y servicios para esta visita.",
+  "simpleEventHintShort": "Evento simple sin cliente ni servicio.",
+
+  "newCategory": "Nueva categoría",
+  "newSubcategory": "Nueva subcategoría",
+  "failedToCreate": "No se pudo crear: {error}",
+  "@failedToCreate": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "noCategoriesYet": "Aún no hay categorías",
+  "addCategory": "Agregar categoría",
+  "addSubcategory": "Agregar subcategoría",
+  "subcategory": "Subcategoría"
+
+
 }
+
+
+
+
 
 

@@ -1,7 +1,9 @@
 // lib/c-frontend/shared/widgets/category_picker.dart
+import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/category/event_category.dart';
 import 'package:hexora/b-backend/group_mng_flow/category/category_api_client.dart';
-import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
 class CategoryPicker extends StatefulWidget {
   final CategoryApi api;
@@ -67,23 +69,35 @@ class _CategoryPickerState extends State<CategoryPicker> {
         ..sort((a, b) => a.name.compareTo(b.name));
 
   Future<void> _createCategory({String? parentId}) async {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+
     final controller = TextEditingController();
     final res = await showDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(parentId == null ? 'New Category' : 'New Subcategory'),
+        title: Text(
+          parentId == null ? l.newCategory : l.newSubcategory,
+          style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+        ),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(hintText: 'Name'),
+          decoration: InputDecoration(
+            hintText: l.nameHint,
+          ),
           autofocus: true,
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, null),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, null),
+            child: Text(l.cancel, style: typo.bodyMedium),
+          ),
           ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Add')),
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: Text(l.add,
+                style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+          ),
         ],
       ),
     );
@@ -108,28 +122,61 @@ class _CategoryPickerState extends State<CategoryPicker> {
       widget.onChanged((categoryId: _catId, subcategoryId: _subId));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create: $e')),
+        SnackBar(
+          content: Text(
+            l.failedToCreate(e.toString()),
+            style: typo.bodySmall.copyWith(color: cs.onErrorContainer),
+          ),
+          backgroundColor: cs.errorContainer,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+
     if (_loading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        child: LinearProgressIndicator(),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: LinearProgressIndicator(
+          minHeight: 4,
+          backgroundColor: cs.surfaceVariant,
+        ),
       );
     }
 
     if (_error != null) {
-      return Row(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red),
-          const SizedBox(width: 8),
-          Expanded(child: Text(_error!, maxLines: 2)),
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
-        ],
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: cs.errorContainer.withOpacity(.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cs.errorContainer),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, color: cs.error),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _error!,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+            IconButton(
+              tooltip: l.refresh,
+              onPressed: _load,
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
       );
     }
 
@@ -141,23 +188,37 @@ class _CategoryPickerState extends State<CategoryPicker> {
           if (widget.label != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: Text(widget.label!,
-                  style: Theme.of(context).textTheme.titleSmall),
-            ),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'No categories yet',
-                  style: Theme.of(context).textTheme.bodyMedium,
+              child: Text(
+                widget.label!,
+                style: typo.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .2,
                 ),
               ),
-              IconButton(
-                tooltip: 'Add category',
-                onPressed: () => _createCategory(),
-                icon: const Icon(Icons.add),
-              ),
-            ],
+            ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: cs.surfaceVariant.withOpacity(.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: cs.outlineVariant.withOpacity(.6)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l.noCategoriesYet,
+                    style: typo.bodyMedium.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l.addCategory,
+                  onPressed: () => _createCategory(),
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
           ),
         ],
       );
@@ -181,8 +242,14 @@ class _CategoryPickerState extends State<CategoryPicker> {
         if (widget.label != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Text(widget.label!,
-                style: Theme.of(context).textTheme.titleSmall),
+            child: Text(
+              widget.label!,
+              style: typo.bodySmall.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: .2,
+              ),
+            ),
           ),
 
         // Parent category
@@ -191,10 +258,15 @@ class _CategoryPickerState extends State<CategoryPicker> {
             Expanded(
               child: DropdownButtonFormField<String>(
                 value: selectedCatId,
-                decoration: const InputDecoration(labelText: 'Category'),
+                decoration: InputDecoration(
+                  labelText: l.category,
+                  labelStyle: typo.bodySmall,
+                ),
                 items: parents
-                    .map((c) =>
-                        DropdownMenuItem(value: c.id, child: Text(c.name)))
+                    .map((c) => DropdownMenuItem(
+                          value: c.id,
+                          child: Text(c.name, style: typo.bodyMedium),
+                        ))
                     .toList(),
                 onChanged: (v) {
                   setState(() {
@@ -207,7 +279,7 @@ class _CategoryPickerState extends State<CategoryPicker> {
             ),
             const SizedBox(width: 8),
             IconButton(
-              tooltip: 'Add category',
+              tooltip: l.addCategory,
               onPressed: () => _createCategory(),
               icon: const Icon(Icons.add),
             ),
@@ -222,23 +294,29 @@ class _CategoryPickerState extends State<CategoryPicker> {
             Expanded(
               child: DropdownButtonFormField<String>(
                 value: selectedSubId,
-                decoration: const InputDecoration(labelText: 'Subcategory'),
+                decoration: InputDecoration(
+                  labelText: l.subcategory,
+                  labelStyle: typo.bodySmall,
+                ),
                 items: children
-                    .map((c) =>
-                        DropdownMenuItem(value: c.id, child: Text(c.name)))
+                    .map((c) => DropdownMenuItem(
+                          value: c.id,
+                          child: Text(c.name, style: typo.bodyMedium),
+                        ))
                     .toList(),
                 onChanged: selectedCatId == null
                     ? null
                     : (v) {
                         setState(() => _subId = v);
                         widget.onChanged(
-                            (categoryId: _catId, subcategoryId: _subId));
+                          (categoryId: _catId, subcategoryId: _subId),
+                        );
                       },
               ),
             ),
             const SizedBox(width: 8),
             IconButton(
-              tooltip: 'Add subcategory',
+              tooltip: l.addSubcategory,
               onPressed: selectedCatId == null
                   ? null
                   : () => _createCategory(parentId: selectedCatId),

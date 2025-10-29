@@ -1,5 +1,6 @@
-import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
 const int kDefaultReminderMinutes = 10;
 const int kMaxReminderMinutes = 3 * 24 * 60; // 4320 minutes
@@ -40,9 +41,12 @@ class ReminderTimeDropdownField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+    final loc = AppLocalizations.of(context)!;
+
     final value =
         initialValue?.clamp(0, kMaxReminderMinutes) ?? kDefaultReminderMinutes;
-    final loc = AppLocalizations.of(context)!;
     final options = getLocalizedReminderOptions(context);
 
     return DropdownButtonFormField<int>(
@@ -50,8 +54,8 @@ class ReminderTimeDropdownField extends StatelessWidget {
       onChanged: onChanged,
       validator: validator ??
           (val) {
-            if (val == null) return loc.reminderLabel + ' is required';
-            if (val < 0) return loc.reminderLabel + ' cannot be negative';
+            if (val == null) return '${loc.reminderLabel} is required';
+            if (val < 0) return '${loc.reminderLabel} cannot be negative';
             if (val > kMaxReminderMinutes) {
               return '${loc.reminderLabel} cannot exceed 3 days';
             }
@@ -59,14 +63,24 @@ class ReminderTimeDropdownField extends StatelessWidget {
           },
       decoration: InputDecoration(
         labelText: loc.reminderLabel,
-        prefixIcon: const Icon(Icons.alarm),
+        labelStyle: typo.bodySmall,
         helperText: loc.reminderHelper,
+        helperStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+        errorStyle: typo.bodySmall.copyWith(color: cs.error),
+        prefixIcon: Icon(Icons.alarm, color: cs.onSurfaceVariant),
+        // Feel free to add filled/background if you want the M3 filled look:
+        // filled: true,
+        // fillColor: cs.surfaceVariant.withOpacity(.25),
       ),
+      iconEnabledColor: cs.onSurfaceVariant,
       items: options
           .map(
             (option) => DropdownMenuItem<int>(
               value: option.value,
-              child: Text(option.label),
+              child: Text(
+                option.label,
+                style: typo.bodyMedium, // primary field text
+              ),
             ),
           )
           .toList(),

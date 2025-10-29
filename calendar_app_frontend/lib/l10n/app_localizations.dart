@@ -3650,6 +3650,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Next month'**
   String get nextMonth;
+
+  /// No description provided for @info.
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get info;
+
+  /// No description provided for @overviewInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly overview'**
+  String get overviewInfoTitle;
+
+  /// No description provided for @overviewInfoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Each tile shows the month, total hours and pay for this worker. Tap a month to open detailed time entries. Use the arrows to switch years. Pull down to refresh.'**
+  String get overviewInfoBody;
+
+  /// No description provided for @hours.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get hours;
+
+  /// No description provided for @pay.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay'**
+  String get pay;
+
+  /// No description provided for @tipTapMonthToOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a month to open details'**
+  String get tipTapMonthToOpen;
+
+  /// No description provided for @tipPullToRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull down to refresh'**
+  String get tipPullToRefresh;
+
+  /// No description provided for @addWorker.
+  ///
+  /// In en, this message translates to:
+  /// **'Add worker'**
+  String get addWorker;
+
+  /// No description provided for @addWorkerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a worker profile to start tracking hours and pay.'**
+  String get addWorkerSubtitle;
+
+  /// No description provided for @membersInfoAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Users who are part of this group.'**
+  String get membersInfoAccepted;
+
+  /// No description provided for @membersInfoPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitations sent and awaiting acceptance.'**
+  String get membersInfoPending;
+
+  /// No description provided for @membersInfoNotAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Invites that were declined, revoked, or expired.'**
+  String get membersInfoNotAccepted;
+
+  /// No description provided for @contact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get contact;
+
+  /// No description provided for @e_gJohnDoe.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., John Doe'**
+  String get e_gJohnDoe;
+
+  /// No description provided for @e_gPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., +1 555-1234'**
+  String get e_gPhone;
+
+  /// No description provided for @e_gEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., john.doe@example.com'**
+  String get e_gEmail;
+
+  /// No description provided for @clientWillBeActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Client will be active'**
+  String get clientWillBeActive;
+
+  /// No description provided for @clientWillBeInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Client will be inactive'**
+  String get clientWillBeInactive;
+
+  /// No description provided for @noContactInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'No contact info'**
+  String get noContactInfo;
+
+  /// No description provided for @activeStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activeStatus;
+
+  /// No description provided for @inactiveStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get inactiveStatus;
+
+  /// No description provided for @serviceWillBeActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Service will be active'**
+  String get serviceWillBeActive;
+
+  /// No description provided for @serviceWillBeInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Service will be inactive'**
+  String get serviceWillBeInactive;
+
+  /// No description provided for @chooseType.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose type'**
+  String get chooseType;
+
+  /// No description provided for @simpleEventHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a quick event without client/service selection.'**
+  String get simpleEventHint;
+
+  /// No description provided for @workVisitHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Track a work visit by choosing a client and one or more services.'**
+  String get workVisitHint;
+
+  /// No description provided for @color.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get color;
+
+  /// No description provided for @date.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get date;
+
+  /// No description provided for @assignedUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned users'**
+  String get assignedUsers;
+
+  /// No description provided for @repetition.
+  ///
+  /// In en, this message translates to:
+  /// **'Repetition'**
+  String get repetition;
+
+  /// No description provided for @category.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get category;
+
+  /// No description provided for @workVisitHintShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a client and services for this work visit.'**
+  String get workVisitHintShort;
+
+  /// No description provided for @simpleEventHintShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple event with no client or service.'**
+  String get simpleEventHintShort;
+
+  /// No description provided for @newCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'New category'**
+  String get newCategory;
+
+  /// No description provided for @newSubcategory.
+  ///
+  /// In en, this message translates to:
+  /// **'New subcategory'**
+  String get newSubcategory;
+
+  /// No description provided for @failedToCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create: {error}'**
+  String failedToCreate(String error);
+
+  /// No description provided for @noCategoriesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No categories yet'**
+  String get noCategoriesYet;
+
+  /// No description provided for @addCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add category'**
+  String get addCategory;
+
+  /// No description provided for @addSubcategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add subcategory'**
+  String get addSubcategory;
+
+  /// No description provided for @subcategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Subcategory'**
+  String get subcategory;
 }
 
 class _AppLocalizationsDelegate

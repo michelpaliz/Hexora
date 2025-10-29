@@ -21,6 +21,6 @@ final ThemeData darkTheme = ThemeData(
     onSurface: AppDarkColors.textPrimary,
   ),
   extensions: <ThemeExtension<dynamic>>[
-    AppTypography.dark(scale: 0.96), // defined below
+    AppTypography.dark(scale: 0.98), // defined below
   ],
 );

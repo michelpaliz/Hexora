@@ -22,6 +22,6 @@ final ThemeData lightTheme = ThemeData(
   ),
   // Attach your custom text styles as a ThemeExtension
   extensions: <ThemeExtension<dynamic>>[
-    AppTypography.light(scale: 0.96), // defined below
+    AppTypography.light(scale: 0.98), // defined below
   ],
 );

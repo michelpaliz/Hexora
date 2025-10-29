@@ -2018,4 +2018,132 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nextMonth => 'Next month';
+
+  @override
+  String get info => 'Info';
+
+  @override
+  String get overviewInfoTitle => 'Monthly overview';
+
+  @override
+  String get overviewInfoBody =>
+      'Each tile shows the month, total hours and pay for this worker. Tap a month to open detailed time entries. Use the arrows to switch years. Pull down to refresh.';
+
+  @override
+  String get hours => 'Hours';
+
+  @override
+  String get pay => 'Pay';
+
+  @override
+  String get tipTapMonthToOpen => 'Tap a month to open details';
+
+  @override
+  String get tipPullToRefresh => 'Pull down to refresh';
+
+  @override
+  String get addWorker => 'Add worker';
+
+  @override
+  String get addWorkerSubtitle =>
+      'Create a worker profile to start tracking hours and pay.';
+
+  @override
+  String get membersInfoAccepted => 'Users who are part of this group.';
+
+  @override
+  String get membersInfoPending => 'Invitations sent and awaiting acceptance.';
+
+  @override
+  String get membersInfoNotAccepted =>
+      'Invites that were declined, revoked, or expired.';
+
+  @override
+  String get contact => 'Contact';
+
+  @override
+  String get e_gJohnDoe => 'e.g., John Doe';
+
+  @override
+  String get e_gPhone => 'e.g., +1 555-1234';
+
+  @override
+  String get e_gEmail => 'e.g., john.doe@example.com';
+
+  @override
+  String get clientWillBeActive => 'Client will be active';
+
+  @override
+  String get clientWillBeInactive => 'Client will be inactive';
+
+  @override
+  String get noContactInfo => 'No contact info';
+
+  @override
+  String get activeStatus => 'Active';
+
+  @override
+  String get inactiveStatus => 'Inactive';
+
+  @override
+  String get serviceWillBeActive => 'Service will be active';
+
+  @override
+  String get serviceWillBeInactive => 'Service will be inactive';
+
+  @override
+  String get chooseType => 'Choose type';
+
+  @override
+  String get simpleEventHint =>
+      'Create a quick event without client/service selection.';
+
+  @override
+  String get workVisitHint =>
+      'Track a work visit by choosing a client and one or more services.';
+
+  @override
+  String get color => 'Color';
+
+  @override
+  String get date => 'Date';
+
+  @override
+  String get assignedUsers => 'Assigned users';
+
+  @override
+  String get repetition => 'Repetition';
+
+  @override
+  String get category => 'Category';
+
+  @override
+  String get workVisitHintShort =>
+      'Choose a client and services for this work visit.';
+
+  @override
+  String get simpleEventHintShort => 'Simple event with no client or service.';
+
+  @override
+  String get newCategory => 'New category';
+
+  @override
+  String get newSubcategory => 'New subcategory';
+
+  @override
+  String failedToCreate(String error) {
+    return 'Failed to create: $error';
+  }
+
+  @override
+  String get noCategoriesYet => 'No categories yet';
+
+  @override
+  String get addCategory => 'Add category';
+
+  @override
+  String get addSubcategory => 'Add subcategory';
+
+  @override
+  String get subcategory => 'Subcategory';
 }

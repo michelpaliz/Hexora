@@ -1,5 +1,6 @@
-import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
 class DatePickersWidget extends StatelessWidget {
@@ -9,6 +10,7 @@ class DatePickersWidget extends StatelessWidget {
   final VoidCallback onEndDateTap;
 
   const DatePickersWidget({
+    super.key,
     required this.startDate,
     required this.endDate,
     required this.onStartDateTap,
@@ -17,80 +19,135 @@ class DatePickersWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _buildDatePickers(context);
-  }
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
 
-  Widget _buildDatePickers(BuildContext context) {
+    // Locale-aware formats
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final dateFmt = DateFormat.yMMMEd(locale); // e.g., "Mon, Jan 1, 2025"
+    final timeFmt =
+        DateFormat.jm(locale); // e.g., "5:30 PM" (or 24h based on locale)
+
     return Container(
-      padding: EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blue,
-        borderRadius: BorderRadius.circular(10.0),
+        color: cs.surfaceVariant.withOpacity(.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withOpacity(.6)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Flexible(
-            flex: 1,
-            child: _buildDatePicker(context, true, startDate, onStartDateTap),
+          Expanded(
+            child: _DateTile(
+              label: l.startDate,
+              date: startDate,
+              onTap: onStartDateTap,
+              dateFmt: dateFmt,
+              timeFmt: timeFmt,
+              accentColor: cs.primaryContainer,
+            ),
           ),
-          SizedBox(width: 10),
-          Flexible(
-            flex: 1,
-            child: _buildDatePicker(context, false, endDate, onEndDateTap),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _DateTile(
+              label: l.endDate,
+              date: endDate,
+              onTap: onEndDateTap,
+              dateFmt: dateFmt,
+              timeFmt: timeFmt,
+              accentColor: cs.secondaryContainer,
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildDatePicker(BuildContext context, bool isStartDate,
-      DateTime selectedDate, VoidCallback onTap) {
-    String dateTitle = isStartDate
-        ? AppLocalizations.of(context)!.startDate
-        : AppLocalizations.of(context)!.endDate;
-    Color backgroundColor = isStartDate
-        ? Color.fromARGB(255, 92, 206, 134)
-        : Color.fromARGB(255, 223, 106, 106);
+class _DateTile extends StatelessWidget {
+  final String label;
+  final DateTime date;
+  final VoidCallback onTap;
+  final DateFormat dateFmt;
+  final DateFormat timeFmt;
+  final Color accentColor;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          padding: EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          child: Text(
-            dateTitle,
-            style: TextStyle(fontSize: 15, color: Colors.black),
-          ),
+  const _DateTile({
+    required this.label,
+    required this.date,
+    required this.onTap,
+    required this.dateFmt,
+    required this.timeFmt,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cs.outlineVariant),
         ),
-        SizedBox(height: 8.0),
-        InkWell(
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                DateFormat('yyyy-MM-dd').format(selectedDate.toLocal()), // ✅
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Colors.white),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Label chip
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: BorderRadius.circular(8),
               ),
-              Text(
-                DateFormat('hh:mm a').format(selectedDate.toLocal()), // ✅
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Color.fromARGB(255, 28, 58, 82)),
+              child: Text(
+                label,
+                style: typo.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.onPrimaryContainer, // readable on tonal bg
+                  letterSpacing: .2,
+                ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 10),
+            // Date + time
+            Row(
+              children: [
+                Icon(Icons.event_outlined,
+                    size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    dateFmt.format(date.toLocal()),
+                    style:
+                        typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.schedule, size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Text(
+                  timeFmt.format(date.toLocal()),
+                  style: typo.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

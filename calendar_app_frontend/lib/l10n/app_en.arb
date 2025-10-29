@@ -1114,6 +1114,62 @@
   "exportExcel": "Export",
   "exportReady": "Export ready — choose where to share/save",
   "previousMonth": "Previous month",
-  "nextMonth": "Next month"
+  "nextMonth": "Next month",
+  
+  "info": "Info",
+  "overviewInfoTitle": "Monthly overview",
+  "overviewInfoBody": "Each tile shows the month, total hours and pay for this worker. Tap a month to open detailed time entries. Use the arrows to switch years. Pull down to refresh.",
+  "hours": "Hours",
+  "pay": "Pay",
+  "tipTapMonthToOpen": "Tap a month to open details",
+  "tipPullToRefresh": "Pull down to refresh",
+  "addWorker": "Add worker",
+  "addWorkerSubtitle": "Create a worker profile to start tracking hours and pay.",
+"membersInfoAccepted": "Users who are part of this group.",
+"membersInfoPending": "Invitations sent and awaiting acceptance.",
+"membersInfoNotAccepted": "Invites that were declined, revoked, or expired.",
+"contact": "Contact",
+  "e_gJohnDoe": "e.g., John Doe",
+  "e_gPhone": "e.g., +1 555-1234",
+  "e_gEmail": "e.g., john.doe@example.com",
+  "clientWillBeActive": "Client will be active",
+  "clientWillBeInactive": "Client will be inactive",
+  "noContactInfo": "No contact info",
+  "activeStatus": "Active",
+  "inactiveStatus": "Inactive",
+  "serviceWillBeActive": "Service will be active",
+  "serviceWillBeInactive": "Service will be inactive",
+  
+  "chooseType": "Choose type",
+  "simpleEventHint": "Create a quick event without client/service selection.",
+  "workVisitHint": "Track a work visit by choosing a client and one or more services.",
+
+  "color": "Color",
+  "date": "Date",
+  "assignedUsers": "Assigned users",
+  "repetition": "Repetition",
+
+
+  "category": "Category",
+
+  "workVisitHintShort": "Choose a client and services for this work visit.",
+  "simpleEventHintShort": "Simple event with no client or service.",
+  
+  "newCategory": "New category",
+  "newSubcategory": "New subcategory",
+  "failedToCreate": "Failed to create: {error}",
+  "@failedToCreate": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "noCategoriesYet": "No categories yet",
+  "addCategory": "Add category",
+  "addSubcategory": "Add subcategory",
+  "subcategory": "Subcategory"
 }
+
+
+
+
+
 

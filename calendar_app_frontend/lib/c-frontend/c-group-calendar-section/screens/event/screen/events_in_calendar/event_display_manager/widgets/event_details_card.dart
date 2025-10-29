@@ -6,6 +6,7 @@ import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/widgets/event_date_time.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/widgets/event_title_row.dart';
 import 'package:hexora/c-frontend/d-event-section/utils/color_manager.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 
 class EventDetailsCard extends StatelessWidget {
   final Event event;
@@ -14,7 +15,7 @@ class EventDetailsCard extends StatelessWidget {
   final dynamic appointment;
   final String userRole;
   final EventActionManager? actionManager;
-  final ColorManager colorManager; // ✅ new
+  final ColorManager colorManager;
 
   const EventDetailsCard({
     super.key,
@@ -24,16 +25,18 @@ class EventDetailsCard extends StatelessWidget {
     required this.appointment,
     required this.userRole,
     required this.actionManager,
-    required this.colorManager, // ✅ new
+    required this.colorManager,
   });
 
   @override
   Widget build(BuildContext context) {
-    final cardColor = colorManager.getColor(event.eventColorIndex);
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+    final cardAccent = colorManager.getColor(event.eventColorIndex);
     final canAdmin = canEdit(userRole);
 
     return Padding(
-      padding: EdgeInsets.zero, // remove vertical padding entirely
+      padding: EdgeInsets.zero,
       child: Dismissible(
         key: Key(appointment.id),
         direction:
@@ -41,53 +44,49 @@ class EventDetailsCard extends StatelessWidget {
         background: _buildDeleteBackground(),
         confirmDismiss: (_) async {
           if (!canAdmin || actionManager == null) return false;
-
-          debugPrint('🗑️  [UI] User requested delete for event ${event.id}');
-
           final ok = await actionManager!.removeEvent(event, /*silent*/ true);
-
-          debugPrint('✅  [UI] removeEvent returned: $ok');
-
           return ok;
         },
         child: Card(
-          margin: const EdgeInsets.symmetric(
-            horizontal: 8,
-          ), // 🔽 slightly less side margin
-          elevation: 0.5, // 🔽 softer elevation
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          elevation: 0.5,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-          ), // 🔽 smaller radius if you want tighter look
+          ),
           color: Theme.of(context).cardColor,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8,
-            ), // 🔽 smaller internal padding
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               children: [
-                buildLeadingIcon(cardColor, event),
+                buildLeadingIcon(cardAccent, event),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      EventDateTimeRow(event: event, textColor: textColor),
+                      // Uses its own widget; ensure that widget also reads AppTypography internally
+                      EventDateTimeRow(
+                        event: event,
+                        textColor: textColor,
+                        // If you update that widget: use typo.bodySmall.copyWith(...)
+                      ),
+                      // Title row widget (ensure it uses typo.bodyMedium)
                       EventTitleRow(
                         event: event,
                         textColor: textColor,
                         colorManager: colorManager,
                       ),
-                      if (event.description?.isNotEmpty ?? false)
+                      if ((event.description ?? '').isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 0),
+                          padding: const EdgeInsets.only(top: 2),
                           child: Text(
                             event.description!,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11, // 🔽 slightly smaller font
+                            style: typo.bodySmall.copyWith(
                               color: textColor.withOpacity(0.75),
+                              letterSpacing: .1,
                             ),
                           ),
                         ),
@@ -95,14 +94,13 @@ class EventDetailsCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  padding: EdgeInsets.zero, // 🔽 removes default 8px padding
-                  constraints:
-                      const BoxConstraints(), // 🔽 shrinks icon size box
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                   icon: Icon(
                     Icons.more_vert,
-                    color: cardColor,
+                    color: cs.onSurfaceVariant, // subtle, consistent with UI
                     size: 20,
-                  ), // 🔽 smaller icon
+                  ),
                   onPressed: () {
                     showEventActionsSheet(
                       context: context,
