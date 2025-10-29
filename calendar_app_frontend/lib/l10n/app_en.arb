@@ -1165,7 +1165,8 @@
   "noCategoriesYet": "No categories yet",
   "addCategory": "Add category",
   "addSubcategory": "Add subcategory",
-  "subcategory": "Subcategory"
+  "subcategory": "Subcategory",
+  "newEvent": "New Event"
 }
 
 

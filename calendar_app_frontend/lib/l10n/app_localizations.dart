@@ -3890,6 +3890,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Subcategory'**
   String get subcategory;
+
+  /// No description provided for @newEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'New Event'**
+  String get newEvent;
 }
 
 class _AppLocalizationsDelegate

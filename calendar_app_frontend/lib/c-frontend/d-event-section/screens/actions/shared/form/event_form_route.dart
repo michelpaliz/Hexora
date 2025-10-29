@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/group_mng_flow/category/category_api_client.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/simple/event_form_simple.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/event_form_work_visit.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/simple/event_form_simple.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -143,8 +143,9 @@ class _EventFormRouterState extends State<EventFormRouter> {
                     ownerUserId: widget.ownerUserId,
                     isEditing: widget.isEditing,
                     dialogs: widget.dialogs,
-                    enableClientServicePickers:
-                        widget.enableClientServicePickers,
+
+                    // enableClientServicePickers:
+                    //     widget.enableClientServicePickers,
                   ),
                 ),
         ),

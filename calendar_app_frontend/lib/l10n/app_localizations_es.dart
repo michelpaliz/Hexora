@@ -2165,4 +2165,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get subcategory => 'Subcategoría';
+
+  @override
+  String get newEvent => 'Nuevo evento ';
 }

@@ -1165,7 +1165,8 @@
   "noCategoriesYet": "Aún no hay categorías",
   "addCategory": "Agregar categoría",
   "addSubcategory": "Agregar subcategoría",
-  "subcategory": "Subcategoría"
+  "subcategory": "Subcategoría",
+   "newEvent": "Nuevo evento "
 
 
 }
