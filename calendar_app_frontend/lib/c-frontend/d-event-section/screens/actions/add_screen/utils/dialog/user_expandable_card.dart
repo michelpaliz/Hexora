@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/dialog/user_animated_list_widget.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import 'dialog_button_widget.dart';
@@ -46,21 +47,31 @@ class _UserExpandableCardState extends State<UserExpandableCard> {
     _selectedUsers = initSel;
   }
 
-  void _toggleExpansion() {
-    setState(() => _isExpanded = !_isExpanded);
-  }
+  void _toggleExpansion() => setState(() => _isExpanded = !_isExpanded);
+
+  // void _onUsersSelected(List<User> selectedUsers) {
+  //   // Guard against owner being selected via dialog
+  //   final cleaned =
+  //       selectedUsers.where((u) => u.id != widget.excludeUserId).toList();
+  //   setState(() => _selectedUsers = cleaned);
+  //   widget.onSelectedUsersChanged(cleaned);
+  // }
 
   void _onUsersSelected(List<User> selectedUsers) {
-    // Guard against owner being selected via dialog
     final cleaned =
         selectedUsers.where((u) => u.id != widget.excludeUserId).toList();
-    setState(() => _selectedUsers = cleaned);
+    setState(() {
+      _selectedUsers = cleaned;
+      _isExpanded = false; // 👈 collapse after selection
+    });
     widget.onSelectedUsersChanged(cleaned);
   }
 
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final typo = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
     final canInvite = _filteredUsers.isNotEmpty;
 
@@ -73,20 +84,26 @@ class _UserExpandableCardState extends State<UserExpandableCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ListTile(
-              title: Text(loc.userExpandableCardTitle),
-              trailing:
-                  Icon(_isExpanded ? Icons.expand_less : Icons.expand_more),
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                loc.userExpandableCardTitle,
+                style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+              ),
+              trailing: Icon(
+                _isExpanded ? Icons.expand_less : Icons.expand_more,
+                color: cs.onSurfaceVariant,
+              ),
               onTap: canInvite ? _toggleExpansion : null,
             ),
 
-            /// If there’s no one to invite (owner is the only user or filter empties the list)
+            // If there’s no one to invite (owner is the only user or filter empties the list)
             if (!canInvite)
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Text(
-                  loc.noInvitableUsers, // add ARB: "noInvitableUsers": "No users available to invite"
-                  style: const TextStyle(color: Colors.grey),
+                  loc.noInvitableUsers, // ARB: "noInvitableUsers": "No users available to invite"
+                  style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
                 ),
               ),
 
@@ -112,8 +129,9 @@ class _UserExpandableCardState extends State<UserExpandableCard> {
                 : Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      loc.noUsersSelected, // already localized in your file
-                      style: const TextStyle(color: Colors.grey),
+                      loc.noUsersSelected, // already localized
+                      style:
+                          typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
           ],

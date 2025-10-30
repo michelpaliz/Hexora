@@ -5,7 +5,7 @@ import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/uti
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/section_card_work_type.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit_sections.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit/work_visit_sections.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit_style.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -82,6 +82,7 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
 
   Future<void> _handleDateSelection(bool isStart) async {
     await widget.logic.selectDate(context, isStart);
+    if (!mounted) return; // <-- add this
     setState(() {
       startDate = widget.logic.selectedStartDate;
       endDate = widget.logic.selectedEndDate;
