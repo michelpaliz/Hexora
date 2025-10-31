@@ -1166,7 +1166,23 @@
   "addCategory": "Add category",
   "addSubcategory": "Add subcategory",
   "subcategory": "Subcategory",
-  "newEvent": "New Event"
+  "newEvent": "New Event",
+  
+  "calendarTitle": "Calendar",
+  "noGroupAvailable": "No group available",
+  "tabDay": "Day",
+  "tabWeek": "Week",
+  "tabMonth": "Month",
+  "tabAgenda": "Agenda",
+  "refreshButton": "Refresh",
+  "titleHint":"Input title",
+  "descriptionHint":"Input description",
+  "noteHint": "Input note",
+
+  "services": "Additional Services",
+  "noWorkVisitData": "No work-visit data available."
+
+
 }
 
 

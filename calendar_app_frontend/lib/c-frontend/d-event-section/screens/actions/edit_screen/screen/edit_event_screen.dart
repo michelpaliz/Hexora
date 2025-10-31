@@ -1,20 +1,23 @@
-// edit_event_screen.dart
+// c-frontend/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_provider.dart';
-import 'package:hexora/b-backend/group_mng_flow/category/category_api_client.dart';
+import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/business_logic/client/client_api.dart';
+import 'package:hexora/b-backend/business_logic/service/service_api_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/group_mng_flow/category/category_api_client.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/b-backend/business_logic/service/service_api_client.dart';
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/edit_screen/functions/edit/edit_event_logic.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_form_route.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_form_router.dart';
+// 🔹 Use the same style + typography as Work Visit:
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit_style.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/repetition_dialog/dialog/repetition_dialog.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -43,15 +46,46 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
     }
   }
 
+  // Future<void> _initializeLogic() async {
+  //   await initLogic(
+  //     event: widget.event,
+  //     gm: context.read<GroupDomain>(),
+  //     um: context.read<UserDomain>(),
+  //   );
+
+  //   final group = context.read<GroupDomain>().currentGroup;
+  //   if (group != null) {
+  //     try {
+  //       final clients = await _clientsApi.list(groupId: group.id);
+  //       setAvailableClients(
+  //         clients.map((c) => ClientLite(id: c.id, name: c.name)).toList(),
+  //       );
+  //     } catch (_) {
+  //       setAvailableClients(const []);
+  //     }
+  //     try {
+  //       final services = await _servicesApi.list(groupId: group.id);
+  //       setAvailableServices(
+  //         services.map((s) => ServiceLite(id: s.id, name: s.name)).toList(),
+  //       );
+  //     } catch (_) {
+  //       setAvailableServices(const []);
+  //     }
+  //   }
+
+  //   if (mounted) setState(() {});
+  // }
+
   Future<void> _initializeLogic() async {
-    // 1) hydrate base edit logic (fills controllers, dates, etc.)
     await initLogic(
       event: widget.event,
       gm: context.read<GroupDomain>(),
       um: context.read<UserDomain>(),
     );
 
-    // 2) populate clients/services for the work-visit form (safe even if type=simple)
+    // NEW: reflect hydrated values in the submit button state
+    recomputeValidity(); // <- this updates logic.canSubmit for edit mode
+
     final group = context.read<GroupDomain>().currentGroup;
     if (group != null) {
       try {
@@ -72,6 +106,10 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
       }
     }
 
+    // (Optional) If your edit flow requires client/service when type == work_visit,
+    // recompute again after async pickers load:
+    recomputeValidity(); // NEW (optional but harmless)
+
     if (mounted) setState(() {});
   }
 
@@ -84,6 +122,7 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final typo = AppTypography.of(context); // 🔹 your font tokens
 
     final categoryApi = CategoryApi(
       baseUrl: ApiConstants.baseUrl,
@@ -98,19 +137,38 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
       },
     );
 
+// Match WorkVisit spacing
+    final outer = WorkVisitStyle.outerPadding;
+// sectionGap is a SizedBox; its height is double?
+    final runGap = WorkVisitStyle.sectionGap.height ?? 0.0; // <-- fix
+
     return Scaffold(
-      appBar: AppBar(title: Text(l.event)),
+      appBar: AppBar(
+        title: Text(
+          l.event,
+          style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: EventFormRouter(
-                logic: this, // <- same state (EditEventLogic)
-                onSubmit: () => saveEditedEvent(context.read<EventDomain>()),
-                ownerUserId: context.read<UserDomain>().user!.id,
-                categoryApi: categoryApi,
-                isEditing: true, dialogs: this,
-                // dialogs: this,                    // <- enables repetition dialog for simple type
+              padding: outer,
+              child: Wrap(
+                runSpacing: runGap,
+                children: [
+                  _FullWidth(
+                    child: EventFormRouter(
+                      logic: this, // <- same state (EditEventLogic)
+                      onSubmit: () =>
+                          saveEditedEvent(context.read<EventDomain>()),
+                      ownerUserId: context.read<UserDomain>().user!.id,
+                      categoryApi: categoryApi,
+                      isEditing: true,
+                      dialogs:
+                          this, // enables repetition dialog where applicable
+                    ),
+                  ),
+                ],
               ),
             ),
     );
@@ -119,7 +177,6 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
   // EventDialogs implementation (used by simple form only)
   @override
   Widget buildRepetitionDialog(BuildContext context) {
-    // Not used directly by router; keep to satisfy interface if you still reference it elsewhere
     return RepetitionDialog(
       selectedStartDate: selectedStartDate,
       selectedEndDate: selectedEndDate,
@@ -159,6 +216,22 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
         selectedStartDate: selectedStartDate,
         selectedEndDate: selectedEndDate,
         initialRecurrenceRule: initialRule,
+      ),
+    );
+  }
+}
+
+/// Forces children inside a Wrap to take full width (so Wrap is only used for runSpacing)
+class _FullWidth extends StatelessWidget {
+  final Widget child;
+  const _FullWidth({required this.child, Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, bc) => ConstrainedBox(
+        constraints: BoxConstraints(minWidth: bc.maxWidth),
+        child: child,
       ),
     );
   }

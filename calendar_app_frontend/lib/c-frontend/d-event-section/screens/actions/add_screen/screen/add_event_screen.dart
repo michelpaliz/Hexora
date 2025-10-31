@@ -8,7 +8,7 @@ import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/group_mng_flow/category/category_api_client.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/function/helper/add_event_helpers.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_form_route.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_form_router.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/repetition_dialog/dialog/repetition_dialog.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';

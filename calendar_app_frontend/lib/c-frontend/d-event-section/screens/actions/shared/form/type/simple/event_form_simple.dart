@@ -1,19 +1,24 @@
-// event_form_simple.dart
+// c-frontend/d-event-section/screens/actions/add_screen/screen/event_form_simple.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
 import 'package:hexora/b-backend/group_mng_flow/category/category_api_client.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/screen/widgets/repetition_toggle_widget.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/dialog/user_expandable_card.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/form/color_picker_widget.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/form/date_picker_widget.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/form/description_input_widget.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/form/location_input_widget.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/form/note_input_widget.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/form/reminder_options.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/form/title_input_widget.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/utils/category_picker.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/simple/section/category/category_picker.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/simple/section/title_section.dart';
+// 🔹 Card shell + shared style/typo like Work Visit
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/section_card_work_type.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit/sections/date_time_section.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit/sections/reminder_section.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit/sections/section_card_builder.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit_style.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -93,277 +98,230 @@ class _EventFormSimpleState extends State<EventFormSimple> {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // CATEGORY
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            l.category, // ensure in l10n
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .2,
+    // 🔹 Match WorkVisit rhythm
+    final outer = WorkVisitStyle.outerPadding;
+    final runGap = WorkVisitStyle.sectionGap.height ?? 0.0;
+
+    // 🔹 Use the same SectionCard builder used elsewhere
+    final SectionCardBuilder cardBuilder = SectionCard.new;
+
+    return SingleChildScrollView(
+      padding: outer,
+      child: Wrap(
+        runSpacing: runGap,
+        children: [
+          // CATEGORY
+          _FullWidth(
+            child: cardBuilder(
+              title: l.category,
+              child: CategoryPicker(
+                api: widget.categoryApi,
+                label: l.category,
+                initialCategoryId: widget.logic.categoryId,
+                initialSubcategoryId: widget.logic.subcategoryId,
+                onChanged: (sel) {
+                  widget.logic.categoryId = sel.categoryId;
+                  widget.logic.subcategoryId = sel.subcategoryId;
+                  setState(() {});
+                },
+              ),
             ),
           ),
-        ),
-        CategoryPicker(
-          api: widget.categoryApi,
-          label: l.category,
-          initialCategoryId: widget.logic.categoryId,
-          initialSubcategoryId: widget.logic.subcategoryId,
-          onChanged: (sel) {
-            widget.logic.categoryId = sel.categoryId;
-            widget.logic.subcategoryId = sel.subcategoryId;
-            setState(() {});
-          },
-        ),
 
-        const SizedBox(height: 14),
-
-        // COLOR
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            l.color,
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .2,
+          // COLOR
+          _FullWidth(
+            child: cardBuilder(
+              title: l.color,
+              child: ColorPickerWidget(
+                selectedEventColor: widget.logic.selectedEventColor == null
+                    ? null
+                    : Color(widget.logic.selectedEventColor!),
+                onColorChanged: (color) {
+                  if (color != null) widget.logic.setSelectedColor(color.value);
+                },
+                colorList: widget.logic.colorList.map((c) => Color(c)).toList(),
+              ),
             ),
           ),
-        ),
-        ColorPickerWidget(
-          selectedEventColor: widget.logic.selectedEventColor == null
-              ? null
-              : Color(widget.logic.selectedEventColor!),
-          onColorChanged: (color) {
-            if (color != null) widget.logic.setSelectedColor(color.value);
-          },
-          colorList: widget.logic.colorList.map((c) => Color(c)).toList(),
-        ),
 
-        const SizedBox(height: 14),
-
-        // TITLE
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            l.title(15), // make sure this exists in l10n
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .2,
+          // TITLE (card section)
+          _FullWidth(
+            child: TitleSection(
+              title: l.title(15), // ensure key exists in l10n
+              cardBuilder: cardBuilder,
+              controller: widget.logic.titleController,
+              hintText: l.titleHint, // optional
             ),
           ),
-        ),
-        TitleInputWidget(
-          titleController: widget.logic.titleController,
-          // field text typically bodyMedium by default; keep as-is
-        ),
 
-        const SizedBox(height: 12),
-
-        // DESCRIPTION
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            l.description(50), // add if missing
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .2,
+          // DESCRIPTION (card section)
+          _FullWidth(
+            child: cardBuilder(
+              title: l.descriptionLabel,
+              child: DescriptionInputWidget(
+                descriptionController: widget.logic.descriptionController,
+              ),
             ),
           ),
-        ),
-        DescriptionInputWidget(
-          descriptionController: widget.logic.descriptionController,
-        ),
 
-        const SizedBox(height: 12),
-
-        // NOTE
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            l.note(20), // add if missing
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .2,
+          // NOTE
+          // Notes
+          cardBuilder(
+            title: l.note(50),
+            child: NoteInputWidget(
+              noteController: widget.logic.noteController,
+              showFieldLabel: false, // card title already shown
+              hintText: l.noteHint, // ensures visible hint
+              maxWords: 50, // visible live counter
             ),
           ),
-        ),
-        NoteInputWidget(noteController: widget.logic.noteController),
-
-        const SizedBox(height: 12),
-
-        // LOCATION
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            l.location, // add if missing
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .2,
+          // LOCATION
+          _FullWidth(
+            child: cardBuilder(
+              title: l.location,
+              child: LocationInputWidget(
+                locationController: widget.logic.locationController,
+              ),
             ),
           ),
-        ),
-        LocationInputWidget(
-            locationController: widget.logic.locationController),
 
-        const SizedBox(height: 16),
-
-        // DATES
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            l.date,
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .2,
+          // DATES
+          _FullWidth(
+            child: DateTimeSection(
+              title: l.date,
+              cardBuilder: SectionCard.new,
+              startDate: startDate,
+              endDate: endDate,
+              onStartTap: () => _handleDateSelection(true),
+              onEndTap: () => _handleDateSelection(false),
             ),
           ),
-        ),
-        DatePickersWidget(
-          startDate: startDate,
-          endDate: endDate,
-          onStartDateTap: () => _handleDateSelection(true),
-          onEndDateTap: () => _handleDateSelection(false),
-        ),
 
-        const SizedBox(height: 8),
+          // REMINDER
+          _FullWidth(
+            child: ReminderSection(
+              title: l.notifyMe,
+              cardBuilder: SectionCard.new,
+              notifyMe: _notifyMe,
+              reminderMinutes: _reminder,
+              onNotifyChanged: (v) {
+                setState(() {
+                  _notifyMe = v;
+                  if (!v) _reminder = 0;
+                });
+              },
+              onReminderChanged: (val) => _reminder = val,
+            ),
+          ),
 
-        // REMINDER
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          value: _notifyMe,
-          title: Text(
-            l.notifyMe,
-            style: typo.bodyMedium,
+          // USERS
+          _FullWidth(
+            child: cardBuilder(
+              title: l.assignedUsers,
+              child: UserExpandableCard(
+                usersAvailable: widget.logic.users,
+                initiallySelected: widget.logic.selectedUsers,
+                excludeUserId: widget.ownerUserId,
+                onSelectedUsersChanged: (selected) {
+                  widget.logic.setSelectedUsers(selected);
+                  setState(() {});
+                },
+              ),
+            ),
           ),
-          subtitle: Text(
-            _notifyMe ? l.notifyMeOnSubtitle : l.notifyMeOffSubtitle,
-            style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+
+          // REPETITION
+          _FullWidth(
+            child: cardBuilder(
+              title: l.repetition,
+              child: RepetitionToggleWidget(
+                key: ValueKey(widget.logic.isRepetitive),
+                isRepetitive: widget.logic.isRepetitive,
+                toggleWidth: widget.logic.toggleWidth,
+                onTap: () async {
+                  final wasRepeated = widget.logic.isRepetitive;
+
+                  if (widget.logic.onShowRepetitionDialog == null) {
+                    setState(() => widget.logic.toggleRepetition(
+                          !wasRepeated,
+                          wasRepeated ? null : widget.logic.recurrenceRule,
+                        ));
+                    return;
+                  }
+
+                  final result = await widget.logic.onShowRepetitionDialog!(
+                    context,
+                    selectedStartDate: widget.logic.selectedStartDate,
+                    selectedEndDate: widget.logic.selectedEndDate,
+                    initialRule: widget.logic.recurrenceRule,
+                  );
+
+                  if (result == null || result.isEmpty) {
+                    setState(() => widget.logic.toggleRepetition(
+                          !wasRepeated,
+                          wasRepeated ? null : widget.logic.recurrenceRule,
+                        ));
+                    return;
+                  }
+
+                  final LegacyRecurrenceRule? rule =
+                      result[0] as LegacyRecurrenceRule?;
+                  final bool isRepeated =
+                      result.length > 1 ? result[1] as bool : true;
+
+                  setState(
+                      () => widget.logic.toggleRepetition(isRepeated, rule));
+                },
+              ),
+            ),
           ),
-          onChanged: (v) {
-            setState(() {
-              _notifyMe = v;
-              if (!v) _reminder = 0;
-            });
-          },
-        ),
-        if (_notifyMe) ...[
-          const SizedBox(height: 6),
-          ReminderTimeDropdownField(
-            initialValue: _reminder,
-            onChanged: (val) => _reminder = val,
+
+          // SUBMIT
+          _FullWidth(
+            child: Center(
+              child: ValueListenableBuilder<bool>(
+                valueListenable: widget.logic.canSubmit,
+                builder: (context, canSubmit, _) {
+                  return ElevatedButton(
+                    onPressed: canSubmit
+                        ? () async {
+                            widget.logic.setReminderMinutes(
+                              _notifyMe
+                                  ? (_reminder ?? kDefaultReminderMinutes)
+                                  : 0,
+                            );
+                            await widget.onSubmit();
+                          }
+                        : null,
+                    child: Text(
+                      widget.isEditing ? l.save : l.addEvent,
+                      style: typo.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
 
-        const SizedBox(height: 12),
+/// Forces children inside a Wrap to take full width (so Wrap is only used for runSpacing)
+class _FullWidth extends StatelessWidget {
+  final Widget child;
+  const _FullWidth({required this.child, Key? key}) : super(key: key);
 
-        // USERS
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            l.assignedUsers, // add if missing
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .2,
-            ),
-          ),
-        ),
-        UserExpandableCard(
-          usersAvailable: widget.logic.users,
-          initiallySelected: widget.logic.selectedUsers,
-          excludeUserId: widget.ownerUserId,
-          onSelectedUsersChanged: (selected) {
-            widget.logic.setSelectedUsers(selected);
-            setState(() {});
-          },
-        ),
-
-        const SizedBox(height: 12),
-
-        // REPETITION
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            l.repetition,
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .2,
-            ),
-          ),
-        ),
-        RepetitionToggleWidget(
-          key: ValueKey(widget.logic.isRepetitive),
-          isRepetitive: widget.logic.isRepetitive,
-          toggleWidth: widget.logic.toggleWidth,
-          onTap: () async {
-            final wasRepeated = widget.logic.isRepetitive;
-
-            // If no hook is provided, just toggle without dialog.
-            if (widget.logic.onShowRepetitionDialog == null) {
-              setState(() => widget.logic
-                  .toggleRepetition(!wasRepeated, widget.logic.recurrenceRule));
-              return;
-            }
-
-            final result = await widget.logic.onShowRepetitionDialog!(
-              context,
-              selectedStartDate: widget.logic.selectedStartDate,
-              selectedEndDate: widget.logic.selectedEndDate,
-              initialRule: widget.logic.recurrenceRule,
-            );
-
-            if (result == null || result.isEmpty) {
-              setState(() => widget.logic.toggleRepetition(!wasRepeated, null));
-              return;
-            }
-
-            final LegacyRecurrenceRule? rule =
-                result[0] as LegacyRecurrenceRule?;
-            final bool isRepeated =
-                result.length > 1 ? result[1] as bool : true;
-
-            setState(() => widget.logic.toggleRepetition(isRepeated, rule));
-          },
-        ),
-
-        const SizedBox(height: 24),
-
-        // SUBMIT
-        Center(
-          child: ValueListenableBuilder<bool>(
-            valueListenable: widget.logic.canSubmit,
-            builder: (context, canSubmit, _) {
-              return ElevatedButton(
-                onPressed: canSubmit
-                    ? () async {
-                        widget.logic.setReminderMinutes(
-                          _notifyMe
-                              ? (_reminder ?? kDefaultReminderMinutes)
-                              : 0,
-                        );
-                        await widget.onSubmit();
-                      }
-                    : null,
-                child: Text(
-                  widget.isEditing ? l.save : l.addEvent,
-                  style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, bc) => ConstrainedBox(
+        constraints: BoxConstraints(minWidth: bc.maxWidth),
+        child: child,
+      ),
     );
   }
 }

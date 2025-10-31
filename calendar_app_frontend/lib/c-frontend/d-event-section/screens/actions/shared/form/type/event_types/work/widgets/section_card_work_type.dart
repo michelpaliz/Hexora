@@ -35,14 +35,14 @@ class SectionCard extends StatelessWidget {
             // Title line
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                title,
-                style: typo.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurfaceVariant,
-                  letterSpacing: .2,
-                ),
-              ),
+              // child: Text(
+              //   title,
+              //   style: typo.bodySmall.copyWith(
+              //     fontWeight: FontWeight.w700,
+              //     color: cs.onSurfaceVariant,
+              //     letterSpacing: .2,
+              //   ),
+              // ),
             ),
             child,
           ],

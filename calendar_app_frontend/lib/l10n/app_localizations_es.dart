@@ -2168,4 +2168,41 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get newEvent => 'Nuevo evento ';
+
+  @override
+  String get calendarTitle => 'Calendario';
+
+  @override
+  String get noGroupAvailable => 'No hay grupo disponible';
+
+  @override
+  String get tabDay => 'Día';
+
+  @override
+  String get tabWeek => 'Semana';
+
+  @override
+  String get tabMonth => 'Mes';
+
+  @override
+  String get tabAgenda => 'Agenda';
+
+  @override
+  String get refreshButton => 'Actualizar';
+
+  @override
+  String get titleHint => 'Itroduce el titulo';
+
+  @override
+  String get descriptionHint => 'Introduce la descripcion';
+
+  @override
+  String get noteHint => 'Introduce la nota';
+
+  @override
+  String get services => 'Servicios Adicionales';
+
+  @override
+  String get noWorkVisitData =>
+      'No hay datos de visita de trabajo disponibles.';
 }

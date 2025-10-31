@@ -1,8 +1,8 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/d-event-section/utils/color_manager.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 
 /// Lightweight view models used by the work-visit form (no backend changes needed).
 class ClientLite {
@@ -37,6 +37,16 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
   // --- Config: should the form require at least one assigned user? ---
 
   bool _isDisposed = false;
+
+  @protected
+  bool get requireTitle => true;
+
+  @protected
+  bool get requireClientServiceForWorkVisit => true;
+
+  /// For simple events you can choose to force a category (set to true if you want)
+  @protected
+  bool get requireCategoryForSimple => false;
 
   // Recurrence
   LegacyRecurrenceRule? _recurrenceRule;
@@ -354,23 +364,60 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
   //   return titleOk && datesOk;
   // }
 
+  // @protected
+  // bool isFormValid() {
+  //   if (_isDisposed) return false;
+  //   // final titleOk = _titleController.text.trim().isNotEmpty;
+  //   final datesOk = _selectedStartDate.isBefore(_selectedEndDate) ||
+  //       _selectedStartDate.isAtSameMomentAs(_selectedEndDate);
+  //   // // Optional enforcement of assignees
+  //   // final assigneesOk = !requireAssignees || _selectedUsers.isNotEmpty;
+  //   // NEW: require client & primary service for work_visit
+  //   final isWorkVisit = _eventType == 'work_visit';
+  //   final clientOk =
+  //       !isWorkVisit || (_clientId != null && _clientId!.isNotEmpty);
+  //   final serviceOk = !isWorkVisit ||
+  //       (_primaryServiceId != null && _primaryServiceId!.isNotEmpty);
+
+  //   // return titleOk && datesOk && assigneesOk && clientOk && serviceOk;
+  //   return datesOk && clientOk && serviceOk;
+  // }
+
   @protected
   bool isFormValid() {
     if (_isDisposed) return false;
-    // final titleOk = _titleController.text.trim().isNotEmpty;
+
+    // dates
     final datesOk = _selectedStartDate.isBefore(_selectedEndDate) ||
         _selectedStartDate.isAtSameMomentAs(_selectedEndDate);
-    // // Optional enforcement of assignees
-    // final assigneesOk = !requireAssignees || _selectedUsers.isNotEmpty;
-    // NEW: require client & primary service for work_visit
-    final isWorkVisit = _eventType == 'work_visit';
-    final clientOk =
-        !isWorkVisit || (_clientId != null && _clientId!.isNotEmpty);
-    final serviceOk = !isWorkVisit ||
-        (_primaryServiceId != null && _primaryServiceId!.isNotEmpty);
 
-    // return titleOk && datesOk && assigneesOk && clientOk && serviceOk;
-    return datesOk && clientOk && serviceOk;
+    // title
+    final titleOk = !requireTitle || _titleController.text.trim().isNotEmpty;
+
+    // assignees (already have the flag)
+    final assigneesOk = !requireAssignees || _selectedUsers.isNotEmpty;
+
+    // type-specific
+    final isWorkVisit = _eventType == 'work_visit';
+
+    final clientOk = !requireClientServiceForWorkVisit || !isWorkVisit
+        ? true
+        : (_clientId != null && _clientId!.isNotEmpty);
+
+    final serviceOk = !requireClientServiceForWorkVisit || !isWorkVisit
+        ? true
+        : (_primaryServiceId != null && _primaryServiceId!.isNotEmpty);
+
+    final categoryOk = !requireCategoryForSimple || isWorkVisit
+        ? true
+        : (_categoryId != null && _categoryId!.isNotEmpty);
+
+    return datesOk &&
+        titleOk &&
+        assigneesOk &&
+        clientOk &&
+        serviceOk &&
+        categoryOk;
   }
 
   @protected

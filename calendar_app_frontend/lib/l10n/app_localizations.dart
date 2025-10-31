@@ -3896,6 +3896,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New Event'**
   String get newEvent;
+
+  /// No description provided for @calendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get calendarTitle;
+
+  /// No description provided for @noGroupAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No group available'**
+  String get noGroupAvailable;
+
+  /// No description provided for @tabDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get tabDay;
+
+  /// No description provided for @tabWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get tabWeek;
+
+  /// No description provided for @tabMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get tabMonth;
+
+  /// No description provided for @tabAgenda.
+  ///
+  /// In en, this message translates to:
+  /// **'Agenda'**
+  String get tabAgenda;
+
+  /// No description provided for @refreshButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refreshButton;
+
+  /// No description provided for @titleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Input title'**
+  String get titleHint;
+
+  /// No description provided for @descriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Input description'**
+  String get descriptionHint;
+
+  /// No description provided for @noteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Input note'**
+  String get noteHint;
+
+  /// No description provided for @services.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional Services'**
+  String get services;
+
+  /// No description provided for @noWorkVisitData.
+  ///
+  /// In en, this message translates to:
+  /// **'No work-visit data available.'**
+  String get noWorkVisitData;
 }
 
 class _AppLocalizationsDelegate

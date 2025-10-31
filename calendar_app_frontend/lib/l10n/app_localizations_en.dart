@@ -2149,4 +2149,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newEvent => 'New Event';
+
+  @override
+  String get calendarTitle => 'Calendar';
+
+  @override
+  String get noGroupAvailable => 'No group available';
+
+  @override
+  String get tabDay => 'Day';
+
+  @override
+  String get tabWeek => 'Week';
+
+  @override
+  String get tabMonth => 'Month';
+
+  @override
+  String get tabAgenda => 'Agenda';
+
+  @override
+  String get refreshButton => 'Refresh';
+
+  @override
+  String get titleHint => 'Input title';
+
+  @override
+  String get descriptionHint => 'Input description';
+
+  @override
+  String get noteHint => 'Input note';
+
+  @override
+  String get services => 'Additional Services';
+
+  @override
+  String get noWorkVisitData => 'No work-visit data available.';
 }

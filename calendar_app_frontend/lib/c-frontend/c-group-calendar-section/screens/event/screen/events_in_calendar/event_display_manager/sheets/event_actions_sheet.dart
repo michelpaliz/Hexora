@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/logic/actions/event_actions_manager.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/event_screen/event_detail_screen.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 /// A stateless widget that displays a bottom sheet with actions related to an event.
