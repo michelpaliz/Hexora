@@ -354,36 +354,6 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
 
   // ---------------- Validation ----------------
   @protected
-  // bool isFormValid() {
-  //   if (_isDisposed) return false;
-  //   final titleOk = _titleController.text.trim().isNotEmpty;
-  //   final datesOk = _selectedStartDate.isBefore(_selectedEndDate) ||
-  //       _selectedStartDate.isAtSameMomentAs(_selectedEndDate);
-
-  //   // You can extend this to enforce client/service for work_visit, etc.
-  //   return titleOk && datesOk;
-  // }
-
-  // @protected
-  // bool isFormValid() {
-  //   if (_isDisposed) return false;
-  //   // final titleOk = _titleController.text.trim().isNotEmpty;
-  //   final datesOk = _selectedStartDate.isBefore(_selectedEndDate) ||
-  //       _selectedStartDate.isAtSameMomentAs(_selectedEndDate);
-  //   // // Optional enforcement of assignees
-  //   // final assigneesOk = !requireAssignees || _selectedUsers.isNotEmpty;
-  //   // NEW: require client & primary service for work_visit
-  //   final isWorkVisit = _eventType == 'work_visit';
-  //   final clientOk =
-  //       !isWorkVisit || (_clientId != null && _clientId!.isNotEmpty);
-  //   final serviceOk = !isWorkVisit ||
-  //       (_primaryServiceId != null && _primaryServiceId!.isNotEmpty);
-
-  //   // return titleOk && datesOk && assigneesOk && clientOk && serviceOk;
-  //   return datesOk && clientOk && serviceOk;
-  // }
-
-  @protected
   bool isFormValid() {
     if (_isDisposed) return false;
 

@@ -38,6 +38,9 @@ abstract class AddEventLogic<T extends StatefulWidget>
   bool _postAddRefreshing = false;
 
   @override
+  bool get requireTitle => eventType == 'simple';
+
+  @override
   void initState() {
     super.initState();
     initializeBaseDefaults();

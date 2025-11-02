@@ -3968,6 +3968,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No work-visit data available.'**
   String get noWorkVisitData;
+
+  /// No description provided for @roleAdministrator.
+  ///
+  /// In en, this message translates to:
+  /// **'Administrator'**
+  String get roleAdministrator;
+
+  /// No description provided for @roleCoAdministrator.
+  ///
+  /// In en, this message translates to:
+  /// **'Co-Administrator'**
+  String get roleCoAdministrator;
+
+  /// No description provided for @roleGuest.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest'**
+  String get roleGuest;
+
+  /// No description provided for @viewMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'View members'**
+  String get viewMembers;
 }
 
 class _AppLocalizationsDelegate

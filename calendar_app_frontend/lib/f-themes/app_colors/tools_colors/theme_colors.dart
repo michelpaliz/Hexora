@@ -1,7 +1,13 @@
 import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
 import 'package:flutter/material.dart';
 
-class ThemeColors {
+class ThemeColors {/// The `theme_colors` file in the code snippet
+/// is likely providing a set of predefined
+/// colors that are used within the app's theme.
+/// These colors are accessed through the
+/// `ThemeColors.getContainerBackgroundColor(context)`
+/// method call in the `GreetingCard` widget.
+
   static Color getTextColor(BuildContext context) {
     final theme = Theme.of(context);
     return theme.brightness == Brightness.dark

@@ -1179,9 +1179,11 @@
    "noteHint": "Introduce la nota",
 
   "services": "Servicios Adicionales",
-  "noWorkVisitData": "No hay datos de visita de trabajo disponibles."
-
-
+  "noWorkVisitData": "No hay datos de visita de trabajo disponibles.",
+  "roleAdministrator": "Administrador",
+  "roleCoAdministrator": "Co-administrador",
+  "roleGuest": "Invitado",
+  "viewMembers": "Ver miembros"
 
 
 }

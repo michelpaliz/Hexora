@@ -2205,4 +2205,16 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get noWorkVisitData =>
       'No hay datos de visita de trabajo disponibles.';
+
+  @override
+  String get roleAdministrator => 'Administrador';
+
+  @override
+  String get roleCoAdministrator => 'Co-administrador';
+
+  @override
+  String get roleGuest => 'Invitado';
+
+  @override
+  String get viewMembers => 'Ver miembros';
 }

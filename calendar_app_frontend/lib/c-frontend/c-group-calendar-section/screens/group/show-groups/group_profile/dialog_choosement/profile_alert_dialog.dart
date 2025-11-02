@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/invited-user/group_role_extension.dart';
 
+import 'alert_dialog/profile_alert_dialog_content.dart';
 import 'profile_alert_dialog_actions.dart';
-import 'profile_alert_dialog_content.dart';
 
 void showProfileAlertDialog(
   BuildContext context,
@@ -33,9 +33,8 @@ void showProfileAlertDialog(
     context: context,
     builder: (context) {
       return AlertDialog(
-        backgroundColor:
-            Theme.of(context).colorScheme.surface, // 👈 Dialog background color
-        content: buildProfileDialogContent(context, group),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        content: ProfileDialogContent(group: group), // 👈 updated
         actions: buildProfileDialogActions(
           context,
           group,

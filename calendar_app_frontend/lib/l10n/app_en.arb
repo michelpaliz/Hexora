@@ -1180,8 +1180,11 @@
   "noteHint": "Input note",
 
   "services": "Additional Services",
-  "noWorkVisitData": "No work-visit data available."
-
+  "noWorkVisitData": "No work-visit data available.",
+  "roleAdministrator": "Administrator",
+  "roleCoAdministrator": "Co-Administrator",
+  "roleGuest": "Guest",
+  "viewMembers": "View members"
 
 }
 

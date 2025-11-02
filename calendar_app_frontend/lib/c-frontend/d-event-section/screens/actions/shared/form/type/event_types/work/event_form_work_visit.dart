@@ -4,6 +4,7 @@ import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legac
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/utils/form/reminder_options.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
+import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/simple/section/title_section.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/section_card_work_type.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit/work_visit_sections.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit_style.dart';
@@ -105,6 +106,18 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
         primary: false,
         physics: const NeverScrollableScrollPhysics(),
         children: [
+          // TITLE
+          SectionCard(
+            title: loc.title(15),
+            child: TitleSection(
+              title: loc.title(15),
+              cardBuilder: SectionCard.new,
+              controller: widget.logic.titleController,
+              hintText: loc.titleHint,
+            ),
+          ),
+          WorkVisitStyle.sectionGap,
+
           if (widget.enableClientServicePickers)
             ClientServiceSection(
               title: loc.workVisit,

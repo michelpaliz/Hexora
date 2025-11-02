@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/utils/edit_group_arg.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -20,7 +20,12 @@ List<Widget> buildProfileDialogActions(
 ) {
   final loc = AppLocalizations.of(context)!;
   final roleDisplay = role[0].toUpperCase() + role.substring(1);
-  final colorScheme = Theme.of(context).colorScheme;
+  final theme = Theme.of(context);
+  final cs = theme.colorScheme;
+
+  // ✅ body styles for consistent typography
+  final bodyM = theme.textTheme.bodyMedium!;
+  final bodyS = theme.textTheme.bodySmall!;
 
   const actionSpacing = SizedBox(height: 8);
 
@@ -42,11 +47,8 @@ List<Widget> buildProfileDialogActions(
           );
 
           try {
-            // 🔄 Fetch fresh group via repository (no direct service)
             final selectedGroup =
                 await groupDomain.groupRepository.getGroupById(group.id);
-
-            // 👥 Load users for that group via userDomain helper
             final users = await userDomain.getUsersForGroup(selectedGroup);
 
             if (overlayContext.mounted) Navigator.of(overlayContext).pop();
@@ -67,16 +69,21 @@ List<Widget> buildProfileDialogActions(
           }
         },
         style: TextButton.styleFrom(
-          backgroundColor: colorScheme.primaryContainer,
-          foregroundColor: colorScheme.onPrimaryContainer,
+          backgroundColor: cs.primaryContainer,
+          foregroundColor: cs.onPrimaryContainer,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.edit),
             const SizedBox(width: 8),
-            Text(loc.editGroup),
+            Text(
+              loc.editGroup,
+              style: bodyM.copyWith(fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
@@ -84,7 +91,6 @@ List<Widget> buildProfileDialogActions(
       actionSpacing,
 
       // 🗑️ Remove Group Button (destructive)
-      // NEW: Owner can delete only if all other members were removed first.
       TextButton(
         onPressed: () async {
           try {
@@ -97,16 +103,12 @@ List<Widget> buildProfileDialogActions(
               builder: (_) => const Center(child: CircularProgressIndicator()),
             );
 
-            // 1) Get the latest group snapshot
             final freshGroup =
                 await groupDomain.groupRepository.getGroupById(group.id);
-
-            // 2) Get current members
             final members = await userDomain.getUsersForGroup(freshGroup);
 
             if (overlayContext.mounted) Navigator.of(overlayContext).pop();
 
-            // Must be owner to delete
             if (freshGroup.ownerId != user.id) {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -116,32 +118,22 @@ List<Widget> buildProfileDialogActions(
               return;
             }
 
-            // Rule: owner can delete the group only if ALL other members were removed
             final nonOwnerMembers =
                 members.where((m) => m.id != freshGroup.ownerId).toList();
 
             if (nonOwnerMembers.isNotEmpty) {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      // Prefer localization key if exists; fallback text otherwise.
-                      (loc.removeMembersFirst),
-                    ),
-                  ),
+                  SnackBar(content: Text(loc.removeMembersFirst)),
                 );
               }
               return;
             }
 
-            // Confirm deletion now that only the owner remains
-            final confirm = await showConfirmationDialog(
-              context,
-              loc.questionDeleteGroup,
-            );
+            final confirm =
+                await showConfirmationDialog(context, loc.questionDeleteGroup);
             if (!confirm) return;
 
-            // Proceed with delete via domain
             try {
               final ok = await groupDomain.removeGroup(freshGroup, userDomain);
               if (ok && context.mounted) Navigator.pop(context);
@@ -158,7 +150,6 @@ List<Widget> buildProfileDialogActions(
               }
             }
           } catch (e) {
-            // Fetch/members load failed
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('${loc.failedToEditGroup} $e')),
@@ -167,16 +158,21 @@ List<Widget> buildProfileDialogActions(
           }
         },
         style: TextButton.styleFrom(
-          backgroundColor: colorScheme.errorContainer,
-          foregroundColor: colorScheme.onErrorContainer,
+          backgroundColor: cs.errorContainer,
+          foregroundColor: cs.onErrorContainer,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.delete_forever),
             const SizedBox(width: 8),
-            Text(loc.remove),
+            Text(
+              loc.remove,
+              style: bodyM.copyWith(fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
@@ -187,21 +183,23 @@ List<Widget> buildProfileDialogActions(
       TextButton(
         onPressed: () => Navigator.pop(context),
         style: TextButton.styleFrom(
-          foregroundColor: colorScheme.onSurface,
+          foregroundColor: cs.onSurface,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         ),
-        child: Text(loc.permissionDeniedRole(roleDisplay)),
+        child: Text(
+          loc.permissionDeniedRole(roleDisplay),
+          style: bodyS.copyWith(fontWeight: FontWeight.w500),
+        ),
       ),
 
       actionSpacing,
 
       // 🚪 Leave Group Button
-      // NEW: Any non-owner member can leave anytime.
       TextButton(
         onPressed: () async {
           final confirm = await showConfirmationDialog(
             context,
-            // Use a specific "leave group" prompt if available; fallback to clear text.
-            (loc.leaveGroupQuestion),
+            loc.leaveGroupQuestion,
           );
           if (!confirm) return;
 
@@ -217,16 +215,21 @@ List<Widget> buildProfileDialogActions(
           }
         },
         style: TextButton.styleFrom(
-          backgroundColor: colorScheme.errorContainer,
-          foregroundColor: colorScheme.onErrorContainer,
+          backgroundColor: cs.errorContainer,
+          foregroundColor: cs.onErrorContainer,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.logout),
             const SizedBox(width: 8),
-            Text(loc.leaveGroup),
+            Text(
+              loc.leaveGroup,
+              style: bodyM.copyWith(fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),

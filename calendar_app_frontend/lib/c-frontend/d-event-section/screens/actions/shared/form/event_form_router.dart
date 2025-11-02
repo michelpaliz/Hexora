@@ -18,7 +18,7 @@ class EventFormRouter extends StatefulWidget {
   /// Parent’s dialog impl (e.g., `this`)
   final EventDialogs dialogs;
 
-  /// Controls whether Work-Visit shows client/service pickers
+  /// (Kept for backward-compat but ignored by option B)
   final bool enableClientServicePickers;
 
   const EventFormRouter({
@@ -42,16 +42,25 @@ class _EventFormRouterState extends State<EventFormRouter> {
   @override
   void initState() {
     super.initState();
+
+    // Default to work_visit unless logic explicitly says 'simple'
     _type = widget.logic.eventType.toLowerCase() == 'simple'
         ? 'simple'
         : 'work_visit';
+
+    // Inform logic on first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.logic.setEventType?.call(_type);
+    });
   }
 
   void _setType(String t) {
     if (_type == t) return;
     setState(() => _type = t);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.logic.setEventType?.call(t);
+      if (!mounted) return;
+      widget.logic.setEventType?.call(t);
     });
   }
 
@@ -70,7 +79,7 @@ class _EventFormRouterState extends State<EventFormRouter> {
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Text(
-            l.chooseType, // "Choose event type"
+            l.chooseType,
             style: typo.bodySmall.copyWith(
               color: cs.onSurfaceVariant,
               fontWeight: FontWeight.w700,
@@ -79,7 +88,7 @@ class _EventFormRouterState extends State<EventFormRouter> {
           ),
         ),
 
-        // Modern segmented choice (chips with M3 tones)
+        // Segmented chips
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -93,14 +102,14 @@ class _EventFormRouterState extends State<EventFormRouter> {
             children: [
               _TypeChip(
                 icon: Icons.engineering_outlined,
-                label: l.workVisit, // "Work visit"
+                label: l.workVisit,
                 selected: isWork,
                 onTap: () => _setType('work_visit'),
                 typo: typo,
               ),
               _TypeChip(
                 icon: Icons.event_outlined,
-                label: l.simpleEvent, // "Simple event"
+                label: l.simpleEvent,
                 selected: !isWork,
                 onTap: () => _setType('simple'),
                 typo: typo,
@@ -118,13 +127,25 @@ class _EventFormRouterState extends State<EventFormRouter> {
           ),
         ),
 
-        // Form body with a smooth cross-fade
+        // Body
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 220),
           switchInCurve: Curves.easeOut,
           switchOutCurve: Curves.easeIn,
-          child: _type == 'simple'
+          child: isWork
               ? KeyedSubtree(
+                  key: const ValueKey('work_visit'),
+                  child: EventFormWorkVisit(
+                    logic: widget.logic,
+                    onSubmit: widget.onSubmit,
+                    ownerUserId: widget.ownerUserId,
+                    isEditing: widget.isEditing,
+                    dialogs: widget.dialogs,
+                    // ✅ Option B: show pickers automatically when work_visit
+                    enableClientServicePickers: true,
+                  ),
+                )
+              : KeyedSubtree(
                   key: const ValueKey('simple'),
                   child: EventFormSimple(
                     logic: widget.logic,
@@ -134,19 +155,6 @@ class _EventFormRouterState extends State<EventFormRouter> {
                     isEditing: widget.isEditing,
                     dialogs: widget.dialogs,
                   ),
-                )
-              : KeyedSubtree(
-                  key: const ValueKey('work_visit'),
-                  child: EventFormWorkVisit(
-                    logic: widget.logic,
-                    onSubmit: widget.onSubmit,
-                    ownerUserId: widget.ownerUserId,
-                    isEditing: widget.isEditing,
-                    dialogs: widget.dialogs,
-
-                    // enableClientServicePickers:
-                    //     widget.enableClientServicePickers,
-                  ),
                 ),
         ),
       ],
@@ -154,7 +162,6 @@ class _EventFormRouterState extends State<EventFormRouter> {
   }
 }
 
-/// Private chip with consistent typography + modern M3 feel
 class _TypeChip extends StatelessWidget {
   final IconData icon;
   final String label;

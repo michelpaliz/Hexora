@@ -1,17 +1,19 @@
-// group_list_section.dart
+// lib/c-frontend/c-group-calendar-section/screens/group/show-groups/group_screen/group_list_section.dart
 import 'package:flutter/material.dart';
+// ─── Data models / domains ────────────────────────────────────────────────────
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+// ─── UI widgets / i18n ───────────────────────────────────────────────────────
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_card_widget/group_card_widget.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 class GroupListSection extends StatefulWidget {
-  GroupListSection({Key? key}) : super(key: key);
+  const GroupListSection({super.key});
 
-  /// quick-and-lightweight way to control axis from HomePage toggle
+  /// Quick, lightweight way to control axis from HomePage toggle.
   static final ValueNotifier<Axis> axisOverride = ValueNotifier(Axis.vertical);
 
   @override
@@ -35,14 +37,9 @@ class _GroupListSectionState extends State<GroupListSection> {
         }
 
         return StreamBuilder<List<Group>>(
-          key: ValueKey('groups-${user.id}'), // forces rebuild on user change
-          stream:
-              groupDomain.watchGroupsForUser(user.id), // ⬅️ user-scoped stream
+          key: ValueKey('groups-${user.id}'), // force rebuild on user change
+          stream: groupDomain.watchGroupsForUser(user.id), // user-scoped stream
           builder: (context, snapshot) {
-            // devtools.log('StreamBuilder state: ${snapshot.connectionState}');
-            // devtools.log('StreamBuilder data: ${snapshot.data}');
-            // devtools.log('StreamBuilder error: ${snapshot.error}');
-
             if (snapshot.connectionState == ConnectionState.waiting &&
                 !snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
@@ -83,9 +80,20 @@ class _NoGroupsText extends StatelessWidget {
   const _NoGroupsText(this.text);
 
   @override
-  Widget build(BuildContext context) => Center(
-      child:
-          Text(text, style: const TextStyle(fontSize: 16, color: Colors.grey)));
+  Widget build(BuildContext context) {
+    final smallBody = Theme.of(context).textTheme.bodySmall!;
+    final color = Theme.of(context).colorScheme.outline;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          text,
+          style: smallBody.copyWith(color: color),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
 }
 
 class _ErrorText extends StatelessWidget {
@@ -93,9 +101,20 @@ class _ErrorText extends StatelessWidget {
   const _ErrorText(this.text);
 
   @override
-  Widget build(BuildContext context) => Center(
-      child:
-          Text(text, style: const TextStyle(fontSize: 16, color: Colors.red)));
+  Widget build(BuildContext context) {
+    final smallBody = Theme.of(context).textTheme.bodySmall!;
+    final color = Theme.of(context).colorScheme.error;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          text,
+          style: smallBody.copyWith(color: color, fontWeight: FontWeight.w600),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
 }
 
 class _GroupListView extends StatelessWidget {
@@ -115,15 +134,15 @@ class _GroupListView extends StatelessWidget {
     required this.updateRole,
   });
 
-  static const double _kHorizontalRowHeight =
-      220; // <- tune to your card height
+  // Tune to match your card height when horizontal.
+  static const double _kHorizontalRowHeight = 220;
 
   @override
   Widget build(BuildContext context) {
     final isHorizontal = axis == Axis.horizontal;
 
     final list = ListView.separated(
-      // when nested (you are), keep inner list non-scrollable + shrink-wrapped
+      // When nested (you are), keep inner list non-scrollable + shrink-wrapped.
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: !isHorizontal, // horizontal must be height-bounded instead
       scrollDirection: axis,
@@ -146,7 +165,7 @@ class _GroupListView extends StatelessWidget {
     if (isHorizontal) {
       return SizedBox(height: _kHorizontalRowHeight, child: list);
     }
-    // vertical path is already width-bounded by the parent Padding/constraints
+    // Vertical path is already width-bounded by the parent Padding/constraints.
     return list;
   }
 }
