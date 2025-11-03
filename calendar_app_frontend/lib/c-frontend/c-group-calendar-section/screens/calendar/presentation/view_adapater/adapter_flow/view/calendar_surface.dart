@@ -54,12 +54,30 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     _controller.view = _selectedView;
   }
 
+  // calendar_surface.dart (add near other fields)
+  double _responsiveMonthHeaderHeight(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final shortest = size.shortestSide;
+    final portrait = MediaQuery.of(context).orientation == Orientation.portrait;
+
+    // Base height scales with width; clamp to sane bounds.
+    final base = size.width * (portrait ? 0.28 : 0.22);
+
+    // Slightly larger on tablets/desktop
+    final tabletBump = shortest >= 600 ? 32.0 : 0.0;
+
+    // Clamp between 140–260 so images don’t get ridiculous
+    return base.clamp(140.0, 260.0) + tabletBump;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textColor = getTextColor(context);
     final backgroundColor = getBackgroundColor(context).withOpacity(0.8);
     final fontSize = MediaQuery.of(context).size.width * 0.035;
+    // inside build(BuildContext context) just after you compute fontSize, etc.
+    final double monthHeaderHeight = _responsiveMonthHeaderHeight(context);
 
     // 1) Listen to view mode
     return ValueListenableBuilder<String>(
@@ -115,14 +133,29 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                             );
                           }
                         },
-                        scheduleViewMonthHeaderBuilder: (context, d) =>
-                            buildScheduleMonthHeader(d),
+                        // ✅ Keep Month custom tiles (old behavior)
                         monthCellBuilder: (context, d) => buildMonthCell(
                           context: context,
                           details: d,
                           selectedDate: _selectedDate,
                           events: events,
                         ),
+
+                        scheduleViewMonthHeaderBuilder: (context, d) =>
+                            buildScheduleMonthHeader(
+                                context, d, monthHeaderHeight),
+                        scheduleViewSettings: sf.ScheduleViewSettings(
+                          monthHeaderSettings: sf.MonthHeaderSettings(
+                            height:
+                                monthHeaderHeight, // <-- must match builder height
+                            backgroundColor:
+                                Colors.transparent, // keep images visible
+                            monthFormat: 'MMMM yyyy',
+                            textAlign: TextAlign.left,
+                          ),
+                          appointmentItemHeight: 80,
+                        ),
+
                         appointmentBuilder: (context, details) => widget
                             .apptBridge
                             .build(context, _selectedView, details, textColor),
@@ -135,8 +168,9 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                         headerStyle: buildHeaderStyle(fontSize, textColor),
                         viewHeaderStyle: buildViewHeaderStyle(
                             fontSize, textColor, isDarkMode),
-                        scheduleViewSettings:
-                            buildScheduleSettings(fontSize, backgroundColor),
+                        // scheduleViewSettings: buildScheduleSettings(
+                        //     fontSize, backgroundColor,
+                        //     monthHeaderHeight: monthHeaderHeight),
                         monthViewSettings: buildMonthSettings(),
                       ),
                     ).animate().fadeIn(duration: 300.ms);

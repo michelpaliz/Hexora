@@ -48,15 +48,49 @@ ViewHeaderStyle buildViewHeaderStyle(
       ),
     );
 
+// ScheduleViewSettings buildScheduleSettings(
+//         double fontSize, Color backgroundColor) =>
+//     ScheduleViewSettings(
+//       appointmentItemHeight: 80,
+//       monthHeaderSettings: MonthHeaderSettings(
+//         monthFormat: 'MMMM yyyy',
+//         height: 60,
+//         textAlign: TextAlign.left,
+//         backgroundColor: backgroundColor,
+//         monthTextStyle: GoogleFonts.poppins(
+//           fontSize: fontSize,
+//           fontWeight: FontWeight.w500,
+//         ),
+//       ),
+//     );
+
+// styles.dart (same file you showed)
+
+double responsiveMonthHeaderHeight(BuildContext context) {
+  final size = MediaQuery.of(context).size;
+  final shortest = size.shortestSide;
+  final portrait = MediaQuery.of(context).orientation == Orientation.portrait;
+
+  // Scale with width; clamp to sane bounds; add a small tablet bump.
+  final base = size.width * (portrait ? 0.26 : 0.20);
+  final tabletBump = shortest >= 600 ? 24.0 : 0.0;
+  return base.clamp(140.0, 240.0) + tabletBump;
+}
+
 ScheduleViewSettings buildScheduleSettings(
-        double fontSize, Color backgroundColor) =>
+  double fontSize,
+  Color backgroundColor, {
+  double? monthHeaderHeight, // <-- new, optional
+}) =>
     ScheduleViewSettings(
       appointmentItemHeight: 80,
       monthHeaderSettings: MonthHeaderSettings(
         monthFormat: 'MMMM yyyy',
-        height: 60,
+        height: monthHeaderHeight ?? 60, // <-- use responsive value when passed
         textAlign: TextAlign.left,
-        backgroundColor: backgroundColor,
+        // If you’re rendering an image in the header builder, keep this transparent
+        // so the image isn’t covered by a solid color.
+        backgroundColor: Colors.transparent,
         monthTextStyle: GoogleFonts.poppins(
           fontSize: fontSize,
           fontWeight: FontWeight.w500,

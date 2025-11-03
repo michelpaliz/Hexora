@@ -1,7 +1,8 @@
 // lib/c-frontend/b-calendar-section/screens/profile/widgets/profile_header_section.dart
+import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/utils/user_avatar.dart';
-import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 
 class ProfileHeaderSection extends StatelessWidget {
   final Color headerColor;
@@ -42,8 +43,11 @@ class ProfileHeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const onHeader = Colors.white;
     final theme = Theme.of(context);
+    final t = theme.textTheme;
+
+    // Text/icon color that contrasts with the header background
+    final onHeader = ThemeColors.getContrastTextColorForBackground(headerColor);
 
     return Container(
       padding: padding,
@@ -65,7 +69,7 @@ class ProfileHeaderSection extends StatelessWidget {
                   IconButton(
                     tooltip: 'Edit',
                     onPressed: onEdit,
-                    icon: const Icon(Icons.edit_rounded, color: onHeader),
+                    icon: Icon(Icons.edit_rounded, color: onHeader),
                   ),
                 ],
               ),
@@ -74,23 +78,27 @@ class ProfileHeaderSection extends StatelessWidget {
 
             // avatar
             UserAvatar(
-                user: user,
-                fetchReadSas: (_) async => null,
-                radius: avatarRadius),
+              user: user,
+              fetchReadSas: (_) async => null,
+              radius: avatarRadius,
+            ),
             const SizedBox(height: 10),
 
             // name & username
             Text(
               user.name,
               textAlign: TextAlign.center,
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(color: onHeader, fontWeight: FontWeight.w700),
+              style: t.titleLarge?.copyWith(
+                color: onHeader,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               '@${user.userName}',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: onHeader.withOpacity(.9)),
+              style: t.bodyMedium?.copyWith(
+                color: onHeader.withOpacity(.9),
+              ),
             ),
             const SizedBox(height: 10),
 
@@ -99,28 +107,32 @@ class ProfileHeaderSection extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _CircleAction(
-                    icon: Icons.email_rounded,
-                    label: 'Email',
-                    color: onHeader,
-                    onTap: onCopyEmail),
+                  icon: Icons.email_rounded,
+                  label: 'Email',
+                  color: onHeader,
+                  onTap: onCopyEmail,
+                ),
                 const SizedBox(width: 16),
                 _CircleAction(
-                    icon: Icons.groups_rounded,
-                    label: '$groupsCount',
-                    color: onHeader,
-                    onTap: onTapQuickGroups),
+                  icon: Icons.groups_rounded,
+                  label: '$groupsCount',
+                  color: onHeader,
+                  onTap: onTapQuickGroups,
+                ),
                 const SizedBox(width: 16),
                 _CircleAction(
-                    icon: Icons.event_rounded,
-                    label: '$calendarsCount',
-                    color: onHeader,
-                    onTap: onTapQuickCalendars),
+                  icon: Icons.event_rounded,
+                  label: '$calendarsCount',
+                  color: onHeader,
+                  onTap: onTapQuickCalendars,
+                ),
                 const SizedBox(width: 16),
                 _CircleAction(
-                    icon: Icons.notifications_rounded,
-                    label: '$notificationsCount',
-                    color: onHeader,
-                    onTap: onTapQuickNotifications),
+                  icon: Icons.notifications_rounded,
+                  label: '$notificationsCount',
+                  color: onHeader,
+                  onTap: onTapQuickNotifications,
+                ),
               ],
             ),
           ],
@@ -144,10 +156,12 @@ class _CircleAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+
     return Column(
       children: [
         Material(
-          color: Colors.white.withOpacity(.15),
+          color: Colors.white.withOpacity(.15), // subtle, works for both themes
           shape: const CircleBorder(),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -160,9 +174,10 @@ class _CircleAction extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(label,
-            style:
-                Theme.of(context).textTheme.labelSmall?.copyWith(color: color)),
+        Text(
+          label,
+          style: t.labelSmall?.copyWith(color: color),
+        ),
       ],
     );
   }

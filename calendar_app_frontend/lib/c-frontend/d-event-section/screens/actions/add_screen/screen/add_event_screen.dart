@@ -119,13 +119,22 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
 
     return Scaffold(
       appBar: AppBar(
+        // title: Text(
+        //   l.event,
+        //   style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+        // ),
+        // backgroundColor: cs.surface,
+        // elevation: 0.5,
+        // iconTheme: IconThemeData(color: cs.onSurface),
         title: Text(
-          l.event,
-          style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+          l.addEvent,
+
+          // use Typo bodySmall as requested, bolded for prominence
+          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
-        backgroundColor: cs.surface,
-        elevation: 0.5,
         iconTheme: IconThemeData(color: cs.onSurface),
+        backgroundColor: cs.surface,
+        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

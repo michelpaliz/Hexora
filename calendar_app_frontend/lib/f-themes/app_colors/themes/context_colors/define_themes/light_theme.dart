@@ -5,23 +5,21 @@ import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extensi
 import 'package:hexora/f-themes/app_utilities/view-item-styles/app_bar/app_bar_styles.dart';
 
 final ThemeData lightTheme = ThemeData(
-  brightness: Brightness.light,
-  primaryColor: AppColors.primary,
+  useMaterial3: true,
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: AppColors.primary, // blue base
+    brightness: Brightness.light,
+  ).copyWith(
+    // keep your chosen secondary if you want the amber accent
+    secondary: AppColors.secondary,
+    onSecondary: ThemeData.estimateBrightnessForColor(AppColors.secondary) ==
+            Brightness.dark
+        ? Colors.white
+        : const Color(0xFF1B1F23),
+  ),
   scaffoldBackgroundColor: AppColors.background,
   appBarTheme: AppBarStyles.defaultAppBarTheme(),
-  colorScheme: ColorScheme.fromSwatch(
-    brightness: Brightness.light,
-    primarySwatch: Colors.blue,
-  ).copyWith(
-    primary: AppColors.primary,
-    secondary: AppColors.secondary,
-    surface: AppColors.surface,
-    onPrimary: AppColors.white,
-    onSecondary: AppColors.white,
-    onSurface: AppColors.textPrimary,
-  ),
-  // Attach your custom text styles as a ThemeExtension
   extensions: <ThemeExtension<dynamic>>[
-    AppTypography.light(scale: 0.98), // defined below
+    AppTypography.light(scale: 0.98),
   ],
 );

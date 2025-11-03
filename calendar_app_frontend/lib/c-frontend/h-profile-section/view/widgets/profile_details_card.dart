@@ -1,6 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:flutter/material.dart';
 
 class ProfileDetailsCard extends StatelessWidget {
   final String email, username, userId;
@@ -31,8 +31,12 @@ class ProfileDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final t = theme.textTheme;
+
     final bg = ThemeColors.getCardBackgroundColor(context).withOpacity(0.98);
-    final onSurfaceVar = Theme.of(context).colorScheme.onSurfaceVariant;
+    final onSurface = theme.colorScheme.onSurface;
+    final onSurfaceVar = theme.colorScheme.onSurfaceVariant;
 
     Widget tile({
       required IconData icon,
@@ -47,25 +51,44 @@ class ProfileDetailsCard extends StatelessWidget {
           height: 40,
           width: 40,
           decoration: BoxDecoration(
-              color: onSurfaceVar.withOpacity(.12), shape: BoxShape.circle),
-          child: Icon(icon),
+            color: onSurfaceVar.withOpacity(.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: onSurface),
         ),
-        title: Text(title, style: Theme.of(context).textTheme.titleSmall),
+        title: Text(
+          title,
+          style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
         subtitle: subtitle == null
             ? null
-            : Text(subtitle,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: onSurfaceVar)),
-        trailing: trailing,
+            : Text(
+                subtitle,
+                style: t.bodySmall?.copyWith(color: onSurfaceVar),
+              ),
+        trailing: trailing == null
+            ? null
+            : IconTheme(
+                data: IconThemeData(color: onSurfaceVar),
+                child: trailing,
+              ),
         onTap: onTap,
       );
     }
 
     return Container(
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: ThemeColors.getCardShadowColor(context),
+            blurRadius: 12,
+            spreadRadius: 0,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           tile(
@@ -111,7 +134,6 @@ class ProfileDetailsCard extends StatelessWidget {
           tile(
             icon: Icons.notifications_active_rounded,
             title: l10n.notifications,
-            // keeping subtitle as plain number per current UI
             subtitle: '$notificationsCount',
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: onTapNotifications,

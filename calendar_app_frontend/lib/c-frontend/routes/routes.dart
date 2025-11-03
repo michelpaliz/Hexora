@@ -11,15 +11,15 @@ import 'package:hexora/c-frontend/b-dashboard-section/dashboard_screen/header/he
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/group_insights_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/group_members_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/services_clients/services_clients_screen.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/create_worker/form/create_worker_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/entry_screen/functions/create_time_entry_screen.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/entry_screen/tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create-group/search-bar/screens/create_group_data.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/edit_group_data.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/utils/edit_group_arg.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/group-settings/group_settings.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_screen/group_section.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_screen/group_list_section.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/event_screen/event_detail/event_detail_screen.dart';
@@ -53,11 +53,15 @@ final Map<String, WidgetBuilder> routes = {
     return GroupInsightsScreen(group: group);
   },
 
+  // AppRoutes.showGroups: (context) => GroupListSection(),
+
+  AppRoutes.showGroups: (context) => const GroupListSection(fullPage: true),
+
   AppRoutes.editEvent: (context) {
     final event = ModalRoute.of(context)?.settings.arguments as Event?;
     return event != null ? EditEventScreen(event: event) : SizedBox.shrink();
   },
-  AppRoutes.showGroups: (context) => GroupListSection(),
+
   AppRoutes.createGroupData: (context) => CreateGroupData(),
   AppRoutes.showNotifications: (context) {
     final user = ModalRoute.of(context)?.settings.arguments as User?;

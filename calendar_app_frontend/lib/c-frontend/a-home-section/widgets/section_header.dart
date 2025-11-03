@@ -9,7 +9,7 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final mediumBody = Theme.of(context).textTheme.bodyMedium!;
+    final mediumBody = Theme.of(context).textTheme.titleLarge!;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),

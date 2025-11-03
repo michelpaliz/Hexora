@@ -2217,4 +2217,45 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get viewMembers => 'Ver miembros';
+
+  @override
+  String get monthJanuary => 'enero';
+
+  @override
+  String get monthFebruary => 'febrero';
+
+  @override
+  String get monthMarch => 'marzo';
+
+  @override
+  String get monthApril => 'abril';
+
+  @override
+  String get monthMay => 'mayo';
+
+  @override
+  String get monthJune => 'junio';
+
+  @override
+  String get monthJuly => 'julio';
+
+  @override
+  String get monthAugust => 'agosto';
+
+  @override
+  String get monthSeptember => 'septiembre';
+
+  @override
+  String get monthOctober => 'octubre';
+
+  @override
+  String get monthNovember => 'noviembre';
+
+  @override
+  String get monthDecember => 'diciembre';
+
+  @override
+  String monthYearFormat(Object month, Object year) {
+    return '$month de $year';
+  }
 }

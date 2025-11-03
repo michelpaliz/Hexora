@@ -1184,8 +1184,23 @@
   "roleAdministrator": "Administrator",
   "roleCoAdministrator": "Co-Administrator",
   "roleGuest": "Guest",
-  "viewMembers": "View members"
-
+  "viewMembers": "View members",
+  "monthJanuary": "January",
+  "monthFebruary": "February",
+  "monthMarch": "March",
+  "monthApril": "April",
+  "monthMay": "May",
+  "monthJune": "June",
+  "monthJuly": "July",
+  "monthAugust": "August",
+  "monthSeptember": "September",
+  "monthOctober": "October",
+  "monthNovember": "November",
+  "monthDecember": "December",
+  "monthYearFormat": "{month} {year}",
+  "@monthYearFormat": {
+    "placeholders": { "month": {}, "year": {} }
+  }
 }
 
 

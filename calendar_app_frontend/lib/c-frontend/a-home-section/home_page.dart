@@ -5,8 +5,8 @@ import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_service.dart'
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/notification/domain/socket_notification_listener.dart';
-import 'package:hexora/c-frontend/a-home-section/widgets/change_view_raw.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_screen/group_section.dart';
+import 'package:hexora/c-frontend/a-home-section/widgets/see_all_groups_button.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_screen/group_list_section.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/motivational_phrase/motivation_banner.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/e-drawer-style-menu/main_scaffold.dart';
@@ -76,7 +76,8 @@ class _HomePageState extends State<HomePage> {
           SliverToBoxAdapter(child: GreetingCard(user: user)),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
           SliverToBoxAdapter(
-              child: SectionHeader(title: loc.motivationSectionTitle)),
+            child: SectionHeader(title: loc.motivationSectionTitle),
+          ),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
           const SliverToBoxAdapter(
             child: Padding(
@@ -85,14 +86,38 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+          // ── Groups header (no info widget) ─────────────────────────────────
           SliverToBoxAdapter(
-              child: SectionHeader(title: loc.groupSectionTitle)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SectionHeader(title: loc.groupSectionTitle),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 6)),
+
+          // ── "See all" right-aligned below header ───────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: const [
+                  Spacer(),
+                  SeeAllGroupsButton(),
+                ],
+              ),
+            ),
+          ),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
-          const SliverToBoxAdapter(child: ChangeViewRow()),
+
+          // ── Groups preview (only 5) ───────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(top: 12, bottom: 24),
-              child: GroupListSection(),
+              child: GroupListSection(
+                maxItems: 5, // preview only
+                fullPage: false,
+              ),
             ),
           ),
         ],

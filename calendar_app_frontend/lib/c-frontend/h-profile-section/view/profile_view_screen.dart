@@ -16,13 +16,22 @@ class ProfileViewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+
     final user = context.watch<UserDomain>().user;
     if (user == null) {
       return MainScaffold(
-          showAppBar: false, body: Center(child: Text(loc.noUserLoaded)));
+        showAppBar: false,
+        body: Center(
+          child: Text(
+            loc.noUserLoaded,
+            style: textTheme.bodyMedium,
+          ),
+        ),
+      );
     }
 
-    final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final headerColor = isDark ? AppDarkColors.primary : AppColors.primary;
 
@@ -32,23 +41,25 @@ class ProfileViewScreen extends StatelessWidget {
 
     void copyToClipboard(String text, String toast) {
       Clipboard.setData(ClipboardData(text: text));
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(toast)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(toast, style: textTheme.bodyMedium)),
+      );
     }
 
-    void comingSoon() => ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(loc.comingSoon)));
+    void comingSoon() => ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(loc.comingSoon, style: textTheme.bodyMedium)),
+        );
 
     return MainScaffold(
       showAppBar: false,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics()),
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
-          // Header (no edit icon anymore; edit comes from contextual FAB)
+          // Header
           SliverToBoxAdapter(
             child: ProfileHeaderSection(
-              // title: loc.details,
               headerColor: headerColor,
               user: user,
               onCopyEmail: () =>
@@ -86,7 +97,7 @@ class ProfileViewScreen extends StatelessWidget {
             ),
           ),
 
-          // Optional small bottom spacer so the last tile isn't tight to the bottom
+          // Bottom spacing
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
           const SliverToBoxAdapter(
             child: SafeArea(top: false, child: SizedBox(height: 8)),

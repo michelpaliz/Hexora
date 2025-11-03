@@ -1,29 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
-Widget buildScheduleMonthHeader(ScheduleViewMonthHeaderDetails details) {
+Widget buildScheduleMonthHeader(
+  BuildContext context,
+  ScheduleViewMonthHeaderDetails details, [
+  double height = 160,
+]) {
+  final l = AppLocalizations.of(context)!;
+
+  // Get localized month name from ARB
+  final months = [
+    l.monthJanuary,
+    l.monthFebruary,
+    l.monthMarch,
+    l.monthApril,
+    l.monthMay,
+    l.monthJune,
+    l.monthJuly,
+    l.monthAugust,
+    l.monthSeptember,
+    l.monthOctober,
+    l.monthNovember,
+    l.monthDecember,
+  ];
+  final monthName = months[details.date.month - 1];
+  final monthLabel =
+      l.monthYearFormat( monthName, '${details.date.year}');
+
   final imageAsset = _getImageForMonth(details.date.month);
 
   return Container(
-    height: 100,
+    height: height,
     width: double.infinity,
     decoration: BoxDecoration(
       image: DecorationImage(
         image: AssetImage(imageAsset),
         fit: BoxFit.cover,
+        alignment: Alignment.center,
         colorFilter: ColorFilter.mode(
           Colors.black.withOpacity(0.4),
           BlendMode.darken,
         ),
       ),
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
     ),
-    alignment: Alignment.centerLeft,
-    padding: const EdgeInsets.symmetric(horizontal: 16),
+    alignment: Alignment.bottomLeft,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     child: Text(
-      _getFormattedMonth(details.date),
+      monthLabel,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: FontWeight.bold,
       ),
     ),
@@ -46,22 +74,4 @@ String _getImageForMonth(int month) {
     12: 'assets/images/months/december.png',
   };
   return images[month] ?? 'assets/images/default.png';
-}
-
-String _getFormattedMonth(DateTime date) {
-  const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December'
-  ];
-  return '${monthNames[date.month - 1]} ${date.year}';
 }

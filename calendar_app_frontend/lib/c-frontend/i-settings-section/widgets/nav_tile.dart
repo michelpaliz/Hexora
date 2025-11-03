@@ -1,41 +1,75 @@
+// lib/c-frontend/i-settings-section/widgets/nav_tile.dart
 import 'package:flutter/material.dart';
 
 class NavTile extends StatelessWidget {
-  final Widget leading;
-  final String title;
-  final String? subtitle;
-  final VoidCallback onTap;
-  final bool danger;
-
   const NavTile({
     super.key,
     required this.leading,
     required this.title,
     this.subtitle,
-    required this.onTap,
+    this.onTap,
     this.danger = false,
   });
 
+  final Widget leading;
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final bool danger;
+
   @override
   Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
-    return ListTile(
-      leading: leading,
-      title: Text(
-        title,
-        style: tt.titleMedium?.copyWith(
-          color: danger ? cs.error : cs.onSurface,
-          fontWeight: danger ? FontWeight.w700 : null,
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final bodyM = theme.textTheme.bodyMedium!;
+    final bodyS = theme.textTheme.bodySmall!;
+
+    final titleStyle = bodyM.copyWith(
+      fontWeight: FontWeight.w700,
+      color: danger ? cs.error : cs.onSurface,
+    );
+
+    final subtitleStyle = bodyS.copyWith(
+      color: danger ? cs.error : cs.onSurfaceVariant,
+      fontWeight: FontWeight.w500,
+    );
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          children: [
+            leading,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title (bodyMedium)
+                  Text(title,
+                      style: titleStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    // Subtitle (bodySmall)
+                    Text(
+                      subtitle!,
+                      style: subtitleStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+          ],
         ),
       ),
-      subtitle: (subtitle == null || subtitle!.isEmpty)
-          ? null
-          : Text(subtitle!, style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-      trailing: const Icon(Icons.chevron_right_rounded),
-      onTap: onTap,
-      visualDensity: const VisualDensity(vertical: -1),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
     );
   }
 }

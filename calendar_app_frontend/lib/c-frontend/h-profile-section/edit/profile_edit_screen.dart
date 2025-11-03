@@ -1,20 +1,21 @@
-// lib/c-frontend/b-calendar-section/screens/profile/profile_screen.dart
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:hexora/b-backend/blobUploader/blobServer.dart';
-import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_provider.dart';
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/blobUploader/blobServer.dart';
+import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/c-frontend/utils/user_avatar.dart';
 import 'package:hexora/e-drawer-style-menu/main_scaffold.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+
+import 'widgets/labeled_field.dart';
+import 'widgets/profile_header.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -25,6 +26,7 @@ class ProfileEditScreen extends StatefulWidget {
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _nameCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   bool _saving = false;
 
   @override
@@ -34,6 +36,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     if (user != null) {
       _nameCtrl.text = user.name;
       _usernameCtrl.text = user.userName;
+      _emailCtrl.text = user.email;
     }
   }
 
@@ -41,6 +44,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _usernameCtrl.dispose();
+    _emailCtrl.dispose();
     super.dispose();
   }
 
@@ -82,8 +86,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       if (commitResp.statusCode != 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text('${loc.failedToSavePhoto}: ${commitResp.statusCode}')),
+            content: Text('${loc.failedToSavePhoto}: ${commitResp.statusCode}'),
+          ),
         );
         return;
       }
@@ -122,15 +126,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       );
       final ok = await userDomain.updateUser(updated);
       if (!mounted) return;
-      if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(loc.profileSaved)),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(loc.failedToSaveProfile)),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(ok ? loc.profileSaved : loc.failedToSaveProfile)),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,72 +144,108 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
     final user = context.watch<UserDomain>().user;
-    final textColor = ThemeColors.getTextColor(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg =
-        ThemeColors.getCardBackgroundColor(context).withOpacity(0.95);
 
     if (user == null) {
-      // Keep a minimal fallback, but still use MainScaffold to avoid back button.
       return MainScaffold(
         showAppBar: false,
         body: Center(child: Text(loc.noUserLoaded)),
       );
     }
 
+    final t = Theme.of(context).textTheme;
+
+    final cardBg =
+        ThemeColors.getCardBackgroundColor(context).withOpacity(0.98);
+    final cardShadow = ThemeColors.getCardShadowColor(context);
+    final buttonBg = ThemeColors.getButtonBackgroundColor(context);
+    final buttonText = ThemeColors.getButtonTextColor(context);
+
     return MainScaffold(
-      showAppBar:
-          false, // ← matches AgendaScreen: no back button, uses drawer shell
+      showAppBar: false,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics()),
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
+          // small, consistent top inset so it doesn't eat too much vertical space
+          const SliverToBoxAdapter(
+            child:
+                SafeArea(top: true, bottom: false, child: SizedBox(height: 8)),
+          ),
+
+          // Header
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: ProfileHeader(
                 title: loc.profile,
                 subtitle: user.email,
-                // If you prefer a greeting, flip to: '${loc.hi} ${user.name}'
               ),
             ),
           ),
+
+          // Avatar + camera action
           SliverToBoxAdapter(
-            child: Center(
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  UserAvatar(
-                    user: user,
-                    fetchReadSas: (_) async =>
-                        null, // public avatars: no SAS needed
-                    radius: 48,
-                  ),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _changePhoto,
-                      borderRadius: BorderRadius.circular(24),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppDarkColors.primary
-                              : AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.camera_alt_rounded,
-                            color: Colors.white),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Center(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    // subtle elevated ring behind avatar for a more modern look
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: cardShadow,
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: UserAvatar(
+                        user: user,
+                        fetchReadSas: (_) async => null,
+                        radius: 52,
                       ),
                     ),
-                  ),
-                ],
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: Material(
+                        color: Colors.transparent,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: _changePhoto,
+                          customBorder: const CircleBorder(),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: buttonBg,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: cardShadow,
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Icon(Icons.camera_alt_rounded,
+                                color: buttonText, size: 20),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-          // Info card section
+          // Form card
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -218,28 +253,37 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 decoration: BoxDecoration(
                   color: cardBg,
                   borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cardShadow,
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _LabeledField(
-                      label: loc.displayName,
-                      controller: _nameCtrl,
-                      textColor: textColor,
+                    // Section label — subtle
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        loc.details,
+                        style:
+                            t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    _LabeledField(
-                      label: loc.username,
-                      controller: _usernameCtrl,
-                      textColor: textColor,
-                    ),
+
+                    LabeledField(label: loc.displayName, controller: _nameCtrl),
                     const SizedBox(height: 12),
-                    _LabeledField(
-                      label: loc.email,
-                      controller: TextEditingController(text: user.email),
-                      textColor: textColor,
-                      enabled: false,
-                    ),
+                    LabeledField(
+                        label: loc.username, controller: _usernameCtrl),
+                    const SizedBox(height: 12),
+                    LabeledField(
+                        label: loc.email,
+                        controller: _emailCtrl,
+                        enabled: false),
                   ],
                 ),
               ),
@@ -248,39 +292,47 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-          // Save button
+          // Save CTA
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: _saving ? null : _saveProfile,
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.save_rounded),
-                  label: Text(_saving ? loc.saving : loc.save),
-                  style: ButtonStyle(
-                    backgroundColor:
-                        MaterialStateProperty.resolveWith<Color>((states) {
-                      if (_saving) {
-                        return (isDark
-                                ? AppDarkColors.secondary
-                                : AppColors.secondary)
-                            .withOpacity(0.6);
-                      }
-                      return isDark ? AppDarkColors.primary : AppColors.primary;
-                    }),
-                    foregroundColor:
-                        MaterialStateProperty.all<Color>(Colors.white),
-                    shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                      RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _saving ? null : _saveProfile,
+                    icon: _saving
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: buttonText,
+                            ),
+                          )
+                        : Icon(Icons.save_rounded, color: buttonText),
+                    label: Text(
+                      _saving ? loc.saving : loc.save,
+                      style: t.labelLarge?.copyWith(
+                          color: buttonText, fontWeight: FontWeight.w700),
+                    ),
+                    style: ButtonStyle(
+                      backgroundColor:
+                          MaterialStateProperty.resolveWith((states) {
+                        if (_saving) {
+                          // Slightly dim when saving
+                          return ThemeColors.getButtonBackgroundColor(context,
+                                  isSecondary: true)
+                              .withOpacity(0.7);
+                        }
+                        return buttonBg;
+                      }),
+                      shape: MaterialStateProperty.all(
+                        RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      elevation: MaterialStateProperty.all(2),
                     ),
                   ),
                 ),
@@ -291,61 +343,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
-    );
-  }
-}
-
-class ProfileHeader extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  const ProfileHeader({super.key, required this.title, this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final onSurfaceVar = theme.colorScheme.onSurfaceVariant;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: theme.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.w700)),
-        if (subtitle != null) ...[
-          const SizedBox(height: 4),
-          Text(subtitle!,
-              style: theme.textTheme.bodyMedium?.copyWith(color: onSurfaceVar)),
-        ],
-      ],
-    );
-  }
-}
-
-class _LabeledField extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final Color textColor;
-  final bool enabled;
-
-  const _LabeledField({
-    required this.label,
-    required this.controller,
-    required this.textColor,
-    this.enabled = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      enabled: enabled,
-      decoration: InputDecoration(
-        labelText: label,
-        floatingLabelBehavior: FloatingLabelBehavior.auto,
-        filled: true,
-        fillColor: ThemeColors.getLighterInputFillColor(context),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      style: TextStyle(color: textColor),
     );
   }
 }

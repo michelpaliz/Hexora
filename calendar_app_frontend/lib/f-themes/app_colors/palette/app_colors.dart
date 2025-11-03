@@ -18,6 +18,7 @@ class AppColors {
   // ✍️ Text & icons
   static const Color textPrimary = Color(0xFF1B1F23);
   static const Color textSecondary = Color(0xFF6C757D);
+
   static const Color icon = primary;
 
   // Utility

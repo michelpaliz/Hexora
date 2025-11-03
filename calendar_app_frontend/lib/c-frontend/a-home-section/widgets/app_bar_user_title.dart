@@ -13,7 +13,7 @@ class AppBarUserTitle extends StatelessWidget {
     final name = user.name.isNotEmpty ? user.name : user.userName;
 
     // ✅ use mediumBody (bodyMedium) only, adjust weight/color — no custom font sizes
-    final mediumBody = Theme.of(context).textTheme.bodyMedium!;
+    final mediumBody = Theme.of(context).textTheme.titleMedium!;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return InkWell(

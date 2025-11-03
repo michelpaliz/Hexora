@@ -141,13 +141,23 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
     final outer = WorkVisitStyle.outerPadding;
 // sectionGap is a SizedBox; its height is double?
     final runGap = WorkVisitStyle.sectionGap.height ?? 0.0; // <-- fix
-
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
+        // title: Text(
+        //   l.event,
+        //   style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+        // ),
+        automaticallyImplyLeading: Navigator.of(context).canPop(),
         title: Text(
-          l.event,
-          style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+          l.editEvent,
+
+          // use Typo bodySmall as requested, bolded for prominence
+          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
+        iconTheme: IconThemeData(color: cs.onSurface),
+        backgroundColor: cs.surface,
+        elevation: 0,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

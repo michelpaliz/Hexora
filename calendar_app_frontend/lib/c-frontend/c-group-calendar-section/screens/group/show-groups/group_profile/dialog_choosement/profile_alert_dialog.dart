@@ -19,30 +19,53 @@ void showProfileAlertDialog(
   bool? overridePermission,
 ]) {
   final user = currentUser ?? userDomain.user!;
-
-  // 👇 Get the role of the current user in this group
   final role = group.getRoleForUser(user);
-
-  // 👇 Determine if the user has permission to edit
   final hasPermission = overridePermission ?? role != 'Member';
-
-  // Update the role in external state (optional usage)
   updateRole(role);
 
-  showDialog(
+  showGeneralDialog(
     context: context,
-    builder: (context) {
-      return AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        content: ProfileDialogContent(group: group), // 👈 updated
-        actions: buildProfileDialogActions(
-          context,
-          group,
-          user,
-          hasPermission,
-          role,
-          userDomain,
-          groupDomain,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black54, // subtle dim
+    transitionDuration: const Duration(milliseconds: 260),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      // The actual dialog UI (kept the same)
+      return Center(
+        child: Material(
+          color: Colors.transparent,
+          child: AlertDialog(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            content: ProfileDialogContent(group: group),
+            actions: buildProfileDialogActions(
+              context,
+              group,
+              user,
+              hasPermission,
+              role,
+              userDomain,
+              groupDomain,
+            ),
+          ),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      // Slide from slightly below + fade
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.08), // start a bit lower
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
         ),
       );
     },

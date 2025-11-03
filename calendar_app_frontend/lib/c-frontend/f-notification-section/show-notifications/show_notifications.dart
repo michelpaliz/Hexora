@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/notification/notification_api_client.dart';
 import 'package:hexora/c-frontend/f-notification-section/enum/broad_category.dart';
@@ -53,19 +53,28 @@ class _ShowNotificationsState extends State<ShowNotifications> {
 
   Future<void> _confirmAndClearAll(AppLocalizations loc) async {
     if (_clearing) return;
+    final t = Theme.of(context).textTheme;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(loc.clearAll),
-        content: Text(loc.clearAllConfirm), // “Remove all notifications?”
+        title: Text(
+          loc.clearAll,
+          style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          loc.clearAllConfirm,
+          style: t.bodyMedium,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(loc.cancel),
+            child: Text(loc.cancel, style: t.labelLarge),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(loc.confirm),
+            child: Text(loc.confirm,
+                style: t.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -77,12 +86,13 @@ class _ShowNotificationsState extends State<ShowNotifications> {
         await _notificationViewModel.removeAllNotifications(widget.user);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(loc.clearedAllNotifications)),
+          SnackBar(
+              content: Text(loc.clearedAllNotifications, style: t.bodyMedium)),
         );
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${loc.error}: $e')),
+          SnackBar(content: Text('${loc.error}: $e', style: t.bodyMedium)),
         );
       } finally {
         if (mounted) setState(() => _clearing = false);
@@ -93,6 +103,7 @@ class _ShowNotificationsState extends State<ShowNotifications> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final t = Theme.of(context).textTheme;
 
     return MainScaffold(
       title: '', // we use titleWidget instead
@@ -100,9 +111,7 @@ class _ShowNotificationsState extends State<ShowNotifications> {
         children: [
           Text(
             loc.notifications,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           const Spacer(),
           Tooltip(
@@ -125,7 +134,12 @@ class _ShowNotificationsState extends State<ShowNotifications> {
         builder: (context, snapshot) {
           final notifications = snapshot.data ?? [];
           if (notifications.isEmpty) {
-            return Center(child: Text(loc.zeroNotifications));
+            return Center(
+              child: Text(
+                loc.zeroNotifications,
+                style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+              ),
+            );
           }
 
           final filtered = _selectedCategory == null
@@ -154,10 +168,8 @@ class _ShowNotificationsState extends State<ShowNotifications> {
                         padding: const EdgeInsets.all(16),
                         child: Text(
                           entry.key,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: t.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
                       ...entry.value.asMap().entries.map((e) {

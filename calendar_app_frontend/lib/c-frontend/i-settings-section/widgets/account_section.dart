@@ -1,3 +1,4 @@
+// lib/c-frontend/i-settings-section/widgets/account_section.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/i-settings-section/widgets/nav_tile.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -40,7 +41,7 @@ class AccountSection extends StatelessWidget {
           leading: Icon(Icons.logout_rounded, color: errorColor),
           title: l.logout,
           onTap: onLogout,
-          danger: true,
+          danger: true, // will color title/subtitle via NavTile
         ),
       ],
     );

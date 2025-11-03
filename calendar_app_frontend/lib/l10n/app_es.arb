@@ -1183,12 +1183,22 @@
   "roleAdministrator": "Administrador",
   "roleCoAdministrator": "Co-administrador",
   "roleGuest": "Invitado",
-  "viewMembers": "Ver miembros"
-
+  "viewMembers": "Ver miembros",
+  "monthJanuary": "enero",
+  "monthFebruary": "febrero",
+  "monthMarch": "marzo",
+  "monthApril": "abril",
+  "monthMay": "mayo",
+  "monthJune": "junio",
+  "monthJuly": "julio",
+  "monthAugust": "agosto",
+  "monthSeptember": "septiembre",
+  "monthOctober": "octubre",
+  "monthNovember": "noviembre",
+  "monthDecember": "diciembre",
+  "monthYearFormat": "{month} de {year}"
 
 }
-
-
 
 
 

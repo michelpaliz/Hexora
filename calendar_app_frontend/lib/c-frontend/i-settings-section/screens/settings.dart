@@ -5,9 +5,9 @@ import 'package:hexora/b-backend/auth_user/auth/exceptions/password_exceptions.d
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/section_header.dart';
 import 'package:hexora/c-frontend/i-settings-section/dialogs/change_password_dialog.dart';
 import 'package:hexora/c-frontend/i-settings-section/dialogs/change_username_dialog.dart';
-import 'package:hexora/c-frontend/i-settings-section/sections/account_section.dart';
-import 'package:hexora/c-frontend/i-settings-section/sections/preferences_section.dart';
-import 'package:hexora/c-frontend/i-settings-section/sheets/language_sheet.dart';
+import 'package:hexora/c-frontend/i-settings-section/widgets/account_section.dart';
+import 'package:hexora/c-frontend/i-settings-section/widgets/language_sheet.dart';
+import 'package:hexora/c-frontend/i-settings-section/widgets/preferences_section.dart';
 import 'package:hexora/c-frontend/i-settings-section/widgets/section_card.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
@@ -97,23 +97,39 @@ class _SettingsState extends State<Settings> {
 
   void _confirmLogout() {
     final l = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final bodyM = theme.textTheme.bodyMedium!;
+    final bodyS = theme.textTheme.bodySmall!;
+    final cs = theme.colorScheme;
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(l.logoutConfirmTitle),
-        content: Text(l.logoutConfirmMessage),
+        title: Text(
+          l.logoutConfirmTitle,
+          style:
+              bodyM.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+        ),
+        content: Text(
+          l.logoutConfirmMessage,
+          style: bodyS.copyWith(color: cs.onSurfaceVariant),
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context), child: Text(l.cancel)),
+            onPressed: () => Navigator.pop(context),
+            child: Text(l.cancel,
+                style: bodyM.copyWith(fontWeight: FontWeight.w600)),
+          ),
           FilledButton.tonal(
             style: FilledButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: cs.error, // keeps destructive feel
             ),
             onPressed: () async {
               Navigator.pop(context);
               await _logout();
             },
-            child: Text(l.logout),
+            child: Text(l.logout,
+                style: bodyM.copyWith(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -135,7 +151,11 @@ class _SettingsState extends State<Settings> {
   void _openLanguageSheet() => showLanguageSheet(context);
 
   void _snack(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    final theme = Theme.of(context);
+    final bodyS = theme.textTheme.bodySmall!;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text, style: bodyS)),
+    );
   }
 
   // ===== UI =====
@@ -143,17 +163,25 @@ class _SettingsState extends State<Settings> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final bodyM = theme.textTheme.bodyMedium!;
+    final bodyS = theme.textTheme.bodySmall!;
+    final isDark = theme.brightness == Brightness.dark;
     final bg = isDark ? AppDarkColors.background : AppColors.background;
 
     return Consumer<ThemeModeProvider>(
-      // ⬅️ changed type
       builder: (_, themeModeProv, __) => Scaffold(
-        appBar: AppBar(title: Text(loc.settings)),
+        appBar: AppBar(
+          title: Text(
+            loc.settings,
+            style: bodyM.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
         backgroundColor: bg,
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
+            // Section headers are their own widgets, but keep them aligned via bodyM in that widget.
             SectionHeader(title: loc.accountSectionTitle),
             SectionCard(
               child: AccountSection(
@@ -178,7 +206,6 @@ class _SettingsState extends State<Settings> {
             SectionHeader(title: loc.preferencesSectionTitle),
             SectionCard(
               child: PreferencesSection(
-                // ⬇️ now reads ThemeMode instead of ThemeData
                 isDark: themeModeProv.mode == ThemeMode.dark,
                 onToggleDark: () => themeModeProv.toggleLightDark(),
                 languageName: _languageName(context),
@@ -188,8 +215,7 @@ class _SettingsState extends State<Settings> {
             const SizedBox(height: 24),
             Text(
               '${loc.appVersionLabel}: $_appVersion',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: bodyS.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ],
         ),
