@@ -8,7 +8,7 @@ class ServiceListItem extends StatelessWidget {
   final Service service;
   final VoidCallback? onTap;
 
-  /// Typography (from Typo)
+  /// Typography (injected)
   final TextStyle nameStyle;
   final TextStyle metaStyle;
 
@@ -95,12 +95,15 @@ class _ServiceDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = _hexToColorOrNull(colorHex) ??
-        Theme.of(context).colorScheme.onSurface.withOpacity(0.2);
+    final cs = Theme.of(context).colorScheme;
+    final Color bg = _hexToColorOrNull(colorHex) ?? cs.secondaryContainer;
+    final Color fg = ThemeColors.contrastOn(bg);
+
     return CircleAvatar(
-        radius: 20,
-        backgroundColor: c,
-        child: const Icon(Icons.design_services_outlined, size: 18));
+      radius: 20,
+      backgroundColor: bg,
+      child: Icon(Icons.design_services_outlined, size: 18, color: fg),
+    );
   }
 
   // Supports #rgb and #rrggbb
@@ -123,31 +126,31 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final typo = AppTypography.of(context);
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
-    // Warm, modern hues (match Clients)
-    final Color bg = active ? const Color(0xFFE07A5F) : const Color(0xFFE63946);
-    final Color fg = ThemeColors.getContrastTextColorForBackground(bg);
-    final String label = active ? l.active : l.inactive;
+    // Theme-driven containers instead of hard-coded hex
+    final Color bg = active ? cs.secondaryContainer : cs.errorContainer;
+    final Color fg = active ? cs.onSecondaryContainer : cs.onErrorContainer;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.black.withOpacity(0.06)),
+        border:
+            Border.all(color: cs.outlineVariant.withOpacity(0.25), width: 1),
         boxShadow: [
-          if (active)
-            BoxShadow(
-              color: bg.withOpacity(0.22),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
+          BoxShadow(
+            color: ThemeColors.chipGlow(context, bg),
+            blurRadius: active ? 8 : 4,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
       child: Text(
-        label,
-        style: typo.bodySmall.copyWith(
+        active ? l.active : l.inactive,
+        style: t.bodySmall.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
           letterSpacing: .2,

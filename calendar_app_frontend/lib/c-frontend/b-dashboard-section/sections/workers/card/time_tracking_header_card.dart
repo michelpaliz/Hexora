@@ -23,19 +23,36 @@ class TimeTrackingHeaderCard extends StatelessWidget {
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
 
+    final cardBg = ThemeColors.cardBg(context);
+    final onCard = ThemeColors.textPrimary(context);
+
     return Card(
-      color: ThemeColors.getListTileBackgroundColor(context),
+      color: cardBg,
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: cs.outlineVariant.withOpacity(0.25), width: 1),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l.trackHoursFor(groupName),
-                style: t.titleLarge.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              l.trackHoursFor(groupName),
+              style: t.titleLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: onCard,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               l.timeTrackingHeaderHint,
-              style: t.bodySmall.copyWith(color: cs.onSurface.withOpacity(0.7)),
+              style: t.bodySmall.copyWith(
+                color: onCard.withOpacity(0.7),
+                height: 1.35,
+              ),
             ),
             const SizedBox(height: 12),
             Wrap(

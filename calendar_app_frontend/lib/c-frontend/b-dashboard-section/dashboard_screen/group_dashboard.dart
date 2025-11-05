@@ -48,7 +48,7 @@ class _GroupDashboardState extends State<GroupDashboard> {
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
 
-    // typography hierarchy (one place to tweak if needed)
+    // typography hierarchy
     final sectionTitleStyle = t.bodyLarge.copyWith(fontWeight: FontWeight.w800);
     final tileTitleStyle = t.accentText.copyWith(fontWeight: FontWeight.w600);
     final tileSubtitleStyle = t.bodySmall;
@@ -57,9 +57,10 @@ class _GroupDashboardState extends State<GroupDashboard> {
     final fallbackMembers = group.userIds.length;
     final showMembers = _counts?.accepted ?? fallbackMembers;
 
+    final tileBg = ThemeColors.listTileBg(context);
+
     return Scaffold(
       appBar: AppBar(
-        // Keep app bar prominent
         title: Text(l.dashboardTitle, style: t.titleLarge),
       ),
       body: RefreshIndicator(
@@ -69,7 +70,7 @@ class _GroupDashboardState extends State<GroupDashboard> {
           children: [
             _SectionHeader(title: l.sectionOverview, style: sectionTitleStyle),
 
-            // ✅ Header shows automatically, no navigation/tap
+            // Header
             GroupHeaderView(group: group),
 
             const SizedBox(height: 20),
@@ -80,10 +81,9 @@ class _GroupDashboardState extends State<GroupDashboard> {
             _SectionHeader(title: l.sectionManage, style: sectionTitleStyle),
 
             Card(
-              color: ThemeColors.getListTileBackgroundColor(context),
+              color: tileBg,
               child: ListTile(
                 leading: const Icon(Icons.group_outlined),
-                // ↓ inner tile titles are now smaller
                 title: Text(l.membersTitle, style: tileTitleStyle),
                 subtitle: Text(
                   '${NumberFormat.decimalPattern(l.localeName).format(showMembers)} ${l.membersTitle.toLowerCase()}',
@@ -100,7 +100,7 @@ class _GroupDashboardState extends State<GroupDashboard> {
             ),
             const SizedBox(height: 8),
             Card(
-              color: ThemeColors.getListTileBackgroundColor(context),
+              color: tileBg,
               child: ListTile(
                 leading: const Icon(Icons.design_services_outlined),
                 title: Text(l.servicesClientsTitle, style: tileTitleStyle),
@@ -119,7 +119,7 @@ class _GroupDashboardState extends State<GroupDashboard> {
             const SizedBox(height: 8),
             _SectionHeader(title: l.sectionInsights, style: sectionTitleStyle),
             Card(
-              color: ThemeColors.getListTileBackgroundColor(context),
+              color: tileBg,
               child: ListTile(
                 leading: const Icon(Icons.insights_outlined),
                 title: Text(l.insightsTitle, style: tileTitleStyle),
@@ -138,25 +138,24 @@ class _GroupDashboardState extends State<GroupDashboard> {
             if (!group.hasCalendar) ...[
               _SectionHeader(title: l.sectionStatus, style: sectionTitleStyle),
               Card(
-                color: cs.errorContainer.withOpacity(0.15),
+                color: cs.errorContainer,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Text(
                     l.noCalendarWarning,
-                    style: t.bodyMedium.copyWith(color: cs.error),
+                    style: t.bodyMedium.copyWith(color: cs.onErrorContainer),
                   ),
                 ),
               ),
             ],
 
             const SizedBox(height: 20),
-            // ⬇️ Workers Hours section
             _SectionHeader(
               title: l.sectionWorkersHours,
               style: sectionTitleStyle,
             ),
             Card(
-              color: ThemeColors.getListTileBackgroundColor(context),
+              color: tileBg,
               child: ListTile(
                 leading: const Icon(Icons.access_time_rounded),
                 title: Text(l.timeTrackingTitle, style: tileTitleStyle),
@@ -214,7 +213,6 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            // keep sections clearly above inner tiles
             style:
                 (style ?? t.titleLarge).copyWith(fontWeight: FontWeight.w800),
           ),
@@ -223,7 +221,7 @@ class _SectionHeader extends StatelessWidget {
             child: Divider(
               height: 1,
               thickness: 1,
-              color: cs.onSurface.withOpacity(0.08),
+              color: cs.outlineVariant.withOpacity(0.25),
             ),
           ),
         ],

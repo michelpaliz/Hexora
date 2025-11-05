@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
+// Add near the top of the file
+import 'dart:ui' as ui;
 
 import 'package:hexora/a-models/group_model/worker/timeEntry.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
@@ -7,6 +9,11 @@ import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
 import 'i_time_tracking_api_client.dart';
+
+String _detectLang() {
+  final code = ui.PlatformDispatcher.instance.locale.languageCode.toLowerCase();
+  return code == 'es' ? 'es' : 'en';
+}
 
 // Implements repository, wraps APi client
 class TimeTrackingApiClient implements ITimeTrackingApiClient {
@@ -121,13 +128,29 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
     return TimeEntry.fromJson(map);
   }
 
-  @override
-  Future<Uint8List> exportExcel(String groupId, String token) async {
-    final uri = Uri.parse('$_root${_ttPath(groupId)}/export');
+  // @override
+  // Future<Uint8List> exportExcel(String groupId, String token) async {
+  //   final uri = Uri.parse('$_root${_ttPath(groupId)}/export');
+  //   final res = await _client.get(uri, headers: _headers(token, json: false));
+  //   if (res.statusCode == 200) {
+  //     return res.bodyBytes;
+  //   }
+  //   throw Exception('Failed to export Excel: ${res.statusCode} ${res.body}');
+  // }
+
+  Future<Uint8List> exportExcel(String groupId, String token,
+      {String? lang}) async {
+    final qp = <String, String>{'lang': (lang ?? _detectLang())};
+
+    final uri = Uri.parse('$_root${_ttPath(groupId)}/export')
+        .replace(queryParameters: qp);
+
     final res = await _client.get(uri, headers: _headers(token, json: false));
+
     if (res.statusCode == 200) {
       return res.bodyBytes;
     }
+
     throw Exception('Failed to export Excel: ${res.statusCode} ${res.body}');
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -14,11 +15,15 @@ class GroupListSearchScaffoldBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chipBg =
-        ThemeColors.getCardBackgroundColor(context).withOpacity(0.98);
-    final shadow = ThemeColors.getCardShadowColor(context);
+    final t = AppTypography.of(context);
     final loc = AppLocalizations.of(context)!;
-    final query = controller.text.trim();
+    final cs = Theme.of(context).colorScheme;
+
+    final card = ThemeColors.cardBg(context);
+    final shadow = ThemeColors.cardShadow(context);
+    final onCard = ThemeColors.contrastOn(card);
+    final hintColor = onCard.withOpacity(0.6);
+    final iconColor = cs.secondary; // subtle brand accent
 
     return CustomScrollView(
       slivers: [
@@ -26,44 +31,65 @@ class GroupListSearchScaffoldBody extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Container(
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                color: chipBg,
-                borderRadius: BorderRadius.circular(12),
+                color: card,
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: shadow,
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 6),
                   ),
                 ],
+                border: Border.all(
+                  color: cs.outlineVariant.withOpacity(0.35),
+                  width: 1,
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  const Icon(Icons.search_rounded),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      onChanged: (_) => (context as Element).markNeedsBuild(),
-                      decoration: InputDecoration(
-                        hintText: loc.typeNameOrEmail,
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  if (query.isNotEmpty)
-                    IconButton(
-                      onPressed: () {
-                        controller.clear();
-                        (context as Element).markNeedsBuild();
-                      },
-                      icon: const Icon(Icons.close_rounded),
-                      tooltip:
-                          MaterialLocalizations.of(context).deleteButtonTooltip,
-                    ),
-                ],
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: AnimatedBuilder(
+                  animation: controller,
+                  builder: (context, _) {
+                    final hasQuery = controller.text.trim().isNotEmpty;
+                    return Row(
+                      children: [
+                        Icon(Icons.search_rounded, color: iconColor, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: controller,
+                            style: t.bodyLarge.copyWith(
+                              color: ThemeColors.textPrimary(context),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            cursorColor: cs.primary,
+                            decoration: InputDecoration(
+                              hintText: loc.typeNameOrEmail,
+                              hintStyle: t.bodyMedium.copyWith(
+                                color: hintColor,
+                              ),
+                              isDense: true,
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                        if (hasQuery)
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => controller.clear(),
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            color: onCard.withOpacity(0.8),
+                            tooltip: MaterialLocalizations.of(context)
+                                .deleteButtonTooltip,
+                          ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),

@@ -1,3 +1,4 @@
+// lib/c-frontend/c-group-calendar-section/utils/selected_users/filter_chips.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 
@@ -16,6 +17,11 @@ class FilterChips extends StatelessWidget {
   final Color pendingColor;
   final Color notAcceptedColor;
 
+  // NEW: optional counters (default 0)
+  final int countAccepted;
+  final int countPending;
+  final int countNotAccepted;
+
   const FilterChips({
     super.key,
     required this.showAccepted,
@@ -28,6 +34,9 @@ class FilterChips extends StatelessWidget {
     this.acceptedColor = const Color(0xFFE07A5F), // terracotta
     this.pendingColor = const Color(0xFFF2CC8F), // warm honey
     this.notAcceptedColor = const Color(0xFFE63946), // coral red
+    this.countAccepted = 0,
+    this.countPending = 0,
+    this.countNotAccepted = 0,
   });
 
   @override
@@ -41,6 +50,7 @@ class FilterChips extends StatelessWidget {
           label: acceptedText,
           selected: showAccepted,
           baseColor: acceptedColor,
+          count: countAccepted,
           onSelected: (v) => onFilterChange('Accepted', v),
         ),
         _buildChip(
@@ -48,6 +58,7 @@ class FilterChips extends StatelessWidget {
           label: pendingText,
           selected: showPending,
           baseColor: pendingColor,
+          count: countPending,
           onSelected: (v) => onFilterChange('Pending', v),
         ),
         _buildChip(
@@ -55,6 +66,7 @@ class FilterChips extends StatelessWidget {
           label: notAcceptedText,
           selected: showNotWantedToJoin,
           baseColor: notAcceptedColor,
+          count: countNotAccepted,
           onSelected: (v) => onFilterChange('NotAccepted', v),
         ),
       ],
@@ -66,6 +78,7 @@ class FilterChips extends StatelessWidget {
     required String label,
     required bool selected,
     required Color baseColor,
+    required int count,
     required ValueChanged<bool> onSelected,
   }) {
     final cs = Theme.of(context).colorScheme;
@@ -77,7 +90,14 @@ class FilterChips extends StatelessWidget {
     final borderUnselected = cs.outlineVariant.withOpacity(0.5);
     final fgUnselected = baseColor;
 
-    // ✅ Remove Material overlay entirely by disabling Ink effects.
+    final pillBgSelected = _onColor(bgSelected).withOpacity(0.12);
+    final pillBorderSelected = _onColor(bgSelected).withOpacity(0.18);
+    final pillTextSelected = _onColor(bgSelected);
+
+    final pillBgUnselected = baseColor.withOpacity(0.10);
+    final pillBorderUnselected = baseColor.withOpacity(0.20);
+    final pillTextUnselected = baseColor;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
@@ -108,14 +128,43 @@ class FilterChips extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           onTap: () => onSelected(!selected),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Text(
-              label,
-              style: typo.bodySmall.copyWith(
-                color: selected ? fgSelected : fgUnselected,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // label
+                Text(
+                  label,
+                  style: typo.bodySmall.copyWith(
+                    color: selected ? fgSelected : fgUnselected,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // count pill (inside the same chip)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: selected ? pillBgSelected : pillBgUnselected,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color:
+                          selected ? pillBorderSelected : pillBorderUnselected,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    count.toString(),
+                    style: typo.bodySmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: .2,
+                      color: selected ? pillTextSelected : pillTextUnselected,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

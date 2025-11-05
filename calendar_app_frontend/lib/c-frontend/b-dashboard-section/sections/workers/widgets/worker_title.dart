@@ -19,24 +19,45 @@ class WorkerTile extends StatelessWidget {
     final String tracked =
         totalMinutes == null ? '—' : _formatMinutes(totalMinutes, l.localeName);
 
+    final bg = ThemeColors.listTileBg(context);
+    final onBg = ThemeColors.textPrimary(context);
+
     return Card(
-      color: ThemeColors.getListTileBackgroundColor(context),
+      margin: EdgeInsets.zero,
+      color: bg,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: cs.outlineVariant.withOpacity(0.25), width: 1),
+      ),
       child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         leading: CircleAvatar(
-          backgroundColor: cs.surfaceVariant,
-          child: const Icon(Icons.person_outline),
+          backgroundColor: cs.secondary.withOpacity(0.12),
+          child: Icon(Icons.person_outline, color: cs.secondary),
         ),
         title: Text(
           worker.displayName ?? l.unknownWorker,
-          style: t.accentText.copyWith(fontWeight: FontWeight.w600),
+          style: t.bodyLarge.copyWith(
+            fontWeight: FontWeight.w700,
+            color: onBg,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
           totalMinutes == null ? l.noTrackedYet : l.trackedTotal(tracked),
-          style: t.bodySmall,
+          style: t.bodySmall.copyWith(
+            color: onBg.withOpacity(0.75),
+            height: 1.25,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-        trailing: const Icon(Icons.chevron_right_rounded),
+        trailing:
+            Icon(Icons.chevron_right_rounded, color: onBg.withOpacity(0.6)),
         onTap: () {
-          // Hook to a worker detail screen if you add one later.
+          // TODO: navigate to worker detail when available.
         },
       ),
     );
@@ -55,9 +76,5 @@ class WorkerTile extends StatelessWidget {
     final mins = d.inMinutes.remainder(60);
     final nf = NumberFormat.decimalPattern(locale);
     return '${nf.format(hours)}h ${nf.format(mins)}m';
-    // If you prefer HH:mm zero-padded, use:
-    // final hh = hours.toString().padLeft(2, '0');
-    // final mm = mins.toString().padLeft(2, '0');
-    // return '$hh:$mm';
   }
 }

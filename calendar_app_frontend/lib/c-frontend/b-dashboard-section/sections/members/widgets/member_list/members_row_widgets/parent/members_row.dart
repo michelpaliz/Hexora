@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/auth_user/user/repository/i_user_repository.dart'; // interface
+import 'package:hexora/b-backend/auth_user/user/repository/i_user_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/members_ref.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/member_list/members_row_widgets/children/badge_icon.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/member_list/members_row_widgets/children/role_chip.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/member_list/members_row_widgets/children/status_dot.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/member_list/members_row_widgets/parent/member_detail_sheet.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/tools_colors/card_surface.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -45,37 +46,63 @@ class MemberRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final userRepo = context.read<IUserRepository>(); // interface
+    final userRepo = context.read<IUserRepository>();
     final l = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final typo = AppTypography.of(context); // ✅ Typo font
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+
+    final onCard = CardSurface.onBg(context);
+    final onCardSecondary = CardSurface.onBgSecondary(context);
 
     return FutureBuilder<User>(
       future: userRepo.getUserBySelector(ref.username),
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const ListTile(
-            leading: CircleAvatar(
+          return ListTile(
+            dense: true,
+            visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+            minLeadingWidth: 0,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            leading: const CircleAvatar(
+              radius: 16,
               child: SizedBox(
-                width: 16,
-                height: 16,
+                width: 14,
+                height: 14,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
-            title: SizedBox(height: 14, child: LinearProgressIndicator()),
+            title: SizedBox(
+              height: 10,
+              child: LinearProgressIndicator(
+                color: onCardSecondary,
+                backgroundColor: onCardSecondary.withOpacity(0.15),
+              ),
+            ),
           );
         }
         if (snap.hasError || !snap.hasData) {
           return ListTile(
-            leading: const Icon(Icons.error_outline),
+            dense: true,
+            visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+            minLeadingWidth: 0,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            leading:
+                Icon(Icons.error_outline, size: 18, color: onCardSecondary),
             title: Text(
               ref.username,
-              style: typo.bodyMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: typo.bodySmall
+                  .copyWith(color: onCard, fontWeight: FontWeight.w600),
             ),
             subtitle: Text(
               l.errorLoadingUser('${snap.error ?? 'Unknown error'}'),
-              style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  typo.bodySmall.copyWith(color: onCardSecondary, fontSize: 11),
             ),
           );
         }
@@ -86,6 +113,11 @@ class MemberRow extends StatelessWidget {
         final titleText = (user.name.isNotEmpty ? user.name : user.userName);
 
         return ListTile(
+          dense: true,
+          visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+          minLeadingWidth: 0,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           onTap: () => showMemberDetailSheet(
             context: context,
             user: user,
@@ -97,12 +129,19 @@ class MemberRow extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               CircleAvatar(
+                radius: 16, // smaller avatar
                 backgroundImage:
                     (user.photoUrl != null && user.photoUrl!.isNotEmpty)
                         ? NetworkImage(user.photoUrl!)
                         : null,
                 child: (user.photoUrl == null || user.photoUrl!.isEmpty)
-                    ? Text(_initials(titleText), style: typo.bodySmall)
+                    ? Text(
+                        _initials(titleText),
+                        style: typo.bodySmall.copyWith(
+                            color: onCard,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      )
                     : null,
               ),
               if (isOwner || isAdmin)
@@ -127,11 +166,13 @@ class MemberRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: (isOwner
-                      ? typo.bodySmall.copyWith(fontWeight: FontWeight.w800)
-                      : typo.bodySmall),
+                          ? typo.bodySmall.copyWith(fontWeight: FontWeight.w800)
+                          : typo.bodySmall
+                              .copyWith(fontWeight: FontWeight.w600))
+                      .copyWith(color: onCard, height: 1.0),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               if (showRoleChip && !isOwner && !isAdmin)
                 RoleChip(
                   label: _isMemberRole(ref.role) ? l.roleMember : ref.role,
@@ -140,29 +181,37 @@ class MemberRow extends StatelessWidget {
                 ),
             ],
           ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Row(
-              children: [
-                if (!isOwner) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: StatusDot(token: ref.statusToken),
+          subtitle: (!isOwner)
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Row(
+                    children: [
+                      // keep the dot, make text very compact
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: StatusDot(token: ref.statusToken),
+                      ),
+                      Expanded(
+                        child: Text(
+                          _getStatusText(ref.statusToken, l),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: typo.bodySmall.copyWith(
+                            color: onCardSecondary,
+                            fontSize: 11,
+                            height: 1.0,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: Text(
-                      _getStatusText(ref.statusToken, l),
-                      style:
-                          typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+                )
+              : null,
+          trailing: Icon(
+            Icons.chevron_right,
+            size: 16,
+            color: onCardSecondary,
           ),
-          trailing: const Icon(Icons.chevron_right),
         );
       },
     );
@@ -182,7 +231,7 @@ class MemberRow extends StatelessWidget {
   String _initials(String text) {
     final t = text.trim();
     if (t.isEmpty) return '?';
-    final parts = t.split(RegExp(r'\\s+'));
+    final parts = t.split(RegExp(r'\s+'));
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return (parts.first[0] + parts.last[0]).toUpperCase();
   }

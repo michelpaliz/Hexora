@@ -1,9 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/form/group_description_field.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/form/group_image_section.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/form/group_name_field.dart';
-
 import 'package:hexora/f-themes/shape/solid/solid_header.dart';
-import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class EditGroupHeader extends StatelessWidget {
@@ -26,21 +25,40 @@ class EditGroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    // Only the top header (image area) has the solid color background.
+    // The form fields live on the normal page surface.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SolidHeader(height: 360), // background color behind everything
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GroupImageSection(
+        // Header area with solid color + image picker
+        Stack(
+          children: [
+            const SolidHeader(height: 150),
+            // Position your image section inside the header area
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+              child: GroupImageSection(
                 imageURL: imageURL,
                 selectedImage: selectedImage,
                 onPickImage: onPickImage,
               ),
-              const SizedBox(height: 15),
-              GroupNameField(groupName: groupName, onNameChange: onNameChange),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 15),
+
+        // Form fields on normal surface (no solid background)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GroupNameField(
+                groupName: groupName,
+                onNameChange: onNameChange,
+              ),
               GroupDescriptionField(
                 descriptionController: descriptionController,
               ),

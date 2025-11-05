@@ -1,13 +1,13 @@
-// lib/c-frontend/b-group-section/screens/edit-group/edit_group_bottom_nav.dart
-
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/form/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/form/bottom_nav_bar.dart';
 
 class EditGroupBottomNav extends StatelessWidget {
   final VoidCallback onUpdate;
 
-  const EditGroupBottomNav({Key? key, required this.onUpdate})
-    : super(key: key);
+  const EditGroupBottomNav({
+    Key? key,
+    required this.onUpdate,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

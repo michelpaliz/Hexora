@@ -89,11 +89,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     if (created != null && mounted) {
       setState(() => _clients.insert(0, created));
       final l = AppLocalizations.of(context)!;
-      final typo = AppTypography.of(context);
+      final t = AppTypography.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(l.clientCreatedWithName(created.name),
-                style: typo.bodySmall)),
+                style: t.bodySmall)),
       );
     }
   }
@@ -109,11 +109,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     if (created != null && mounted) {
       setState(() => _services.insert(0, created));
       final l = AppLocalizations.of(context)!;
-      final typo = AppTypography.of(context);
+      final t = AppTypography.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(l.serviceCreatedWithName(created.name),
-                style: typo.bodySmall)),
+                style: t.bodySmall)),
       );
     }
   }
@@ -137,11 +137,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         if (i != -1) _clients[i] = updated;
       });
       final l = AppLocalizations.of(context)!;
-      final typo = AppTypography.of(context);
+      final t = AppTypography.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(l.clientUpdatedWithName(updated.name),
-                style: typo.bodySmall)),
+                style: t.bodySmall)),
       );
     }
   }
@@ -164,26 +164,26 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         if (i != -1) _services[i] = updated;
       });
       final l = AppLocalizations.of(context)!;
-      final typo = AppTypography.of(context);
+      final t = AppTypography.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(l.serviceUpdatedWithName(updated.name),
-                style: typo.bodySmall)),
+                style: t.bodySmall)),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final typo = AppTypography.of(context); // ✅ Typo font
+    final t = AppTypography.of(context);
 
-    final primary = cs.primary;
-    final selectedText = ThemeColors.getContrastTextColor(context, primary);
-    final unselectedText = ThemeColors.getTextColor(context).withOpacity(0.7);
-    final trackBg = ThemeColors.getCardBackgroundColor(context);
+    final Color primary = cs.primary;
+    final Color selectedText = ThemeColors.contrastOn(primary);
+    final Color unselectedText =
+        ThemeColors.textPrimary(context).withOpacity(0.7);
+    final Color trackBg = ThemeColors.cardBg(context);
 
     // Optional: show counts in tab labels for quick context
     final clientsTabLabel = '${l.tabClients} · ${_clients.length}';
@@ -194,11 +194,9 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         automaticallyImplyLeading: Navigator.of(context).canPop(),
         title: Text(
           l.screenServicesClientsTitle,
-
-          // use Typo bodySmall as requested, bolded for prominence
-          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
+          style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
-        iconTheme: IconThemeData(color: cs.onSurface),
+        iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
         backgroundColor: cs.surface,
         elevation: 0,
         bottom: PreferredSize(
@@ -222,11 +220,14 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                 dividerColor: Colors.transparent,
                 labelColor: selectedText,
                 unselectedLabelColor: unselectedText,
-                // ✅ Typo font for tabs (use bodySmall instead of titleSmall)
-                labelStyle: typo.bodySmall
-                    .copyWith(fontWeight: FontWeight.w700, letterSpacing: .2),
-                unselectedLabelStyle: typo.bodySmall
-                    .copyWith(fontWeight: FontWeight.w600, letterSpacing: .2),
+                labelStyle: t.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .2,
+                ),
+                unselectedLabelStyle: t.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: .2,
+                ),
                 indicator: BoxDecoration(
                   color: primary,
                   borderRadius: BorderRadius.circular(10),
@@ -268,9 +269,10 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
               animation: _tab,
               builder: (_, __) => Text(
                 _tab.index == 0 ? l.addClient : l.addService,
-                // ✅ Typo bodySmall for CTA text
-                style: typo.bodySmall
-                    .copyWith(color: cs.onPrimary, fontWeight: FontWeight.w700),
+                style: t.bodySmall.copyWith(
+                  color: ThemeColors.contrastOn(cs.primary),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             onPressed: () =>

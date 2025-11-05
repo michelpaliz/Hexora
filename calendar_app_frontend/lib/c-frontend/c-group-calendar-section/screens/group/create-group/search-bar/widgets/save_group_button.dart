@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
-import 'package:hexora/f-themes/app_utilities/view-item-styles/button/button_styles.dart';
+import 'package:hexora/f-themes/app_colors/tools_colors/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../../../../../../b-backend/group_mng_flow/group/view_model/group_view_model.dart';
@@ -12,29 +13,25 @@ class SaveGroupButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = ThemeColors.getButtonBackgroundColor(context);
-    final contrastTextColor = ThemeColors.getContrastTextColorForBackground(
-      backgroundColor,
-    );
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    final bg = cs.primary;
+    final onBg = ThemeColors.contrastOn(bg);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: ButtonStyles.buttonWithIcon(
-        iconData: Icons.group_add,
-        label: AppLocalizations.of(context)!.saveGroup,
-        style: ButtonStyles.saucyButtonStyle(
-          defaultBackgroundColor: backgroundColor,
-          pressedBackgroundColor: ThemeColors.getContainerBackgroundColor(
-            context,
-          ),
-          textColor: contrastTextColor,
-          borderColor: contrastTextColor,
-          borderRadius: 12.0,
-          padding: 14.0,
-          fontSize: 17.0,
-          fontWeight: FontWeight.bold,
-        ),
+      child: ElevatedButton.icon(
         onPressed: controller.submitGroupFromUI,
+        icon: Icon(Icons.group_add, color: onBg, size: 20),
+        label: Text(
+          AppLocalizations.of(context)!.saveGroup,
+          style: t.buttonText.copyWith(color: onBg),
+        ),
+        style: ThemedButtons.button(
+          context,
+          variant: ButtonVariant.primary,
+        ),
       ),
     );
   }

@@ -1,32 +1,44 @@
+import 'package:flutter/material.dart';
 import 'package:hexora/e-drawer-style-menu/horizontal_drawer_nav.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
-import 'package:flutter/material.dart';
 
 class MyDrawer extends StatelessWidget {
+  const MyDrawer({super.key});
+
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final bg = ThemeColors.containerBg(context);
+
     return Drawer(
-      child: Container(
-        // ✅ Ensure full screen height using MediaQuery
-        height: MediaQuery.of(context).size.height,
-        color: ThemeColors.getLighterInputFillColor(context),
-        // child: SingleChildScrollView(
-        //   child: Column(
-        //     crossAxisAlignment: CrossAxisAlignment.start,
-        //     children: [
-        //       MyHeaderDrawer(),
-        //       MyDrawerList(context),
-        //     ],
-        //   ),
-        // ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: const [
-            // MyHeaderDrawer(),
-            // SizedBox(height: 8),
-            HorizontalDrawerNav(), // ⬅️ NEW horizontal 3-icon bar
-            // SizedBox(height: 12),
-          ],
+      backgroundColor: bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(16),
+          bottomRight: Radius.circular(16),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Container(
+          height: MediaQuery.of(context).size.height,
+          decoration: BoxDecoration(
+            color: bg,
+            border: Border(
+              right: BorderSide(
+                  color: cs.outlineVariant.withOpacity(0.35), width: 1),
+            ),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // If you re-enable header/list later, place them above/below this nav.
+              // MyHeaderDrawer(),
+              // SizedBox(height: 8),
+              HorizontalDrawerNav(), // ⬅️ horizontal 3-icon bar
+              // SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
     );

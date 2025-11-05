@@ -1,7 +1,9 @@
+// lib/widgets/group_name_field.dart
+import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/app_utilities/view-item-styles/text_field/flexible/custom_editable_text_field.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:flutter/material.dart';
 
 class GroupNameField extends StatelessWidget {
   final String groupName;
@@ -15,35 +17,40 @@ class GroupNameField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
     final loc = AppLocalizations.of(context)!;
 
-    // NOTE: creating a controller in build is okay here since we receive the source-of-truth (groupName) from parent.
+    // Source-of-truth comes from parent; ephemeral controller is fine here.
     final controller = TextEditingController(text: groupName);
 
-    final Color backgroundColor = ThemeColors.getLighterInputFillColor(context);
-    final Color contrastTextColor =
-        ThemeColors.getContrastTextColor(context, backgroundColor);
-    final Color iconColor = contrastTextColor;
-    final Color textColor = ThemeColors.getTextColor(context);
+    // Theme-aware colors using the new helpers.
+    final bg = ThemeColors.inputFillLighter(context);
+    final onBg = ThemeColors.contrastOn(bg); // for label + icon
+    final textColor = ThemeColors.textPrimary(context); // for input text
 
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(12.0),
       child: CustomEditableTextField(
         controller: controller,
-        labelText: loc.groupNameLabel.toUpperCase(), // 🔤 localized
+        labelText: loc.groupNameLabel.toUpperCase(),
         maxLength: 25,
         prefixIcon: Icons.group,
-        backgroundColor: backgroundColor,
-        iconColor: iconColor,
-        labelStyle: TextStyle(
-          color: contrastTextColor,
-          fontSize: 16,
+        backgroundColor: bg,
+        iconColor: onBg,
+
+        // Typography: use your themed styles
+        labelStyle: t.accentText.copyWith(
+          color: onBg,
+          letterSpacing: 0.8,
           fontWeight: FontWeight.w600,
         ),
-        textStyle: TextStyle(
+        textStyle: t.bodyLarge.copyWith(
           color: textColor,
-          fontWeight: FontWeight.w400,
+          fontWeight: FontWeight.w500,
         ),
+
+        // If your CustomEditableTextField exposes onChanged, wire it:
+        // onChanged: onNameChange,
       ),
     );
   }

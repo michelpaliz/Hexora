@@ -1,17 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_provider.dart';
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
-import 'package:hexora/b-backend/blobUploader/blobServer.dart';
-import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/c-frontend/h-profile-section/edit/controller/profile_edit_controller.dart';
 import 'package:hexora/c-frontend/utils/user_avatar.dart';
 import 'package:hexora/e-drawer-style-menu/main_scaffold.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'widgets/labeled_field.dart';
@@ -27,6 +21,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _nameCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _controller = ProfileEditController();
+
   bool _saving = false;
 
   @override
@@ -48,126 +44,44 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     super.dispose();
   }
 
-  Future<void> _changePhoto() async {
-    final loc = AppLocalizations.of(context)!;
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked == null) return;
-
-    try {
-      final auth = context.read<AuthProvider>();
-      final token = auth.lastToken;
-      final userDomain = context.read<UserDomain>();
-      final user = userDomain.user;
-
-      if (token == null || user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(loc.notAuthenticatedOrUserMissing)),
-        );
-        return;
-      }
-
-      final result = await uploadImageToAzure(
-        scope: 'users',
-        file: File(picked.path),
-        accessToken: token,
-      );
-
-      final commitResp = await http.patch(
-        Uri.parse('${ApiConstants.baseUrl}/users/me/photo'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'blobName': result.blobName}),
-      );
-
-      if (!mounted) return;
-
-      if (commitResp.statusCode != 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${loc.failedToSavePhoto}: ${commitResp.statusCode}'),
-          ),
-        );
-        return;
-      }
-
-      final updatedUserJson =
-          jsonDecode(commitResp.body) as Map<String, dynamic>;
-      final updated = user.copyWith(
-        photoUrl: updatedUserJson['photoUrl'] ?? result.photoUrl,
-        photoBlobName: updatedUserJson['photoBlobName'] ?? result.blobName,
-      );
-
-      userDomain.updateCurrentUser(updated);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.photoUpdated)),
-      );
-      setState(() {}); // refresh avatar
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${loc.failedToUploadImage}: $e')),
-      );
-    }
+  Future<void> _handleChangePhoto() async {
+    await _controller.changePhoto(context);
+    if (mounted) setState(() {}); // refresh avatar preview
   }
 
-  Future<void> _saveProfile() async {
-    final loc = AppLocalizations.of(context)!;
-    final userDomain = context.read<UserDomain>();
-    final user = userDomain.user;
-    if (user == null) return;
-
+  Future<void> _handleSave() async {
     setState(() => _saving = true);
-    try {
-      final updated = user.copyWith(
-        name: _nameCtrl.text.trim(),
-        userName: _usernameCtrl.text.trim(),
-      );
-      final ok = await userDomain.updateUser(updated);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(ok ? loc.profileSaved : loc.failedToSaveProfile)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+    final ok = await _controller.saveProfile(
+      context: context,
+      name: _nameCtrl.text,
+      username: _usernameCtrl.text,
+    );
+    if (mounted) setState(() => _saving = false);
+    if (ok && mounted) Navigator.maybePop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final loc = AppLocalizations.of(context)!;
-    final user = context.watch<UserDomain>().user;
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
+    final user = context.watch<UserDomain>().user;
     if (user == null) {
       return MainScaffold(
-        showAppBar: false,
-        body: Center(child: Text(loc.noUserLoaded)),
-      );
+          showAppBar: false, body: Center(child: Text(l.noUserLoaded)));
     }
 
-    final t = Theme.of(context).textTheme;
-
-    final cardBg =
-        ThemeColors.getCardBackgroundColor(context).withOpacity(0.98);
-    final cardShadow = ThemeColors.getCardShadowColor(context);
-    final buttonBg = ThemeColors.getButtonBackgroundColor(context);
-    final buttonText = ThemeColors.getButtonTextColor(context);
+    final cardBg = ThemeColors.cardBg(context);
+    final cardShadow = ThemeColors.cardShadow(context);
+    final onCard = ThemeColors.textPrimary(context);
 
     return MainScaffold(
       showAppBar: false,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
+            parent: AlwaysScrollableScrollPhysics()),
         slivers: [
-          // small, consistent top inset so it doesn't eat too much vertical space
           const SliverToBoxAdapter(
             child:
                 SafeArea(top: true, bottom: false, child: SizedBox(height: 8)),
@@ -177,10 +91,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: ProfileHeader(
-                title: loc.profile,
-                subtitle: user.email,
-              ),
+              child: ProfileHeader(title: l.profile, subtitle: user.email),
             ),
           ),
 
@@ -193,16 +104,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   clipBehavior: Clip.none,
                   alignment: Alignment.bottomRight,
                   children: [
-                    // subtle elevated ring behind avatar for a more modern look
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: cardShadow,
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
+                              color: cardShadow,
+                              blurRadius: 18,
+                              offset: const Offset(0, 8)),
                         ],
                       ),
                       child: UserAvatar(
@@ -215,26 +124,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       right: -2,
                       bottom: -2,
                       child: Material(
-                        color: Colors.transparent,
+                        color: cs.primary,
                         shape: const CircleBorder(),
                         child: InkWell(
-                          onTap: _changePhoto,
+                          onTap: _handleChangePhoto,
                           customBorder: const CircleBorder(),
-                          child: Container(
+                          child: Padding(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: buttonBg,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: cardShadow,
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                            child: Icon(
+                              Icons.camera_alt_rounded,
+                              color: ThemeColors.contrastOn(cs.primary),
+                              size: 20,
                             ),
-                            child: Icon(Icons.camera_alt_rounded,
-                                color: buttonText, size: 20),
                           ),
                         ),
                       ),
@@ -255,35 +156,27 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: cardShadow,
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
+                        color: cardShadow,
+                        blurRadius: 12,
+                        offset: const Offset(0, 6)),
                   ],
                 ),
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    // Section label — subtle
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text(
-                        loc.details,
-                        style:
-                            t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                      ),
+                      child: Text(l.details,
+                          style: t.titleLarge.copyWith(
+                              fontWeight: FontWeight.w700, color: onCard)),
                     ),
                     const SizedBox(height: 12),
-
-                    LabeledField(label: loc.displayName, controller: _nameCtrl),
+                    LabeledField(label: l.displayName, controller: _nameCtrl),
+                    const SizedBox(height: 12),
+                    LabeledField(label: l.username, controller: _usernameCtrl),
                     const SizedBox(height: 12),
                     LabeledField(
-                        label: loc.username, controller: _usernameCtrl),
-                    const SizedBox(height: 12),
-                    LabeledField(
-                        label: loc.email,
-                        controller: _emailCtrl,
-                        enabled: false),
+                        label: l.email, controller: _emailCtrl, enabled: false),
                   ],
                 ),
               ),
@@ -300,39 +193,22 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 constraints: const BoxConstraints(maxWidth: 520),
                 child: SizedBox(
                   height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: _saving ? null : _saveProfile,
+                  child: FilledButton.icon(
+                    onPressed: _saving ? null : _handleSave,
                     icon: _saving
                         ? SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: buttonText,
+                              color: ThemeColors.contrastOn(cs.primary),
                             ),
                           )
-                        : Icon(Icons.save_rounded, color: buttonText),
+                        : const Icon(Icons.save_rounded),
                     label: Text(
-                      _saving ? loc.saving : loc.save,
-                      style: t.labelLarge?.copyWith(
-                          color: buttonText, fontWeight: FontWeight.w700),
-                    ),
-                    style: ButtonStyle(
-                      backgroundColor:
-                          MaterialStateProperty.resolveWith((states) {
-                        if (_saving) {
-                          // Slightly dim when saving
-                          return ThemeColors.getButtonBackgroundColor(context,
-                                  isSecondary: true)
-                              .withOpacity(0.7);
-                        }
-                        return buttonBg;
-                      }),
-                      shape: MaterialStateProperty.all(
-                        RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      elevation: MaterialStateProperty.all(2),
+                      _saving ? l.saving : l.save,
+                      style: t.buttonText
+                          .copyWith(color: ThemeColors.contrastOn(cs.primary)),
                     ),
                   ),
                 ),

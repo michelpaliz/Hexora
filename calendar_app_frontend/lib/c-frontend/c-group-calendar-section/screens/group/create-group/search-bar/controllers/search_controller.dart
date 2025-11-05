@@ -21,7 +21,7 @@ class GroupSearchController extends ChangeNotifier {
     }
 
     if (group != null) {
-      _seedRolesFromGroup(); // NEW: seed from group.userRoles
+      _seedRolesFromGroup(); // seed from group.userRoles
       _loadGroupUsers(); // fetch User profiles for group.userIds
     }
   }
@@ -37,7 +37,6 @@ class GroupSearchController extends ChangeNotifier {
 
   // ---------- Seeders / Loaders ----------
   void _seedRolesFromGroup() {
-    // Copy roles from the group doc (already keyed by userId)
     if (group?.userRoles != null) {
       userRoles.addAll(group!.userRoles.map(
         (k, v) => MapEntry(k, (v).toLowerCase()),
@@ -73,7 +72,6 @@ class GroupSearchController extends ChangeNotifier {
     }
     try {
       final results = await _userRepo.searchUsernames(q.toLowerCase());
-      // Filter out already-added usernames
       final existingUsernames = usersInGroup.map((u) => u.userName).toSet();
       searchResults =
           results.where((name) => !existingUsernames.contains(name)).toList();
@@ -95,9 +93,7 @@ class GroupSearchController extends ChangeNotifier {
       }
 
       usersInGroup.add(user);
-      // default role for new users
-      userRoles[user.id] = 'member'; // 🔑 keyed by userId
-      // remove from results
+      userRoles[user.id] = 'member'; // default role
       searchResults.remove(username);
 
       notifyListeners();
@@ -113,12 +109,10 @@ class GroupSearchController extends ChangeNotifier {
       (u) => u.userName == username,
       orElse: () => User.empty(),
     );
-    // If found, remove and clear role by id
     if (removed.id.isNotEmpty) {
       usersInGroup.removeWhere((u) => u.id == removed.id);
       userRoles.remove(removed.id);
     } else {
-      // fallback by username-only removal (shouldn’t normally happen)
       usersInGroup.removeWhere((u) => u.userName == username);
       userRoles.remove(username); // legacy safety
     }
@@ -126,7 +120,6 @@ class GroupSearchController extends ChangeNotifier {
   }
 
   void changeRole(String username, String newRole) {
-    // find that user's id
     final u = usersInGroup.firstWhere(
       (x) => x.userName == username,
       orElse: () => User.empty(),
@@ -134,7 +127,6 @@ class GroupSearchController extends ChangeNotifier {
     if (u.id.isNotEmpty) {
       userRoles[u.id] = newRole.toLowerCase();
     } else {
-      // legacy fallback if only username is known
       userRoles[username] = newRole.toLowerCase();
     }
     notifyListeners();
@@ -148,15 +140,26 @@ class GroupSearchController extends ChangeNotifier {
 
   // ---------- UI helper ----------
   void _showSnackBar(BuildContext context, String message) {
+    final cs = Theme.of(context).colorScheme;
+    final bg = ThemeColors.containerBg(context);
+    final onBg = ThemeColors.textPrimary(context);
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: ThemeColors.getContainerBackgroundColor(context),
+        backgroundColor: bg,
+        behavior: SnackBarBehavior.floating,
         content: Text(
           message,
           style: TextStyle(
-            color: ThemeColors.getTextColor(context),
-            fontWeight: FontWeight.bold,
+            color: onBg,
+            fontWeight: FontWeight.w700,
           ),
+        ),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: ThemeColors.contrastOn(cs.primary),
+          backgroundColor: cs.primary,
+          onPressed: () {},
         ),
       ),
     );

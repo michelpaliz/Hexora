@@ -8,7 +8,7 @@ class ClientListItem extends StatelessWidget {
   final Client client;
   final VoidCallback? onTap;
 
-  /// Typography (from Typo)
+  /// Typography (injected)
   final TextStyle nameStyle;
   final TextStyle metaStyle;
 
@@ -167,31 +167,31 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final typo = AppTypography.of(context);
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
-    // Warmer, modern hues
-    final Color bg = active ? const Color(0xFFE07A5F) : const Color(0xFFE63946);
-    final Color fg = ThemeColors.getContrastTextColorForBackground(bg);
-    final String label = active ? l.active : l.inactive;
+    // Theme-driven containers for status
+    final Color bg = active ? cs.secondaryContainer : cs.errorContainer;
+    final Color fg = active ? cs.onSecondaryContainer : cs.onErrorContainer;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.black.withOpacity(0.06)),
+        border:
+            Border.all(color: cs.outlineVariant.withOpacity(0.25), width: 1),
         boxShadow: [
-          if (active)
-            BoxShadow(
-              color: bg.withOpacity(0.22),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
+          BoxShadow(
+            color: ThemeColors.chipGlow(context, bg),
+            blurRadius: active ? 8 : 4,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
       child: Text(
-        label,
-        style: typo.bodySmall.copyWith(
+        active ? l.active : l.inactive,
+        style: t.bodySmall.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
           letterSpacing: .2,

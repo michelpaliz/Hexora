@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/notification_model/userInvitation_status.dart'; // kept only for downstream widget compatibility
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/group_view_model.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/edit_group_body/functions/admin_filter_sections.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/utils/shared/add_user_button.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/utils/shared/add_user_button/add_user_button.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -170,11 +170,11 @@ class EditGroupPeopleState extends State<EditGroupPeople> {
 
     return Column(
       children: [
-        AddUserButtonDialog(
+        AddUserButton(
           currentUser: widget.userDomain.user,
           group: widget.group,
-          controller: _controller,
-          onUserAdded: _onNewUserAdded,
+          controller: _controller, // ✅ use local controller
+          onUserAdded: _onNewUserAdded, // ✅ wire callback
         ),
         const SizedBox(height: 12),
 

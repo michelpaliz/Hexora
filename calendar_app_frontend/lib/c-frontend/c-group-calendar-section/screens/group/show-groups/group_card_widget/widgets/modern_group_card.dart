@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_card_widget/widgets/meta_pills.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:intl/intl.dart';
 
@@ -26,16 +27,17 @@ class ModernGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final bodyMedium = theme.textTheme.bodyMedium!;
-    final bodySmall = theme.textTheme.bodySmall!;
-    final scheme = theme.colorScheme;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
-    final baseCardColor =
-        ThemeColors.getCardBackgroundColor(context).withOpacity(0.95);
-    final hoverOverlay = scheme.primary.withOpacity(0.06);
-    final blended = Color.alphaBlend(hoverOverlay, baseCardColor);
-    final cardColor = isHovered ? blended : baseCardColor;
+    // Base surface, then a subtle hover tint
+    final baseCardColor = ThemeColors.cardBg(context).withOpacity(0.98);
+    final hoverOverlay = cs.primary.withOpacity(0.06);
+    final cardColor = isHovered
+        ? Color.alphaBlend(hoverOverlay, baseCardColor)
+        : baseCardColor;
+
+    final onCard = ThemeColors.textPrimary(context);
 
     final formattedDate = DateFormat('yyyy-MM-dd').format(group.createdTime);
     final participantCount = group.userIds.length;
@@ -51,20 +53,16 @@ class ModernGroupCard extends StatelessWidget {
           color: cardColor,
           borderRadius: BorderRadius.circular(_radius),
           border: Border.all(
-              color: scheme.outlineVariant.withOpacity(isHovered ? 0.5 : 0.3)),
-          boxShadow: isHovered
-              ? [
-                  BoxShadow(
-                      color: scheme.shadow.withOpacity(0.08),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8))
-                ]
-              : [
-                  BoxShadow(
-                      color: scheme.shadow.withOpacity(0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 6))
-                ],
+            color: cs.outlineVariant.withOpacity(isHovered ? 0.45 : 0.28),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: ThemeColors.cardShadow(context),
+              blurRadius: isHovered ? 18 : 10,
+              offset: Offset(0, isHovered ? 8 : 6),
+            ),
+          ],
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -87,13 +85,13 @@ class ModernGroupCard extends StatelessWidget {
                     topRight: Radius.circular(_radius),
                   ),
                   gradient: LinearGradient(
-                    colors: [scheme.primary, scheme.primary.withOpacity(0.5)],
+                    colors: [cs.primary, cs.primary.withOpacity(0.5)],
                   ),
                 ),
               ),
             ),
 
-            // Responsive content
+            // Content
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
               child: LayoutBuilder(
@@ -101,7 +99,6 @@ class ModernGroupCard extends StatelessWidget {
                   final isCompact = constraints.maxWidth < 420;
 
                   if (isCompact) {
-                    // Pills wrap under title – more room for name
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -114,9 +111,15 @@ class ModernGroupCard extends StatelessWidget {
                               child: TitleMeta(
                                 name: group.name,
                                 formattedDate: formattedDate,
-                                bodyMedium: bodyMedium,
-                                bodySmall: bodySmall,
-                                onSurface: scheme.onSurface,
+                                // use AppTypography styles
+                                bodyMedium: t.bodyLarge.copyWith(
+                                  color: onCard,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                bodySmall: t.bodySmall.copyWith(
+                                  color: onCard.withOpacity(0.75),
+                                ),
+                                onSurface: onCard,
                                 maxLinesForTitle: 2,
                               ),
                             ),
@@ -133,7 +136,7 @@ class ModernGroupCard extends StatelessWidget {
                             ),
                             if (!isCompact)
                               Icon(Icons.chevron_right,
-                                  color: scheme.onSurfaceVariant),
+                                  color: onCard.withOpacity(0.6)),
                           ],
                         ),
                       ],
@@ -150,9 +153,14 @@ class ModernGroupCard extends StatelessWidget {
                         child: TitleMeta(
                           name: group.name,
                           formattedDate: formattedDate,
-                          bodyMedium: bodyMedium,
-                          bodySmall: bodySmall,
-                          onSurface: scheme.onSurface,
+                          bodyMedium: t.bodyLarge.copyWith(
+                            color: onCard,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          bodySmall: t.bodySmall.copyWith(
+                            color: onCard.withOpacity(0.75),
+                          ),
+                          onSurface: onCard,
                           maxLinesForTitle: 2,
                         ),
                       ),
@@ -165,7 +173,7 @@ class ModernGroupCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 2),
-                      Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                      Icon(Icons.chevron_right, color: onCard.withOpacity(0.6)),
                     ],
                   );
                 },

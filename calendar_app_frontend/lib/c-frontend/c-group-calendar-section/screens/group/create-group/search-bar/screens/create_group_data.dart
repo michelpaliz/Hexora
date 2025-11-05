@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/group_view_model.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create-group/search-bar/screens/page_group_role_list.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create-group/search-bar/widgets/save_group_button.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/utils/shared/add_user_button.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/utils/shared/add_user_button/add_user_button.dart';
 import 'package:hexora/f-themes/shape/solid/solid_header.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../../../../b-backend/group_mng_flow/group/domain/group_domain.dart';
-import '../../../../../../../b-backend/notification/domain/notification_domain.dart';
 import '../widgets/group_image_picker.dart';
 import '../widgets/group_text_fields.dart';
 
@@ -26,6 +26,7 @@ class _CreateGroupDataState extends State<CreateGroupData> {
   final ImagePicker _imagePicker = ImagePicker();
   final GroupViewModel _controller = GroupViewModel();
 
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
@@ -34,7 +35,7 @@ class _CreateGroupDataState extends State<CreateGroupData> {
     final notificationDomain =
         Provider.of<NotificationDomain>(context, listen: false);
     final invitationRepo =
-        Provider.of<InvitationRepository>(context, listen: false); // <-- NEW
+        Provider.of<InvitationRepository>(context, listen: false);
     final currentUser = userDomain.user;
 
     if (currentUser != null) {
@@ -43,7 +44,7 @@ class _CreateGroupDataState extends State<CreateGroupData> {
         userDomain: userDomain,
         groupDomain: groupDomain,
         notificationDomain: notificationDomain,
-        invitationRepository: invitationRepo, // <-- NEW
+        invitationRepository: invitationRepo,
         context: context,
       );
     }
@@ -65,17 +66,16 @@ class _CreateGroupDataState extends State<CreateGroupData> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  GroupImagePicker(),
+                  const GroupImagePicker(),
                   GroupTextFields(controller: _controller),
                   const SizedBox(height: 10),
 
-                  // ⬇️ Pass onUserAdded and update the controller
-                  // in CreateGroupData build()
+                  // ⬇️ Refactored Add button (uses new component)
                   Align(
                     alignment: Alignment.centerRight,
-                    child: AddUserButtonDialog(
+                    child: AddUserButton(
                       currentUser: _controller.currentUser,
-                      group: null,
+                      group: null, // optional here during creation
                       controller: _controller,
                       onUserAdded: (picked) => _controller.addMember(picked),
                     ),
@@ -83,23 +83,22 @@ class _CreateGroupDataState extends State<CreateGroupData> {
 
                   const SizedBox(height: 10),
 
-                  // ⬇️ Rebuild this section when the controller notifies
+                  // ⬇️ Rebuild this section when controller updates
                   Consumer<GroupViewModel>(
                     builder: (_, ctrl, __) => PagedGroupRoleList(
                       userRoles: ctrl.userRoles,
-                      membersById: ctrl.membersById, // <-- ✅ updated
+                      membersById: ctrl.membersById,
                       assignableRoles: ctrl.assignableRoles,
                       canEditRole: ctrl.canEditRole,
                       setRole: ctrl.setRole,
                       onRemoveUser: ctrl.removeUser,
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
           ],
         ),
-        // in Scaffold
         bottomNavigationBar: SafeArea(
           minimum: const EdgeInsets.all(16),
           child: SaveGroupButton(controller: _controller),

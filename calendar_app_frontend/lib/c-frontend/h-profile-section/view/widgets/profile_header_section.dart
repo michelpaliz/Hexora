@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/utils/user_avatar.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
-
 class ProfileHeaderSection extends StatelessWidget {
   final Color headerColor;
   final User user;
@@ -38,16 +38,15 @@ class ProfileHeaderSection extends StatelessWidget {
     this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 12),
     this.bottomRadius = 20,
     this.avatarRadius = 36,
-    this.topGap = 25, // <- tweak this to move the avatar down
+    this.topGap = 25,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = theme.textTheme;
+    final t = AppTypography.of(context);
 
     // Text/icon color that contrasts with the header background
-    final onHeader = ThemeColors.getContrastTextColorForBackground(headerColor);
+    final onHeader = ThemeColors.contrastOn(headerColor);
 
     return Container(
       padding: padding,
@@ -88,7 +87,7 @@ class ProfileHeaderSection extends StatelessWidget {
             Text(
               user.name,
               textAlign: TextAlign.center,
-              style: t.titleLarge?.copyWith(
+              style: t.displayMedium.copyWith(
                 color: onHeader,
                 fontWeight: FontWeight.w700,
               ),
@@ -96,7 +95,7 @@ class ProfileHeaderSection extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '@${user.userName}',
-              style: t.bodyMedium?.copyWith(
+              style: t.bodyMedium.copyWith(
                 color: onHeader.withOpacity(.9),
               ),
             ),
@@ -156,12 +155,12 @@ class _CircleAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
+    final t = AppTypography.of(context);
 
     return Column(
       children: [
         Material(
-          color: Colors.white.withOpacity(.15), // subtle, works for both themes
+          color: color.withOpacity(.16), // subtle, auto-contrasts the header
           shape: const CircleBorder(),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -176,7 +175,7 @@ class _CircleAction extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           label,
-          style: t.labelSmall?.copyWith(color: color),
+          style: t.caption.copyWith(color: color, fontWeight: FontWeight.w600),
         ),
       ],
     );

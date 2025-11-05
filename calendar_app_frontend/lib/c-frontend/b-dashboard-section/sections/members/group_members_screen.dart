@@ -6,10 +6,9 @@ import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/Members_count.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/members_ref.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/filters_panel.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/hero_header.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/members_section.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -21,26 +20,34 @@ class GroupMembersScreen extends StatefulWidget {
   State<GroupMembersScreen> createState() => _GroupMembersScreenState();
 }
 
-class _GroupMembersScreenState extends State<GroupMembersScreen> {
-  bool showAccepted = true;
-  bool showPending = true;
-  bool showNotAccepted = true;
+class _GroupMembersScreenState extends State<GroupMembersScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
+
+  bool showAccepted = true; // kept for compatibility (not used with tabs)
+  bool showPending = true; // ^
+  bool showNotAccepted = true; // ^
 
   MembersCount? _counts;
-  bool _loadingCounts = false; // now used for UI state
-
+  bool _loadingCounts = false;
   late GroupDomain _gm;
 
-  // Invitations
   List<Invitation> _invitations = const [];
-  bool _loadingInvitations = false; // now used for UI state
+  bool _loadingInvitations = false;
 
   @override
   void initState() {
     super.initState();
+    _tab = TabController(length: 3, vsync: this); // ← 3 tabs
     _gm = context.read<GroupDomain>();
     _loadCounts();
     _loadInvitations();
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCounts() async {
@@ -53,7 +60,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
       if (!mounted) return;
       setState(() => _counts = c);
     } catch (_) {
-      // ignore; local derivation still renders
+      // ignore
     } finally {
       if (mounted) setState(() => _loadingCounts = false);
     }
@@ -70,57 +77,21 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
       if (!mounted) return;
       if (res is RepoSuccess<List<Invitation>>) {
         setState(() => _invitations = res.data);
-      } // else: keep empty fallback silently
+      }
     } catch (_) {
-      // ignore for now
+      // ignore
     } finally {
       if (mounted) setState(() => _loadingInvitations = false);
     }
   }
 
-  void _showInfo() {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.verified_user, color: cs.primary),
-              title: Text(l.membersTitle),
-              subtitle: Text(l.membersInfoAccepted),
-            ),
-            ListTile(
-              leading: Icon(Icons.hourglass_bottom, color: cs.tertiary),
-              title: Text(l.statusPending),
-              subtitle: Text(l.membersInfoPending),
-            ),
-            ListTile(
-              leading: Icon(Icons.block, color: cs.error),
-              title: Text(l.statusNotAccepted),
-              subtitle: Text(l.membersInfoNotAccepted),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final typo = AppTypography.of(context); // ✅ use the Typo font extension
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
 
-    // ---- Build Accepted / Pending / NotAccepted sets ----
+    // ---- Build sets ----
     final acceptedIds = widget.group.userIds.toSet();
 
     final pendingInvites = _invitations
@@ -174,80 +145,129 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
       );
     }).toList();
 
-    // Apply the filters
-    final filteredAccepted = showAccepted ? accepted : <MemberRef>[];
-    final filteredPending = showPending ? pending : <MemberRef>[];
-    final filteredNotAccepted = showNotAccepted ? notAccepted : <MemberRef>[];
-
-    // ---- Counts (server-first, local fallback) ----
+    // ---- Counts ----
     final fallbackMembers = accepted.length;
     final fallbackPending = pending.length;
-
     final totalMembers = _counts?.accepted ?? fallbackMembers;
     final totalPending = _counts?.pending ?? fallbackPending;
-    final totalUnion = _counts?.union ?? (fallbackMembers + fallbackPending);
+    final totalNotAccepted = notAccepted.length;
+
+    // Tab label colors like your Services/Clients screen
+    final Color primary = cs.primary;
+    final Color selectedText = ThemeColors.contrastOn(primary);
+    final Color unselectedText =
+        ThemeColors.textPrimary(context).withOpacity(0.7);
+    final Color trackBg = ThemeColors.cardBg(context);
+
+    // Labels with counts
+    final labelAccepted = '${l.membersTitle} · $totalMembers';
+    final labelPending = '${l.statusPending} · $totalPending';
+    final labelNotAccepted = '${l.statusNotAccepted} · $totalNotAccepted';
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: Navigator.of(context).canPop(),
         title: Text(
           l.membersTitle,
-          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
+          style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
-        backgroundColor: colors.surface,
-        elevation: 0.5,
-        iconTheme: IconThemeData(color: colors.onSurface),
-        actions: [
-          IconButton(
-            tooltip: l.info,
-            onPressed: _showInfo,
-            icon: const Icon(Icons.info_outline),
+        backgroundColor: cs.surface,
+        iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: trackBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.onSurface.withOpacity(0.06)),
+              ),
+              child: TabBar(
+                controller: _tab,
+                tabs: [
+                  Tab(text: labelAccepted),
+                  Tab(text: labelPending),
+                  Tab(text: labelNotAccepted),
+                ],
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerColor: Colors.transparent,
+                labelColor: selectedText,
+                unselectedLabelColor: unselectedText,
+                labelStyle: t.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .2,
+                ),
+                unselectedLabelStyle: t.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: .2,
+                ),
+                indicator: BoxDecoration(
+                  color: primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                splashBorderRadius: BorderRadius.circular(10),
+              ),
+            ),
           ),
-        ],
+        ),
       ),
       body: RefreshIndicator(
-        color: colors.primary,
-        backgroundColor: colors.surface,
+        color: cs.primary,
+        backgroundColor: cs.surface,
         onRefresh: () async {
           await _loadCounts();
           await _loadInvitations();
         },
         child: Column(
           children: [
-            // Thin progress bar whenever counts or invites are loading
             if (_loadingCounts || _loadingInvitations)
               const LinearProgressIndicator(minHeight: 2),
 
-            // HERO HEADER (gradient)
-            HeroHeader(
-              groupName: widget.group.name,
-              totalMembers: totalMembers,
-              totalPending: totalPending,
-              totalUnion: totalUnion,
-            ),
-
-            // FILTERS
-            FiltersPanel(
-              onFilterChange: (token, selected) {
-                setState(() {
-                  if (token == 'Accepted') showAccepted = selected;
-                  if (token == 'Pending') showPending = selected;
-                  if (token == 'NotAccepted') showNotAccepted = selected;
-                });
-              },
-              showAccepted: showAccepted,
-              showPending: showPending,
-              showNotAccepted: showNotAccepted,
-            ),
-
-            // LISTS
+            // Tab pages
             Expanded(
-              child: Members(
-                accepted: filteredAccepted,
-                pending: filteredPending,
-                notAccepted: filteredNotAccepted,
-                acceptedLabel: l.membersTitle,
-                pendingLabel: l.statusPending,
-                notAcceptedLabel: l.statusNotAccepted,
+              child: TabBarView(
+                controller: _tab,
+                children: [
+                  // Accepted only
+                  Members(
+                    accepted: accepted,
+                    pending: const [],
+                    notAccepted: const [],
+                    acceptedLabel: l.membersTitle,
+                    pendingLabel: l.statusPending,
+                    notAcceptedLabel: l.statusNotAccepted,
+                    useGradientBackground:
+                        true, // neutral panel bg per your pref
+                    wrapInCard: false,
+                  ),
+
+                  // Pending only
+                  Members(
+                    accepted: const [],
+                    pending: pending,
+                    notAccepted: const [],
+                    acceptedLabel: l.membersTitle,
+                    pendingLabel: l.statusPending,
+                    notAcceptedLabel: l.statusNotAccepted,
+                    useGradientBackground: true,
+                    wrapInCard: false,
+                  ),
+
+                  // Not accepted only
+                  Members(
+                    accepted: const [],
+                    pending: const [],
+                    notAccepted: notAccepted,
+                    acceptedLabel: l.membersTitle,
+                    pendingLabel: l.statusPending,
+                    notAcceptedLabel: l.statusNotAccepted,
+                    useGradientBackground: true,
+                    wrapInCard: false,
+                  ),
+                ],
               ),
             ),
           ],

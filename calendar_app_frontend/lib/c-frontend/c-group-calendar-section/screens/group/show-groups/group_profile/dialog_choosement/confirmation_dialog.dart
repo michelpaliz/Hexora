@@ -1,27 +1,56 @@
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 
 Future<bool> showConfirmationDialog(BuildContext context, String message) {
+  final t = AppTypography.of(context);
+  final cs = Theme.of(context).colorScheme;
+
+  final dialogBg = ThemeColors.cardBg(context);
+  final onDialog = ThemeColors.textPrimary(context);
+
   return showDialog<bool>(
     context: context,
     builder: (context) {
       return AlertDialog(
-        title: const Text('Confirm'),
-        content: Text(message),
+        backgroundColor: dialogBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        title: Text(
+          'Confirm',
+          style: t.titleLarge.copyWith(
+            color: onDialog,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          message,
+          style: t.bodyLarge.copyWith(
+            color: onDialog.withOpacity(0.9),
+            height: 1.35,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: ThemeColors.getTextColor(context)),
+            style: TextButton.styleFrom(
+              foregroundColor: cs.secondary,
             ),
+            child: Text('Cancel', style: t.buttonText),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              'Confirm',
-              style: TextStyle(color: ThemeColors.getTextColor(context)),
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.primary,
+              foregroundColor: ThemeColors.contrastOn(cs.primary),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
+            child: Text('Confirm', style: t.buttonText),
           ),
         ],
       );

@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/blobUploader/blobServer.dart';
-import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_provider.dart';
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/blobUploader/blobServer.dart';
+import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/c-frontend/utils/user_avatar.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -75,28 +75,18 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
         scope: 'users',
         file: file,
         accessToken: accessToken,
-        // mimeType defaults to image/jpeg; uses 'versioned' filenames
       );
 
-      // 2) Commit the blobName to backend (server saves photoBlobName and sets photoUrl if public)
+      // 2) Commit on backend
       final commitResp = await http.patch(
         Uri.parse('${ApiConstants.baseUrl}/users/me/photo'),
         headers: {
           'Authorization': 'Bearer $accessToken',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'blobName': result.blobName,
-        }),
+        body: jsonEncode({'blobName': result.blobName}),
       );
 
-      if (commitResp.statusCode != 200) {
-        debugPrint(
-          '⚠️ Commit avatar failed: ${commitResp.statusCode} ${commitResp.body}',
-        );
-      }
-
-      // 3) Use the updated user from the server (preferred) or fall back to our local result
       final updatedUserJson = (commitResp.statusCode == 200)
           ? jsonDecode(commitResp.body) as Map<String, dynamic>
           : null;
@@ -125,20 +115,17 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
-    final headerBackgroundColor =
-        ThemeColors.getCardBackgroundColor(context).withOpacity(0.95);
-    final nameTextColor =
-        isDarkMode ? AppDarkColors.textPrimary : AppColors.textPrimary;
-    final emailTextColor =
-        isDarkMode ? AppDarkColors.textSecondary : AppColors.textSecondary;
+    final headerBackgroundColor = ThemeColors.cardBg(context).withOpacity(0.95);
+    final nameTextColor = ThemeColors.textPrimary(context);
+    final emailTextColor = ThemeColors.textPrimary(context).withOpacity(0.75);
 
     return Container(
       color: headerBackgroundColor,
       width: double.infinity,
-      height: 200,
+      height: 210,
       padding: const EdgeInsets.only(top: 10.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -148,26 +135,32 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
             child: (_currentUser != null)
                 ? UserAvatar(
                     user: _currentUser!,
-                    // If avatarsArePublic == true, UserAvatar will just use the public URL in user.photoUrl.
+                    // If avatarsArePublic == true, UserAvatar uses public URL.
                     // If false, it will call this to fetch a short-lived SAS.
                     fetchReadSas: _fetchReadSas,
                     radius: 30,
                   )
-                : const CircleAvatar(radius: 30, child: Icon(Icons.person)),
+                : CircleAvatar(
+                    radius: 30,
+                    backgroundColor: cs.secondary.withOpacity(0.15),
+                    child: Icon(Icons.person, color: cs.secondary),
+                  ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
           Text(
             _currentUser?.name ?? 'Guest',
-            style: TextStyle(
+            style: t.titleLarge.copyWith(
               color: nameTextColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           Text(
             _currentUser?.email ?? '',
-            style: TextStyle(color: emailTextColor, fontSize: 14),
+            style: t.bodySmall.copyWith(
+              color: emailTextColor,
+              letterSpacing: 0.2,
+            ),
           ),
         ],
       ),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
-import 'package:hexora/f-themes/app_utilities/image/avatar_utils.dart';
 import 'package:hexora/f-themes/app_utilities/app_utils.dart';
+import 'package:hexora/f-themes/app_utilities/image/avatar_utils.dart';
 
 class GroupUserCard extends StatelessWidget {
   final String userName;
@@ -9,7 +10,7 @@ class GroupUserCard extends StatelessWidget {
   final String? photoUrl;
   final VoidCallback? onRemove;
   final bool isAdmin;
-  final String? status;
+  final String? status; // Accepted | Pending | NotAccepted | Expired | null
   final DateTime? sendingDate;
 
   const GroupUserCard({
@@ -30,6 +31,7 @@ class GroupUserCard extends StatelessWidget {
       case 'Pending':
         return Icons.hourglass_empty;
       case 'NotAccepted':
+      case 'Not Accepted':
         return Icons.cancel_outlined;
       case 'Expired':
         return Icons.schedule_outlined;
@@ -38,94 +40,98 @@ class GroupUserCard extends StatelessWidget {
     }
   }
 
-  Color _getStatusIconColor(BuildContext context) {
+  Color _statusColor(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     switch (status) {
       case 'Accepted':
-        return Colors.green;
+        return cs.primary;
       case 'Pending':
-        return Colors.orange;
+        return cs.tertiary;
       case 'NotAccepted':
       case 'Not Accepted':
-        return Colors.redAccent;
+        return cs.error;
       case 'Expired':
-        return ThemeColors.getTextColor(context).withOpacity(0.6);
+        return cs.onSurfaceVariant;
       default:
-        return ThemeColors.getTextColor(context);
+        return cs.onSurface;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    final bg = ThemeColors.listTileBg(context);
+    final onBg = ThemeColors.textPrimary(context);
+    final border = cs.outlineVariant.withOpacity(0.25);
+
     return Card(
-      margin: const EdgeInsets.symmetric(
-        vertical: 8,
-        horizontal: 20,
-      ), // More left/right space
-      color: ThemeColors.getListTileBackgroundColor(context),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+      color: bg,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: ThemeColors.getCardShadowColor(context).withOpacity(0.15),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: border, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
-      elevation: 0,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
-        leading: // group
-            AvatarUtils.groupAvatar(context, photoUrl, radius: 30),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        leading: AvatarUtils.groupAvatar(context, photoUrl, radius: 30),
         title: Row(
           children: [
             Expanded(
               child: Text(
                 userName,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: ThemeColors.getTextColor(context),
+                style: t.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: onBg,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (status != null)
               Icon(
                 _getStatusIcon(),
-                color: _getStatusIconColor(context),
+                color: _statusColor(context),
                 size: 18,
               ),
           ],
         ),
         subtitle: Row(
           children: [
-            Text(
-              role,
-              style: TextStyle(
-                color: ThemeColors.getTextColor(context).withOpacity(0.7),
-                fontSize: 12,
+            Flexible(
+              child: Text(
+                role,
+                style: t.bodySmall.copyWith(
+                  color: onBg.withOpacity(0.75),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (sendingDate != null) ...[
               const SizedBox(width: 10),
               Text(
                 '• ${AppUtils.formatDate(sendingDate!)}',
-                style: TextStyle(
-                  color: ThemeColors.getTextColor(context).withOpacity(0.5),
-                  fontSize: 11,
+                style: t.caption.copyWith(
+                  color: onBg.withOpacity(0.6),
                 ),
               ),
             ],
           ],
         ),
         trailing: isAdmin
-            ? const Icon(Icons.verified_user, color: Colors.green, size: 18)
+            ? Icon(Icons.verified_user, color: cs.primary, size: 18)
             : (onRemove != null
                 ? IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.redAccent,
-                      size: 20,
-                    ),
+                    icon: const Icon(Icons.delete_outline),
+                    color: cs.error,
                     onPressed: onRemove,
+                    tooltip:
+                        MaterialLocalizations.of(context).deleteButtonTooltip,
                   )
                 : null),
       ),

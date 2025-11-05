@@ -11,13 +11,6 @@ import 'package:provider/provider.dart';
 
 /// A dedicated screen that shows the Group "header" (avatar, dates, quick pills)
 /// so the main dashboard can stay lean.
-///
-/// Usage:
-/// Navigator.of(context).push(
-///   MaterialPageRoute(
-///     builder: (_) => GroupHeaderScreen(group: group),
-///   ),
-/// );
 class GroupHeaderScreen extends StatefulWidget {
   final Group group;
   const GroupHeaderScreen({super.key, required this.group});
@@ -71,6 +64,9 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
     final showPending = _counts?.pending ?? fallbackPending;
     final showTotal = _counts?.union ?? fallbackTotal;
 
+    final tileBg = ThemeColors.listTileBg(context);
+    final onTile = ThemeColors.textPrimary(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l.sectionOverview, style: t.titleLarge),
@@ -93,12 +89,14 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
                         group.name,
                         style:
                             t.titleLarge.copyWith(fontWeight: FontWeight.w700),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         l.createdOnDay(createdStr),
                         style: t.bodySmall
-                            .copyWith(color: cs.onSurface.withOpacity(0.7)),
+                            .copyWith(color: onTile.withOpacity(0.7)),
                       ),
                       const SizedBox(height: 12),
                       if (_loadingCounts) ...[
@@ -121,7 +119,7 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
                             _InfoPill(
                               icon: Icons.all_inbox_outlined,
                               label:
-                                  '${NumberFormat.decimalPattern(l.localeName).format(showTotal)} total',
+                                  '${NumberFormat.decimalPattern(l.localeName).format(showTotal)} ${l.totalEarnings}',
                             ),
                           ],
                         ),
@@ -133,12 +131,21 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
             ),
             const SizedBox(height: 24),
             Card(
-              color: ThemeColors.getListTileBackgroundColor(context),
+              color: tileBg,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: cs.outlineVariant.withOpacity(0.25)),
+              ),
               child: ListTile(
                 leading: const Icon(Icons.info_outline),
-                title: Text(l.insightsTitle,
-                    style: t.accentText.copyWith(fontWeight: FontWeight.w600)),
-                subtitle: Text(l.insightsSubtitle, style: t.bodySmall),
+                title: Text(
+                  l.insightsTitle,
+                  style: t.accentText
+                      .copyWith(fontWeight: FontWeight.w600, color: onTile),
+                ),
+                subtitle: Text(l.insightsSubtitle,
+                    style:
+                        t.bodySmall.copyWith(color: onTile.withOpacity(0.8))),
               ),
             ),
           ],
@@ -156,16 +163,19 @@ class _InfoPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final bg = cs.surfaceVariant.withOpacity(0.6);
-    final fg = cs.onSurface.withOpacity(0.8);
     final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    // Use secondaryContainer for a friendly, readable chip-like pill.
+    final bg = cs.secondaryContainer;
+    final fg = cs.onSecondaryContainer;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

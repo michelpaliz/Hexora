@@ -1,5 +1,6 @@
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 
 class RoundedSectionCard extends StatelessWidget {
   final Widget child;
@@ -19,26 +20,31 @@ class RoundedSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
-    final defaultBackground = backgroundColor ??
-        ThemeColors.getLighterInputFillColor(
-            context); // ✅ lighter surface color
+    // Default to card surface; allow override. Slightly lighten if you prefer input-like feel.
+    final Color bg = backgroundColor ?? ThemeColors.cardBg(context);
+    final Color onBg = ThemeColors.textPrimary(context);
 
     return Container(
       margin:
           margin ?? const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       padding: padding ?? const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: defaultBackground,
+        color: bg,
         borderRadius: BorderRadius.circular(16.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: ThemeColors.cardShadow(context),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
           ),
         ],
+        border: Border.all(
+          color: cs.outlineVariant.withOpacity(0.25),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,9 +54,10 @@ class RoundedSectionCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12.0),
               child: Text(
                 title!,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface, // ✅ Respect text contrast
+                style: t.titleLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: onBg,
+                  letterSpacing: 0.2,
                 ),
               ),
             ),

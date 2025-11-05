@@ -1,126 +1,87 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
 
+/// Semantic color helpers that respect ThemeMode and your palette.
+/// Prefers Theme.of(context).colorScheme; falls back to your palette where helpful.
 class ThemeColors {
-  /// Returns theme-appropriate text color.
-  static Color getTextColor(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.brightness == Brightness.dark
-        ? AppDarkColors.textPrimary
-        : AppColors.textPrimary;
-  }
+  ThemeColors._();
 
-  /// Returns readable contrast text color for a given background.
-  static Color getContrastTextColorForBackground(Color backgroundColor) {
-    return ThemeData.estimateBrightnessForColor(backgroundColor) ==
-            Brightness.dark
-        ? Colors.white
-        : Colors.black;
-  }
-
-  static Color getContrastTextColor(BuildContext context, Color background) {
+  /// Generic contrast for any background color.
+  static Color contrastOn(Color background) {
     final brightness = ThemeData.estimateBrightnessForColor(background);
     return brightness == Brightness.dark ? Colors.white : Colors.black;
   }
 
-  /// Slightly lighter fill color for inputs.
-  static Color getLighterInputFillColor(BuildContext context) {
-    final base = getContainerBackgroundColor(context);
-    final brightness = ThemeData.estimateBrightnessForColor(base);
-    return brightness == Brightness.dark
-        ? base.withOpacity(0.6)
-        : base.withOpacity(0.95);
+  /// Theme-aware text color (primary body text).
+  static Color textPrimary(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.colorScheme.onBackground;
   }
 
-  static Color getTextColorWhite(BuildContext context) {
+  /// In dark mode: normal text; in light: a white-ish choice suitable on primary.
+  static Color textOnPrimaryPref(BuildContext context) {
     final theme = Theme.of(context);
     return theme.brightness == Brightness.dark
-        ? AppDarkColors.textPrimary
-        : AppColors.primary;
+        ? theme.colorScheme.onBackground
+        : theme.colorScheme.onPrimary;
   }
 
-  static Color getCardBackgroundColor(BuildContext context) {
-    return Theme.of(context).colorScheme.surface;
+  /// Surfaces
+  static Color containerBg(BuildContext context) =>
+      Theme.of(context).colorScheme.background;
+
+  static Color cardBg(BuildContext context) =>
+      Theme.of(context).colorScheme.surface;
+
+  /// Slightly lighter fill for inputs placed on container backgrounds.
+  static Color inputFillLighter(BuildContext context) {
+    final base = containerBg(context);
+    final isDark =
+        ThemeData.estimateBrightnessForColor(base) == Brightness.dark;
+    return isDark ? base.withOpacity(0.6) : base.withOpacity(0.95);
   }
 
-  static Color getContainerBackgroundColor(BuildContext context) {
-    return Theme.of(context).colorScheme.background;
-  }
+  /// Shadows
+  static Color cardShadow(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? Colors.black54
+          : Colors.black26;
 
-  // 🟦 Default button colors
-  static Color getButtonBackgroundColor(BuildContext context,
-      {bool isSecondary = false, bool isDanger = false}) {
+  /// ListTile backgrounds
+  static Color listTileBg(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.surface
+          : AppColors.white;
+
+  /// Search bar pieces
+  static Color searchBg(BuildContext context) {
     final theme = Theme.of(context);
+    return theme.brightness == Brightness.dark
+        ? theme.colorScheme.surface
+        : theme.colorScheme.surface.withOpacity(0.9);
+  }
 
-    if (isDanger) {
-      return theme.brightness == Brightness.dark
-          ? const Color(0xFFD32F2F)
-          : const Color(0xFFE53935);
-    }
-
-    if (isSecondary) {
-      return theme.brightness == Brightness.dark
+  static Color searchIcon(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
           ? AppDarkColors.secondary
           : AppColors.secondary;
-    }
 
-    return theme.brightness == Brightness.dark
-        ? AppDarkColors.primary
-        : AppColors.primary;
+  static Color searchHint(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? AppDarkColors.textSecondary
+          : AppColors.textSecondary;
+
+  /// Filter chip glow: subtle in dark, darker tone in light.
+  static Color chipGlow(BuildContext context, Color base) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? base.withOpacity(0.25)
+        : _darken(base, 0.3).withOpacity(0.25);
   }
 
-  static Color getButtonTextColor(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.brightness == Brightness.dark
-        ? AppDarkColors.textPrimary
-        : AppColors.white;
-  }
-
-  static Color getSearchBarBackgroundColor(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.brightness == Brightness.dark
-        ? AppDarkColors.surface
-        : AppColors.surface.withOpacity(0.9);
-  }
-
-  static Color getSearchBarIconColor(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.brightness == Brightness.dark
-        ? AppDarkColors.secondary
-        : AppColors.secondary;
-  }
-
-  static Color getSearchBarHintTextColor(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.brightness == Brightness.dark
-        ? AppDarkColors.textSecondary
-        : AppColors.textSecondary;
-  }
-
-  static Color getCardShadowColor(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.brightness == Brightness.dark
-        ? Colors.black54
-        : Colors.black26;
-  }
-
-  static Color getListTileBackgroundColor(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.brightness == Brightness.dark
-        ? AppDarkColors.surface
-        : AppColors.white;
-  }
-
-  static Color getFilterChipGlowColor(BuildContext context, Color baseColor) {
-    final theme = Theme.of(context);
-    return theme.brightness == Brightness.dark
-        ? baseColor.withOpacity(0.25)
-        : _darkenColor(baseColor, 0.3);
-  }
-
-  static Color _darkenColor(Color color, double amount) {
+  static Color _darken(Color color, double amount) {
     final hsl = HSLColor.fromColor(color);
     final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
-    return hslDark.toColor().withOpacity(0.25);
+    return hslDark.toColor();
   }
 }

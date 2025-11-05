@@ -1,14 +1,15 @@
 // lib/c-frontend/home/widgets/change_view_row.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
 
 /// Compact info affordance:
 /// - Default: small info icon with tooltip (no clutter).
 /// - Tap: expands to a dismissible banner with the full message.
-/// - Dismiss: hides until widget rebuild (you can wire to storage if you want persistence).
+/// - Dismiss: hides until widget rebuild (wire to storage if you want persistence).
 class InfoRow extends StatefulWidget {
   const InfoRow({super.key});
 
@@ -24,17 +25,16 @@ class _InfoRowState extends State<InfoRow> {
   Widget build(BuildContext context) {
     if (_dismissed) return const SizedBox.shrink();
 
-    final loc = AppLocalizations.of(context)!;
-    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
-    final bg = ThemeColors.getSearchBarBackgroundColor(context);
-    final txt = ThemeColors.getContrastTextColorForBackground(bg);
-    final shadow = ThemeColors.getCardShadowColor(context);
+    final bg = ThemeColors.cardBg(context);
+    final onBg = ThemeColors.textPrimary(context);
+    final shadow = ThemeColors.cardShadow(context);
 
     final user = context.read<UserDomain?>()?.user;
-    final message = user != null
-        ? loc.welcomeGroupView(user.name) // e.g. “Welcome {username}…”
-        : loc.groups; // short fallback
+    final message = user != null ? l.welcomeGroupView(user.name) : l.groups;
 
     // Compact: icon-only with tooltip
     if (!_expanded) {
@@ -51,7 +51,7 @@ class _InfoRowState extends State<InfoRow> {
               child: Icon(
                 Icons.info_outline_rounded,
                 size: 20,
-                color: txt.withOpacity(0.85),
+                color: onBg.withOpacity(0.85),
               ),
             ),
           ),
@@ -66,20 +66,23 @@ class _InfoRowState extends State<InfoRow> {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cs.outlineVariant.withOpacity(0.25)),
           boxShadow: [
-            BoxShadow(color: shadow, blurRadius: 10, offset: const Offset(0, 4))
+            BoxShadow(
+                color: shadow, blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           children: [
             Icon(Icons.info_outline_rounded,
-                color: txt.withOpacity(0.9), size: 20),
+                color: onBg.withOpacity(0.9), size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
-                style: t.bodyMedium?.copyWith(color: txt.withOpacity(0.95)),
+                style: t.bodySmall
+                    .copyWith(color: onBg.withOpacity(0.95), height: 1.3),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -87,16 +90,9 @@ class _InfoRowState extends State<InfoRow> {
             const SizedBox(width: 6),
             IconButton(
               tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-              onPressed: () => setState(() {
-                // Close back to compact if they tap once; tap close again to dismiss entirely
-                if (_expanded) {
-                  _expanded = false;
-                } else {
-                  _dismissed = true;
-                }
-              }),
+              onPressed: () => setState(() => _expanded = false),
               icon: Icon(Icons.close_rounded,
-                  color: txt.withOpacity(0.85), size: 18),
+                  color: onBg.withOpacity(0.85), size: 18),
               splashRadius: 18,
             ),
           ],

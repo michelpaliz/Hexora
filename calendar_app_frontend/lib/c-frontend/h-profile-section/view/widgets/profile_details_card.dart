@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -31,12 +32,13 @@ class ProfileDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final t = theme.textTheme;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
-    final bg = ThemeColors.getCardBackgroundColor(context).withOpacity(0.98);
-    final onSurface = theme.colorScheme.onSurface;
-    final onSurfaceVar = theme.colorScheme.onSurfaceVariant;
+    final bg = ThemeColors.cardBg(context);
+    final onBg = ThemeColors.textPrimary(context);
+    final shadow = ThemeColors.cardShadow(context);
+    final divider = cs.outlineVariant.withOpacity(0.25);
 
     Widget tile({
       required IconData icon,
@@ -44,50 +46,62 @@ class ProfileDetailsCard extends StatelessWidget {
       String? subtitle,
       Widget? trailing,
       VoidCallback? onTap,
+      Color? accent,
     }) {
+      final ic = accent ?? cs.secondary;
       return ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           height: 40,
           width: 40,
           decoration: BoxDecoration(
-            color: onSurfaceVar.withOpacity(.12),
+            color: ic.withOpacity(0.12),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: onSurface),
+          alignment: Alignment.center,
+          child: Icon(icon, color: ic, size: 20),
         ),
         title: Text(
           title,
-          style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          style: t.bodyMedium.copyWith(
+            color: onBg.withOpacity(0.9),
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
+          ),
         ),
         subtitle: subtitle == null
             ? null
             : Text(
                 subtitle,
-                style: t.bodySmall?.copyWith(color: onSurfaceVar),
+                style: t.bodySmall.copyWith(
+                  color: onBg.withOpacity(0.75),
+                  height: 1.25,
+                ),
               ),
         trailing: trailing == null
             ? null
             : IconTheme(
-                data: IconThemeData(color: onSurfaceVar),
+                data: IconThemeData(color: onBg.withOpacity(0.55), size: 18),
                 child: trailing,
               ),
         onTap: onTap,
       );
     }
 
-    return Container(
+    Widget dividerLine() => Divider(height: 0, color: divider);
+
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: ThemeColors.getCardShadowColor(context),
+            color: shadow,
             blurRadius: 12,
-            spreadRadius: 0,
             offset: const Offset(0, 6),
           ),
         ],
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.2), width: 1),
       ),
       child: Column(
         children: [
@@ -98,7 +112,7 @@ class ProfileDetailsCard extends StatelessWidget {
             trailing: const Icon(Icons.copy_rounded),
             onTap: onCopyEmail,
           ),
-          const Divider(height: 0),
+          dividerLine(),
           tile(
             icon: Icons.badge_rounded,
             title: l10n.username,
@@ -106,7 +120,7 @@ class ProfileDetailsCard extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: onTapUsername,
           ),
-          const Divider(height: 0),
+          dividerLine(),
           tile(
             icon: Icons.fingerprint_rounded,
             title: l10n.userId,
@@ -114,7 +128,7 @@ class ProfileDetailsCard extends StatelessWidget {
             trailing: const Icon(Icons.copy_rounded),
             onTap: onCopyId,
           ),
-          const Divider(height: 0),
+          dividerLine(),
           tile(
             icon: Icons.groups_3_rounded,
             title: l10n.teams,
@@ -122,7 +136,7 @@ class ProfileDetailsCard extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: onTapTeams,
           ),
-          const Divider(height: 0),
+          dividerLine(),
           tile(
             icon: Icons.calendar_month_rounded,
             title: l10n.calendars,
@@ -130,13 +144,14 @@ class ProfileDetailsCard extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: onTapCalendars,
           ),
-          const Divider(height: 0),
+          dividerLine(),
           tile(
             icon: Icons.notifications_active_rounded,
             title: l10n.notifications,
             subtitle: '$notificationsCount',
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: onTapNotifications,
+            accent: cs.tertiary, // small visual hint difference
           ),
         ],
       ),

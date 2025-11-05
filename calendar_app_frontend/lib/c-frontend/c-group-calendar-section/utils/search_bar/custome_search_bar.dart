@@ -1,13 +1,16 @@
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
 class CustomSearchBar extends StatelessWidget {
   final TextEditingController controller;
-  final Function(String) onChanged;
-  final Function onSearch;
-  final Function onClear;
+  final void Function(String) onChanged;
+  final VoidCallback onSearch;
+  final VoidCallback onClear;
 
-  CustomSearchBar({
+  const CustomSearchBar({
+    super.key,
     required this.controller,
     required this.onChanged,
     required this.onSearch,
@@ -16,46 +19,57 @@ class CustomSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    final bg = ThemeColors.cardBg(context);
+    final onBg = ThemeColors.textPrimary(context);
+    final hint = onBg.withOpacity(0.6);
+    final border = cs.outlineVariant.withOpacity(0.35);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 15),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: ThemeColors.getSearchBarBackgroundColor(context),
-        borderRadius: BorderRadius.circular(10),
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: ThemeColors.cardShadow(context),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: controller,
-              style: TextStyle(color: ThemeColors.getTextColor(context)),
+              onChanged: onChanged,
+              cursorColor: cs.primary,
+              style: t.bodyLarge
+                  .copyWith(color: onBg, fontWeight: FontWeight.w500),
               decoration: InputDecoration(
-                hintText: 'Search user...',
-                hintStyle: TextStyle(
-                  color: ThemeColors.getSearchBarHintTextColor(context),
-                ),
+                hintText: AppLocalizations.of(context)!.searchPerson,
+                hintStyle: t.bodyMedium.copyWith(color: hint),
+                isDense: true,
                 border: InputBorder.none,
               ),
-              onChanged: onChanged,
             ),
           ),
           IconButton(
-            icon: Icon(
-              Icons.clear,
-              color: ThemeColors.getSearchBarIconColor(context),
-            ),
-            onPressed: () {
-              onClear();
-            },
+            icon: const Icon(Icons.clear),
+            tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
+            onPressed: onClear,
+            color: onBg.withOpacity(0.8),
           ),
           IconButton(
-            icon: Icon(
-              Icons.search,
-              color: ThemeColors.getSearchBarIconColor(context),
-            ),
-            onPressed: () {
-              onSearch();
-            },
+            icon: const Icon(Icons.search),
+            tooltip: MaterialLocalizations.of(context).searchFieldLabel,
+            onPressed: onSearch,
+            color: cs.secondary, // subtle accent
           ),
         ],
       ),

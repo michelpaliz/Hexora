@@ -1,10 +1,12 @@
-// widgets/members_list.dart
+// lib/.../member_list.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/members_ref.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/empty_hint.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/member_list/members_row_widgets/parent/depth_card.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/member_list/members_row_widgets/parent/members_row.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/section_header.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/tools_colors/card_surface.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class MembersList extends StatelessWidget {
@@ -12,9 +14,15 @@ class MembersList extends StatelessWidget {
   final List<MemberRef> pending;
   final List<MemberRef> notAccepted;
 
-  final String acceptedLabel; // "Members"
-  final String pendingLabel; // localized
-  final String notAcceptedLabel; // localized
+  final String acceptedLabel;
+  final String pendingLabel;
+  final String notAcceptedLabel;
+
+  /// If true, wrap the list in a **neutral colored panel** (no gradient).
+  final bool useGradientBackground;
+
+  /// Legacy outer card; ignored if [useGradientBackground] is true.
+  final bool wrapInCard;
 
   const MembersList({
     super.key,
@@ -24,9 +32,9 @@ class MembersList extends StatelessWidget {
     required this.acceptedLabel,
     required this.pendingLabel,
     required this.notAcceptedLabel,
+    this.wrapInCard = true,
+    this.useGradientBackground = false,
   });
-
-  // --- Role helpers ----------------------------------------------------------
 
   String _norm(String role) =>
       role.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
@@ -55,13 +63,11 @@ class MembersList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final typo = AppTypography.of(context); // ✅ Typo font access
+    final typo = AppTypography.of(context);
 
     final nothing = accepted.isEmpty && pending.isEmpty && notAccepted.isEmpty;
-
     if (nothing) {
       return Padding(
         padding: const EdgeInsets.all(32),
@@ -73,7 +79,6 @@ class MembersList extends StatelessWidget {
       );
     }
 
-    // --- Split accepted users: Admin -> Co-Admin -> Member -------------------
     final adminMembers = accepted.where((r) => _isAdminRole(r.role)).toList();
     final coAdminMembers =
         accepted.where((r) => _isCoAdminRole(r.role)).toList();
@@ -89,44 +94,36 @@ class MembersList extends StatelessWidget {
       if (refs.isEmpty) return const [];
       return [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: SectionHeader(
             title: title,
             textStyle: typo.bodyMedium.copyWith(
-              // ✅ Typo for section headers
               fontWeight: FontWeight.w800,
-              color: color ?? colors.onSurface,
+              color: color ?? cs.onSurface,
               letterSpacing: .2,
             ),
           ),
         ),
         ...refs.map(
-          (ref) => Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Card(
-              elevation: 0,
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: colors.outline.withOpacity(0.1),
-                  width: 1,
-                ),
+          (ref) => DepthCard(
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            radius: 14,
+            borderWidth: 1.2,
+            ambientOpacity: 0.20,
+            keyOpacity: 0.14,
+            ambientBlur: 22,
+            keyBlur: 12,
+            keyYOffset: 8,
+            minHeight: 64,
+            child: DefaultTextStyle(
+              style: typo.bodyMedium.copyWith(
+                color: CardSurface.onBg(context),
+                letterSpacing: .1,
               ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 68),
-                child: DefaultTextStyle(
-                  // ✅ Ensure rows inherit Typo body
-                  style: typo.bodyMedium.copyWith(
-                    color: colors.onSurface,
-                    letterSpacing: .1,
-                  ),
-                  child: MemberRow(
-                    ref: ref,
-                    ownerId: ref.ownerId,
-                    showRoleChip: true,
-                  ),
-                ),
+              child: MemberRow(
+                ref: ref,
+                ownerId: ref.ownerId,
+                showRoleChip: true,
               ),
             ),
           ),
@@ -134,40 +131,59 @@ class MembersList extends StatelessWidget {
       ];
     }
 
-    return ListView(
+    final listView = ListView(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       children: [
-        // 1) Admins
-        ...buildSection(
-          l.roleAdmin,
-          adminMembers,
-          color: colors.secondary,
-          sectionType: 'admins',
-        ),
-
-        // 2) Co-Admins
-        ...buildSection(
-          l.roleCoAdmin,
-          coAdminMembers,
-          color: colors.tertiary,
-          sectionType: 'coadmins',
-        ),
-
-        // 3) Members
-        ...buildSection(
-          acceptedLabel,
-          regularMembers,
-          color: colors.primary,
-          sectionType: 'members',
-        ),
-
-        // Pending / Not accepted
-        ...buildSection(pendingLabel, pending, color: colors.onSurfaceVariant),
+        ...buildSection(l.roleAdmin, adminMembers,
+            color: cs.secondary, sectionType: 'admins'),
+        ...buildSection(l.roleCoAdmin, coAdminMembers,
+            color: cs.tertiary, sectionType: 'coadmins'),
+        ...buildSection(acceptedLabel, regularMembers,
+            color: cs.primary, sectionType: 'members'),
+        ...buildSection(pendingLabel, pending, color: cs.onSurfaceVariant),
         ...buildSection(notAcceptedLabel, notAccepted,
-            color: colors.onSurfaceVariant),
-
-        const SizedBox(height: 24),
+            color: cs.onSurfaceVariant),
+        const SizedBox(height: 12),
       ],
     );
+
+    // 🔸 Replace gradient with a neutral, eye-friendly panel background
+    if (useGradientBackground) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final panelColor = isDark
+          ? cs.surfaceVariant.withOpacity(0.20)
+          : cs.surfaceVariant.withOpacity(0.60);
+      final panelBorder = cs.outlineVariant.withOpacity(0.12);
+
+      return Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: panelColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: panelBorder, width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: listView,
+        ),
+      );
+    }
+
+    if (wrapInCard) {
+      return DepthCard(
+        margin: const EdgeInsets.all(16),
+        radius: 16,
+        borderWidth: 1.2,
+        ambientOpacity: 0.20,
+        keyOpacity: 0.12,
+        ambientBlur: 24,
+        keyBlur: 14,
+        keyYOffset: 10,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: listView,
+      );
+    }
+
+    return listView;
   }
 }
