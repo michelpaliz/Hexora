@@ -1196,7 +1196,10 @@
   "monthOctober": "octubre",
   "monthNovember": "noviembre",
   "monthDecember": "diciembre",
-  "monthYearFormat": "{month} de {year}"
+  "monthYearFormat": "{month} de {year}",
+    "groupDescriptionHint": "Introduce el objetivo de este grupo",
+      "groupNameTooShort": "Nombre del grupo muy corto",
+  "groupNameHint":"Introduce el nombre del grupo"
 
 }
 

@@ -1200,7 +1200,10 @@
   "monthYearFormat": "{month} {year}",
   "@monthYearFormat": {
     "placeholders": { "month": {}, "year": {} }
-  }
+  },
+  "groupDescriptionHint": "Introduce the purpose of this group",
+  "groupNameTooShort": "Group name too short",
+  "groupNameHint":"Input group name"
 }
 
 

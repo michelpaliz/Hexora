@@ -4070,6 +4070,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{month} {year}'**
   String monthYearFormat(Object month, Object year);
+
+  /// No description provided for @groupDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Introduce the purpose of this group'**
+  String get groupDescriptionHint;
+
+  /// No description provided for @groupNameTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Group name too short'**
+  String get groupNameTooShort;
+
+  /// No description provided for @groupNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Input group name'**
+  String get groupNameHint;
 }
 
 class _AppLocalizationsDelegate

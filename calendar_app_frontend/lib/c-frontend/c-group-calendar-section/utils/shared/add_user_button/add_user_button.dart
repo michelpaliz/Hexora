@@ -12,7 +12,7 @@ import 'package:provider/provider.dart';
 class AddUserButton extends StatelessWidget {
   final User? currentUser;
   final Group? group;
-  final GroupViewModel controller;
+  final GroupEditorViewModel controller;
   final void Function(User)? onUserAdded;
 
   const AddUserButton({

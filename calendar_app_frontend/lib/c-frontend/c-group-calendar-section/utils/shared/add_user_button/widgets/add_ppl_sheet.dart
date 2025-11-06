@@ -11,6 +11,7 @@ import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extensi
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+
 class AddPeopleSheet extends StatefulWidget {
   final User? currentUser;
   final Group? group;
@@ -62,7 +63,7 @@ class _AddPeopleSheetState extends State<AddPeopleSheet> {
   Future<void> _searchUsers() async {
     setState(() => _loading = true);
     try {
-      final ctrl = context.read<GroupViewModel>();
+      final ctrl = context.read<GroupEditorViewModel>();
       final users = await ctrl.searchUsers(_query);
       setState(() => _results = users);
     } finally {

@@ -4,13 +4,13 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/invited-user/group_role_extension.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/invited-user/group_role_extension.dart';
 import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import 'alert_dialog/profile_alert_dialog_content.dart';
-import 'profile_alert_dialog_actions.dart';
+import 'action/profile_alert_dialog_actions.dart';
 
 void showProfileAlertDialog(
   BuildContext context,

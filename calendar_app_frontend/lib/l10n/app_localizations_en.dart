@@ -2238,4 +2238,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String monthYearFormat(Object month, Object year) {
     return '$month $year';
   }
+
+  @override
+  String get groupDescriptionHint => 'Introduce the purpose of this group';
+
+  @override
+  String get groupNameTooShort => 'Group name too short';
+
+  @override
+  String get groupNameHint => 'Input group name';
 }

@@ -15,9 +15,9 @@ import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/group_tim
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/create_worker/form/create_worker_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/entry_screen/functions/create_time_entry_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/entry_screen/tracking/worker_time_tracking_screen.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create-group/search-bar/screens/create_group_data.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/edit_group_data.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/edit-group/widgets/utils/edit_group_arg.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/models/create_group_data.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/models/edit_group_data.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/group-settings/group_settings.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_screen/group_list_section.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';

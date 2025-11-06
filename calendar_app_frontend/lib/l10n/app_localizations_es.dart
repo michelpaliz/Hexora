@@ -2258,4 +2258,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String monthYearFormat(Object month, Object year) {
     return '$month de $year';
   }
+
+  @override
+  String get groupDescriptionHint => 'Introduce el objetivo de este grupo';
+
+  @override
+  String get groupNameTooShort => 'Nombre del grupo muy corto';
+
+  @override
+  String get groupNameHint => 'Introduce el nombre del grupo';
 }
