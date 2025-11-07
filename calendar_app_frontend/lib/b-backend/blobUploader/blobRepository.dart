@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:hexora/b-backend/auth_user/auth/auth_database/token/token_storage.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/blobUploader/blobServer.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
@@ -14,7 +14,7 @@ class CommittedPhoto {
 }
 
 class BlobRepository {
-  Future<String?> _token() => TokenStorage.loadToken();
+  Future<String?> _token() => TokenService.loadToken();
 
   /// Uploads to Azure (via SAS) and commits to /users/me/photo.
   Future<CommittedPhoto> uploadUserAvatar({required File file}) async {

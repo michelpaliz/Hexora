@@ -1,5 +1,5 @@
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_provider.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/group_editor_state.dart/group_editor_state.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
 

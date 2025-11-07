@@ -8,8 +8,8 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/notification_model/userInvitation_status.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 // UserDomain is referenced for refresh flow
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
-import 'package:hexora/b-backend/auth_user/user/repository/i_user_repository.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/resolver/event_group_resolver.dart';
 // Repos (interfaces)
 import 'package:hexora/b-backend/group_mng_flow/group/repository/i_group_repository.dart';

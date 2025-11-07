@@ -9,7 +9,7 @@ import 'package:hexora/c-frontend/a-home-section/home_page.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/dashboard_screen/group_dashboard.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/dashboard_screen/header/header_section.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/group_insights_screen.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/group_members_screen.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/screen/group_members_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/services_clients/services_clients_screen.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/create_worker/form/create_worker_screen.dart';

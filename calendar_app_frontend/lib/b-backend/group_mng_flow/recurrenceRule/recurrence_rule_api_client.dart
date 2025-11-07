@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/token/token_storage.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -12,7 +12,7 @@ class RecurrenceRuleApiClient {
   final String _baseUrl = '${ApiConstants.baseUrl}/recurrence-rules';
 
   Future<Map<String, String>> _authHeaders() async {
-    final token = await TokenStorage.loadToken();
+    final token = await TokenService.loadToken();
     if (token == null) throw Exception("Authentication token not found");
     return {
       'Authorization': 'Bearer $token',

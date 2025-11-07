@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:hexora/b-backend/config/api_constants.dart';
-import 'package:hexora/b-backend/auth_user/auth/exceptions/exception.dart';
+import 'package:hexora/b-backend/auth_user/exceptions/exception.dart';
 import 'package:hexora/b-backend/notification/utils/result.dart';
 import 'package:http/http.dart' as http;
 

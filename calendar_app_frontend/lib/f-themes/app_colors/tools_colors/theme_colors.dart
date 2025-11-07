@@ -84,4 +84,31 @@ class ThemeColors {
     final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
     return hslDark.toColor();
   }
+
+  // Add this inside ThemeColors
+  static Color textSecondary(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    // Prefer Material's secondary text token
+    final materialSecondary = cs.onSurfaceVariant;
+
+    // If onSurfaceVariant looks identical to onBackground (some themes),
+    // derive a softer secondary from onBackground.
+    final derived = cs.onBackground.withOpacity(
+      theme.brightness == Brightness.dark ? 0.85 : 0.72,
+    );
+
+    // Palette fallback (keeps your brand colors)
+    final paletteFallback = theme.brightness == Brightness.dark
+        ? AppDarkColors.textSecondary
+        : AppColors.textSecondary;
+
+    // Choose the best option in order: material → derived → palette
+    // (If your cs.onSurfaceVariant is well tuned, it'll be used.)
+    if (materialSecondary.value != cs.onBackground.value) {
+      return materialSecondary;
+    }
+    return derived.opacity == 0 ? paletteFallback : derived;
+  }
 }

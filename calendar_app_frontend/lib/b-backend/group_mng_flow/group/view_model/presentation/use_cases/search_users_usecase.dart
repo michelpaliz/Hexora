@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_provider.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:http/http.dart' as http;
 
 class SearchUsersUseCase {

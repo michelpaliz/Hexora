@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/agenda/agenda_model.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart'; // ⬅️ for currentGroup fallback
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/g-agenda-section/sections/agenda_filters_section.dart';
 import 'package:hexora/c-frontend/g-agenda-section/sections/agenda_header_section.dart';
 import 'package:hexora/c-frontend/g-agenda-section/sections/agenda_list_section.dart';

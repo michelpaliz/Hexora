@@ -2,7 +2,7 @@ import 'dart:developer' as devtools show log;
 
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/business_logic/service/service_api_client.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';

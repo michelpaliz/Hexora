@@ -1,8 +1,8 @@
 // lib/c-frontend/home/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_service.dart';
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/notification/domain/socket_notification_listener.dart';
 import 'package:hexora/c-frontend/a-home-section/widgets/see_all_groups_button.dart';

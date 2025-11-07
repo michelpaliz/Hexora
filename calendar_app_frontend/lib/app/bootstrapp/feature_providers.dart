@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_service.dart';
-import 'package:hexora/b-backend/auth_user/user/repository/i_user_repository.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
 import 'package:hexora/b-backend/business_logic/worker/api/i_time_tracking_api_client.dart';
 import 'package:hexora/b-backend/business_logic/worker/api/time_tracking_api_client.dart';
 import 'package:hexora/b-backend/business_logic/worker/repository/time_tracking_repository.dart';
@@ -19,6 +18,7 @@ import 'package:hexora/b-backend/group_mng_flow/invite/api/invite_api_client.dar
 import 'package:hexora/b-backend/group_mng_flow/invite/domain/invite_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/recurrenceRule/recurrence_rule_api_client.dart';
+import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 

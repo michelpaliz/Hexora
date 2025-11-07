@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_provider.dart';
-import 'package:hexora/b-backend/auth_user/auth/exceptions/password_exceptions.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/widgets/section_header.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/b-backend/auth_user/exceptions/password_exceptions.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
 import 'package:hexora/c-frontend/i-settings-section/dialogs/change_password_dialog.dart';
 import 'package:hexora/c-frontend/i-settings-section/dialogs/change_username_dialog.dart';
 import 'package:hexora/c-frontend/i-settings-section/widgets/account_section.dart';

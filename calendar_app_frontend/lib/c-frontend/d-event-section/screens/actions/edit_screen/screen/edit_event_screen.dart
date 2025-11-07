@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_provider.dart';
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/business_logic/service/service_api_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';

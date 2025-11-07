@@ -1,16 +1,16 @@
-import 'package:flutter/foundation.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/api/auth_api_client.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/api/i_auth_api_client.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_provider.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/auth_service.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/token/token_storage.dart';
-import 'package:hexora/b-backend/auth_user/user/api/i_user_api_client.dart';
-import 'package:hexora/b-backend/auth_user/user/api/user_api_client.dart';
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
-import 'package:hexora/b-backend/auth_user/user/presence_domain.dart';
-import 'package:hexora/b-backend/auth_user/user/repository/i_user_repository.dart';
-import 'package:hexora/b-backend/auth_user/user/repository/user_repository.dart';
+import 'package:hexora/b-backend/auth_user/api/auth_api_client.dart';
+import 'package:hexora/b-backend/auth_user/api/i_auth_api_client.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/token_store/Itoken_store.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/token_store/token_store.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
+import 'package:hexora/b-backend/user/api/i_user_api_client.dart';
+import 'package:hexora/b-backend/user/api/user_api_client.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/user/presence_domain.dart';
+import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
+import 'package:hexora/b-backend/user/repository/user_repository.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
 import 'package:hexora/d-local-stateManagement/theme/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -20,12 +20,15 @@ final List<SingleChildWidget> coreProviders = [
   // Global app state
   ChangeNotifierProvider(create: (_) => NotificationDomain()),
 
-  // User stack (token from storage)
+  // 🔐 Token store (single source of truth)
+  Provider<TokenStore>(create: (_) => SecureTokenStore()),
+
+  // User stack (token from injected store, not static)
   Provider<IUserApiClient>(create: (_) => UserApiClient()),
   Provider<IUserRepository>(
     create: (ctx) => UserRepository(
       apiClient: ctx.read<IUserApiClient>(),
-      tokenSupplier: () => TokenStorage.loadToken(),
+      tokenSupplier: () => ctx.read<TokenStore>().readAccess(), // <-- changed
     ),
   ),
 
@@ -35,6 +38,7 @@ final List<SingleChildWidget> coreProviders = [
     create: (ctx) => AuthProvider(
       userRepository: ctx.read<IUserRepository>(),
       authApi: ctx.read<IAuthApiClient>(),
+      tokens: ctx.read<TokenStore>(), // <-- inject here
     ),
   ),
   ChangeNotifierProvider<AuthService>(

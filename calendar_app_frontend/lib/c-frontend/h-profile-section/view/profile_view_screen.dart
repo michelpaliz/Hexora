@@ -1,7 +1,7 @@
 // lib/c-frontend/b-calendar-section/screens/profile/profile_view_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/e-drawer-style-menu/main_scaffold.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';

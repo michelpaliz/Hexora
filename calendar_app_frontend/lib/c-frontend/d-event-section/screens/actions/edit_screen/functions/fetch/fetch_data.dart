@@ -1,6 +1,6 @@
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/auth_user/user/repository/user_repository.dart';
+import 'package:hexora/b-backend/user/repository/user_repository.dart';
 
 Future<void> fetchUserData({
   required Group group,

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/auth_user/user/repository/user_repository.dart';
+import 'package:hexora/b-backend/user/repository/user_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/group_view_model.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/group_editor_state.dart/group_editor_state.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/controllers/search_controller.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/add_user_controller.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/lists/group_selected_user_list.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/utils/search_bar/custome_search_bar.dart';
 import 'package:provider/provider.dart';
@@ -30,7 +30,7 @@ class CreateGroupSearchBar extends StatefulWidget {
 }
 
 class _CreateGroupSearchBarState extends State<CreateGroupSearchBar> {
-  late GroupSearchController _controller;
+  late AddUserController _controller;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -42,10 +42,10 @@ class _CreateGroupSearchBarState extends State<CreateGroupSearchBar> {
       final repo = context.read<UserRepository>();
 
       setState(() {
-        _controller = GroupSearchController(
+        _controller = AddUserController(
           currentUser: widget.user,
           group: widget.group,
-          userRepository: repo,
+          userRepositoryInterface: repo,
         );
       });
     });
@@ -103,7 +103,7 @@ class _CreateGroupSearchBarState extends State<CreateGroupSearchBar> {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
       value: _controller,
-      child: Consumer<GroupSearchController>(
+      child: Consumer<AddUserController>(
         builder: (context, ctrl, _) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,

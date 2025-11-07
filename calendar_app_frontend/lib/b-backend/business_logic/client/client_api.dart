@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:hexora/a-models/group_model/client/client.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/token/token_storage.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -10,7 +10,7 @@ class ClientsApi {
 
   Future<Map<String, String>> _headers() async => {
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer ${await TokenStorage.loadToken()}',
+        'Authorization': 'Bearer ${await TokenService.loadToken()}',
       };
 
   Uri _u([String path = '', Map<String, String?> q = const {}]) {

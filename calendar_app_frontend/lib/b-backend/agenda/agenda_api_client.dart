@@ -5,7 +5,7 @@ import 'dart:developer' as devtools show log;
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/b-backend/agenda/query_knobs/client_rollup.dart';
 import 'package:hexora/b-backend/agenda/query_knobs/work_summary.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_database/token/token_storage.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -22,7 +22,7 @@ class AgendaApiClient {
   AgendaApiClient({http.Client? client}) : _client = client ?? http.Client();
 
   Future<Map<String, String>> _authHeaders() async {
-    final token = await TokenStorage.loadToken();
+    final token = await TokenService.loadToken();
     if (token == null) throw Exception("Authentication token not found");
     return {
       'Authorization': 'Bearer $token',

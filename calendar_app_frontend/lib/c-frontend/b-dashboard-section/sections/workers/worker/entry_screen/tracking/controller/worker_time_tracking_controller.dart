@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/timeEntry.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
-import 'package:hexora/b-backend/auth_user/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/business_logic/worker/repository/time_tracking_repository.dart';
 
 class WorkerTimeTrackingController extends ChangeNotifier {
