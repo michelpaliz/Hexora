@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hexora/app/bootstrapp/app_bootstrap.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auht_gate.dart';
 import 'package:hexora/c-frontend/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
-import 'package:hexora/c-frontend/routes/routes.dart';
+import 'package:hexora/c-frontend/j-routes/routes.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
 import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
 import 'package:hexora/f-themes/app_colors/themes/context_colors/theme_data.dart';

@@ -6,8 +6,8 @@ import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_ref.dart';
-import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
-import 'package:hexora/c-frontend/utils/enums/invitation_status.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/c-frontend/k-enums/invitation/invitation_status.dart';
 
 class MembersVM extends ChangeNotifier {
   MembersVM({

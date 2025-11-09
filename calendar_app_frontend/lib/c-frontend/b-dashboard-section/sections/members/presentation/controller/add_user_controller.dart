@@ -2,26 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/roles/role_policy.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 
-/// `AddUserController` is a state management controller that handles the process of adding a user to a group in a Flutter application.
-///
-/// This controller is responsible for managing the state of a user addition flow, including searching for users, staging the selection of users, and assigning roles to users.
-///
-/// The controller uses the `ChangeNotifier` class from Flutter to manage state and can be used with the provider package to keep the UI simple.
-///
-/// The controller has the following methods:
-/// - `_seedRolesFromGroup`: Seeds the `userRoles` map with roles from the group's `userRoles`.
-/// - `_loadGroupUsers`: Fetches the user profiles for the group's `userIds` and adds them to the `usersInGroup` list.
-/// - `searchUser`: Searches for users based on a query and updates the `searchResults` list.
-/// - `addUser`: Adds a user to the `usersInGroup` list, updates the `userRoles` map, and removes the user from the `searchResults` list.
-/// - `removeUser`: Removes a user from the `usersInGroup` list and updates the `userRoles` map.
-/// - `changeRole`: Changes the role of a user in the `userRoles` map.
-/// - `clearResults`: Clears the `searchResults` list.
-/// - `_showSnackBar`: Displays a snackbar with a message.
-///
-/// This controller keeps the UI simple by consolidating the search and staging functionality into a single controller.
-/// It allows the UI to present a simple flow for adding users to a group, while still providing the necessary functionality.
 class AddUserController extends ChangeNotifier {
   final User? currentUser;
   final Group? group;
@@ -35,11 +19,11 @@ class AddUserController extends ChangeNotifier {
     // Seed creator as default member list + role (owner)
     if (currentUser != null) {
       usersInGroup = [currentUser!];
-      userRoles[currentUser!.id] = 'owner'; // keyed by userId
+      userRoles[currentUser!.id] = GroupRole.owner; // enum
     }
 
     if (group != null) {
-      _seedRolesFromGroup(); // seed from group.userRoles
+      _seedRolesFromGroup(); // seed from group.userRoles (strings -> enum)
       _loadGroupUsers(); // fetch User profiles for group.userIds
     }
   }
@@ -47,8 +31,8 @@ class AddUserController extends ChangeNotifier {
   // Local state
   List<User> usersInGroup = [];
 
-  /// 🔑 role map: userId -> role (lowercase: 'owner' | 'admin' | 'co-admin' | 'member')
-  Map<String, String> userRoles = {};
+  /// 🔑 role map: userId -> role (enum)
+  Map<String, GroupRole> userRoles = {};
 
   /// We keep results as simple usernames for the search UI
   List<String> searchResults = [];
@@ -56,9 +40,14 @@ class AddUserController extends ChangeNotifier {
   // ---------- Seeders / Loaders ----------
   void _seedRolesFromGroup() {
     if (group?.userRoles != null) {
+      // group.userRoles is Map<String, String> (wire). Convert -> enum.
       userRoles.addAll(group!.userRoles.map(
-        (k, v) => MapEntry(k, (v).toLowerCase()),
+        (k, v) => MapEntry(k, GroupRoleX.from(v)),
       ));
+    }
+    // ensure owner
+    if ((group?.ownerId ?? '').isNotEmpty) {
+      userRoles[group!.ownerId] = GroupRole.owner;
     }
   }
 
@@ -71,14 +60,46 @@ class AddUserController extends ChangeNotifier {
           usersInGroup.add(u);
         }
       }
-      // Ensure owner role is set even if not present in userRoles
+      // ensure owner flag even if backend map missed it
       if (group!.ownerId.isNotEmpty) {
-        userRoles[group!.ownerId] = 'owner';
+        userRoles[group!.ownerId] = GroupRole.owner;
       }
       notifyListeners();
     } catch (_) {
       // swallow; UI can still function with partial data
     }
+  }
+
+  // ---------- EDIT ROLES --------------
+  GroupRole _roleOfUserId(String userId) {
+    // Prefer staged enum; fallback from group strings; else member.
+    return userRoles[userId] ??
+        (group?.userRoles[userId] != null
+            ? GroupRoleX.from(group!.userRoles[userId])
+            : (group?.ownerId == userId ? GroupRole.owner : GroupRole.member));
+  }
+
+  bool canEditRole(String targetUserId) {
+    final me = currentUser?.id ?? '';
+    final ownerId = group?.ownerId ?? '';
+    return RolePolicy.canEditRole(
+      actorId: me,
+      targetId: targetUserId,
+      ownerId: ownerId,
+      roleOf: _roleOfUserId,
+    );
+  }
+
+  List<GroupRole> assignableRolesFor(String targetUserId) {
+    final me = currentUser?.id ?? '';
+    final ownerId = group?.ownerId ?? '';
+    return RolePolicy.assignableRoles(
+      actorId: me,
+      targetId: targetUserId,
+      ownerId: ownerId,
+      roleOf: _roleOfUserId,
+      includeOwner: false,
+    );
   }
 
   // ---------- Search / Add / Remove ----------
@@ -111,7 +132,7 @@ class AddUserController extends ChangeNotifier {
       }
 
       usersInGroup.add(user);
-      userRoles[user.id] = 'member'; // default role
+      userRoles[user.id] = GroupRole.member; // default role (enum)
       searchResults.remove(username);
 
       notifyListeners();
@@ -132,23 +153,30 @@ class AddUserController extends ChangeNotifier {
       userRoles.remove(removed.id);
     } else {
       usersInGroup.removeWhere((u) => u.userName == username);
-      userRoles.remove(username); // legacy safety
+      userRoles.remove(username); // legacy safety if map was keyed by username
     }
     notifyListeners();
   }
 
-  void changeRole(String username, String newRole) {
+  /// Change role by username (called by your UI)
+  void changeRole(String username, GroupRole newRole) {
     final u = usersInGroup.firstWhere(
       (x) => x.userName == username,
       orElse: () => User.empty(),
     );
     if (u.id.isNotEmpty) {
-      userRoles[u.id] = newRole.toLowerCase();
+      userRoles[u.id] = newRole;
     } else {
-      userRoles[username] = newRole.toLowerCase();
+      // legacy key path (username)
+      userRoles[username] = newRole;
     }
     notifyListeners();
   }
+
+  // ---------- Boundary helpers (strings for backend) ----------
+  /// When you need to pass roles to APIs that expect strings:
+  Map<String, String> get rolesAsWire =>
+      userRoles.map((k, r) => MapEntry(k, r.wire));
 
   void clearResults() {
     if (searchResults.isEmpty) return;

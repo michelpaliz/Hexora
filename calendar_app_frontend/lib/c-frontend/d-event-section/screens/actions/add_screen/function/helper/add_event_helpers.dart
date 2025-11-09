@@ -5,7 +5,7 @@ import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/utils_recurrence_rule/recurrence_rule_utils.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/utils/loading/loading_dialog.dart';
+import 'package:hexora/c-frontend/utils/loading/loading_dialog.dart';
 
 bool validateTitle(
     BuildContext context, TextEditingController titleController) {

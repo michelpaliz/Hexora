@@ -1,7 +1,7 @@
 // lib/c-frontend/home/widgets/app_bar_user_title.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/j-routes/appRoutes.dart';
 import 'package:hexora/c-frontend/utils/user_avatar.dart';
 
 class AppBarUserTitle extends StatelessWidget {

@@ -1203,7 +1203,17 @@
   },
   "groupDescriptionHint": "Introduce the purpose of this group",
   "groupNameTooShort": "Group name too short",
-  "groupNameHint":"Input group name"
+  "groupNameHint":"Input group name",
+  "reviewUsersTitle": "Members — Review & Roles",
+  "tabUpdateRoles": "Update roles",
+  "tabAddUsers": "Add users",
+  "done": "Done",
+  "selectedLabel": "Selected",
+  "loadMore": "Load more ({count})",
+
+  "addUsersCount": "Add users ({count})"
+
+
 }
 
 

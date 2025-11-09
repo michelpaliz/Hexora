@@ -2247,4 +2247,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupNameHint => 'Input group name';
+
+  @override
+  String get reviewUsersTitle => 'Members — Review & Roles';
+
+  @override
+  String get tabUpdateRoles => 'Update roles';
+
+  @override
+  String get tabAddUsers => 'Add users';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get selectedLabel => 'Selected';
+
+  @override
+  String loadMore(Object count) {
+    return 'Load more ($count)';
+  }
+
+  @override
+  String addUsersCount(Object count) {
+    return 'Add users ($count)';
+  }
 }

@@ -7,7 +7,8 @@ import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/us
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/invite_members_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/search_users_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/upload_group_photo_usecase.dart';
-import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/roles/role_policy.dart';
 import 'package:image_picker/image_picker.dart';
 
 enum GroupEditorStatus { idle, loading, error, success }
@@ -52,9 +53,28 @@ class GroupEditorViewModel extends ChangeNotifier {
       _update(_state.copyWith(description: v.trim()));
   void setImage(XFile? f) => _update(_state.copyWith(image: f));
 
+  // bool canEditRole(String userId) {
+  //   // cannot edit yourself; cannot edit the owner
+  //   return userId != currentUser.id && _state.roles[userId] != GroupRole.owner;
+  // }
   bool canEditRole(String userId) {
-    // cannot edit yourself; cannot edit the owner
-    return userId != currentUser.id && _state.roles[userId] != GroupRole.owner;
+    return RolePolicy.canEditRole(
+      actorId: currentUser.id,
+      targetId: userId,
+      ownerId: currentUser.id, // in editor, current user is the owner/creator
+      roleOf: (id) => _state.roles[id] ?? GroupRole.member,
+    );
+  }
+
+// (optional) if you want to drive dropdown options with policy too:
+  List<GroupRole> assignableRolesFor(String targetUserId) {
+    return RolePolicy.assignableRoles(
+      actorId: currentUser.id,
+      targetId: targetUserId,
+      ownerId: currentUser.id,
+      roleOf: (id) => _state.roles[id] ?? GroupRole.member,
+      includeOwner: false, // keep owner out of UI
+    );
   }
 
   // members

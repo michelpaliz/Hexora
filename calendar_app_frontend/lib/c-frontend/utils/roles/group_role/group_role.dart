@@ -43,6 +43,7 @@ extension GroupRoleX on GroupRole {
         GroupRole.member => false,
       };
 
+  /// Highest first (owner > admin > coAdmin > member)
   int get rank => switch (this) {
         GroupRole.owner => 3,
         GroupRole.admin => 2,
@@ -50,16 +51,11 @@ extension GroupRoleX on GroupRole {
         GroupRole.member => 0,
       };
 
+  /// Lowest-first priority (owner < admin < coAdmin < member)
   int get priorityAsc => switch (this) {
         GroupRole.owner => 0,
         GroupRole.admin => 1,
         GroupRole.coAdmin => 2,
         GroupRole.member => 3,
-      };
-  String toWire(GroupRole r) => switch (r) {
-        GroupRole.owner => 'owner',
-        GroupRole.admin => 'admin',
-        GroupRole.coAdmin => 'co-admin',
-        GroupRole.member => 'member',
       };
 }

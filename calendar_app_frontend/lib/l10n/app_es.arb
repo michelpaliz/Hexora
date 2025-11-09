@@ -1199,8 +1199,14 @@
   "monthYearFormat": "{month} de {year}",
     "groupDescriptionHint": "Introduce el objetivo de este grupo",
       "groupNameTooShort": "Nombre del grupo muy corto",
-  "groupNameHint":"Introduce el nombre del grupo"
-
+  "groupNameHint":"Introduce el nombre del grupo",
+  "reviewUsersTitle": "Miembros — Revisión y Roles",
+  "tabUpdateRoles": "Actualizar roles",
+  "tabAddUsers": "Agregar usuarios",
+  "done": "Listo",
+  "selectedLabel": "Seleccionados",
+  "loadMore": "Cargar más ({count})",
+  "addUsersCount": "Agregar usuarios ({count})"
 }
 
 

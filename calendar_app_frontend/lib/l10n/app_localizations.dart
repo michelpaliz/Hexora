@@ -4088,6 +4088,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Input group name'**
   String get groupNameHint;
+
+  /// No description provided for @reviewUsersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Members — Review & Roles'**
+  String get reviewUsersTitle;
+
+  /// No description provided for @tabUpdateRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Update roles'**
+  String get tabUpdateRoles;
+
+  /// No description provided for @tabAddUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Add users'**
+  String get tabAddUsers;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @selectedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get selectedLabel;
+
+  /// No description provided for @loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more ({count})'**
+  String loadMore(Object count);
+
+  /// No description provided for @addUsersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Add users ({count})'**
+  String addUsersCount(Object count);
 }
 
 class _AppLocalizationsDelegate

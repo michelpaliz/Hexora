@@ -32,8 +32,8 @@ import 'package:hexora/c-frontend/g-agenda-section/agenda_screen.dart';
 import 'package:hexora/c-frontend/h-profile-section/edit/profile_edit_screen.dart';
 import 'package:hexora/c-frontend/h-profile-section/view/profile_view_screen.dart';
 import 'package:hexora/c-frontend/i-settings-section/screens/settings.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
-import 'package:hexora/c-frontend/routes/calendar/group_calendar_loader.dart';
+import 'package:hexora/c-frontend/j-routes/appRoutes.dart';
+import 'package:hexora/c-frontend/j-routes/calendar/group_calendar_loader.dart';
 
 final Map<String, WidgetBuilder> routes = {
   AppRoutes.settings: (context) => const Settings(),

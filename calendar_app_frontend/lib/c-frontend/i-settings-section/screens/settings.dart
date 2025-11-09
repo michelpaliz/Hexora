@@ -9,7 +9,7 @@ import 'package:hexora/c-frontend/i-settings-section/widgets/account_section.dar
 import 'package:hexora/c-frontend/i-settings-section/widgets/language_sheet.dart';
 import 'package:hexora/c-frontend/i-settings-section/widgets/preferences_section.dart';
 import 'package:hexora/c-frontend/i-settings-section/widgets/section_card.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/j-routes/appRoutes.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
 import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';

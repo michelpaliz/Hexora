@@ -6,7 +6,7 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/g-agenda-section/sections/agenda_filters_section.dart';
 import 'package:hexora/c-frontend/g-agenda-section/sections/agenda_header_section.dart';
 import 'package:hexora/c-frontend/g-agenda-section/sections/agenda_list_section.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart'; // ⬅️ for navigation to groups
+import 'package:hexora/c-frontend/j-routes/appRoutes.dart'; // ⬅️ for navigation to groups
 import 'package:hexora/e-drawer-style-menu/main_scaffold.dart';
 import 'package:provider/provider.dart';
 

@@ -1,5 +1,6 @@
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group_features.dart';
+import 'package:hexora/c-frontend/utils/roles/id_normalizer.dart';
 
 class Group {
   // ---------- Core ----------
@@ -49,32 +50,45 @@ class Group {
     this.features, // <— NEW
   });
 
+  // Small date helper (works with "$date", ISO string, DateTime)
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v;
+    if (v is Map && v[r'$date'] != null) {
+      final raw = v[r'$date'];
+      if (raw is String) return DateTime.tryParse(raw);
+      if (raw is num) return DateTime.fromMillisecondsSinceEpoch(raw.toInt());
+    }
+    if (v is String) return DateTime.tryParse(v);
+    if (v is num) return DateTime.fromMillisecondsSinceEpoch(v.toInt());
+    return null;
+  }
+
   // ---------- JSON ----------
   factory Group.fromJson(Map<String, dynamic> json) {
-    final userIds = (json['userIds'] as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        <String>[];
-
+    // Normalize nested calendar if present
     Calendar? defaultCal;
     if (json['defaultCalendar'] is Map<String, dynamic>) {
       defaultCal = Calendar.fromJson(json['defaultCalendar']);
     }
 
+    // Normalize features
     GroupFeatures? fx;
     if (json['features'] is Map<String, dynamic>) {
       fx = GroupFeatures.fromJson(json['features'] as Map<String, dynamic>);
     }
 
+    // ✅ Normalize ids, lists, and userRoles keys/values
+    final normalizedUserRoles =
+        normalizeUserRoleWireMap(json['userRoles'] as Map?);
+
     return Group(
-      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      id: normalizeId(json['_id'] ?? json['id']),
       name: (json['name'] ?? '').toString(),
-      ownerId: (json['ownerId'] ?? '').toString(),
-      userRoles: Map<String, String>.from(json['userRoles'] ?? {}),
-      userIds: userIds,
-      createdTime: json['createdTime'] != null
-          ? DateTime.parse(json['createdTime'].toString())
-          : DateTime.now(),
+      ownerId: normalizeId(json['ownerId']),
+      userRoles: normalizedUserRoles,
+      userIds: normalizeIdList(json['userIds']),
+      createdTime: _parseDate(json['createdTime']) ?? DateTime.now(),
       description: (json['description'] ?? '').toString(),
       photoUrl: json['photoUrl']?.toString(),
       photoBlobName: json['photoBlobName']?.toString(),
@@ -82,12 +96,10 @@ class Group {
       inviteCount: (json['inviteCount'] is num)
           ? (json['inviteCount'] as num).toInt()
           : 0,
-      lastInviteAt: json['lastInviteAt'] != null
-          ? DateTime.tryParse(json['lastInviteAt'].toString())
-          : null,
-      defaultCalendarId: json['defaultCalendarId']?.toString(),
+      lastInviteAt: _parseDate(json['lastInviteAt']),
+      defaultCalendarId: normalizeId(json['defaultCalendarId']),
       defaultCalendar: defaultCal,
-      features: fx, // <— NEW
+      features: fx,
     );
   }
 

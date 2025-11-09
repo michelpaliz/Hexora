@@ -2267,4 +2267,29 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get groupNameHint => 'Introduce el nombre del grupo';
+
+  @override
+  String get reviewUsersTitle => 'Miembros — Revisión y Roles';
+
+  @override
+  String get tabUpdateRoles => 'Actualizar roles';
+
+  @override
+  String get tabAddUsers => 'Agregar usuarios';
+
+  @override
+  String get done => 'Listo';
+
+  @override
+  String get selectedLabel => 'Seleccionados';
+
+  @override
+  String loadMore(Object count) {
+    return 'Cargar más ($count)';
+  }
+
+  @override
+  String addUsersCount(Object count) {
+    return 'Agregar usuarios ($count)';
+  }
 }

@@ -1,6 +1,8 @@
+// lib/c-frontend/.../widgets/add_user_fab.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_vm.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/screen/review_user_screen.dart';
@@ -24,13 +26,15 @@ class AddUsersFab extends StatelessWidget {
         final repo = context.read<IUserRepository>();
         final vm = context.read<MembersVM>();
 
-        // Push the Review & Roles screen (it opens the bottom sheet for search)
+        // ✅ get the signed-in user
+        final me = context.read<AuthProvider>().currentUser;
+
         final result = await Navigator.of(context).push<Map<String, dynamic>>(
           MaterialPageRoute(
             builder: (_) => ReviewAndAddUsersScreen(
-              currentUser: null,
+              currentUser: me, // ✅ not null now
               group: group,
-              userRepository: repo, // interface instance
+              userRepository: repo,
             ),
           ),
         );
@@ -39,7 +43,7 @@ class AddUsersFab extends StatelessWidget {
           final users = (result['users'] as List<User>);
           final roles = (result['roles'] as Map<String, String>);
 
-          // TODO: persist via your GroupDomain/repo, e.g.:
+          // TODO: persist (repo call)
           // await context.read<GroupDomain>().groupRepository
           //   .upsertMembers(group.id, users.map((u) => u.id).toList(), roles);
 

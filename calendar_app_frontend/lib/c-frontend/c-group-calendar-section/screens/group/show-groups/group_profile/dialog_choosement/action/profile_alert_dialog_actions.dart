@@ -4,7 +4,7 @@ import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/j-routes/appRoutes.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../confirmation_dialog.dart';

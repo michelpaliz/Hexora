@@ -1,5 +1,5 @@
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:share_plus/share_plus.dart';
 
 class GroupEditorState {

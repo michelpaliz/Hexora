@@ -4,7 +4,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart';
-import 'package:hexora/c-frontend/routes/calendar/no_calendar_screen.dart';
+import 'package:hexora/c-frontend/j-routes/calendar/no_calendar_screen.dart';
 import 'package:provider/provider.dart';
 
 class GroupCalendarLoader extends StatefulWidget {

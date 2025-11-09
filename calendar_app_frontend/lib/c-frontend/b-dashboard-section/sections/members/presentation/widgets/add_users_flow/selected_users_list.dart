@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+// ✅ Prefer the single source of truth for roles
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role_labels.dart';
+// ✅ Global role label helper (translations)
+// Colors + typography
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
-import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
-// If you added a UI l10n extension (optional):
-// import 'package:hexora/c-frontend/l10n/group_role_labels.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class SelectedUsersList extends StatelessWidget {
   const SelectedUsersList({
@@ -28,6 +31,8 @@ class SelectedUsersList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (users.isEmpty) return const SizedBox.shrink();
 
+    final typo = AppTypography.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -35,7 +40,7 @@ class SelectedUsersList extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Text(
             'Selected',
-            style: TextStyle(
+            style: typo.titleLarge.copyWith(
               fontWeight: FontWeight.w700,
               color: ThemeColors.textSecondary(context),
             ),
@@ -84,16 +89,19 @@ class _UserChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final typo = AppTypography.of(context);
+
     return Chip(
       avatar: CircleAvatar(
         child: Text(
           user.userName.isNotEmpty ? user.userName[0].toUpperCase() : '?',
+          style: typo.bodyMedium,
         ),
       ),
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('@${user.userName}'),
+          Text('@${user.userName}', style: typo.bodyLarge),
           const SizedBox(width: 8),
           DropdownButtonHideUnderline(
             child: DropdownButton<GroupRole>(
@@ -103,7 +111,10 @@ class _UserChip extends StatelessWidget {
                   .map(
                     (r) => DropdownMenuItem<GroupRole>(
                       value: r,
-                      child: Text(_roleLabel(context, r)),
+                      child: Text(
+                        roleLabelOf(context, r), // ✅ translations
+                        style: typo.bodyMedium, // ✅ font family/weights
+                      ),
                     ),
                   )
                   .toList(),
@@ -121,23 +132,5 @@ class _UserChip extends StatelessWidget {
       labelPadding: const EdgeInsets.only(right: 4, left: 4),
       padding: const EdgeInsets.only(left: 4),
     );
-  }
-}
-
-/// Simple label for now. If you have the l10n extension, replace with `role.labelOf(context)`.
-String _roleLabel(BuildContext context, GroupRole r) {
-  // Prefer your UI/l10n extension if available:
-  // return r.labelOf(context);
-
-  // Fallback human labels:
-  switch (r) {
-    case GroupRole.owner:
-      return 'Owner';
-    case GroupRole.admin:
-      return 'Administrator';
-    case GroupRole.coAdmin:
-      return 'Co-administrator';
-    case GroupRole.member:
-      return 'Member';
   }
 }

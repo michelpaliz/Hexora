@@ -7,7 +7,7 @@ import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/j-routes/appRoutes.dart';
 import 'package:provider/provider.dart';
 
 class EventActionManager {

@@ -5,7 +5,7 @@ import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dar
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
-import '../c-frontend/routes/appRoutes.dart';
+import '../c-frontend/j-routes/appRoutes.dart';
 
 //* GLOBAL VARIABLES */
 

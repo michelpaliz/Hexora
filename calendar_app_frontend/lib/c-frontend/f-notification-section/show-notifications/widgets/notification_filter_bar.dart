@@ -1,5 +1,5 @@
 import 'package:hexora/a-models/notification_model/notification_user.dart';
-import 'package:hexora/c-frontend/f-notification-section/enum/broad_category.dart';
+import 'package:hexora/c-frontend/k-enums/category/broad_category.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 

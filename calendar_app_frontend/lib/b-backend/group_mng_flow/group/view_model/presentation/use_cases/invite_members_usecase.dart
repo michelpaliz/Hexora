@@ -1,7 +1,7 @@
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
-import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 
 class InviteMembersUseCase {
   final InvitationRepository invitations;

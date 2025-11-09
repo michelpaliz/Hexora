@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/invite/invite.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
-import 'package:hexora/c-frontend/utils/enums/invitation_status.dart';
+import 'package:hexora/c-frontend/k-enums/invitation/invitation_status.dart';
 
 enum InvitationListType { group, me }
 
