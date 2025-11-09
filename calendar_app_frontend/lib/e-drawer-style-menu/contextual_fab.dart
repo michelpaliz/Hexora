@@ -7,7 +7,7 @@ import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/notification/notification_api_client.dart';
 import 'package:hexora/b-backend/notification/view_model/notification_view_model.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';

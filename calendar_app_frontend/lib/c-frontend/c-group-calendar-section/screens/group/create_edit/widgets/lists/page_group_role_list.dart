@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/group_editor_state.dart/group_editor_state.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role_labels.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class PagedGroupRoleList extends StatefulWidget {
@@ -40,16 +41,7 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
   static const int _pageSize = 20;
   int _visible = _pageSize;
 
-  int _priority(GroupRole r) {
-    switch (r) {
-      case GroupRole.owner:
-        return 0;
-      case GroupRole.coAdmin:
-        return 2;
-      case GroupRole.member:
-        return 3;
-    }
-  }
+  int _priority(GroupRole r) => r.priorityAsc;
 
   @override
   Widget build(BuildContext context) {
@@ -233,13 +225,5 @@ class _RoleSelector extends StatelessWidget {
 }
 
 String _localizedRole(BuildContext context, GroupRole role) {
-  final loc = AppLocalizations.of(context)!;
-  switch (role) {
-    case GroupRole.owner:
-      return loc.administrator; // or a dedicated “Owner” string if you have it
-    case GroupRole.coAdmin:
-      return loc.coAdministrator;
-    case GroupRole.member:
-      return loc.member;
-  }
+  return role.labelOf(context);
 }

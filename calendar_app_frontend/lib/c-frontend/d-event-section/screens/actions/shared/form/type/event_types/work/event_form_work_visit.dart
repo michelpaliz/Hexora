@@ -8,7 +8,7 @@ import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/ty
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/section_card_work_type.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit/work_visit_sections.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit_style.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class EventFormWorkVisit extends StatefulWidget {

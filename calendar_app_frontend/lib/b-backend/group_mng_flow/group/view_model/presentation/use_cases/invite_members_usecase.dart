@@ -1,7 +1,7 @@
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/group_editor_state.dart/group_editor_state.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
 
 class InviteMembersUseCase {
   final InvitationRepository invitations;
@@ -33,9 +33,5 @@ class InviteMembersUseCase {
     }
   }
 
-  String _toWire(GroupRole r) => switch (r) {
-        GroupRole.owner => 'owner',
-        GroupRole.member => 'member',
-        GroupRole.coAdmin => 'co-admin',
-      };
+  String _toWire(GroupRole r) => r.wire;
 }

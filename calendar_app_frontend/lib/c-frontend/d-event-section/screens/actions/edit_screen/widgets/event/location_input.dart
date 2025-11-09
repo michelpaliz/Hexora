@@ -1,4 +1,4 @@
-import 'package:hexora/f-themes/app_utilities/app_utils.dart';
+import 'package:hexora/c-frontend/utils/app_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';

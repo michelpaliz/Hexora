@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/user/presence_domain.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class UserStatusRow extends StatelessWidget {
   final List<UserPresence> userList;

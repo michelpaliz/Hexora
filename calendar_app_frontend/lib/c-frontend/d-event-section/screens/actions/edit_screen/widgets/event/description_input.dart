@@ -1,4 +1,4 @@
-import 'package:hexora/f-themes/app_utilities/view-item-styles/text_field/flexible/custom_editable_text_field.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/text_field/flexible/custom_editable_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 

@@ -11,8 +11,8 @@ import 'package:hexora/c-frontend/i-settings-section/widgets/preferences_section
 import 'package:hexora/c-frontend/i-settings-section/widgets/section_card.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
-import 'package:hexora/d-local-stateManagement/theme/theme_provider.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
+import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
+import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

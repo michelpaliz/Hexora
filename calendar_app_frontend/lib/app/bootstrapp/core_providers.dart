@@ -12,7 +12,7 @@ import 'package:hexora/b-backend/user/presence_domain.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/b-backend/user/repository/user_repository.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
-import 'package:hexora/d-local-stateManagement/theme/theme_provider.dart';
+import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 

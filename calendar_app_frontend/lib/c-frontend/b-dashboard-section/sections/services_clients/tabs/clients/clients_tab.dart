@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import 'client_list_item.dart';

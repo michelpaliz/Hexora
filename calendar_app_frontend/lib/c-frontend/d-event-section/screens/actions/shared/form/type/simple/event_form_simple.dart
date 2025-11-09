@@ -19,7 +19,7 @@ import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/ty
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit/sections/reminder_section.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit/sections/section_card_builder.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit_style.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class EventFormSimple extends StatefulWidget {

@@ -1,6 +1,6 @@
 // lib/c-frontend/d-event-section/screens/event_detail/widgets/action_bar.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class ActionBar extends StatelessWidget {

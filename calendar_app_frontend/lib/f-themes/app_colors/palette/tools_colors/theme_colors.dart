@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 
 /// Semantic color helpers that respect ThemeMode and your palette.
 /// Prefers Theme.of(context).colorScheme; falls back to your palette where helpful.

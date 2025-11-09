@@ -1,6 +1,6 @@
 // add_users_bottom_sheet.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:provider/provider.dart';
 
 import '../../controller/add_user_controller.dart';

@@ -8,7 +8,7 @@ import 'package:hexora/c-frontend/d-event-section/screens/event_screen/graphs/gr
 import 'package:hexora/c-frontend/d-event-section/screens/event_screen/widgets/action_bar.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/event_screen/widgets/header_card.dart';
 // Theme / i18n
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 // Sections

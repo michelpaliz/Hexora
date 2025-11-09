@@ -15,7 +15,8 @@ import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/images/group_image.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/lists/page_group_role_list.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/utils/shared/add_user_button/add_user_button.dart';
-import 'package:hexora/f-themes/shape/solid/solid_header.dart';
+import 'package:hexora/f-themes/shapes/solid/solid_header.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';

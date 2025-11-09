@@ -1,7 +1,7 @@
 // lib/f-themes/themes/typography_extension.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 
 class AppTypography extends ThemeExtension<AppTypography> {
   // Styles

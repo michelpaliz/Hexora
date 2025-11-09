@@ -8,7 +8,7 @@ import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/utils/selected_users/invitation_functions/dismiss_user_dialog.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/utils/shared/group_user_card.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/edit_screen/functions/user/user_removal_service.dart';
-import 'package:hexora/f-themes/shape/rounded/rounded_section_card.dart';
+import 'package:hexora/f-themes/shapes/rounded/rounded_section_card.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class UserListSection extends StatelessWidget {

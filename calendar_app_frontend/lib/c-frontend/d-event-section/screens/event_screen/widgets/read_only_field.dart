@@ -1,7 +1,7 @@
 // lib/c-frontend/d-event-section/screens/event_detail/widgets/read_only_field.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
-import 'package:hexora/f-themes/app_utilities/view-item-styles/text_field/static/custom_text_field.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/custom_text_field.dart';
 
 class ReadOnlyField extends StatelessWidget {
   final IconData icon;

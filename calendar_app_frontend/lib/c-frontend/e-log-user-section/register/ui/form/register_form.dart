@@ -3,10 +3,10 @@ import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart'
 import 'package:hexora/c-frontend/e-log-user-section/register/ui/form/button_style_helper.dart';
 import 'package:hexora/c-frontend/e-log-user-section/register/utils/legal_text_helper.dart';
 import 'package:hexora/c-frontend/e-log-user-section/register/utils/password_utils.dart';
-import 'package:hexora/f-themes/app_colors/palette/color_properties.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
-import 'package:hexora/f-themes/app_utilities/view-item-styles/text_field/static/text_field_widget.dart';
-import 'package:hexora/f-themes/app_utilities/view-item-styles/text_field/static/textfield_styles.dart'
+import 'package:hexora/f-themes/app_colors/palette/app_colors/color_properties.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/text_field_widget.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/textfield_styles.dart'
     show TextFieldStyles;
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';

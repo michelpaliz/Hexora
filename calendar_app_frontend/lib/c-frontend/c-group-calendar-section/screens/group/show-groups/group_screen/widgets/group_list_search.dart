@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class GroupListSearchScaffoldBody extends StatelessWidget {

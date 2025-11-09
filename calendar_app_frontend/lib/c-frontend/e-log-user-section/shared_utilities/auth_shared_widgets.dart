@@ -1,5 +1,5 @@
-import 'package:hexora/f-themes/shape/solid/auth_header.dart';
-import 'package:hexora/f-themes/app_utilities/logo/logo_widget.dart';
+import 'package:hexora/f-themes/shapes/solid/auth_header.dart';
+import 'package:hexora/c-frontend/utils/logo/logo_widget.dart';
 import 'package:flutter/material.dart';
 
 /// Shared constants

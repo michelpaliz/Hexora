@@ -6,7 +6,7 @@ import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/widgets/event_date_time.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/event/screen/events_in_calendar/widgets/event_title_row.dart';
 import 'package:hexora/c-frontend/d-event-section/utils/color_manager.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class EventDetailsCard extends StatelessWidget {
   final Event event;

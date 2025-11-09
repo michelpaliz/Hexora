@@ -17,7 +17,7 @@ import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/ev
 // 🔹 Use the same style + typography as Work Visit:
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit_style.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/repetition_dialog/dialog/repetition_dialog.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

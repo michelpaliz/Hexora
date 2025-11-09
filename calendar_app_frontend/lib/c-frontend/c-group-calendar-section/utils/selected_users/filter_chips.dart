@@ -1,6 +1,6 @@
 // lib/c-frontend/c-group-calendar-section/utils/selected_users/filter_chips.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class FilterChips extends StatelessWidget {
   final bool showAccepted;

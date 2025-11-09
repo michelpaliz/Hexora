@@ -1,7 +1,6 @@
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
 import 'package:share_plus/share_plus.dart';
-
-enum GroupRole { owner, member, coAdmin }
 
 class GroupEditorState {
   final String name;

@@ -5,7 +5,7 @@ import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/base/ba
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/event_types/work/event_form_work_visit.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/type/simple/event_form_simple.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class EventFormRouter extends StatefulWidget {

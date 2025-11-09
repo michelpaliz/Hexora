@@ -1,7 +1,7 @@
 // lib/c-frontend/dialog_content/profile/widgets/group_hero_card.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
-import 'package:hexora/f-themes/app_utilities/image/avatar_utils.dart';
+import 'package:hexora/c-frontend/utils/image/avatar_utils.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 

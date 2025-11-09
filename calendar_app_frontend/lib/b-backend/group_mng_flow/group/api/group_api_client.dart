@@ -6,7 +6,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/api/i_group_api_client.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/error_classes/error_classes.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/Members_count.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 import 'package:http/http.dart' as http;
 
 class HttpGroupApiClient implements IGroupApiClient {

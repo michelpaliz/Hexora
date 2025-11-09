@@ -7,6 +7,7 @@ import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/us
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/invite_members_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/search_users_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/upload_group_photo_usecase.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
 import 'package:image_picker/image_picker.dart';
 
 enum GroupEditorStatus { idle, loading, error, success }

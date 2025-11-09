@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/category/event_category.dart';
 import 'package:hexora/b-backend/group_mng_flow/category/category_api_client.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import 'widgets/category_create_dialog.dart';

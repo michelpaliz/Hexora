@@ -6,7 +6,8 @@ import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/add_user_controller.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/add_user_bottom_sheet.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/selected_users_list.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
 import 'package:provider/provider.dart';
 
 class ReviewAndAddUsersScreen extends StatelessWidget {
@@ -42,6 +43,12 @@ class _ReviewScaffold extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final ctrl = context.watch<AddUserController>();
 
+    // 🔁 Adapt Map<String, String> -> Map<String, GroupRole>
+    final rolesEnum = ctrl.userRoles.map(
+      (k, v) =>
+          MapEntry(k, GroupRoleX.from(v)), // v like 'owner' | 'admin' | ...
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Members — Review & Roles'),
@@ -50,7 +57,7 @@ class _ReviewScaffold extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).maybePop({
                 'users': ctrl.usersInGroup,
-                'roles': ctrl.userRoles,
+                'roles': ctrl.userRoles, // still strings for backend/next step
               });
             },
             child: Text(
@@ -67,9 +74,9 @@ class _ReviewScaffold extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
         child: SelectedUsersList(
           users: ctrl.usersInGroup,
-          rolesByIdOrName: ctrl.userRoles,
+          rolesByIdOrName: rolesEnum, // ✅ now Map<String, GroupRole>
           onRemove: (u) => ctrl.removeUser(u),
-          onChangeRole: (u, r) => ctrl.changeRole(u, r),
+          onChangeRole: (u, r) => ctrl.changeRole(u, r.wire),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -84,7 +91,7 @@ class _ReviewScaffold extends StatelessWidget {
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
             builder: (_) => ChangeNotifierProvider.value(
-              value: context.read<AddUserController>(), // share same instance
+              value: context.read<AddUserController>(),
               child: const AddUsersBottomSheet(),
             ),
           );

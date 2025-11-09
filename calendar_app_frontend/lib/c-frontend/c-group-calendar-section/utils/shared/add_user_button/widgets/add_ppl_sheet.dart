@@ -7,8 +7,8 @@ import 'package:hexora/b-backend/group_mng_flow/group/view_model/group_view_mode
 import 'package:hexora/c-frontend/c-group-calendar-section/utils/shared/add_user_button/widgets/empty_state.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/utils/shared/add_user_button/widgets/search_field.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/utils/shared/add_user_button/widgets/user_chips.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
-import 'package:hexora/f-themes/app_utilities/view-item-styles/button/button_styles.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/button/button_styles.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

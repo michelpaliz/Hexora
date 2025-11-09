@@ -1,6 +1,6 @@
 // depth_card.dart (or inline in the same file)
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/card_surface.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/card_surface.dart';
 
 class DepthCard extends StatelessWidget {
   const DepthCard({

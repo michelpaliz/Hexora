@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 
 class UserSearchResultItem extends StatelessWidget {
   const UserSearchResultItem({

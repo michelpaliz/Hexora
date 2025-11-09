@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/worker/timeEntry.dart';
 import 'package:hexora/b-backend/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/worker/entry_screen/functions/widgets/time_entry_card.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 

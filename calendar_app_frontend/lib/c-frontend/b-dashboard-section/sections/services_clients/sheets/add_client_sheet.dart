@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/b-backend/business_logic/client/client_api.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class AddClientSheet extends StatefulWidget {

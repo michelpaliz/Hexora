@@ -7,9 +7,9 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/d-event-section/utils/show_error_dialog.dart';
 import 'package:hexora/c-frontend/e-log-user-section/login/logic/login_init.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
-import 'package:hexora/f-themes/app_colors/palette/color_properties.dart';
-import 'package:hexora/f-themes/app_utilities/view-item-styles/text_field/static/text_field_widget.dart';
-import 'package:hexora/f-themes/app_utilities/view-item-styles/text_field/static/textfield_styles.dart'
+import 'package:hexora/f-themes/app_colors/palette/app_colors/color_properties.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/text_field_widget.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/textfield_styles.dart'
     show TextFieldStyles;
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';

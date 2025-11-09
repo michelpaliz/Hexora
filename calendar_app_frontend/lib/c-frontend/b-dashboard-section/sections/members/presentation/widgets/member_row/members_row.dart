@@ -6,8 +6,8 @@ import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentat
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/member_row/components/role_chip.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/member_row/components/status_dot.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/member_row/member_detail_sheet.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/card_surface.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/card_surface.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

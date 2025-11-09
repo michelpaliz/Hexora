@@ -10,7 +10,8 @@ import 'package:hexora/b-backend/blobUploader/blobServer.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/api/i_group_api_client.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/repository/i_group_repository.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/Members_count.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
+
 import 'package:http/http.dart' as http;
 
 /// Concrete repository with in-memory cache + per-user streams.

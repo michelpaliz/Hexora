@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/fields/group_description_field.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/fields/group_name_field.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/images/group_image.dart';
-import 'package:hexora/f-themes/shape/solid/solid_header.dart';
+import 'package:hexora/f-themes/shapes/solid/solid_header.dart';
 import 'package:image_picker/image_picker.dart';
 
 class EditGroupHeader extends StatelessWidget {

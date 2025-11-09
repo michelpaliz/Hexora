@@ -8,7 +8,7 @@ import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/enum/insig
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/sections/bar/insights_bar_section.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/sections/filter/insights_filter_section.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/graphs/sections/past_hint/insights_past_hint.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';

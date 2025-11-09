@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/c-frontend/d-event-section/utils/color_manager.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 Widget buildMonthCell({

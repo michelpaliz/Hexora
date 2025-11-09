@@ -11,7 +11,7 @@ import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/util
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/utils/group_permissions_helper.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/utils/presence_status_strip.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

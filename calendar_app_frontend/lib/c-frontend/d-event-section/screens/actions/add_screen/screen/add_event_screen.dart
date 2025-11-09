@@ -10,7 +10,7 @@ import 'package:hexora/c-frontend/d-event-section/screens/actions/add_screen/fun
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_dialogs.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/actions/shared/form/event_form_router.dart';
 import 'package:hexora/c-frontend/d-event-section/screens/repetition_dialog/dialog/repetition_dialog.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

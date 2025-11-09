@@ -5,8 +5,8 @@ import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentat
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/member_row/components/depth_card.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/member_row/members_row.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/card_surface.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/card_surface.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class MembersList extends StatelessWidget {

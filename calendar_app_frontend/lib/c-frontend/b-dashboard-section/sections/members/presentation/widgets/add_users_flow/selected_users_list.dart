@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
+// If you added a UI l10n extension (optional):
+// import 'package:hexora/c-frontend/l10n/group_role_labels.dart';
 
 class SelectedUsersList extends StatelessWidget {
   const SelectedUsersList({
@@ -12,12 +15,14 @@ class SelectedUsersList extends StatelessWidget {
   });
 
   final List<User> users;
-  final Map<String, String>
-      rolesByIdOrName; // userId -> role (or username -> role)
-  final void Function(String username) onRemove;
-  final void Function(String username, String role) onChangeRole;
 
-  static const _roles = <String>['owner', 'admin', 'co-admin', 'member'];
+  /// userId -> GroupRole (or username -> GroupRole)
+  final Map<String, GroupRole> rolesByIdOrName;
+
+  final void Function(String username) onRemove;
+
+  /// Callback now passes a GroupRole instead of String
+  final void Function(String username, GroupRole role) onChangeRole;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +50,7 @@ class SelectedUsersList extends StatelessWidget {
                 user: u,
                 role: rolesByIdOrName[u.id] ??
                     rolesByIdOrName[u.userName] ??
-                    'member',
+                    GroupRole.member,
                 onRemove: () => onRemove(u.userName),
                 onChangeRole: (r) => onChangeRole(u.userName, r),
               ),
@@ -65,11 +70,17 @@ class _UserChip extends StatelessWidget {
   });
 
   final User user;
-  final String role;
+  final GroupRole role;
   final VoidCallback onRemove;
-  final void Function(String role) onChangeRole;
+  final void Function(GroupRole role) onChangeRole;
 
-  static const _roles = <String>['owner', 'admin', 'co-admin', 'member'];
+  // Roles you want selectable in the UI (order as you like)
+  static const List<GroupRole> _availableRoles = <GroupRole>[
+    GroupRole.member,
+    GroupRole.coAdmin,
+    GroupRole.admin,
+    GroupRole.owner,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -85,14 +96,16 @@ class _UserChip extends StatelessWidget {
           Text('@${user.userName}'),
           const SizedBox(width: 8),
           DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _roles.contains(role) ? role : 'member',
+            child: DropdownButton<GroupRole>(
+              value: _availableRoles.contains(role) ? role : GroupRole.member,
               borderRadius: BorderRadius.circular(12),
-              items: _roles
-                  .map((r) => DropdownMenuItem(
-                        value: r,
-                        child: Text(r),
-                      ))
+              items: _availableRoles
+                  .map(
+                    (r) => DropdownMenuItem<GroupRole>(
+                      value: r,
+                      child: Text(_roleLabel(context, r)),
+                    ),
+                  )
                   .toList(),
               onChanged: (v) {
                 if (v != null) onChangeRole(v);
@@ -108,5 +121,23 @@ class _UserChip extends StatelessWidget {
       labelPadding: const EdgeInsets.only(right: 4, left: 4),
       padding: const EdgeInsets.only(left: 4),
     );
+  }
+}
+
+/// Simple label for now. If you have the l10n extension, replace with `role.labelOf(context)`.
+String _roleLabel(BuildContext context, GroupRole r) {
+  // Prefer your UI/l10n extension if available:
+  // return r.labelOf(context);
+
+  // Fallback human labels:
+  switch (r) {
+    case GroupRole.owner:
+      return 'Owner';
+    case GroupRole.admin:
+      return 'Administrator';
+    case GroupRole.coAdmin:
+      return 'Co-administrator';
+    case GroupRole.member:
+      return 'Member';
   }
 }

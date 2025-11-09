@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors.dart';
-import 'package:hexora/f-themes/app_utilities/view-item-styles/button/button_styles.dart';
+import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/button/button_styles.dart';
 
 /// Button variants you actually use.
 enum ButtonVariant { primary, secondary, danger, info }

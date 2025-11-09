@@ -1,55 +1,9 @@
 // lib/a-models/invitation/invitation.dart
 import 'dart:convert';
 
-/// Keep these in sync with your backend enums (models/invitation.js)
-enum InvitationStatus { pending, accepted, declined, expired, revoked }
-
-enum GroupRole { member, coAdmin, admin }
-
-InvitationStatus _statusFromString(String? raw) {
-  switch ((raw ?? '').toLowerCase()) {
-    case 'pending':
-      return InvitationStatus.pending;
-    case 'accepted':
-      return InvitationStatus.accepted;
-    case 'declined':
-      return InvitationStatus.declined;
-    case 'expired':
-      return InvitationStatus.expired;
-    case 'revoked':
-      return InvitationStatus.revoked;
-    default:
-      return InvitationStatus.pending;
-  }
-}
-
-String _statusToString(InvitationStatus s) => switch (s) {
-      InvitationStatus.pending => 'Pending',
-      InvitationStatus.accepted => 'Accepted',
-      InvitationStatus.declined => 'Declined',
-      InvitationStatus.expired => 'Expired',
-      InvitationStatus.revoked => 'Revoked',
-    };
-
-GroupRole _roleFromString(String? raw) {
-  switch ((raw ?? '').toLowerCase()) {
-    case 'co-admin':
-    case 'coadmin':
-    case 'co_admin':
-      return GroupRole.coAdmin;
-    case 'admin':
-      return GroupRole.admin;
-    case 'member':
-    default:
-      return GroupRole.member;
-  }
-}
-
-String _roleToString(GroupRole r) => switch (r) {
-      GroupRole.member => 'member',
-      GroupRole.coAdmin => 'co-admin',
-      GroupRole.admin => 'admin',
-    };
+import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/group_editor_state.dart/group_editor_state.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/enums/invitation_status.dart';
 
 DateTime? _parseDate(dynamic v) {
   if (v == null) return null;
@@ -111,8 +65,8 @@ class Invitation {
         groupId: (json['groupId'] ?? '').toString(),
         userId: json['userId']?.toString(),
         email: (json['email'] as String?)?.toLowerCase(),
-        role: _roleFromString(json['role']?.toString()),
-        status: _statusFromString(json['status']?.toString()),
+        role: GroupRoleX.from(json['role']?.toString()),
+        status: InvitationStatusX.from(json['status']?.toString()),
         invitedBy: (json['invitedBy'] ?? '').toString(),
         attempts:
             (json['attempts'] is num) ? (json['attempts'] as num).toInt() : 0,
@@ -134,8 +88,8 @@ class Invitation {
         'groupId': groupId,
         if (userId != null) 'userId': userId,
         if (email != null) 'email': email,
-        'role': _roleToString(role),
-        'status': _statusToString(status),
+        'role': role.wire,
+        'status': status.wire,
         'invitedBy': invitedBy,
         'attempts': attempts,
         'sendingDate': sendingDate.toIso8601String(),
@@ -152,7 +106,7 @@ class Invitation {
         'groupId': groupId,
         if (userId != null) 'userId': userId,
         if (email != null) 'email': email,
-        'role': _roleToString(role),
+        'role': role.wire,
         if (token != null) 'token': token,
         if (expiresAt != null) 'expiresAt': expiresAt!.toIso8601String(),
         if (meta.isNotEmpty) 'meta': meta,
@@ -195,13 +149,7 @@ class Invitation {
 
   // Convenience
   bool get isPending => status == InvitationStatus.pending;
-  bool get isTerminal => switch (status) {
-        InvitationStatus.accepted => true,
-        InvitationStatus.declined => true,
-        InvitationStatus.expired => true,
-        InvitationStatus.revoked => true,
-        InvitationStatus.pending => false,
-      };
+  bool get isTerminal => status.isTerminal;
 
   @override
   String toString() => jsonEncode(toJson());

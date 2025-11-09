@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/e-drawer-style-menu/horizontal_drawer_nav.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 
 class MyDrawer extends StatelessWidget {
   const MyDrawer({super.key});

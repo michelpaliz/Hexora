@@ -1,5 +1,5 @@
-import 'package:hexora/f-themes/app_utilities/view-item-styles/text_field/static/text_field_widget.dart';
-import 'package:hexora/f-themes/app_utilities/view-item-styles/text_field/static/textfield_styles.dart'
+import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/text_field_widget.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/textfield_styles.dart'
     show TextFieldStyles;
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';

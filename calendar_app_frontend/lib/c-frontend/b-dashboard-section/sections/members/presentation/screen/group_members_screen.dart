@@ -6,8 +6,8 @@ import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_reposit
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_vm.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/add_user_fab.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/member_list/members_section.dart';
-import 'package:hexora/f-themes/app_colors/themes/text_styles/typography_extension.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

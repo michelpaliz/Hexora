@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
-import 'package:hexora/f-themes/app_colors/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 
 /// `AddUserController` is a state management controller that handles the process of adding a user to a group in a Flutter application.
 ///

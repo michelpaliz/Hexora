@@ -4,8 +4,10 @@ import 'package:hexora/a-models/group_model/invite/invite.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/models/Members_count.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_ref.dart';
+import 'package:hexora/c-frontend/utils/enums/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/enums/invitation_status.dart';
 
 class MembersVM extends ChangeNotifier {
   MembersVM({
@@ -93,16 +95,8 @@ class MembersVM extends ChangeNotifier {
   int get totalPending => counts?.pending ?? pending.length;
   int get totalNotAccepted => notAccepted.length;
 
-  String Function(Invitation) _roleOf = (inv) {
-    switch (inv.role) {
-      case GroupRole.admin:
-        return 'admin';
-      case GroupRole.coAdmin:
-        return 'co-admin';
-      case GroupRole.member:
-        return 'member';
-    }
-  };
+// simplest & future-proof
+  String Function(Invitation) _roleOf = (inv) => inv.role.wire;
 
   MemberRef Function(Invitation) _invToRef(String status) => (inv) {
         final display = inv.email ?? inv.userId ?? 'unknown';

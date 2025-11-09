@@ -1,8 +1,8 @@
 import 'package:hexora/c-frontend/e-log-user-section/forgot_password.dart';
 import 'package:hexora/c-frontend/e-log-user-section/login/form/login_form.dart';
 import 'package:hexora/c-frontend/e-log-user-section/register/ui/form/register_form.dart';
-import 'package:hexora/f-themes/shape/solid/auth_header.dart';
-import 'package:hexora/f-themes/app_utilities/logo/logo_widget.dart';
+import 'package:hexora/f-themes/shapes/solid/auth_header.dart';
+import 'package:hexora/c-frontend/utils/logo/logo_widget.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';

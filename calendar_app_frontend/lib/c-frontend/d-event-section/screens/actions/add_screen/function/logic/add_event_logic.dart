@@ -15,7 +15,7 @@ import '../../../../../../../../a-models/group_model/group/group.dart';
 import '../../../../../../../../a-models/user_model/user.dart';
 import '../../../../../../../b-backend/group_mng_flow/group/domain/group_domain.dart';
 import '../../../../../../../b-backend/notification/domain/notification_domain.dart';
-import '../../../../../../../f-themes/app_utilities/app_utils.dart';
+import '../../../../../../utils/app_utils.dart';
 
 abstract class AddEventLogic<T extends StatefulWidget>
     extends BaseEventLogic<T> {
