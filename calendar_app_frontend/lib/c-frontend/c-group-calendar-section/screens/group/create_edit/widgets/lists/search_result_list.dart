@@ -25,7 +25,7 @@ class SearchResultList extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), 
                   const Icon(Icons.add, color: Colors.green),
                 ],
               ),

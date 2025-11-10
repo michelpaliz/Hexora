@@ -2,8 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
-import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_vm.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/screen/review_user_screen.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
@@ -23,33 +21,26 @@ class AddUsersFab extends StatelessWidget {
       backgroundColor: cs.primary,
       foregroundColor: ThemeColors.contrastOn(cs.primary),
       onPressed: () async {
-        final repo = context.read<IUserRepository>();
-        final vm = context.read<MembersVM>();
-
-        // ✅ get the signed-in user
-        final me = context.read<AuthProvider>().currentUser;
-
+        // 🚫 No need to fetch AuthProvider/currentUser or pass group anymore
         final result = await Navigator.of(context).push<Map<String, dynamic>>(
           MaterialPageRoute(
-            builder: (_) => ReviewAndAddUsersScreen(
-              currentUser: me, // ✅ not null now
-              group: group,
-              userRepository: repo,
-            ),
+            builder: (_) => const ReviewAndAddUsersScreen(), // ✅ zero-arg
           ),
         );
 
         if (result != null) {
-          final users = (result['users'] as List<User>);
-          final roles = (result['roles'] as Map<String, String>);
+          final users = result['users'] as List<User>?;
+          final roles = result['roles'] as Map<String, String>?;
 
-          // TODO: persist (repo call)
+          // TODO: If you persist here (instead of inside VM), do it now:
           // await context.read<GroupDomain>().groupRepository
-          //   .upsertMembers(group.id, users.map((u) => u.id).toList(), roles);
+          //   .upsertMembers(group.id, users?.map((u) => u.id).toList() ?? [], roles ?? {});
 
-          await vm.refreshAll();
-          ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text('Members updated')));
+          await context.read<MembersVM>().refreshAll();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Members updated')),
+          );
         }
       },
     );

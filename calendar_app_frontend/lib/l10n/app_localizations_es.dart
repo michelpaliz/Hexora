@@ -2292,4 +2292,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String addUsersCount(Object count) {
     return 'Agregar usuarios ($count)';
   }
+
+  @override
+  String get ok => 'Aceptar';
+
+  @override
+  String get searchMinChars => 'Escribe al menos 3 caracteres';
+
+  @override
+  String get errorSearchingUser => 'Error al buscar usuario';
+
+  @override
+  String get errorAddingUser => 'Error al agregar usuario';
+
+  @override
+  String get userAlreadyAdded => 'El usuario ya es miembro';
+
+  @override
+  String get userAlreadyPending => 'El usuario ya está en la selección';
+
+  @override
+  String selectedCommitted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se añadieron $count usuarios',
+      one: 'Se añadió 1 usuario',
+      zero: 'No se añadieron usuarios',
+    );
+    return '$_temp0';
+  }
 }

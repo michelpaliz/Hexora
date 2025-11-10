@@ -1,213 +1,186 @@
+// lib/c-frontend/.../controller/add_user_controller.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
-import 'package:hexora/c-frontend/utils/roles/role_policy.dart';
-import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/c-frontend/utils/widgets/snack_bar.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
 class AddUserController extends ChangeNotifier {
-  final User? currentUser;
-  final Group? group;
-  final IUserRepository _userRepoInterface;
+  final IGroupEditorPort port; // ← talk to VM via the port
 
-  AddUserController({
-    required this.currentUser,
-    required this.group,
-    required IUserRepository userRepositoryInterface,
-  }) : _userRepoInterface = userRepositoryInterface {
-    // Seed creator as default member list + role (owner)
-    if (currentUser != null) {
-      usersInGroup = [currentUser!];
-      userRoles[currentUser!.id] = GroupRole.owner; // enum
-    }
+  AddUserController({required this.port});
 
-    if (group != null) {
-      _seedRolesFromGroup(); // seed from group.userRoles (strings -> enum)
-      _loadGroupUsers(); // fetch User profiles for group.userIds
-    }
-  }
+  // UI-only state
+  final List<User> _selectedUsers = []; // pending chips
+  List<User> get selectedUsers => List.unmodifiable(_selectedUsers);
 
-  // Local state
-  List<User> usersInGroup = [];
+  List<String> _searchResults = []; // usernames for list UI
+  List<String> get searchResults => List.unmodifiable(_searchResults);
 
-  /// 🔑 role map: userId -> role (enum)
-  Map<String, GroupRole> userRoles = {};
+  final Map<String, User> _searchCache = {}; // username(lower) -> User
 
-  /// We keep results as simple usernames for the search UI
-  List<String> searchResults = [];
-
-  // ---------- Seeders / Loaders ----------
-  void _seedRolesFromGroup() {
-    if (group?.userRoles != null) {
-      // group.userRoles is Map<String, String> (wire). Convert -> enum.
-      userRoles.addAll(group!.userRoles.map(
-        (k, v) => MapEntry(k, GroupRoleX.from(v)),
-      ));
-    }
-    // ensure owner
-    if ((group?.ownerId ?? '').isNotEmpty) {
-      userRoles[group!.ownerId] = GroupRole.owner;
-    }
-  }
-
-  Future<void> _loadGroupUsers() async {
-    if (group == null) return;
-    try {
-      for (final id in group!.userIds) {
-        final u = await _userRepoInterface.getUserById(id);
-        if (!usersInGroup.any((x) => x.id == u.id)) {
-          usersInGroup.add(u);
-        }
-      }
-      // ensure owner flag even if backend map missed it
-      if (group!.ownerId.isNotEmpty) {
-        userRoles[group!.ownerId] = GroupRole.owner;
-      }
-      notifyListeners();
-    } catch (_) {
-      // swallow; UI can still function with partial data
-    }
-  }
-
-  // ---------- EDIT ROLES --------------
-  GroupRole _roleOfUserId(String userId) {
-    // Prefer staged enum; fallback from group strings; else member.
-    return userRoles[userId] ??
-        (group?.userRoles[userId] != null
-            ? GroupRoleX.from(group!.userRoles[userId])
-            : (group?.ownerId == userId ? GroupRole.owner : GroupRole.member));
-  }
-
-  bool canEditRole(String targetUserId) {
-    final me = currentUser?.id ?? '';
-    final ownerId = group?.ownerId ?? '';
-    return RolePolicy.canEditRole(
-      actorId: me,
-      targetId: targetUserId,
-      ownerId: ownerId,
-      roleOf: _roleOfUserId,
-    );
-  }
-
-  List<GroupRole> assignableRolesFor(String targetUserId) {
-    final me = currentUser?.id ?? '';
-    final ownerId = group?.ownerId ?? '';
-    return RolePolicy.assignableRoles(
-      actorId: me,
-      targetId: targetUserId,
-      ownerId: ownerId,
-      roleOf: _roleOfUserId,
-      includeOwner: false,
-    );
-  }
-
-  // ---------- Search / Add / Remove ----------
+  // ===== Search =====
   Future<void> searchUser(String query, BuildContext context) async {
+    final l = AppLocalizations.of(context);
     final q = query.trim();
-    if (q.length < 3) {
+    if (q.isEmpty) {
       clearResults();
       return;
     }
+
     try {
-      final results = await _userRepoInterface.searchUsernames(q.toLowerCase());
-      final existingUsernames = usersInGroup.map((u) => u.userName).toSet();
-      searchResults =
-          results.where((name) => !existingUsernames.contains(name)).toList();
+      final users = await port.searchUsers(q);
+      final pending =
+          _selectedUsers.map((u) => u.userName.toLowerCase()).toSet();
+
+      _searchCache.clear();
+      final usernames = <String>[];
+      for (final u in users) {
+        final name = u.userName;
+        final lower = name.toLowerCase();
+        _searchCache[lower] = u;
+        if (!pending.contains(lower)) {
+          usernames.add(name);
+        }
+      }
+      _searchResults = usernames;
       notifyListeners();
-    } catch (e) {
-      searchResults = [];
+    } catch (_) {
+      _searchResults = [];
       notifyListeners();
-      _showSnackBar(context, 'Error searching user');
+      HexoraSnackBar.show(
+        context: context,
+        message: 'Error searching user',
+        translatedMessage: l?.errorSearchingUser,
+        actionLabel: l?.ok ?? 'OK',
+      );
     }
   }
 
+  // ===== Stage add/remove =====
   Future<User?> addUser(String username, BuildContext context) async {
-    try {
-      final user = await _userRepoInterface.getUserByUsername(username);
+    final l = AppLocalizations.of(context);
+    final lower = username.toLowerCase();
+    final user = _searchCache[lower];
 
-      // prevent duplicates by id or username
-      if (usersInGroup.any((u) => u.id == user.id || u.userName == username)) {
-        return null;
-      }
-
-      usersInGroup.add(user);
-      userRoles[user.id] = GroupRole.member; // default role (enum)
-      searchResults.remove(username);
-
-      notifyListeners();
-      return user;
-    } catch (e) {
-      _showSnackBar(context, 'Error adding user');
+    if (user == null) {
+      HexoraSnackBar.show(
+        context: context,
+        message: 'User not found',
+        translatedMessage: l?.userNotFound,
+        actionLabel: l?.ok ?? 'OK',
+      );
       return null;
     }
+
+    // don’t allow adding someone who is already a real member
+    final alreadyMember = port.membersById.containsKey(user.id);
+    if (alreadyMember) {
+      HexoraSnackBar.show(
+        context: context,
+        message: 'User is already a member',
+        translatedMessage: l?.userAlreadyAdded,
+        actionLabel: l?.ok ?? 'OK',
+      );
+      return null;
+    }
+
+    // don’t allow duplicates in pending
+    if (_selectedUsers.any((u) => u.id == user.id)) {
+      HexoraSnackBar.show(
+        context: context,
+        message: 'User already in selection',
+        translatedMessage: l?.userAlreadyPending,
+        actionLabel: l?.ok ?? 'OK',
+      );
+      return null;
+    }
+
+    _selectedUsers.add(user);
+    _searchResults.remove(username);
+    notifyListeners();
+    return user;
   }
 
-  void removeUser(String username) {
-    final removed = usersInGroup.firstWhere(
-      (u) => u.userName == username,
-      orElse: () => User.empty(),
-    );
-    if (removed.id.isNotEmpty) {
-      usersInGroup.removeWhere((u) => u.id == removed.id);
-      userRoles.remove(removed.id);
-    } else {
-      usersInGroup.removeWhere((u) => u.userName == username);
-      userRoles.remove(username); // legacy safety if map was keyed by username
-    }
+  void unselect(String username) {
+    _selectedUsers.removeWhere((u) => u.userName == username);
     notifyListeners();
   }
 
-  /// Change role by username (called by your UI)
-  void changeRole(String username, GroupRole newRole) {
-    final u = usersInGroup.firstWhere(
+  // ===== Roles (delegate to VM) =====
+  void changeRole(String userId, GroupRole newRole) {
+    port.setRole(userId, newRole);
+    notifyListeners(); // VM already notified; this keeps UI chips in sync if needed
+  }
+
+  // ===== Commit staged users into VM =====
+  void commitSelected(BuildContext context) {
+    if (_selectedUsers.isEmpty) return;
+
+    for (final u in _selectedUsers) {
+      port.addMember(u); // VM owns truth
+      // Optionally set default member role (VM already defaults to member)
+      // port.setRole(u.id, GroupRole.member);
+    }
+
+    final count = _selectedUsers.length;
+    _selectedUsers.clear();
+    notifyListeners();
+
+    final l = AppLocalizations.of(context);
+    HexoraSnackBar.show(
+      context: context,
+      message: 'Selected users added',
+      translatedMessage: l?.selectedCommitted(count),
+      actionLabel: l?.ok ?? 'OK',
+    );
+  }
+
+  // ===== Helpers =====
+  void clearResults() {
+    _searchResults = [];
+    _searchCache.clear();
+    notifyListeners();
+  }
+
+  // In AddUserController
+
+// UI-only staged roles before commit
+  final Map<String, GroupRole> _stagedRolesByUserId = {};
+
+  GroupRole? stagedRoleOf(String userId) => _stagedRolesByUserId[userId];
+
+  void setStagedRoleByUsername(String username, GroupRole role) {
+    final u = _selectedUsers.firstWhere(
       (x) => x.userName == username,
       orElse: () => User.empty(),
     );
-    if (u.id.isNotEmpty) {
-      userRoles[u.id] = newRole;
-    } else {
-      // legacy key path (username)
-      userRoles[username] = newRole;
-    }
+    if (u.id.isEmpty) return;
+    _stagedRolesByUserId[u.id] = role;
     notifyListeners();
   }
 
-  // ---------- Boundary helpers (strings for backend) ----------
-  /// When you need to pass roles to APIs that expect strings:
-  Map<String, String> get rolesAsWire =>
-      userRoles.map((k, r) => MapEntry(k, r.wire));
+// // When committing staged users, also apply any staged roles to the VM:
+//   void commitSelected(BuildContext context) {
+//     if (_selectedUsers.isEmpty) return;
 
-  void clearResults() {
-    if (searchResults.isEmpty) return;
-    searchResults.clear();
-    notifyListeners();
-  }
+//     for (final u in _selectedUsers) {
+//       port.addMember(u);
+//       final r = _stagedRolesByUserId[u.id] ?? GroupRole.member;
+//       port.setRole(u.id, r);
+//     }
 
-  // ---------- UI helper ----------
-  void _showSnackBar(BuildContext context, String message) {
-    final cs = Theme.of(context).colorScheme;
-    final bg = ThemeColors.containerBg(context);
-    final onBg = ThemeColors.textPrimary(context);
+//     _selectedUsers.clear();
+//     _stagedRolesByUserId.clear();
+//     notifyListeners();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: bg,
-        behavior: SnackBarBehavior.floating,
-        content: Text(
-          message,
-          style: TextStyle(
-            color: onBg,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        action: SnackBarAction(
-          label: 'OK',
-          textColor: ThemeColors.contrastOn(cs.primary),
-          backgroundColor: cs.primary,
-          onPressed: () {},
-        ),
-      ),
-    );
-  }
+//     final l = AppLocalizations.of(context);
+//     HexoraSnackBar.show(
+//       context: context,
+//       message: 'Selected users added',
+//       translatedMessage: l?.selectedCommitted(_selectedUsers.length),
+//       actionLabel: l?.ok ?? 'OK',
+//     );
+//   }
 }

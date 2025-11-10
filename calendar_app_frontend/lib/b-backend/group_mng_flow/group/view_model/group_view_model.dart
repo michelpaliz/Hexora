@@ -53,10 +53,6 @@ class GroupEditorViewModel extends ChangeNotifier {
       _update(_state.copyWith(description: v.trim()));
   void setImage(XFile? f) => _update(_state.copyWith(image: f));
 
-  // bool canEditRole(String userId) {
-  //   // cannot edit yourself; cannot edit the owner
-  //   return userId != currentUser.id && _state.roles[userId] != GroupRole.owner;
-  // }
   bool canEditRole(String userId) {
     return RolePolicy.canEditRole(
       actorId: currentUser.id,

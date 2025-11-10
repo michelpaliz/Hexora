@@ -1210,14 +1210,34 @@
   "done": "Done",
   "selectedLabel": "Selected",
   "loadMore": "Load more ({count})",
+  "addUsersCount": "Add users ({count})",
 
-  "addUsersCount": "Add users ({count})"
+  "ok": "OK",
+  "@ok": { "description": "Generic confirmation/action label." },
 
+  "searchMinChars": "Type at least 3 characters",
+  "@searchMinChars": { "description": "Hint shown when the user types fewer than 3 characters in search." },
 
+  "errorSearchingUser": "Error searching user",
+  "@errorSearchingUser": { "description": "Shown when a search request fails." },
+
+  "errorAddingUser": "Error adding user",
+  "@errorAddingUser": { "description": "Shown when adding a user fails." },
+
+  "userAlreadyAdded": "User is already a member",
+  "@userAlreadyAdded": { "description": "Shown when the selected username already belongs to a group member." },
+
+  "userAlreadyPending": "User already in selection",
+  "@userAlreadyPending": { "description": "Shown when the username is already staged (pending selection)." },
+
+  "selectedCommitted": "{count, plural, =0{No users added} =1{1 user added} other{{count} users added}}",
+  "@selectedCommitted": {
+    "description": "Toast after committing pending selections into the group.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  }
 }
-
-
-
-
-
-

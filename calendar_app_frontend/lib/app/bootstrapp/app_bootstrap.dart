@@ -1,9 +1,11 @@
+// lib/app/bootstrapp/app_bootstrap.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/app/bootstrapp/use_case_providers.dart';
+import 'package:hexora/app/bootstrapp/noo_ui_messenger.dart';
 import 'package:provider/provider.dart';
 
 import 'core_providers.dart';
 import 'feature_providers.dart';
+import 'use_case_providers.dart';
 
 class AppBootstrap extends StatelessWidget {
   final Widget child;
@@ -13,9 +15,10 @@ class AppBootstrap extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ...coreProviders, // auth, user, groups, notifications, theme/locale, etc.
-        ...featureProviders, // events, invites, resolvers, etc.
-        ...useCaseProviders, // CreateGroupUseCase, InviteMembersUseCase, ...
+        ...coreProviders, // auth, tokens, user domain, theme/locale, etc.
+        ...featureProviders, // groups, events, invites, etc.
+        ...useCaseProviders, // create/invite/upload/search use cases
+        ...editorProviders, // 👈 VM + Port for the editor
       ],
       child: child,
     );

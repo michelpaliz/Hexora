@@ -1,7 +1,10 @@
+// lib/c-frontend/b-dashboard-section/sections/members/presentation/screen/tabs/add_user_tab.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/add_user_controller.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/selected_users_list.dart';
-// ✅ Use your centralized enum file
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+// VM → Port
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -20,7 +23,19 @@ class AddUsersTab extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
+    // UI glue (staged selections, search, staged roles, etc.)
     final ctrl = context.watch<AddUserController>();
+    // VM truth via port (existing members + their roles)
+    final port = context.watch<IGroupEditorPort>();
+
+    // Build the roles map expected by SelectedUsersList:
+    // - start with VM (real members) roles
+    // - overlay staged roles (or default member) for users in the chips
+    final Map<String, GroupRole> rolesByIdOrName = {
+      ...port.roles, // userId -> GroupRole for existing members
+      for (final u in ctrl.selectedUsers)
+        u.id: ctrl.stagedRoleOf(u.id) ?? GroupRole.member, // staged override
+    };
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
@@ -36,14 +51,15 @@ class AddUsersTab extends StatelessWidget {
             ),
           ),
 
-          // Selected Users display
+          // Selected Users display -> use pending selections (chips), not VM members
           SelectedUsersList(
-            users: ctrl.usersInGroup,
-            // ✅ pass enum map directly (userId -> GroupRole)
-            rolesByIdOrName: ctrl.userRoles,
-            onRemove: (u) => ctrl.removeUser(u),
-            // ✅ pass enum to controller; it handles storage and wire conversions
-            onChangeRole: (u, r) => ctrl.changeRole(u, r),
+            users: ctrl.selectedUsers,
+            rolesByIdOrName: rolesByIdOrName, // merged roles
+            onRemove: (username) => ctrl.unselect(username),
+            onChangeRole: (username, newRole) {
+              // Let controller remember staged role (UI-only) until commit
+              ctrl.setStagedRoleByUsername(username, newRole);
+            },
           ),
 
           const Spacer(),
@@ -54,7 +70,7 @@ class AddUsersTab extends StatelessWidget {
             child: FilledButton.icon(
               icon: const Icon(Icons.person_add_alt_1),
               label: Text(
-                l.addUsersCount(ctrl.usersInGroup.length),
+                l.addUsersCount(ctrl.selectedUsers.length), // pending count
                 style: t.buttonText.copyWith(
                   color: Theme.of(context).canvasColor,
                 ),

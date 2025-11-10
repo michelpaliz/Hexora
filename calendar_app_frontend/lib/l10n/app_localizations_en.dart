@@ -2272,4 +2272,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String addUsersCount(Object count) {
     return 'Add users ($count)';
   }
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get searchMinChars => 'Type at least 3 characters';
+
+  @override
+  String get errorSearchingUser => 'Error searching user';
+
+  @override
+  String get errorAddingUser => 'Error adding user';
+
+  @override
+  String get userAlreadyAdded => 'User is already a member';
+
+  @override
+  String get userAlreadyPending => 'User already in selection';
+
+  @override
+  String selectedCommitted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count users added',
+      one: '1 user added',
+      zero: 'No users added',
+    );
+    return '$_temp0';
+  }
 }

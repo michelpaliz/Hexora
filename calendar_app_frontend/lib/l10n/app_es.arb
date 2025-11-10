@@ -1206,8 +1206,42 @@
   "done": "Listo",
   "selectedLabel": "Seleccionados",
   "loadMore": "Cargar más ({count})",
-  "addUsersCount": "Agregar usuarios ({count})"
+  "addUsersCount": "Agregar usuarios ({count})",
+
+
+  "ok": "Aceptar",
+  "@ok": { "description": "Etiqueta genérica de confirmación/acción." },
+
+  "searchMinChars": "Escribe al menos 3 caracteres",
+  "@searchMinChars": { "description": "Sugerencia cuando el usuario escribe menos de 3 caracteres en la búsqueda." },
+
+  "errorSearchingUser": "Error al buscar usuario",
+  "@errorSearchingUser": { "description": "Se muestra cuando falla la búsqueda." },
+
+  "errorAddingUser": "Error al agregar usuario",
+  "@errorAddingUser": { "description": "Se muestra cuando falla el agregado del usuario." },
+
+  "userAlreadyAdded": "El usuario ya es miembro",
+  "@userAlreadyAdded": { "description": "Se muestra cuando el nombre de usuario ya pertenece a un miembro del grupo." },
+
+  "userAlreadyPending": "El usuario ya está en la selección",
+  "@userAlreadyPending": { "description": "Se muestra cuando el nombre de usuario ya está en la lista de seleccionados." },
+
+  "selectedCommitted": "{count, plural, =0{No se añadieron usuarios} =1{Se añadió 1 usuario} other{Se añadieron {count} usuarios}}",
+  "@selectedCommitted": {
+    "description": "Toast tras confirmar los usuarios seleccionados al grupo.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  }
 }
+
+
+
+
 
 
 

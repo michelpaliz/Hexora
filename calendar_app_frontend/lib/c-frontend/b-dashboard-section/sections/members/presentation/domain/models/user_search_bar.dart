@@ -10,12 +10,24 @@ class UserSearchBar extends StatefulWidget {
     this.onClear,
     this.hintText,
     this.autofocus = true,
+    this.minChars = 1, // NEW: configurable gate
+    this.debounceMs = 250, // NEW: configurable debounce
   });
 
+  /// Called with the (trimmed) query after debounce.
   final void Function(String query) onChanged;
+
+  /// Called after pressing the clear (X) button.
   final VoidCallback? onClear;
+
   final String? hintText;
   final bool autofocus;
+
+  /// Minimum characters before emitting queries. Default = 1
+  final int minChars;
+
+  /// Debounce interval in milliseconds. Default = 250
+  final int debounceMs;
 
   @override
   State<UserSearchBar> createState() => _UserSearchBarState();
@@ -24,27 +36,65 @@ class UserSearchBar extends StatefulWidget {
 class _UserSearchBarState extends State<UserSearchBar> {
   final _controller = TextEditingController();
   Timer? _debounce;
+  String _lastEmitted = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Keep suffix icon state in sync even on programmatic changes.
+    _controller.addListener(_rebuildForSuffixIcon);
+  }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _controller.removeListener(_rebuildForSuffixIcon);
     _controller.dispose();
     super.dispose();
   }
 
+  void _rebuildForSuffixIcon() {
+    if (mounted) setState(() {});
+  }
+
+  void _emit(String raw) {
+    final q = raw.trim();
+
+    // Enforce min length gate; send empty when below threshold.
+    if (q.length < widget.minChars) {
+      if (_lastEmitted.isNotEmpty) {
+        _lastEmitted = '';
+        widget.onChanged('');
+      }
+      return;
+    }
+
+    // Distinct until changed
+    if (q == _lastEmitted) return;
+
+    _lastEmitted = q;
+    widget.onChanged(q);
+  }
+
   void _onTextChanged(String value) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 250), () {
-      widget.onChanged(value);
+    _debounce = Timer(Duration(milliseconds: widget.debounceMs), () {
+      _emit(value);
     });
-    setState(() {});
+  }
+
+  void _onSubmitted(String value) {
+    // Immediate search on submit
+    _debounce?.cancel();
+    _emit(value);
   }
 
   void _clear() {
+    _debounce?.cancel();
     _controller.clear();
+    _lastEmitted = '';
     widget.onChanged('');
     widget.onClear?.call();
-    setState(() {});
   }
 
   @override
@@ -57,6 +107,7 @@ class _UserSearchBarState extends State<UserSearchBar> {
       controller: _controller,
       autofocus: widget.autofocus,
       onChanged: _onTextChanged,
+      onSubmitted: _onSubmitted, // NEW: immediate submit handling
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: widget.hintText ?? 'Search users…',

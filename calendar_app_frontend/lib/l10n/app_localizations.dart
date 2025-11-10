@@ -4130,6 +4130,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add users ({count})'**
   String addUsersCount(Object count);
+
+  /// Generic confirmation/action label.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// Hint shown when the user types fewer than 3 characters in search.
+  ///
+  /// In en, this message translates to:
+  /// **'Type at least 3 characters'**
+  String get searchMinChars;
+
+  /// Shown when a search request fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Error searching user'**
+  String get errorSearchingUser;
+
+  /// Shown when adding a user fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Error adding user'**
+  String get errorAddingUser;
+
+  /// Shown when the selected username already belongs to a group member.
+  ///
+  /// In en, this message translates to:
+  /// **'User is already a member'**
+  String get userAlreadyAdded;
+
+  /// Shown when the username is already staged (pending selection).
+  ///
+  /// In en, this message translates to:
+  /// **'User already in selection'**
+  String get userAlreadyPending;
+
+  /// Toast after committing pending selections into the group.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No users added} =1{1 user added} other{{count} users added}}'**
+  String selectedCommitted(int count);
 }
 
 class _AppLocalizationsDelegate
