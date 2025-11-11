@@ -24,6 +24,7 @@ class AddUsersBottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // handle
           Container(
             width: 36,
             height: 4,
@@ -33,6 +34,8 @@ class AddUsersBottomSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
+
+          // search
           Consumer<AddUserController>(
             builder: (_, ctrl, __) => UserSearchBar(
               hintText: 'Search by username…',
@@ -41,14 +44,19 @@ class AddUsersBottomSheet extends StatelessWidget {
               autofocus: true,
             ),
           ),
+
           const SizedBox(height: 8),
+
+          // results
           Flexible(
             child: Consumer<AddUserController>(
               builder: (context, ctrl, _) {
                 final results = ctrl.searchResults;
                 if (results.isEmpty) {
-                  return _Hint(text: 'Type at least 3 characters to search.');
+                  return const _Hint(
+                      text: 'Type at least 3 characters to search.');
                 }
+
                 return ListView.separated(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
@@ -58,22 +66,40 @@ class AddUsersBottomSheet extends StatelessWidget {
                       Divider(height: 1, color: cs.outlineVariant),
                   itemBuilder: (context, i) {
                     final username = results[i];
+
+                    // ✅ compute flags
+                    final isMember = ctrl.port.membersById.values.any(
+                      (u) =>
+                          (u.userName ?? '').toLowerCase() ==
+                          username.toLowerCase(),
+                    );
+                    final isPending = ctrl.selectedUsers.any(
+                      (u) =>
+                          (u.userName ?? '').toLowerCase() ==
+                          username.toLowerCase(),
+                    );
+
                     return UserSearchResultItem(
                       username: username,
-                      onAdd: () async {
-                        await ctrl.addUser(username, context);
-                        // Optional: quick feedback
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Added @$username')),
-                        );
-                      },
+                      isMember: isMember,
+                      isPending: isPending,
+                      onAdd: (isMember || isPending)
+                          ? null
+                          : () async {
+                              await ctrl.addUser(username, context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Added @$username')),
+                              );
+                            },
                     );
                   },
                 );
               },
             ),
           ),
+
           const SizedBox(height: 12),
+
           Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
@@ -91,6 +117,7 @@ class AddUsersBottomSheet extends StatelessWidget {
 class _Hint extends StatelessWidget {
   const _Hint({required this.text});
   final String text;
+
   @override
   Widget build(BuildContext context) {
     return Padding(

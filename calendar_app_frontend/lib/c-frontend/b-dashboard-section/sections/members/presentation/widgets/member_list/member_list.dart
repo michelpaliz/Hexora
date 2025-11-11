@@ -1,12 +1,13 @@
-// lib/.../member_list.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_ref.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/common/empty_hint.dart';
+import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/member_row/components/depth_card.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/member_row/members_row.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
+// ⬇️ Use your global role enum + parser
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/card_surface.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class MembersList extends StatelessWidget {
@@ -36,31 +37,6 @@ class MembersList extends StatelessWidget {
     this.useGradientBackground = false,
   });
 
-  String _norm(String role) =>
-      role.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-
-  bool _isCoAdminRole(String role) {
-    final s = _norm(role);
-    return s.contains('co-admin') ||
-        s.contains('coadmin') ||
-        s.contains('co administrator');
-  }
-
-  bool _isAdminRole(String role) {
-    final s = _norm(role);
-    if (_isCoAdminRole(role)) return false;
-    return s == 'admin' ||
-        s.contains('administrator') ||
-        s.contains('owner') ||
-        s == 'manager' ||
-        s == 'moderator';
-  }
-
-  bool _isMemberRole(String role) {
-    final s = _norm(role);
-    return s == 'member' || s.isEmpty;
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -79,11 +55,21 @@ class MembersList extends StatelessWidget {
       );
     }
 
-    final adminMembers = accepted.where((r) => _isAdminRole(r.role)).toList();
-    final coAdminMembers =
-        accepted.where((r) => _isCoAdminRole(r.role)).toList();
-    final regularMembers =
-        accepted.where((r) => _isMemberRole(r.role)).toList();
+    // ✅ Group by global enum (mirrors old behavior: owner counted with admins)
+    final adminMembers = accepted.where((r) {
+      final role = GroupRoleX.from(r.role);
+      return role == GroupRole.admin || role == GroupRole.owner;
+    }).toList();
+
+    final coAdminMembers = accepted.where((r) {
+      final role = GroupRoleX.from(r.role);
+      return role == GroupRole.coAdmin;
+    }).toList();
+
+    final regularMembers = accepted.where((r) {
+      final role = GroupRoleX.from(r.role);
+      return role == GroupRole.member;
+    }).toList();
 
     List<Widget> buildSection(
       String title,
@@ -147,7 +133,7 @@ class MembersList extends StatelessWidget {
       ],
     );
 
-    // 🔸 Replace gradient with a neutral, eye-friendly panel background
+    // 🔸 Neutral panel background option
     if (useGradientBackground) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       final panelColor = isDark

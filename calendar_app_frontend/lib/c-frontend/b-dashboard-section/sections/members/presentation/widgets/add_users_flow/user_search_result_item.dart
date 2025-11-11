@@ -1,33 +1,60 @@
+// lib/c-frontend/.../widgets/add_users_flow/user_search_result_item.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 
 class UserSearchResultItem extends StatelessWidget {
+  final String username;
+  final bool isMember;
+  final bool isPending;
+  final VoidCallback? onAdd;
+
   const UserSearchResultItem({
     super.key,
     required this.username,
-    required this.onAdd,
+    this.isMember = false,
+    this.isPending = false,
+    this.onAdd,
   });
-
-  final String username;
-  final Future<void> Function() onAdd;
 
   @override
   Widget build(BuildContext context) {
-    final onBg = ThemeColors.textPrimary(context);
+    final cs = Theme.of(context).colorScheme;
+
+    String? badgeLabel;
+    Color? badgeBg;
+    Color? badgeFg;
+
+    if (isMember) {
+      badgeLabel = 'Member';
+      badgeBg = cs.secondaryContainer;
+      badgeFg = cs.onSecondaryContainer;
+    } else if (isPending) {
+      badgeLabel = 'Selected';
+      badgeBg = cs.tertiaryContainer;
+      badgeFg = cs.onTertiaryContainer;
+    }
 
     return ListTile(
-      leading: CircleAvatar(
-        child: Text(username.isNotEmpty ? username[0].toUpperCase() : '?'),
-      ),
-      title: Text(
-        '@$username',
-        style: TextStyle(color: onBg, fontWeight: FontWeight.w600),
-      ),
-      trailing: FilledButton.icon(
-        icon: const Icon(Icons.person_add_alt_1),
-        label: const Text('Add'),
-        onPressed: onAdd,
-      ),
+      title: Text('@$username',
+          style: const TextStyle(fontWeight: FontWeight.w600)),
+      trailing: isMember || isPending
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: badgeBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(badgeLabel!,
+                  style:
+                      TextStyle(color: badgeFg, fontWeight: FontWeight.w600)),
+            )
+          : IconButton(
+              icon: const Icon(Icons.add),
+              color: cs.primary,
+              onPressed: onAdd, // enabled
+            ),
+      // prevent taps from doing anything if disabled
+      onTap: (isMember || isPending) ? null : onAdd,
+      enabled: !(isMember || isPending),
     );
   }
 }

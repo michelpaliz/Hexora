@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role_labels.dart';
-// ✅ Global role label helper (translations)
-// Colors + typography
-import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class SelectedUsersList extends StatelessWidget {
@@ -31,21 +28,9 @@ class SelectedUsersList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (users.isEmpty) return const SizedBox.shrink();
 
-    final typo = AppTypography.of(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Text(
-            'Selected',
-            style: typo.titleLarge.copyWith(
-              fontWeight: FontWeight.w700,
-              color: ThemeColors.textSecondary(context),
-            ),
-          ),
-        ),
         Wrap(
           spacing: 8,
           runSpacing: 8,

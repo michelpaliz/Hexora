@@ -1,6 +1,9 @@
 // lib/c-frontend/b-dashboard-section/sections/members/presentation/screen/review_user_screen.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/group_view_model.dart';
+import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/add_user_controller.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
@@ -13,8 +16,55 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
-class ReviewAndAddUsersScreen extends StatelessWidget {
+class ReviewAndAddUsersScreen extends StatefulWidget {
   const ReviewAndAddUsersScreen({super.key});
+
+  @override
+  State<ReviewAndAddUsersScreen> createState() =>
+      _ReviewAndAddUsersScreenState();
+}
+
+class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
+  bool _seeded = false;
+
+  Future<void> _seedVmFromGroupOnce(BuildContext context) async {
+    if (_seeded) return;
+
+    final group = context.read<GroupDomain>().currentGroup;
+    if (group == null) return;
+
+    final repo = context.read<IUserRepository>();
+    final port = context.read<IGroupEditorPort>();
+
+    // Build members map (id -> User)
+    final Map<String, User> membersById = {};
+    for (final id in group.userIds) {
+      try {
+        final u = await repo.getUserById(id);
+        membersById[u.id] = u;
+      } catch (_) {
+        // ignore a failing user; continue seeding others
+      }
+    }
+
+    // Build roles map (id -> GroupRole)
+    final Map<String, GroupRole> roles = {};
+    group.userRoles.forEach((userId, wire) {
+      roles[userId] = GroupRoleX.from(wire);
+    });
+
+    await port.seedMembers(membersById: membersById, roles: roles);
+    if (mounted) setState(() => _seeded = true);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Run seeding after first frame so Providers are available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _seedVmFromGroupOnce(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,12 +74,11 @@ class ReviewAndAddUsersScreen extends StatelessWidget {
 
     return MultiProvider(
       providers: [
-        // ✅ Build the Port from the VM safely (VM must be above in the tree)
+        // Port backed by the GroupEditorViewModel
         ProxyProvider<GroupEditorViewModel, IGroupEditorPort>(
           update: (_, vm, __) => VmGroupEditorPort(vm),
         ),
-
-        // ✅ Screen-scoped controller that talks to the Port
+        // Screen-scoped controller that stages added users before commit
         ChangeNotifierProvider<AddUserController>(
           create: (ctx) =>
               AddUserController(port: ctx.read<IGroupEditorPort>()),
@@ -57,10 +106,10 @@ class ReviewAndAddUsersScreen extends StatelessWidget {
                 actions: [
                   TextButton(
                     onPressed: () {
-                      // ensure pending selections are committed into the VM
+                      // Make sure staged selections are applied to the VM
                       ctrl.commitSelected(context);
 
-                      // return VM truth
+                      // Return VM truth to caller
                       final members = port.membersById.values.toList();
                       final rolesWire = {
                         for (final e in port.roles.entries) e.key: e.value.wire,
@@ -68,7 +117,7 @@ class ReviewAndAddUsersScreen extends StatelessWidget {
 
                       Navigator.of(context).maybePop({
                         'users': members, // List<User>
-                        'roles': rolesWire, // Map<String,String>
+                        'roles': rolesWire, // Map<String, String>
                       });
                     },
                     child: Text(
@@ -125,7 +174,7 @@ class ReviewAndAddUsersScreen extends StatelessWidget {
               ),
               body: TabBarView(
                 children: [
-                  // ===== Tab 1: Update roles (from VM via Port) =====
+                  // Tab 1 — roles from VM via Port (now seeded with real members)
                   UpdateRolesTab(
                     rolesByUserId: port.roles,
                     membersById: port.membersById,
@@ -139,7 +188,7 @@ class ReviewAndAddUsersScreen extends StatelessWidget {
                     setRole: (userId, r) => port.setRole(userId, r),
                   ),
 
-                  // ===== Tab 2: Add users (staging via controller) =====
+                  // Tab 2 — stage additions, then commit to VM
                   AddUsersTab(
                     openPicker: () async {
                       await showModalBottomSheet<void>(
@@ -159,8 +208,7 @@ class ReviewAndAddUsersScreen extends StatelessWidget {
                   ),
                 ],
               ),
-
-              // ✅ FAB removed — we rely on the FilledButton in AddUsersTab
+              // FAB intentionally removed; use the FilledButton in AddUsersTab
             );
           },
         ),

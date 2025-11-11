@@ -1,6 +1,6 @@
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group_features.dart';
-import 'package:hexora/c-frontend/utils/roles/id_normalizer.dart';
+import 'package:hexora/c-frontend/utils/roles/id_normalize/id_normalizer.dart';
 
 class Group {
   // ---------- Core ----------

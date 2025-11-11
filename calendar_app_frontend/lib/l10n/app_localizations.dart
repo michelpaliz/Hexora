@@ -4172,6 +4172,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =0{No users added} =1{1 user added} other{{count} users added}}'**
   String selectedCommitted(int count);
+
+  /// No description provided for @online.
+  ///
+  /// In en, this message translates to:
+  /// **'online'**
+  String get online;
 }
 
 class _AppLocalizationsDelegate

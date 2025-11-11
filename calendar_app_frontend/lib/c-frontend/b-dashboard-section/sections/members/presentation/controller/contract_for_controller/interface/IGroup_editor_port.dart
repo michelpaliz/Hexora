@@ -18,4 +18,9 @@ abstract class IGroupEditorPort {
   // Snapshots for rendering (read-only views of VM state)
   Map<String, User> get membersById;
   Map<String, GroupRole> get roles;
+
+  Future<void> seedMembers({
+    required Map<String, User> membersById,
+    required Map<String, GroupRole> roles,
+  });
 }

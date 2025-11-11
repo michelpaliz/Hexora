@@ -21,8 +21,8 @@ class AddUserController extends ChangeNotifier {
   final Map<String, User> _searchCache = {}; // username(lower) -> User
 
   // ===== Search =====
+// ===== Search =====
   Future<void> searchUser(String query, BuildContext context) async {
-    final l = AppLocalizations.of(context);
     final q = query.trim();
     if (q.isEmpty) {
       clearResults();
@@ -31,32 +31,69 @@ class AddUserController extends ChangeNotifier {
 
     try {
       final users = await port.searchUsers(q);
-      final pending =
-          _selectedUsers.map((u) => u.userName.toLowerCase()).toSet();
 
       _searchCache.clear();
-      final usernames = <String>[];
       for (final u in users) {
         final name = u.userName;
-        final lower = name.toLowerCase();
-        _searchCache[lower] = u;
-        if (!pending.contains(lower)) {
-          usernames.add(name);
+        if (name.isNotEmpty) {
+          _searchCache[name.toLowerCase()] = u;
         }
       }
-      _searchResults = usernames;
+
+      // ✅ assign to the backing field, not the getter
+      _searchResults =
+          users.map((u) => u.userName).whereType<String>().toList();
+
       notifyListeners();
     } catch (_) {
+      // ✅ same here
       _searchResults = [];
       notifyListeners();
       HexoraSnackBar.show(
         context: context,
         message: 'Error searching user',
-        translatedMessage: l?.errorSearchingUser,
-        actionLabel: l?.ok ?? 'OK',
+        translatedMessage: AppLocalizations.of(context)?.errorSearchingUser,
+        actionLabel: AppLocalizations.of(context)?.ok ?? 'OK',
       );
     }
   }
+
+  // Future<void> searchUser(String query, BuildContext context) async {
+  //   final l = AppLocalizations.of(context);
+  //   final q = query.trim();
+  //   if (q.isEmpty) {
+  //     clearResults();
+  //     return;
+  //   }
+
+  //   try {
+  //     final users = await port.searchUsers(q);
+  //     final pending =
+  //         _selectedUsers.map((u) => u.userName.toLowerCase()).toSet();
+
+  //     _searchCache.clear();
+  //     final usernames = <String>[];
+  //     for (final u in users) {
+  //       final name = u.userName;
+  //       final lower = name.toLowerCase();
+  //       _searchCache[lower] = u;
+  //       if (!pending.contains(lower)) {
+  //         usernames.add(name);
+  //       }
+  //     }
+  //     _searchResults = usernames;
+  //     notifyListeners();
+  //   } catch (_) {
+  //     _searchResults = [];
+  //     notifyListeners();
+  //     HexoraSnackBar.show(
+  //       context: context,
+  //       message: 'Error searching user',
+  //       translatedMessage: l?.errorSearchingUser,
+  //       actionLabel: l?.ok ?? 'OK',
+  //     );
+  //   }
+  // }
 
   // ===== Stage add/remove =====
   Future<User?> addUser(String username, BuildContext context) async {

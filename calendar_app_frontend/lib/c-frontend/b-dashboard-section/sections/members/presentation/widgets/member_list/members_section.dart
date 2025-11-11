@@ -44,7 +44,7 @@ class Members extends StatelessWidget {
       acceptedLabel: acceptedLabel,
       pendingLabel: pendingLabel,
       notAcceptedLabel: notAcceptedLabel,
-      useGradientBackground: useGradientBackground, // forwarded
+      useGradientBackground: false, // forwarded
       wrapInCard: wrapInCard,
     );
   }

@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/presentation/coordinator/calendar_screen_coordinator.dart';
-import 'package:hexora/c-frontend/utils/image/user_status_avatar_row.dart';
+import 'package:hexora/c-frontend/utils/image/widgets/user_status_row.dart';
 
 class PresenceStatusStrip extends StatelessWidget {
   final Group group;

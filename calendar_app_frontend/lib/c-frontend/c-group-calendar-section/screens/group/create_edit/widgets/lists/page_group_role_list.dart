@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+// Avatar (cached, themed, with icon fallback)
+import 'package:hexora/c-frontend/utils/image/avatar_utils.dart';
+// Global role enum + i18n label helpers
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role_labels.dart';
 // Typography (font family/weights)
@@ -43,8 +46,6 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
   static const int _pageSize = 20;
   int _visible = _pageSize;
 
-  int _priority(GroupRole r) => r.priorityAsc;
-
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
@@ -54,7 +55,9 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
       ..sort((a, b) {
         final roleA = widget.roles[a] ?? GroupRole.member;
         final roleB = widget.roles[b] ?? GroupRole.member;
-        final p = _priority(roleA).compareTo(_priority(roleB));
+
+        // ✅ use global priority (no local helper)
+        final p = roleA.priorityAsc.compareTo(roleB.priorityAsc);
         if (p != 0) return p;
 
         final nameA = widget.membersById[a]?.name ?? '';
@@ -65,8 +68,9 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
     final total = userIds.length;
     final visible = _visible.clamp(0, total);
 
-    if (total == 0)
+    if (total == 0) {
       return Text(loc.noUserRolesAvailable, style: typo.bodyMedium);
+    }
 
     return Column(
       children: [
@@ -80,13 +84,12 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
             final user = widget.membersById[userId];
             final editable = widget.canEditRole(userId);
 
-            return _memberTile(
-              context: context,
+            return _MemberTile(
               userId: userId,
               role: role,
               user: user,
               editable: editable,
-              roles: widget.assignableRoles,
+              assignableRoles: widget.assignableRoles,
               onRoleChanged: (newRole) => widget.setRole(userId, newRole),
               onRemove:
                   editable ? () => widget.onRemoveUser?.call(userId) : null,
@@ -106,23 +109,35 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
       ],
     );
   }
+}
 
-  Widget _memberTile({
-    required BuildContext context,
-    required String userId,
-    required GroupRole role,
-    required User? user,
-    required bool editable,
-    required List<GroupRole> roles,
-    required ValueChanged<GroupRole> onRoleChanged,
-    required VoidCallback? onRemove,
-  }) {
+class _MemberTile extends StatelessWidget {
+  final String userId;
+  final GroupRole role;
+  final User? user;
+  final bool editable;
+  final List<GroupRole> assignableRoles;
+  final ValueChanged<GroupRole> onRoleChanged;
+  final VoidCallback? onRemove;
+
+  const _MemberTile({
+    required this.userId,
+    required this.role,
+    required this.user,
+    required this.editable,
+    required this.assignableRoles,
+    required this.onRoleChanged,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
 
-    final name = user?.name.isNotEmpty == true
+    final name = (user?.name.isNotEmpty ?? false)
         ? user!.name
-        : user?.userName ?? 'Unknown';
+        : (user?.userName ?? 'Unknown');
 
     return Column(
       children: [
@@ -130,15 +145,14 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
           dense: true,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          leading: CircleAvatar(
+
+          // ✅ unified avatar util (no local avatar logic)
+          leading: AvatarUtils.profileAvatar(
+            context,
+            user?.photoUrl,
             radius: 20,
-            backgroundImage: (user?.photoUrl?.isNotEmpty ?? false)
-                ? NetworkImage(user!.photoUrl!)
-                : null,
-            child: (user?.photoUrl?.isEmpty ?? true)
-                ? Text(name[0].toUpperCase(), style: typo.bodyMedium)
-                : null,
           ),
+
           title: Text(
             name,
             maxLines: 1,
@@ -151,15 +165,16 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
             overflow: TextOverflow.ellipsis,
             style: typo.bodySmall,
           ),
+
           trailing: SizedBox(
-            width: 200,
+            width: 220,
             child: Align(
               alignment: Alignment.centerRight,
               child: editable
                   ? _RoleSelector(
                       value: role,
-                      options:
-                          {...roles, role}.toList(), // ensure current in list
+                      // ensure current value appears even if not in assignableRoles
+                      options: {...assignableRoles, role}.toList(),
                       onChanged: onRoleChanged,
                     )
                   : Container(
@@ -170,7 +185,7 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        roleLabelOf(context, role), // ✅ translations
+                        roleLabelOf(context, role), // ✅ global label
                         style: typo.bodySmall.copyWith(
                           color: scheme.onSecondaryContainer,
                           fontWeight: FontWeight.w600,
@@ -179,6 +194,7 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
                     ),
             ),
           ),
+
           onLongPress: onRemove,
         ),
         const Divider(height: 1),
@@ -201,14 +217,13 @@ class _RoleSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final typo = AppTypography.of(context);
+    final outline = Theme.of(context).colorScheme.outlineVariant;
 
     return DropdownButtonHideUnderline(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+          border: Border.all(color: outline),
           borderRadius: BorderRadius.circular(10),
         ),
         child: DropdownButton<GroupRole>(
@@ -218,7 +233,10 @@ class _RoleSelector extends StatelessWidget {
           items: options.map((r) {
             return DropdownMenuItem<GroupRole>(
               value: r,
-              child: Text(roleLabelOf(context, r), style: typo.bodyMedium),
+              child: Text(
+                roleLabelOf(context, r), // ✅ global label again
+                style: typo.bodyMedium,
+              ),
             );
           }).toList(),
           onChanged: (v) {

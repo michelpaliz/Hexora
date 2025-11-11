@@ -1,4 +1,4 @@
-// lib/a-models/enums/group_role.dart
+import 'package:flutter/material.dart';
 
 enum GroupRole { member, coAdmin, admin, owner }
 
@@ -28,7 +28,7 @@ extension GroupRoleX on GroupRole {
     }
   }
 
-  /// Optional helpers (useful in guards/UX)
+  /// Permissions
   bool get canManageMembers => switch (this) {
         GroupRole.owner => true,
         GroupRole.admin => true,
@@ -43,7 +43,7 @@ extension GroupRoleX on GroupRole {
         GroupRole.member => false,
       };
 
-  /// Highest first (owner > admin > coAdmin > member)
+  /// Sorting helpers
   int get rank => switch (this) {
         GroupRole.owner => 3,
         GroupRole.admin => 2,
@@ -51,11 +51,25 @@ extension GroupRoleX on GroupRole {
         GroupRole.member => 0,
       };
 
-  /// Lowest-first priority (owner < admin < coAdmin < member)
   int get priorityAsc => switch (this) {
         GroupRole.owner => 0,
         GroupRole.admin => 1,
         GroupRole.coAdmin => 2,
         GroupRole.member => 3,
       };
+
+  /// UI: chip color (INSTANCE method)
+  Color roleChipColor(ColorScheme cs) => switch (this) {
+        GroupRole.owner => cs.primary,
+        GroupRole.admin => cs.tertiary,
+        GroupRole.coAdmin => cs.tertiary,
+        GroupRole.member => Colors.grey[800]!,
+      };
+  IconData get icon => switch (this) {
+        GroupRole.owner => Icons.workspace_premium_rounded,
+        GroupRole.admin => Icons.admin_panel_settings_rounded,
+        GroupRole.coAdmin => Icons.shield_rounded,
+        GroupRole.member => Icons.person_rounded,
+      };
+      
 }

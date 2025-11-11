@@ -33,4 +33,18 @@ class VmGroupEditorPort implements IGroupEditorPort {
 
   @override
   Map<String, GroupRole> get roles => vm.state.roles;
+
+  @override
+  Future<void> seedMembers({
+    required Map<String, User> membersById,
+    required Map<String, GroupRole> roles,
+  }) async {
+    // directly update VM state through its public methods
+    for (final u in membersById.values) {
+      vm.addMember(u);
+    }
+    roles.forEach((userId, role) {
+      vm.setRole(userId, role);
+    });
+  }
 }

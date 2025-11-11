@@ -15,6 +15,7 @@ class MembersVM extends ChangeNotifier {
     required this.groupDomain,
     required this.inviteRepo,
     required this.auth,
+    
   });
 
   final Group group;
