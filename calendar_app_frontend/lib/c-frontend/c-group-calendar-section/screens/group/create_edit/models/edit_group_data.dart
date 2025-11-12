@@ -1,46 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
-import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/edit_group/edit_group_body.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/view_model/group_view_model.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/models/group_data_body.dart';
+import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/buttons/save_group_button.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+
 class EditGroupData extends StatefulWidget {
   final Group group;
   final List<User> users;
 
-  const EditGroupData({required this.group, required this.users, Key? key})
-      : super(key: key);
+  const EditGroupData({
+    required this.group,
+    required this.users,
+    Key? key,
+  }) : super(key: key);
 
   @override
-  _EditGroupDataState createState() => _EditGroupDataState();
+  State<EditGroupData> createState() => _EditGroupDataState();
 }
 
 class _EditGroupDataState extends State<EditGroupData> {
-  late UserDomain? _userDomain;
-  late GroupDomain _groupDomain;
-  late NotificationDomain _notificationDomain;
+  late TextEditingController _nameC;
+  late TextEditingController _descC;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _userDomain = Provider.of<UserDomain>(context, listen: false);
-    _groupDomain = Provider.of<GroupDomain>(context, listen: false);
-    _notificationDomain = Provider.of<NotificationDomain>(
-      context,
-      listen: false,
-    );
+  void initState() {
+    super.initState();
+    _nameC = TextEditingController(text: widget.group.name);
+    _descC = TextEditingController(text: widget.group.description);
+  }
+
+  @override
+  void dispose() {
+    _nameC.dispose();
+    _descC.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return EditGroupBody(
-      group: widget.group,
-      users: widget.users,
-      userDomain: _userDomain!,
-      groupDomain: _groupDomain,
-      notificationDomain: _notificationDomain,
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final vm = context.read<GroupEditorViewModel>(); // ✅ read VM directly
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          l.editGroup,
+          style: t.titleLarge.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
+      body: GroupDataBody(
+        nameController: _nameC,
+        descController: _descC,
+        title: l.groupData,
+        bottomSection: SaveGroupButton(
+          controller: vm,
+        ),
+      ),
     );
   }
 }

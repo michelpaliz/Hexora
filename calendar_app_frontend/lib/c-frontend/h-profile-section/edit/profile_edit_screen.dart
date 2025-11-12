@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/h-profile-section/edit/controller/profile_edit_controller.dart';
 import 'package:hexora/c-frontend/utils/user_avatar.dart';
-import 'package:hexora/e-drawer-style-menu/main_scaffold.dart';
+import 'package:hexora/e-drawer-style-menu/old_drawer/main_scaffold.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';

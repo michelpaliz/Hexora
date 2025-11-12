@@ -4178,6 +4178,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'online'**
   String get online;
+
+  /// No description provided for @addUsersHelperText.
+  ///
+  /// In en, this message translates to:
+  /// **'Search and stage members to be added. You can set roles per user before uploading changes.'**
+  String get addUsersHelperText;
+
+  /// No description provided for @updateRolesHelperText.
+  ///
+  /// In en, this message translates to:
+  /// **'Review members and adjust roles. Tap a card to change the role.'**
+  String get updateRolesHelperText;
+
+  /// No description provided for @membersHelperText.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse members by status, review invites, and manage roles.'**
+  String get membersHelperText;
+
+  /// No description provided for @createGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Create group'**
+  String get createGroup;
+
+  /// No description provided for @editImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editImage;
+
+  /// No description provided for @tapToChangePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to change group photo'**
+  String get tapToChangePhoto;
+
+  /// No description provided for @tapToAddPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to add group photo'**
+  String get tapToAddPhoto;
 }
 
 class _AppLocalizationsDelegate

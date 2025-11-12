@@ -9,7 +9,7 @@ import 'package:hexora/c-frontend/a-home-section/widgets/see_all_groups_button.d
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/group_screen/group_list_section.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/show-groups/motivational_phrase/motivation_banner.dart';
 import 'package:hexora/c-frontend/j-routes/appRoutes.dart';
-import 'package:hexora/e-drawer-style-menu/main_scaffold.dart';
+import 'package:hexora/e-drawer-style-menu/old_drawer/main_scaffold.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

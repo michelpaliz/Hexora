@@ -1,5 +1,5 @@
-import 'package:hexora/e-drawer-style-menu/contextual_fab.dart';
-import 'package:hexora/e-drawer-style-menu/horizontal_drawer_nav.dart';
+import 'package:hexora/e-drawer-style-menu/contextual_fab/contextual_fab.dart';
+import 'package:hexora/e-drawer-style-menu/old_drawer/horizontal_drawer_nav.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:flutter/material.dart';
 

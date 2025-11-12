@@ -38,44 +38,44 @@ class QuickActionsGrid extends StatelessWidget {
             },
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ActionCard(
-                  icon: Icons.people_alt_rounded,
-                  title: l.viewMembers,
-                  subtitle: '', // unused when iconOnly = true
-                  color: Theme.of(context).colorScheme.secondary,
-                  isCompact: true,
-                  iconOnly: true, // NEW
-                  semanticLabel: l.viewMembers, // optional a11y
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.groupMembers,
-                      arguments: group,
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ActionCard(
-                  icon: Icons.calendar_month_rounded,
-                  title: 'Calendar',
-                  subtitle: '', // unused when iconOnly = true
-                  color: Theme.of(context).colorScheme.tertiary,
-                  isCompact: true,
-                  iconOnly: true, // NEW
-                  semanticLabel: 'Calendar',
-                  onTap: () {
-                    // Navigate to calendar
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-            ],
-          ),
+          // Row(
+          //   children: [
+          //     Expanded(
+          //       child: ActionCard(
+          //         icon: Icons.people_alt_rounded,
+          //         title: l.viewMembers,
+          //         subtitle: '', // unused when iconOnly = true
+          //         color: Theme.of(context).colorScheme.secondary,
+          //         isCompact: true,
+          //         iconOnly: true, // NEW
+          //         semanticLabel: l.viewMembers, // optional a11y
+          //         onTap: () {
+          //           Navigator.pushNamed(
+          //             context,
+          //             AppRoutes.groupMembers,
+          //             arguments: group,
+          //           );
+          //         },
+          //       ),
+          //     ),
+          //     const SizedBox(width: 12),
+          //     Expanded(
+          //       child: ActionCard(
+          //         icon: Icons.calendar_month_rounded,
+          //         title: 'Calendar',
+          //         subtitle: '', // unused when iconOnly = true
+          //         color: Theme.of(context).colorScheme.tertiary,
+          //         isCompact: true,
+          //         iconOnly: true, // NEW
+          //         semanticLabel: 'Calendar',
+          //         onTap: () {
+          //           // Navigate to calendar
+          //           Navigator.pop(context);
+          //         },
+          //       ),
+          //     ),
+          //   ],
+          // ),
         ],
       ),
     );

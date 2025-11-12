@@ -1240,5 +1240,12 @@
       }
     }
   },
-  "online":"online"
+  "online":"online",
+  "addUsersHelperText":"Search and stage members to be added. You can set roles per user before uploading changes.",
+  "updateRolesHelperText": "Review members and adjust roles. Tap a card to change the role.",
+          "membersHelperText": "Browse members by status, review invites, and manage roles.",
+          "createGroup": "Create group",
+            "editImage": "Edit",
+  "tapToChangePhoto": "Tap to change group photo",
+  "tapToAddPhoto": "Tap to add group photo"
 }

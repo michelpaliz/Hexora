@@ -1,4 +1,3 @@
-// lib/c-frontend/b-dashboard-section/sections/members/presentation/screen/review_user_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
@@ -11,6 +10,7 @@ import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentat
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/screen/tabs/update_role_tab.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/add_user_bottom_sheet.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/view-item-styles/button/button_styles.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -60,7 +60,6 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
   @override
   void initState() {
     super.initState();
-    // Run seeding after first frame so Providers are available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _seedVmFromGroupOnce(context);
     });
@@ -74,11 +73,9 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
 
     return MultiProvider(
       providers: [
-        // Port backed by the GroupEditorViewModel
         ProxyProvider<GroupEditorViewModel, IGroupEditorPort>(
           update: (_, vm, __) => VmGroupEditorPort(vm),
         ),
-        // Screen-scoped controller that stages added users before commit
         ChangeNotifierProvider<AddUserController>(
           create: (ctx) =>
               AddUserController(port: ctx.read<IGroupEditorPort>()),
@@ -103,32 +100,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                   l.reviewUsersTitle,
                   style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      // Make sure staged selections are applied to the VM
-                      ctrl.commitSelected(context);
-
-                      // Return VM truth to caller
-                      final members = port.membersById.values.toList();
-                      final rolesWire = {
-                        for (final e in port.roles.entries) e.key: e.value.wire,
-                      };
-
-                      Navigator.of(context).maybePop({
-                        'users': members, // List<User>
-                        'roles': rolesWire, // Map<String, String>
-                      });
-                    },
-                    child: Text(
-                      l.done,
-                      style: t.bodyLarge.copyWith(
-                        color: ThemeColors.contrastOn(cs.primary),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+                // 🔻 Removed the AppBar "Done" text button
                 backgroundColor: cs.surface,
                 iconTheme:
                     IconThemeData(color: ThemeColors.textPrimary(context)),
@@ -174,7 +146,6 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
               ),
               body: TabBarView(
                 children: [
-                  // Tab 1 — roles from VM via Port (now seeded with real members)
                   UpdateRolesTab(
                     rolesByUserId: port.roles,
                     membersById: port.membersById,
@@ -187,8 +158,6 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                     canEditRole: (userId) => port.canEditRole(userId),
                     setRole: (userId, r) => port.setRole(userId, r),
                   ),
-
-                  // Tab 2 — stage additions, then commit to VM
                   AddUsersTab(
                     openPicker: () async {
                       await showModalBottomSheet<void>(
@@ -208,9 +177,74 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                   ),
                 ],
               ),
-              // FAB intentionally removed; use the FilledButton in AddUsersTab
+
+              // 🔹 Floating commit button (visible on both tabs)
+              floatingActionButtonLocation:
+                  FloatingActionButtonLocation.centerFloat,
+              floatingActionButton: _CommitChangesButton(
+                label: l.done,
+                onPressed: () {
+                  // Apply staged selections to the VM
+                  ctrl.commitSelected(context);
+
+                  // Return VM truth to caller
+                  final members = port.membersById.values.toList();
+                  final rolesWire = {
+                    for (final e in port.roles.entries) e.key: e.value.wire,
+                  };
+
+                  Navigator.of(context).maybePop({
+                    'users': members, // List<User>
+                    'roles': rolesWire, // Map<String, String>
+                  });
+                },
+              ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+// --- Floating commit button using your ButtonStyles ---
+class _CommitChangesButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  const _CommitChangesButton({
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    final style = ButtonStyles.saucyButtonStyle(
+      defaultBackgroundColor: cs.primary,
+      pressedBackgroundColor: cs.primary.withOpacity(.92),
+      textColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black
+          : Colors.white,
+      borderColor: cs.outlineVariant.withOpacity(.4),
+      borderRadius: 14,
+      padding: 14,
+      fontSize: 16,
+      fontWeight: FontWeight.w800,
+      fontStyle: FontStyle.normal,
+    );
+
+    return SafeArea(
+      minimum: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: SizedBox(
+        width: double.infinity,
+        child: ButtonStyles.buttonWithIcon(
+          iconData: Icons.cloud_upload_rounded,
+          label: label,
+          style: style,
+          onPressed: onPressed,
+          iconSize: 20,
         ),
       ),
     );

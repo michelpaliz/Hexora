@@ -6,7 +6,7 @@ import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentat
 import 'package:hexora/c-frontend/b-dashboard-section/sections/upcoming_events/group_upcoming_events.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/j-routes/appRoutes.dart';
-import 'package:hexora/e-drawer-style-menu/contextual_fab.dart';
+import 'package:hexora/e-drawer-style-menu/contextual_fab/contextual_fab.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';

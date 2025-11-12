@@ -1237,7 +1237,16 @@
       }
     }
   },
-    "online":"online"
+    "online":"online",
+      "addUsersHelperText":"Busca y prepara a los miembros que se añadirán. Puedes definir las funciones de cada usuario antes de enviar los cambios.",
+      "updateRolesHelperText": "Revisa los miembros y ajusta los roles. Toca una tarjeta para cambiar el rol.",
+       "membersHelperText": "Navega por los miembros por estado, revisa invitaciones y gestiona roles.",
+       "createGroup": "Crear grupo",
+        "editImage": "Editar",
+
+  "tapToChangePhoto": "Toca para cambiar la foto del grupo",
+  "tapToAddPhoto": "Toca para añadir foto del grupo"
+
 }
 
 

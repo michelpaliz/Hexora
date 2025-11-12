@@ -2325,4 +2325,28 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get online => 'online';
+
+  @override
+  String get addUsersHelperText =>
+      'Busca y prepara a los miembros que se añadirán. Puedes definir las funciones de cada usuario antes de enviar los cambios.';
+
+  @override
+  String get updateRolesHelperText =>
+      'Revisa los miembros y ajusta los roles. Toca una tarjeta para cambiar el rol.';
+
+  @override
+  String get membersHelperText =>
+      'Navega por los miembros por estado, revisa invitaciones y gestiona roles.';
+
+  @override
+  String get createGroup => 'Crear grupo';
+
+  @override
+  String get editImage => 'Editar';
+
+  @override
+  String get tapToChangePhoto => 'Toca para cambiar la foto del grupo';
+
+  @override
+  String get tapToAddPhoto => 'Toca para añadir foto del grupo';
 }

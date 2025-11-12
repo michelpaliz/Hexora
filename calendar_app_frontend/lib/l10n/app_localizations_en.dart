@@ -2305,4 +2305,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get online => 'online';
+
+  @override
+  String get addUsersHelperText =>
+      'Search and stage members to be added. You can set roles per user before uploading changes.';
+
+  @override
+  String get updateRolesHelperText =>
+      'Review members and adjust roles. Tap a card to change the role.';
+
+  @override
+  String get membersHelperText =>
+      'Browse members by status, review invites, and manage roles.';
+
+  @override
+  String get createGroup => 'Create group';
+
+  @override
+  String get editImage => 'Edit';
+
+  @override
+  String get tapToChangePhoto => 'Tap to change group photo';
+
+  @override
+  String get tapToAddPhoto => 'Tap to add group photo';
 }
