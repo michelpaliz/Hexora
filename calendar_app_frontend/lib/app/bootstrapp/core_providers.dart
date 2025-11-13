@@ -13,10 +13,16 @@ import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/b-backend/user/repository/user_repository.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
 import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 final List<SingleChildWidget> coreProviders = [
+  // NEW: shared HTTP client, disposed automatically
+  Provider<http.Client>(
+    create: (_) => http.Client(), // ✅ no args
+    dispose: (_, http.Client client) => client.close(), // ✅ close() exists
+  ),
   // Global app state
   ChangeNotifierProvider(create: (_) => NotificationDomain()),
 

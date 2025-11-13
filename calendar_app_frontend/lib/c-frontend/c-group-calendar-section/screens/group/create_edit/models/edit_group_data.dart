@@ -25,12 +25,17 @@ class EditGroupData extends StatefulWidget {
 class _EditGroupDataState extends State<EditGroupData> {
   late TextEditingController _nameC;
   late TextEditingController _descC;
-
   @override
   void initState() {
     super.initState();
     _nameC = TextEditingController(text: widget.group.name);
     _descC = TextEditingController(text: widget.group.description);
+
+    // Seed VM with the original group AFTER the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final vm = context.read<GroupEditorViewModel>();
+      vm.enterEditFrom(widget.group);
+    });
   }
 
   @override
@@ -44,7 +49,7 @@ class _EditGroupDataState extends State<EditGroupData> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
-    final vm = context.read<GroupEditorViewModel>(); // ✅ read VM directly
+    final vm = context.read<GroupEditorViewModel>(); // ensure Provider is above
 
     return Scaffold(
       appBar: AppBar(
@@ -53,13 +58,24 @@ class _EditGroupDataState extends State<EditGroupData> {
           style: t.titleLarge.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
+
+      /// This part of the code is setting up the body of the `EditGroupData` widget with a
+      /// `GroupDataBody` widget.
+
       body: GroupDataBody(
         nameController: _nameC,
         descController: _descC,
         title: l.groupData,
-        bottomSection: SaveGroupButton(
-          controller: vm,
-        ),
+        // ✅ Keep VM in sync while editing
+        initialImageUrl: widget.group.photoUrl,
+        onNameChanged: vm.setName,
+        onDescChanged: vm.setDescription,
+        onPicked: vm.setImage,
+        bottomSection: const SizedBox.shrink(),
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.all(16),
+        child: SaveGroupButton(controller: vm),
       ),
     );
   }

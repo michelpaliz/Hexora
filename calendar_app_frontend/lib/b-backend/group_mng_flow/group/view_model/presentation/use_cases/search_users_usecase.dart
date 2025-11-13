@@ -7,14 +7,14 @@ import 'package:http/http.dart' as http;
 class SearchUsersUseCase {
   final http.Client client;
   final AuthProvider auth;
+  final String baseUrl; // ← inject here
 
-  SearchUsersUseCase(this.client, this.auth);
+  SearchUsersUseCase(this.client, this.auth, this.baseUrl);
 
   /// Searches users on the backend. Accepts either:
   /// - a top-level list: [ {...}, {...} ]
   /// - or an object with items: { "items": [ {...}, ... ] }
-  Future<List<User>> call(String baseUrl, String query,
-      {int limit = 20}) async {
+  Future<List<User>> call(String query, {int limit = 20}) async {
     final q = query.trim();
     if (q.isEmpty) return [];
 
@@ -23,10 +23,13 @@ class SearchUsersUseCase {
       '$baseUrl/users/search?q=${Uri.encodeQueryComponent(q)}&limit=$limit',
     );
 
-    final resp = await client.get(uri, headers: {
-      if (token != null) 'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    });
+    final resp = await client.get(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
 
     if (resp.statusCode != 200) return [];
 

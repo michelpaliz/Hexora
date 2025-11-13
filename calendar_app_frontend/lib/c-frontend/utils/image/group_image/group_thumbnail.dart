@@ -6,14 +6,18 @@ class GroupThumbnail extends StatelessWidget {
     super.key,
     required this.photoUrl,
     this.size = 56,
-    this.backgroundIsWhite = true, // keep white even in dark mode
-    this.fallbackAsset, // optional: your own default image asset
+    this.backgroundIsWhite = true,
+    this.fallbackAsset,
+    this.headers, // ← NEW (for auth-protected images)
+    this.fit = BoxFit.cover,
   });
 
   final String? photoUrl;
   final double size;
   final bool backgroundIsWhite;
   final String? fallbackAsset;
+  final Map<String, String>? headers; // ← NEW
+  final BoxFit fit; // ← NEW
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +30,7 @@ class GroupThumbnail extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: bgColor, // ✅ hard white if backgroundIsWhite = true
+          color: bgColor,
           border: Border.all(color: scheme.outlineVariant.withOpacity(0.4)),
         ),
         child: _buildImageOrFallback(scheme),
@@ -35,16 +39,22 @@ class GroupThumbnail extends StatelessWidget {
   }
 
   Widget _buildImageOrFallback(ColorScheme scheme) {
-    if (photoUrl != null && photoUrl!.isNotEmpty) {
+    final url = photoUrl?.trim();
+    if (url != null && url.isNotEmpty) {
       return Image.network(
-        photoUrl!,
-        fit: BoxFit.cover,
-        // keep old image until new one is available to avoid flicker
+        url,
+        key: ValueKey(url), // 👈 add this line
+        fit: fit,
+        headers: headers,
         gaplessPlayback: true,
-        // If the network image fails, show fallback
-        errorBuilder: (_, __, ___) => _fallbackWidget(scheme),
-        // Make sure transparent PNGs still show white behind them
-        // (the white comes from the parent Container color).
+        loadingBuilder: (ctx, child, progress) {
+          if (progress == null) return child;
+          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        },
+        errorBuilder: (ctx, error, stack) {
+          print('GroupThumbnail: failed to load "$url": $error');
+          return _fallbackWidget(scheme);
+        },
       );
     }
     return _fallbackWidget(scheme);
@@ -52,12 +62,8 @@ class GroupThumbnail extends StatelessWidget {
 
   Widget _fallbackWidget(ColorScheme scheme) {
     if (fallbackAsset != null && fallbackAsset!.isNotEmpty) {
-      return Image.asset(
-        fallbackAsset!,
-        fit: BoxFit.contain,
-      );
+      return Image.asset(fallbackAsset!, fit: BoxFit.contain);
     }
-    // Fallback icon if you don't provide an asset
     return Center(
       child: Icon(Icons.groups_rounded, color: scheme.primary, size: 28),
     );

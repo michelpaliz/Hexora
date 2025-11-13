@@ -4220,6 +4220,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap to add group photo'**
   String get tapToAddPhoto;
+
+  /// No description provided for @groupSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Group saved'**
+  String get groupSaved;
 }
 
 class _AppLocalizationsDelegate

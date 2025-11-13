@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/c-frontend/utils/image/avatar_utils.dart';
+import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class LeadingAvatarBadge extends StatelessWidget {

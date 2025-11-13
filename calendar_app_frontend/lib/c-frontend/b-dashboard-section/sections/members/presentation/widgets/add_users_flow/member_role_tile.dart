@@ -1,7 +1,7 @@
 // lib/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/member/member_role_tile.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/c-frontend/utils/image/avatar_utils.dart';
+import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role_labels.dart';
 import 'package:hexora/c-frontend/utils/username/username_tag.dart';

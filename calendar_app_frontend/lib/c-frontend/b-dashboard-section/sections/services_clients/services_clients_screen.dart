@@ -28,7 +28,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   final _clientsApi = ClientsApi();
   final _servicesApi = ServiceApi();
 
-  List<Client> _clients = [];
+  List<GroupClient> _clients = [];
   List<Service> _services = [];
   bool _loadingClients = true, _loadingServices = true;
   String? _errClients, _errServices;
@@ -79,7 +79,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
 
   // ---------- Create flows ----------
   Future<void> _openAddClient() async {
-    final created = await showModalBottomSheet<Client>(
+    final created = await showModalBottomSheet<GroupClient>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -119,8 +119,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   }
 
   // ---------- Edit flows ----------
-  Future<void> _openEditClient(Client c) async {
-    final updated = await showModalBottomSheet<Client>(
+  Future<void> _openEditClient(GroupClient c) async {
+    final updated = await showModalBottomSheet<GroupClient>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

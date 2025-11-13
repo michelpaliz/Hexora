@@ -5,7 +5,7 @@ import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dar
 import 'package:hexora/l10n/app_localizations.dart';
 
 class ClientListItem extends StatelessWidget {
-  final Client client;
+  final GroupClient client;
   final VoidCallback? onTap;
 
   /// Typography (injected)

@@ -6,7 +6,7 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:intl/intl.dart';
 
-import 'group_thumbnail.dart';
+import '../../../../../../utils/image/group_image/group_thumbnail.dart';
 import 'title_meta.dart';
 
 class ModernGroupCard extends StatelessWidget {

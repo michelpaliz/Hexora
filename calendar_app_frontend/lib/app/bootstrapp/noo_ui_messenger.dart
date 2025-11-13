@@ -5,6 +5,7 @@ import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/co
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/create_group_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/invite_members_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/search_users_usecase.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/update_group_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/upload_group_photo_usecase.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
@@ -32,6 +33,7 @@ final List<SingleChildWidget> editorProviders = [
       inviteMembers: ctx.read<InviteMembersUseCase>(),
       uploadPhoto: ctx.read<UploadGroupPhotoUseCase>(),
       searchUsersUseCase: ctx.read<SearchUsersUseCase>(),
+      updateGroup: ctx.read<UpdateGroupUseCase>(),
     ),
   ),
 

@@ -11,7 +11,6 @@ import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/api/i_group_api_client.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/repository/i_group_repository.dart';
 import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
-
 import 'package:http/http.dart' as http;
 
 /// Concrete repository with in-memory cache + per-user streams.
@@ -53,20 +52,42 @@ class GroupRepository implements IGroupRepository {
     return ctrl.stream;
   }
 
-  bool _sameGroupSet(List<Group> a, List<Group> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    final aIds = a.map((g) => g.id).toSet();
-    final bIds = b.map((g) => g.id).toSet();
-    return aIds.length == bIds.length && aIds.containsAll(bIds);
-  }
+// bool _sameGroupSet(List<Group> a, List<Group> b) {
+//   if (a.length != b.length) return false;
+
+//   final byIdA = {for (final g in a) g.id: g};
+//   final byIdB = {for (final g in b) g.id: g};
+
+//   if (!byIdA.keys.toSet().containsAll(byIdB.keys)) return false;
+
+//   // compare some fields that matter visually
+//   for (final id in byIdA.keys) {
+//     final ga = byIdA[id]!;
+//     final gb = byIdB[id]!;
+
+//     if (ga.name != gb.name ||
+//         ga.description != gb.description ||
+//         ga.photoUrl != gb.photoUrl) {
+//       return false; // something changed
+//     }
+//   }
+//   return true; // identical for our UI purposes
+// }
+
+// void _emitIfChanged(String userId, List<Group> next) {
+//   final prev = _cacheByUserId[userId] ?? const <Group>[];
+//   if (_sameGroupSet(prev, next)) return;
+//   _cacheByUserId[userId] = next;
+//   final ctrl = _getOrCreateController(userId);
+//   if (!ctrl.isClosed) ctrl.add(List<Group>.from(next));
+// }
 
   void _emitIfChanged(String userId, List<Group> next) {
-    final prev = _cacheByUserId[userId] ?? const <Group>[];
-    if (_sameGroupSet(prev, next)) return; // prevents rebuild loops
     _cacheByUserId[userId] = next;
     final ctrl = _getOrCreateController(userId);
-    if (!ctrl.isClosed) ctrl.add(List<Group>.from(next));
+    if (!ctrl.isClosed) {
+      ctrl.add(List<Group>.from(next));
+    }
   }
 
   /// Refresh the per-user stream from a known list of group IDs.

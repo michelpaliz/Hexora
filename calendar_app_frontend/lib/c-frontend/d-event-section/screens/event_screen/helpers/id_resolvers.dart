@@ -4,7 +4,7 @@ import 'package:hexora/a-models/group_model/service/service.dart';
 
 typedef IdResolver = String? Function(String id);
 
-Map<String, String> clientNameMap(Iterable<Client> clients) =>
+Map<String, String> clientNameMap(Iterable<GroupClient> clients) =>
     {for (final c in clients) c.id.trim(): c.name.trim()};
 
 Map<String, String> serviceNameMap(Iterable<Service> services) =>

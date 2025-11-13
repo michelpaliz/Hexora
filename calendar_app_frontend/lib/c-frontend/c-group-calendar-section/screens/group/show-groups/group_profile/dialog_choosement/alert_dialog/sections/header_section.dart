@@ -5,7 +5,7 @@ import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/c-frontend/j-routes/appRoutes.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
-import 'package:hexora/c-frontend/utils/image/avatar_utils.dart';
+import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';

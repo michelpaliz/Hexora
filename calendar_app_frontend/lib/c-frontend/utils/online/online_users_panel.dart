@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/user/presence_domain.dart';
-import 'package:hexora/c-frontend/utils/image/widgets/user_status_row.dart';
+import 'package:hexora/c-frontend/utils/image/user_image/widgets/user_status_row.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class OnlineUsersPanel extends StatelessWidget {

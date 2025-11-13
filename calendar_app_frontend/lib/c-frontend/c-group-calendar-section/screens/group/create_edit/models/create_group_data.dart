@@ -1,7 +1,9 @@
+// create_group_data.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/group_view_model.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/common/ui_messenger.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/create_group_usecase.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/update_group_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/invite_members_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/search_users_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/upload_group_photo_usecase.dart';
@@ -56,6 +58,7 @@ class _CreateGroupDataState extends State<CreateGroupData> {
         inviteMembers: c.read<InviteMembersUseCase>(),
         uploadPhoto: c.read<UploadGroupPhotoUseCase>(),
         searchUsersUseCase: c.read<SearchUsersUseCase>(),
+        updateGroup: c.read<UpdateGroupUseCase>(),
       ),
       child: Builder(
         builder: (context) {
@@ -73,7 +76,11 @@ class _CreateGroupDataState extends State<CreateGroupData> {
               nameController: _nameC,
               descController: _descC,
               title: l.groupData,
-              bottomSection: const SizedBox.shrink(), // optional extras
+              // ✅ Wire user input into the VM so Save works
+              onNameChanged: vm.setName,
+              onDescChanged: vm.setDescription,
+              onPicked: vm.setImage, // XFile -> VM (for photo upload)
+              bottomSection: const SizedBox.shrink(),
             ),
             bottomNavigationBar: SafeArea(
               minimum: const EdgeInsets.all(16),

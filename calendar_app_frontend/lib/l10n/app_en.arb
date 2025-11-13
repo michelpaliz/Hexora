@@ -1247,5 +1247,6 @@
           "createGroup": "Create group",
             "editImage": "Edit",
   "tapToChangePhoto": "Tap to change group photo",
-  "tapToAddPhoto": "Tap to add group photo"
+  "tapToAddPhoto": "Tap to add group photo",
+  "groupSaved": "Group saved"
 }

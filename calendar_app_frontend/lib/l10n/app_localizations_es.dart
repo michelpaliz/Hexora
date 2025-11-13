@@ -2349,4 +2349,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get tapToAddPhoto => 'Toca para añadir foto del grupo';
+
+  @override
+  String get groupSaved => 'Grupo guardado';
 }

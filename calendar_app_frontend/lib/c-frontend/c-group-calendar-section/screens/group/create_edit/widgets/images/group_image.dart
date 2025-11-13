@@ -13,10 +13,10 @@ class GroupImage extends StatefulWidget {
   final bool isUploading;
 
   /// Called when the user picks a new image (provides the XFile).
-  final Future<void> Function(XFile file)? onPicked;
+  final ValueChanged<XFile>? onPicked;
 
   /// Called when the user taps remove (clear server in the callback).
-  final Future<void> Function()? onRemove;
+  final VoidCallback? onRemove;
 
   /// Sizing & shape.
   final double size;
@@ -34,7 +34,7 @@ class GroupImage extends StatefulWidget {
 
   @override
   State<GroupImage> createState() => _GroupImageState();
-}
+}  
 
 class _GroupImageState extends State<GroupImage> {
   final _picker = ImagePicker();
@@ -49,13 +49,13 @@ class _GroupImageState extends State<GroupImage> {
     );
     if (file == null) return;
     setState(() => _localPicked = file);
-    if (widget.onPicked != null) await widget.onPicked!(file);
+    widget.onPicked?.call(file); // <-- no await
   }
 
   Future<void> _remove() async {
     if (widget.isUploading) return;
     setState(() => _localPicked = null);
-    if (widget.onRemove != null) await widget.onRemove!();
+    widget.onRemove?.call(); // <-- if you kept VoidCallback
   }
 
   @override

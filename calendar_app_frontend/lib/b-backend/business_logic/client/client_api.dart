@@ -39,7 +39,7 @@ class ClientsApi {
   }
 
   // GET /clients?groupId=...&active=true|false
-  Future<List<Client>> list({String? groupId, bool? active}) async {
+  Future<List<GroupClient>> list({String? groupId, bool? active}) async {
     final r = await http.get(
         _u('', {
           'groupId': groupId,
@@ -47,15 +47,15 @@ class ClientsApi {
         }),
         headers: await _headers());
 
-    return _decode<List<Client>>(r, (j) {
+    return _decode<List<GroupClient>>(r, (j) {
       if (j is! List) throw Exception('Unexpected clients payload');
-      return j.map<Client>((e) => Client.fromJson(e)).toList();
+      return j.map<GroupClient>((e) => GroupClient.fromJson(e)).toList();
     });
   }
 
   // POST /clients
 // POST /clients
-  Future<Client> create(Client client) async {
+  Future<GroupClient> create(GroupClient client) async {
     final body = <String, dynamic>{
       'groupId': client.groupId,
       'name': client.name.trim(),
@@ -75,17 +75,17 @@ class ClientsApi {
       headers: await _headers(),
       body: jsonEncode(body),
     );
-    return _decode<Client>(r, (j) => Client.fromJson(j));
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
   }
 
   // GET /clients/:id
-  Future<Client> getById(String id) async {
+  Future<GroupClient> getById(String id) async {
     final r = await http.get(_u('/$id'), headers: await _headers());
-    return _decode<Client>(r, (j) => Client.fromJson(j));
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
   }
 
   // PATCH /clients/:id  (full update: send client.toJson())
-  Future<Client> update(Client client) async {
+  Future<GroupClient> update(GroupClient client) async {
     if (client.id.isEmpty) throw Exception('Client.id is required');
     final patch = <String, dynamic>{
       'name': client.name.trim(),
@@ -103,26 +103,27 @@ class ClientsApi {
       headers: await _headers(),
       body: jsonEncode(patch),
     );
-    return _decode<Client>(r, (j) => Client.fromJson(j));
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
   }
 
   // PATCH /clients/:id  (partial fields)
-  Future<Client> updateFields(String id, Map<String, dynamic> fields) async {
+  Future<GroupClient> updateFields(
+      String id, Map<String, dynamic> fields) async {
     final r = await http.patch(
       _u('/$id'),
       headers: await _headers(),
       body: jsonEncode(fields),
     );
-    return _decode<Client>(r, (j) => Client.fromJson(j));
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
   }
 
   // PATCH /clients/:id/active  { isActive: true|false }
-  Future<Client> setActive(String id, bool isActive) async {
+  Future<GroupClient> setActive(String id, bool isActive) async {
     final r = await http.patch(
       _u('/$id/active'),
       headers: await _headers(),
       body: jsonEncode({'isActive': isActive}),
     );
-    return _decode<Client>(r, (j) => Client.fromJson(j));
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
   }
 }

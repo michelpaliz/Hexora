@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/user/presence_domain.dart';
 // GLOBAL reuses
-import 'package:hexora/c-frontend/utils/image/avatar_utils.dart';
-import 'package:hexora/c-frontend/utils/image/widgets/extension_group_role/presence_role_bridge.dart';
+import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
+import 'package:hexora/c-frontend/utils/image/user_image/widgets/extension_group_role/presence_role_bridge.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/common/ui_messenger.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/group_editor_state.dart/group_editor_state.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/create_group_usecase.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/update_group_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/invite_members_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/search_users_usecase.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/use_cases/upload_group_photo_usecase.dart';
@@ -27,6 +28,11 @@ class GroupEditorViewModel extends ChangeNotifier {
   final InviteMembersUseCase inviteMembers;
   final UploadGroupPhotoUseCase uploadPhoto;
   final SearchUsersUseCase searchUsersUseCase; // <-- NEW
+  // + inject update use case
+  final UpdateGroupUseCase updateGroup;
+
+  Group? _editingGroup;
+  String? _editingGroupId;
 
   GroupEditorViewModel({
     required this.currentUser,
@@ -35,6 +41,7 @@ class GroupEditorViewModel extends ChangeNotifier {
     required this.inviteMembers,
     required this.uploadPhoto,
     required this.searchUsersUseCase,
+    required this.updateGroup,
   }) {
     _state = _state.copyWith(
       membersById: {currentUser.id: currentUser},
@@ -53,6 +60,14 @@ class GroupEditorViewModel extends ChangeNotifier {
       _update(_state.copyWith(description: v.trim()));
   void setImage(XFile? f) => _update(_state.copyWith(image: f));
 
+  bool get isEditing => _editingGroup != null;
+
+  bool get isSubmitting => status == GroupEditorStatus.loading;
+  bool get canSubmit =>
+      _state.name.trim().isNotEmpty &&
+      _state.description.trim().isNotEmpty &&
+      !isSubmitting;
+
   bool canEditRole(String userId) {
     return RolePolicy.canEditRole(
       actorId: currentUser.id,
@@ -60,6 +75,17 @@ class GroupEditorViewModel extends ChangeNotifier {
       ownerId: currentUser.id, // in editor, current user is the owner/creator
       roleOf: (id) => _state.roles[id] ?? GroupRole.member,
     );
+  }
+
+// Seed VM when entering edit mode
+  // update this
+  void enterEditFrom(Group g) {
+    _editingGroup = g; // ← keep the original
+    _editingGroupId = g.id;
+    _update(_state.copyWith(
+      name: g.name,
+      description: g.description,
+    ));
   }
 
 // (optional) if you want to drive dropdown options with policy too:
@@ -99,11 +125,12 @@ class GroupEditorViewModel extends ChangeNotifier {
     _update(_state.copyWith(roles: r));
   }
 
-  // <-- NEW: passthrough so your sheet can call vm.searchUsers(query)
   Future<List<User>> searchUsers(String query, {int limit = 20}) async {
     final q = query.trim();
     if (q.isEmpty) return [];
-    return await searchUsersUseCase(ApiConstants.baseUrl, q, limit: limit);
+    // ❌ return await searchUsersUseCase(ApiConstants.baseUrl, q, limit: limit);
+    return await searchUsersUseCase(q,
+        limit: limit); // ✅ keep infra in the use case
   }
 
   Future<void> submit() async {
@@ -114,6 +141,27 @@ class GroupEditorViewModel extends ChangeNotifier {
     status = GroupEditorStatus.loading;
     notifyListeners();
     try {
+      if (isEditing) {
+        // ---------- EDIT PATH ----------
+        await updateGroup(
+          original:
+              _editingGroup!, // or pass original Group if that’s your UC signature
+          name: _state.name,
+          description: _state.description,
+        );
+
+        if (_state.image != null) {
+          await uploadPhoto(groupId: _editingGroupId!, file: _state.image!);
+        }
+
+        status = GroupEditorStatus.success;
+        notifyListeners();
+        ui.showSnack('Group updated!');
+        ui.pop();
+        return;
+      }
+
+      // ---------- CREATE PATH (existing) ----------
       final created = await createGroup(
         name: _state.name,
         description: _state.description,
@@ -138,7 +186,7 @@ class GroupEditorViewModel extends ChangeNotifier {
     } catch (e) {
       status = GroupEditorStatus.error;
       notifyListeners();
-      await ui.showError('Failed to create group');
+      await ui.showError('Failed to ${isEditing ? 'update' : 'create'} group');
     }
   }
 

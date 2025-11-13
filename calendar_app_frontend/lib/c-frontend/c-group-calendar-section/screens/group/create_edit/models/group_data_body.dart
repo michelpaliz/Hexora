@@ -5,6 +5,7 @@ import 'package:hexora/c-frontend/c-group-calendar-section/screens/group/create_
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/card_surface.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:image_picker/image_picker.dart';
 
 class GroupDataBody extends StatelessWidget {
   final TextEditingController nameController;
@@ -13,6 +14,12 @@ class GroupDataBody extends StatelessWidget {
   /// If you want to push changes into your VM live
   final ValueChanged<String>? onNameChanged;
   final ValueChanged<String>? onDescChanged;
+
+  /// Image picked callback
+  final ValueChanged<XFile>? onPicked;
+
+  /// NEW: existing image url (for edit mode)
+  final String? initialImageUrl;
 
   /// Optional section rendered after the description card (e.g., save button)
   final Widget? bottomSection;
@@ -30,6 +37,8 @@ class GroupDataBody extends StatelessWidget {
     required this.descController,
     this.onNameChanged,
     this.onDescChanged,
+    this.onPicked,
+    this.initialImageUrl,
     this.bottomSection,
     this.title,
     this.titleMaxChars = 50,
@@ -51,7 +60,6 @@ class GroupDataBody extends StatelessWidget {
             Text(
               title!,
               style: t.titleLarge.copyWith(
-                // Reduced from displayMedium
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface,
               ),
@@ -62,15 +70,18 @@ class GroupDataBody extends StatelessWidget {
           // Image section with compact header tint
           Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(vertical: 24), // Reduced padding
+            padding: const EdgeInsets.symmetric(vertical: 24),
             decoration: BoxDecoration(
               color: cs.primary.withOpacity(0.06),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Column(
+            child: Column(
               children: [
-                GroupImage(),
+                GroupImage(
+                  imageUrl:
+                      initialImageUrl, // 👈 show existing group photo if any
+                  onPicked: onPicked,
+                ),
               ],
             ),
           ),

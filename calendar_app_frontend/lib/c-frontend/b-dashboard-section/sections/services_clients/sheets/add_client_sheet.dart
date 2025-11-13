@@ -7,7 +7,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 class AddClientSheet extends StatefulWidget {
   final String groupId; // used on create
   final ClientsApi api;
-  final Client? client; // null = create, non-null = edit
+  final GroupClient? client; // null = create, non-null = edit
 
   const AddClientSheet({
     super.key,
@@ -68,11 +68,11 @@ class _AddClientSheetState extends State<AddClientSheet> {
         };
         final updated = await widget.api.updateFields(widget.client!.id, patch);
         if (!mounted) return;
-        Navigator.of(context).pop<Client>(updated);
+        Navigator.of(context).pop<GroupClient>(updated);
       } else {
         // ---- CREATE ----
         final created = await widget.api.create(
-          Client(
+          GroupClient(
             id: '',
             name: _name.text.trim(),
             groupId: widget.groupId,
@@ -83,12 +83,14 @@ class _AddClientSheetState extends State<AddClientSheet> {
           ),
         );
         if (!mounted) return;
-        Navigator.of(context).pop<Client>(created);
+        Navigator.of(context).pop<GroupClient>(created);
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.failedWithReason(e.toString()), style: typo.bodySmall)),
+        SnackBar(
+            content:
+                Text(l.failedWithReason(e.toString()), style: typo.bodySmall)),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -118,13 +120,16 @@ class _AddClientSheetState extends State<AddClientSheet> {
             Row(
               children: [
                 Container(
-                  width: 40, height: 40,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: cs.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    _isEdit ? Icons.edit_note_rounded : Icons.person_add_alt_1_rounded,
+                    _isEdit
+                        ? Icons.edit_note_rounded
+                        : Icons.person_add_alt_1_rounded,
                     color: cs.primary,
                   ),
                 ),
@@ -155,7 +160,8 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 labelText: '${l.nameLabel} *',
                 labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
                 hintText: l.e_gJohnDoe,
-                hintStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant.withOpacity(0.7)),
+                hintStyle: typo.bodySmall
+                    .copyWith(color: cs.onSurfaceVariant.withOpacity(0.7)),
                 prefixIcon: const Icon(Icons.person_outline),
                 enabledBorder: inputBorder,
                 focusedBorder: inputBorder.copyWith(
@@ -183,7 +189,8 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 labelText: l.phoneLabel,
                 labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
                 hintText: l.e_gPhone,
-                hintStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant.withOpacity(0.7)),
+                hintStyle: typo.bodySmall
+                    .copyWith(color: cs.onSurfaceVariant.withOpacity(0.7)),
                 prefixIcon: const Icon(Icons.phone_outlined),
                 enabledBorder: inputBorder,
                 focusedBorder: inputBorder.copyWith(
@@ -203,7 +210,8 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 labelText: l.emailLabel,
                 labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
                 hintText: l.e_gEmail,
-                hintStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant.withOpacity(0.7)),
+                hintStyle: typo.bodySmall
+                    .copyWith(color: cs.onSurfaceVariant.withOpacity(0.7)),
                 prefixIcon: const Icon(Icons.alternate_email),
                 enabledBorder: inputBorder,
                 focusedBorder: inputBorder.copyWith(
@@ -224,7 +232,8 @@ class _AddClientSheetState extends State<AddClientSheet> {
               contentPadding: EdgeInsets.zero,
               value: _active,
               onChanged: (v) => setState(() => _active = v),
-              title: Text(l.active, style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+              title: Text(l.active,
+                  style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
               subtitle: Text(
                 _active ? l.clientWillBeActive : l.clientWillBeInactive,
                 style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
@@ -239,7 +248,8 @@ class _AddClientSheetState extends State<AddClientSheet> {
               child: FilledButton.icon(
                 icon: _saving
                     ? const SizedBox(
-                        width: 18, height: 18,
+                        width: 18,
+                        height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.save_outlined),

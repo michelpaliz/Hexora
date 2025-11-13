@@ -1,8 +1,8 @@
 // c-frontend/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/presentation/coordinator/calendar_screen_coordinator.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/screen/widgets/calendar_tabs.dart';
 import 'package:hexora/c-frontend/c-group-calendar-section/screens/calendar/screen/widgets/calendar_topbar.dart';
@@ -133,39 +133,43 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                       ),
 
                       // Bottom actions
+                      // Bottom actions
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: RefreshCta(
-                                isLoading: _c.loading.value,
-                                onPressed: () async {
-                                  await _c.loadData(initialGroup: currentGroup);
-                                  if (mounted) setState(() {});
-                                },
-                              ),
-                            ),
-                            if (canAddEvents) ...[
-                              const SizedBox(width: 10),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            children: [
                               Expanded(
-                                child: AddEventCta(
+                                child: RefreshCta(
+                                  isLoading: _c.loading.value,
                                   onPressed: () async {
-                                    final added =
-                                        await Navigator.of(context).push<bool>(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            AddEventScreen(group: currentGroup),
-                                      ),
-                                    );
-                                    if (added == true) {
-                                      _c.loadData(initialGroup: currentGroup);
-                                    }
+                                    await _c.loadData(
+                                        initialGroup: currentGroup);
+                                    if (mounted) setState(() {});
                                   },
                                 ),
                               ),
+                              if (canAddEvents) ...[
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: AddEventCta(
+                                    onPressed: () async {
+                                      final added = await Navigator.of(context)
+                                          .push<bool>(
+                                        MaterialPageRoute(
+                                          builder: (_) => AddEventScreen(
+                                              group: currentGroup),
+                                        ),
+                                      );
+                                      if (added == true) {
+                                        _c.loadData(initialGroup: currentGroup);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ],

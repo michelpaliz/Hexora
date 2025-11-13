@@ -19,59 +19,54 @@ class AddEventCta extends StatelessWidget {
     final disabledBg = cs.surfaceVariant;
     final disabledFg = cs.onSurface.withOpacity(.60);
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ButtonStyle(
-            minimumSize: const MaterialStatePropertyAll(Size.fromHeight(48)),
-            padding: const MaterialStatePropertyAll(
-              EdgeInsets.symmetric(horizontal: 16),
-            ),
-            shape: MaterialStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            elevation: MaterialStateProperty.resolveWith<double>(
-              (s) => s.contains(MaterialState.disabled) ? 0 : 2,
-            ),
-            backgroundColor: MaterialStateProperty.resolveWith<Color>(
-              (s) =>
-                  s.contains(MaterialState.disabled) ? disabledBg : enabledBg,
-            ),
-            foregroundColor: MaterialStateProperty.resolveWith<Color>(
-              (s) =>
-                  s.contains(MaterialState.disabled) ? disabledFg : enabledFg,
-            ),
-            overlayColor: MaterialStatePropertyAll(enabledFg.withOpacity(0.10)),
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ButtonStyle(
+          minimumSize: const MaterialStatePropertyAll(Size.fromHeight(48)),
+          padding: const MaterialStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 16),
           ),
-          // Ensure the icon inherits the same foreground color
-          child: IconTheme(
-            data: IconThemeData(
-              color: onPressed == null ? disabledFg : enabledFg,
-              size: 22,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.add_rounded),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    loc.addEvent, // localized
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: typo.bodyMedium.copyWith(
-                      // Ensure text uses the same resolved foreground color
-                      color: onPressed == null ? disabledFg : enabledFg,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.2,
-                    ),
+          shape: MaterialStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          elevation: MaterialStateProperty.resolveWith<double>(
+            (s) => s.contains(MaterialState.disabled) ? 0 : 2,
+          ),
+          backgroundColor: MaterialStateProperty.resolveWith<Color>(
+            (s) => s.contains(MaterialState.disabled) ? disabledBg : enabledBg,
+          ),
+          foregroundColor: MaterialStateProperty.resolveWith<Color>(
+            (s) => s.contains(MaterialState.disabled) ? disabledFg : enabledFg,
+          ),
+          overlayColor: MaterialStatePropertyAll(enabledFg.withOpacity(0.10)),
+        ),
+        // Ensure the icon inherits the same foreground color
+        child: IconTheme(
+          data: IconThemeData(
+            color: enabledFg, // Removed null check since onPressed is required
+            size: 22,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.add_rounded),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  loc.addEvent, // localized
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: typo.bodyMedium.copyWith(
+                    // Ensure text uses the same resolved foreground color
+                    color: enabledFg, // Removed null check
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

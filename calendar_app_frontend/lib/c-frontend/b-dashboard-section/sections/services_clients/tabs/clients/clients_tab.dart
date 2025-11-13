@@ -7,13 +7,13 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'client_list_item.dart';
 
 class ClientsTab extends StatelessWidget {
-  final List<Client> items;
+  final List<GroupClient> items;
   final bool loading;
   final String? error;
   final Future<void> Function() onRefresh;
   final bool showInlineCTA;
   final VoidCallback? onAddTap; // optional
-  final void Function(Client client)? onEdit; // tap-to-edit
+  final void Function(GroupClient client)? onEdit; // tap-to-edit
 
   const ClientsTab({
     super.key,

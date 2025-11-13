@@ -1,5 +1,5 @@
 /// models/client.dart
-class Client {
+class GroupClient {
   String id;
   String name;
   String? groupId;
@@ -15,7 +15,7 @@ class Client {
   DateTime? createdAt;
   DateTime? updatedAt;
 
-  Client({
+  GroupClient({
     required this.id,
     required this.name,
     this.groupId,
@@ -27,7 +27,7 @@ class Client {
     this.updatedAt,
   });
 
-  Client copyWith({
+  GroupClient copyWith({
     String? id,
     String? name,
     String? groupId,
@@ -38,7 +38,7 @@ class Client {
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
-    return Client(
+    return GroupClient(
       id: id ?? this.id,
       name: name ?? this.name,
       groupId: groupId ?? this.groupId,
@@ -61,14 +61,16 @@ class Client {
         },
         'isActive': isActive,
         if (meta != null) 'meta': meta,
-        if (createdAt != null) 'createdAt': createdAt!.toUtc().toIso8601String(),
-        if (updatedAt != null) 'updatedAt': updatedAt!.toUtc().toIso8601String(),
+        if (createdAt != null)
+          'createdAt': createdAt!.toUtc().toIso8601String(),
+        if (updatedAt != null)
+          'updatedAt': updatedAt!.toUtc().toIso8601String(),
       };
 
-  factory Client.fromJson(Map<String, dynamic> json) {
+  factory GroupClient.fromJson(Map<String, dynamic> json) {
     final rawId = (json['id'] ?? json['_id'] ?? '').toString();
     final contact = (json['contact'] as Map?)?.cast<String, dynamic>();
-    return Client(
+    return GroupClient(
       id: rawId,
       name: (json['name'] ?? '').toString(),
       groupId: json['groupId']?.toString(),
@@ -76,8 +78,10 @@ class Client {
       email: contact?['email']?.toString(),
       isActive: json['isActive'] is bool ? json['isActive'] as bool : true,
       meta: (json['meta'] as Map?)?.cast<String, dynamic>(),
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      createdAt:
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt:
+          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
     );
   }
 
@@ -87,7 +91,10 @@ class Client {
 
   @override
   bool operator ==(Object other) =>
-      other is Client && other.id == id && other.name == name && other.groupId == groupId;
+      other is GroupClient &&
+      other.id == id &&
+      other.name == name &&
+      other.groupId == groupId;
 
   @override
   int get hashCode => id.hashCode ^ name.hashCode ^ (groupId?.hashCode ?? 0);
