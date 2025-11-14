@@ -42,7 +42,7 @@ class AuthApiClientImpl implements IAuthApiClient {
   @override
   Future<Map<String, dynamic>> profile({required String accessToken}) async {
     final res = await http.get(
-      Uri.parse('$_base/profile'),
+      Uri.parse('$_base/auth/profile'),
       headers: _headers(token: accessToken),
     );
     return _decode(res);
