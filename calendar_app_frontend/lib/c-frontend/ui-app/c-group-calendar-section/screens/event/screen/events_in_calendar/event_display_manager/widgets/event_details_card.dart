@@ -77,19 +77,19 @@ class EventDetailsCard extends StatelessWidget {
                         textColor: textColor,
                         colorManager: colorManager,
                       ),
-                      if ((event.description ?? '').isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            event.description!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: typo.bodySmall.copyWith(
-                              color: textColor.withOpacity(0.75),
-                              letterSpacing: .1,
-                            ),
-                          ),
-                        ),
+                      // if ((event.description ?? '').isNotEmpty)
+                      //   Padding(
+                      //     padding: const EdgeInsets.only(top: 2),
+                      //     child: Text(
+                      //       event.description!,
+                      //       maxLines: 2,
+                      //       overflow: TextOverflow.ellipsis,
+                      //       style: typo.bodySmall.copyWith(
+                      //         color: textColor.withOpacity(0.75),
+                      //         letterSpacing: .1,
+                      //       ),
+                      //     ),
+                      //   ),
                     ],
                   ),
                 ),

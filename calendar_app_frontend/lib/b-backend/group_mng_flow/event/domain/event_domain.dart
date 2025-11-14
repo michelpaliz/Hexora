@@ -15,7 +15,7 @@ import 'package:hexora/c-frontend/ui-app/f-notification-section/event_notificati
 class EventDomain {
   final Group _group;
   final IEventRepository _repo;
-  final GroupEventResolver _resolver; // 👈 new
+  final GroupEventResolver _resolver; // 👈 resolver with cache
 
   String get groupId => _group.id;
 
@@ -35,10 +35,10 @@ class EventDomain {
     _isLoading = v;
   }
 
-  // ✅ NEW: repo subscription + debounce + external notify flag
-  StreamSubscription<List<Event>>? _repoSub; // ✅ NEW
-  Timer? _recomputeDebounce; // ✅ NEW
-  bool _pendingExternalNotify = false; // ✅ NEW
+  // repo subscription + debounce + external notify flag
+  StreamSubscription<List<Event>>? _repoSub;
+  Timer? _recomputeDebounce;
+  bool _pendingExternalNotify = false;
 
   EventDomain(
     List<Event> initialEvents, {
@@ -53,11 +53,15 @@ class EventDomain {
     _bootstrap(context, initialEvents);
     _setupSocketForwarding();
 
-    // ✅ UPDATED: subscribe to the repository’s per-group stream
+    // subscribe to the repository’s per-group stream
     _repoSub = _repo.events$(_group.id).listen((_) {
       final notify = _pendingExternalNotify;
       _pendingExternalNotify = false;
-      _scheduleRecompute(notifyExternal: notify); // ✅ debounce recomputes
+
+      // 🔧 repo says "events changed" → bust resolver cache for this group
+      _resolver.clearGroup(_group.id);
+
+      _scheduleRecompute(notifyExternal: notify);
     });
   }
 
@@ -77,18 +81,19 @@ class EventDomain {
       } catch (_) {}
     }));
 
-    // ✅ UPDATED: let repo emission drive recompute
+    // first load → make sure cache is fresh
+    _resolver.clearGroup(_group.id);
     _scheduleRecompute(notifyExternal: false);
   }
 
   int? _lastExpandedSig;
 
-  // ✅ NEW: coalescing helper
+  // coalescing helper
   void _scheduleRecompute({required bool notifyExternal}) {
     _recomputeDebounce?.cancel();
     _recomputeDebounce = Timer(const Duration(milliseconds: 16), () {
       if (_disposed) return;
-      _recomputeVisibleWindow(/*notifyExternal:*/ notifyExternal);
+      _recomputeVisibleWindow(notifyExternal);
     });
   }
 
@@ -123,7 +128,8 @@ class EventDomain {
     final hydrated = await _resolver.getHydratedEventsForGroup(
       group: _group,
       fetchBaseEvents: _repo.getEventsByGroupId,
-      useCache: true,
+      useCache:
+          true, // cache is safe because we manually clear it when things change
     );
     devtools.log('[EventDomain]   base(hydrated)=${hydrated.length}');
 
@@ -164,18 +170,18 @@ class EventDomain {
     socket.on(SocketEvents.created, (data) {
       if (_disposed) return;
       _repo.onSocketCreated(_group.id, data);
-      _pendingExternalNotify = true; // ✅ UPDATED
-      // (no direct recompute here)
+      _pendingExternalNotify = true;
+      // repo.events$ listener will bust cache + recompute
     });
     socket.on(SocketEvents.updated, (data) {
       if (_disposed) return;
       _repo.onSocketUpdated(_group.id, data);
-      _pendingExternalNotify = true; // ✅ UPDATED
+      _pendingExternalNotify = true;
     });
     socket.on(SocketEvents.deleted, (data) {
       if (_disposed) return;
       _repo.onSocketDeleted(_group.id, data);
-      _pendingExternalNotify = true; // ✅ UPDATED
+      _pendingExternalNotify = true;
     });
   }
 
@@ -191,7 +197,10 @@ class EventDomain {
     if (!silent) _setLoading(true);
     try {
       await _repo.refreshGroup(_group.id);
-      // ✅ UPDATED: repo emission will trigger recompute
+
+      // 🔧 force fresh base events
+      _resolver.clearGroup(_group.id);
+      _scheduleRecompute(notifyExternal: false);
     } catch (e, st) {
       devtools.log('💥 [EventDomain] manualRefresh error: $e\n$st');
     } finally {
@@ -205,7 +214,11 @@ class EventDomain {
     try {
       await syncReminderFor(context, created);
     } catch (_) {}
-    // ✅ UPDATED: repo emission will trigger recompute
+
+    // 🔧 local mutation → bust cache + recompute
+    _resolver.clearGroup(_group.id);
+    _scheduleRecompute(notifyExternal: false);
+
     return created;
   }
 
@@ -214,12 +227,17 @@ class EventDomain {
     try {
       await syncReminderFor(context, updated);
     } catch (_) {}
-    // ✅ UPDATED: repo emission will trigger recompute
+
+    // 🔧 local mutation → bust cache + recompute
+    _resolver.clearGroup(_group.id);
+    _scheduleRecompute(notifyExternal: false);
+
     return updated;
   }
 
   Future<void> deleteEvent(String id) async {
     await _repo.deleteEvent(id);
+
     final base = await _repo.getEventsByGroupId(_group.id);
     for (final e in base) {
       if (e.id == id || e.rawRuleId == id) {
@@ -228,7 +246,10 @@ class EventDomain {
         } catch (_) {}
       }
     }
-    // ✅ UPDATED: repo emission will trigger recompute
+
+    // 🔧 local mutation → bust cache + recompute
+    _resolver.clearGroup(_group.id);
+    _scheduleRecompute(notifyExternal: false);
   }
 
   Future<Event?> fetchEvent(String id, {String? fallbackId}) async {
@@ -243,8 +264,8 @@ class EventDomain {
   void dispose() {
     _disposed = true;
     eventsNotifier.dispose();
-    _repoSub?.cancel(); // ✅ NEW
-    _recomputeDebounce?.cancel(); // ✅ NEW
+    _repoSub?.cancel();
+    _recomputeDebounce?.cancel();
     final socket = SocketManager();
     socket.off(SocketEvents.created);
     socket.off(SocketEvents.updated);
