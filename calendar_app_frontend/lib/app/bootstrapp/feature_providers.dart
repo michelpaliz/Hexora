@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/b-backend/business_logic/worker/api/i_time_tracking_api_client.dart';
-import 'package:hexora/b-backend/business_logic/worker/api/time_tracking_api_client.dart';
-import 'package:hexora/b-backend/business_logic/worker/repository/time_tracking_repository.dart';
+import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/api/i_time_tracking_api_client.dart';
+import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/api/time_tracking_api_client.dart';
+import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/api/event_api_client.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/api/i_event_api_client.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';

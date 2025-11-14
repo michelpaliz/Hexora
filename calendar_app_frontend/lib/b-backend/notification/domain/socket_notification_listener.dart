@@ -1,5 +1,5 @@
 import 'package:hexora/b-backend/config/api_constants.dart';
-import 'package:hexora/c-frontend/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
+import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 late IO.Socket notificationSocket;

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/recurrenceRule/recurrence_rule_api_client.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/repetition_dialog/utils/show_recurrence.dart';
+import 'package:hexora/c-frontend/ui-app/d-event-section/screens/repetition_dialog/utils/show_recurrence.dart';
 
 /// This class is responsible for resolving and expanding recurring events for a group.
 /// It provides methods to hydrate events with recurrence rules, fetch and cache hydrated events for a group,

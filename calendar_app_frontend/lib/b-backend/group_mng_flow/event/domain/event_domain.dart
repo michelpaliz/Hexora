@@ -9,8 +9,8 @@ import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_reposit
 import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_events.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_manager.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/c-frontend/d-event-section/screens/repetition_dialog/utils/show_recurrence.dart';
-import 'package:hexora/c-frontend/f-notification-section/event_notification_helper.dart';
+import 'package:hexora/c-frontend/ui-app/d-event-section/screens/repetition_dialog/utils/show_recurrence.dart';
+import 'package:hexora/c-frontend/ui-app/f-notification-section/event_notification_helper.dart';
 
 class EventDomain {
   final Group _group;

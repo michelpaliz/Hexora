@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 
 /// Supplies an access token (async-friendly)
 typedef TokenSupplier = Future<String> Function();

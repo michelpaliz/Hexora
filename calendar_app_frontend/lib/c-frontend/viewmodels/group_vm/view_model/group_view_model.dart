@@ -1,0 +1,197 @@
+import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/common/ui_messenger.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/group_editor_state.dart/group_editor_state.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/use_cases/create_group_usecase.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/use_cases/update_group_usecase.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/use_cases/invite_members_usecase.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/use_cases/search_users_usecase.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/use_cases/upload_group_photo_usecase.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/roles/role_policy/role_policy.dart';
+import 'package:image_picker/image_picker.dart';
+
+enum GroupEditorStatus { idle, loading, error, success }
+
+/// The backtick character (`) in Dart is used to create a multi-line string. It allows you to write a
+/// string that spans multiple lines without having to use escape characters like \n for new lines. This
+/// can make your code more readable and maintainable when dealing with long strings or multiline text.
+
+class GroupEditorViewModel extends ChangeNotifier {
+  GroupEditorState _state = const GroupEditorState();
+  GroupEditorStatus status = GroupEditorStatus.idle;
+
+  final User currentUser;
+  final UiMessenger ui;
+  final CreateGroupUseCase createGroup;
+  final InviteMembersUseCase inviteMembers;
+  final UploadGroupPhotoUseCase uploadPhoto;
+  final SearchUsersUseCase searchUsersUseCase; // <-- NEW
+  // + inject update use case
+  final UpdateGroupUseCase updateGroup;
+
+  Group? _editingGroup;
+  String? _editingGroupId;
+
+  GroupEditorViewModel({
+    required this.currentUser,
+    required this.ui,
+    required this.createGroup,
+    required this.inviteMembers,
+    required this.uploadPhoto,
+    required this.searchUsersUseCase,
+    required this.updateGroup,
+  }) {
+    _state = _state.copyWith(
+      membersById: {currentUser.id: currentUser},
+      roles: {currentUser.id: GroupRole.owner},
+    );
+  }
+
+  GroupEditorState get state => _state;
+
+  // Temporary alias so old widgets keep compiling
+  Future<void> submitGroupFromUI() => submit();
+
+  // setters
+  void setName(String v) => _update(_state.copyWith(name: v.trim()));
+  void setDescription(String v) =>
+      _update(_state.copyWith(description: v.trim()));
+  void setImage(XFile? f) => _update(_state.copyWith(image: f));
+
+  bool get isEditing => _editingGroup != null;
+
+  bool get isSubmitting => status == GroupEditorStatus.loading;
+  bool get canSubmit =>
+      _state.name.trim().isNotEmpty &&
+      _state.description.trim().isNotEmpty &&
+      !isSubmitting;
+
+  bool canEditRole(String userId) {
+    return RolePolicy.canEditRole(
+      actorId: currentUser.id,
+      targetId: userId,
+      ownerId: currentUser.id, // in editor, current user is the owner/creator
+      roleOf: (id) => _state.roles[id] ?? GroupRole.member,
+    );
+  }
+
+// Seed VM when entering edit mode
+  // update this
+  void enterEditFrom(Group g) {
+    _editingGroup = g; // ← keep the original
+    _editingGroupId = g.id;
+    _update(_state.copyWith(
+      name: g.name,
+      description: g.description,
+    ));
+  }
+
+// (optional) if you want to drive dropdown options with policy too:
+  List<GroupRole> assignableRolesFor(String targetUserId) {
+    return RolePolicy.assignableRoles(
+      actorId: currentUser.id,
+      targetId: targetUserId,
+      ownerId: currentUser.id,
+      roleOf: (id) => _state.roles[id] ?? GroupRole.member,
+      includeOwner: false, // keep owner out of UI
+    );
+  }
+
+  // members
+  void addMember(User u) {
+    if (_state.membersById.containsKey(u.id)) return;
+    final m = Map<String, User>.from(_state.membersById)..[u.id] = u;
+    final r = Map<String, GroupRole>.from(_state.roles)
+      ..putIfAbsent(u.id, () => GroupRole.member);
+    _update(_state.copyWith(membersById: m, roles: r));
+  }
+
+  void removeMember(String userId) {
+    if (userId == currentUser.id) {
+      ui.showSnack("You can't remove yourself");
+      return;
+    }
+    final m = Map<String, User>.from(_state.membersById)..remove(userId);
+    final r = Map<String, GroupRole>.from(_state.roles)..remove(userId);
+    _update(_state.copyWith(membersById: m, roles: r));
+  }
+
+  void setRole(String userId, GroupRole role) {
+    if (userId == currentUser.id) return;
+    if (_state.roles[userId] == GroupRole.owner) return;
+    final r = Map<String, GroupRole>.from(_state.roles)..[userId] = role;
+    _update(_state.copyWith(roles: r));
+  }
+
+  Future<List<User>> searchUsers(String query, {int limit = 20}) async {
+    final q = query.trim();
+    if (q.isEmpty) return [];
+    // ❌ return await searchUsersUseCase(ApiConstants.baseUrl, q, limit: limit);
+    return await searchUsersUseCase(q,
+        limit: limit); // ✅ keep infra in the use case
+  }
+
+  Future<void> submit() async {
+    if (_state.name.isEmpty || _state.description.isEmpty) {
+      await ui.showError('Name and description are required');
+      return;
+    }
+    status = GroupEditorStatus.loading;
+    notifyListeners();
+    try {
+      if (isEditing) {
+        // ---------- EDIT PATH ----------
+        await updateGroup(
+          original:
+              _editingGroup!, // or pass original Group if that’s your UC signature
+          name: _state.name,
+          description: _state.description,
+        );
+
+        if (_state.image != null) {
+          await uploadPhoto(groupId: _editingGroupId!, file: _state.image!);
+        }
+
+        status = GroupEditorStatus.success;
+        notifyListeners();
+        ui.showSnack('Group updated!');
+        ui.pop();
+        return;
+      }
+
+      // ---------- CREATE PATH (existing) ----------
+      final created = await createGroup(
+        name: _state.name,
+        description: _state.description,
+        owner: currentUser,
+      );
+
+      await inviteMembers(
+        groupId: created.id,
+        members: _state.membersById.values.toList(),
+        owner: currentUser,
+        roles: _state.roles,
+      );
+
+      if (_state.image != null) {
+        await uploadPhoto(groupId: created.id, file: _state.image!);
+      }
+
+      status = GroupEditorStatus.success;
+      notifyListeners();
+      ui.showSnack('Group created!');
+      ui.pop();
+    } catch (e) {
+      status = GroupEditorStatus.error;
+      notifyListeners();
+      await ui.showError('Failed to ${isEditing ? 'update' : 'create'} group');
+    }
+  }
+
+  void _update(GroupEditorState s) {
+    _state = s;
+    notifyListeners();
+  }
+}

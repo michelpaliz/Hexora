@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/c-frontend/j-routes/appRoutes.dart';
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';

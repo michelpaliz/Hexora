@@ -1,6 +1,6 @@
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
-import 'package:hexora/c-frontend/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 
 abstract class IGroupApiClient {
   Future<Group> createGroup(Group group, String token);

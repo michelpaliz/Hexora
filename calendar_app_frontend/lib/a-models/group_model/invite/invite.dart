@@ -1,9 +1,9 @@
 // lib/a-models/invitation/invitation.dart
 import 'dart:convert';
 
-import 'package:hexora/b-backend/group_mng_flow/group/view_model/presentation/group_editor_state.dart/group_editor_state.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/group_editor_state.dart/group_editor_state.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
-import 'package:hexora/c-frontend/k-enums/invitation/invitation_status.dart';
+import 'package:hexora/c-frontend/enums/invitation/invitation_status.dart';
 
 DateTime? _parseDate(dynamic v) {
   if (v == null) return null;

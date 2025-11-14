@@ -7,10 +7,10 @@ import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 // Agenda / analytics
-import 'package:hexora/b-backend/agenda/agenda_api_client.dart'
+import 'package:hexora/b-backend/group_mng_flow/agenda/agenda_api_client.dart'
     show AgendaApiClient;
-import 'package:hexora/b-backend/agenda/query_knobs/client_rollup.dart';
-import 'package:hexora/b-backend/agenda/query_knobs/work_summary.dart';
+import 'package:hexora/b-backend/group_mng_flow/agenda/query_knobs/client_rollup.dart';
+import 'package:hexora/b-backend/group_mng_flow/agenda/query_knobs/work_summary.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 // App config
 import 'package:hexora/b-backend/config/api_constants.dart';
