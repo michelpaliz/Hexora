@@ -87,12 +87,14 @@ final List<SingleChildWidget> featureProviders = [
   ),
 
   // EventDomain: depends on GroupDomain + IEventRepository
-  ProxyProvider2<GroupDomain, IEventRepository, EventDomain?>(
+  ProxyProvider3<GroupDomain, IEventRepository, GroupEventResolver,
+      EventDomain?>(
     create: (_) => null,
-    update: (ctx, groupDomain, eventRepo, previous) {
+    update: (ctx, groupDomain, eventRepo, resolver, previous) {
       final current = groupDomain.currentGroup;
       if (current == null) return null;
 
+      // Reuse the existing instance if same group
       if (previous != null && previous.groupId == current.id) {
         return previous;
       }
@@ -103,9 +105,12 @@ final List<SingleChildWidget> featureProviders = [
         group: current,
         repository: eventRepo,
         groupDomain: groupDomain,
+        resolver: resolver, // 👈 NEW
       );
+
       edm.onExternalEventUpdate = previous?.onExternalEventUpdate ??
           () => debugPrint('⚠️ No calendar UI registered.');
+
       return edm;
     },
   ),

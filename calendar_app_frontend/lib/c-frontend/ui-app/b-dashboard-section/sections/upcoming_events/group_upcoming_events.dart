@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_agenda_domain.dart';
+// ⛔ remove this:
+// import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -32,10 +34,10 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
   }
 
   Future<List<Event>> _load() async {
-    final userDomain = context.read<UserDomain>();
+    // 🔄 use UserAgendaDomain instead of UserDomain
+    final agenda = context.read<UserAgendaDomain>();
 
-    // 🔧 New AgendaService signature requires groupId
-    final events = await userDomain.fetchAgendaUpcoming(
+    final events = await agenda.fetchAgendaUpcoming(
       groupId: widget.groupId,
       days: widget.daysRange,
       limit: 200, // fetch a buffer, we'll filter down

@@ -6,15 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/resolver/event_group_resolver.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_events.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_manager.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/c-frontend/ui-app/d-event-section/screens/repetition_dialog/utils/show_recurrence.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/event_notification_helper.dart';
 
 class EventDomain {
   final Group _group;
   final IEventRepository _repo;
+  final GroupEventResolver _resolver; // 👈 new
 
   String get groupId => _group.id;
 
@@ -45,8 +46,10 @@ class EventDomain {
     required Group group,
     required IEventRepository repository,
     required GroupDomain groupDomain,
+    required GroupEventResolver resolver,
   })  : _group = group,
-        _repo = repository {
+        _repo = repository,
+        _resolver = resolver {
     _bootstrap(context, initialEvents);
     _setupSocketForwarding();
 
@@ -116,35 +119,26 @@ class EventDomain {
       end: now.add(const Duration(days: 365)),
     );
 
-    // 1) Pull base events from repo cache/API (your repo method)
-    final base = await _repo.getEventsByGroupId(_group.id);
-    devtools.log('[EventDomain]   base=${base.length}');
+    // 1) hydrated base events (via resolver + repo)
+    final hydrated = await _resolver.getHydratedEventsForGroup(
+      group: _group,
+      fetchBaseEvents: _repo.getEventsByGroupId,
+      useCache: true,
+    );
+    devtools.log('[EventDomain]   base(hydrated)=${hydrated.length}');
 
-    // 2) Expand recurrences for visible window
-    final expanded = <Event>[];
-    for (final e in base) {
-      final hasStringRule = e.rule != null && e.rule!.isNotEmpty;
-      final hasObjRule = e.recurrenceRule != null;
+    // 2) expand + dedupe via resolver
+    final visible = _resolver.expandForRange(
+      baseEvents: hydrated,
+      range: range,
+      maxOccurrences: 1000,
+    );
 
-      if (!hasStringRule && !hasObjRule) {
-        if (_overlapsRange(e.startDate, e.endDate, range)) expanded.add(e);
-      } else {
-        final ex = expandRecurringEventForRange(
-          e,
-          range,
-          maxOccurrences: 1000,
-        );
-        expanded.addAll(ex);
-      }
-    }
-
-    // 3) Dedupe + compute signature to avoid no-op emits
-    final deduped = _dedupe(expanded);
-    final sig = _computeSignature(deduped);
+    // 3) signature check
+    final sig = _computeSignature(visible);
     final changed = _lastExpandedSig != sig;
 
-    devtools.log('[EventDomain]   expanded=${expanded.length} '
-        'deduped=${deduped.length} changed=$changed '
+    devtools.log('[EventDomain]   visible=${visible.length} changed=$changed '
         'elapsed=${DateTime.now().difference(t0).inMilliseconds}ms');
 
     if (!changed) {
@@ -153,15 +147,15 @@ class EventDomain {
     }
     _lastExpandedSig = sig;
 
-    // 4) Push to notifier
-    eventsNotifier.value = deduped;
+    // 4) push to notifier
+    eventsNotifier.value = visible;
 
-    // 5) Notify external listeners only when the change originated from sockets
+    // 5) external notify (socket-originated)
     if (notifyExternal) {
       onExternalEventUpdate?.call();
     }
 
-    devtools.log('[EventDomain] ◂ recompute done total=${deduped.length}');
+    devtools.log('[EventDomain] ◂ recompute done total=${visible.length}');
   }
 
   void _setupSocketForwarding() {
@@ -245,12 +239,6 @@ class EventDomain {
       rethrow;
     }
   }
-
-  List<Event> _dedupe(List<Event> list) =>
-      {for (final e in list) e.id: e}.values.toList();
-
-  bool _overlapsRange(DateTime start, DateTime end, DateTimeRange range) =>
-      start.isBefore(range.end) && end.isAfter(range.start);
 
   void dispose() {
     _disposed = true;

@@ -50,7 +50,7 @@ Widget buildNotificationIcon({
             AppRoutes.showNotifications,
             arguments: currentUser,
           );
-          notificationDomain.markAllNotificationsAsRead(userDomain);
+          notificationDomain.markAllNotificationsAsRead();
         },
       );
     },

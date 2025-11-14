@@ -3,7 +3,6 @@ import 'dart:developer' as devtools show log;
 
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/notification/notification_api_client.dart';
 
 class NotificationDomain extends ChangeNotifier {
@@ -65,86 +64,81 @@ class NotificationDomain extends ChangeNotifier {
     return notifications;
   }
 
-  // Mark notifications as read, update both locally and on the service level
-  Future<void> markAllNotificationsAsRead(UserDomain userDomain) async {
+  /// Mark all notifications as read on the service and locally.
+  /// Returns the updated list of notification IDs so the caller
+  /// (e.g. UserDomain) can persist them on the user.
+  Future<List<String>> markAllNotificationsAsRead() async {
     try {
-      List<String> updatedNotificationIds = [];
-      for (NotificationUser notification in _notifications) {
+      final updatedNotificationIds = <String>[];
+
+      for (final notification in _notifications) {
         if (!notification.isRead) {
           notification.isRead = true; // Mark as read directly
           await notificationService.updateNotification(notification);
-          updatedNotificationIds.add(notification.id);
         }
+        updatedNotificationIds.add(notification.id);
       }
+
       _notificationIds = updatedNotificationIds;
       _notifications = await _fetchNotificationsByIds(updatedNotificationIds);
-      userDomain.user?.notifications =
-          _notificationIds; // Store IDs in user object
-      await userDomain.updateUser(userDomain.user!);
 
+      _notifications = _sortNotificationsByDate(_notifications);
       _notificationViewModel.add(_notifications);
       notifyListeners();
+
+      return _notificationIds;
     } catch (e) {
       print('Failed to mark notifications as read: $e');
+      return _notificationIds;
     }
   }
 
-  // Remove notification by index
-  Future<bool> removeNotificationByIndex(
-    int index,
-    UserDomain userDomain,
-  ) async {
+  /// Remove a notification by index. Returns the updated list of IDs
+  /// so the caller can persist them on the user.
+  Future<List<String>> removeNotificationByIndex(int index) async {
     if (index < 0 || index >= _notifications.length) {
-      return false;
+      return _notificationIds;
     }
 
     try {
-      NotificationUser notification = _notifications[index];
+      final notification = _notifications[index];
       _notifications.removeAt(index);
       _notificationIds.remove(notification.id); // Remove the ID
 
-      userDomain.user?.notifications = _notificationIds;
-      await userDomain.updateUser(userDomain.user!);
-
+      _notifications = _sortNotificationsByDate(_notifications);
       _notificationViewModel.add(_notifications);
       notifyListeners();
 
-      return true;
+      return _notificationIds;
     } catch (e) {
       print('Failed to remove notification: $e');
-      return false;
+      return _notificationIds;
     }
   }
 
-  // Remove notification by ID
-  Future<bool> removeNotificationById(
-    String notificationId,
-    UserDomain userDomain,
-  ) async {
+  /// Remove a notification by ID. Returns the updated list of IDs
+  /// so the caller can persist them on the user.
+  Future<List<String>> removeNotificationById(String notificationId) async {
     try {
       _notificationIds.remove(notificationId);
       _notifications.removeWhere(
         (notification) => notification.id == notificationId,
       );
 
-      userDomain.user?.notifications = _notificationIds;
-      await userDomain.updateUser(userDomain.user!);
-
+      _notifications = _sortNotificationsByDate(_notifications);
       _notificationViewModel.add(_notifications);
       notifyListeners();
 
-      return true;
+      return _notificationIds;
     } catch (e) {
       print('Failed to remove notification: $e');
-      return false;
+      return _notificationIds;
     }
   }
 
-  // Method to update user notification IDs
-  Future<void> updateUserNotificationIds(
-    List<String> newNotificationIds,
-    UserDomain userDomain,
-  ) async {
+  /// Update internal notification state from a new list of IDs.
+  /// Caller is responsible for updating the user object in the DB.
+  Future<void> updateUserNotificationIds(List<String> newNotificationIds) async {
     try {
       // Update the internal list of notification IDs
       _notificationIds = newNotificationIds;
@@ -154,12 +148,6 @@ class NotificationDomain extends ChangeNotifier {
 
       // Sort the notifications by date
       _notifications = _sortNotificationsByDate(_notifications);
-
-      // Update the current user's notification IDs
-      userDomain.user?.notifications = newNotificationIds;
-
-      // Update the user object in the database or state management
-      await userDomain.updateUser(userDomain.user!);
 
       // Update the notification stream with the new notifications
       _notificationViewModel.add(_notifications);

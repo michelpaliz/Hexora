@@ -7,6 +7,7 @@ import 'package:hexora/b-backend/auth_user/auth/token/token_store/token_store.da
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/user/api/i_user_api_client.dart';
 import 'package:hexora/b-backend/user/api/user_api_client.dart';
+import 'package:hexora/b-backend/user/domain/user_agenda_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/user/presence_domain.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
@@ -58,6 +59,10 @@ final List<SingleChildWidget> coreProviders = [
       user: null,
       notificationDomain: ctx.read<NotificationDomain>(),
     ),
+  ),
+  // 👉 New: UserAgendaDomain (no dependencies on UserDomain)
+  Provider<UserAgendaDomain>(
+    create: (_) => UserAgendaDomain(),
   ),
 
   // Presence + theme + locale

@@ -3,10 +3,10 @@ import 'dart:developer' as devtools show log;
 import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 // ⛔ remove: import 'package:hexora/b-backend/api/user/user_services.dart';
 import 'package:hexora/b-backend/notification/notification_api_client.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 
 class NotificationViewModel {
   final UserDomain userDomain;
@@ -56,7 +56,6 @@ class NotificationViewModel {
       await notificationService.deleteNotification(notification.id);
       await notificationDomain.removeNotificationById(
         notification.id,
-        userDomain,
       );
     } catch (e) {
       devtools.log('❌ Error confirming invitation: $e');
@@ -80,7 +79,6 @@ class NotificationViewModel {
       await notificationService.deleteNotification(notification.id);
       await notificationDomain.removeNotificationById(
         notification.id,
-        userDomain,
       );
     } catch (e) {
       devtools.log('❌ Error declining invitation: $e');
@@ -91,7 +89,7 @@ class NotificationViewModel {
   Future<void> removeNotificationByIndex(int index) async {
     final notification = notificationDomain.notifications[index];
     await notificationService.deleteNotification(notification.id);
-    await notificationDomain.removeNotificationByIndex(index, userDomain);
+    await notificationDomain.removeNotificationByIndex(index);
   }
 
   /// ✅ Remove all notifications for the current user (DB + local)
