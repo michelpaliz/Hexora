@@ -1,17 +1,25 @@
+// lib/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/group_header_view.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/infopill/info_pill.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/widget/group_header_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
-import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class GroupHeaderView extends StatefulWidget {
   final Group group;
-  const GroupHeaderView({super.key, required this.group});
+  final VoidCallback? onEditGroup;
+
+  const GroupHeaderView({
+    super.key,
+    required this.group,
+    this.onEditGroup,
+  });
 
   @override
   State<GroupHeaderView> createState() => _GroupHeaderViewState();
@@ -19,23 +27,70 @@ class GroupHeaderView extends StatefulWidget {
 
 class _GroupHeaderViewState extends State<GroupHeaderView> {
   late GroupDomain _gm;
+  late UserDomain _ud;
   MembersCount? _counts;
   bool _loading = false;
+  bool _openingEditor = false;
 
   @override
   void initState() {
     super.initState();
     _gm = context.read<GroupDomain>();
+    _ud = context.read<UserDomain>();
     _load();
+  }
+
+  Future<void> _handleEditGroup() async {
+    if (_openingEditor) return;
+
+    final custom = widget.onEditGroup;
+    if (custom != null) {
+      custom();
+      return;
+    }
+
+    setState(() => _openingEditor = true);
+    final rootNav = Navigator.of(context, rootNavigator: true);
+
+    showDialog<void>(
+      context: rootNav.context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final freshGroup =
+          await _gm.groupRepository.getGroupById(widget.group.id);
+      final users = await _ud.getUsersForGroup(freshGroup);
+
+      if (rootNav.context.mounted) rootNav.pop();
+      if (!mounted) return;
+
+      Navigator.of(context).pushNamed(
+        AppRoutes.editGroupData,
+        arguments: EditGroupArguments(group: freshGroup, users: users),
+      );
+    } catch (e) {
+      if (rootNav.context.mounted) rootNav.pop();
+      if (!mounted) return;
+
+      final l = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${l.failedToEditGroup} $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _openingEditor = false);
+    }
   }
 
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final c = await _gm.groupRepository.getMembersCount(
-        widget.group.id,
-        mode: 'union',
-      );
+      final c = await _gm.groupRepository
+          .getMembersCount(widget.group.id, mode: 'union');
       if (!mounted) return;
       setState(() => _counts = c);
     } finally {
@@ -45,89 +100,28 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
 
   @override
   Widget build(BuildContext context) {
-    final group = widget.group;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
+    final g = widget.group;
     final l = AppLocalizations.of(context)!;
-    final createdStr = DateFormat.yMMMd(l.localeName).format(group.createdTime);
+    final createdStr = DateFormat.yMMMd(l.localeName).format(g.createdTime);
 
     // Fallbacks + server-first
-    final fallbackMembers = group.userIds.length;
+    final fallbackMembers = g.userIds.length;
     const fallbackPending = 0;
     final members = _counts?.accepted ?? fallbackMembers;
     final pending = _counts?.pending ?? fallbackPending;
     final total = _counts?.union ?? (fallbackMembers + fallbackPending);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            AvatarUtils.groupAvatar(context, group.photoUrl, radius: 30),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(group.name,
-                      style:
-                          t.titleLarge.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  Text(
-                    l.createdOnDay(createdStr),
-                    style: t.bodySmall
-                        .copyWith(color: cs.onSurface.withOpacity(0.7)),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_loading)
-                    const _ShimmerPills()
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        InfoPill(
-                          icon: Icons.group_outlined,
-                          label:
-                              '${NumberFormat.decimalPattern(l.localeName).format(members)} ${l.membersTitle.toLowerCase()}',
-                        ),
-                        InfoPill(
-                          icon: Icons.hourglass_top_outlined,
-                          label:
-                              '${NumberFormat.decimalPattern(l.localeName).format(pending)} ${l.statusPending.toLowerCase()}',
-                        ),
-                        InfoPill(
-                          icon: Icons.all_inbox_outlined,
-                          label:
-                              '${NumberFormat.decimalPattern(l.localeName).format(total)} total',
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
+    return GroupHeaderCard(
+      photoUrl: g.photoUrl,
+      title: g.name,
+      description: g.description,
+      createdLabel: l.createdOnDay(createdStr),
+      members: members,
+      pending: pending,
+      total: total,
+      localeName: l.localeName,
+      isLoading: _loading || _openingEditor,
+      onTap: _handleEditGroup, // 👈 whole header is the button
     );
-  }
-}
-
-class _ShimmerPills extends StatelessWidget {
-  const _ShimmerPills();
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    Widget box(double w) => Container(
-          width: w,
-          height: 28,
-          decoration: BoxDecoration(
-            color: cs.surfaceVariant.withOpacity(0.35),
-            borderRadius: BorderRadius.circular(999),
-          ),
-        );
-    return Wrap(
-        spacing: 8, runSpacing: 8, children: [box(96), box(120), box(80)]);
   }
 }

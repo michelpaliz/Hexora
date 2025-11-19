@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
-import 'widgets/group_hero_card.dart';
 import 'widgets/quick_actions_grid.dart';
 
 class ProfileDialogContent extends StatelessWidget {
@@ -24,8 +23,8 @@ class ProfileDialogContent extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          GroupHeroCard(group: group),
-          const SizedBox(height: 16),
+          // GroupHeroCard(group: group),
+          // const SizedBox(height: 16),
           QuickActionsGrid(group: group),
         ],
       ),

@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
-part 'user_operations.dart';
-part 'user_serialization.dart';
+// lib/a-models/user_model/user.dart
+
+import 'package:hexora/a-models/user_model/json_folders/user_equality.dart';
+import 'package:hexora/a-models/user_model/json_folders/user_json_mapper.dart';
 
 class User {
   String _id;
@@ -86,12 +87,11 @@ class User {
   List<String> get notifications => _notificationsIds;
   set notifications(List<String>? v) => _notificationsIds = v ?? [];
 
-  // Convert to JSON
+  // JSON (delegated)
   Map<String, dynamic> toJson() => userToJson(this);
 
-  // Create from JSON (SAFE)
   factory User.fromJson(Map<String, dynamic> raw, {String? fallbackId}) =>
-      buildUserFromJson(raw, fallbackId: fallbackId);
+      userFromJson(raw, fallbackId: fallbackId);
 
   // copyWith
   User copyWith({
@@ -108,26 +108,42 @@ class User {
     List<String>? groupIds,
     List<String>? sharedCalendars,
     List<String>? notifications,
-  }) =>
-      copyUser(
-        this,
-        id: id,
-        name: name,
-        displayName: displayName,
-        email: email,
-        userName: userName,
-        bio: bio,
-        phoneNumber: phoneNumber,
-        location: location,
-        photoUrl: photoUrl,
-        photoBlobName: photoBlobName,
-        groupIds: groupIds,
-        sharedCalendars: sharedCalendars,
-        notifications: notifications,
-      );
+  }) {
+    return User(
+      id: id ?? _id,
+      name: name ?? _name,
+      displayName: displayName ?? _displayName,
+      email: email ?? _email,
+      userName: userName ?? _userName,
+      bio: bio ?? _bio,
+      phoneNumber: phoneNumber ?? _phoneNumber,
+      location: location ?? _location,
+      photoUrl: photoUrl ?? _photoUrl,
+      photoBlobName: photoBlobName ?? _photoBlobName,
+      groupIds: groupIds ?? _groupIds,
+      sharedCalendars: sharedCalendars ?? _calendarsIds,
+      notifications: notifications ?? _notificationsIds,
+    );
+  }
 
   // empty factory
-  factory User.empty() => buildEmptyUser();
+  factory User.empty() {
+    return User(
+      id: '',
+      name: '',
+      displayName: '',
+      email: '',
+      userName: '',
+      bio: '',
+      phoneNumber: '',
+      location: '',
+      photoUrl: '',
+      photoBlobName: '',
+      groupIds: const [],
+      sharedCalendars: const [],
+      notifications: const [],
+    );
+  }
 
   @override
   bool operator ==(Object other) => userEquals(this, other);

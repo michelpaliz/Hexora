@@ -1248,5 +1248,26 @@
             "editImage": "Edit",
   "tapToChangePhoto": "Tap to change group photo",
   "tapToAddPhoto": "Tap to add group photo",
-  "groupSaved": "Group saved"
+  "groupSaved": "Group saved",
+  "manageGroup": "Manage group",
+  "hey": "Hey",
+  "youAreThe": "you are the",
+  "ofThisGroup": "of this group",
+  "youHaveSuperPowersHere": "You have super powers for this group!",
+  "roleOwnerBullet1": "Change group settings and features",
+  "roleOwnerBullet2": "Manage billing and subscription",
+  "roleOwnerBullet3": "Add or remove co-admins and members",
+  "roleOwnerBullet4": "View and edit all calendars and events",
+  "roleOwnerBullet5": "Delete or transfer the group",
+
+  "roleCoAdminBullet1": "Create, edit, and delete events for the group",
+  "roleCoAdminBullet2": "Manage services and clients",
+  "roleCoAdminBullet3": "Invite or remove members (except the owner)",
+  "roleCoAdminBullet4": "Configure notifications and work hours",
+
+  "roleMemberBullet1": "See your assigned events",
+  "roleMemberBullet2": "Mark visits or tasks as done",
+  "roleMemberBullet3": "Add notes and comments"
+
+
 }

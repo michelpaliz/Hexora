@@ -1,14 +1,16 @@
+// lib/c-frontend/ui-app/b-dashboard-section/dashboard_screen/group_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/group_header_view.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/upcoming_events/group_upcoming_events.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
-import 'package:hexora/e-drawer-style-menu/contextual_fab/contextual_fab.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/group_dashboard_body_admin.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/group_dashboard_body_member.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/role_resolver.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
-import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -23,208 +25,163 @@ class GroupDashboard extends StatefulWidget {
 
 class _GroupDashboardState extends State<GroupDashboard> {
   late GroupDomain _gm;
+  late UserDomain _ud;
+
   MembersCount? _counts;
+  GroupRole? _role;
+  User? _user;
 
   @override
   void initState() {
     super.initState();
     _gm = context.read<GroupDomain>();
-    _loadCounts();
+    _ud = context.read<UserDomain>();
+    _loadAll();
   }
 
-  Future<void> _loadCounts() async {
-    final c = await _gm.groupRepository.getMembersCount(
-      widget.group.id,
-      mode: 'union',
-    );
+  Future<void> _loadAll() async {
+    final counts = await _gm.groupRepository
+        .getMembersCount(widget.group.id, mode: 'union');
+    final role =
+        await RoleResolver.resolve(group: widget.group, userDomain: _ud);
+    final user = await _getCurrentUserSafe();
     if (!mounted) return;
-    setState(() => _counts = c);
+    setState(() {
+      _counts = counts;
+      _role = role;
+      _user = user;
+    });
+  }
+
+  Future<void> _refreshCounts() async {
+    final counts = await _gm.groupRepository
+        .getMembersCount(widget.group.id, mode: 'union');
+    if (!mounted) return;
+    setState(() => _counts = counts);
+  }
+
+  Future<User?> _getCurrentUserSafe() async {
+    try {
+      final u = await _ud.getUser();
+      if (u != null) return u;
+    } catch (_) {}
+    try {
+      final dynamic maybe = (_ud as dynamic).currentUser;
+      if (maybe is User) return maybe;
+    } catch (_) {}
+    try {
+      final dynamic me = (_ud as dynamic).me;
+      if (me is Future<User?> Function()) {
+        return await me();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // Delegate SAS creation to UserDomain (rename to your actual method if needed)
+  Future<String?> _fetchReadSas(String blobName) async {
+    try {
+      final dynamic fn = (_ud as dynamic).getReadSasForBlob;
+      if (fn is Future<String?> Function(String)) return await fn(blobName);
+      final dynamic alt = (_ud as dynamic).fetchReadSas;
+      if (alt is Future<String?> Function(String)) return await alt(blobName);
+    } catch (_) {}
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final group = widget.group;
-    final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
 
-    // typography hierarchy
-    final sectionTitleStyle = t.bodyLarge.copyWith(fontWeight: FontWeight.w800);
-    final tileTitleStyle = t.accentText.copyWith(fontWeight: FontWeight.w600);
-    final tileSubtitleStyle = t.bodySmall;
+    // Optional subtitle (handy for testing)
+    String? subtitle;
+    if (_role != null) {
+      subtitle = toBeginningOfSentenceCase(_role!.wire);
+    }
 
-    // Fallbacks / server-first for members shown in the Manage tile
-    final fallbackMembers = group.userIds.length;
-    final showMembers = _counts?.accepted ?? fallbackMembers;
-
-    final tileBg = ThemeColors.listTileBg(context);
+    final isLoading = _role == null || _user == null;
+    final canSeeAdmin = _role == GroupRole.owner ||
+        _role == GroupRole.admin ||
+        _role == GroupRole.coAdmin;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l.dashboardTitle, style: t.titleLarge),
+        centerTitle: false,
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadCounts,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : canSeeAdmin
+              ? GroupDashboardBodyAdmin(
+                  group: widget.group,
+                  counts: _counts,
+                  onRefresh: _refreshCounts,
+                  user: _user!,
+                  role: _role!,
+                  fetchReadSas: _fetchReadSas,
+                )
+              : GroupDashboardBodyMember(
+                  group: widget.group,
+                  user: _user!,
+                  role: _role!,
+                  fetchReadSas: _fetchReadSas,
+                ),
+
+      // Replace the entire bottomNavigationBar with this:
+      bottomNavigationBar: SafeArea(
+        // slightly tighter outer padding
+        minimum: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+        child: Row(
           children: [
-            _SectionHeader(title: l.sectionOverview, style: sectionTitleStyle),
-
-            // Header
-            GroupHeaderView(group: group),
-
-            const SizedBox(height: 20),
-            _SectionHeader(title: l.sectionUpcoming, style: sectionTitleStyle),
-            GroupUpcomingEventsCard(groupId: group.id),
-
-            const SizedBox(height: 20),
-            _SectionHeader(title: l.sectionManage, style: sectionTitleStyle),
-
-            Card(
-              color: tileBg,
-              child: ListTile(
-                leading: const Icon(Icons.group_outlined),
-                title: Text(l.membersTitle, style: tileTitleStyle),
-                subtitle: Text(
-                  '${NumberFormat.decimalPattern(l.localeName).format(showMembers)} ${l.membersTitle.toLowerCase()}',
-                  style: tileSubtitleStyle,
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.calendar_month_rounded, size: 20),
+                label: Text(l.goToCalendar),
+                style: FilledButton.styleFrom(
+                  // taller/min size + more inner padding
+                  minimumSize: const Size.fromHeight(52),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  textStyle: Theme.of(context).textTheme.labelLarge,
                 ),
-                onTap: () {
+                onPressed: () {
                   Navigator.pushNamed(
                     context,
-                    AppRoutes.groupMembers,
-                    arguments: group,
+                    AppRoutes.groupCalendar,
+                    arguments: widget.group,
                   );
                 },
               ),
             ),
-            const SizedBox(height: 8),
-            Card(
-              color: tileBg,
-              child: ListTile(
-                leading: const Icon(Icons.design_services_outlined),
-                title: Text(l.servicesClientsTitle, style: tileTitleStyle),
-                subtitle:
-                    Text(l.servicesClientsSubtitle, style: tileSubtitleStyle),
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.groupServicesClients,
-                    arguments: group,
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 8),
-            _SectionHeader(title: l.sectionInsights, style: sectionTitleStyle),
-            Card(
-              color: tileBg,
-              child: ListTile(
-                leading: const Icon(Icons.insights_outlined),
-                title: Text(l.insightsTitle, style: tileTitleStyle),
-                subtitle: Text(l.insightsSubtitle, style: tileSubtitleStyle),
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.groupInsights,
-                    arguments: group,
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 20),
-            if (!group.hasCalendar) ...[
-              _SectionHeader(title: l.sectionStatus, style: sectionTitleStyle),
-              Card(
-                color: cs.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    l.noCalendarWarning,
-                    style: t.bodyMedium.copyWith(color: cs.onErrorContainer),
-                  ),
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 20),
-            _SectionHeader(
-              title: l.sectionWorkersHours,
-              style: sectionTitleStyle,
-            ),
-            Card(
-              color: tileBg,
-              child: ListTile(
-                leading: const Icon(Icons.access_time_rounded),
-                title: Text(l.timeTrackingTitle, style: tileTitleStyle),
-                subtitle:
-                    Text(l.timeTrackingHeaderHint, style: tileSubtitleStyle),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => GroupTimeTrackingScreen(group: group),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 96),
+            // const SizedBox(width: 12),
+            // Expanded(
+            //   child: OutlinedButton.icon(
+            //     icon: const Icon(Icons.add_rounded, size: 20),
+            //     label: Text(l.addEvent),
+            //     style: OutlinedButton.styleFrom(
+            //       minimumSize: const Size.fromHeight(52),
+            //       padding:
+            //           const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            //       textStyle: Theme.of(context).textTheme.labelLarge,
+            //       side: BorderSide(
+            //         color: Theme.of(context)
+            //             .colorScheme
+            //             .outlineVariant
+            //             .withOpacity(0.6),
+            //       ),
+            //     ),
+            //     onPressed: () {
+            //       Navigator.pushNamed(
+            //         context,
+            //         AppRoutes.createEvent,
+            //         arguments: widget.group,
+            //       );
+            //     },
+            //   ),
+            // ),
           ],
         ),
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: SizedBox(
-          height: 56,
-          child: FilledButton.icon(
-            icon: const Icon(Icons.calendar_month_rounded),
-            label: Text(l.goToCalendar, style: t.buttonText),
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                AppRoutes.groupCalendar,
-                arguments: group,
-              );
-            },
-          ),
-        ),
-      ),
-      floatingActionButton: const ContextualFab(),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final TextStyle? style;
-  const _SectionHeader({required this.title, this.style});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style:
-                (style ?? t.titleLarge).copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: cs.outlineVariant.withOpacity(0.25),
-            ),
-          ),
-        ],
       ),
     );
   }

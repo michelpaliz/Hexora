@@ -4226,6 +4226,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Group saved'**
   String get groupSaved;
+
+  /// No description provided for @manageGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage group'**
+  String get manageGroup;
+
+  /// No description provided for @hey.
+  ///
+  /// In en, this message translates to:
+  /// **'Hey'**
+  String get hey;
+
+  /// No description provided for @youAreThe.
+  ///
+  /// In en, this message translates to:
+  /// **'you are the'**
+  String get youAreThe;
+
+  /// No description provided for @ofThisGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'of this group'**
+  String get ofThisGroup;
+
+  /// No description provided for @youHaveSuperPowersHere.
+  ///
+  /// In en, this message translates to:
+  /// **'You have super powers for this group!'**
+  String get youHaveSuperPowersHere;
+
+  /// No description provided for @roleOwnerBullet1.
+  ///
+  /// In en, this message translates to:
+  /// **'Change group settings and features'**
+  String get roleOwnerBullet1;
+
+  /// No description provided for @roleOwnerBullet2.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage billing and subscription'**
+  String get roleOwnerBullet2;
+
+  /// No description provided for @roleOwnerBullet3.
+  ///
+  /// In en, this message translates to:
+  /// **'Add or remove co-admins and members'**
+  String get roleOwnerBullet3;
+
+  /// No description provided for @roleOwnerBullet4.
+  ///
+  /// In en, this message translates to:
+  /// **'View and edit all calendars and events'**
+  String get roleOwnerBullet4;
+
+  /// No description provided for @roleOwnerBullet5.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete or transfer the group'**
+  String get roleOwnerBullet5;
+
+  /// No description provided for @roleCoAdminBullet1.
+  ///
+  /// In en, this message translates to:
+  /// **'Create, edit, and delete events for the group'**
+  String get roleCoAdminBullet1;
+
+  /// No description provided for @roleCoAdminBullet2.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage services and clients'**
+  String get roleCoAdminBullet2;
+
+  /// No description provided for @roleCoAdminBullet3.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite or remove members (except the owner)'**
+  String get roleCoAdminBullet3;
+
+  /// No description provided for @roleCoAdminBullet4.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure notifications and work hours'**
+  String get roleCoAdminBullet4;
+
+  /// No description provided for @roleMemberBullet1.
+  ///
+  /// In en, this message translates to:
+  /// **'See your assigned events'**
+  String get roleMemberBullet1;
+
+  /// No description provided for @roleMemberBullet2.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark visits or tasks as done'**
+  String get roleMemberBullet2;
+
+  /// No description provided for @roleMemberBullet3.
+  ///
+  /// In en, this message translates to:
+  /// **'Add notes and comments'**
+  String get roleMemberBullet3;
 }
 
 class _AppLocalizationsDelegate

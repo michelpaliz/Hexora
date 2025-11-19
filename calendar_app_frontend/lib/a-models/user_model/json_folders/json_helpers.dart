@@ -1,4 +1,6 @@
-part of 'package:hexora/a-models/user_model/user.dart';
+// lib/utils/json_helpers.dart
+
+/// JSON helper functions shared across models.
 
 String requireString(Map<String, dynamic> j, String key) {
   final v = j[key];
@@ -12,7 +14,9 @@ String requireStringAny(Map<String, dynamic> j, List<String> keys) {
     if (v is String && v.isNotEmpty) return v;
   }
   throw FormatException(
-      "Expected non-empty string for one of ${keys.join(', ')}, got: ${keys.map((k) => j[k]).toList()}");
+    "Expected non-empty string for one of ${keys.join(', ')}, got: "
+    "${keys.map((k) => j[k]).toList()}",
+  );
 }
 
 String? optString(Map<String, dynamic> j, String key) {
@@ -28,7 +32,7 @@ List<String> optStringList(Map<String, dynamic> j, String key) {
   return <String>[];
 }
 
-// Returns first non-empty string among keys, else null
+/// Returns first non-empty string among keys, else null.
 String? optStringAny(Map<String, dynamic> j, List<String> keys) {
   for (final k in keys) {
     final v = j[k];
@@ -37,6 +41,8 @@ String? optStringAny(Map<String, dynamic> j, List<String> keys) {
   return null;
 }
 
+/// If the user payload is nested (e.g. under `user`, `data`, `profile`, `result`),
+/// unwraps and returns that map.
 Map<String, dynamic> unwrapUser(Map<String, dynamic> raw) {
   for (final key in ['user', 'data', 'profile', 'result']) {
     final v = raw[key];

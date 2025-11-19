@@ -1,14 +1,37 @@
-part of 'package:hexora/a-models/user_model/user.dart';
+// lib/a-models/user_model/json_folders/user_json_mapper.dart
 
-User buildUserFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
+import 'package:hexora/a-models/user_model/json_folders/json_helpers.dart';
+import 'package:hexora/a-models/user_model/user.dart';
+
+Map<String, dynamic> userToJson(User u) {
+  return {
+    '_id': u.id,
+    'name': u.name,
+    'displayName': u.displayName,
+    'userName': u.userName,
+    'email': u.email,
+    'bio': u.bio,
+    'phoneNumber': u.phoneNumber,
+    'location': u.location,
+    'photoUrl': u.photoUrl,
+    'photoBlobName': u.photoBlobName,
+    'groupIds': u.groupIds,
+    'sharedCalendars': u.sharedCalendars,
+    'notifications': u.notifications,
+  };
+}
+
+User userFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
   final Map<String, dynamic> json = unwrapUser(raw);
 
   final id = optStringAny(json, ['id', '_id', 'userId']) ?? fallbackId;
   if (id == null || id.isEmpty) {
-    throw FormatException(
-        "Expected non-empty string for one of id/_id/userId, and no fallbackId was provided.");
+    throw const FormatException(
+      "Expected non-empty string for one of id/_id/userId, and no fallbackId was provided.",
+    );
   }
 
+  // name: prefer 'name' / 'fullName' / 'displayName'
   final name = requireStringAny(json, ['name', 'fullName', 'displayName']);
 
   // displayName: true display field if present; else try name/userName
@@ -17,6 +40,7 @@ User buildUserFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
       optStringAny(json, ['userName']);
 
   final email = requireString(json, 'email');
+
   final userName = requireStringAny(json, ['userName', 'username']);
 
   final bio = optStringAny(json, ['bio', 'about', 'description']);
@@ -37,41 +61,5 @@ User buildUserFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
     photoBlobName: optString(json, 'photoBlobName'),
     sharedCalendars: optStringList(json, 'sharedCalendars'),
     notifications: optStringList(json, 'notifications'),
-  );
-}
-
-Map<String, dynamic> userToJson(User user) {
-  return {
-    '_id': user._id,
-    'name': user._name,
-    'displayName': user._displayName,
-    'userName': user._userName,
-    'email': user._email,
-    'bio': user._bio,
-    'phoneNumber': user._phoneNumber,
-    'location': user._location,
-    'photoUrl': user._photoUrl,
-    'photoBlobName': user._photoBlobName,
-    'groupIds': user._groupIds,
-    'sharedCalendars': user._calendarsIds,
-    'notifications': user._notificationsIds,
-  };
-}
-
-User buildEmptyUser() {
-  return User(
-    id: '',
-    name: '',
-    displayName: '',
-    email: '',
-    userName: '',
-    bio: '',
-    phoneNumber: '',
-    location: '',
-    photoUrl: '',
-    photoBlobName: '',
-    groupIds: const [],
-    sharedCalendars: const [],
-    notifications: const [],
   );
 }

@@ -2352,4 +2352,59 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get groupSaved => 'Grupo guardado';
+
+  @override
+  String get manageGroup => 'Gestiona el grupo';
+
+  @override
+  String get hey => 'Hola';
+
+  @override
+  String get youAreThe => 'eres el';
+
+  @override
+  String get ofThisGroup => 'de este grupo';
+
+  @override
+  String get youHaveSuperPowersHere => '¡Tienes súper poderes en este grupo!';
+
+  @override
+  String get roleOwnerBullet1 =>
+      'Cambiar la configuración y las funciones del grupo';
+
+  @override
+  String get roleOwnerBullet2 => 'Gestionar la facturación y la suscripción';
+
+  @override
+  String get roleOwnerBullet3 =>
+      'Agregar o eliminar co-administradores y miembros';
+
+  @override
+  String get roleOwnerBullet4 => 'Ver y editar todos los calendarios y eventos';
+
+  @override
+  String get roleOwnerBullet5 => 'Eliminar o transferir el grupo';
+
+  @override
+  String get roleCoAdminBullet1 => 'Crear, editar y eliminar eventos del grupo';
+
+  @override
+  String get roleCoAdminBullet2 => 'Gestionar servicios y clientes';
+
+  @override
+  String get roleCoAdminBullet3 =>
+      'Invitar o eliminar miembros (excepto el propietario)';
+
+  @override
+  String get roleCoAdminBullet4 =>
+      'Configurar notificaciones y horarios de trabajo';
+
+  @override
+  String get roleMemberBullet1 => 'Ver tus eventos asignados';
+
+  @override
+  String get roleMemberBullet2 => 'Marcar visitas o tareas como realizadas';
+
+  @override
+  String get roleMemberBullet3 => 'Agregar notas y comentarios';
 }

@@ -1246,10 +1246,29 @@
 
   "tapToChangePhoto": "Toca para cambiar la foto del grupo",
   "tapToAddPhoto": "Toca para añadir foto del grupo",
-  "groupSaved": "Grupo guardado"
+  "groupSaved": "Grupo guardado",
+  "manageGroup": "Gestiona el grupo",
+  "hey": "Hola",
+  "youAreThe": "eres el",
+  "ofThisGroup": "de este grupo",
+  "youHaveSuperPowersHere": "¡Tienes súper poderes en este grupo!",
+  "roleOwnerBullet1": "Cambiar la configuración y las funciones del grupo",
+  "roleOwnerBullet2": "Gestionar la facturación y la suscripción",
+  "roleOwnerBullet3": "Agregar o eliminar co-administradores y miembros",
+  "roleOwnerBullet4": "Ver y editar todos los calendarios y eventos",
+  "roleOwnerBullet5": "Eliminar o transferir el grupo",
+
+  "roleCoAdminBullet1": "Crear, editar y eliminar eventos del grupo",
+  "roleCoAdminBullet2": "Gestionar servicios y clientes",
+  "roleCoAdminBullet3": "Invitar o eliminar miembros (excepto el propietario)",
+  "roleCoAdminBullet4": "Configurar notificaciones y horarios de trabajo",
+
+  "roleMemberBullet1": "Ver tus eventos asignados",
+  "roleMemberBullet2": "Marcar visitas o tareas como realizadas",
+  "roleMemberBullet3": "Agregar notas y comentarios"
+
 
 }
-
 
 
 
