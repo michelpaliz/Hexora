@@ -1,5 +1,6 @@
 // lib/c-frontend/c-group-calendar-section/screens/calendar/presentation/view_adapater/adapter_flow/adapter/calendar_view_adapter.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/weather/day_summary.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/icapability/supports_view_mode.dart';
@@ -52,6 +53,16 @@ class CalendarViewAdapter implements SupportsViewMode {
 
   @override
   String get currentViewMode => _state.currentViewMode;
+
+  void setWeatherForecast(Map<DateTime, DaySummary> forecast) {
+    _state.setWeatherForecast(forecast);
+  }
+
+  void setShowWeatherIcons(bool value) {
+    _state.setShowWeatherIcons(value);
+  }
+
+  bool get showWeatherIcons => _state.showWeatherIcons.value;
 
   // ---- UI -------------------------------------------------------------------
 

@@ -6,6 +6,9 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Tab> tabs;
   final ValueChanged<int>? onTabChanged;
   final List<Widget>? actions;
+  final bool showWeatherToggle;
+  final bool weatherIconsEnabled;
+  final ValueChanged<bool>? onWeatherToggle;
 
   const CalendarTopBar({
     super.key,
@@ -13,6 +16,9 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
     required this.tabs,
     this.onTabChanged,
     this.actions,
+    this.showWeatherToggle = false,
+    this.weatherIconsEnabled = true,
+    this.onWeatherToggle,
   });
 
   @override
@@ -23,6 +29,20 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
+    final trailing = <Widget>[
+      if (actions != null) ...actions!,
+      if (showWeatherToggle)
+        IconButton(
+          tooltip: weatherIconsEnabled ? 'Hide weather icons' : 'Show weather icons',
+          icon: Icon(
+            weatherIconsEnabled ? Icons.wb_sunny_outlined : Icons.cloud_off,
+            color: cs.primary,
+          ),
+          onPressed: onWeatherToggle == null
+              ? null
+              : () => onWeatherToggle!.call(!weatherIconsEnabled),
+        ),
+    ];
 
     return AppBar(
       backgroundColor: cs.surface,
@@ -38,7 +58,7 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      actions: actions,
+      actions: trailing,
       bottom: TabBar(
         isScrollable: false,
         tabs: tabs,

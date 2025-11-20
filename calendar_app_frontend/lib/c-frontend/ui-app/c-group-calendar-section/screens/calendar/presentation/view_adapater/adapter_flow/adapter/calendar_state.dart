@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
+import 'package:hexora/a-models/weather/day_summary.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/adapter_flow/event_data_source/event_data_source.dart';
 
 class CalendarState {
@@ -12,6 +13,9 @@ class CalendarState {
   final ValueNotifier<List<Event>> allEvents = ValueNotifier([]);
   final ValueNotifier<EventDataSource> dataSource =
       ValueNotifier(EventDataSource(const []));
+  final ValueNotifier<Map<DateTime, DaySummary>> weatherForecast =
+      ValueNotifier(const {});
+  final ValueNotifier<bool> showWeatherIcons = ValueNotifier(true);
 
   // /// NEW: current view mode ('day' | 'week' | 'month' | 'agenda')
   // final ValueNotifier<String> viewMode = ValueNotifier<String>('week');
@@ -46,6 +50,8 @@ class CalendarState {
     calendarRefreshKey.dispose();
     anchorDate.dispose();
     viewMode.dispose(); // NEW
+    weatherForecast.dispose();
+    showWeatherIcons.dispose();
   }
 
   bool applyEvents(List<Event> events) {
@@ -104,6 +110,19 @@ class CalendarState {
 
   /// Convenience: jump to today.
   void jumpToToday() => jumpTo(DateTime.now());
+
+  void setWeatherForecast(Map<DateTime, DaySummary> forecast) {
+    final normalized = {
+      for (final entry in forecast.entries)
+        DateTime(entry.key.year, entry.key.month, entry.key.day): entry.value,
+    };
+    weatherForecast.value = normalized;
+  }
+
+  void setShowWeatherIcons(bool value) {
+    if (showWeatherIcons.value == value) return;
+    showWeatherIcons.value = value;
+  }
 
   // // -------- NEW: View Mode API --------
   // /// Set the current view ('day' | 'week' | 'month' | 'agenda') and force a rebuild tick.

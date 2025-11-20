@@ -1,8 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/logic/actions/event_actions_manager.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/screen/events_in_calendar/event_display_manager/sheets/utils/action_sheet_helpers.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/utils/color_manager.dart';
-import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 // Updated TimelineStripWidget that is optimized for:
@@ -29,9 +29,8 @@ class TimelineStripWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = colorManager
-        .getColor(event.eventColorIndex)
-        .withOpacity(0.2);
+    final bgColor =
+        colorManager.getColor(event.eventColorIndex).withOpacity(0.2);
     final borderColor = colorManager.getColor(event.eventColorIndex);
     final canEditEvent = canEdit(userRole);
 

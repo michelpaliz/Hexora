@@ -26,6 +26,7 @@ class MainCalendarView extends StatefulWidget {
 class _MainCalendarViewState extends State<MainCalendarView> {
   late final CalendarScreenCoordinator _c;
   bool _isBootstrapped = false;
+  bool _weatherIconsEnabled = true;
 
   // Default to Week view (using new CalTab enum)
   int _initialIndex = CalTab.week.index;
@@ -42,6 +43,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     try {
       await _c.initSockets();
       await _c.loadData(initialGroup: widget.group);
+      _c.calendarUI?.setShowWeatherIcons(_weatherIconsEnabled);
       // If your coordinator exposes current view, you can map it to initialIndex here.
       _isBootstrapped = true;
     } finally {
@@ -60,6 +62,12 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
   void _onTabChanged(int index) {
     CalendarTabs.handleTabChanged(_c, index);
+    setState(() {});
+  }
+
+  void _toggleWeatherIcons(bool value) {
+    _weatherIconsEnabled = value;
+    _c.calendarUI?.setShowWeatherIcons(value);
     setState(() {});
   }
 
@@ -115,6 +123,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 tabs: CalendarTabs.build(context), // themed & localized tabs
                 onTabChanged: _onTabChanged,
                 actions: const [],
+                showWeatherToggle: true,
+                weatherIconsEnabled: _weatherIconsEnabled,
+                onWeatherToggle: _toggleWeatherIcons,
               ),
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               body: SafeArea(

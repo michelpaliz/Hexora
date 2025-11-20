@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
+import 'package:hexora/a-models/weather/day_summary.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/utils/color_manager.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
@@ -10,6 +11,7 @@ Widget buildMonthCell({
   required MonthCellDetails details,
   required DateTime? selectedDate,
   required List<Event> events,
+  Map<DateTime, DaySummary>? weatherSummaries,
 }) {
   final scheme = Theme.of(context).colorScheme;
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -18,6 +20,8 @@ Widget buildMonthCell({
   // --- date helpers ---
   final date =
       DateTime(details.date.year, details.date.month, details.date.day);
+  final normalizedForecast = weatherSummaries ?? const {};
+  final weatherSummary = normalizedForecast[date];
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
 
@@ -83,12 +87,16 @@ Widget buildMonthCell({
           ? typo.displayMedium.copyWith(color: selectedFg)
           : typo.titleLarge.copyWith(color: baseFg))
       .copyWith(
-          fontSize: 12,
-          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600);
+    fontSize: 12,
+    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+  );
 
   return LayoutBuilder(
     builder: (context, constraints) {
       final isCompact = constraints.maxHeight < 56;
+
+      // Slightly smaller / tighter icon if the cell is really small
+      final weatherFontSize = isCompact ? 10.0 : 12.0;
 
       return Container(
         margin: const EdgeInsets.all(2),
@@ -124,51 +132,68 @@ Widget buildMonthCell({
                 ),
               ),
 
-            // Content
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (!isCompact && eventsForDay.isNotEmpty)
-                    Text(
-                      '${eventsForDay.length} event${eventsForDay.length > 1 ? 's' : ''}',
-                      style: countStyle,
-                    ),
-                  Text(
-                    '${date.day}',
-                    style: dayNumberStyle,
-                  ),
-                  if (eventsForDay.isNotEmpty)
-                    SizedBox(
-                      height: 12,
-                      child: Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 3,
-                        runSpacing: 2,
-                        children: eventsForDay.take(4).map((event) {
-                          final color = (event.eventColorIndex >= 0 &&
-                                  event.eventColorIndex <
-                                      ColorManager.eventColors.length)
-                              ? ColorManager.eventColors[event.eventColorIndex]
-                              : (isDark ? Colors.white70 : Colors.black38);
-                          return Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark ? Colors.black : Colors.white,
-                                width: 0.8, // keeps dots visible over tinted bg
-                              ),
-                            ),
-                          );
-                        }).toList(),
+            // Main content (date + events)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (!isCompact && eventsForDay.isNotEmpty)
+                      Text(
+                        '${eventsForDay.length} event${eventsForDay.length > 1 ? 's' : ''}',
+                        style: countStyle,
                       ),
+                    Text(
+                      '${date.day}',
+                      style: dayNumberStyle,
                     ),
-                ],
+                    if (eventsForDay.isNotEmpty)
+                      SizedBox(
+                        height: 12,
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 3,
+                          runSpacing: 2,
+                          children: eventsForDay.take(4).map((event) {
+                            final color = (event.eventColorIndex >= 0 &&
+                                    event.eventColorIndex <
+                                        ColorManager.eventColors.length)
+                                ? ColorManager
+                                    .eventColors[event.eventColorIndex]
+                                : (isDark ? Colors.white70 : Colors.black38);
+                            return Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark ? Colors.black : Colors.white,
+                                  width: 0.8,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
+
+            // Tiny weather emoji in top-right corner
+            if (weatherSummary != null)
+              Positioned(
+                top: 3,
+                right: 3,
+                child: Text(
+                  weatherSummary.emoji,
+                  style: typo.titleLarge.copyWith(
+                    fontSize: weatherFontSize,
+                  ),
+                ),
+              ),
           ],
         ),
       ).animate().fadeIn(duration: 200.ms, curve: Curves.easeInOut);

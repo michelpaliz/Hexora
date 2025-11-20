@@ -2,7 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
-import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/cells_widgets/calendar_mont_cell.dart';
+import 'package:hexora/a-models/weather/day_summary.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/cells_widgets/calendar_month_cell.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/cells_widgets/calendar_styles.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/month_schedule_img/calendar_styles.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart' as sf;
@@ -107,73 +108,89 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                 return ValueListenableBuilder<List<Event>>(
                   valueListenable: widget.state.allEvents,
                   builder: (_, events, __) {
-                    return Container(
-                      decoration: buildContainerDecoration(backgroundColor),
-                      child: sf.SfCalendar(
-                        key: ObjectKey('${ds.hashCode}-$mode'),
-                        controller: _controller,
-                        dataSource: ds,
-                        view: _selectedView,
-                        allowedViews: const [
-                          sf.CalendarView.day,
-                          sf.CalendarView.week,
-                          sf.CalendarView.month,
-                          sf.CalendarView.schedule,
-                        ],
-                        onViewChanged: (_) => _selectedView = _controller.view!,
-                        onSelectionChanged: (d) {
-                          if (d.date != null) {
-                            _selectedDate = d.date!;
-                            _controller.selectedDate = _selectedDate;
-                            widget.state.selectedDate = _selectedDate;
-                            widget.state.dailyEvents.value =
-                                widget.state.eventsForDate(
-                              _selectedDate!,
-                              widget.state.allEvents.value,
-                            );
-                          }
-                        },
-                        // ✅ Keep Month custom tiles (old behavior)
-                        monthCellBuilder: (context, d) => buildMonthCell(
-                          context: context,
-                          details: d,
-                          selectedDate: _selectedDate,
-                          events: events,
-                        ),
+                    return ValueListenableBuilder<Map<DateTime, DaySummary>>(
+                      valueListenable: widget.state.weatherForecast,
+                      builder: (_, forecast, __) {
+                        return ValueListenableBuilder<bool>(
+                          valueListenable: widget.state.showWeatherIcons,
+                          builder: (_, showWeatherIcons, __) {
+                            final weatherMap = showWeatherIcons
+                                ? _resolveForecast(forecast)
+                                : const <DateTime, DaySummary>{};
 
-                        scheduleViewMonthHeaderBuilder: (context, d) =>
-                            buildScheduleMonthHeader(
-                                context, d, monthHeaderHeight),
-                        scheduleViewSettings: sf.ScheduleViewSettings(
-                          monthHeaderSettings: sf.MonthHeaderSettings(
-                            height:
-                                monthHeaderHeight, // <-- must match builder height
-                            backgroundColor:
-                                Colors.transparent, // keep images visible
-                            monthFormat: 'MMMM yyyy',
-                            textAlign: TextAlign.left,
+                            return Container(
+                              decoration: buildContainerDecoration(backgroundColor),
+                              child: sf.SfCalendar(
+                            key: ObjectKey('${ds.hashCode}-$mode'),
+                            controller: _controller,
+                            dataSource: ds,
+                            view: _selectedView,
+                            allowedViews: const [
+                              sf.CalendarView.day,
+                              sf.CalendarView.week,
+                              sf.CalendarView.month,
+                              sf.CalendarView.schedule,
+                            ],
+                            onViewChanged: (_) =>
+                                _selectedView = _controller.view!,
+                            onSelectionChanged: (d) {
+                              if (d.date != null) {
+                                _selectedDate = d.date!;
+                                _controller.selectedDate = _selectedDate;
+                                widget.state.selectedDate = _selectedDate;
+                                widget.state.dailyEvents.value =
+                                    widget.state.eventsForDate(
+                                  _selectedDate!,
+                                  widget.state.allEvents.value,
+                                );
+                              }
+                            },
+                            // ✅ Keep Month custom tiles (old behavior)
+                                monthCellBuilder: (context, d) => buildMonthCell(
+                                  context: context,
+                                  details: d,
+                                  selectedDate: _selectedDate,
+                                  events: events,
+                                  weatherSummaries: weatherMap,
+                                ),
+
+                            scheduleViewMonthHeaderBuilder: (context, d) =>
+                                buildScheduleMonthHeader(
+                                    context, d, monthHeaderHeight),
+                            scheduleViewSettings: sf.ScheduleViewSettings(
+                              monthHeaderSettings: sf.MonthHeaderSettings(
+                                height:
+                                    monthHeaderHeight, // <-- must match builder height
+                                backgroundColor:
+                                    Colors.transparent, // keep images visible
+                                monthFormat: 'MMMM yyyy',
+                                textAlign: TextAlign.left,
+                              ),
+                              appointmentItemHeight: 80,
+                            ),
+
+                            appointmentBuilder: (context, details) =>
+                                widget.apptBridge.build(
+                                    context, _selectedView, details, textColor),
+                            selectionDecoration:
+                                const BoxDecoration(color: Colors.transparent),
+                            showNavigationArrow: true,
+                            showDatePickerButton: true,
+                            firstDayOfWeek: DateTime.monday,
+                            initialSelectedDate: DateTime.now(),
+                            headerStyle: buildHeaderStyle(fontSize, textColor),
+                            viewHeaderStyle: buildViewHeaderStyle(
+                                fontSize, textColor, isDarkMode),
+                            // scheduleViewSettings: buildScheduleSettings(
+                            //     fontSize, backgroundColor,
+                            //     monthHeaderHeight: monthHeaderHeight),
+                            monthViewSettings: buildMonthSettings(),
                           ),
-                          appointmentItemHeight: 80,
-                        ),
-
-                        appointmentBuilder: (context, details) => widget
-                            .apptBridge
-                            .build(context, _selectedView, details, textColor),
-                        selectionDecoration:
-                            const BoxDecoration(color: Colors.transparent),
-                        showNavigationArrow: true,
-                        showDatePickerButton: true,
-                        firstDayOfWeek: DateTime.monday,
-                        initialSelectedDate: DateTime.now(),
-                        headerStyle: buildHeaderStyle(fontSize, textColor),
-                        viewHeaderStyle: buildViewHeaderStyle(
-                            fontSize, textColor, isDarkMode),
-                        // scheduleViewSettings: buildScheduleSettings(
-                        //     fontSize, backgroundColor,
-                        //     monthHeaderHeight: monthHeaderHeight),
-                        monthViewSettings: buildMonthSettings(),
-                      ),
-                    ).animate().fadeIn(duration: 300.ms);
+                            ).animate().fadeIn(duration: 300.ms);
+                          },
+                        );
+                      },
+                    );
                   },
                 );
               },
@@ -183,4 +200,36 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
       },
     );
   }
+}
+
+Map<DateTime, DaySummary> _resolveForecast(Map<DateTime, DaySummary> forecast) {
+  if (forecast.isNotEmpty) return forecast;
+  return _generateFallbackForecast();
+}
+
+Map<DateTime, DaySummary> _generateFallbackForecast() {
+  final today = DateTime.now();
+  final start = DateTime(today.year, today.month, today.day);
+  const seeds = [
+    (code: 0, precip: 0.0, max: 27.0, min: 17.0),
+    (code: 2, precip: 0.5, max: 24.0, min: 16.0),
+    (code: 63, precip: 6.0, max: 21.0, min: 14.0),
+    (code: 1, precip: 0.0, max: 28.0, min: 18.0),
+    (code: 3, precip: 1.4, max: 23.0, min: 15.5),
+    (code: 71, precip: 3.2, max: 12.0, min: 2.0),
+    (code: 95, precip: 5.5, max: 19.0, min: 11.0),
+  ];
+
+  final map = <DateTime, DaySummary>{};
+  for (var i = 0; i < 3; i++) {
+    final seed = seeds[i % seeds.length];
+    final day = start.add(Duration(days: i));
+    map[DateTime(day.year, day.month, day.day)] = mapToDaySummary(
+      weatherCode: seed.code,
+      precip: seed.precip,
+      tempMax: seed.max,
+      tempMin: seed.min,
+    );
+  }
+  return map;
 }
