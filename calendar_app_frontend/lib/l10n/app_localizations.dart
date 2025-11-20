@@ -884,6 +884,126 @@ abstract class AppLocalizations {
   /// **'NO GROUP/S FOUND/S'**
   String get noGroupsAvailable;
 
+  /// No description provided for @noGroupsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No groups found'**
+  String get noGroupsFound;
+
+  /// No description provided for @noGroupsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create or join a group to get started'**
+  String get noGroupsDescription;
+
+  /// No description provided for @searchGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Search groups'**
+  String get searchGroups;
+
+  /// No description provided for @weatherSummarySunny.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunny'**
+  String get weatherSummarySunny;
+
+  /// No description provided for @weatherSummaryPartlyCloudy.
+  ///
+  /// In en, this message translates to:
+  /// **'Partly cloudy'**
+  String get weatherSummaryPartlyCloudy;
+
+  /// No description provided for @weatherSummaryCloudyWithRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudy with rain'**
+  String get weatherSummaryCloudyWithRain;
+
+  /// No description provided for @weatherSummaryLightRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Light rain'**
+  String get weatherSummaryLightRain;
+
+  /// No description provided for @weatherSummaryHeavyRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy rain'**
+  String get weatherSummaryHeavyRain;
+
+  /// No description provided for @weatherSummaryStormy.
+  ///
+  /// In en, this message translates to:
+  /// **'Stormy'**
+  String get weatherSummaryStormy;
+
+  /// No description provided for @weatherSummaryCloudy.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudy'**
+  String get weatherSummaryCloudy;
+
+  /// No description provided for @weatherSummaryDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Pleasant weather'**
+  String get weatherSummaryDefault;
+
+  /// No description provided for @weatherGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi {name}, today looks {summary} {emoji}'**
+  String weatherGreeting(Object emoji, Object name, Object summary);
+
+  /// No description provided for @weatherTempLine.
+  ///
+  /// In en, this message translates to:
+  /// **'High {max}° / Low {min}°'**
+  String weatherTempLine(Object max, Object min);
+
+  /// No description provided for @weatherFunTooHot.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay hydrated—it’s going to be scorching.'**
+  String get weatherFunTooHot;
+
+  /// No description provided for @weatherFunTooCold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bundle up—it’s freezing outside.'**
+  String get weatherFunTooCold;
+
+  /// No description provided for @weatherFunGradeA.
+  ///
+  /// In en, this message translates to:
+  /// **'Grade A day. Plan something fun outdoors!'**
+  String get weatherFunGradeA;
+
+  /// No description provided for @weatherFunGradeB.
+  ///
+  /// In en, this message translates to:
+  /// **'Pretty good weather overall.'**
+  String get weatherFunGradeB;
+
+  /// No description provided for @weatherFunGradeC.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep an umbrella handy just in case.'**
+  String get weatherFunGradeC;
+
+  /// No description provided for @weatherFunGradeD.
+  ///
+  /// In en, this message translates to:
+  /// **'Maybe plan for indoor activities today.'**
+  String get weatherFunGradeD;
+
+  /// No description provided for @weatherFunDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Make the most of the day, whatever the weather.'**
+  String get weatherFunDefault;
+
   /// No description provided for @monday.
   ///
   /// In en, this message translates to:
@@ -4328,6 +4448,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add notes and comments'**
   String get roleMemberBullet3;
+
+  /// No description provided for @groupSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Group settings'**
+  String get groupSettingsTitle;
+
+  /// No description provided for @groupInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Group info'**
+  String get groupInfo;
+
+  /// No description provided for @groupInfoSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name, description and basic details'**
+  String get groupInfoSubtitle;
+
+  /// No description provided for @notificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts, reminders and preferences'**
+  String get notificationsSubtitle;
 }
 
 class _AppLocalizationsDelegate

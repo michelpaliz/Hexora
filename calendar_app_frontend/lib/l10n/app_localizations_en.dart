@@ -448,6 +448,71 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noGroupsAvailable => 'NO GROUP/S FOUND/S';
 
   @override
+  String get noGroupsFound => 'No groups found';
+
+  @override
+  String get noGroupsDescription => 'Create or join a group to get started';
+
+  @override
+  String get searchGroups => 'Search groups';
+
+  @override
+  String get weatherSummarySunny => 'Sunny';
+
+  @override
+  String get weatherSummaryPartlyCloudy => 'Partly cloudy';
+
+  @override
+  String get weatherSummaryCloudyWithRain => 'Cloudy with rain';
+
+  @override
+  String get weatherSummaryLightRain => 'Light rain';
+
+  @override
+  String get weatherSummaryHeavyRain => 'Heavy rain';
+
+  @override
+  String get weatherSummaryStormy => 'Stormy';
+
+  @override
+  String get weatherSummaryCloudy => 'Cloudy';
+
+  @override
+  String get weatherSummaryDefault => 'Pleasant weather';
+
+  @override
+  String weatherGreeting(Object emoji, Object name, Object summary) {
+    return 'Hi $name, today looks $summary $emoji';
+  }
+
+  @override
+  String weatherTempLine(Object max, Object min) {
+    return 'High $max° / Low $min°';
+  }
+
+  @override
+  String get weatherFunTooHot => 'Stay hydrated—it’s going to be scorching.';
+
+  @override
+  String get weatherFunTooCold => 'Bundle up—it’s freezing outside.';
+
+  @override
+  String get weatherFunGradeA => 'Grade A day. Plan something fun outdoors!';
+
+  @override
+  String get weatherFunGradeB => 'Pretty good weather overall.';
+
+  @override
+  String get weatherFunGradeC => 'Keep an umbrella handy just in case.';
+
+  @override
+  String get weatherFunGradeD => 'Maybe plan for indoor activities today.';
+
+  @override
+  String get weatherFunDefault =>
+      'Make the most of the day, whatever the weather.';
+
+  @override
   String get monday => 'monday';
 
   @override
@@ -2385,4 +2450,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roleMemberBullet3 => 'Add notes and comments';
+
+  @override
+  String get groupSettingsTitle => 'Group settings';
+
+  @override
+  String get groupInfo => 'Group info';
+
+  @override
+  String get groupInfoSubtitle => 'Name, description and basic details';
+
+  @override
+  String get notificationsSubtitle => 'Alerts, reminders and preferences';
 }

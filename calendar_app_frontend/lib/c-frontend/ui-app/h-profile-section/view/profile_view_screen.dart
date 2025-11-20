@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/e-drawer-style-menu/old_drawer/main_scaffold.dart';
+import 'package:hexora/e-drawer-style-menu/contextual_fab/main_scaffold.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';

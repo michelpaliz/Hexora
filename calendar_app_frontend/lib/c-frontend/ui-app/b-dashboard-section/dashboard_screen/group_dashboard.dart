@@ -130,57 +130,60 @@ class _GroupDashboardState extends State<GroupDashboard> {
 
       // Replace the entire bottomNavigationBar with this:
       bottomNavigationBar: SafeArea(
-        // slightly tighter outer padding
-        minimum: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: FilledButton.icon(
-                icon: const Icon(Icons.calendar_month_rounded, size: 20),
-                label: Text(l.goToCalendar),
-                style: FilledButton.styleFrom(
-                  // taller/min size + more inner padding
-                  minimumSize: const Size.fromHeight(52),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  textStyle: Theme.of(context).textTheme.labelLarge,
+        // more bottom space
+        minimum: const EdgeInsets.fromLTRB(12, 6, 12, 22),
+        child: Padding(
+          // a touch more separation from the very bottom
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.calendar_month_rounded, size: 20),
+                  label: Text(l.goToCalendar),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    textStyle: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.groupCalendar,
+                      arguments: widget.group,
+                    );
+                  },
                 ),
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.groupCalendar,
-                    arguments: widget.group,
-                  );
-                },
               ),
-            ),
-            // const SizedBox(width: 12),
-            // Expanded(
-            //   child: OutlinedButton.icon(
-            //     icon: const Icon(Icons.add_rounded, size: 20),
-            //     label: Text(l.addEvent),
-            //     style: OutlinedButton.styleFrom(
-            //       minimumSize: const Size.fromHeight(52),
-            //       padding:
-            //           const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            //       textStyle: Theme.of(context).textTheme.labelLarge,
-            //       side: BorderSide(
-            //         color: Theme.of(context)
-            //             .colorScheme
-            //             .outlineVariant
-            //             .withOpacity(0.6),
-            //       ),
-            //     ),
-            //     onPressed: () {
-            //       Navigator.pushNamed(
-            //         context,
-            //         AppRoutes.createEvent,
-            //         arguments: widget.group,
-            //       );
-            //     },
-            //   ),
-            // ),
-          ],
+              // const SizedBox(width: 12),
+              // Expanded(
+              //   child: OutlinedButton.icon(
+              //     icon: const Icon(Icons.add_rounded, size: 20),
+              //     label: Text(l.addEvent),
+              //     style: OutlinedButton.styleFrom(
+              //       minimumSize: const Size.fromHeight(52),
+              //       padding: const EdgeInsets.symmetric(
+              //           horizontal: 20, vertical: 14),
+              //       textStyle: Theme.of(context).textTheme.labelLarge,
+              //       side: BorderSide(
+              //         color: Theme.of(context)
+              //             .colorScheme
+              //             .outlineVariant
+              //             .withOpacity(0.6),
+              //       ),
+              //     ),
+              //     onPressed: () {
+              //       Navigator.pushNamed(
+              //         context,
+              //         AppRoutes.createEvent,
+              //         arguments: widget.group,
+              //       );
+              //     },
+              //   ),
+              // ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,3 +1,4 @@
+// lib/a-models/group_model/group/group.dart
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group_features.dart';
 import 'package:hexora/c-frontend/utils/roles/id_normalize/id_normalizer.dart';
@@ -30,7 +31,7 @@ class Group {
   Calendar? defaultCalendar; // optional snapshot
 
   // ---------- Features / Plugins ----------
-  GroupFeatures? features; // <— NEW (mirrors backend `features`)
+  GroupFeatures? features; // mirrors backend `features`
 
   Group({
     required this.id,
@@ -47,8 +48,16 @@ class Group {
     this.lastInviteAt,
     this.defaultCalendarId,
     this.defaultCalendar,
-    this.features, // <— NEW
+    this.features,
   });
+
+  /// Primary way to get the calendar id
+  String? get calendarId =>
+      (defaultCalendarId != null && defaultCalendarId!.isNotEmpty)
+          ? defaultCalendarId
+          : defaultCalendar?.id;
+
+  bool get hasCalendar => calendarId != null;
 
   // Small date helper (works with "$date", ISO string, DateTime)
   static DateTime? _parseDate(dynamic v) {
@@ -78,7 +87,7 @@ class Group {
       fx = GroupFeatures.fromJson(json['features'] as Map<String, dynamic>);
     }
 
-    // ✅ Normalize ids, lists, and userRoles keys/values
+    // Normalize ids, lists, and userRoles keys/values
     final normalizedUserRoles =
         normalizeUserRoleWireMap(json['userRoles'] as Map?);
 
@@ -112,7 +121,7 @@ class Group {
       if (photoBlobName != null) 'photoBlobName': photoBlobName,
       'userRoles': userRoles, // userId -> role
       'userIds': userIds,
-      if (features != null) 'features': features!.toJson(), // <— optional
+      if (features != null) 'features': features!.toJson(),
       // inviteCount/lastInviteAt are server-managed; omit on updates
     };
   }
@@ -128,7 +137,7 @@ class Group {
       'createdTime': createdTime.toIso8601String(),
       if (photoUrl != null) 'photoUrl': photoUrl,
       if (photoBlobName != null) 'photoBlobName': photoBlobName,
-      if (features != null) 'features': features!.toJson(), // <— optional
+      if (features != null) 'features': features!.toJson(),
     };
   }
 
@@ -148,7 +157,7 @@ class Group {
     DateTime? lastInviteAt,
     String? defaultCalendarId,
     Calendar? defaultCalendar,
-    GroupFeatures? features, // <— NEW
+    GroupFeatures? features,
   }) {
     return Group(
       id: id ?? this.id,
@@ -165,78 +174,8 @@ class Group {
       lastInviteAt: lastInviteAt ?? this.lastInviteAt,
       defaultCalendarId: defaultCalendarId ?? this.defaultCalendarId,
       defaultCalendar: defaultCalendar ?? this.defaultCalendar,
-      features: features ?? this.features, // <— NEW
+      features: features ?? this.features,
     );
-  }
-
-  // ---------- Helpers ----------
-  bool isOwner(String userId) => ownerId == userId;
-
-  String roleFor(String userId) {
-    if (isOwner(userId)) return 'owner';
-    final r = userRoles[userId];
-    const valid = {'owner', 'admin', 'co-admin', 'member'};
-    return valid.contains(r) ? r! : 'member';
-  }
-
-  List<String> get adminIds => userRoles.entries
-      .where((e) => e.value == 'admin')
-      .map((e) => e.key)
-      .toList();
-
-  List<String> get coAdminIds => userRoles.entries
-      .where((e) => e.value == 'co-admin')
-      .map((e) => e.key)
-      .toList();
-
-  List<String> get memberIds => userRoles.entries
-      .where((e) => e.value == 'member')
-      .map((e) => e.key)
-      .toList();
-
-  /// Primary way to get the calendar id
-  String? get calendarId =>
-      (defaultCalendarId != null && defaultCalendarId!.isNotEmpty)
-          ? defaultCalendarId
-          : defaultCalendar?.id;
-
-  bool get hasCalendar => calendarId != null;
-
-  // ---------- Equality ----------
-  bool isEqual(Group other) {
-    return id == other.id &&
-        name == other.name &&
-        ownerId == other.ownerId &&
-        userRoles.toString() == other.userRoles.toString() &&
-        _listEq(userIds, other.userIds) &&
-        description == other.description &&
-        photoUrl == other.photoUrl &&
-        photoBlobName == other.photoBlobName &&
-        computedPhotoUrl == other.computedPhotoUrl &&
-        defaultCalendarId == other.defaultCalendarId &&
-        inviteCount == other.inviteCount &&
-        _dtEq(lastInviteAt, other.lastInviteAt) &&
-        _featuresEq(features, other.features);
-  }
-
-  static bool _listEq(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
-  static bool _dtEq(DateTime? a, DateTime? b) {
-    if (a == null && b == null) return true;
-    if (a == null || b == null) return false;
-    return a.toIso8601String() == b.toIso8601String();
-  }
-
-  static bool _featuresEq(GroupFeatures? a, GroupFeatures? b) {
-    if (a == null && b == null) return true;
-    if (a == null || b == null) return false;
-    return a.toString() == b.toString(); // simple: relies on toString above
   }
 
   // ---------- Defaults ----------
@@ -252,7 +191,7 @@ class Group {
       inviteCount: 0,
       lastInviteAt: null,
       features: const GroupFeatures(
-        // <— default mirrors backend defaults
+        // default mirrors backend defaults
         timeTracking: TimeTrackingSettings(
           enabled: false,
           roundingPreset: TimeRoundingPreset.nearest5_tie05_down,
@@ -272,8 +211,3 @@ class Group {
         'features: $features}';
   }
 }
-
-// NOTE: you already define calendarId/hasCalendar inside the class,
-// so avoid duplicating the same getters in an extension to prevent conflicts.
-// If you still want the extension for ergonomics across types, remove the
-// in-class getters first or rename the extension getters.

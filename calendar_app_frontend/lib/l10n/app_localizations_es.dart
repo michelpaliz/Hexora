@@ -453,6 +453,72 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noGroupsAvailable => 'NO SE ENCONTRARON GRUPOS';
 
   @override
+  String get noGroupsFound => 'No se encontraron grupos';
+
+  @override
+  String get noGroupsDescription => 'Crea o únete a un grupo para comenzar';
+
+  @override
+  String get searchGroups => 'Buscar grupos';
+
+  @override
+  String get weatherSummarySunny => 'Soleado';
+
+  @override
+  String get weatherSummaryPartlyCloudy => 'Parcialmente nublado';
+
+  @override
+  String get weatherSummaryCloudyWithRain => 'Nublado con lluvia';
+
+  @override
+  String get weatherSummaryLightRain => 'Lluvia ligera';
+
+  @override
+  String get weatherSummaryHeavyRain => 'Lluvia fuerte';
+
+  @override
+  String get weatherSummaryStormy => 'Tormentoso';
+
+  @override
+  String get weatherSummaryCloudy => 'Nublado';
+
+  @override
+  String get weatherSummaryDefault => 'Clima agradable';
+
+  @override
+  String weatherGreeting(Object emoji, Object name, Object summary) {
+    return 'Hola $name, hoy pinta $summary $emoji';
+  }
+
+  @override
+  String weatherTempLine(Object max, Object min) {
+    return 'Máx $max° / Mín $min°';
+  }
+
+  @override
+  String get weatherFunTooHot => 'Mantente hidratado, hará mucho calor.';
+
+  @override
+  String get weatherFunTooCold => 'Abrígate bien, hará mucho frío.';
+
+  @override
+  String get weatherFunGradeA =>
+      'Día de calificación A. ¡Planea algo divertido al aire libre!';
+
+  @override
+  String get weatherFunGradeB => 'El clima está bastante bien en general.';
+
+  @override
+  String get weatherFunGradeC => 'Ten un paraguas a mano por si acaso.';
+
+  @override
+  String get weatherFunGradeD =>
+      'Quizás planees actividades en interiores hoy.';
+
+  @override
+  String get weatherFunDefault => 'Aprovecha el día sin importar el clima.';
+
+  @override
   String get monday => 'lunes';
 
   @override
@@ -2407,4 +2473,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get roleMemberBullet3 => 'Agregar notas y comentarios';
+
+  @override
+  String get groupSettingsTitle => 'Ajustes del grupo';
+
+  @override
+  String get groupInfo => 'Información del grupo';
+
+  @override
+  String get groupInfoSubtitle => 'Nombre, descripción y detalles básicos';
+
+  @override
+  String get notificationsSubtitle => 'Alertas, recordatorios y preferencias';
 }

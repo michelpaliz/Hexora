@@ -119,8 +119,7 @@ class ProfileRoleCard extends StatelessWidget {
       case GroupRole.coAdmin:
         return '${l.hey} $displayName — ${l.youAreThe} $roleLabel ${l.ofThisGroup}. ${l.youHaveSuperPowersHere}';
       case GroupRole.member:
-      default:
-        return '${l.hey} $displayName — ${l.youAreThe} ${l.member} ${l.ofThisGroup}.';
+      return '${l.hey} $displayName — ${l.youAreThe} ${l.member} ${l.ofThisGroup}.';
     }
   }
 }

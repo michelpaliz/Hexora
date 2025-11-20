@@ -1,15 +1,16 @@
 // lib/c-frontend/home/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/a-models/weather/day_summary.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/notification/domain/socket_notification_listener.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/widgets/see_all_groups_button.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_screen/group_list_section.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/motivational_phrase/motivation_banner.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
-import 'package:hexora/e-drawer-style-menu/old_drawer/main_scaffold.dart';
+import 'package:hexora/e-drawer-style-menu/contextual_fab/main_scaffold.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -52,6 +53,8 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // lib/c-frontend/home/home_page.dart
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
@@ -60,6 +63,10 @@ class _HomePageState extends State<HomePage> {
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    // 👇 Extra space for whatever bottom nav / bar you have
+    final bottomSafePadding =
+        MediaQuery.of(context).padding.bottom + 80; // 80 = approx. nav height
 
     return MainScaffold(
       title: '',
@@ -73,7 +80,19 @@ class _HomePageState extends State<HomePage> {
       ],
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: GreetingCard(user: user)),
+          SliverToBoxAdapter(
+            child: GreetingCard(
+              user: user,
+              daySummary: mapToDaySummary(
+                weatherCode: 1, // TODO: replace with real weather code
+                precip: 0,
+                tempMax: 26,
+                tempMin: 17,
+              ),
+              tempMax: 26,
+              tempMin: 17,
+            ),
+          ),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
           SliverToBoxAdapter(
             child: SectionHeader(title: loc.motivationSectionTitle),
@@ -87,7 +106,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-          // ── Groups header (no info widget) ─────────────────────────────────
+          // ── Groups header ─────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -96,7 +115,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 6)),
 
-          // ── "See all" right-aligned below header ───────────────────────────
+          // ── "See all" button ─────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -110,10 +129,13 @@ class _HomePageState extends State<HomePage> {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-          // ── Groups preview (only 5) ───────────────────────────────────────
+          // ── Groups preview (only 5) ─────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 24),
+              padding: EdgeInsets.only(
+                top: 12,
+                bottom: bottomSafePadding, // 👈 Important bit
+              ),
               child: GroupListSection(
                 maxItems: 5, // preview only
                 fullPage: false,

@@ -278,6 +278,26 @@
     "confirmRemoval": "Confirm Removal",
     "groupDeletedSuccessfully": "Group deleted successfully!",
     "noGroupsAvailable": "NO GROUP/S FOUND/S",
+    "noGroupsFound": "No groups found",
+    "noGroupsDescription": "Create or join a group to get started",
+    "searchGroups": "Search groups",
+    "weatherSummarySunny": "Sunny",
+    "weatherSummaryPartlyCloudy": "Partly cloudy",
+    "weatherSummaryCloudyWithRain": "Cloudy with rain",
+    "weatherSummaryLightRain": "Light rain",
+    "weatherSummaryHeavyRain": "Heavy rain",
+    "weatherSummaryStormy": "Stormy",
+    "weatherSummaryCloudy": "Cloudy",
+    "weatherSummaryDefault": "Pleasant weather",
+    "weatherGreeting": "Hi {name}, today looks {summary} {emoji}",
+    "weatherTempLine": "High {max}° / Low {min}°",
+    "weatherFunTooHot": "Stay hydrated—it’s going to be scorching.",
+    "weatherFunTooCold": "Bundle up—it’s freezing outside.",
+    "weatherFunGradeA": "Grade A day. Plan something fun outdoors!",
+    "weatherFunGradeB": "Pretty good weather overall.",
+    "weatherFunGradeC": "Keep an umbrella handy just in case.",
+    "weatherFunGradeD": "Maybe plan for indoor activities today.",
+    "weatherFunDefault": "Make the most of the day, whatever the weather.",
     "monday": "monday",
     "tuesday": "tuesday",
     "wednesday": "wednesday",
@@ -1267,7 +1287,11 @@
 
   "roleMemberBullet1": "See your assigned events",
   "roleMemberBullet2": "Mark visits or tasks as done",
-  "roleMemberBullet3": "Add notes and comments"
+  "roleMemberBullet3": "Add notes and comments",
+  "groupSettingsTitle": "Group settings",
+  "groupInfo": "Group info",
+  "groupInfoSubtitle": "Name, description and basic details",
+  "notificationsSubtitle": "Alerts, reminders and preferences"
 
 
 }

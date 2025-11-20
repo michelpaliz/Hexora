@@ -1,76 +1,109 @@
-// lib/c-frontend/c-group-calendar-section/screens/group/show-groups/group_card_widget/build_group_card.dart
+// lib/.../dialog_content/profile_alert_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/create_edit/invited-user/group_role_extension.dart';
-import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/profile_alert_dialog.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/alert_dialog/profile_alert_dialog_content.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
-import 'modern_group_card.dart';
-
-/// Public entry used by GroupListSection. API unchanged.
-Widget buildGroupCard(
+void showProfileAlertDialog(
   BuildContext context,
   Group group,
+  User owner,
   User? currentUser,
   UserDomain userDomain,
   GroupDomain groupDomain,
-  void Function(String?) updateRole,
-) {
-  final role =
-      (currentUser != null) ? group.getRoleForUser(currentUser) : 'Member';
-  final canEdit =
-      role == 'Owner' || role == 'Administrator' || role == 'Co-Administrator';
+  void Function(String?) updateRole, [
+  bool? overridePermission,
+]) {
+  final user = currentUser ?? userDomain.user!;
+  final role = group.getRoleForUser(user);
+  final hasPermission = overridePermission ?? role != 'Member';
+  updateRole(role);
 
-  return StatefulBuilder(
-    builder: (context, setState) {
-      bool isHovered = false;
-      bool isPressed = false;
+  final cs = Theme.of(context).colorScheme;
 
-      Future<void> _openProfile() async {
-        try {
-          final groupOwner =
-              await userDomain.userRepository.getUserById(group.ownerId);
-          // ignore: use_build_context_synchronously
-          showProfileAlertDialog(
-            context,
-            group,
-            groupOwner,
-            currentUser,
-            userDomain,
-            groupDomain,
-            updateRole,
-            canEdit,
-          );
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to load group owner: $e')),
-          );
-        }
-      }
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black.withOpacity(0.45),
+    transitionDuration: const Duration(milliseconds: 320),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      final t = AppTypography.of(context);
+      final l = AppLocalizations.of(context)!;
 
-      return MouseRegion(
-        onEnter: (_) => setState(() => isHovered = true),
-        onExit: (_) => setState(() {
-          isHovered = false;
-          isPressed = false;
-        }),
-        child: GestureDetector(
-          onTapDown: (_) => setState(() => isPressed = true),
-          onTapCancel: () => setState(() => isPressed = false),
-          onTapUp: (_) => setState(() => isPressed = false),
-          child: AnimatedScale(
-            scale: 1.0,
-            duration: const Duration(milliseconds: 100),
-            curve: Curves.easeOut,
-            child: ModernGroupCard(
-              group: group,
-              role: role,
-              isHovered: isHovered,
-              onTap: _openProfile,
+      return Center(
+        child: Material(
+          type: MaterialType.transparency,
+          child: Dialog(
+            backgroundColor: ThemeColors.cardBg(context),
+            clipBehavior: Clip.antiAlias,
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: cs.outlineVariant.withOpacity(0.35)),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Top bar with close button
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        left: 16, top: 12, right: 8, bottom: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l.details,
+                            style: t.titleLarge
+                                .copyWith(fontWeight: FontWeight.w800),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: cs.onSurface),
+                          tooltip: MaterialLocalizations.of(context)
+                              .closeButtonTooltip,
+                          onPressed: () =>
+                              Navigator.of(context, rootNavigator: true)
+                                  .maybePop(),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Content (no buttons here anymore)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: ProfileDialogContent(group: group),
+                  ),
+                ],
+              ),
             ),
           ),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, .20), end: Offset.zero)
+              .animate(curved),
+          child: child,
         ),
       );
     },

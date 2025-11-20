@@ -278,6 +278,26 @@
   "confirmRemoval": "Confirmar eliminación",
   "groupDeletedSuccessfully": "¡Grupo eliminado con éxito!",
   "noGroupsAvailable": "NO SE ENCONTRARON GRUPOS",
+  "noGroupsFound": "No se encontraron grupos",
+  "noGroupsDescription": "Crea o únete a un grupo para comenzar",
+  "searchGroups": "Buscar grupos",
+  "weatherSummarySunny": "Soleado",
+  "weatherSummaryPartlyCloudy": "Parcialmente nublado",
+  "weatherSummaryCloudyWithRain": "Nublado con lluvia",
+  "weatherSummaryLightRain": "Lluvia ligera",
+  "weatherSummaryHeavyRain": "Lluvia fuerte",
+  "weatherSummaryStormy": "Tormentoso",
+  "weatherSummaryCloudy": "Nublado",
+  "weatherSummaryDefault": "Clima agradable",
+  "weatherGreeting": "Hola {name}, hoy pinta {summary} {emoji}",
+  "weatherTempLine": "Máx {max}° / Mín {min}°",
+  "weatherFunTooHot": "Mantente hidratado, hará mucho calor.",
+  "weatherFunTooCold": "Abrígate bien, hará mucho frío.",
+  "weatherFunGradeA": "Día de calificación A. ¡Planea algo divertido al aire libre!",
+  "weatherFunGradeB": "El clima está bastante bien en general.",
+  "weatherFunGradeC": "Ten un paraguas a mano por si acaso.",
+  "weatherFunGradeD": "Quizás planees actividades en interiores hoy.",
+  "weatherFunDefault": "Aprovecha el día sin importar el clima.",
   "monday": "lunes",
   "tuesday": "martes",
   "wednesday": "miércoles",
@@ -1265,14 +1285,12 @@
 
   "roleMemberBullet1": "Ver tus eventos asignados",
   "roleMemberBullet2": "Marcar visitas o tareas como realizadas",
-  "roleMemberBullet3": "Agregar notas y comentarios"
+  "roleMemberBullet3": "Agregar notas y comentarios",
+  "groupSettingsTitle": "Ajustes del grupo",
+  "groupInfo": "Información del grupo",
+  "groupInfoSubtitle": "Nombre, descripción y detalles básicos",
+  "notificationsSubtitle": "Alertas, recordatorios y preferencias"
 
 
 }
-
-
-
-
-
-
 

@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 // Domains
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_screen/widgets/group_card_tile.dart';
 // i18n / theme
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'widgets/group_list_placeholders.dart';
-// Local widgets
-import 'widgets/group_list_search.dart';
 import 'widgets/group_list_view.dart';
 import 'widgets/info_help_button.dart';
 
@@ -28,7 +27,7 @@ class GroupListSection extends StatefulWidget {
   final bool showSearchInFull;
   final EdgeInsetsGeometry padding;
 
-  /// Keep your original axis override for embedded previews
+  /// axis override for embedded previews (if you ever want horizontal)
   static final ValueNotifier<Axis> axisOverride = ValueNotifier(Axis.vertical);
 
   @override
@@ -94,25 +93,68 @@ class _GroupListSectionState extends State<GroupListSection> {
                 ? filtered
                 : filtered.take(widget.maxItems!).toList();
 
-            final list = Padding(
+            // ─────────────────────────────────────────────
+            // FULL PAGE MODE → ListView (scrollable)
+            // ─────────────────────────────────────────────
+            if (widget.fullPage) {
+              final list = Padding(
+                padding: widget.padding,
+                child: GroupListView(
+                  groups: groups,
+                  axis: axis,
+                  currentUser: user,
+                  userDomain: userDomain,
+                  groupDomain: groupDomain,
+                  updateRole: (String? _) {},
+                ),
+              );
+
+              if (widget.showSearchInFull) {
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 4.0),
+                      child: TextField(
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search),
+                          hintText: loc.searchPerson, // or loc.searchGroups
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Expanded(child: list),
+                  ],
+                );
+              }
+
+              return list; // full page, no search
+            }
+
+            // ─────────────────────────────────────────────
+            // EMBEDDED / PREVIEW MODE (HomePage) → Column
+            // NO ListView here → NO nested scroll → NO push back
+            // ─────────────────────────────────────────────
+            return Padding(
               padding: widget.padding,
-              child: GroupListView(
-                groups: groups,
-                axis: axis,
-                currentUser: user,
-                userDomain: userDomain,
-                groupDomain: groupDomain,
-                updateRole: (String? _) {}, // hook kept for future
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: groups
+                    .map(
+                      (group) => GroupCardTile(
+                        group: group,
+                        currentUser: user,
+                        userDomain: userDomain,
+                        groupDomain: groupDomain,
+                        updateRole: (String? _) {},
+                      ),
+                    )
+                    .toList(),
               ),
             );
-
-            if (widget.fullPage && widget.showSearchInFull) {
-              return GroupListSearchScaffoldBody(
-                controller: _searchCtrl,
-                child: list,
-              );
-            }
-            return list;
           },
         );
       },
@@ -129,7 +171,6 @@ class _GroupListSectionState extends State<GroupListSection> {
                 ?.copyWith(fontWeight: FontWeight.w700),
           ),
           actions: const [
-            // 👇 info button lives here in full page mode
             InfoHelpButton(),
           ],
         ),
@@ -137,7 +178,7 @@ class _GroupListSectionState extends State<GroupListSection> {
       );
     }
 
-    // Embedded preview
+    // Embedded preview (used in HomePage's CustomScrollView)
     return body;
   }
 }

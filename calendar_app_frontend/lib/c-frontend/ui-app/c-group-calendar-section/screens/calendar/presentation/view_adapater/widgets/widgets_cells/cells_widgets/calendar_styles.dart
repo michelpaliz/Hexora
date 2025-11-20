@@ -48,23 +48,6 @@ ViewHeaderStyle buildViewHeaderStyle(
       ),
     );
 
-// ScheduleViewSettings buildScheduleSettings(
-//         double fontSize, Color backgroundColor) =>
-//     ScheduleViewSettings(
-//       appointmentItemHeight: 80,
-//       monthHeaderSettings: MonthHeaderSettings(
-//         monthFormat: 'MMMM yyyy',
-//         height: 60,
-//         textAlign: TextAlign.left,
-//         backgroundColor: backgroundColor,
-//         monthTextStyle: GoogleFonts.poppins(
-//           fontSize: fontSize,
-//           fontWeight: FontWeight.w500,
-//         ),
-//       ),
-//     );
-
-// styles.dart (same file you showed)
 
 double responsiveMonthHeaderHeight(BuildContext context) {
   final size = MediaQuery.of(context).size;

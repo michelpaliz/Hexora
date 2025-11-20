@@ -7,7 +7,7 @@ import 'package:hexora/c-frontend/routes/appRoutes.dart'; // ⬅️ for navigati
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/sections/agenda_filters_section.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/sections/agenda_header_section.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/sections/agenda_list_section.dart';
-import 'package:hexora/e-drawer-style-menu/old_drawer/main_scaffold.dart';
+import 'package:hexora/e-drawer-style-menu/contextual_fab/main_scaffold.dart';
 import 'package:provider/provider.dart';
 
 class AgendaScreen extends StatefulWidget {
