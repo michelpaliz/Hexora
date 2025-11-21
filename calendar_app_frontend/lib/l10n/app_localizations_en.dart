@@ -1410,6 +1410,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionUpcoming => 'Upcoming';
 
   @override
+  String get pendingEventsSectionTitle => 'Pending events';
+
+  @override
+  String get pendingEventsSectionSubtitle =>
+      'Mark visits as completed when you\'re done.';
+
+  @override
+  String get pendingEventsEmpty => 'You\'re all caught up.';
+
+  @override
+  String get pendingEventsError => 'We couldn\'t load pending events.';
+
+  @override
+  String get pendingEventsMarkDone => 'Mark done';
+
+  @override
+  String get completedEventsSectionTitle => 'Completed events';
+
+  @override
+  String get completedEventsSectionSubtitle =>
+      'Recently completed visits and tasks.';
+
+  @override
+  String get completedEventsEmpty => 'No events have been completed yet.';
+
+  @override
+  String get roleCardTapHint => 'Tap to view all role capabilities.';
+
+  @override
+  String get createdByLabel => 'Created by';
+
+  @override
   String get sectionManage => 'Manage';
 
   @override

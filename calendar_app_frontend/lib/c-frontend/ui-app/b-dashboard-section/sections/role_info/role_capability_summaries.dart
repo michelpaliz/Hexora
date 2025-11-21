@@ -25,7 +25,7 @@ class RoleCapabilitySummaries {
         ].where((s) => (s).trim().isNotEmpty).toList();
 
       case GroupRole.member:
-      return [
+        return [
           l.roleMemberBullet1, // "See your events"
           l.roleMemberBullet2, // "Mark visits as done"
           l.roleMemberBullet3, // "Add notes"

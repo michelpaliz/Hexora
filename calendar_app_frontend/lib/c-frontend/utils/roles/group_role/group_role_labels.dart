@@ -10,12 +10,6 @@ extension GroupRoleL10n on GroupRole {
         GroupRole.member => l.member,
       };
 
-  IconData get icon => switch (this) {
-        GroupRole.owner => Icons.workspace_premium_rounded,
-        GroupRole.admin => Icons.admin_panel_settings_rounded,
-        GroupRole.coAdmin => Icons.shield_rounded,
-        GroupRole.member => Icons.person_rounded,
-      };
 }
 
 /// Convenience top-level helper

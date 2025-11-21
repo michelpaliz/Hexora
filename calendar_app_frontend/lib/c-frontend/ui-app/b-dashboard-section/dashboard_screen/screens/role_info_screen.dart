@@ -1,4 +1,3 @@
-// lib/c-frontend/ui-app/b-dashboard-section/sections/role_info/role_info_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
@@ -52,95 +51,167 @@ class RoleInfoScreen extends StatelessWidget {
       return at;
     }
 
+    final capabilityColor =
+        role == GroupRole.member ? cs.secondary : cs.primary;
+
     return Scaffold(
       appBar: AppBar(title: Text(roleLabel)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              UserAvatar(user: user, fetchReadSas: fetchReadSas, radius: 28),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Name + @username
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            displayName(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: tt.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w800, height: 1.1),
+          Card(
+            elevation: 0,
+            color: cs.surfaceContainerHighest,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      UserAvatar(
+                        user: user,
+                        fetchReadSas: fetchReadSas,
+                        radius: 32,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (atUsername() != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                atUsername()!,
+                                style: tt.bodySmall
+                                    ?.copyWith(color: cs.onSurfaceVariant),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                Chip(
+                                  avatar: Icon(
+                                    role.icon,
+                                    size: 18,
+                                    color: cs.onPrimary,
+                                  ),
+                                  label: Text(roleLabel),
+                                  labelStyle: tt.bodySmall?.copyWith(
+                                    color: cs.onPrimary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  backgroundColor: cs.primary,
+                                ),
+                                Chip(
+                                  avatar: const Icon(
+                                    Icons.group_rounded,
+                                    size: 18,
+                                  ),
+                                  label: Text(group.name),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.verified_user_rounded, color: capabilityColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _headline(l, displayName(), roleLabel, role),
+                          style: tt.bodyMedium?.copyWith(height: 1.35),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Card(
+            elevation: 0,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 🔧 Fixed overflow here
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.bolt_rounded, color: capabilityColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l.roleCardTapHint,
+                          style: tt.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        finalUsername(atUsername(), tt, cs),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ...bullets.map(
+                    (s) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 18,
+                            color: capabilityColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              s,
+                              style: tt.bodyMedium?.copyWith(height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _headline(l, displayName(), roleLabel, role),
-                      style: tt.bodyMedium?.copyWith(height: 1.4),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 12),
-          Divider(
-              thickness: 1,
-              height: 1,
-              color: cs.outlineVariant.withOpacity(0.35)),
-          const SizedBox(height: 12),
-          Text(l.youHaveSuperPowersHere,
-              style: role == GroupRole.member
-                  ? tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)
-                  : tt.bodyMedium?.copyWith(color: cs.onSurface)),
-          const SizedBox(height: 12),
-          ...bullets.map((s) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                        width: 6,
-                        height: 6,
-                        margin: const EdgeInsets.only(top: 7, right: 8),
-                        decoration: BoxDecoration(
-                            color: cs.primary, shape: BoxShape.circle)),
-                    Expanded(
-                        child: Text(s,
-                            style: tt.bodySmall?.copyWith(height: 1.45))),
-                  ],
-                ),
-              )),
         ],
       ),
     );
   }
 
-  Widget finalUsername(String? at, TextTheme tt, ColorScheme cs) {
-    if (at == null) return const SizedBox.shrink();
-    return Flexible(
-      child: Padding(
-        padding: const EdgeInsets.only(left: 8),
-        child: Text(
-          at,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-        ),
-      ),
-    );
-  }
-
   String _headline(
-      AppLocalizations l, String name, String roleLabel, GroupRole role) {
+    AppLocalizations l,
+    String name,
+    String roleLabel,
+    GroupRole role,
+  ) {
     final base = '${l.hey} $name — ${l.youAreThe} $roleLabel ${l.ofThisGroup}.';
     if (role == GroupRole.member) return base;
     return '$base ${l.youHaveSuperPowersHere}';

@@ -1,7 +1,6 @@
 // lib/c-frontend/ui-app/b-dashboard-section/sections/role_info/profile_role_card.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/role_info/role_capability_summaries.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role_labels.dart';
 import 'package:hexora/c-frontend/utils/user_avatar.dart';
@@ -33,7 +32,6 @@ class ProfileRoleCard extends StatelessWidget {
     final atUsername = _atUsername(user);
     final roleLabel = role.label(l);
     final title = _greetingLine(l, displayName, roleLabel, role);
-    final bullets = RoleCapabilitySummaries.forRole(role, l);
 
     return Semantics(
       button: true,
@@ -59,8 +57,10 @@ class ProfileRoleCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _NameLine(
-                          displayName: displayName, atUsername: atUsername),
+                      _NameBlock(
+                        displayName: displayName,
+                        atUsername: atUsername,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         title,
@@ -69,16 +69,31 @@ class ProfileRoleCard extends StatelessWidget {
                           height: 1.35,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Divider(
-                          thickness: 1,
-                          height: 1,
-                          color: cs.outlineVariant.withOpacity(0.35)),
-                      const SizedBox(height: 8),
-                      ...bullets.map((s) => Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: _Bullet(text: s),
-                          )),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.touch_app_rounded,
+                                size: 18, color: cs.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                l.roleCardTapHint,
+                                style: tt.bodySmall?.copyWith(
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -124,8 +139,8 @@ class ProfileRoleCard extends StatelessWidget {
   }
 }
 
-class _NameLine extends StatelessWidget {
-  const _NameLine({required this.displayName, required this.atUsername});
+class _NameBlock extends StatelessWidget {
+  const _NameBlock({required this.displayName, required this.atUsername});
   final String displayName;
   final String? atUsername;
 
@@ -133,54 +148,25 @@ class _NameLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            displayName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: tt.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w800, height: 1.1),
-          ),
-        ),
-        if (atUsername != null) ...[
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              atUsername!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  const _Bullet({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-            width: 6,
-            height: 6,
-            margin: const EdgeInsets.only(top: 7, right: 8),
-            decoration:
-                BoxDecoration(color: cs.primary, shape: BoxShape.circle)),
-        Expanded(
-            child: Text(text,
-                style:
-                    tt.bodySmall?.copyWith(color: cs.onSurface, height: 1.35))),
+        Text(
+          displayName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: tt.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w800, height: 1.1),
+        ),
+        if (atUsername != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            atUsername!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
       ],
     );
   }

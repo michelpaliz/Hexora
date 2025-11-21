@@ -836,6 +836,16 @@
   "dashboardTitle": "Panel",
   "sectionOverview": "Resumen",
   "sectionUpcoming": "Próximos",
+  "pendingEventsSectionTitle": "Eventos pendientes",
+  "pendingEventsSectionSubtitle": "Marca las visitas como finalizadas cuando termines.",
+  "pendingEventsEmpty": "Todo al día.",
+  "pendingEventsError": "No pudimos cargar los eventos pendientes.",
+  "pendingEventsMarkDone": "Marcar como hecho",
+  "completedEventsSectionTitle": "Eventos completados",
+  "completedEventsSectionSubtitle": "Visitas y tareas completadas recientemente.",
+  "completedEventsEmpty": "Aún no hay eventos completados.",
+  "roleCardTapHint": "Toca para ver todas las capacidades del rol.",
+  "createdByLabel": "Creado por",
   "sectionManage": "Administrar",
   "sectionStatus": "Estado",
   "createdOnDay": "Creado el {date}",
@@ -1293,4 +1303,3 @@
 
 
 }
-

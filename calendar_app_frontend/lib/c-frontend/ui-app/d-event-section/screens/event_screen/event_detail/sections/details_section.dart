@@ -6,6 +6,8 @@ import 'package:hexora/l10n/app_localizations.dart';
 class DetailsSection extends StatelessWidget {
   final String dateRange;
   final String? location;
+  final String? ownerName;
+  final String? ownerUsername;
   final String? description;
   final String? note;
   final String? recurrenceText;
@@ -13,6 +15,8 @@ class DetailsSection extends StatelessWidget {
   const DetailsSection({
     super.key,
     required this.dateRange,
+    this.ownerName,
+    this.ownerUsername,
     this.location,
     this.description,
     this.note,
@@ -29,6 +33,14 @@ class DetailsSection extends StatelessWidget {
         title: l.detailsSectionTitle,
         // If your SectionCard supports `children:`:
         children: [
+          if ((ownerName?.isNotEmpty ?? false))
+            InfoRow(
+              icon: Icons.person_outline,
+              label: l.createdByLabel,
+              value: ownerUsername != null
+                  ? '$ownerName\n${ownerUsername!}'
+                  : ownerName!,
+            ),
           InfoRow(
             icon: Icons.event_outlined,
             label: l.eventWhenLabel,

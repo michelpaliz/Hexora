@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/string_utils.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/common/ui_messenger.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/group_editor_state.dart/group_editor_state.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/use_cases/create_group_usecase.dart';
@@ -193,5 +196,182 @@ class GroupEditorViewModel extends ChangeNotifier {
   void _update(GroupEditorState s) {
     _state = s;
     notifyListeners();
+  }
+}
+
+typedef UserResolver = Future<User?> Function(String userId);
+
+class GroupUndoneEventsViewModel extends ChangeNotifier {
+  GroupUndoneEventsViewModel({
+    required this.groupId,
+    required this.currentUserId,
+    required this.role,
+    required IEventRepository eventRepository,
+    required UserResolver userResolver,
+  })  : _eventRepository = eventRepository,
+        _userResolver = userResolver;
+
+  final String groupId;
+  final String currentUserId;
+  final GroupRole role;
+  final IEventRepository _eventRepository;
+  final UserResolver _userResolver;
+
+  bool get _canViewAll => role != GroupRole.member;
+
+  List<Event> _pendingEvents = const [];
+  List<Event> _completedEvents = const [];
+  final Map<String, EventOwnerInfo> _ownerCache = {};
+  final Set<String> _ownerFetchInFlight = {};
+  bool _isLoading = false;
+  String? _errorMessage;
+  final Set<String> _processingIds = <String>{};
+
+  List<Event> get pendingEvents => List.unmodifiable(_pendingEvents);
+  List<Event> get completedEvents => List.unmodifiable(_completedEvents);
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  EventOwnerInfo? ownerInfoOf(String ownerId) => _ownerCache[ownerId];
+
+  bool isProcessing(String eventId) =>
+      _processingIds.contains(baseId(eventId));
+
+  Future<void> refresh() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final events = await _eventRepository.getEventsByGroupId(groupId);
+      final visibleEvents = _canViewAll
+          ? events
+          : events.where((event) => event.ownerId == currentUserId).toList();
+      final pending = visibleEvents
+          .where((event) => event.isDone != true)
+          .toList()
+        ..sort((a, b) => a.startDate.compareTo(b.startDate));
+      final completed = visibleEvents
+          .where((event) => event.isDone == true)
+          .toList()
+        ..sort((a, b) =>
+            (b.completedAt ?? b.endDate).compareTo(a.completedAt ?? a.endDate));
+      _pendingEvents = pending;
+      _completedEvents = completed;
+      await _ensureOwnersLoaded([...pending, ...completed]);
+    } catch (error) {
+      _errorMessage = error.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> markEventAsDone(String eventId) async {
+    final key = baseId(eventId);
+    if (key.isEmpty || _processingIds.contains(key)) return;
+
+    if (!_canViewAll &&
+        !_pendingEvents.any((event) =>
+            baseId(event.id) == key && event.ownerId == currentUserId)) {
+      return;
+    }
+
+    _processingIds.add(key);
+    notifyListeners();
+
+    try {
+      final updated =
+          await _eventRepository.markEventAsDone(eventId, isDone: true);
+      _pendingEvents = _pendingEvents
+          .where((event) => baseId(event.id) != baseId(updated.id))
+          .toList();
+      if (_canViewAll || updated.ownerId == currentUserId) {
+        final updatedCompleted = List<Event>.from(_completedEvents)
+          ..add(updated)
+          ..sort((a, b) => (b.completedAt ?? b.endDate)
+              .compareTo(a.completedAt ?? a.endDate));
+        _completedEvents = updatedCompleted;
+      }
+      await _ensureOwnersLoaded([updated]);
+    } catch (error) {
+      _errorMessage = error.toString();
+    } finally {
+      _processingIds.remove(key);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _ensureOwnersLoaded(Iterable<Event> events) async {
+    final idsToFetch = <String>{};
+    for (final event in events) {
+      final ownerId = event.ownerId;
+      if (ownerId.isEmpty) continue;
+      if (_ownerCache.containsKey(ownerId)) continue;
+      if (_ownerFetchInFlight.contains(ownerId)) continue;
+      idsToFetch.add(ownerId);
+    }
+    if (idsToFetch.isEmpty) return;
+    _ownerFetchInFlight.addAll(idsToFetch);
+    try {
+      await Future.wait(idsToFetch.map((id) async {
+        try {
+          final user = await _userResolver(id);
+          if (user != null) {
+            _ownerCache[id] = EventOwnerInfo.fromUser(user);
+          } else {
+            _ownerCache[id] = EventOwnerInfo.fallback(id);
+          }
+        } catch (_) {
+          _ownerCache[id] = EventOwnerInfo.fallback(id);
+        }
+      }));
+    } finally {
+      _ownerFetchInFlight.removeAll(idsToFetch);
+      notifyListeners();
+    }
+  }
+}
+
+class EventOwnerInfo {
+  final String id;
+  final String displayName;
+  final String? username;
+
+  const EventOwnerInfo({
+    required this.id,
+    required this.displayName,
+    this.username,
+  });
+
+  factory EventOwnerInfo.fromUser(User user) {
+    final display = _resolveDisplayName(user);
+    final username = _resolveUsername(user);
+    return EventOwnerInfo(id: user.id, displayName: display, username: username);
+  }
+
+  factory EventOwnerInfo.fallback(String id) => EventOwnerInfo(
+        id: id,
+        displayName: id,
+      );
+
+  static String _resolveDisplayName(User user) {
+    final display = (user.displayName ?? '').trim();
+    if (display.isNotEmpty) return display;
+    final name = user.name.trim();
+    if (name.isNotEmpty) return name;
+    final handle = user.userName.trim();
+    if (handle.isNotEmpty) return handle;
+    final email = user.email.trim();
+    return email.contains('@') ? email.split('@').first : 'User';
+  }
+
+  static String? _resolveUsername(User user) {
+    final handle = user.userName.trim();
+    if (handle.isEmpty) return null;
+    final at = handle.startsWith('@') ? handle : '@$handle';
+    if ((user.displayName ?? '').trim() == at || user.name.trim() == at) {
+      return null;
+    }
+    return at;
   }
 }

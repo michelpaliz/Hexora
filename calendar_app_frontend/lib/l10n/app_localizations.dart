@@ -2571,6 +2571,66 @@ abstract class AppLocalizations {
   /// **'Upcoming'**
   String get sectionUpcoming;
 
+  /// Title for the pending/undone events section on the dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending events'**
+  String get pendingEventsSectionTitle;
+
+  /// Subtitle shown below the pending events section title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark visits as completed when you\'re done.'**
+  String get pendingEventsSectionSubtitle;
+
+  /// Shown when there are no pending events.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re all caught up.'**
+  String get pendingEventsEmpty;
+
+  /// Generic error message for pending events list.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load pending events.'**
+  String get pendingEventsError;
+
+  /// Button text to mark an event as done.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark done'**
+  String get pendingEventsMarkDone;
+
+  /// Title for the completed events tab/section.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed events'**
+  String get completedEventsSectionTitle;
+
+  /// Subtitle that explains the completed events tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently completed visits and tasks.'**
+  String get completedEventsSectionSubtitle;
+
+  /// Shown when there are no completed events for the user.
+  ///
+  /// In en, this message translates to:
+  /// **'No events have been completed yet.'**
+  String get completedEventsEmpty;
+
+  /// Hint displayed on the profile role card encouraging users to tap for more details.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to view all role capabilities.'**
+  String get roleCardTapHint;
+
+  /// Label shown before the event owner's information.
+  ///
+  /// In en, this message translates to:
+  /// **'Created by'**
+  String get createdByLabel;
+
   /// No description provided for @sectionManage.
   ///
   /// In en, this message translates to:

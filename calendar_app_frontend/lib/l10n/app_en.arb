@@ -831,6 +831,46 @@
     "dashboardTitle": "Dashboard",
     "sectionOverview": "Overview",
     "sectionUpcoming": "Upcoming",
+    "pendingEventsSectionTitle": "Pending events",
+    "@pendingEventsSectionTitle": {
+        "description": "Title for the pending/undone events section on the dashboard."
+    },
+    "pendingEventsSectionSubtitle": "Mark visits as completed when you're done.",
+    "@pendingEventsSectionSubtitle": {
+        "description": "Subtitle shown below the pending events section title."
+    },
+    "pendingEventsEmpty": "You're all caught up.",
+    "@pendingEventsEmpty": {
+        "description": "Shown when there are no pending events."
+    },
+    "pendingEventsError": "We couldn't load pending events.",
+    "@pendingEventsError": {
+        "description": "Generic error message for pending events list."
+    },
+    "pendingEventsMarkDone": "Mark done",
+    "@pendingEventsMarkDone": {
+        "description": "Button text to mark an event as done."
+    },
+    "completedEventsSectionTitle": "Completed events",
+    "@completedEventsSectionTitle": {
+        "description": "Title for the completed events tab/section."
+    },
+    "completedEventsSectionSubtitle": "Recently completed visits and tasks.",
+    "@completedEventsSectionSubtitle": {
+        "description": "Subtitle that explains the completed events tab."
+    },
+    "completedEventsEmpty": "No events have been completed yet.",
+    "@completedEventsEmpty": {
+        "description": "Shown when there are no completed events for the user."
+    },
+    "roleCardTapHint": "Tap to view all role capabilities.",
+    "@roleCardTapHint": {
+        "description": "Hint displayed on the profile role card encouraging users to tap for more details."
+    },
+    "createdByLabel": "Created by",
+    "@createdByLabel": {
+        "description": "Label shown before the event owner's information."
+    },
     "sectionManage": "Manage",
     "sectionStatus": "Status",
     "createdOnDay": "Created on {date}",

@@ -1421,6 +1421,38 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sectionUpcoming => 'Próximos';
 
   @override
+  String get pendingEventsSectionTitle => 'Eventos pendientes';
+
+  @override
+  String get pendingEventsSectionSubtitle =>
+      'Marca las visitas como finalizadas cuando termines.';
+
+  @override
+  String get pendingEventsEmpty => 'Todo al día.';
+
+  @override
+  String get pendingEventsError => 'No pudimos cargar los eventos pendientes.';
+
+  @override
+  String get pendingEventsMarkDone => 'Marcar como hecho';
+
+  @override
+  String get completedEventsSectionTitle => 'Eventos completados';
+
+  @override
+  String get completedEventsSectionSubtitle =>
+      'Visitas y tareas completadas recientemente.';
+
+  @override
+  String get completedEventsEmpty => 'Aún no hay eventos completados.';
+
+  @override
+  String get roleCardTapHint => 'Toca para ver todas las capacidades del rol.';
+
+  @override
+  String get createdByLabel => 'Creado por';
+
+  @override
   String get sectionManage => 'Administrar';
 
   @override

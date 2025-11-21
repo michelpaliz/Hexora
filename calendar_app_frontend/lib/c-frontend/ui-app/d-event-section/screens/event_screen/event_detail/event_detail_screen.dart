@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
+import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/service/service_api_client.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/event_screen/event_detail/sections/work_visit/work_visit_section.dart';
 // Shared widgets
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/event_screen/graphs/graphs_section.dart';
@@ -16,6 +18,7 @@ import 'sections/details_section.dart';
 // Helpers
 import 'widgets/detail_utils.dart';
 import 'widgets/section_surface.dart'; // <-- NEW: generic card shell
+import 'package:provider/provider.dart';
 
 typedef ClientNameFetcher = Future<String?> Function(String id);
 typedef ServiceNameFetcher = Future<String?> Function(String id);
@@ -47,6 +50,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   String? _primaryServiceName;
   bool _loadingClient = false;
   bool _loadingService = false;
+  bool _loadingOwner = false;
+  String? _ownerDisplayName;
+  String? _ownerUsername;
 
   @override
   void initState() {
@@ -56,6 +62,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Future<void> _loadNamesIfNeeded() async {
     final e = widget.event;
+
+    _loadOwnerName();
 
     if ((e.clientId?.isNotEmpty ?? false)) {
       setState(() => _loadingClient = true);
@@ -98,6 +106,31 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  Future<void> _loadOwnerName() async {
+    final ownerId = widget.event.ownerId;
+    if (ownerId.isEmpty) return;
+    setState(() => _loadingOwner = true);
+    try {
+      final userDomain = context.read<UserDomain>();
+      final owner = await userDomain.getUserById(ownerId);
+      if (!mounted) return;
+      if (owner != null) {
+        setState(() {
+          _ownerDisplayName = _resolveDisplayName(owner);
+          _ownerUsername = _resolveUsername(owner);
+        });
+      } else {
+        setState(() => _ownerDisplayName = ownerId);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _ownerDisplayName = _ownerDisplayName ?? ownerId);
+      }
+    } finally {
+      if (mounted) setState(() => _loadingOwner = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final e = widget.event;
@@ -124,6 +157,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final primaryServiceLabel = (e.primaryServiceId?.isNotEmpty ?? false)
         ? (_loadingService ? '…' : (_primaryServiceName ?? e.primaryServiceId!))
         : '';
+    final ownerLabel = _ownerDisplayName ??
+        (_loadingOwner
+            ? '…'
+            : (e.ownerId.isNotEmpty ? e.ownerId : null));
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -167,6 +204,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           DetailsSection(
             dateRange: dateRange,
             location: e.localization?.trim(),
+            ownerName: ownerLabel,
+            ownerUsername: _ownerUsername,
             description: e.description?.trim(),
             note: e.note?.trim(),
             recurrenceText: e.recurrenceRule == null
@@ -207,5 +246,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ],
       ),
     );
+  }
+
+  String _resolveDisplayName(User user) {
+    final dn = (user.displayName ?? '').trim();
+    if (dn.isNotEmpty) return dn;
+    if (user.name.trim().isNotEmpty) return user.name.trim();
+    if (user.userName.trim().isNotEmpty) return user.userName.trim();
+    final email = user.email.trim();
+    return email.contains('@') ? email.split('@').first : 'User';
+  }
+
+  String? _resolveUsername(User user) {
+    final handle = user.userName.trim();
+    if (handle.isEmpty) return null;
+    final at = handle.startsWith('@') ? handle : '@$handle';
+    if ((user.displayName ?? '').trim() == at || user.name.trim() == at) {
+      return null;
+    }
+    return at;
   }
 }

@@ -4,6 +4,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/group_header_view.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/role_info_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
@@ -79,6 +80,16 @@ class GroupDashboardBodyAdmin extends StatelessWidget {
           const SizedBox(height: 20),
           SectionHeader(title: l.sectionUpcoming, textStyle: sectionTitle),
           GroupUpcomingEventsCard(groupId: group.id),
+          const SizedBox(height: 20),
+          SectionHeader(
+            title: l.pendingEventsSectionTitle,
+            textStyle: sectionTitle,
+          ),
+          GroupUndoneEventsSection(
+            group: group,
+            user: user,
+            role: role,
+          ),
 
           const SizedBox(height: 20),
           SectionHeader(title: l.sectionManage, textStyle: sectionTitle),
