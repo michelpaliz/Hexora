@@ -1,12 +1,18 @@
 // lib/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/group_header_view.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
+import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/widget/group_header_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_screen.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -14,11 +20,13 @@ import 'package:provider/provider.dart';
 class GroupHeaderView extends StatefulWidget {
   final Group group;
   final VoidCallback? onEditGroup;
+  final bool allowEditing;
 
   const GroupHeaderView({
     super.key,
     required this.group,
     this.onEditGroup,
+    this.allowEditing = true,
   });
 
   @override
@@ -28,8 +36,17 @@ class GroupHeaderView extends StatefulWidget {
 class _GroupHeaderViewState extends State<GroupHeaderView> {
   late GroupDomain _gm;
   late UserDomain _ud;
+  ClientsApi? _clientsApi;
+  ITimeTrackingRepository? _timeRepo;
+  IEventRepository? _eventRepo;
   MembersCount? _counts;
-  bool _loading = false;
+  int? _clientCount;
+  int? _workerCount;
+  int? _pendingEventsCount;
+  bool _membersLoading = false;
+  bool _clientsLoading = false;
+  bool _workersLoading = false;
+  bool _pendingEventsLoading = false;
   bool _openingEditor = false;
 
   @override
@@ -37,7 +54,36 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     super.initState();
     _gm = context.read<GroupDomain>();
     _ud = context.read<UserDomain>();
-    _load();
+    _captureDependencies();
+    _loadMembers();
+    _loadClientCount();
+    _loadWorkerCount();
+    _loadPendingEventsCount();
+  }
+
+  @override
+  void didUpdateWidget(covariant GroupHeaderView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.group.id != widget.group.id) {
+      _loadMembers();
+      _loadClientCount();
+      _loadWorkerCount();
+      _loadPendingEventsCount();
+    }
+  }
+
+  void _captureDependencies() {
+    _clientsApi = ClientsApi();
+    try {
+      _timeRepo = context.read<ITimeTrackingRepository>();
+    } catch (_) {
+      _timeRepo = null;
+    }
+    try {
+      _eventRepo = context.read<IEventRepository>();
+    } catch (_) {
+      _eventRepo = null;
+    }
   }
 
   Future<void> _handleEditGroup() async {
@@ -86,15 +132,80 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     }
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
+  Future<void> _loadMembers() async {
+    setState(() => _membersLoading = true);
     try {
       final c = await _gm.groupRepository
           .getMembersCount(widget.group.id, mode: 'union');
       if (!mounted) return;
       setState(() => _counts = c);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _membersLoading = false);
+    }
+  }
+
+  Future<void> _loadClientCount() async {
+    if (_clientsApi == null) return;
+    setState(() => _clientsLoading = true);
+    try {
+      final clients =
+          await _clientsApi!.list(groupId: widget.group.id, active: true);
+      if (!mounted) return;
+      setState(() => _clientCount = clients.length);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _clientCount = null);
+    } finally {
+      if (mounted) setState(() => _clientsLoading = false);
+    }
+  }
+
+  Future<void> _loadWorkerCount() async {
+    final repo = _timeRepo;
+    if (repo == null) return;
+    setState(() => _workersLoading = true);
+    try {
+      final token = await _ud.getAuthToken();
+      final workers = await repo.getWorkers(widget.group.id, token);
+      if (!mounted) return;
+      setState(() => _workerCount = workers.length);
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString();
+      if (msg.contains('403') || msg.contains('404')) {
+        setState(() => _workerCount = 0);
+      } else {
+        setState(() => _workerCount = null);
+      }
+    } finally {
+      if (mounted) setState(() => _workersLoading = false);
+    }
+  }
+
+  Future<void> _loadPendingEventsCount() async {
+    final repo = _eventRepo;
+    if (repo == null) return;
+    setState(() => _pendingEventsLoading = true);
+    try {
+      final events = await repo.getEventsByGroupId(widget.group.id);
+      if (!mounted) return;
+      final user = _ud.user;
+      String? userId = user?.id;
+      GroupRole? role;
+      if (userId != null) {
+        role = GroupRoleX.from(widget.group.userRoles[userId]);
+      }
+      final canSeeAll = role == null || role != GroupRole.member;
+      final visible = canSeeAll || userId == null
+          ? events
+          : events.where((event) => event.ownerId == userId).toList();
+      final pending = visible.where((event) => event.isDone != true).length;
+      setState(() => _pendingEventsCount = pending);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _pendingEventsCount = null);
+    } finally {
+      if (mounted) setState(() => _pendingEventsLoading = false);
     }
   }
 
@@ -110,6 +221,39 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     final members = _counts?.accepted ?? fallbackMembers;
     final pending = _counts?.pending ?? fallbackPending;
     final total = _counts?.union ?? (fallbackMembers + fallbackPending);
+    final statsLoading = _membersLoading ||
+        _clientsLoading ||
+        _workersLoading ||
+        _pendingEventsLoading ||
+        _openingEditor;
+
+    void openMembers() {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.groupMembers,
+        arguments: g,
+      );
+    }
+
+    void openClients() {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.groupServicesClients,
+        arguments: g,
+      );
+    }
+
+    void openWorkers() {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.groupTimeTracking,
+        arguments: g,
+      );
+    }
+
+    void openPendingEvents() {
+      _pushPendingEvents(context);
+    }
 
     return GroupHeaderCard(
       photoUrl: g.photoUrl,
@@ -120,8 +264,33 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
       pending: pending,
       total: total,
       localeName: l.localeName,
-      isLoading: _loading || _openingEditor,
-      onTap: _handleEditGroup, // 👈 whole header is the button
+      isLoading: statsLoading,
+      onTap: widget.allowEditing ? _handleEditGroup : null,
+      clientCount: _clientCount,
+      workerCount: _workerCount,
+      pendingEventsCount: _pendingEventsCount,
+      onMembersTap: openMembers,
+      onPendingEventsTap: openPendingEvents,
+      onClientsTap: openClients,
+      onWorkersTap: openWorkers,
+      editTooltip: l.editGroup,
+    );
+  }
+
+  Future<void> _pushPendingEvents(BuildContext context) async {
+    User? resolvedUser = _ud.user;
+    resolvedUser ??= await _ud.getUser();
+    if (!mounted || resolvedUser == null) return;
+    final roleWire = widget.group.userRoles[resolvedUser.id];
+    final role = GroupRoleX.from(roleWire);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GroupUndoneEventsScreen(
+          group: widget.group,
+          user: resolvedUser!,
+          role: role,
+        ),
+      ),
     );
   }
 }

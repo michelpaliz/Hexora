@@ -3,9 +3,10 @@ import 'dart:developer' as devtools show log;
 
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/api/i_group_api_client.dart';
 import 'package:hexora/b-backend/errorClases/error_classes/error_classes.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/api/i_group_api_client.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 import 'package:http/http.dart' as http;
 
@@ -191,6 +192,29 @@ class HttpGroupApiClient implements IGroupApiClient {
 
     if (res.statusCode == 200) {
       return Calendar.fromJson(jsonDecode(res.body));
+    }
+    throw HttpFailure(res.statusCode, res.body);
+  }
+
+  @override
+  Future<Group> setBusinessHours(
+    String groupId,
+    GroupBusinessHours hours,
+    String token,
+  ) async {
+    final res = await _client.patch(
+      Uri.parse('$baseUrl/$groupId/business-hours'),
+      headers: authHeaders(token),
+      body: jsonEncode(hours.toJson()),
+    );
+
+    if (res.statusCode == 200) {
+      if (res.body.isEmpty) return getGroupById(groupId, token);
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) {
+        return Group.fromJson(decoded);
+      }
+      return getGroupById(groupId, token);
     }
     throw HttpFailure(res.statusCode, res.body);
   }

@@ -5,7 +5,7 @@
     "settings": "Settings",
     "logout": "Log out",
     "groupData": "Group Data",
-    "notifications": "Notifications",
+  "notifications": "Notifications",
     "goodMorning": "Good Morning",
     "goodAfternoon": "Good Afternoon",
     "goodEvening": "Good Evening",
@@ -953,10 +953,23 @@
     "@clearAllConfirm": {
         "description": "Confirmation message shown before removing all notifications."
     },
-    "clearedAllNotifications": "All notifications have been cleared.",
-    "@clearedAllNotifications": {
-        "description": "Message shown after successfully clearing all notifications."
-    },
+  "clearedAllNotifications": "All notifications have been cleared.",
+  "@clearedAllNotifications": {
+    "description": "Message shown after successfully clearing all notifications."
+  },
+  "groupNotificationsSectionTitle": "Group notifications",
+  "groupNotificationsSubtitle": "See invites, reminders, and alerts scoped to this group.",
+  "groupNotificationsEmpty": "This group doesn't have any notifications yet.",
+  "groupNotificationsError": "We couldn't load the notifications for this group.",
+  "groupNotificationsTitle": "{groupName} notifications",
+  "@groupNotificationsTitle": {
+    "description": "Page title for the per-group notifications screen",
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
     "error": "Error",
     "@error": {
         "description": "Generic label for displaying error messages."
@@ -1102,6 +1115,37 @@
   "noWorkersYetSubtitle": "Enable tracking to start counting hours and add workers.",
   "timeTrackingTitle": "Time tracking",
   "sectionWorkersHours": "Workers' hours",
+  "sectionBusinessHours": "Business hours",
+  "businessHoursAdminSubtitle": "Define the window when members can schedule events.",
+  "businessHoursMemberSubtitle": "Events must be created during this time window.",
+  "businessHoursUnset": "Not configured yet",
+  "businessHoursRange": "{start} – {end} · {timezone}",
+  "@businessHoursRange": {
+    "description": "Formatted representation of the business hours window",
+    "placeholders": {
+      "start": { "type": "String" },
+      "end": { "type": "String" },
+      "timezone": { "type": "String" }
+    }
+  },
+  "businessHoursEdit": "Edit",
+  "businessHoursSave": "Save hours",
+  "businessHoursReset": "Clear hours",
+  "businessHoursTimezoneLabel": "Timezone",
+  "businessHoursTimezoneHint": "Example: Europe/Madrid",
+  "businessHoursStartLabel": "Start time",
+  "businessHoursEndLabel": "End time",
+  "businessHoursUpdateSuccess": "Business hours updated",
+  "businessHoursUpdateError": "Couldn't update business hours",
+  "businessHoursValidationMessage": "Events must take place between {start} and {end} ({timezone}).",
+  "@businessHoursValidationMessage": {
+    "description": "Shown when a user attempts to create an event outside of the configured business hours",
+    "placeholders": {
+      "start": { "type": "String" },
+      "end": { "type": "String" },
+      "timezone": { "type": "String" }
+    }
+  },
   "timeTrackingDisabledTitle": "Time tracking is off",
   "timeTrackingDisabledSubtitle": "Enable it to start tracking hours for your team.",
   

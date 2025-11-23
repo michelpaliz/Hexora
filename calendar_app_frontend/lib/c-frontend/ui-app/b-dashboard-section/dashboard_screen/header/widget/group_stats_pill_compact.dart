@@ -4,33 +4,75 @@ import 'package:intl/intl.dart';
 class GroupStatsPillsCompact extends StatelessWidget {
   final bool loading;
   final int members;
-  final int pending;
-  final int total;
   final String localeName;
+  final int? clientCount;
+  final int? workerCount;
+  final int? pendingEventsCount;
+  final VoidCallback? onMembersTap;
+  final VoidCallback? onClientsTap;
+  final VoidCallback? onWorkersTap;
+  final VoidCallback? onPendingEventsTap;
 
   const GroupStatsPillsCompact({
     super.key,
     required this.loading,
     required this.members,
-    required this.pending,
-    required this.total,
     required this.localeName,
+    this.clientCount,
+    this.workerCount,
+    this.pendingEventsCount,
+    this.onMembersTap,
+    this.onClientsTap,
+    this.onWorkersTap,
+    this.onPendingEventsTap,
   });
 
   @override
   Widget build(BuildContext context) {
     if (loading) return const _PillsSkeleton();
 
+    final pills = <_Pill>[
+      _Pill(
+        icon: Icons.group_outlined,
+        label: _num(localeName, members),
+        onTap: onMembersTap,
+      ),
+    ];
+
+    if (pendingEventsCount != null) {
+      pills.add(
+        _Pill(
+          icon: Icons.pending_actions_outlined,
+          label: _num(localeName, pendingEventsCount!),
+          onTap: onPendingEventsTap,
+        ),
+      );
+    }
+
+    if (clientCount != null) {
+      pills.add(
+        _Pill(
+          icon: Icons.handshake_outlined,
+          label: _num(localeName, clientCount!),
+          onTap: onClientsTap,
+        ),
+      );
+    }
+
+    if (workerCount != null) {
+      pills.add(
+        _Pill(
+          icon: Icons.badge_outlined,
+          label: _num(localeName, workerCount!),
+          onTap: onWorkersTap,
+        ),
+      );
+    }
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: [
-        _Pill(icon: Icons.group_outlined, label: _num(localeName, members)),
-        _Pill(
-            icon: Icons.hourglass_top_outlined,
-            label: _num(localeName, pending)),
-        _Pill(icon: Icons.all_inbox_outlined, label: _num(localeName, total)),
-      ],
+      children: pills,
     );
   }
 
@@ -41,12 +83,13 @@ class GroupStatsPillsCompact extends StatelessWidget {
 class _Pill extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _Pill({required this.icon, required this.label});
+  final VoidCallback? onTap;
+  const _Pill({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
+    final pill = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: cs.surfaceVariant.withOpacity(0.45),
@@ -67,6 +110,14 @@ class _Pill extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    if (onTap == null) return pill;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: pill,
     );
   }
 }

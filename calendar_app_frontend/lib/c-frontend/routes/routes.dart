@@ -10,6 +10,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/gr
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/header_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/graphs/group_insights_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/screen/group_members_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/notifications/group_notifications_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/services_clients_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/create_worker/form/create_worker_screen.dart';
@@ -66,6 +67,12 @@ final Map<String, WidgetBuilder> routes = {
   AppRoutes.showNotifications: (context) {
     final user = ModalRoute.of(context)?.settings.arguments as User?;
     return user != null ? ShowNotifications(user: user) : SizedBox.shrink();
+  },
+  AppRoutes.groupNotifications: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    return group != null
+        ? GroupNotificationsScreen(group: group)
+        : const SizedBox.shrink();
   },
   AppRoutes.groupCalendar: (context) {
     final args = ModalRoute.of(context)?.settings.arguments;

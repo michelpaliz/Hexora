@@ -31,45 +31,65 @@ class ClientsTab extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
+    final activeItems =
+        items.where((c) => c.isActive != false).toList(growable: false);
+    final activeCount = activeItems.length;
 
     if (loading) return const Center(child: CircularProgressIndicator());
     if (error != null) return ErrorView(message: error!, onRetry: onRefresh);
 
-    if (items.isEmpty) {
+    if (activeItems.isEmpty) {
       return EmptyView(
         icon: Icons.person_outline,
         title: l.noClientsYet,
-        subtitle: l.addYourFirstClient,
+        subtitle: '${l.activeClientsSection} · 0',
         cta: showInlineCTA ? l.addClient : null,
         onPressed: showInlineCTA ? onAddTap : null,
       );
     }
 
-    return RefreshIndicator(
-      color: cs.primary,
-      backgroundColor: cs.surface,
-      onRefresh: onRefresh,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) {
-          final c = items[i];
-          return ClientListItem(
-            client: c,
-            onTap: onEdit == null ? null : () => onEdit!(c),
-            nameStyle: typo.bodyMedium.copyWith(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+          child: Text(
+            '${l.activeClientsSection} · $activeCount',
+            style: typo.bodyMedium.copyWith(
               fontWeight: FontWeight.w700,
-              letterSpacing: .2,
-              color: cs.onSurface,
-            ),
-            metaStyle: typo.bodySmall.copyWith(
               color: cs.onSurfaceVariant,
-              letterSpacing: .1,
             ),
-          );
-        },
-      ),
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            color: cs.primary,
+            backgroundColor: cs.surface,
+            onRefresh: onRefresh,
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              itemCount: activeItems.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) {
+                final c = activeItems[i];
+                return ClientListItem(
+                  client: c,
+                  onTap: onEdit == null ? null : () => onEdit!(c),
+                  nameStyle: typo.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: .2,
+                    color: cs.onSurface,
+                  ),
+                  metaStyle: typo.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    letterSpacing: .1,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

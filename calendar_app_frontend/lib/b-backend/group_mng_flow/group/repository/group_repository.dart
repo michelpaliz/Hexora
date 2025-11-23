@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/blobUploader/blobServer.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
@@ -177,6 +178,17 @@ class GroupRepository implements IGroupRepository {
   Future<Calendar> getCalendarById(String calendarId) async =>
       _api.getCalendarById(calendarId, await _token());
 
+  @override
+  Future<Group> setBusinessHours(
+    String groupId,
+    GroupBusinessHours hours,
+  ) async {
+    final updated =
+        await _api.setBusinessHours(groupId, hours, await _token());
+    _replaceGroupInCache(updated);
+    return updated;
+  }
+
   // ── Media ──────────────────────────────────────────────────────────────────
   @override
   Future<void> uploadAndCommitGroupPhoto({
@@ -208,6 +220,23 @@ class GroupRepository implements IGroupRepository {
     }
 
     devtools.log('✅ Group photo updated for $groupId');
+  }
+
+  void _replaceGroupInCache(Group updated) {
+    final entries = _cacheByUserId.entries.toList();
+    for (final entry in entries) {
+      final idx = entry.value.indexWhere((g) => g.id == updated.id);
+      if (idx == -1) continue;
+
+      final copy = List<Group>.from(entry.value);
+      copy[idx] = updated;
+      _cacheByUserId[entry.key] = copy;
+
+      final controller = _controllers[entry.key];
+      if (controller != null && !controller.isClosed) {
+        controller.add(List<Group>.from(copy));
+      }
+    }
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────────────

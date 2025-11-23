@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/exception.dart';
+import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/notification/utils/result.dart';
 import 'package:http/http.dart' as http;
 
@@ -48,6 +48,23 @@ class NotificationApiClient {
       throw Exception(
           'Failed to fetch user notifications: ${response.statusCode}');
     }
+  }
+
+  Future<List<NotificationUser>> getNotificationsForGroup(
+      String groupId) async {
+    final url = Uri.parse('$baseUrl/group/$groupId');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonData = jsonDecode(response.body);
+      return jsonData.map((data) => NotificationUser.fromJson(data)).toList();
+    } else if (response.statusCode == 404) {
+      return const <NotificationUser>[];
+    }
+    throw Exception(
+      'Failed to fetch notifications for group $groupId '
+      '(${response.statusCode})',
+    );
   }
 
   Future<NotificationUser> createNotification(

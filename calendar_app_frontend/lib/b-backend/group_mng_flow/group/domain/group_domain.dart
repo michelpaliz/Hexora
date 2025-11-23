@@ -5,6 +5,7 @@ import 'dart:developer' as devtools show log;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/a-models/notification_model/userInvitation_status.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 // UserDomain is referenced for refresh flow
@@ -173,6 +174,22 @@ class GroupDomain extends ChangeNotifier {
     } catch (e) {
       devtools.log('❌ Failed to remove group: $e');
       return false;
+    }
+  }
+
+  Future<Group?> setBusinessHours({
+    required String groupId,
+    required GroupBusinessHours hours,
+  }) async {
+    try {
+      final updated = await groupRepository.setBusinessHours(groupId, hours);
+      if (_currentGroup?.id == updated.id) {
+        currentGroup = updated;
+      }
+      return updated;
+    } catch (e) {
+      devtools.log('❌ Failed to set business hours: $e');
+      return null;
     }
   }
 

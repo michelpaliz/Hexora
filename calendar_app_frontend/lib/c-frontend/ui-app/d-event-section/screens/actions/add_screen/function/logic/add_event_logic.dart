@@ -9,6 +9,7 @@ import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/function/helper/add_event_helpers.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/utils/color_manager.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../../../../../a-models/group_model/group/group.dart';
@@ -69,6 +70,13 @@ abstract class AddEventLogic<T extends StatefulWidget>
   Future<void> initializeLogic(Group group, BuildContext context) async {
     _ensureDeps(context);
     _group = group;
+
+    try {
+      final fresh = await groupDomain!.groupRepository.getGroupById(group.id);
+      _group = fresh;
+    } catch (e) {
+      devtools.log('⚠️ unable to fetch latest group for business hours: $e');
+    }
 
     setSelectedColor(ColorManager.eventColors.last.value);
     final now = DateTime.now();
@@ -131,6 +139,7 @@ abstract class AddEventLogic<T extends StatefulWidget>
       }
 
       groupDomain!.currentGroup = fetchedUpdatedGroup!;
+      _group = fetchedUpdatedGroup!;
       devtools.log(
           "🧹 [addEvent] GROUP FETCHED: ${fetchedUpdatedGroup!.name} (${fetchedUpdatedGroup!.id})");
 
@@ -156,6 +165,26 @@ abstract class AddEventLogic<T extends StatefulWidget>
       recurrenceRule: recurrenceRule,
       selectedStartDate: selectedStartDate,
     )) return false;
+
+    final hours = _group.businessHours;
+    if (hours != null && hours.isConfigured) {
+      final allowed = hours.allows(selectedStartDate, selectedEndDate);
+      if (!allowed) {
+        final l = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              l.businessHoursValidationMessage(
+                hours.start ?? '--:--',
+                hours.end ?? '--:--',
+                hours.timezone,
+              ),
+            ),
+          ),
+        );
+        return false;
+      }
+    }
 
     if (!isWorkVisit) {
       if (!validateTitle(context, titleController)) return false;

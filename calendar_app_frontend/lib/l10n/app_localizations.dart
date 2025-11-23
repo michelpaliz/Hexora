@@ -2847,6 +2847,36 @@ abstract class AppLocalizations {
   /// **'All notifications have been cleared.'**
   String get clearedAllNotifications;
 
+  /// No description provided for @groupNotificationsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Group notifications'**
+  String get groupNotificationsSectionTitle;
+
+  /// No description provided for @groupNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See invites, reminders, and alerts scoped to this group.'**
+  String get groupNotificationsSubtitle;
+
+  /// No description provided for @groupNotificationsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This group doesn\'t have any notifications yet.'**
+  String get groupNotificationsEmpty;
+
+  /// No description provided for @groupNotificationsError.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load the notifications for this group.'**
+  String get groupNotificationsError;
+
+  /// Page title for the per-group notifications screen
+  ///
+  /// In en, this message translates to:
+  /// **'{groupName} notifications'**
+  String groupNotificationsTitle(String groupName);
+
   /// Generic label for displaying error messages.
   ///
   /// In en, this message translates to:
@@ -3410,6 +3440,97 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Workers\' hours'**
   String get sectionWorkersHours;
+
+  /// No description provided for @sectionBusinessHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Business hours'**
+  String get sectionBusinessHours;
+
+  /// No description provided for @businessHoursAdminSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Define the window when members can schedule events.'**
+  String get businessHoursAdminSubtitle;
+
+  /// No description provided for @businessHoursMemberSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Events must be created during this time window.'**
+  String get businessHoursMemberSubtitle;
+
+  /// No description provided for @businessHoursUnset.
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured yet'**
+  String get businessHoursUnset;
+
+  /// Formatted representation of the business hours window
+  ///
+  /// In en, this message translates to:
+  /// **'{start} – {end} · {timezone}'**
+  String businessHoursRange(String start, String end, String timezone);
+
+  /// No description provided for @businessHoursEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get businessHoursEdit;
+
+  /// No description provided for @businessHoursSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save hours'**
+  String get businessHoursSave;
+
+  /// No description provided for @businessHoursReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear hours'**
+  String get businessHoursReset;
+
+  /// No description provided for @businessHoursTimezoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Timezone'**
+  String get businessHoursTimezoneLabel;
+
+  /// No description provided for @businessHoursTimezoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Example: Europe/Madrid'**
+  String get businessHoursTimezoneHint;
+
+  /// No description provided for @businessHoursStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get businessHoursStartLabel;
+
+  /// No description provided for @businessHoursEndLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get businessHoursEndLabel;
+
+  /// No description provided for @businessHoursUpdateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Business hours updated'**
+  String get businessHoursUpdateSuccess;
+
+  /// No description provided for @businessHoursUpdateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update business hours'**
+  String get businessHoursUpdateError;
+
+  /// Shown when a user attempts to create an event outside of the configured business hours
+  ///
+  /// In en, this message translates to:
+  /// **'Events must take place between {start} and {end} ({timezone}).'**
+  String businessHoursValidationMessage(
+      String start, String end, String timezone);
 
   /// No description provided for @timeTrackingDisabledTitle.
   ///

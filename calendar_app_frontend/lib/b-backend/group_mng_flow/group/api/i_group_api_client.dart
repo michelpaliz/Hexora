@@ -1,5 +1,6 @@
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 
 abstract class IGroupApiClient {
@@ -25,4 +26,9 @@ abstract class IGroupApiClient {
     List<String>? ids,
   });
   Future<Calendar> getCalendarById(String calendarId, String token);
+  Future<Group> setBusinessHours(
+    String groupId,
+    GroupBusinessHours hours,
+    String token,
+  );
 }

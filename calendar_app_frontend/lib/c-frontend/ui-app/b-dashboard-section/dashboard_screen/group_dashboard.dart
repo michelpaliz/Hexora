@@ -26,6 +26,7 @@ class GroupDashboard extends StatefulWidget {
 class _GroupDashboardState extends State<GroupDashboard> {
   late GroupDomain _gm;
   late UserDomain _ud;
+  late Group _group;
 
   MembersCount? _counts;
   GroupRole? _role;
@@ -36,26 +37,34 @@ class _GroupDashboardState extends State<GroupDashboard> {
     super.initState();
     _gm = context.read<GroupDomain>();
     _ud = context.read<UserDomain>();
+    _group = widget.group;
     _loadAll();
   }
 
   Future<void> _loadAll() async {
-    final counts = await _gm.groupRepository
-        .getMembersCount(widget.group.id, mode: 'union');
-    final role =
-        await RoleResolver.resolve(group: widget.group, userDomain: _ud);
+    final counts =
+        await _gm.groupRepository.getMembersCount(_group.id, mode: 'union');
+    Group? refreshed;
+    try {
+      refreshed = await _gm.groupRepository.getGroupById(_group.id);
+    } catch (_) {}
+    final target = refreshed ?? _group;
+    final role = await RoleResolver.resolve(group: target, userDomain: _ud);
     final user = await _getCurrentUserSafe();
     if (!mounted) return;
     setState(() {
       _counts = counts;
       _role = role;
       _user = user;
+      if (refreshed != null) {
+        _group = refreshed;
+      }
     });
   }
 
   Future<void> _refreshCounts() async {
-    final counts = await _gm.groupRepository
-        .getMembersCount(widget.group.id, mode: 'union');
+    final counts =
+        await _gm.groupRepository.getMembersCount(_group.id, mode: 'union');
     if (!mounted) return;
     setState(() => _counts = counts);
   }
@@ -89,6 +98,11 @@ class _GroupDashboardState extends State<GroupDashboard> {
     return null;
   }
 
+  void _handleGroupChanged(Group updated) {
+    if (!mounted) return;
+    setState(() => _group = updated);
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
@@ -109,20 +123,34 @@ class _GroupDashboardState extends State<GroupDashboard> {
       appBar: AppBar(
         title: Text(l.dashboardTitle, style: t.titleLarge),
         centerTitle: false,
+        actions: [
+          IconButton(
+            tooltip: l.groupNotificationsSectionTitle,
+            icon: const Icon(Icons.notifications_none_rounded),
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.groupNotifications,
+                arguments: _group,
+              );
+            },
+          ),
+        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : canSeeAdmin
               ? GroupDashboardBodyAdmin(
-                  group: widget.group,
+                  group: _group,
                   counts: _counts,
                   onRefresh: _refreshCounts,
                   user: _user!,
                   role: _role!,
                   fetchReadSas: _fetchReadSas,
+                  onGroupChanged: _handleGroupChanged,
                 )
               : GroupDashboardBodyMember(
-                  group: widget.group,
+                  group: _group,
                   user: _user!,
                   role: _role!,
                   fetchReadSas: _fetchReadSas,
@@ -151,7 +179,7 @@ class _GroupDashboardState extends State<GroupDashboard> {
                     Navigator.pushNamed(
                       context,
                       AppRoutes.groupCalendar,
-                      arguments: widget.group,
+                      arguments: _group,
                     );
                   },
                 ),

@@ -1587,6 +1587,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clearedAllNotifications => 'All notifications have been cleared.';
 
   @override
+  String get groupNotificationsSectionTitle => 'Group notifications';
+
+  @override
+  String get groupNotificationsSubtitle =>
+      'See invites, reminders, and alerts scoped to this group.';
+
+  @override
+  String get groupNotificationsEmpty =>
+      'This group doesn\'t have any notifications yet.';
+
+  @override
+  String get groupNotificationsError =>
+      'We couldn\'t load the notifications for this group.';
+
+  @override
+  String groupNotificationsTitle(String groupName) {
+    return '$groupName notifications';
+  }
+
+  @override
   String get error => 'Error';
 
   @override
@@ -1897,6 +1917,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionWorkersHours => 'Workers\' hours';
+
+  @override
+  String get sectionBusinessHours => 'Business hours';
+
+  @override
+  String get businessHoursAdminSubtitle =>
+      'Define the window when members can schedule events.';
+
+  @override
+  String get businessHoursMemberSubtitle =>
+      'Events must be created during this time window.';
+
+  @override
+  String get businessHoursUnset => 'Not configured yet';
+
+  @override
+  String businessHoursRange(String start, String end, String timezone) {
+    return '$start – $end · $timezone';
+  }
+
+  @override
+  String get businessHoursEdit => 'Edit';
+
+  @override
+  String get businessHoursSave => 'Save hours';
+
+  @override
+  String get businessHoursReset => 'Clear hours';
+
+  @override
+  String get businessHoursTimezoneLabel => 'Timezone';
+
+  @override
+  String get businessHoursTimezoneHint => 'Example: Europe/Madrid';
+
+  @override
+  String get businessHoursStartLabel => 'Start time';
+
+  @override
+  String get businessHoursEndLabel => 'End time';
+
+  @override
+  String get businessHoursUpdateSuccess => 'Business hours updated';
+
+  @override
+  String get businessHoursUpdateError => 'Couldn\'t update business hours';
+
+  @override
+  String businessHoursValidationMessage(
+      String start, String end, String timezone) {
+    return 'Events must take place between $start and $end ($timezone).';
+  }
 
   @override
   String get timeTrackingDisabledTitle => 'Time tracking is off';

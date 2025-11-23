@@ -28,6 +28,7 @@ class AppRoutes {
 
   static const showGroups = '/show-groups';
   static const showNotifications = '/show-notifications';
+  static const groupNotifications = '/group-notifications';
 
   static const editGroup = '/edit-group';
   static const editGroupData = '/edit-group-data';

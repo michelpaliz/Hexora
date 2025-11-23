@@ -932,6 +932,19 @@
   "@clearedAllNotifications": {
     "description": "Mensaje que se muestra después de borrar todas las notificaciones."
   },
+  "groupNotificationsSectionTitle": "Notificaciones del grupo",
+  "groupNotificationsSubtitle": "Consulta invitaciones, recordatorios y alertas de este grupo.",
+  "groupNotificationsEmpty": "Este grupo todavía no tiene notificaciones.",
+  "groupNotificationsError": "No pudimos cargar las notificaciones de este grupo.",
+  "groupNotificationsTitle": "Notificaciones de {groupName}",
+  "@groupNotificationsTitle": {
+    "description": "Título de la pantalla de notificaciones por grupo",
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
   "error": "Error",
   "@error": {
     "description": "Etiqueta genérica para mostrar mensajes de error."
@@ -1078,6 +1091,37 @@
   "noWorkersYetSubtitle": "Habilita el seguimiento para comenzar a contar las horas y añadir trabajadores.",
   "timeTrackingTitle": "Seguimiento de tiempo",
   "sectionWorkersHours": "Horas del personal",
+  "sectionBusinessHours": "Horario laboral",
+  "businessHoursAdminSubtitle": "Define la franja en la que los miembros pueden programar eventos.",
+  "businessHoursMemberSubtitle": "Los eventos deben crearse dentro de este horario.",
+  "businessHoursUnset": "Aún no configurado",
+  "businessHoursRange": "{start} – {end} · {timezone}",
+  "@businessHoursRange": {
+    "description": "Representación del horario laboral",
+    "placeholders": {
+      "start": { "type": "String" },
+      "end": { "type": "String" },
+      "timezone": { "type": "String" }
+    }
+  },
+  "businessHoursEdit": "Editar",
+  "businessHoursSave": "Guardar horario",
+  "businessHoursReset": "Limpiar horario",
+  "businessHoursTimezoneLabel": "Zona horaria",
+  "businessHoursTimezoneHint": "Ejemplo: Europe/Madrid",
+  "businessHoursStartLabel": "Hora de inicio",
+  "businessHoursEndLabel": "Hora de fin",
+  "businessHoursUpdateSuccess": "Horario laboral actualizado",
+  "businessHoursUpdateError": "No se pudo actualizar el horario laboral",
+  "businessHoursValidationMessage": "Los eventos deben ocurrir entre {start} y {end} ({timezone}).",
+  "@businessHoursValidationMessage": {
+    "description": "Se muestra cuando un evento se sale del horario laboral",
+    "placeholders": {
+      "start": { "type": "String" },
+      "end": { "type": "String" },
+      "timezone": { "type": "String" }
+    }
+  },
 
   "timeTrackingDisabledTitle": "El seguimiento de tiempo está desactivado",
   "timeTrackingDisabledSubtitle": "Actívalo para comenzar a registrar las horas de tu equipo.",

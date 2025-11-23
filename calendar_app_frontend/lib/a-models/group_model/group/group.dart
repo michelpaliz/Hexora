@@ -1,5 +1,6 @@
 // lib/a-models/group_model/group/group.dart
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
+import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/a-models/group_model/group/group_features.dart';
 import 'package:hexora/c-frontend/utils/roles/id_normalize/id_normalizer.dart';
 
@@ -32,6 +33,7 @@ class Group {
 
   // ---------- Features / Plugins ----------
   GroupFeatures? features; // mirrors backend `features`
+  GroupBusinessHours? businessHours;
 
   Group({
     required this.id,
@@ -49,6 +51,7 @@ class Group {
     this.defaultCalendarId,
     this.defaultCalendar,
     this.features,
+    this.businessHours,
   });
 
   /// Primary way to get the calendar id
@@ -87,6 +90,19 @@ class Group {
       fx = GroupFeatures.fromJson(json['features'] as Map<String, dynamic>);
     }
 
+    GroupBusinessHours? hours;
+    if (json['businessHours'] is Map<String, dynamic>) {
+      hours = GroupBusinessHours.fromJson(
+        json['businessHours'] as Map<String, dynamic>,
+      );
+    } else if (json['features'] is Map<String, dynamic>) {
+      final fxJson = json['features'] as Map<String, dynamic>;
+      final nested = fxJson['businessHours'];
+      if (nested is Map<String, dynamic>) {
+        hours = GroupBusinessHours.fromJson(nested);
+      }
+    }
+
     // Normalize ids, lists, and userRoles keys/values
     final normalizedUserRoles =
         normalizeUserRoleWireMap(json['userRoles'] as Map?);
@@ -109,6 +125,7 @@ class Group {
       defaultCalendarId: normalizeId(json['defaultCalendarId']),
       defaultCalendar: defaultCal,
       features: fx,
+      businessHours: hours,
     );
   }
 
@@ -122,6 +139,7 @@ class Group {
       'userRoles': userRoles, // userId -> role
       'userIds': userIds,
       if (features != null) 'features': features!.toJson(),
+      if (businessHours != null) 'businessHours': businessHours!.toJson(),
       // inviteCount/lastInviteAt are server-managed; omit on updates
     };
   }
@@ -138,6 +156,7 @@ class Group {
       if (photoUrl != null) 'photoUrl': photoUrl,
       if (photoBlobName != null) 'photoBlobName': photoBlobName,
       if (features != null) 'features': features!.toJson(),
+      if (businessHours != null) 'businessHours': businessHours!.toJson(),
     };
   }
 
@@ -158,6 +177,7 @@ class Group {
     String? defaultCalendarId,
     Calendar? defaultCalendar,
     GroupFeatures? features,
+    GroupBusinessHours? businessHours,
   }) {
     return Group(
       id: id ?? this.id,
@@ -175,6 +195,7 @@ class Group {
       defaultCalendarId: defaultCalendarId ?? this.defaultCalendarId,
       defaultCalendar: defaultCalendar ?? this.defaultCalendar,
       features: features ?? this.features,
+      businessHours: businessHours ?? this.businessHours,
     );
   }
 
@@ -198,6 +219,7 @@ class Group {
           currency: 'EUR',
         ),
       ),
+      businessHours: null,
     );
   }
 
@@ -208,6 +230,6 @@ class Group {
         'photoUrl: $photoUrl, photoBlobName: $photoBlobName, '
         'computedPhotoUrl: $computedPhotoUrl, inviteCount: $inviteCount, lastInviteAt: $lastInviteAt, '
         'defaultCalendarId: $defaultCalendarId, defaultCalendar: $defaultCalendar, '
-        'features: $features}';
+        'features: $features, businessHours: $businessHours}';
   }
 }

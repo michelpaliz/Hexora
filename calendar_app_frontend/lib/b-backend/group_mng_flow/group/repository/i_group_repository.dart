@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 
@@ -39,6 +40,11 @@ abstract class IGroupRepository {
     required String groupId,
     required File file,
   });
+
+  Future<Group> setBusinessHours(
+    String groupId,
+    GroupBusinessHours hours,
+  );
 
   // Lifecycle
   void dispose();

@@ -104,4 +104,22 @@ class NotificationViewModel {
       rethrow;
     }
   }
+
+  Future<List<NotificationUser>> fetchNotificationsForGroup(
+      String groupId) async {
+    try {
+      final fetched =
+          await notificationService.getNotificationsForGroup(groupId);
+      fetched.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return fetched;
+    } catch (e) {
+      devtools.log('❌ Error fetching group notifications: $e');
+      return const <NotificationUser>[];
+    }
+  }
+
+  Future<void> deleteNotification(NotificationUser notification) async {
+    await notificationService.deleteNotification(notification.id);
+    await notificationDomain.removeNotificationById(notification.id);
+  }
 }

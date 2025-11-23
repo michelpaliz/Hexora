@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/notification/notification_api_client.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/enums/category/broad_category.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/main_scaffold.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -13,7 +13,6 @@ import 'package:provider/provider.dart';
 import '../../../viewmodels/notification_vm/view_model/notification_view_model.dart';
 import 'utils/notification_grouping.dart';
 import 'widgets/notification_card.dart';
-import 'widgets/notification_filter_bar.dart';
 
 class ShowNotifications extends StatefulWidget {
   final User user;
@@ -26,8 +25,6 @@ class ShowNotifications extends StatefulWidget {
 class _ShowNotificationsState extends State<ShowNotifications> {
   late NotificationViewModel _notificationViewModel;
   late Stream<List<NotificationUser>> _notificationsStream;
-  BroadCategory? _selectedCategory;
-
   bool _clearing = false; // prevent double taps while clearing
 
   @override
@@ -106,7 +103,7 @@ class _ShowNotificationsState extends State<ShowNotifications> {
     final t = Theme.of(context).textTheme;
 
     return MainScaffold(
-      title: '', // we use titleWidget instead
+      title: '',
       titleWidget: Row(
         children: [
           Text(
@@ -142,56 +139,147 @@ class _ShowNotificationsState extends State<ShowNotifications> {
             );
           }
 
-          final filtered = _selectedCategory == null
-              ? notifications
-              : notifications.where((ntf) {
-                  final mapping = BroadCategoryManager().categoryMapping;
-                  return mapping[ntf.category] == _selectedCategory;
-                }).toList();
+          final tabs = _buildTabs(context, notifications);
 
-          final grouped = groupNotificationsByTime(filtered, loc);
-
-          return Column(
-            children: [
-              NotificationFilterBar(
-                notifications: notifications,
-                selectedCategory: _selectedCategory,
-                onCategorySelected: (category) {
-                  setState(() => _selectedCategory = category);
-                },
-              ),
-              Expanded(
-                child: ListView(
-                  children: grouped.entries.expand((entry) {
-                    return [
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          entry.key,
-                          style: t.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      ...entry.value.asMap().entries.map((e) {
-                        final ntf = e.value;
-                        return NotificationCard(
-                          notification: ntf,
-                          onDelete: () => _notificationViewModel
-                              .removeNotificationByIndex(e.key),
-                          onConfirm: () =>
-                              _notificationViewModel.handleConfirmation(ntf),
-                          onNegate: () =>
-                              _notificationViewModel.handleNegation(ntf),
-                        );
-                      }),
-                    ];
-                  }).toList(),
+          return DefaultTabController(
+            length: tabs.length,
+            child: Column(
+              children: [
+                TabBar(
+                  isScrollable: true,
+                  labelStyle:
+                      t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  tabs: tabs
+                      .map(
+                        (tab) => Tab(text: tab.label),
+                      )
+                      .toList(),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: TabBarView(
+                    children: tabs
+                        .map(
+                          (tab) => _NotificationsList(
+                            notifications: tab.notifications,
+                            onDelete: (n) =>
+                                _notificationViewModel.deleteNotification(n),
+                            onConfirm: (n) =>
+                                _notificationViewModel.handleConfirmation(n),
+                            onNegate: (n) =>
+                                _notificationViewModel.handleNegation(n),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
+    );
+  }
+
+  List<_NotificationTab> _buildTabs(
+    BuildContext context,
+    List<NotificationUser> notifications,
+  ) {
+    final loc = AppLocalizations.of(context)!;
+    final mapping = BroadCategoryManager().categoryMapping;
+
+    final bucketed = <BroadCategory, List<NotificationUser>>{
+      for (final cat in BroadCategory.values) cat: <NotificationUser>[],
+    };
+
+    for (final notification in notifications) {
+      final resolved = mapping[notification.category] ?? BroadCategory.other;
+      bucketed.putIfAbsent(resolved, () => []).add(notification);
+    }
+
+    final tabs = <_NotificationTab>[
+      _NotificationTab(
+        category: null,
+        label: '${loc.all} (${notifications.length})',
+        notifications: notifications,
+      ),
+    ];
+
+    for (final cat in BroadCategory.values) {
+      final items = bucketed[cat] ?? const [];
+      tabs.add(
+        _NotificationTab(
+          category: cat,
+          label: '${cat.localizedName(context)} (${items.length})',
+          notifications: items,
+        ),
+      );
+    }
+
+    return tabs;
+  }
+}
+
+class _NotificationTab {
+  const _NotificationTab({
+    required this.category,
+    required this.label,
+    required this.notifications,
+  });
+
+  final BroadCategory? category;
+  final String label;
+  final List<NotificationUser> notifications;
+}
+
+class _NotificationsList extends StatelessWidget {
+  const _NotificationsList({
+    required this.notifications,
+    required this.onDelete,
+    required this.onConfirm,
+    required this.onNegate,
+  });
+
+  final List<NotificationUser> notifications;
+  final ValueChanged<NotificationUser> onDelete;
+  final ValueChanged<NotificationUser> onConfirm;
+  final ValueChanged<NotificationUser> onNegate;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+    final t = Theme.of(context).textTheme;
+
+    if (notifications.isEmpty) {
+      return Center(
+        child: Text(
+          loc.zeroNotifications,
+          style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+        ),
+      );
+    }
+
+    final grouped = groupNotificationsByTime(notifications, loc);
+
+    return ListView(
+      children: grouped.entries.expand((entry) {
+        return [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              entry.key,
+              style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          ...entry.value.map(
+            (notification) => NotificationCard(
+              notification: notification,
+              onDelete: () => onDelete(notification),
+              onConfirm: () => onConfirm(notification),
+              onNegate: () => onNegate(notification),
+            ),
+          ),
+        ];
+      }).toList(),
     );
   }
 }
