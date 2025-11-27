@@ -2,6 +2,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/errors/group_limit_exception.dart';
 
 class CreateGroupUseCase {
   final GroupDomain groupDomain;
@@ -13,6 +14,11 @@ class CreateGroupUseCase {
     required String description,
     required User owner,
   }) async {
+    if (owner.groupIds.length >= 2) {
+      throw const GroupLimitException(
+        'You can only belong to two groups at a time.',
+      );
+    }
     final group = Group(
       id: '',
       name: name,

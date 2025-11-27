@@ -5,6 +5,7 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/shared/currency_options.dart';
 import 'package:provider/provider.dart';
 
 class CreateWorkerScreen extends StatefulWidget {
@@ -27,9 +28,8 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
   final TextEditingController _userIdCtrl = TextEditingController();
   final TextEditingController _roleCtrl = TextEditingController();
   final TextEditingController _rateCtrl = TextEditingController();
-  final TextEditingController _currencyCtrl =
-      TextEditingController(text: 'USD');
   final TextEditingController _notesCtrl = TextEditingController();
+  String _selectedCurrency = defaultWorkerCurrency;
 
   bool _saving = false;
 
@@ -55,7 +55,7 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
           userId: _userIdCtrl.text.trim(),
           defaultHourlyRate:
               double.tryParse(_rateCtrl.text.trim().replaceAll(',', '.')),
-          currency: _currencyCtrl.text.trim(),
+          currency: _selectedCurrency,
           roleTag: _roleCtrl.text.trim(),
           notes: _notesCtrl.text.trim(),
         );
@@ -65,7 +65,7 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
           displayName: _displayNameCtrl.text.trim(),
           defaultHourlyRate:
               double.tryParse(_rateCtrl.text.trim().replaceAll(',', '.')),
-          currency: _currencyCtrl.text.trim(),
+          currency: _selectedCurrency,
           externalId: null,
           roleTag: _roleCtrl.text.trim(),
           notes: _notesCtrl.text.trim(),
@@ -162,10 +162,20 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
                   ),
                   const SizedBox(width: 12),
                   SizedBox(
-                    width: 100,
-                    child: TextFormField(
-                      controller: _currencyCtrl,
+                    width: 150,
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedCurrency,
                       decoration: InputDecoration(labelText: l.currencyLabel),
+                      items: workerCurrencyOptions
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) =>
+                          setState(() => _selectedCurrency = value!),
                     ),
                   ),
                 ],

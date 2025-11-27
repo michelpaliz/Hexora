@@ -1189,6 +1189,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noUpcomingHint => 'Try another category or extend the range.';
 
   @override
+  String get agendaSelectGroupPrompt => 'Select a group to load events';
+
+  @override
+  String get agendaChooseGroupButton => 'Choose';
+
+  @override
   String get hi => 'Hi';
 
   @override
@@ -2557,6 +2563,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupSettingsTitle => 'Group settings';
+
+  @override
+  String get groupSettingsOwnerBannerOwner =>
+      'You are the owner of this group. You can manage every setting from here.';
+
+  @override
+  String get groupSettingsOwnerBannerNotOwner =>
+      'Only the group owner can update these settings.';
+
+  @override
+  String get groupSettingsOverviewTitle => 'Overview';
+
+  @override
+  String get groupSettingsOverviewSubtitle =>
+      'General information about this group.';
+
+  @override
+  String get groupSettingsDescriptionLabel => 'Description';
+
+  @override
+  String get groupSettingsNoDescription => 'No description provided';
+
+  @override
+  String get groupSettingsOwnerIdLabel => 'Owner ID';
+
+  @override
+  String get groupSettingsCreatedOnLabel => 'Created on';
+
+  @override
+  String get groupSettingsMemberCountLabel => 'Member count';
+
+  @override
+  String get groupSettingsUserRolesTitle => 'User roles';
+
+  @override
+  String get groupSettingsUserRolesSubtitle =>
+      'Permissions for users in this group.';
+
+  @override
+  String get groupSettingsNoRoles => 'No specific roles assigned yet.';
+
+  @override
+  String get groupSettingsUserIdLabel => 'User ID:';
+
+  @override
+  String get groupSettingsRoleLabel => 'Role:';
+
+  @override
+  String get groupSettingsInvitationsTitle => 'Invitations';
+
+  @override
+  String get groupSettingsInvitationsSubtitle =>
+      'Invite new members or manage pending invitations.';
+
+  @override
+  String get groupSettingsInvitationsInfo =>
+      'Invitations are managed separately.';
+
+  @override
+  String get groupSettingsViewInvitations => 'View invitations';
+
+  @override
+  String get groupSettingsDangerZoneTitle => 'Danger zone';
+
+  @override
+  String get groupSettingsDangerZoneOwner =>
+      'Deleting this group is permanent and cannot be undone.';
+
+  @override
+  String get groupSettingsDangerZoneNonOwner =>
+      'Only the group owner can delete this group.';
 
   @override
   String get groupInfo => 'Group info';

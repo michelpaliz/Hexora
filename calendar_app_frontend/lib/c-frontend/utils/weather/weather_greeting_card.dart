@@ -8,6 +8,7 @@ class WeatherGreetingCard extends StatelessWidget {
   final DaySummary summary;
   final double tempMax;
   final double tempMin;
+  final String? location;
 
   const WeatherGreetingCard({
     super.key,
@@ -15,6 +16,7 @@ class WeatherGreetingCard extends StatelessWidget {
     required this.summary,
     required this.tempMax,
     required this.tempMin,
+    this.location,
   });
 
   String _localizedSummary(AppLocalizations l) {
@@ -45,6 +47,12 @@ class WeatherGreetingCard extends StatelessWidget {
     return l.weatherTempLine(max, min);
   }
 
+  String? _locationText() {
+    final clean = location?.trim();
+    if (clean == null || clean.isEmpty) return null;
+    return clean;
+  }
+
   String _buildFunLine(AppLocalizations l) {
     if (summary.isTooHot) {
       return l.weatherFunTooHot;
@@ -73,6 +81,7 @@ class WeatherGreetingCard extends StatelessWidget {
     final cs = theme.colorScheme;
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
+    final locationText = _locationText();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -125,6 +134,31 @@ class WeatherGreetingCard extends StatelessWidget {
                     color: cs.onSurfaceVariant.withOpacity(0.8),
                   ),
                 ),
+                if (locationText != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        color: cs.onSurfaceVariant,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          locationText,
+                          style: t.bodyMedium.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   _buildFunLine(l),

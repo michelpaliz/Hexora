@@ -33,7 +33,8 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
       if (actions != null) ...actions!,
       if (showWeatherToggle)
         IconButton(
-          tooltip: weatherIconsEnabled ? 'Hide weather icons' : 'Show weather icons',
+          tooltip:
+              weatherIconsEnabled ? 'Hide weather icons' : 'Show weather icons',
           icon: Icon(
             weatherIconsEnabled ? Icons.wb_sunny_outlined : Icons.cloud_off,
             color: cs.primary,

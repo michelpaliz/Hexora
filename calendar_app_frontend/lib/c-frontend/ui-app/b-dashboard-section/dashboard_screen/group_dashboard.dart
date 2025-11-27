@@ -9,10 +9,11 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/sc
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/group_dashboard_body_member.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/role_resolver.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/confirmation_dialog.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class GroupDashboard extends StatefulWidget {
@@ -107,12 +108,11 @@ class _GroupDashboardState extends State<GroupDashboard> {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
-
-    // Optional subtitle (handy for testing)
-    String? subtitle;
-    if (_role != null) {
-      subtitle = toBeginningOfSentenceCase(_role!.wire);
-    }
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final topBarColor =
+        isDarkMode ? AppDarkColors.dashboardTopBar : AppColors.dashboardTopBar;
+    final onTopBar = isDarkMode ? AppDarkColors.textPrimary : AppColors.white;
 
     final isLoading = _role == null || _user == null;
     final canSeeAdmin = _role == GroupRole.owner ||
@@ -121,7 +121,26 @@ class _GroupDashboardState extends State<GroupDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.dashboardTitle, style: t.titleLarge),
+        backgroundColor: topBarColor,
+        elevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: onTopBar),
+        actionsIconTheme: IconThemeData(color: onTopBar),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: Text(
+          _group.name,
+          style: t.bodyLarge.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+            color: onTopBar,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         centerTitle: false,
         actions: [
           IconButton(
@@ -135,6 +154,18 @@ class _GroupDashboardState extends State<GroupDashboard> {
               );
             },
           ),
+          if (canSeeAdmin)
+            IconButton(
+              tooltip: l.groupSettingsTitle,
+              icon: const Icon(Icons.tune_rounded),
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.groupSettings,
+                  arguments: _group,
+                );
+              },
+            ),
         ],
       ),
       body: isLoading
@@ -184,32 +215,6 @@ class _GroupDashboardState extends State<GroupDashboard> {
                   },
                 ),
               ),
-              // const SizedBox(width: 12),
-              // Expanded(
-              //   child: OutlinedButton.icon(
-              //     icon: const Icon(Icons.add_rounded, size: 20),
-              //     label: Text(l.addEvent),
-              //     style: OutlinedButton.styleFrom(
-              //       minimumSize: const Size.fromHeight(52),
-              //       padding: const EdgeInsets.symmetric(
-              //           horizontal: 20, vertical: 14),
-              //       textStyle: Theme.of(context).textTheme.labelLarge,
-              //       side: BorderSide(
-              //         color: Theme.of(context)
-              //             .colorScheme
-              //             .outlineVariant
-              //             .withOpacity(0.6),
-              //       ),
-              //     ),
-              //     onPressed: () {
-              //       Navigator.pushNamed(
-              //         context,
-              //         AppRoutes.createEvent,
-              //         arguments: widget.group,
-              //       );
-              //     },
-              //   ),
-              // ),
             ],
           ),
         ),

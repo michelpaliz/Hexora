@@ -82,6 +82,13 @@ class Group {
     Calendar? defaultCal;
     if (json['defaultCalendar'] is Map<String, dynamic>) {
       defaultCal = Calendar.fromJson(json['defaultCalendar']);
+    } else if (json['calendars'] is List) {
+      final calendars = json['calendars'] as List<dynamic>;
+      if (calendars.isNotEmpty && calendars.first is Map<String, dynamic>) {
+        defaultCal = Calendar.fromJson(
+          calendars.first as Map<String, dynamic>,
+        );
+      }
     }
 
     // Normalize features

@@ -2187,6 +2187,18 @@ abstract class AppLocalizations {
   /// **'Try another category or extend the range.'**
   String get noUpcomingHint;
 
+  /// No description provided for @agendaSelectGroupPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a group to load events'**
+  String get agendaSelectGroupPrompt;
+
+  /// No description provided for @agendaChooseGroupButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose'**
+  String get agendaChooseGroupButton;
+
   /// No description provided for @hi.
   ///
   /// In en, this message translates to:
@@ -4635,6 +4647,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Group settings'**
   String get groupSettingsTitle;
+
+  /// No description provided for @groupSettingsOwnerBannerOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'You are the owner of this group. You can manage every setting from here.'**
+  String get groupSettingsOwnerBannerOwner;
+
+  /// No description provided for @groupSettingsOwnerBannerNotOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the group owner can update these settings.'**
+  String get groupSettingsOwnerBannerNotOwner;
+
+  /// No description provided for @groupSettingsOverviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get groupSettingsOverviewTitle;
+
+  /// No description provided for @groupSettingsOverviewSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'General information about this group.'**
+  String get groupSettingsOverviewSubtitle;
+
+  /// No description provided for @groupSettingsDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get groupSettingsDescriptionLabel;
+
+  /// No description provided for @groupSettingsNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No description provided'**
+  String get groupSettingsNoDescription;
+
+  /// No description provided for @groupSettingsOwnerIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner ID'**
+  String get groupSettingsOwnerIdLabel;
+
+  /// No description provided for @groupSettingsCreatedOnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Created on'**
+  String get groupSettingsCreatedOnLabel;
+
+  /// No description provided for @groupSettingsMemberCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Member count'**
+  String get groupSettingsMemberCountLabel;
+
+  /// No description provided for @groupSettingsUserRolesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'User roles'**
+  String get groupSettingsUserRolesTitle;
+
+  /// No description provided for @groupSettingsUserRolesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions for users in this group.'**
+  String get groupSettingsUserRolesSubtitle;
+
+  /// No description provided for @groupSettingsNoRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'No specific roles assigned yet.'**
+  String get groupSettingsNoRoles;
+
+  /// No description provided for @groupSettingsUserIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'User ID:'**
+  String get groupSettingsUserIdLabel;
+
+  /// No description provided for @groupSettingsRoleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role:'**
+  String get groupSettingsRoleLabel;
+
+  /// No description provided for @groupSettingsInvitationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitations'**
+  String get groupSettingsInvitationsTitle;
+
+  /// No description provided for @groupSettingsInvitationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite new members or manage pending invitations.'**
+  String get groupSettingsInvitationsSubtitle;
+
+  /// No description provided for @groupSettingsInvitationsInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitations are managed separately.'**
+  String get groupSettingsInvitationsInfo;
+
+  /// No description provided for @groupSettingsViewInvitations.
+  ///
+  /// In en, this message translates to:
+  /// **'View invitations'**
+  String get groupSettingsViewInvitations;
+
+  /// No description provided for @groupSettingsDangerZoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone'**
+  String get groupSettingsDangerZoneTitle;
+
+  /// No description provided for @groupSettingsDangerZoneOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting this group is permanent and cannot be undone.'**
+  String get groupSettingsDangerZoneOwner;
+
+  /// No description provided for @groupSettingsDangerZoneNonOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the group owner can delete this group.'**
+  String get groupSettingsDangerZoneNonOwner;
 
   /// No description provided for @groupInfo.
   ///

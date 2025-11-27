@@ -150,4 +150,5 @@ class User {
 
   @override
   int get hashCode => userHashCode(this);
+
 }

@@ -8,6 +8,7 @@ import 'package:hexora/c-frontend/ui-app/g-agenda-section/sections/agenda_filter
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/sections/agenda_header_section.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/sections/agenda_list_section.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/main_scaffold.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 class AgendaScreen extends StatefulWidget {
@@ -152,6 +153,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Widget build(BuildContext context) {
     final filtered = _applyAllFilters(_items);
     final gid = _resolveGroupId();
+    final loc = AppLocalizations.of(context)!;
 
     Widget body;
 
@@ -190,13 +192,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: ListTile(
                     leading: const Icon(Icons.group_outlined),
-                    title: const Text('Select a group to load events'),
+                    title: Text(loc.agendaSelectGroupPrompt),
                     trailing: TextButton(
                       onPressed: () {
                         Navigator.pushNamed(context, AppRoutes.showGroups).then(
                             (_) => _loadAgenda()); // reload after selection
                       },
-                      child: const Text('Choose'),
+                      child: Text(loc.agendaChooseGroupButton),
                     ),
                   ),
                 ),

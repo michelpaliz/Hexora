@@ -119,34 +119,36 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                 : const <DateTime, DaySummary>{};
 
                             return Container(
-                              decoration: buildContainerDecoration(backgroundColor),
+                              decoration:
+                                  buildContainerDecoration(backgroundColor),
                               child: sf.SfCalendar(
-                            key: ObjectKey('${ds.hashCode}-$mode'),
-                            controller: _controller,
-                            dataSource: ds,
-                            view: _selectedView,
-                            allowedViews: const [
-                              sf.CalendarView.day,
-                              sf.CalendarView.week,
-                              sf.CalendarView.month,
-                              sf.CalendarView.schedule,
-                            ],
-                            onViewChanged: (_) =>
-                                _selectedView = _controller.view!,
-                            onSelectionChanged: (d) {
-                              if (d.date != null) {
-                                _selectedDate = d.date!;
-                                _controller.selectedDate = _selectedDate;
-                                widget.state.selectedDate = _selectedDate;
-                                widget.state.dailyEvents.value =
-                                    widget.state.eventsForDate(
-                                  _selectedDate!,
-                                  widget.state.allEvents.value,
-                                );
-                              }
-                            },
-                            // ✅ Keep Month custom tiles (old behavior)
-                                monthCellBuilder: (context, d) => buildMonthCell(
+                                key: ObjectKey('${ds.hashCode}-$mode'),
+                                controller: _controller,
+                                dataSource: ds,
+                                view: _selectedView,
+                                allowedViews: const [
+                                  sf.CalendarView.day,
+                                  sf.CalendarView.week,
+                                  sf.CalendarView.month,
+                                  sf.CalendarView.schedule,
+                                ],
+                                onViewChanged: (_) =>
+                                    _selectedView = _controller.view!,
+                                onSelectionChanged: (d) {
+                                  if (d.date != null) {
+                                    _selectedDate = d.date!;
+                                    _controller.selectedDate = _selectedDate;
+                                    widget.state.selectedDate = _selectedDate;
+                                    widget.state.dailyEvents.value =
+                                        widget.state.eventsForDate(
+                                      _selectedDate!,
+                                      widget.state.allEvents.value,
+                                    );
+                                  }
+                                },
+                                // ✅ Keep Month custom tiles (old behavior)
+                                monthCellBuilder: (context, d) =>
+                                    buildMonthCell(
                                   context: context,
                                   details: d,
                                   selectedDate: _selectedDate,
@@ -154,38 +156,39 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                   weatherSummaries: weatherMap,
                                 ),
 
-                            scheduleViewMonthHeaderBuilder: (context, d) =>
-                                buildScheduleMonthHeader(
-                                    context, d, monthHeaderHeight),
-                            scheduleViewSettings: sf.ScheduleViewSettings(
-                              monthHeaderSettings: sf.MonthHeaderSettings(
-                                height:
-                                    monthHeaderHeight, // <-- must match builder height
-                                backgroundColor:
-                                    Colors.transparent, // keep images visible
-                                monthFormat: 'MMMM yyyy',
-                                textAlign: TextAlign.left,
-                              ),
-                              appointmentItemHeight: 80,
-                            ),
+                                scheduleViewMonthHeaderBuilder: (context, d) =>
+                                    buildScheduleMonthHeader(
+                                        context, d, monthHeaderHeight),
+                                scheduleViewSettings: sf.ScheduleViewSettings(
+                                  monthHeaderSettings: sf.MonthHeaderSettings(
+                                    height:
+                                        monthHeaderHeight, // <-- must match builder height
+                                    backgroundColor: Colors
+                                        .transparent, // keep images visible
+                                    monthFormat: 'MMMM yyyy',
+                                    textAlign: TextAlign.left,
+                                  ),
+                                  appointmentItemHeight: 80,
+                                ),
 
-                            appointmentBuilder: (context, details) =>
-                                widget.apptBridge.build(
-                                    context, _selectedView, details, textColor),
-                            selectionDecoration:
-                                const BoxDecoration(color: Colors.transparent),
-                            showNavigationArrow: true,
-                            showDatePickerButton: true,
-                            firstDayOfWeek: DateTime.monday,
-                            initialSelectedDate: DateTime.now(),
-                            headerStyle: buildHeaderStyle(fontSize, textColor),
-                            viewHeaderStyle: buildViewHeaderStyle(
-                                fontSize, textColor, isDarkMode),
-                            // scheduleViewSettings: buildScheduleSettings(
-                            //     fontSize, backgroundColor,
-                            //     monthHeaderHeight: monthHeaderHeight),
-                            monthViewSettings: buildMonthSettings(),
-                          ),
+                                appointmentBuilder: (context, details) =>
+                                    widget.apptBridge.build(context,
+                                        _selectedView, details, textColor),
+                                selectionDecoration: const BoxDecoration(
+                                    color: Colors.transparent),
+                                showNavigationArrow: true,
+                                showDatePickerButton: true,
+                                firstDayOfWeek: DateTime.monday,
+                                initialSelectedDate: DateTime.now(),
+                                headerStyle:
+                                    buildHeaderStyle(fontSize, textColor),
+                                viewHeaderStyle: buildViewHeaderStyle(
+                                    fontSize, textColor, isDarkMode),
+                                // scheduleViewSettings: buildScheduleSettings(
+                                //     fontSize, backgroundColor,
+                                //     monthHeaderHeight: monthHeaderHeight),
+                                monthViewSettings: buildMonthSettings(),
+                              ),
                             ).animate().fadeIn(duration: 300.ms);
                           },
                         );

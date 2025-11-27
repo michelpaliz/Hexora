@@ -7,6 +7,7 @@ import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'widgets/profile_details_card.dart';
 import 'widgets/profile_header_section.dart';
 
@@ -46,9 +47,12 @@ class ProfileViewScreen extends StatelessWidget {
       );
     }
 
-    void comingSoon() => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(loc.comingSoon, style: textTheme.bodyMedium)),
-        );
+    void _goToProfileEdit() =>
+        Navigator.of(context).pushNamed(AppRoutes.profile);
+    void _goToGroups() => Navigator.of(context).pushNamed(AppRoutes.showGroups);
+    void _goToCalendars() => Navigator.of(context).pushNamed(AppRoutes.agenda);
+    void _goToNotifications() => Navigator.of(context)
+        .pushNamed(AppRoutes.showNotifications, arguments: user);
 
     return MainScaffold(
       showAppBar: false,
@@ -67,9 +71,9 @@ class ProfileViewScreen extends StatelessWidget {
               groupsCount: groupsCount,
               calendarsCount: calendarsCount,
               notificationsCount: notificationsCount,
-              onTapQuickGroups: comingSoon,
-              onTapQuickCalendars: comingSoon,
-              onTapQuickNotifications: comingSoon,
+              onTapQuickGroups: _goToGroups,
+              onTapQuickCalendars: _goToCalendars,
+              onTapQuickNotifications: _goToNotifications,
             ),
           ),
 
@@ -89,10 +93,10 @@ class ProfileViewScreen extends StatelessWidget {
                 onCopyEmail: () =>
                     copyToClipboard(user.email, loc.copiedToClipboard),
                 onCopyId: () => copyToClipboard(user.id, loc.copiedToClipboard),
-                onTapUsername: comingSoon,
-                onTapTeams: comingSoon,
-                onTapCalendars: comingSoon,
-                onTapNotifications: comingSoon,
+                onTapUsername: _goToProfileEdit,
+                onTapTeams: _goToGroups,
+                onTapCalendars: _goToCalendars,
+                onTapNotifications: _goToNotifications,
               ),
             ),
           ),

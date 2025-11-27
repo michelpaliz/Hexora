@@ -4,6 +4,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/string_utils.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/errors/group_limit_exception.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/common/ui_messenger.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/group_editor_state.dart/group_editor_state.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/use_cases/create_group_usecase.dart';
@@ -165,6 +166,13 @@ class GroupEditorViewModel extends ChangeNotifier {
       }
 
       // ---------- CREATE PATH (existing) ----------
+      if (currentUser.groupIds.length >= 2) {
+        await ui.showError('You can only belong to two groups.');
+        status = GroupEditorStatus.error;
+        notifyListeners();
+        return;
+      }
+
       final created = await createGroup(
         name: _state.name,
         description: _state.description,
@@ -186,6 +194,10 @@ class GroupEditorViewModel extends ChangeNotifier {
       notifyListeners();
       ui.showSnack('Group created!');
       ui.pop();
+    } on GroupLimitException catch (e) {
+      status = GroupEditorStatus.error;
+      notifyListeners();
+      await ui.showError(e.message);
     } catch (e) {
       status = GroupEditorStatus.error;
       notifyListeners();
@@ -226,6 +238,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   final Set<String> _processingIds = <String>{};
+  bool _isDisposed = false;
 
   List<Event> get pendingEvents => List.unmodifiable(_pendingEvents);
   List<Event> get completedEvents => List.unmodifiable(_completedEvents);
@@ -237,10 +250,21 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   bool isProcessing(String eventId) =>
       _processingIds.contains(baseId(eventId));
 
+  void _notify() {
+    if (_isDisposed) return;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
   Future<void> refresh() async {
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _notify();
     try {
       final events = await _eventRepository.getEventsByGroupId(groupId);
       final visibleEvents = _canViewAll
@@ -262,7 +286,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
       _errorMessage = error.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -277,7 +301,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
     }
 
     _processingIds.add(key);
-    notifyListeners();
+    _notify();
 
     try {
       final updated =
@@ -297,7 +321,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
       _errorMessage = error.toString();
     } finally {
       _processingIds.remove(key);
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -327,7 +351,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
       }));
     } finally {
       _ownerFetchInFlight.removeAll(idsToFetch);
-      notifyListeners();
+      _notify();
     }
   }
 }

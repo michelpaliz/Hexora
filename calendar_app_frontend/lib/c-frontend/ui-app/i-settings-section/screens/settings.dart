@@ -12,6 +12,7 @@ import 'package:hexora/c-frontend/ui-app/i-settings-section/widgets/section_card
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
 import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -98,27 +99,33 @@ class _SettingsState extends State<Settings> {
   void _confirmLogout() {
     final l = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final bodyM = theme.textTheme.bodyMedium!;
-    final bodyS = theme.textTheme.bodySmall!;
+    final typography = AppTypography.of(context);
     final cs = theme.colorScheme;
+    final titleStyle = typography.bodyMedium.copyWith(
+      fontWeight: FontWeight.w700,
+      color: cs.onSurface,
+    );
+    final contentStyle =
+        typography.bodySmall.copyWith(color: cs.onSurfaceVariant);
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(
           l.logoutConfirmTitle,
-          style:
-              bodyM.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+          style: titleStyle,
         ),
         content: Text(
           l.logoutConfirmMessage,
-          style: bodyS.copyWith(color: cs.onSurfaceVariant),
+          style: contentStyle,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(l.cancel,
-                style: bodyM.copyWith(fontWeight: FontWeight.w600)),
+            child: Text(
+              l.cancel,
+              style: typography.buttonText.copyWith(color: cs.primary),
+            ),
           ),
           FilledButton.tonal(
             style: FilledButton.styleFrom(
@@ -128,8 +135,11 @@ class _SettingsState extends State<Settings> {
               Navigator.pop(context);
               await _logout();
             },
-            child: Text(l.logout,
-                style: bodyM.copyWith(fontWeight: FontWeight.w700)),
+            child: Text(
+              l.logout,
+              style:
+                  typography.buttonText.copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -151,11 +161,9 @@ class _SettingsState extends State<Settings> {
   void _openLanguageSheet() => showLanguageSheet(context);
 
   void _snack(String text) {
-    final theme = Theme.of(context);
-    final bodyS = theme.textTheme.bodySmall!;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text, style: bodyS)),
-    );
+    final bodyS = AppTypography.of(context).bodySmall;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(text, style: bodyS)));
   }
 
   // ===== UI =====
@@ -164,8 +172,9 @@ class _SettingsState extends State<Settings> {
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final bodyM = theme.textTheme.bodyMedium!;
-    final bodyS = theme.textTheme.bodySmall!;
+    final typography = AppTypography.of(context);
+    final bodyM = typography.bodyMedium;
+    final bodyS = typography.bodySmall;
     final isDark = theme.brightness == Brightness.dark;
     final bg = isDark ? AppDarkColors.background : AppColors.background;
 
@@ -174,7 +183,7 @@ class _SettingsState extends State<Settings> {
         appBar: AppBar(
           title: Text(
             loc.settings,
-            style: bodyM.copyWith(fontWeight: FontWeight.w700),
+            style: typography.titleLarge.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
         backgroundColor: bg,
@@ -182,7 +191,13 @@ class _SettingsState extends State<Settings> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             // Section headers are their own widgets, but keep them aligned via bodyM in that widget.
-            SectionHeader(title: loc.accountSectionTitle),
+            SectionHeader(
+              title: loc.accountSectionTitle,
+              textStyle: typography.bodyLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
             SectionCard(
               child: AccountSection(
                 userName: userName,
@@ -203,7 +218,13 @@ class _SettingsState extends State<Settings> {
               ),
             ),
             const SizedBox(height: 20),
-            SectionHeader(title: loc.preferencesSectionTitle),
+            SectionHeader(
+              title: loc.preferencesSectionTitle,
+              textStyle: typography.bodyLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
             SectionCard(
               child: PreferencesSection(
                 isDark: themeModeProv.mode == ThemeMode.dark,
@@ -215,7 +236,8 @@ class _SettingsState extends State<Settings> {
             const SizedBox(height: 24),
             Text(
               '${loc.appVersionLabel}: $_appVersion',
-              style: bodyS.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: typography.caption
+                  .copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ],
         ),

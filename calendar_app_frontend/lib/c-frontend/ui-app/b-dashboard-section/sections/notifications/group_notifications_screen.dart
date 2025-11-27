@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/errors/group_limit_exception.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/notification/notification_api_client.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
@@ -9,6 +10,7 @@ import 'package:hexora/c-frontend/enums/category/broad_category.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/utils/notification_grouping.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/widgets/notification_card.dart';
 import 'package:hexora/c-frontend/viewmodels/notification_vm/view_model/notification_view_model.dart';
+import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -81,9 +83,21 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
   }
 
   Future<void> _handleConfirm(NotificationUser notification) async {
-    await _viewModel.handleConfirmation(notification);
-    if (!mounted) return;
-    await _load();
+    final l = AppLocalizations.of(context)!;
+    try {
+      await _viewModel.handleConfirmation(notification);
+      if (!mounted) return;
+      await _load();
+    } on GroupLimitException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${l.error}: $e')),
+      );
+    }
   }
 
   Future<void> _handleNegate(NotificationUser notification) async {
@@ -95,7 +109,12 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final t = theme.textTheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final topBarColor =
+        isDark ? AppDarkColors.dashboardTopBar : AppColors.dashboardTopBar;
+    final onTopBar = isDark ? AppDarkColors.textPrimary : AppColors.white;
 
     Widget body;
     if (_loading) {
@@ -151,9 +170,23 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: topBarColor,
+        elevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: onTopBar),
+        actionsIconTheme: IconThemeData(color: onTopBar),
         title: Text(
           l.groupNotificationsTitle(widget.group.name),
-          style: t.titleLarge,
+          style: t.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+                color: onTopBar,
+              ) ??
+              TextStyle(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+                color: onTopBar,
+              ),
         ),
       ),
       body: body,
@@ -178,7 +211,7 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
 
     final tabs = <_NotificationTab>[
       _NotificationTab(
-        label: '${loc.all} (${notifications.length})',
+        label: loc.all,
         notifications: notifications,
       ),
     ];
@@ -187,7 +220,7 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
       final entries = buckets[cat] ?? const <NotificationUser>[];
       tabs.add(
         _NotificationTab(
-          label: '${cat.localizedName(context)} (${entries.length})',
+          label: cat.localizedName(context),
           notifications: entries,
         ),
       );

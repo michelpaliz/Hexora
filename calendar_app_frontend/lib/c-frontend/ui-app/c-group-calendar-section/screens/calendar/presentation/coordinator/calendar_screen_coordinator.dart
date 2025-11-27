@@ -16,6 +16,8 @@ import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calend
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/logic/actions/event_actions_manager.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/screen/events_in_calendar/bridge/event_display_manager.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/screen/events_in_calendar/widgets/event_content_builder.dart';
+import 'package:hexora/c-frontend/utils/location/location_service.dart';
+import 'package:hexora/c-frontend/utils/weather/weather_service.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/utils/color_manager.dart';
 import 'package:provider/provider.dart';
@@ -41,6 +43,10 @@ class CalendarScreenCoordinator {
   CalendarViewAdapter? calendarUI;
   late final EventDisplayManager _displayManager;
   EventActionManager? _eventActionManager;
+  final WeatherService _weatherService = WeatherService();
+  final LocationService _locationService = LocationService();
+  String? _lastWeatherLocation;
+  bool _isDisposed = false;
 
   // Keep track of last bound EventDomain & role to avoid unnecessary rebuilds
   EventDomain? _lastEventDomain;
@@ -175,6 +181,8 @@ class CalendarScreenCoordinator {
 
       // 7) Single, idempotent refresh (silent to avoid UX flicker)
       await eventDomain.manualRefresh(context, silent: true);
+      if (_isDisposed) return;
+      await _syncWeather(me?.location);
       // UI redraw is driven by CalendarUIController's notifier listener.
     } catch (e, s) {
       devtools.log("❌ Error initializing calendar: $e\n$s");
@@ -210,7 +218,31 @@ class CalendarScreenCoordinator {
       _screenManager.setScreenWidthAndCalendarHeight(context);
 
   void dispose() {
+    _isDisposed = true;
     SocketManager().off('presence:update');
     calendarUI?.dispose();
+  }
+
+  Future<void> _syncWeather(String? storedLocation) async {
+    if (_isDisposed) return;
+    String? location = storedLocation?.trim();
+    if (location == null || location.isEmpty) {
+      location = await _locationService.getCurrentCityName();
+      if (_isDisposed) return;
+    }
+    if (location == null || location.isEmpty) {
+      calendarUI?.setWeatherForecast(const {});
+      return;
+    }
+
+    if (_lastWeatherLocation == location) {
+      // WeatherService caches per location; still call to refresh TTL
+    }
+
+    final forecast =
+        await _weatherService.fetchForecastSummaries(location: location);
+    if (_isDisposed) return;
+    calendarUI?.setWeatherForecast(forecast);
+    _lastWeatherLocation = location;
   }
 }

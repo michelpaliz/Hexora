@@ -9,6 +9,8 @@ class AppColors {
   static const Color primary = Color(0xFF1E88E5); // calmer blue
   static const Color primaryLight = Color(0xFF64B5F6);
   static const Color primaryDark = Color(0xFF1565C0);
+  static const Color dashboardTopBar =
+      Color(0xFF2B3850); // muted blue-gray for cards/top bars
 
   // 🟠 Secondary (Amber / Warm accent)
   static const Color secondary = Color(0xFFFFB74D);
@@ -35,6 +37,8 @@ class AppDarkColors {
   static const Color primary = Color(0xFF64B5F6);
   static const Color primaryLight = Color(0xFF90CAF9);
   static const Color primaryDark = Color(0xFF1976D2);
+  static const Color dashboardTopBar =
+      Color(0xFF172235); // slightly lighter than background for depth
 
   // 🟠 Secondary (Warm amber accent)
   static const Color secondary = Color(0xFFFFB74D);

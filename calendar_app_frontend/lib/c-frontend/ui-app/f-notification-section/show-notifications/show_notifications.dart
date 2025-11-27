@@ -9,6 +9,7 @@ import 'package:hexora/c-frontend/enums/category/broad_category.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/main_scaffold.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/errors/group_limit_exception.dart';
 
 import '../../../viewmodels/notification_vm/view_model/notification_view_model.dart';
 import 'utils/notification_grouping.dart';
@@ -163,8 +164,7 @@ class _ShowNotificationsState extends State<ShowNotifications> {
                             notifications: tab.notifications,
                             onDelete: (n) =>
                                 _notificationViewModel.deleteNotification(n),
-                            onConfirm: (n) =>
-                                _notificationViewModel.handleConfirmation(n),
+                            onConfirm: _handleInviteConfirmation,
                             onNegate: (n) =>
                                 _notificationViewModel.handleNegation(n),
                           ),
@@ -216,6 +216,28 @@ class _ShowNotificationsState extends State<ShowNotifications> {
     }
 
     return tabs;
+  }
+
+  Future<void> _handleInviteConfirmation(
+      NotificationUser notification) async {
+    final loc = AppLocalizations.of(context)!;
+    try {
+      await _notificationViewModel.handleConfirmation(notification);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.confirm)),
+      );
+    } on GroupLimitException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${loc.error}: $e')),
+      );
+    }
   }
 }
 

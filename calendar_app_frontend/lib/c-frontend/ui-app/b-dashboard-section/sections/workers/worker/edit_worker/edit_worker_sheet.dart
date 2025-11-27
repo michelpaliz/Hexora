@@ -4,6 +4,7 @@ import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/shared/currency_options.dart';
 
 class EditWorkerSheet extends StatefulWidget {
   final Group group;
@@ -29,7 +30,7 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
   late TextEditingController _rateCtrl;
   late TextEditingController _roleTagCtrl;
   late TextEditingController _notesCtrl;
-  String _currency = 'EUR';
+  String _currency = defaultWorkerCurrency;
   late WorkerStatus _status;
   bool _saving = false;
 
@@ -43,7 +44,7 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
     );
     _roleTagCtrl = TextEditingController(text: w.roleTag ?? '');
     _notesCtrl = TextEditingController(text: w.notes ?? '');
-    _currency = (w.currency ?? 'EUR');
+    _currency = (w.currency ?? defaultWorkerCurrency);
     _status = w.status;
   }
 
@@ -148,10 +149,11 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: _currency,
-                    items: const ['EUR', 'USD', 'GBP']
+                    items: workerCurrencyOptions
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
-                    onChanged: (v) => setState(() => _currency = v ?? 'EUR'),
+                    onChanged: (v) =>
+                        setState(() => _currency = v ?? defaultWorkerCurrency),
                     decoration: InputDecoration(labelText: l.currencyLabel),
                   ),
                 ),

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/card/time_tracking_header_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/loading_list.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/edit_worker/edit_worker_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -128,6 +128,21 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     }
   }
 
+  Future<void> _addSharedHours() async {
+    if (_workers.isEmpty) return;
+    final created = await Navigator.pushNamed(
+      context,
+      AppRoutes.createTimeEntry,
+      arguments: {
+        'group': widget.group,
+        'workers': _workers,
+      },
+    );
+    if (created == true) {
+      await _load();
+    }
+  }
+
   Future<bool?> _openEditWorkerDialog(
       BuildContext context, Group group, Worker worker) {
     return showModalBottomSheet<bool>(
@@ -192,7 +207,6 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
             _countChip(context),
         ],
       ),
-
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
@@ -294,11 +308,30 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                             ],
                           ),
       ),
-      // ✅ Keep only the bottom FAB for adding workers
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addWorker,
-        icon: const Icon(Icons.person_add_alt_1),
-        label: Text(l.createWorkerCta),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!_loading &&
+              !_pluginDisabled &&
+              _error == null &&
+              _workers.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: FloatingActionButton.extended(
+                heroTag: 'add-hours-fab',
+                onPressed: _toggling ? null : _addSharedHours,
+                icon: const Icon(Icons.schedule_outlined),
+                label: Text(l.addTimeEntryCta),
+              ),
+            ),
+          FloatingActionButton.extended(
+            heroTag: 'add-worker-fab',
+            onPressed: _addWorker,
+            icon: const Icon(Icons.person_add_alt_1),
+            label: Text(l.createWorkerCta),
+          ),
+        ],
       ),
     );
   }
