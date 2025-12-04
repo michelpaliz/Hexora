@@ -21,6 +21,10 @@ class GroupBusinessHoursCard extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final headingStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: cs.primary,
+          fontWeight: FontWeight.w800,
+        );
     final hours = group.businessHours;
     final hasWindow = hours?.isConfigured ?? false;
 
@@ -34,7 +38,10 @@ class GroupBusinessHoursCard extends StatelessWidget {
 
     final timezoneLabel = hours?.timezone ?? 'Europe/Madrid';
 
-    final titleStyle = t.bodyLarge.copyWith(fontWeight: FontWeight.w700);
+    final titleStyle = headingStyle ??
+        t.bodyLarge.copyWith(
+          fontWeight: FontWeight.w700,
+        );
     final rangeStyle = t.bodyMedium;
     final descriptionStyle = t.bodySmall;
     final tzStyle =

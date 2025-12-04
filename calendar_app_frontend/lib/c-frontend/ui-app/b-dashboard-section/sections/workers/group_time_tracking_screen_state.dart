@@ -7,6 +7,7 @@ import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/card/time_tracking_header_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/loading_list.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_list_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/edit_worker/edit_worker_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -199,13 +200,10 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.timeTrackingTitle, style: t.titleLarge),
+        title: Text(l.timeTrackingTitle,
+            style: t.titleLarge.copyWith(fontWeight: FontWeight.w800)),
         backgroundColor: cs.surface,
-        actions: [
-          // 👉 Replaced the add button with a total workers chip
-          if (!_loading && !_pluginDisabled && _error == null)
-            _countChip(context),
-        ],
+        iconTheme: IconThemeData(color: cs.inverseSurface),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -247,63 +245,36 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
+                              if (!_loading &&
+                                  !_pluginDisabled &&
+                                  _error == null)
+                                _countChip(context),
+                              const SizedBox(height: 10),
 
-                              ..._workers.map((w) {
-                                final isLinked =
-                                    (w.userId != null && w.userId!.isNotEmpty);
-                                final leadingIcon = isLinked
-                                    ? Icons.person_outline
-                                    : Icons.badge_outlined;
-
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  child: ListTile(
-                                    leading: Icon(leadingIcon),
-                                    title: Text(
-                                      w.displayName ?? w.userId ?? 'Unnamed',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600),
-                                      overflow: TextOverflow.ellipsis,
+                              WorkerListSection(
+                                workers: _workers,
+                                onEdit: (w) async {
+                                  final updated = await _openEditWorkerDialog(
+                                    context,
+                                    widget.group,
+                                    w,
+                                  );
+                                  if (updated == true) _load();
+                                },
+                                onOpenOverview: (w) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          WorkerMonthlyOverviewScreen(
+                                        group: widget.group,
+                                        worker: w,
+                                      ),
                                     ),
-                                    subtitle: Text(
-                                      isLinked
-                                          ? AppLocalizations.of(context)!
-                                              .linkedUser
-                                          : AppLocalizations.of(context)!
-                                              .externalWorker,
-                                    ),
-                                    trailing: IconButton(
-                                      icon: const Icon(Icons.edit_outlined),
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                      tooltip: AppLocalizations.of(context)!
-                                          .editWorker,
-                                      onPressed: () async {
-                                        final updated =
-                                            await _openEditWorkerDialog(
-                                          context,
-                                          widget.group,
-                                          w,
-                                        );
-                                        if (updated == true) _load();
-                                      },
-                                    ),
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              WorkerMonthlyOverviewScreen(
-                                            group: widget.group,
-                                            worker: w,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              }),
+                                  );
+                                },
+                              ),
                               const SizedBox(height: 100),
                             ],
                           ),

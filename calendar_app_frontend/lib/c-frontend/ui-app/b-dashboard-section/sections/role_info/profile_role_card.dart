@@ -30,7 +30,7 @@ class ProfileRoleCard extends StatelessWidget {
 
     final displayName = _displayName(user);
     final atUsername = _atUsername(user);
-    final roleLabel = role.label(l);
+    final roleLabel = roleLabelOf(context, role);
     final title = _greetingLine(l, displayName, roleLabel, role);
 
     return Semantics(
@@ -128,14 +128,11 @@ class ProfileRoleCard extends StatelessWidget {
 
   String _greetingLine(AppLocalizations l, String displayName, String roleLabel,
       GroupRole role) {
-    switch (role) {
-      case GroupRole.owner:
-      case GroupRole.admin:
-      case GroupRole.coAdmin:
-        return '${l.hey} $displayName — ${l.youAreThe} $roleLabel ${l.ofThisGroup}. ${l.youHaveSuperPowersHere}';
-      case GroupRole.member:
-      return '${l.hey} $displayName — ${l.youAreThe} ${l.member} ${l.ofThisGroup}.';
+    final key = role.wire.toLowerCase().replaceAll('-', '').replaceAll('_', '');
+    if (key == 'owner' || key == 'admin' || key == 'coadmin') {
+      return '${l.hey} $displayName — ${l.youAreThe} $roleLabel ${l.ofThisGroup}. ${l.youHaveSuperPowersHere}';
     }
+    return '${l.hey} $displayName — ${l.youAreThe} ${l.member} ${l.ofThisGroup}.';
   }
 }
 

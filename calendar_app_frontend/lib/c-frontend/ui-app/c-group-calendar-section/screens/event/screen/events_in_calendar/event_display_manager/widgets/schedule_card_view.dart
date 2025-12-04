@@ -3,6 +3,7 @@ import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/logic/actions/event_actions_manager.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/screen/events_in_calendar/event_display_manager/sheets/utils/action_sheet_helpers.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/screen/events_in_calendar/event_display_manager/widgets/leading_icon.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/AppLocalitationMethod.dart';
 
 class ScheduleCardView extends StatelessWidget {
@@ -79,6 +80,7 @@ class ScheduleCardView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final loc = AppLocalizationsMethods.of(context)!;
+    final typo = AppTypography.of(context);
 
     final startLocal = event.startDate.toLocal();
     final endLocal = event.endDate.toLocal();
@@ -92,29 +94,13 @@ class ScheduleCardView extends StatelessWidget {
 
     final canAdmin = canEdit(userRole);
 
-    // Typography: use your app's font via theme.textTheme body styles.
-    final dateStyle = theme.textTheme.bodySmall?.copyWith(
-      color: textColor.withOpacity(0.75),
-      fontWeight: FontWeight.w500,
-    );
-
-    final titleStyle = theme.textTheme.bodyMedium?.copyWith(
-      fontWeight: FontWeight.w700,
-      decoration: event.isDone ? TextDecoration.lineThrough : null,
-      color: textColor,
-    );
-
-    final descStyle = theme.textTheme.bodySmall?.copyWith(
-      color: textColor.withOpacity(0.7),
-    );
-
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       color: theme.cardColor,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: Row(
           children: [
             buildLeadingIcon(cardColor, event, size: 40),
@@ -136,7 +122,10 @@ class ScheduleCardView extends StatelessWidget {
                       Flexible(
                         child: Text(
                           dateLine,
-                          style: dateStyle,
+                          style: typo.caption.copyWith(
+                            color: textColor.withOpacity(0.75),
+                            fontWeight: FontWeight.w600,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -147,20 +136,27 @@ class ScheduleCardView extends StatelessWidget {
                   // Title shows only the client name (after the dash)
                   Text(
                     clientOnlyTitle(event.title),
-                    style: titleStyle,
+                    style: typo.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      decoration:
+                          event.isDone ? TextDecoration.lineThrough : null,
+                      color: textColor,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (event.description?.isNotEmpty ?? false)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        event.description!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: descStyle,
-                      ),
-                    ),
+                  // if (event.description?.isNotEmpty ?? false)
+                  //   Padding(
+                  //     padding: const EdgeInsets.only(top: 2),
+                  //     child: Text(
+                  //       event.description!,
+                  //       maxLines: 1,
+                  //       overflow: TextOverflow.ellipsis,
+                  //       style: typo.bodySmall.copyWith(
+                  //         color: textColor.withOpacity(0.7),
+                  //       ),
+                  //     ),
+                  //   ),
                 ],
               ),
             ),

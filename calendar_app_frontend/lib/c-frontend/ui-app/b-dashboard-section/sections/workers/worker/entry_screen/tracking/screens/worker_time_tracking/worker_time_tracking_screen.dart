@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/functions/widgets/time_entry_list.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/controller/worker_time_tracking_controller.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/widgets/appbar_title.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/widgets/stats_header.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/controller/worker_time_tracking_controller.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/widgets/appbar_title.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/widgets/stats_header.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/widgets/time_entry_list.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart'; // keep only if added to pubspec
@@ -46,8 +46,16 @@ class WorkerTimeTrackingScreen extends StatelessWidget {
   }
 }
 
-class _WorkerTimeTrackingView extends StatelessWidget {
+class _WorkerTimeTrackingView extends StatefulWidget {
   const _WorkerTimeTrackingView();
+
+  @override
+  State<_WorkerTimeTrackingView> createState() =>
+      _WorkerTimeTrackingViewState();
+}
+
+class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
+  bool _showMissingDays = false;
 
   Future<void> _addEntry(BuildContext context) async {
     final c = context.read<WorkerTimeTrackingController>();
@@ -87,7 +95,6 @@ class _WorkerTimeTrackingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-
     return Consumer<WorkerTimeTrackingController>(
       builder: (context, c, _) {
         return Scaffold(
@@ -99,6 +106,14 @@ class _WorkerTimeTrackingView extends StatelessWidget {
               month: c.month,
             ),
             actions: [
+              IconButton(
+                tooltip: l.toggleEmptyDays,
+                onPressed: () =>
+                    setState(() => _showMissingDays = !_showMissingDays),
+                icon: Icon(
+                  _showMissingDays ? Icons.visibility_off : Icons.visibility,
+                ),
+              ),
               IconButton(
                 tooltip: l.exportExcel,
                 onPressed: () => _exportExcel(context),
@@ -122,7 +137,10 @@ class _WorkerTimeTrackingView extends StatelessWidget {
                           onRefresh: c.load,
                           child: Column(
                             children: [
-                              StatsHeader(entries: c.entries, totals: c.totals),
+                              StatsHeader(
+                                  entries: c.entries,
+                                  totals: c.totals,
+                                  worker: c.worker),
                               Expanded(
                                 child: TimeEntriesList(
                                   entries: c.entries,
@@ -131,6 +149,8 @@ class _WorkerTimeTrackingView extends StatelessWidget {
                                   getToken: () =>
                                       context.read<UserDomain>().getAuthToken(),
                                   onUpdated: c.load,
+                                  worker: c.worker,
+                                  showMissingDays: _showMissingDays,
                                 ),
                               ),
                             ],

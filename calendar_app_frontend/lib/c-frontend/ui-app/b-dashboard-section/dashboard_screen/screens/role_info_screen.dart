@@ -29,8 +29,8 @@ class RoleInfoScreen extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    final roleLabel = role.label(l);
-    final bullets = RoleCapabilitySummaries.forRole(role, l);
+    final roleLabel = roleLabelOf(context, role);
+    final bullets = roleCapabilitySummaries(role, l);
 
     String displayName() {
       final dn = (user.displayName ?? '').trim();
@@ -51,8 +51,8 @@ class RoleInfoScreen extends StatelessWidget {
       return at;
     }
 
-    final capabilityColor =
-        role == GroupRole.member ? cs.secondary : cs.primary;
+    final key = role.wire.toLowerCase().replaceAll('-', '').replaceAll('_', '');
+    final capabilityColor = (key == 'member') ? cs.secondary : cs.primary;
 
     return Scaffold(
       appBar: AppBar(title: Text(roleLabel)),
@@ -212,8 +212,9 @@ class RoleInfoScreen extends StatelessWidget {
     String roleLabel,
     GroupRole role,
   ) {
+    final key = role.wire.toLowerCase().replaceAll('-', '').replaceAll('_', '');
     final base = '${l.hey} $name — ${l.youAreThe} $roleLabel ${l.ofThisGroup}.';
-    if (role == GroupRole.member) return base;
+    if (key == 'member') return base;
     return '$base ${l.youHaveSuperPowersHere}';
   }
 }

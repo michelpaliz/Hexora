@@ -1,75 +1,62 @@
 import 'package:flutter/material.dart';
 
-enum GroupRole { member, coAdmin, admin, owner }
+/// Backend-driven role model (wire value + rank + icon).
+class GroupRole {
+  final String wire;
+  final int rank; // higher rank => more permissions
+  final IconData icon;
 
-extension GroupRoleX on GroupRole {
-  /// Canonical wire/string value used by your APIs/DB
-  String get wire => switch (this) {
-        GroupRole.member => 'member',
-        GroupRole.coAdmin => 'co-admin',
-        GroupRole.admin => 'admin',
-        GroupRole.owner => 'owner',
-      };
+  const GroupRole({
+    required this.wire,
+    required this.rank,
+    required this.icon,
+  });
 
-  /// Parse from various backend/user-provided strings
-  static GroupRole from(String? raw) {
-    switch ((raw ?? '').toLowerCase()) {
-      case 'owner':
-        return GroupRole.owner;
-      case 'co-admin':
-      case 'coadmin':
-      case 'co_admin':
-        return GroupRole.coAdmin;
-      case 'admin':
-        return GroupRole.admin;
-      case 'member':
-      default:
-        return GroupRole.member;
-    }
+  /// Color helper for chips
+  Color roleChipColor(ColorScheme cs) {
+    // Basic mapping; adjust as needed
+    final key = _sanitize(wire);
+    return switch (key) {
+      'owner' => cs.primary,
+      'admin' => cs.tertiary,
+      'coadmin' => cs.tertiary,
+      _ => cs.onSurfaceVariant,
+    };
   }
 
-  /// Permissions
-  bool get canManageMembers => switch (this) {
-        GroupRole.owner => true,
-        GroupRole.admin => true,
-        GroupRole.coAdmin => true,
-        GroupRole.member => false,
-      };
+  /// Built-in defaults (used as fallback if backend fetch fails)
+  static const GroupRole owner =
+      GroupRole(wire: 'owner', rank: 3, icon: Icons.workspace_premium_rounded);
+  static const GroupRole admin = GroupRole(
+      wire: 'admin', rank: 2, icon: Icons.admin_panel_settings_rounded);
+  static const GroupRole coAdmin =
+      GroupRole(wire: 'co-admin', rank: 1, icon: Icons.shield_rounded);
+  static const GroupRole member =
+      GroupRole(wire: 'member', rank: 0, icon: Icons.person_rounded);
 
-  bool get canManageGroup => switch (this) {
-        GroupRole.owner => true,
-        GroupRole.admin => true,
-        GroupRole.coAdmin => false,
-        GroupRole.member => false,
-      };
+  static const List<GroupRole> defaults = [member, coAdmin, admin, owner];
 
-  /// Sorting helpers
-  int get rank => switch (this) {
-        GroupRole.owner => 3,
-        GroupRole.admin => 2,
-        GroupRole.coAdmin => 1,
-        GroupRole.member => 0,
-      };
+  /// Find a matching role by wire, using provided roles first, then defaults.
+  static GroupRole fromWire(
+    String? raw, {
+    List<GroupRole>? available,
+  }) {
+    final list = available ?? defaults;
+    final s = _sanitize(raw);
+    for (final r in list) {
+      if (_sanitize(r.wire) == s) return r;
+    }
+    // try common variants
+    if (s == 'coadmin') {
+      final match = list.firstWhere(
+        (r) => _sanitize(r.wire) == 'coadmin',
+        orElse: () => coAdmin,
+      );
+      return match;
+    }
+    return list.firstWhere((_) => true, orElse: () => member);
+  }
 
-  int get priorityAsc => switch (this) {
-        GroupRole.owner => 0,
-        GroupRole.admin => 1,
-        GroupRole.coAdmin => 2,
-        GroupRole.member => 3,
-      };
-
-  /// UI: chip color (INSTANCE method)
-  Color roleChipColor(ColorScheme cs) => switch (this) {
-        GroupRole.owner => cs.primary,
-        GroupRole.admin => cs.tertiary,
-        GroupRole.coAdmin => cs.tertiary,
-        GroupRole.member => Colors.grey[800]!,
-      };
-  IconData get icon => switch (this) {
-        GroupRole.owner => Icons.workspace_premium_rounded,
-        GroupRole.admin => Icons.admin_panel_settings_rounded,
-        GroupRole.coAdmin => Icons.shield_rounded,
-        GroupRole.member => Icons.person_rounded,
-      };
-      
+  static String _sanitize(String? v) =>
+      (v ?? '').toLowerCase().replaceAll('-', '').replaceAll('_', '').trim();
 }

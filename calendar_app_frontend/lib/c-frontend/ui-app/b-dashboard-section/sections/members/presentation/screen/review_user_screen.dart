@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/controller/add_user_controller.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/screen/tabs/add_user_tab.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/screen/tabs/update_role_tab.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/add_user_bottom_sheet.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/widgets/add_user_bottom_sheet.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/button/button_styles.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 
 class ReviewAndAddUsersScreen extends StatefulWidget {
   const ReviewAndAddUsersScreen({super.key});
@@ -26,6 +27,7 @@ class ReviewAndAddUsersScreen extends StatefulWidget {
 
 class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
   bool _seeded = false;
+  late Future<List<GroupRole>> _rolesFuture;
 
   Future<void> _seedVmFromGroupOnce(BuildContext context) async {
     if (_seeded) return;
@@ -36,22 +38,28 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
     final repo = context.read<IUserRepository>();
     final port = context.read<IGroupEditorPort>();
 
-    // Build members map (id -> User)
+    // 1) Wait for backend roles (or fall back to defaults)
+    final availableRoles = await _rolesFuture
+        .catchError((_) => <GroupRole>[])
+        .then((v) => v.isNotEmpty ? v : GroupRole.defaults);
+
+    // 2) Build members map
     final Map<String, User> membersById = {};
     for (final id in group.userIds) {
       try {
         final u = await repo.getUserById(id);
         membersById[u.id] = u;
-      } catch (_) {
-        // ignore a failing user; continue seeding others
-      }
+      } catch (_) {}
     }
 
-    // Build roles map (id -> GroupRole)
+    // 3) Build roles map using the same availableRoles
     final Map<String, GroupRole> roles = {};
     group.userRoles.forEach((userId, wire) {
-      roles[userId] = GroupRoleX.from(wire);
-    });
+      roles[userId] = GroupRole.fromWire(
+        wire,
+        available: availableRoles,
+      );
+    }); 
 
     await port.seedMembers(membersById: membersById, roles: roles);
     if (mounted) setState(() => _seeded = true);
@@ -60,6 +68,8 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
   @override
   void initState() {
     super.initState();
+    _rolesFuture =
+        context.read<GroupDomain>().fetchGroupRoles().then((roles) => roles);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _seedVmFromGroupOnce(context);
     });
@@ -87,6 +97,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
           builder: (context) {
             final port = context.watch<IGroupEditorPort>();
             final ctrl = context.watch<AddUserController>();
+            final gd = context.watch<GroupDomain>();
 
             final Color primary = cs.primary;
             final Color selectedText = ThemeColors.contrastOn(primary);
@@ -146,17 +157,42 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
               ),
               body: TabBarView(
                 children: [
-                  UpdateRolesTab(
-                    rolesByUserId: port.roles,
-                    membersById: port.membersById,
-                    assignableRoles: const [
-                      GroupRole.member,
-                      GroupRole.coAdmin,
-                      GroupRole.admin,
-                      GroupRole.owner,
-                    ],
-                    canEditRole: (userId) => port.canEditRole(userId),
-                    setRole: (userId, r) => port.setRole(userId, r),
+                  FutureBuilder<List<GroupRole>>(
+                    future: _rolesFuture,
+                    builder: (context, snapshot) {
+                      final roles = snapshot.data ??
+                          const [
+                            GroupRole.member,
+                            GroupRole.coAdmin,
+                            GroupRole.admin,
+                            GroupRole.owner,
+                          ];
+                      final currentUserId = context.read<UserDomain>().user?.id;
+                      final actorIsOwner = (() {
+                        final g = gd.currentGroup;
+                        if (g == null || currentUserId == null) return false;
+                        final wire = g.userRoles[currentUserId] ?? '';
+                        return wire.toLowerCase().replaceAll('-', '') ==
+                            'owner';
+                      })();
+                      return ValueListenableBuilder<Map<String, String>>(
+                        valueListenable: gd.userRoles,
+                        builder: (_, rolesMap, __) {
+                          final mappedRoles = rolesMap.isNotEmpty
+                              ? rolesMap.map(
+                                  (k, v) => MapEntry(k, GroupRole.fromWire(v)))
+                              : port.roles;
+                          return UpdateRolesTab(
+                            rolesByUserId: mappedRoles,
+                            membersById: port.membersById,
+                            assignableRoles: roles,
+                            canEditRole: (userId) => port.canEditRole(userId),
+                            setRole: (userId, r) => port.setRole(userId, r),
+                            actorIsOwner: actorIsOwner,
+                          );
+                        },
+                      );
+                    },
                   ),
                   AddUsersTab(
                     openPicker: () async {

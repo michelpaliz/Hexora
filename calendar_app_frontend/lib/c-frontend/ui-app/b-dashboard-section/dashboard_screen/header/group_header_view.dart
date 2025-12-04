@@ -193,7 +193,7 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
       String? userId = user?.id;
       GroupRole? role;
       if (userId != null) {
-        role = GroupRoleX.from(widget.group.userRoles[userId]);
+        role = GroupRole.fromWire(widget.group.userRoles[userId]);
       }
       final canSeeAll = role == null || role != GroupRole.member;
       final visible = canSeeAll || userId == null
@@ -282,7 +282,7 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     resolvedUser ??= await _ud.getUser();
     if (!mounted || resolvedUser == null) return;
     final roleWire = widget.group.userRoles[resolvedUser.id];
-    final role = GroupRoleX.from(roleWire);
+    final role = GroupRole.fromWire(roleWire);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GroupUndoneEventsScreen(

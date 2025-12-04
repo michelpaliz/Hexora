@@ -1,4 +1,3 @@
-// lib/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/member/member_role_tile.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
@@ -11,12 +10,16 @@ class MemberRoleTile extends StatelessWidget {
   final String userId;
   final User? user;
   final GroupRole role;
+  final Map<String, GroupRole>? rolesByUserId; // optional live map
 
-  /// If true, tapping the tile shows the role dialog (via [onEditRole])
+  /// If true, tapping the tile shows the inline role picker
   final bool editable;
 
-  /// Called when the user taps the tile (to open your role dialog)
-  final VoidCallback? onEditRole;
+  /// Which roles can be chosen (required when editable)
+  final List<GroupRole> assignableRoles;
+
+  /// Called when a new role is selected
+  final void Function(GroupRole newRole)? onRoleChanged;
 
   /// Optional long-press action (e.g., remove user)
   final VoidCallback? onRemove;
@@ -26,8 +29,10 @@ class MemberRoleTile extends StatelessWidget {
     required this.userId,
     required this.user,
     required this.role,
+    this.rolesByUserId,
     required this.editable,
-    this.onEditRole,
+    required this.assignableRoles,
+    this.onRoleChanged,
     this.onRemove,
   });
 
@@ -44,15 +49,64 @@ class MemberRoleTile extends StatelessWidget {
     final avatar =
         AvatarUtils.profileAvatar(context, user?.photoUrl, radius: 22);
 
-    // Chip style from global helpers
-    final chipColor = role.roleChipColor(cs);
-    final roleText = roleLabelOf(context, role);
+    final effectiveRole = rolesByUserId?[userId] ?? role;
+    final chipColor = effectiveRole.roleChipColor(cs);
+    final roleText = roleLabelOf(context, effectiveRole);
+
+    Future<void> _pickRole() async {
+      if (!editable) return;
+      final selected = await showModalBottomSheet<GroupRole>(
+        context: context,
+        useSafeArea: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+        builder: (ctx) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Change role',
+                    style:
+                        typo.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+              for (final r in assignableRoles)
+                ListTile(
+                  leading: Radio<GroupRole>(
+                    value: r,
+                    groupValue: effectiveRole,
+                    onChanged: (_) {
+                      Navigator.of(ctx).pop(r);
+                    },
+                  ),
+                  title: Text(roleLabelOf(context, r),
+                      style: typo.bodyMedium.copyWith(
+                          fontWeight:
+                              r == effectiveRole ? FontWeight.w700 : null)),
+                  onTap: () => Navigator.of(ctx).pop(r),
+                ),
+              const SizedBox(height: 10),
+            ],
+          );
+        },
+      );
+      if (selected != null && selected.wire != effectiveRole.wire) {
+        onRoleChanged?.call(selected);
+      }
+    }
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: editable ? onEditRole : null,
+        onTap: editable ? _pickRole : null,
         onLongPress: onRemove,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -137,7 +191,6 @@ class MemberRoleTile extends StatelessWidget {
                 ),
               ),
 
-              // Trailing affordance
               if (editable) ...[
                 const SizedBox(width: 8),
                 Icon(

@@ -64,7 +64,7 @@ class Invitation {
         groupId: (json['groupId'] ?? '').toString(),
         userId: json['userId']?.toString(),
         email: (json['email'] as String?)?.toLowerCase(),
-        role: GroupRoleX.from(json['role']?.toString()),
+        role: GroupRole.fromWire(json['role']?.toString()),
         status: InvitationStatusX.from(json['status']?.toString()),
         invitedBy: (json['invitedBy'] ?? '').toString(),
         attempts:

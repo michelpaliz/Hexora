@@ -838,6 +838,10 @@
   "dashboardTitle": "Panel",
   "sectionOverview": "Resumen",
   "sectionUpcoming": "Próximos",
+  "sectionEvents": "Eventos",
+  "@sectionEvents": {
+    "description": "Título genérico para la sección de eventos en el panel."
+  },
   "pendingEventsSectionTitle": "Eventos pendientes",
   "pendingEventsSectionSubtitle": "Marca las visitas como finalizadas cuando termines.",
   "pendingEventsEmpty": "Todo al día.",
@@ -935,6 +939,8 @@
     "description": "Mensaje que se muestra después de borrar todas las notificaciones."
   },
   "groupNotificationsSectionTitle": "Notificaciones del grupo",
+  "updateRoleTitle": "Actualizar rol",
+  "saveChanges": "Guardar cambios",
   "groupNotificationsSubtitle": "Consulta invitaciones, recordatorios y alertas de este grupo.",
   "groupNotificationsEmpty": "Este grupo todavía no tiene notificaciones.",
   "groupNotificationsError": "No pudimos cargar las notificaciones de este grupo.",
@@ -1084,6 +1090,82 @@
   "enableTrackingCta": "Habilitar",
   "disableTrackingCta": "Deshabilitar",
   "employeesHeader": "Empleados",
+  "currencyLabel": "Moneda",
+  "currencyAllOption": "Todas",
+  "workerRequiredError": "Se requiere al menos un trabajador",
+  "workersLabel": "Trabajadores",
+  "selectWorkersPlaceholder": "Selecciona trabajadores",
+  "pickWorkersCta": "Elegir trabajadores",
+  "noWorkersAvailable": "No hay trabajadores disponibles",
+  "currencyFilterLabel": "Filtrar por moneda",
+  "currencyFilterAll": "Mostrar todas las monedas",
+  "workerChipRemoveTooltip": "Quitar trabajador",
+  "workerPickerTitle": "Elegir trabajadores",
+  "workerPickerSave": "Guardar selección",
+  "selectAll": "Seleccionar todos",
+  "clearSelection": "Limpiar selección",
+  "currencyWorkersSectionTitle": "Trabajadores y moneda",
+  "currencyWorkersSectionDescription": "Filtra por moneda y elige qué trabajadores incluir.",
+  "currencyHelperText": "Usa una moneda para acotar la lista rápidamente.",
+  "workersHelperText": "Toca para añadir o quitar trabajadores.",
+  "workersValidationHint": "Elige al menos un trabajador antes de guardar.",
+  "notesLabel": "Notas",
+  "notesOptionalHint": "Añade contexto o déjalo vacío",
+  "savingLabel": "Guardando…",
+  "invalidTimeRange": "La hora de fin debe ser posterior a la hora de inicio.",
+  "toggleEmptyDays": "Mostrar/ocultar días sin horas",
+  "didNotWorkDay": "{name} no trabajó este día",
+  "daysMissedAll": "{count} días sin horas",
+  "@daysMissedAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysMissedNoSunday": "{count} días sin horas (lun-sáb)",
+  "@daysMissedNoSunday": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "avgHoursPerDayWorked": "Promedio {hours} h/día trabajadas",
+  "@avgHoursPerDayWorked": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "didNotWorkSunday": "{name} no registró horas (domingo)",
+  "@didNotWorkSunday": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "daysWorked": "{count} días trabajados",
+  "@daysWorked": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sundaysWorked": "{count} domingos trabajados",
+  "@sundaysWorked": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "avgHoursPerDayWorkedWithCount": "Promedio {hours} h/día en {count} días",
+  "@avgHoursPerDayWorkedWithCount": {
+    "placeholders": {
+      "hours": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
   "unknownWorker": "Trabajador sin nombre",
   "noTrackedYet": "Aún no se ha registrado tiempo",
   "trackedTotal": "Registrado: {tracked}",
@@ -1111,10 +1193,12 @@
   "businessHoursReset": "Limpiar horario",
   "businessHoursTimezoneLabel": "Zona horaria",
   "businessHoursTimezoneHint": "Ejemplo: Europe/Madrid",
+  "businessHoursPartialError": "Define hora de inicio y fin para guardar.",
   "businessHoursStartLabel": "Hora de inicio",
   "businessHoursEndLabel": "Hora de fin",
   "businessHoursUpdateSuccess": "Horario laboral actualizado",
   "businessHoursUpdateError": "No se pudo actualizar el horario laboral",
+  "selectMonthPrompt": "Elige un mes para ver o añadir registros.",
   "businessHoursValidationMessage": "Los eventos deben ocurrir entre {start} y {end} ({timezone}).",
   "@businessHoursValidationMessage": {
     "description": "Se muestra cuando un evento se sale del horario laboral",

@@ -1,9 +1,8 @@
 // lib/c-frontend/c-group-calendar-section/screens/group/create_edit/widgets/lists/page_group_role_list.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/member_role_tile.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/widgets/member_role_tile.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/shared/header_info.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/role_dialog/role_edit_dialog.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -24,6 +23,9 @@ class PagedGroupRoleList extends StatefulWidget {
   /// persist role change
   final void Function(String userId, GroupRole newRole) setRole;
 
+  /// whether the actor is an owner (only owners can assign owner)
+  final bool actorIsOwner;
+
   /// optional remove
   final void Function(String userId)? onRemoveUser;
 
@@ -34,6 +36,7 @@ class PagedGroupRoleList extends StatefulWidget {
     required this.assignableRoles,
     required this.canEditRole,
     required this.setRole,
+    required this.actorIsOwner,
     this.onRemoveUser,
   });
 
@@ -44,6 +47,40 @@ class PagedGroupRoleList extends StatefulWidget {
 class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
   static const int _pageSize = 20;
   int _visible = _pageSize;
+  late Map<String, GroupRole> _localRoles;
+
+  @override
+  void initState() {
+    super.initState();
+    _localRoles = _ensureCoverage(widget.roles);
+  }
+
+  @override
+  void didUpdateWidget(covariant PagedGroupRoleList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameRoles(widget.roles, _localRoles) ||
+        oldWidget.membersById.length != widget.membersById.length) {
+      _localRoles = _ensureCoverage(widget.roles);
+    }
+  }
+
+  Map<String, GroupRole> _ensureCoverage(Map<String, GroupRole> base) {
+    final next = Map<String, GroupRole>.from(base);
+    for (final id in widget.membersById.keys) {
+      next.putIfAbsent(id, () => GroupRole.member);
+    }
+    return next;
+  }
+
+  bool _sameRoles(Map<String, GroupRole> a, Map<String, GroupRole> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (!b.containsKey(key)) return false;
+      if (a[key]?.wire != b[key]?.wire) return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,11 +89,11 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
     final cs = Theme.of(context).colorScheme;
 
     // sort by role priority then by display name
-    final userIds = widget.roles.keys.toList()
+    final userIds = _localRoles.keys.toList()
       ..sort((a, b) {
-        final rA = widget.roles[a] ?? GroupRole.member;
-        final rB = widget.roles[b] ?? GroupRole.member;
-        final p = rA.priorityAsc.compareTo(rB.priorityAsc);
+        final rA = _localRoles[a] ?? GroupRole.member;
+        final rB = _localRoles[b] ?? GroupRole.member;
+        final p = rA.rank.compareTo(rB.rank);
         if (p != 0) return p;
         final nA = widget.membersById[a]?.name ?? '';
         final nB = widget.membersById[b]?.name ?? '';
@@ -75,16 +112,14 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
 
     // quick stats
     final owners = userIds
-        .where(
-            (id) => (widget.roles[id] ?? GroupRole.member) == GroupRole.owner)
+        .where((id) => (_localRoles[id] ?? GroupRole.member) == GroupRole.owner)
         .length;
     final admins = userIds
-        .where(
-            (id) => (widget.roles[id] ?? GroupRole.member) == GroupRole.admin)
+        .where((id) => (_localRoles[id] ?? GroupRole.member) == GroupRole.admin)
         .length;
     final coAdmins = userIds
         .where(
-            (id) => (widget.roles[id] ?? GroupRole.member) == GroupRole.coAdmin)
+            (id) => (_localRoles[id] ?? GroupRole.member) == GroupRole.coAdmin)
         .length;
     final members = total - owners - admins - coAdmins;
 
@@ -127,15 +162,21 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
                 child: MemberRoleTile(
                   userId: userIds[i],
                   user: widget.membersById[userIds[i]],
-                  role: widget.roles[userIds[i]] ?? GroupRole.member,
+                  role: _localRoles[userIds[i]] ?? GroupRole.member,
+                  rolesByUserId: _localRoles,
+                  assignableRoles: widget.actorIsOwner
+                      ? widget.assignableRoles
+                      : widget.assignableRoles
+                          .where((r) => r.wire != 'owner')
+                          .toList(),
                   editable: widget.canEditRole(userIds[i]),
-                  onEditRole: widget.canEditRole(userIds[i])
-                      ? () => _openRoleDialog(
-                            context,
-                            userIds[i],
-                            widget.membersById[userIds[i]],
-                            widget.roles[userIds[i]] ?? GroupRole.member,
-                          )
+                  onRoleChanged: widget.canEditRole(userIds[i])
+                      ? (newRole) {
+                          setState(() {
+                            _localRoles[userIds[i]] = newRole;
+                          });
+                          widget.setRole(userIds[i], newRole);
+                        }
                       : null,
                   onRemove: widget.canEditRole(userIds[i])
                       ? () => widget.onRemoveUser?.call(userIds[i])
@@ -164,26 +205,6 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
         ],
       ),
     );
-  }
-
-  Future<void> _openRoleDialog(
-    BuildContext context,
-    String userId,
-    User? user,
-    GroupRole current,
-  ) async {
-    final newRole = await showDialog<GroupRole>(
-      context: context,
-      builder: (_) => RoleEditDialog(
-        user: user,
-        userId: userId,
-        current: current,
-        options: widget.assignableRoles,
-      ),
-    );
-    if (newRole != null && newRole != current) {
-      widget.setRole(userId, newRole);
-    }
   }
 }
 

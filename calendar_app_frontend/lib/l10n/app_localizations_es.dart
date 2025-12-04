@@ -1428,6 +1428,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sectionUpcoming => 'Próximos';
 
   @override
+  String get sectionEvents => 'Eventos';
+
+  @override
   String get pendingEventsSectionTitle => 'Eventos pendientes';
 
   @override
@@ -1609,6 +1612,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get groupNotificationsSectionTitle => 'Notificaciones del grupo';
+
+  @override
+  String get updateRoleTitle => 'Actualizar rol';
 
   @override
   String get groupNotificationsSubtitle =>
@@ -1911,6 +1917,122 @@ class AppLocalizationsEs extends AppLocalizations {
   String get employeesHeader => 'Empleados';
 
   @override
+  String get currencyLabel => 'Moneda';
+
+  @override
+  String get currencyAllOption => 'Todas';
+
+  @override
+  String get workerRequiredError => 'Se requiere al menos un trabajador';
+
+  @override
+  String get workersLabel => 'Trabajadores';
+
+  @override
+  String get selectWorkersPlaceholder => 'Selecciona trabajadores';
+
+  @override
+  String get pickWorkersCta => 'Elegir trabajadores';
+
+  @override
+  String get noWorkersAvailable => 'No hay trabajadores disponibles';
+
+  @override
+  String get currencyFilterLabel => 'Filtrar por moneda';
+
+  @override
+  String get currencyFilterAll => 'Mostrar todas las monedas';
+
+  @override
+  String get workerChipRemoveTooltip => 'Quitar trabajador';
+
+  @override
+  String get workerPickerTitle => 'Elegir trabajadores';
+
+  @override
+  String get workerPickerSave => 'Guardar selección';
+
+  @override
+  String get selectAll => 'Seleccionar todos';
+
+  @override
+  String get clearSelection => 'Limpiar selección';
+
+  @override
+  String get currencyWorkersSectionTitle => 'Trabajadores y moneda';
+
+  @override
+  String get currencyWorkersSectionDescription =>
+      'Filtra por moneda y elige qué trabajadores incluir.';
+
+  @override
+  String get currencyHelperText =>
+      'Usa una moneda para acotar la lista rápidamente.';
+
+  @override
+  String get workersHelperText => 'Toca para añadir o quitar trabajadores.';
+
+  @override
+  String get workersValidationHint =>
+      'Elige al menos un trabajador antes de guardar.';
+
+  @override
+  String get notesLabel => 'Notas';
+
+  @override
+  String get notesOptionalHint => 'Añade contexto o déjalo vacío';
+
+  @override
+  String get savingLabel => 'Guardando…';
+
+  @override
+  String get invalidTimeRange =>
+      'La hora de fin debe ser posterior a la hora de inicio.';
+
+  @override
+  String get toggleEmptyDays => 'Mostrar/ocultar días sin horas';
+
+  @override
+  String didNotWorkDay(Object name) {
+    return '$name no trabajó este día';
+  }
+
+  @override
+  String daysMissedAll(int count) {
+    return '$count días sin horas';
+  }
+
+  @override
+  String daysMissedNoSunday(int count) {
+    return '$count días sin horas (lun-sáb)';
+  }
+
+  @override
+  String avgHoursPerDayWorked(String hours) {
+    return 'Promedio $hours h/día trabajadas';
+  }
+
+  @override
+  String didNotWorkSunday(String name) {
+    return '$name no registró horas (domingo)';
+  }
+
+  @override
+  String daysWorked(int count) {
+    return '$count días trabajados';
+  }
+
+  @override
+  String sundaysWorked(int count) {
+    return '$count domingos trabajados';
+  }
+
+  @override
+  String avgHoursPerDayWorkedWithCount(String hours, int count) {
+    return 'Promedio $hours h/día en $count días';
+  }
+
+  @override
   String get unknownWorker => 'Trabajador sin nombre';
 
   @override
@@ -1975,6 +2097,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get businessHoursTimezoneHint => 'Ejemplo: Europe/Madrid';
 
   @override
+  String get businessHoursPartialError =>
+      'Define hora de inicio y fin para guardar.';
+
+  @override
   String get businessHoursStartLabel => 'Hora de inicio';
 
   @override
@@ -1986,6 +2112,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get businessHoursUpdateError =>
       'No se pudo actualizar el horario laboral';
+
+  @override
+  String get selectMonthPrompt =>
+      'Porfavor, selecciona un mes para ver los registros.';
 
   @override
   String businessHoursValidationMessage(
@@ -2044,9 +2174,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hourlyRateHint => 'Ejemplo: 15.00';
 
   @override
-  String get currencyLabel => 'Moneda';
-
-  @override
   String get saveWorkerCta => 'Guardar trabajador';
 
   @override
@@ -2069,9 +2196,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get endLabel => 'Hora de fin';
-
-  @override
-  String get notesLabel => 'Notas';
 
   @override
   String get notesHint => 'Notas opcionales sobre este trabajador';
@@ -2179,10 +2303,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get pickMonth => 'Selecciona el mes';
-
-  @override
-  String get selectMonthPrompt =>
-      'Porfavor, selecciona un mes para ver los registros.';
 
   @override
   String get selectMonthFirst => 'Seleccionar mes';

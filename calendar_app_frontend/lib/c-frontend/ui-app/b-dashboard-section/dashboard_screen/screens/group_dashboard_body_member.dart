@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/group_header_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/role_info_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/business_hours/group_business_hours_card.dart';
@@ -33,6 +32,10 @@ class GroupDashboardBodyMember extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final sectionTitle = t.bodyLarge.copyWith(fontWeight: FontWeight.w800);
+    final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w800,
+        );
 
     return Column(
       children: [
@@ -71,37 +74,20 @@ class GroupDashboardBodyMember extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               SectionHeader(
-                title: l.groupNotificationsSectionTitle,
+                title: l.sectionEvents,
+                subtitle: l.pendingEventsSectionTitle,
                 textStyle: sectionTitle,
               ),
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.notifications_active_outlined),
-                  title: Text(
-                    l.groupNotificationsSectionTitle,
-                    style: t.accentText.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle:
-                      Text(l.groupNotificationsSubtitle, style: t.bodySmall),
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    AppRoutes.groupNotifications,
-                    arguments: group,
-                  ),
-                ),
+              GroupUpcomingEventsCard(
+                groupId: group.id,
+                // cardColor: sectionCardColor,
               ),
-              const SizedBox(height: 20),
-              SectionHeader(title: l.sectionUpcoming, textStyle: sectionTitle),
-              GroupUpcomingEventsCard(groupId: group.id),
-              const SizedBox(height: 20),
-              SectionHeader(
-                title: l.pendingEventsSectionTitle,
-                textStyle: sectionTitle,
-              ),
+              const SizedBox(height: 12),
               GroupUndoneEventsSection(
                 group: group,
                 user: user,
                 role: role,
+                // cardColor: sectionCardColor,
               ),
             ],
           ),

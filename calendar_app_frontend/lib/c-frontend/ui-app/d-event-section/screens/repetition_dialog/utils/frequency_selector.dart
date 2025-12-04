@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class RepeatFrequencySelector extends StatelessWidget {
@@ -29,28 +31,34 @@ class RepeatFrequencySelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final frequencies = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final onText = ThemeColors.textPrimary(context);
 
     return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: frequencies.map((frequency) {
         final isSelected = frequency == selectedFrequency;
 
-        return GestureDetector(
-          onTap: () => onSelectFrequency(frequency),
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            margin: EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: isSelected
-                  ? Colors.blue
-                  : const Color.fromARGB(255, 212, 234, 248),
+        return ChoiceChip(
+          label: Text(
+            _getTranslatedFrequency(context, frequency),
+            style: t.bodyMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: isSelected ? cs.onPrimaryContainer : onText,
             ),
-            child: Text(
-              _getTranslatedFrequency(context, frequency),
-              style: TextStyle(
-                fontSize: 13,
-                color: isSelected ? Colors.white : Colors.black,
-              ),
+          ),
+          selected: isSelected,
+          onSelected: (_) => onSelectFrequency(frequency),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          selectedColor: cs.primaryContainer,
+          backgroundColor: cs.surfaceVariant.withOpacity(0.65),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color:
+                  isSelected ? cs.primary : cs.outlineVariant.withOpacity(0.55),
             ),
           ),
         );

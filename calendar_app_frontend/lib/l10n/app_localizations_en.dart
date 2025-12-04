@@ -1309,7 +1309,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emailLabel => 'Email';
 
   @override
-  String get saveChanges => 'Save Changes';
+  String get saveChanges => 'Save changes';
 
   @override
   String get saveClient => 'Save Client';
@@ -1414,6 +1414,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionUpcoming => 'Upcoming';
+
+  @override
+  String get sectionEvents => 'Events';
 
   @override
   String get pendingEventsSectionTitle => 'Pending events';
@@ -1594,6 +1597,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupNotificationsSectionTitle => 'Group notifications';
+
+  @override
+  String get updateRoleTitle => 'Update role';
 
   @override
   String get groupNotificationsSubtitle =>
@@ -1895,6 +1901,120 @@ class AppLocalizationsEn extends AppLocalizations {
   String get employeesHeader => 'Employees';
 
   @override
+  String get currencyLabel => 'Currency';
+
+  @override
+  String get currencyAllOption => 'All';
+
+  @override
+  String get workerRequiredError => 'Worker required';
+
+  @override
+  String get workersLabel => 'Workers';
+
+  @override
+  String get selectWorkersPlaceholder => 'Select workers';
+
+  @override
+  String get pickWorkersCta => 'Pick workers';
+
+  @override
+  String get noWorkersAvailable => 'No workers available';
+
+  @override
+  String get currencyFilterLabel => 'Filter by currency';
+
+  @override
+  String get currencyFilterAll => 'Show all currencies';
+
+  @override
+  String get workerChipRemoveTooltip => 'Remove worker';
+
+  @override
+  String get workerPickerTitle => 'Choose workers';
+
+  @override
+  String get workerPickerSave => 'Save selection';
+
+  @override
+  String get selectAll => 'Select all';
+
+  @override
+  String get clearSelection => 'Clear selection';
+
+  @override
+  String get currencyWorkersSectionTitle => 'Workers & currency';
+
+  @override
+  String get currencyWorkersSectionDescription =>
+      'Filter by currency and pick which workers to include.';
+
+  @override
+  String get currencyHelperText =>
+      'Use a currency to quickly narrow the worker list.';
+
+  @override
+  String get workersHelperText => 'Tap to add or remove workers.';
+
+  @override
+  String get workersValidationHint => 'Pick at least one worker before saving.';
+
+  @override
+  String get notesLabel => 'Notes';
+
+  @override
+  String get notesOptionalHint => 'Add context or leave empty';
+
+  @override
+  String get savingLabel => 'Saving…';
+
+  @override
+  String get invalidTimeRange => 'End time must be after start time.';
+
+  @override
+  String get toggleEmptyDays => 'Show/hide empty days';
+
+  @override
+  String didNotWorkDay(Object name) {
+    return '$name did not work this day';
+  }
+
+  @override
+  String daysMissedAll(int count) {
+    return '$count days without hours';
+  }
+
+  @override
+  String daysMissedNoSunday(int count) {
+    return '$count days without hours (Mon-Sat)';
+  }
+
+  @override
+  String avgHoursPerDayWorked(String hours) {
+    return 'Avg $hours h/day worked';
+  }
+
+  @override
+  String didNotWorkSunday(String name) {
+    return '$name logged no hours (Sunday)';
+  }
+
+  @override
+  String daysWorked(int count) {
+    return '$count days worked';
+  }
+
+  @override
+  String sundaysWorked(int count) {
+    return '$count Sundays worked';
+  }
+
+  @override
+  String avgHoursPerDayWorkedWithCount(String hours, int count) {
+    return 'Avg $hours h/day across $count days';
+  }
+
+  @override
   String get unknownWorker => 'Unnamed worker';
 
   @override
@@ -1959,6 +2079,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get businessHoursTimezoneHint => 'Example: Europe/Madrid';
 
   @override
+  String get businessHoursPartialError =>
+      'Set both start and end to save this window.';
+
+  @override
   String get businessHoursStartLabel => 'Start time';
 
   @override
@@ -1969,6 +2093,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get businessHoursUpdateError => 'Couldn\'t update business hours';
+
+  @override
+  String get selectMonthPrompt => 'Please select a month to view entries.';
 
   @override
   String businessHoursValidationMessage(
@@ -2024,9 +2151,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hourlyRateHint => 'e.g., 15.00';
 
   @override
-  String get currencyLabel => 'Currency';
-
-  @override
   String get saveWorkerCta => 'Save Worker';
 
   @override
@@ -2049,9 +2173,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get endLabel => 'End time';
-
-  @override
-  String get notesLabel => 'Notes';
 
   @override
   String get notesHint => 'Optional notes about this shift';
@@ -2159,9 +2280,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pickMonth => 'Select month';
-
-  @override
-  String get selectMonthPrompt => 'Please select a month to view entries.';
 
   @override
   String get selectMonthFirst => 'Select month';

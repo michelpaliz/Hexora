@@ -183,10 +183,51 @@ class GroupRepository implements IGroupRepository {
     String groupId,
     GroupBusinessHours hours,
   ) async {
-    final updated =
-        await _api.setBusinessHours(groupId, hours, await _token());
+    final updated = await _api.setBusinessHours(groupId, hours, await _token());
     _replaceGroupInCache(updated);
     return updated;
+  }
+
+  @override
+  Future<void> setUserRoleInGroup({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+  }) async {
+    // Normalize against backend-allowed roles to avoid 400 Invalid role
+    String normalized = roleWire;
+    try {
+      final allowed = await getGroupRoles();
+      if (allowed.isNotEmpty) {
+        String sanitize(String v) =>
+            v.toLowerCase().replaceAll('-', '').replaceAll('_', '').trim();
+        final target = sanitize(roleWire);
+        for (final a in allowed) {
+          if (sanitize(a) == target) {
+            normalized =
+                a; // keep canonical wire from backend (e.g., "co-admin")
+            break;
+          }
+        }
+        devtools.log('🔁 allowed roles from backend: $allowed');
+      }
+    } catch (_) {
+      // If fetch fails, fall back to provided roleWire.
+    }
+    devtools.log(
+        '🔁 setUserRoleInGroup -> roleWire="$roleWire", normalized="$normalized"');
+
+    await _api.setUserRoleInGroup(
+      groupId: groupId,
+      userId: userId,
+      roleWire: normalized,
+      token: await _token(),
+    );
+  }
+
+  @override
+  Future<List<String>> getGroupRoles() async {
+    return _api.getGroupRoles(await _token());
   }
 
   // ── Media ──────────────────────────────────────────────────────────────────

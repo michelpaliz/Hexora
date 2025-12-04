@@ -115,7 +115,10 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
     final cs = Theme.of(context).colorScheme;
 
     final sectionTitle = t.bodyLarge.copyWith(fontWeight: FontWeight.w800);
-    final tileTitle = t.accentText.copyWith(fontWeight: FontWeight.w600);
+    final tileTitle = Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: cs.primary,
+          fontWeight: FontWeight.w800,
+        );
     final tileSub = t.bodySmall;
     final tileBg = ThemeColors.listTileBg(context);
 
@@ -155,39 +158,22 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             description: l.businessHoursAdminSubtitle,
             onTap: () => _editBusinessHours(context),
           ),
-
           const SizedBox(height: 20),
           SectionHeader(
-            title: l.groupNotificationsSectionTitle,
+            title: l.sectionEvents,
+            subtitle: l.pendingEventsSectionTitle,
             textStyle: sectionTitle,
           ),
-          Card(
-            color: tileBg,
-            child: ListTile(
-              leading: const Icon(Icons.notifications_active_outlined),
-              title: Text(l.groupNotificationsSectionTitle, style: tileTitle),
-              subtitle: Text(l.groupNotificationsSubtitle, style: tileSub),
-              onTap: () => Navigator.pushNamed(
-                context,
-                AppRoutes.groupNotifications,
-                arguments: _group,
-              ),
-            ),
+          GroupUpcomingEventsCard(
+            groupId: _group.id,
+            // cardColor: sectionCardColor,
           ),
-
-          const SizedBox(height: 20),
-
-          SectionHeader(title: l.sectionUpcoming, textStyle: sectionTitle),
-          GroupUpcomingEventsCard(groupId: _group.id),
-          const SizedBox(height: 20),
-          SectionHeader(
-            title: l.pendingEventsSectionTitle,
-            textStyle: sectionTitle,
-          ),
+          const SizedBox(height: 12),
           GroupUndoneEventsSection(
             group: _group,
             user: widget.user,
             role: widget.role,
+            // cardColor: sectionCardColor,
           ),
 
           const SizedBox(height: 20),

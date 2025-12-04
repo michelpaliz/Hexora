@@ -6,8 +6,8 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_event_detail_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_widgets.dart';
-import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -85,17 +85,44 @@ class _GroupUndoneEventsSectionBody extends StatelessWidget {
     final theme = Theme.of(context);
     final color = theme.colorScheme.onSurfaceVariant;
     final vm = context.watch<GroupUndoneEventsViewModel>();
+    final cs = theme.colorScheme;
+
+    // ✅ same background as ProfileRoleCard & GroupUpcomingEventsCard
+    final cardColor = cs.surface;
+
+    final cardShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: BorderSide(color: cs.outlineVariant.withOpacity(0.35)),
+    );
+    final shadow = Colors.black.withOpacity(
+      theme.brightness == Brightness.dark ? 0.3 : 0.12,
+    );
+
+    Widget styledCard(Widget child) => Card(
+          color: cardColor,
+          surfaceTintColor: Colors.transparent,
+          elevation: 6,
+          shadowColor: shadow,
+          shape: cardShape,
+          child: child,
+        );
 
     final hasItems = vm.pendingEvents.isNotEmpty;
     final visibleItems = vm.pendingEvents.take(limit).toList();
 
-    return Card(
-      child: Column(
+    return styledCard(
+      Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
             leading: const Icon(Icons.pending_actions_outlined),
-            title: Text(loc.pendingEventsSectionTitle),
+            title: Text(
+              loc.pendingEventsSectionTitle,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: cs.primary, // 🔵 blue title (already good)
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             subtitle: Text(
               loc.pendingEventsSectionSubtitle,
               style: theme.textTheme.bodySmall?.copyWith(color: color),

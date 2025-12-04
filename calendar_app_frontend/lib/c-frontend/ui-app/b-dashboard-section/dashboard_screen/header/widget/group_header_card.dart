@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/widget/group_header_primitives.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/widget/group_stats_pill_compact.dart';
 import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -50,18 +51,25 @@ class GroupHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final t = AppTypography.of(context);
     final hasDescription = description.trim().isNotEmpty;
     final l = AppLocalizations.of(context)!;
 
     final isInteractive = onTap != null;
+    final cardColor = Color.alphaBlend(
+      cs.primaryContainer.withOpacity(
+        theme.brightness == Brightness.dark ? 0.22 : 0.14,
+      ),
+      ThemeColors.cardBg(context),
+    );
 
     return Semantics(
       container: true,
       label: '$title, $createdLabel',
       child: Material(
-        color: cs.surface,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: Stack(
           children: [
@@ -69,7 +77,17 @@ class GroupHeaderCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
+                color: cardColor,
+                border: Border.all(
+                  color: cs.primaryContainer.withOpacity(0.4),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: ThemeColors.cardShadow(context),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: Column(
                 children: [

@@ -17,6 +17,7 @@ import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/shared/
 // 🔹 Use the same style + typography as Work Visit:
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/shared/form/type/event_types/work/widgets/work_visit_style.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/repetition_dialog/dialog/repetition_dialog.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -123,6 +124,7 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final typo = AppTypography.of(context); // 🔹 your font tokens
+    final theme = Theme.of(context);
 
     final categoryApi = CategoryApi(
       baseUrl: ApiConstants.baseUrl,
@@ -141,8 +143,15 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
     final outer = WorkVisitStyle.outerPadding;
 // sectionGap is a SizedBox; its height is double?
     final runGap = WorkVisitStyle.sectionGap.height ?? 0.0; // <-- fix
-    final cs = Theme.of(context).colorScheme;
+    final cs = theme.colorScheme;
+    final backdrop = Color.alphaBlend(
+      cs.primary.withOpacity(
+        theme.brightness == Brightness.dark ? 0.14 : 0.06,
+      ),
+      cs.surfaceVariant,
+    );
     return Scaffold(
+      backgroundColor: backdrop,
       appBar: AppBar(
         // title: Text(
         //   l.event,
@@ -156,7 +165,7 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
           style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
         iconTheme: IconThemeData(color: cs.onSurface),
-        backgroundColor: cs.surface,
+        backgroundColor: ThemeColors.cardBg(context),
         elevation: 0,
       ),
       body: isLoading
@@ -187,7 +196,7 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
   // EventDialogs implementation (used by simple form only)
   @override
   Widget buildRepetitionDialog(BuildContext context) {
-    return RepetitionDialog(
+    return RepetitionScreen(
       selectedStartDate: selectedStartDate,
       selectedEndDate: selectedEndDate,
       initialRecurrenceRule: recurrenceRule,
@@ -218,14 +227,14 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
     required DateTime selectedEndDate,
     LegacyRecurrenceRule? initialRule,
   }) {
-    return showDialog<List<Object?>?>(
-      context: context,
-      barrierDismissible: true,
-      useRootNavigator: true,
-      builder: (context) => RepetitionDialog(
-        selectedStartDate: selectedStartDate,
-        selectedEndDate: selectedEndDate,
-        initialRecurrenceRule: initialRule,
+    return Navigator.of(context).push<List<Object?>>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => RepetitionScreen(
+          selectedStartDate: selectedStartDate,
+          selectedEndDate: selectedEndDate,
+          initialRecurrenceRule: initialRule,
+        ),
       ),
     );
   }

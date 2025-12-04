@@ -88,7 +88,8 @@ class TimeEntryCard extends StatelessWidget {
     // Compact formats
     final monthFmt = DateFormat.MMM(locale); // e.g., Oct
     final dayFmt = DateFormat.d(locale); // e.g., 27
-    final dateRowFmt = DateFormat.yMMMd(locale); // e.g., Oct 27, 2025
+    final dateRowFmt =
+        DateFormat('EEEE d MMM y', locale); // e.g., Monday 27 Oct 2025
     final timeFmt = DateFormat.Hm(locale); // 14:05
 
     final hasEnd = entry.end != null;

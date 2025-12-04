@@ -10,6 +10,7 @@ import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_scr
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/shared/form/event_dialogs.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/shared/form/event_form_router.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/repetition_dialog/dialog/repetition_dialog.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -98,8 +99,15 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
+    final backdrop = Color.alphaBlend(
+      cs.primary.withOpacity(
+        theme.brightness == Brightness.dark ? 0.14 : 0.06,
+      ),
+      cs.surfaceVariant,
+    );
 
     // single source of truth for CategoryApi
     final categoryApi = CategoryApi(
@@ -118,6 +126,7 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
     final isWorkVisit = _kind == _FormKind.workVisit;
 
     return Scaffold(
+      backgroundColor: backdrop,
       appBar: AppBar(
         // title: Text(
         //   l.event,
@@ -133,7 +142,7 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
           style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
         iconTheme: IconThemeData(color: cs.onSurface),
-        backgroundColor: cs.surface,
+        backgroundColor: ThemeColors.cardBg(context),
         elevation: 0,
       ),
       body: _isLoading
@@ -175,7 +184,7 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
 
   @override
   Widget buildRepetitionDialog(BuildContext context) {
-    return RepetitionDialog(
+    return RepetitionScreen(
       selectedStartDate: selectedStartDate,
       selectedEndDate: selectedEndDate,
       initialRecurrenceRule: recurrenceRule,

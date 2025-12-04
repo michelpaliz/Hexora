@@ -833,6 +833,10 @@
     "dashboardTitle": "Dashboard",
     "sectionOverview": "Overview",
     "sectionUpcoming": "Upcoming",
+    "sectionEvents": "Events",
+    "@sectionEvents": {
+        "description": "Generic title for the events section on the dashboard."
+    },
     "pendingEventsSectionTitle": "Pending events",
     "@pendingEventsSectionTitle": {
         "description": "Title for the pending/undone events section on the dashboard."
@@ -960,6 +964,8 @@
     "description": "Message shown after successfully clearing all notifications."
   },
   "groupNotificationsSectionTitle": "Group notifications",
+  "updateRoleTitle": "Update role",
+  "saveChanges": "Save changes",
   "groupNotificationsSubtitle": "See invites, reminders, and alerts scoped to this group.",
   "groupNotificationsEmpty": "This group doesn't have any notifications yet.",
   "groupNotificationsError": "We couldn't load the notifications for this group.",
@@ -1108,6 +1114,82 @@
   "enableTrackingCta": "Enable",
   "disableTrackingCta": "Disable",
   "employeesHeader": "Employees",
+  "currencyLabel": "Currency",
+  "currencyAllOption": "All",
+  "workerRequiredError": "Worker required",
+  "workersLabel": "Workers",
+  "selectWorkersPlaceholder": "Select workers",
+  "pickWorkersCta": "Pick workers",
+  "noWorkersAvailable": "No workers available",
+  "currencyFilterLabel": "Filter by currency",
+  "currencyFilterAll": "Show all currencies",
+  "workerChipRemoveTooltip": "Remove worker",
+  "workerPickerTitle": "Choose workers",
+  "workerPickerSave": "Save selection",
+  "selectAll": "Select all",
+  "clearSelection": "Clear selection",
+  "currencyWorkersSectionTitle": "Workers & currency",
+  "currencyWorkersSectionDescription": "Filter by currency and pick which workers to include.",
+  "currencyHelperText": "Use a currency to quickly narrow the worker list.",
+  "workersHelperText": "Tap to add or remove workers.",
+  "workersValidationHint": "Pick at least one worker before saving.",
+  "notesLabel": "Notes",
+  "notesOptionalHint": "Add context or leave empty",
+  "savingLabel": "Saving…",
+  "invalidTimeRange": "End time must be after start time.",
+  "toggleEmptyDays": "Show/hide empty days",
+  "didNotWorkDay": "{name} did not work this day",
+  "daysMissedAll": "{count} days without hours",
+  "@daysMissedAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysMissedNoSunday": "{count} days without hours (Mon-Sat)",
+  "@daysMissedNoSunday": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "avgHoursPerDayWorked": "Avg {hours} h/day worked",
+  "@avgHoursPerDayWorked": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "didNotWorkSunday": "{name} logged no hours (Sunday)",
+  "@didNotWorkSunday": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "daysWorked": "{count} days worked",
+  "@daysWorked": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sundaysWorked": "{count} Sundays worked",
+  "@sundaysWorked": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "avgHoursPerDayWorkedWithCount": "Avg {hours} h/day across {count} days",
+  "@avgHoursPerDayWorkedWithCount": {
+    "placeholders": {
+      "hours": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
   "unknownWorker": "Unnamed worker",
   "noTrackedYet": "No tracked time yet",
   "trackedTotal": "Tracked: {tracked}",
@@ -1135,10 +1217,12 @@
   "businessHoursReset": "Clear hours",
   "businessHoursTimezoneLabel": "Timezone",
   "businessHoursTimezoneHint": "Example: Europe/Madrid",
+  "businessHoursPartialError": "Set both start and end to save this window.",
   "businessHoursStartLabel": "Start time",
   "businessHoursEndLabel": "End time",
   "businessHoursUpdateSuccess": "Business hours updated",
   "businessHoursUpdateError": "Couldn't update business hours",
+  "selectMonthPrompt": "Pick a month to view or add time entries.",
   "businessHoursValidationMessage": "Events must take place between {start} and {end} ({timezone}).",
   "@businessHoursValidationMessage": {
     "description": "Shown when a user attempts to create an event outside of the configured business hours",

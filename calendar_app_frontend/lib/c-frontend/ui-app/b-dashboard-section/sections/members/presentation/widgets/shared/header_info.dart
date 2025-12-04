@@ -49,7 +49,7 @@ class InfoHeader extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
               if (trailingAction != null) ...[

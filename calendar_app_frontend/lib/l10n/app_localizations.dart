@@ -2424,7 +2424,7 @@ abstract class AppLocalizations {
   /// Button label for saving edits
   ///
   /// In en, this message translates to:
-  /// **'Save Changes'**
+  /// **'Save changes'**
   String get saveChanges;
 
   /// Button label for creating a client
@@ -2582,6 +2582,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upcoming'**
   String get sectionUpcoming;
+
+  /// Generic title for the events section on the dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get sectionEvents;
 
   /// Title for the pending/undone events section on the dashboard.
   ///
@@ -2864,6 +2870,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Group notifications'**
   String get groupNotificationsSectionTitle;
+
+  /// No description provided for @updateRoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update role'**
+  String get updateRoleTitle;
 
   /// No description provided for @groupNotificationsSubtitle.
   ///
@@ -3399,6 +3411,198 @@ abstract class AppLocalizations {
   /// **'Employees'**
   String get employeesHeader;
 
+  /// No description provided for @currencyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get currencyLabel;
+
+  /// No description provided for @currencyAllOption.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get currencyAllOption;
+
+  /// No description provided for @workerRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Worker required'**
+  String get workerRequiredError;
+
+  /// No description provided for @workersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Workers'**
+  String get workersLabel;
+
+  /// No description provided for @selectWorkersPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select workers'**
+  String get selectWorkersPlaceholder;
+
+  /// No description provided for @pickWorkersCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick workers'**
+  String get pickWorkersCta;
+
+  /// No description provided for @noWorkersAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No workers available'**
+  String get noWorkersAvailable;
+
+  /// No description provided for @currencyFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by currency'**
+  String get currencyFilterLabel;
+
+  /// No description provided for @currencyFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all currencies'**
+  String get currencyFilterAll;
+
+  /// No description provided for @workerChipRemoveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove worker'**
+  String get workerChipRemoveTooltip;
+
+  /// No description provided for @workerPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose workers'**
+  String get workerPickerTitle;
+
+  /// No description provided for @workerPickerSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save selection'**
+  String get workerPickerSave;
+
+  /// No description provided for @selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get selectAll;
+
+  /// No description provided for @clearSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selection'**
+  String get clearSelection;
+
+  /// No description provided for @currencyWorkersSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Workers & currency'**
+  String get currencyWorkersSectionTitle;
+
+  /// No description provided for @currencyWorkersSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by currency and pick which workers to include.'**
+  String get currencyWorkersSectionDescription;
+
+  /// No description provided for @currencyHelperText.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a currency to quickly narrow the worker list.'**
+  String get currencyHelperText;
+
+  /// No description provided for @workersHelperText.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to add or remove workers.'**
+  String get workersHelperText;
+
+  /// No description provided for @workersValidationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least one worker before saving.'**
+  String get workersValidationHint;
+
+  /// No description provided for @notesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notesLabel;
+
+  /// No description provided for @notesOptionalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add context or leave empty'**
+  String get notesOptionalHint;
+
+  /// No description provided for @savingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get savingLabel;
+
+  /// No description provided for @invalidTimeRange.
+  ///
+  /// In en, this message translates to:
+  /// **'End time must be after start time.'**
+  String get invalidTimeRange;
+
+  /// No description provided for @toggleEmptyDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Show/hide empty days'**
+  String get toggleEmptyDays;
+
+  /// No description provided for @didNotWorkDay.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} did not work this day'**
+  String didNotWorkDay(Object name);
+
+  /// No description provided for @daysMissedAll.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days without hours'**
+  String daysMissedAll(int count);
+
+  /// No description provided for @daysMissedNoSunday.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days without hours (Mon-Sat)'**
+  String daysMissedNoSunday(int count);
+
+  /// No description provided for @avgHoursPerDayWorked.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg {hours} h/day worked'**
+  String avgHoursPerDayWorked(String hours);
+
+  /// No description provided for @didNotWorkSunday.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} logged no hours (Sunday)'**
+  String didNotWorkSunday(String name);
+
+  /// No description provided for @daysWorked.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days worked'**
+  String daysWorked(int count);
+
+  /// No description provided for @sundaysWorked.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Sundays worked'**
+  String sundaysWorked(int count);
+
+  /// No description provided for @avgHoursPerDayWorkedWithCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg {hours} h/day across {count} days'**
+  String avgHoursPerDayWorkedWithCount(String hours, int count);
+
   /// No description provided for @unknownWorker.
   ///
   /// In en, this message translates to:
@@ -3513,6 +3717,12 @@ abstract class AppLocalizations {
   /// **'Example: Europe/Madrid'**
   String get businessHoursTimezoneHint;
 
+  /// No description provided for @businessHoursPartialError.
+  ///
+  /// In en, this message translates to:
+  /// **'Set both start and end to save this window.'**
+  String get businessHoursPartialError;
+
   /// No description provided for @businessHoursStartLabel.
   ///
   /// In en, this message translates to:
@@ -3536,6 +3746,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t update business hours'**
   String get businessHoursUpdateError;
+
+  /// No description provided for @selectMonthPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a month to view entries.'**
+  String get selectMonthPrompt;
 
   /// Shown when a user attempts to create an event outside of the configured business hours
   ///
@@ -3634,12 +3850,6 @@ abstract class AppLocalizations {
   /// **'e.g., 15.00'**
   String get hourlyRateHint;
 
-  /// No description provided for @currencyLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Currency'**
-  String get currencyLabel;
-
   /// No description provided for @saveWorkerCta.
   ///
   /// In en, this message translates to:
@@ -3687,12 +3897,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'End time'**
   String get endLabel;
-
-  /// No description provided for @notesLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Notes'**
-  String get notesLabel;
 
   /// No description provided for @notesHint.
   ///
@@ -3897,12 +4101,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select month'**
   String get pickMonth;
-
-  /// No description provided for @selectMonthPrompt.
-  ///
-  /// In en, this message translates to:
-  /// **'Please select a month to view entries.'**
-  String get selectMonthPrompt;
 
   /// No description provided for @selectMonthFirst.
   ///

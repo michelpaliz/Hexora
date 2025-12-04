@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class TimeTrackingHeaderCard extends StatelessWidget {
@@ -66,6 +66,12 @@ class TimeTrackingHeaderCard extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: busy ? null : onDisable,
                   icon: const Icon(Icons.stop_circle_outlined),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: onCard,
+                    backgroundColor: cs.primary.withOpacity(0.06),
+                    side: BorderSide(color: cs.primary),
+                    overlayColor: cs.primary.withOpacity(0.08),
+                  ),
                   label: Text(l.disableTrackingCta, style: t.buttonText),
                 ),
               ],

@@ -1,6 +1,8 @@
 import 'package:hexora/a-models/group_model/recurrenceRule/utils_recurrence_rule/custom_day_week.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/utils/number_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
@@ -85,6 +87,9 @@ class RepeatEveryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final formattedDate = DateFormat('d of MMMM').format(selectedStartDate);
     final selectedDayNames = selectedDays.map((day) => day.name).toList();
+    final t = AppTypography.of(context);
+    final onText = ThemeColors.textPrimary(context);
+    final secondaryText = ThemeColors.textSecondary(context);
 
     selectedDayNames.sort((a, b) {
       final orderA = customDaysOfWeek.firstWhere((d) => d.name == a).order;
@@ -143,24 +148,38 @@ class RepeatEveryRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 15.0),
-        Center(
-          child: Text(
-            AppLocalizations.of(context)!.repetitionDetails,
-            style: const TextStyle(fontSize: 14),
-          ),
+        Row(
+          children: [
+            Icon(Icons.auto_graph_rounded,
+                size: 18, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(
+              AppLocalizations.of(context)!.repetitionDetails,
+              style: t.bodyLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: onText,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8.0),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(repeatMessage, style: const TextStyle(fontSize: 14)),
+        Text(
+          repeatMessage,
+          style: t.bodySmall.copyWith(
+            color: secondaryText,
+          ),
         ),
+        const SizedBox(height: 12.0),
         Row(
           children: [
             Text(
               AppLocalizations.of(context)!.every,
-              style: const TextStyle(fontSize: 13),
+              style: t.bodyMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: onText,
+              ),
             ),
+            const SizedBox(width: 10),
             NumberSelector(
               key: Key(selectedFrequency),
               value: repeatInterval,
@@ -172,9 +191,10 @@ class RepeatEveryRow extends StatelessWidget {
                 }
               },
             ),
+            const SizedBox(width: 10),
             Text(
-              ' ${_getTranslatedSpecificFrequency(context, selectedFrequency)}',
-              style: const TextStyle(fontSize: 13),
+              _getTranslatedSpecificFrequency(context, selectedFrequency),
+              style: t.bodyMedium.copyWith(color: onText),
             ),
           ],
         ),

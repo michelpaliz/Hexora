@@ -46,6 +46,16 @@ abstract class IGroupRepository {
     GroupBusinessHours hours,
   );
 
+  /// Update a single member role.
+  Future<void> setUserRoleInGroup({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+  });
+
+  /// Fetch supported group roles (wire values) from backend.
+  Future<List<String>> getGroupRoles();
+
   // Lifecycle
   void dispose();
 }

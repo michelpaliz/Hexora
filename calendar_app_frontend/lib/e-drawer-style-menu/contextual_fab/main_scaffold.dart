@@ -1,7 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/contextual_fab.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/horizontal_drawer_nav.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
-import 'package:flutter/material.dart';
 
 class MainScaffold extends StatelessWidget {
   /// Keep `title` for back-compat; use `titleWidget` to show custom header (avatar + name).
@@ -16,6 +16,9 @@ class MainScaffold extends StatelessWidget {
 
   /// Stop passing per-screen FABs when using the center-docked FAB.
   final FloatingActionButton? fab; // legacy, unused now
+  final Color? appBarBackgroundColor;
+  final IconThemeData? iconTheme;
+  final bool? centerTitle;
 
   const MainScaffold({
     super.key,
@@ -26,6 +29,9 @@ class MainScaffold extends StatelessWidget {
     this.actions,
     this.fab,
     this.showAppBar = true, // 👈 new
+    this.appBarBackgroundColor,
+    this.iconTheme,
+    this.centerTitle,
   });
 
   @override
@@ -39,18 +45,18 @@ class MainScaffold extends StatelessWidget {
       extendBody: true, // Allows body to extend behind bottom bar
       appBar: showAppBar
           ? AppBar(
-              backgroundColor: bg,
+              backgroundColor: appBarBackgroundColor ?? bg,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               scrolledUnderElevation: 0,
               toolbarHeight: 72,
               titleSpacing: 16,
-              centerTitle: false,
+              centerTitle: centerTitle ?? false,
               leading: leading,
               title: titleWidget ?? (title != null ? Text(title!) : null),
               actions: actions,
-              iconTheme: IconThemeData(color: onSurface),
-              actionsIconTheme: IconThemeData(color: onSurface),
+              iconTheme: iconTheme ?? IconThemeData(color: onSurface),
+              actionsIconTheme: iconTheme ?? IconThemeData(color: onSurface),
               automaticallyImplyLeading: false,
             )
           : null, // 👈 no AppBar at all

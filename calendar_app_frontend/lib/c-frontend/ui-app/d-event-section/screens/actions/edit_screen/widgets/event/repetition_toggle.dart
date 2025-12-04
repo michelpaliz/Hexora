@@ -32,12 +32,14 @@ class RepetitionToggle extends StatelessWidget {
         const SizedBox(width: 70),
         GestureDetector(
           onTap: () async {
-            final result = await showDialog(
-              context: context,
-              builder: (_) => RepetitionDialog(
-                selectedStartDate: startDate,
-                selectedEndDate: endDate,
-                initialRecurrenceRule: initialRule,
+            final result = await Navigator.of(context).push(
+              MaterialPageRoute(
+                fullscreenDialog: true,
+                builder: (_) => RepetitionScreen(
+                  selectedStartDate: startDate,
+                  selectedEndDate: endDate,
+                  initialRecurrenceRule: initialRule,
+                ),
               ),
             );
             if (result != null && result.isNotEmpty) {

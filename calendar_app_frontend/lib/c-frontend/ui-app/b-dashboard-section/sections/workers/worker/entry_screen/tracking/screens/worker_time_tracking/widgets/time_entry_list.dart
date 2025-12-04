@@ -1,8 +1,9 @@
 // lib/c-frontend/b-dashboard-section/sections/workers/worker/entry_screen/widgets/time_entry_list.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/worker/timeEntry.dart';
+import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/functions/widgets/time_entry_card.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/widgets/time_entry_card.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +14,8 @@ class TimeEntriesList extends StatelessWidget {
   final ITimeTrackingRepository repo;
   final Future<String> Function() getToken;
   final VoidCallback? onUpdated;
+  final Worker worker;
+  final bool showMissingDays;
 
   const TimeEntriesList({
     super.key,
@@ -20,6 +23,8 @@ class TimeEntriesList extends StatelessWidget {
     required this.groupId,
     required this.repo,
     required this.getToken,
+    required this.worker,
+    this.showMissingDays = false,
     this.onUpdated,
   });
 
@@ -34,7 +39,6 @@ class TimeEntriesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
-    final l = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toLanguageTag();
 
     if (entries.isEmpty) {
@@ -68,8 +72,44 @@ class TimeEntriesList extends StatelessWidget {
         itemCount: months.length,
         itemBuilder: (ctx, i) {
           final month = months[i];
-          final list = grouped[month]!
-            ..sort((a, b) => a.start.compareTo(b.start));
+          final list = grouped[month]!..sort((a, b) => a.start.compareTo(b.start));
+          final monthDate = DateFormat.yMMMM(locale).parse(month);
+          final daysInMonth =
+              DateUtils.getDaysInMonth(monthDate.year, monthDate.month);
+
+          final Map<int, List<TimeEntry>> entriesByDay = {};
+          for (final e in list) {
+            final d = e.start.toLocal().day;
+            entriesByDay.putIfAbsent(d, () => []).add(e);
+          }
+
+          final dayWidgets = <Widget>[];
+          for (int day = 1; day <= daysInMonth; day++) {
+            final date = DateTime(monthDate.year, monthDate.month, day);
+            final dayEntries = entriesByDay[day];
+
+            if (dayEntries != null) {
+              dayEntries.sort((a, b) => a.start.compareTo(b.start));
+              dayWidgets.addAll(
+                dayEntries.map(
+                  (e) => TimeEntryCard(
+                    entry: e,
+                    groupId: groupId,
+                    repo: repo,
+                    getToken: getToken,
+                    onUpdated: onUpdated,
+                  ),
+                ),
+              );
+            } else if (showMissingDays) {
+              dayWidgets.add(
+                _MissingDayTile(
+                  date: date,
+                  workerName: worker.displayName ?? 'Worker',
+                ),
+              );
+            }
+          }
 
           // Total minutes for this month
           final totalMinutes = list.fold<int>(
@@ -131,20 +171,85 @@ class TimeEntriesList extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
 
-                // Entries
-                ...list.map(
-                  (e) => TimeEntryCard(
-                    entry: e,
-                    groupId: groupId,
-                    repo: repo,
-                    getToken: getToken,
-                    onUpdated: onUpdated,
-                  ),
-                ),
+                // Entries or missing days
+                ...dayWidgets,
               ],
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _MissingDayTile extends StatelessWidget {
+  const _MissingDayTile({
+    required this.date,
+    required this.workerName,
+  });
+
+  final DateTime date;
+  final String workerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final isSunday = date.weekday == DateTime.sunday;
+    final label = isSunday
+        ? l.didNotWorkSunday(workerName)
+        : l.didNotWorkDay(workerName);
+    final fg = isSunday
+        ? Theme.of(context).colorScheme.secondary
+        : Theme.of(context).colorScheme.error;
+    final bg = isSunday
+        ? Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.28)
+        : Theme.of(context).colorScheme.errorContainer.withOpacity(0.25);
+    final border = fg.withOpacity(0.35);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.event_busy_outlined,
+            color: fg,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  DateFormat('EEEE d MMM y', locale).format(date),
+                  style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: fg,
+                    letterSpacing: .2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: t.bodySmall.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.78),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

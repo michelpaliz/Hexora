@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/password_exceptions.dart';
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
 import 'package:hexora/c-frontend/ui-app/i-settings-section/dialogs/change_password_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/i-settings-section/dialogs/change_username_dialog.dart';
@@ -9,11 +10,11 @@ import 'package:hexora/c-frontend/ui-app/i-settings-section/widgets/account_sect
 import 'package:hexora/c-frontend/ui-app/i-settings-section/widgets/language_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/i-settings-section/widgets/preferences_section.dart';
 import 'package:hexora/c-frontend/ui-app/i-settings-section/widgets/section_card.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
+import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -177,10 +178,13 @@ class _SettingsState extends State<Settings> {
     final bodyS = typography.bodySmall;
     final isDark = theme.brightness == Brightness.dark;
     final bg = isDark ? AppDarkColors.background : AppColors.background;
+    final cs = Theme.of(context).colorScheme;
 
     return Consumer<ThemeModeProvider>(
       builder: (_, themeModeProv, __) => Scaffold(
         appBar: AppBar(
+          backgroundColor: cs.surface,
+          iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
           title: Text(
             loc.settings,
             style: typography.titleLarge.copyWith(fontWeight: FontWeight.w700),

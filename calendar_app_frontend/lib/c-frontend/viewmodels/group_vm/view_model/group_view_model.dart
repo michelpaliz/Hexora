@@ -100,6 +100,7 @@ class GroupEditorViewModel extends ChangeNotifier {
       ownerId: currentUser.id,
       roleOf: (id) => _state.roles[id] ?? GroupRole.member,
       includeOwner: false, // keep owner out of UI
+      availableRoles: GroupRole.defaults,
     );
   }
 

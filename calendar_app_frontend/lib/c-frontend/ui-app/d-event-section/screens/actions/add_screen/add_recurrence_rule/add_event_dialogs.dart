@@ -4,19 +4,21 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 mixin AddEventDialogs {
-  /// Shows the interactive RepetitionDialog for configuring recurrence logic.
+  /// Opens the recurrence configuration screen and returns the selected rule.
   Future<List?> showRepetitionDialog(
     BuildContext context, {
     required DateTime selectedStartDate,
     required DateTime selectedEndDate,
     LegacyRecurrenceRule? initialRule,
   }) {
-    return showDialog<List?>(
-      context: context,
-      builder: (context) => RepetitionDialog(
-        selectedStartDate: selectedStartDate,
-        selectedEndDate: selectedEndDate,
-        initialRecurrenceRule: initialRule,
+    return Navigator.of(context).push<List?>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => RepetitionScreen(
+          selectedStartDate: selectedStartDate,
+          selectedEndDate: selectedEndDate,
+          initialRecurrenceRule: initialRule,
+        ),
       ),
     );
   }

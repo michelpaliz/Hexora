@@ -57,17 +57,17 @@ class MembersList extends StatelessWidget {
 
     // ✅ Group by global enum (mirrors old behavior: owner counted with admins)
     final adminMembers = accepted.where((r) {
-      final role = GroupRoleX.from(r.role);
+      final role = GroupRole.fromWire(r.role);
       return role == GroupRole.admin || role == GroupRole.owner;
     }).toList();
 
     final coAdminMembers = accepted.where((r) {
-      final role = GroupRoleX.from(r.role);
+      final role = GroupRole.fromWire(r.role);
       return role == GroupRole.coAdmin;
     }).toList();
 
     final regularMembers = accepted.where((r) {
-      final role = GroupRoleX.from(r.role);
+      final role = GroupRole.fromWire(r.role);
       return role == GroupRole.member;
     }).toList();
 

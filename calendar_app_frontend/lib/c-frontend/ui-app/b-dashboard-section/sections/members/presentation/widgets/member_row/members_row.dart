@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_ref.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/member_row/components/error_row.dart';
@@ -45,98 +46,110 @@ class MemberRow extends StatelessWidget {
         }
 
         final user = snap.data!;
-        final parsedRole = GroupRoleX.from(ref.role);
-        final displayRole = (user.id == ownerId) ? GroupRole.owner : parsedRole;
+        final gd = context.read<GroupDomain>();
 
-        final isOwner = displayRole == GroupRole.owner;
-        final isAdmin =
-            displayRole == GroupRole.admin || displayRole == GroupRole.coAdmin;
+        return ValueListenableBuilder<Map<String, String>>(
+          valueListenable: gd.userRoles,
+          builder: (_, rolesMap, __) {
+            final roleWire = rolesMap[user.id] ?? ref.role;
+            final parsedRole = GroupRole.fromWire(roleWire);
+            final displayRole =
+                (user.id == ownerId) ? GroupRole.owner : parsedRole;
 
-        final titleText = (user.name.isNotEmpty ? user.name : user.userName);
+            final isOwner = displayRole.wire == 'owner';
+            final isAdmin = displayRole.wire == 'admin' ||
+                displayRole.wire.toLowerCase().replaceAll('-', '') == 'coadmin';
 
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => showMemberDetailSheet(
-              context: context,
-              user: user,
-              ref: ref,
-              isOwnerRowUser: isOwner,
-              isAdminRowUser: isAdmin,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  LeadingAvatarBadge(
-                    user: user,
-                    isOwner: isOwner,
-                    isAdmin: isAdmin,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Line 1: Name + Role chip
-                        Row(
+            final titleText =
+                (user.name.isNotEmpty ? user.name : user.userName);
+
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => showMemberDetailSheet(
+                  context: context,
+                  user: user,
+                  ref: ref,
+                  isOwnerRowUser: isOwner,
+                  isAdminRowUser: isAdmin,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      LeadingAvatarBadge(
+                        user: user,
+                        isOwner: isOwner,
+                        isAdmin: isAdmin,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Flexible(
-                              child: Text(
-                                titleText,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: typo.bodyMedium.copyWith(
-                                  fontWeight: isOwner
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
-                                  color: onCard,
-                                  height: 1.2,
+                            // Line 1: Name + Role chip
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    titleText,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: typo.bodyMedium.copyWith(
+                                      fontWeight: isOwner
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                      color: onCard,
+                                      height: 1.2,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                if (showRoleChip) ...[
+                                  const SizedBox(width: 8),
+                                  MemberRoleChip(
+                                    role: displayRole,
+                                    hideForAdminLike:
+                                        false, // show for owners too
+                                  ),
+                                ],
+                              ],
                             ),
-                            if (showRoleChip) ...[
-                              const SizedBox(width: 8),
-                              MemberRoleChip(
-                                role: displayRole,
-                                hideForAdminLike: false, // show for owners too
-                              ),
-                            ],
-                          ],
-                        ),
 
-                        // Line 2: @username + (optional) status
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            if (user.userName.isNotEmpty)
-                              Flexible(
-                                child: UsernameTag(username: user.userName),
-                              ),
-                            if (!isOwner && user.userName.isNotEmpty)
-                              const SizedBox(width: 10),
-                            if (!isOwner)
-                              Flexible(
-                                child: MemberStatusRow(
-                                  statusToken: ref.statusToken,
-                                ),
-                              ),
+                            // Line 2: @username + (optional) status
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                if (user.userName.isNotEmpty)
+                                  Flexible(
+                                    child: UsernameTag(username: user.userName),
+                                  ),
+                                if (!isOwner && user.userName.isNotEmpty)
+                                  const SizedBox(width: 10),
+                                if (!isOwner)
+                                  Flexible(
+                                    child: MemberStatusRow(
+                                      statusToken: ref.statusToken,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: onCardSecondary.withOpacity(0.6),
+                      ),
+                    ],
                   ),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: onCardSecondary.withOpacity(0.6),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

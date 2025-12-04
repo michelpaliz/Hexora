@@ -31,4 +31,15 @@ abstract class IGroupApiClient {
     GroupBusinessHours hours,
     String token,
   );
+
+  /// Update a single member's role within a group.
+  Future<void> setUserRoleInGroup({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+    required String token,
+  });
+
+  /// Fetch supported group roles from backend (wire strings).
+  Future<List<String>> getGroupRoles(String token);
 }

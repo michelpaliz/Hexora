@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:provider/provider.dart';
 
-import '../../controller/add_user_controller.dart';
-import '../../domain/models/user_search_bar.dart';
+import '../../../controller/add_user_controller.dart';
+import '../../../domain/models/user_search_bar.dart';
 import 'user_search_result_item.dart';
 
 class AddUsersBottomSheet extends StatelessWidget {
@@ -24,7 +24,7 @@ class AddUsersBottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // handle
+          // handlexa
           Container(
             width: 36,
             height: 4,

@@ -13,20 +13,28 @@ class RoleResolver {
     try {
       // If your backend exposes this, uncomment and use:
 //    final raw = await userDomain.getMyRoleInGroup(group.id);
-//    return GroupRoleX.from(raw);
+//    return GroupRole.fromWire(raw);
 
       // 2) Otherwise infer from the Group instance.
-      final uid = await userDomain.user!.id;
+      final uid =
+          userDomain.user?.id ?? userDomain.currentUserNotifier.value?.id;
+      if (uid == null) return GroupRole.member;
 
       // Common patterns; adjust to your Group model shape:
       final ownerId = _tryString(() => (group as dynamic).ownerId);
       if (ownerId == uid) return GroupRole.owner;
 
+      // Your Group model has userRoles (userId -> wire)
+      final rolesMap = _tryMap(() => (group as dynamic).userRoles);
+      if (rolesMap != null && rolesMap[uid] != null) {
+        return GroupRole.fromWire('${rolesMap[uid]}');
+      }
+
       // Some backends expose a single "roleByUserId" map
       final Map<String, dynamic>? rolesByUser =
           _tryMap(() => (group as dynamic).rolesByUser);
       if (rolesByUser != null && rolesByUser.containsKey(uid)) {
-        return GroupRoleX.from('${rolesByUser[uid]}');
+        return GroupRole.fromWire('${rolesByUser[uid]}');
       }
 
       // Or split lists:

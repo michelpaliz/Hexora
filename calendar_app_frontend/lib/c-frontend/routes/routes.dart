@@ -5,6 +5,8 @@ import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/routes/calendar/group_calendar_loader.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/home_page.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/group_dashboard.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/header_section.dart';
@@ -14,12 +16,12 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/notificati
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/services_clients_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/create_worker/form/create_worker_screen.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/functions/create_time_entry_screen.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/worker_time_tracking_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/create_edit/models/create_group_data.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/create_edit/models/edit_group_data.dart';
-import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/group-settings/group_settings.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_screen/group_list_section.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
@@ -33,8 +35,6 @@ import 'package:hexora/c-frontend/ui-app/g-agenda-section/agenda_screen.dart';
 import 'package:hexora/c-frontend/ui-app/h-profile-section/edit/profile_edit_screen.dart';
 import 'package:hexora/c-frontend/ui-app/h-profile-section/view/profile_view_screen.dart';
 import 'package:hexora/c-frontend/ui-app/i-settings-section/screens/settings.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
-import 'package:hexora/c-frontend/routes/calendar/group_calendar_loader.dart';
 
 final Map<String, WidgetBuilder> routes = {
   AppRoutes.settings: (context) => const Settings(),

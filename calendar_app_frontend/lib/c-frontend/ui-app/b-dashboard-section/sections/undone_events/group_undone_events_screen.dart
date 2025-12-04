@@ -7,8 +7,8 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/shared/header_info.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_event_detail_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_widgets.dart';
-import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -68,17 +68,19 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
+        backgroundColor: cs.surface,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(loc.pendingEventsSectionTitle),
-            Text(
-              group.name,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
+            Text(loc.pendingEventsSectionTitle,
+                style: t.titleLarge.copyWith(fontWeight: FontWeight.w800)),
+            // Text(
+            //   group.name,
+            //   style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+            // ),
           ],
         ),
+        iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Consumer<GroupUndoneEventsViewModel>(
@@ -99,8 +101,7 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: trackBg,
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: cs.onSurface.withOpacity(0.06)),
+                    border: Border.all(color: cs.onSurface.withOpacity(0.06)),
                   ),
                   child: TabBar(
                     tabs: [

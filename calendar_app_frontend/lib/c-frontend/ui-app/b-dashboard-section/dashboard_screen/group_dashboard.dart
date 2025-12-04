@@ -9,9 +9,9 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/sc
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/group_dashboard_body_member.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/role_resolver.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
-import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/confirmation_dialog.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -113,6 +113,12 @@ class _GroupDashboardState extends State<GroupDashboard> {
     final topBarColor =
         isDarkMode ? AppDarkColors.dashboardTopBar : AppColors.dashboardTopBar;
     final onTopBar = isDarkMode ? AppDarkColors.textPrimary : AppColors.white;
+    final cs = theme.colorScheme;
+    final backdrop = ThemeColors.containerBg(context);
+    final panelBg = Color.alphaBlend(
+      cs.primaryContainer.withOpacity(isDarkMode ? 0.20 : 0.12),
+      cs.surfaceVariant,
+    );
 
     final isLoading = _role == null || _user == null;
     final canSeeAdmin = _role == GroupRole.owner ||
@@ -120,6 +126,7 @@ class _GroupDashboardState extends State<GroupDashboard> {
         _role == GroupRole.coAdmin;
 
     return Scaffold(
+      backgroundColor: backdrop,
       appBar: AppBar(
         backgroundColor: topBarColor,
         elevation: 0.5,
@@ -168,54 +175,60 @@ class _GroupDashboardState extends State<GroupDashboard> {
             ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : canSeeAdmin
-              ? GroupDashboardBodyAdmin(
-                  group: _group,
-                  counts: _counts,
-                  onRefresh: _refreshCounts,
-                  user: _user!,
-                  role: _role!,
-                  fetchReadSas: _fetchReadSas,
-                  onGroupChanged: _handleGroupChanged,
-                )
-              : GroupDashboardBodyMember(
-                  group: _group,
-                  user: _user!,
-                  role: _role!,
-                  fetchReadSas: _fetchReadSas,
-                ),
+      body: DecoratedBox(
+        decoration: BoxDecoration(color: panelBg),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : canSeeAdmin
+                ? GroupDashboardBodyAdmin(
+                    group: _group,
+                    counts: _counts,
+                    onRefresh: _refreshCounts,
+                    user: _user!,
+                    role: _role!,
+                    fetchReadSas: _fetchReadSas,
+                    onGroupChanged: _handleGroupChanged,
+                  )
+                : GroupDashboardBodyMember(
+                    group: _group,
+                    user: _user!,
+                    role: _role!,
+                    fetchReadSas: _fetchReadSas,
+                  ),
+      ),
 
       // Replace the entire bottomNavigationBar with this:
-      bottomNavigationBar: SafeArea(
-        // more bottom space
-        minimum: const EdgeInsets.fromLTRB(12, 6, 12, 22),
-        child: Padding(
-          // a touch more separation from the very bottom
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.calendar_month_rounded, size: 20),
-                  label: Text(l.goToCalendar),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
-                    textStyle: Theme.of(context).textTheme.labelLarge,
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(color: panelBg),
+        child: SafeArea(
+          // more bottom space
+          minimum: const EdgeInsets.fromLTRB(12, 6, 12, 22),
+          child: Padding(
+            // a touch more separation from the very bottom
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.calendar_month_rounded, size: 20),
+                    label: Text(l.goToCalendar),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 14),
+                      textStyle: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.groupCalendar,
+                        arguments: _group,
+                      );
+                    },
                   ),
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.groupCalendar,
-                      arguments: _group,
-                    );
-                  },
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

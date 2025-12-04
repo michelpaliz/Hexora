@@ -8,13 +8,14 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/a-models/notification_model/userInvitation_status.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/resolver/event_group_resolver.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/errors/group_limit_exception.dart';
+// Repos (interfaces)
+import 'package:hexora/b-backend/group_mng_flow/group/repository/i_group_repository.dart';
 // UserDomain is referenced for refresh flow
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
-import 'package:hexora/b-backend/group_mng_flow/event/resolver/event_group_resolver.dart';
-// Repos (interfaces)
-import 'package:hexora/b-backend/group_mng_flow/group/repository/i_group_repository.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/errors/group_limit_exception.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 
 class GroupDomain extends ChangeNotifier {
   // Dependencies
@@ -91,6 +92,18 @@ class GroupDomain extends ChangeNotifier {
         freshUser.id,
         freshUser.groupIds,
       );
+    }
+  }
+
+  /// Refresh only the currently selected group (if any).
+  Future<void> refreshCurrentGroup() async {
+    final cg = _currentGroup;
+    if (cg == null) return;
+    try {
+      final updated = await groupRepository.getGroupById(cg.id);
+      currentGroup = updated;
+    } catch (e) {
+      devtools.log('⚠️ refreshCurrentGroup failed: $e');
     }
   }
 
@@ -234,5 +247,15 @@ class GroupDomain extends ChangeNotifier {
     userRoles.dispose();
     invitationStatus.dispose();
     super.dispose();
+  }
+
+  /// Fetch supported group roles from backend and map to GroupRole.
+  Future<List<GroupRole>> fetchGroupRoles() async {
+    try {
+      final wires = await groupRepository.getGroupRoles();
+      return wires.map((w) => GroupRole.fromWire(w)).toList();
+    } catch (_) {
+      return GroupRole.defaults;
+    }
   }
 }

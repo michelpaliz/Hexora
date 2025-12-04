@@ -87,6 +87,23 @@ class HttpGroupApiClient implements IGroupApiClient {
   }
 
   @override
+  Future<void> setUserRoleInGroup({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+    required String token,
+  }) async {
+    final res = await _client.patch(
+      Uri.parse('$baseUrl/$groupId/users/$userId/role'),
+      headers: authHeaders(token),
+      body: jsonEncode({'role': roleWire}),
+    );
+    if (res.statusCode != 200) {
+      throw HttpFailure(res.statusCode, res.body);
+    }
+  }
+
+  @override
   Future<List<Group>> getGroupsByUser(String userName, String token) async {
     final res = await _client.get(
       Uri.parse('$baseUrl/user/$userName'),
@@ -215,6 +232,22 @@ class HttpGroupApiClient implements IGroupApiClient {
         return Group.fromJson(decoded);
       }
       return getGroupById(groupId, token);
+    }
+    throw HttpFailure(res.statusCode, res.body);
+  }
+
+  @override
+  Future<List<String>> getGroupRoles(String token) async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/roles'),
+      headers: authHeaders(token),
+    );
+    if (res.statusCode == 200) {
+      final decoded = jsonDecode(res.body);
+      if (decoded is List) {
+        return decoded.map((e) => e.toString()).toList();
+      }
+      throw HttpFailure(res.statusCode, 'Unexpected roles payload');
     }
     throw HttpFailure(res.statusCode, res.body);
   }

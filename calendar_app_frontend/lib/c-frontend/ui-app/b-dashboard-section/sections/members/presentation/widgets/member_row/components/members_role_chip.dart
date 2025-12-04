@@ -18,9 +18,9 @@ class MemberRoleChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
 
-    final isAdminLike = role == GroupRole.admin ||
-        role == GroupRole.coAdmin ||
-        role == GroupRole.owner;
+    final key = role.wire.toLowerCase().replaceAll('-', '').replaceAll('_', '');
+    final isAdminLike =
+        key == 'admin' || key == 'coadmin' || key == 'owner';
 
     if (hideForAdminLike && isAdminLike) return const SizedBox.shrink();
 
@@ -35,7 +35,7 @@ class MemberRoleChip extends StatelessWidget {
         border: Border.all(color: color.withOpacity(0.3), width: 1),
       ),
       child: Text(
-        role.label(l),
+        roleLabelOf(context, role),
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w700,
