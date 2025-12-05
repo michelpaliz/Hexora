@@ -104,6 +104,29 @@ class HttpGroupApiClient implements IGroupApiClient {
   }
 
   @override
+  Future<void> sendInvitation({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+    required String token,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('${ApiConstants.baseUrl}/invitations'),
+      headers: authHeaders(token),
+      body: jsonEncode({
+        'groupId': groupId,
+        'userId': userId,
+        'role': roleWire,
+      }),
+    );
+
+    // Accept 200 or 201 as success
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw HttpFailure(res.statusCode, res.body);
+    }
+  }
+
+  @override
   Future<List<Group>> getGroupsByUser(String userName, String token) async {
     final res = await _client.get(
       Uri.parse('$baseUrl/user/$userName'),

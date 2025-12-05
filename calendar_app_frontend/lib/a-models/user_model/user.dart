@@ -9,6 +9,7 @@ class User {
   String? _displayName; // preferred display name
   final String _email;
   String _userName; // unique handle/login
+  bool _emailVerified;
 
   String? _photoUrl;
   String? _photoBlobName;
@@ -27,6 +28,7 @@ class User {
     required String email,
     required String userName,
     required List<String> groupIds,
+    required bool emailVerified,
     String? displayName,
     String? bio,
     String? phoneNumber,
@@ -40,6 +42,7 @@ class User {
         _displayName = displayName,
         _email = email,
         _userName = userName,
+        _emailVerified = emailVerified,
         _bio = bio,
         _phoneNumber = phoneNumber,
         _location = location,
@@ -62,6 +65,9 @@ class User {
 
   String get userName => _userName;
   set userName(String v) => _userName = v;
+
+  bool get emailVerified => _emailVerified;
+  set emailVerified(bool v) => _emailVerified = v;
 
   String? get photoUrl => _photoUrl;
   set photoUrl(String? v) => _photoUrl = v;
@@ -100,6 +106,7 @@ class User {
     String? displayName,
     String? email,
     String? userName,
+    bool? emailVerified,
     String? bio,
     String? phoneNumber,
     String? location,
@@ -115,6 +122,7 @@ class User {
       displayName: displayName ?? _displayName,
       email: email ?? _email,
       userName: userName ?? _userName,
+      emailVerified: emailVerified ?? _emailVerified,
       bio: bio ?? _bio,
       phoneNumber: phoneNumber ?? _phoneNumber,
       location: location ?? _location,
@@ -134,6 +142,7 @@ class User {
       displayName: '',
       email: '',
       userName: '',
+      emailVerified: false,
       bio: '',
       phoneNumber: '',
       location: '',

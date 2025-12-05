@@ -133,7 +133,12 @@ class WeatherService {
       {'format': 'j1'},
     );
 
-    final response = await http.get(uri);
+    http.Response response;
+    try {
+      response = await http.get(uri);
+    } catch (_) {
+      return null; // network/TLS issues: skip weather silently
+    }
     if (response.statusCode != 200) return null;
 
     final Map<String, dynamic> body = jsonDecode(response.body);
@@ -194,10 +199,14 @@ class WeatherService {
   String _normalizeLocation(String location) {
     final trimmed = location.trim();
     if (trimmed.isEmpty) return trimmed;
+    // Replace bad % sequences so decodeComponent doesn't throw.
+    final sanitized =
+        trimmed.replaceAllMapped(RegExp(r'%(?![0-9A-Fa-f]{2})'), (_) => '%25');
     try {
-      return Uri.decodeComponent(trimmed);
-    } on FormatException {
-      return trimmed;
+      return Uri.decodeComponent(sanitized);
+    } catch (_) {
+      // Last resort: strip any trailing incomplete percent encodings entirely.
+      return sanitized.replaceAll(RegExp(r'%(?![0-9A-Fa-f]{2})'), '');
     }
   }
 }

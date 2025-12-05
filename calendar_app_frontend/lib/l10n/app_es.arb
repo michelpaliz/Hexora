@@ -73,6 +73,8 @@
   "password": "Contraseña",
   "register": "Registrarse",
   "login": "Iniciar sesión",
+  "backToLogin": "Volver al inicio de sesión",
+  "downloadMobileApp": "Descargar la app móvil",
   "userNameHint": "Introduce tu nombre de usuario (p.ej., john_doe123)",
   "nameHint": "Introduce tu nombre",
   "emailHint": "Introduce tu correo electrónico",
@@ -85,9 +87,41 @@
   "emailTaken": "El correo electrónico ya está en uso",
   "invalidEmail": "Esta dirección de correo electrónico no es válida",
   "registrationError": "Error de registro",
+  "registerCheckEmail": "Cuenta creada. Revisa tu correo para verificar.",
   "userNotFound": "Usuario no encontrado",
   "wrongCredentials": "Credenciales incorrectas",
+  "loginInvalidCredentials": "Credenciales inválidas. Inténtalo de nuevo.",
   "authError": "Error de autenticación",
+  "verifyEmailTitle": "Verifica tu correo electrónico",
+  "verifyEmailInfo": "Te enviamos un enlace de verificación. Ábrelo desde tu correo para completar la verificación.",
+  "verifyingEmail": "Verificando tu correo...",
+  "verifyEmailTryAgain": "Intentar de nuevo",
+  "resendVerificationButton": "Reenviar verificación",
+  "resendVerificationSending": "Enviando...",
+  "resendVerificationInvalidEmail": "Ingresa un correo válido para reenviar.",
+  "resendVerificationSent": "Correo de verificación enviado a {email}",
+  "@resendVerificationSent": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "resendVerificationFailed": "No se pudo reenviar la verificación: {error}",
+  "@resendVerificationFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "verifySuccessTitle": "Correo verificado",
+  "verifySuccessMessage": "Tu correo ha sido confirmado. Ya puedes iniciar sesión y usar la aplicación.",
+  "downloadAppTitle": "Obtén Hexora en tu teléfono",
+  "downloadAppSubtitle": "Instala la app para Android o iOS y mantente al día donde estés.",
+  "downloadAppAndroid": "Consíguela en Google Play",
+  "downloadAppIos": "Descárgala en App Store",
+  "downloadAppOpenError": "No se pudo abrir el enlace de la tienda. Intenta de nuevo.",
   "changePassword": "Cambiar contraseña",
   "notRegistered": "¿No estás registrado? No te preocupes, regístrate aquí.",
   "alreadyRegistered": "¿Ya estás registrado? Inicia sesión aquí.",
@@ -632,6 +666,7 @@
   "notifyMeOnSubtitle": "Recibirás un recordatorio de este evento",
   "notifyMeOffSubtitle": "No se enviará ningún recordatorio",
   "noInvitableUsers": "No hay usuarios disponibles para invitar",
+  "removeRecurrence": "Eliminar repetición",
   "removeRecurrenceConfirm": "¿Deseas eliminar la repetición de este evento?",
   "dashboard": "Panel de control",
   "noClientsYet": "Aún no hay clientes",

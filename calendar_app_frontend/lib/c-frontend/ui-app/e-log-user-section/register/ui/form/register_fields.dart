@@ -92,6 +92,7 @@ Widget buildRegisterButton(
         final password = controller.password.text;
         final confirmPassword = controller.confirmPassword.text;
         final name = controller.name.text.trim();
+        final userName = controller.userName.text.trim();
 
         if (password != confirmPassword) {
           await showErrorDialog(
@@ -104,6 +105,7 @@ Widget buildRegisterButton(
         try {
           final registrationStatus = await authService.createUser(
             name: name,
+            userName: userName,
             email: email,
             password: password,
           );
@@ -117,11 +119,22 @@ Widget buildRegisterButton(
             ),
           );
 
-          await loginInit.initializeUserAndServices(email, password);
-
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil(AppRoutes.homePage, (route) => false);
+          try {
+            await loginInit.initializeUserAndServices(email, password);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil(AppRoutes.homePage, (route) => false);
+          } on EmailNotVerifiedAuthException catch (e) {
+            await showErrorDialog(
+              context,
+              e.message,
+            );
+            Navigator.of(context).pushNamed(
+              AppRoutes.verifyEmailRoute,
+              arguments: {'email': email},
+            );
+            return;
+          }
 
           showDialog(
             context: context,
@@ -147,6 +160,11 @@ Widget buildRegisterButton(
           await showErrorDialog(
             context,
             AppLocalizations.of(context)!.emailTaken,
+          );
+        } on UsernameAlreadyUseAuthException {
+          await showErrorDialog(
+            context,
+            AppLocalizations.of(context)!.userNameTaken,
           );
         } on InvalidEmailAuthException {
           await showErrorDialog(

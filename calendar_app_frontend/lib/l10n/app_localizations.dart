@@ -362,6 +362,18 @@ abstract class AppLocalizations {
   /// **'Login'**
   String get login;
 
+  /// No description provided for @backToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to login'**
+  String get backToLogin;
+
+  /// No description provided for @downloadMobileApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Download the mobile app'**
+  String get downloadMobileApp;
+
   /// No description provided for @userNameHint.
   ///
   /// In en, this message translates to:
@@ -434,6 +446,12 @@ abstract class AppLocalizations {
   /// **'Registration error'**
   String get registrationError;
 
+  /// No description provided for @registerCheckEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Account created. Check your email to verify.'**
+  String get registerCheckEmail;
+
   /// No description provided for @userNotFound.
   ///
   /// In en, this message translates to:
@@ -446,11 +464,113 @@ abstract class AppLocalizations {
   /// **'Wrong credentials'**
   String get wrongCredentials;
 
+  /// No description provided for @loginInvalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid credentials. Please try again.'**
+  String get loginInvalidCredentials;
+
   /// No description provided for @authError.
   ///
   /// In en, this message translates to:
   /// **'Authentication error'**
   String get authError;
+
+  /// No description provided for @verifyEmailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your email'**
+  String get verifyEmailTitle;
+
+  /// No description provided for @verifyEmailInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ve sent you a verification link. Open the link from your email to finish verifying.'**
+  String get verifyEmailInfo;
+
+  /// No description provided for @verifyingEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying your email...'**
+  String get verifyingEmail;
+
+  /// No description provided for @verifyEmailTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get verifyEmailTryAgain;
+
+  /// No description provided for @resendVerificationButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend verification email'**
+  String get resendVerificationButton;
+
+  /// No description provided for @resendVerificationSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending...'**
+  String get resendVerificationSending;
+
+  /// No description provided for @resendVerificationInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid email to resend.'**
+  String get resendVerificationInvalidEmail;
+
+  /// No description provided for @resendVerificationSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification email sent to {email}'**
+  String resendVerificationSent(String email);
+
+  /// No description provided for @resendVerificationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not resend verification: {error}'**
+  String resendVerificationFailed(String error);
+
+  /// No description provided for @verifySuccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email verified'**
+  String get verifySuccessTitle;
+
+  /// No description provided for @verifySuccessMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email has been confirmed. You can now sign in and start using the app.'**
+  String get verifySuccessMessage;
+
+  /// No description provided for @downloadAppTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Hexora on your phone'**
+  String get downloadAppTitle;
+
+  /// No description provided for @downloadAppSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the Android or iOS app to stay in sync on the go.'**
+  String get downloadAppSubtitle;
+
+  /// No description provided for @downloadAppAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Get it on Google Play'**
+  String get downloadAppAndroid;
+
+  /// No description provided for @downloadAppIos.
+  ///
+  /// In en, this message translates to:
+  /// **'Download on the App Store'**
+  String get downloadAppIos;
+
+  /// No description provided for @downloadAppOpenError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the store link. Please try again.'**
+  String get downloadAppOpenError;
 
   /// No description provided for @changePassword.
   ///

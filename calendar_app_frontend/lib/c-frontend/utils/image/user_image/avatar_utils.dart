@@ -31,8 +31,9 @@ class AvatarUtils {
     final avatar = CircleAvatar(
       radius: radius,
       backgroundColor: bg,
-      foregroundImage: image,
-      onForegroundImageError: (_, __) {}, // avoid the red error overlay
+      backgroundImage: image,
+      onBackgroundImageError:
+          image != null ? (_, __) {} : null, // avoid the red error overlay
       child: image != null
           ? null
           : Icon(fallbackIcon, size: radius, color: iconColor),

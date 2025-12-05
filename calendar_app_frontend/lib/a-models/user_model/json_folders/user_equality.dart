@@ -10,6 +10,7 @@ bool userEquals(User a, Object other) {
   return other.id == a.id &&
       other.email == a.email &&
       other.userName == a.userName &&
+      other.emailVerified == a.emailVerified &&
       other.name == a.name &&
       other.displayName == a.displayName &&
       other.bio == a.bio &&
@@ -27,6 +28,7 @@ int userHashCode(User u) {
     u.id,
     u.email,
     u.userName,
+    u.emailVerified,
     u.name,
     u.displayName,
     u.bio,

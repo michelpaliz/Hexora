@@ -16,6 +16,7 @@ class CalendarState {
   final ValueNotifier<Map<DateTime, DaySummary>> weatherForecast =
       ValueNotifier(const {});
   final ValueNotifier<bool> showWeatherIcons = ValueNotifier(true);
+  final ValueNotifier<String?> eventFilterUserId = ValueNotifier<String?>(null);
 
   // /// NEW: current view mode ('day' | 'week' | 'month' | 'agenda')
   // final ValueNotifier<String> viewMode = ValueNotifier<String>('week');
@@ -35,7 +36,8 @@ class CalendarState {
       ValueNotifier<DateTime>(DateTime.now());
 
   // snapshot + signature
-  List<Event> _last = const [];
+  List<Event> _rawEvents = const [];
+  List<Event> _filteredEvents = const [];
   int? _sig;
   DateTime? selectedDate;
 
@@ -52,20 +54,23 @@ class CalendarState {
     viewMode.dispose(); // NEW
     weatherForecast.dispose();
     showWeatherIcons.dispose();
+    eventFilterUserId.dispose();
   }
 
   bool applyEvents(List<Event> events) {
-    final s = _signature(events);
+    _rawEvents = List<Event>.from(events);
+    final filtered = _applyFilter(_rawEvents);
+    final s = _signature(_rawEvents, eventFilterUserId.value);
     if (_sig == s) return false;
 
     _sig = s;
-    _last = List<Event>.from(events);
+    _filteredEvents = filtered;
 
-    allEvents.value = _last;
-    dataSource.value = EventDataSource(_last);
+    allEvents.value = _filteredEvents;
+    dataSource.value = EventDataSource(_filteredEvents);
 
     if (selectedDate != null) {
-      dailyEvents.value = eventsForDate(selectedDate!, _last);
+      dailyEvents.value = eventsForDate(selectedDate!, _filteredEvents);
     }
     return true;
   }
@@ -83,7 +88,8 @@ class CalendarState {
     _refreshDebounce = Timer(const Duration(milliseconds: 120), bumpKey);
   }
 
-  int _signature(List<Event> list) {
+  int _signature(List<Event> list, String? filterUserId) {
+    final filterHash = filterUserId?.hashCode ?? 0;
     final parts = list.map((e) => Object.hash(
           e.id,
           e.rawRuleId,
@@ -94,7 +100,7 @@ class CalendarState {
           e.eventColorIndex,
           e.allDay ? 1 : 0,
         ));
-    return Object.hashAllUnordered(parts);
+    return Object.hash(filterHash, Object.hashAllUnordered(parts));
   }
 
   // -------- Navigation API --------
@@ -102,7 +108,8 @@ class CalendarState {
   void jumpTo(DateTime date) {
     final d = DateTime(date.year, date.month, date.day);
     selectedDate = d;
-    dailyEvents.value = eventsForDate(d, _last); // keep side/day list in sync
+    dailyEvents.value =
+        eventsForDate(d, _filteredEvents); // keep side/day list in sync
     anchorDate.value = d; // tell CalendarSurface to scroll/jump
     // Optionally bump a rebuild if your surface needs it:
     // calendarRefreshKey.value = calendarRefreshKey.value + 1;
@@ -124,15 +131,24 @@ class CalendarState {
     showWeatherIcons.value = value;
   }
 
-  // // -------- NEW: View Mode API --------
-  // /// Set the current view ('day' | 'week' | 'month' | 'agenda') and force a rebuild tick.
-  // void setViewMode(String mode) {
-  //   if (viewMode.value == mode) return;
-  //   viewMode.value = mode;
-  //   // Nudge listeners that rely on a simple int key:
-  //   calendarRefreshKey.value = calendarRefreshKey.value + 1;
-  // }
+  void setEventFilter(String? userId) {
+    final normalized =
+        (userId == null || userId.trim().isEmpty) ? null : userId.trim();
+    if (eventFilterUserId.value == normalized) return;
+    eventFilterUserId.value = normalized;
+    applyEvents(_rawEvents);
+    calendarRefreshKey.value++;
+  }
 
-  // /// Read the current view mode.
-  // String get currentViewMode => viewMode.value;
+  String? get currentFilterUserId => eventFilterUserId.value;
+
+  List<Event> _applyFilter(List<Event> events) {
+    final uid = eventFilterUserId.value;
+    if (uid == null || uid.isEmpty) return events;
+    return events
+        .where((e) =>
+            (e.ownerId == uid) ||
+            (e.recipients.any((r) => r.trim() == uid.trim())))
+        .toList();
+  }
 }

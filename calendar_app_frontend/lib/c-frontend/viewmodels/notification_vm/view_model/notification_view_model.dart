@@ -40,14 +40,12 @@ class NotificationViewModel {
   /// ✅ Handle "Accept" response to a group invite/// ✅ Handle "Accept" response to a group invite
   Future<void> handleConfirmation(NotificationUser notification) async {
     try {
-      // Get the target group & user (keeps your current validations)
-      final group =
-          await groupDomain.groupRepository.getGroupById(notification.groupId);
+      // Use ids directly; user might not have access to group details yet.
       final user = await userDomain.getUserById(notification.recipientId);
 
       // Accept on backend + hard refresh groups for this user
       await groupDomain.respondToInviteAndRefresh(
-        groupId: group.id,
+        groupId: notification.groupId,
         userId: user.id,
         accepted: true,
         userDomain: userDomain,
@@ -69,12 +67,10 @@ class NotificationViewModel {
   /// ✅ Handle "Decline" response to a group invite
   Future<void> handleNegation(NotificationUser notification) async {
     try {
-      final group =
-          await groupDomain.groupRepository.getGroupById(notification.groupId);
       final user = await userDomain.getUserById(notification.recipientId);
 
       await groupDomain.respondToInviteAndRefresh(
-        groupId: group.id,
+        groupId: notification.groupId,
         userId: user.id,
         accepted: false,
         userDomain: userDomain,

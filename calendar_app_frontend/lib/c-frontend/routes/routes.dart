@@ -26,10 +26,12 @@ import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/event_screen/event_detail/event_detail_screen.dart';
+import 'package:hexora/c-frontend/ui-app/e-log-user-section/download_app/download_app_view.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/forgot_password.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/login/form/login_view.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/register/ui/register_view.dart';
-import 'package:hexora/c-frontend/ui-app/e-log-user-section/verify_email_view.dart';
+import 'package:hexora/c-frontend/ui-app/e-log-user-section/verify_email/verify_email_view.dart';
+import 'package:hexora/c-frontend/ui-app/e-log-user-section/verify_email/verify_success_view.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/show_notifications.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/agenda_screen.dart';
 import 'package:hexora/c-frontend/ui-app/h-profile-section/edit/profile_edit_screen.dart';
@@ -42,6 +44,10 @@ final Map<String, WidgetBuilder> routes = {
   AppRoutes.registerRoute: (context) => const RegisterView(),
   AppRoutes.passwordRecoveryRoute: (context) => ForgotPasswordForm(),
   AppRoutes.verifyEmailRoute: (context) => const VerifyEmailView(),
+  AppRoutes.verifyEmailSuccessRoute: (context) =>
+      const VerifyEmailSuccessView(),
+  AppRoutes.downloadApp: (context) => const DownloadAppView(),
+  AppRoutes.downloadAppShort: (context) => const DownloadAppView(),
   AppRoutes.groupDashboard: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     if (group == null) return const SizedBox.shrink();

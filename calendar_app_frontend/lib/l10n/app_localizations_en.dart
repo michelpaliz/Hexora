@@ -148,6 +148,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get login => 'Login';
 
   @override
+  String get backToLogin => 'Back to login';
+
+  @override
+  String get downloadMobileApp => 'Download the mobile app';
+
+  @override
   String get userNameHint => 'Enter your username (e.g., john_doe123)';
 
   @override
@@ -185,13 +191,78 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registrationError => 'Registration error';
 
   @override
+  String get registerCheckEmail =>
+      'Account created. Check your email to verify.';
+
+  @override
   String get userNotFound => 'User not found';
 
   @override
   String get wrongCredentials => 'Wrong credentials';
 
   @override
+  String get loginInvalidCredentials =>
+      'Invalid credentials. Please try again.';
+
+  @override
   String get authError => 'Authentication error';
+
+  @override
+  String get verifyEmailTitle => 'Verify your email';
+
+  @override
+  String get verifyEmailInfo =>
+      'We\'ve sent you a verification link. Open the link from your email to finish verifying.';
+
+  @override
+  String get verifyingEmail => 'Verifying your email...';
+
+  @override
+  String get verifyEmailTryAgain => 'Try again';
+
+  @override
+  String get resendVerificationButton => 'Resend verification email';
+
+  @override
+  String get resendVerificationSending => 'Sending...';
+
+  @override
+  String get resendVerificationInvalidEmail =>
+      'Please enter a valid email to resend.';
+
+  @override
+  String resendVerificationSent(String email) {
+    return 'Verification email sent to $email';
+  }
+
+  @override
+  String resendVerificationFailed(String error) {
+    return 'Could not resend verification: $error';
+  }
+
+  @override
+  String get verifySuccessTitle => 'Email verified';
+
+  @override
+  String get verifySuccessMessage =>
+      'Your email has been confirmed. You can now sign in and start using the app.';
+
+  @override
+  String get downloadAppTitle => 'Get Hexora on your phone';
+
+  @override
+  String get downloadAppSubtitle =>
+      'Install the Android or iOS app to stay in sync on the go.';
+
+  @override
+  String get downloadAppAndroid => 'Get it on Google Play';
+
+  @override
+  String get downloadAppIos => 'Download on the App Store';
+
+  @override
+  String get downloadAppOpenError =>
+      'Couldn\'t open the store link. Please try again.';
 
   @override
   String get changePassword => 'Change Password';

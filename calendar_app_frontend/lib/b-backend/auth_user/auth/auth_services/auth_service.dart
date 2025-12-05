@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/auth_user/auth/models/verification_result.dart';
 import 'package:hexora/b-backend/auth_user/repositories/auth_repository.dart';
 
 class AuthService with ChangeNotifier implements AuthRepository {
@@ -36,10 +37,16 @@ class AuthService with ChangeNotifier implements AuthRepository {
   @override
   Future<String> createUser({
     required String name,
+    required String userName,
     required String email,
     required String password,
   }) =>
-      _repo.createUser(name: name, email: email, password: password);
+      _repo.createUser(
+        name: name,
+        userName: userName,
+        email: email,
+        password: password,
+      );
 
   @override
   Future<User?> getCurrentUserModel() => Future.value(_user);
@@ -57,9 +64,16 @@ class AuthService with ChangeNotifier implements AuthRepository {
 
   @override
   Future<void> sendEmailVerification() {
-    // Implement if your backend supports it, or remove from the interface.
-    throw UnimplementedError();
+    return _repo.sendEmailVerification();
   }
+
+  @override
+  Future<void> resendVerificationEmail({required String email}) =>
+      _repo.resendVerificationEmail(email: email);
+
+  @override
+  Future<VerificationResult> verifyEmailToken({required String token}) =>
+      _repo.verifyEmailToken(token: token);
 
   // Optional UI sugar:
   bool get isAuthenticated => _user != null;

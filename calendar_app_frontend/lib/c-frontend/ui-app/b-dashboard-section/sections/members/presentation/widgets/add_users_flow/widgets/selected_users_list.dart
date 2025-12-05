@@ -78,6 +78,7 @@ class _UserChip extends StatelessWidget {
 
     return Chip(
       avatar: CircleAvatar(
+        backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
         child: Text(
           user.userName.isNotEmpty ? user.userName[0].toUpperCase() : '?',
           style: typo.bodyMedium,

@@ -15,13 +15,19 @@ class AuthApiClientImpl implements IAuthApiClient {
   @override
   Future<Map<String, dynamic>> register({
     required String name,
+    required String userName,
     required String email,
     required String password,
   }) async {
     final res = await http.post(
       Uri.parse('$_base/auth/register'),
       headers: _headers(),
-      body: jsonEncode({'name': name, 'email': email, 'password': password}),
+      body: jsonEncode({
+        'name': name,
+        'userName': userName,
+        'email': email,
+        'password': password,
+      }),
     );
     return _decode(res);
   }
@@ -75,6 +81,26 @@ class AuthApiClientImpl implements IAuthApiClient {
     if (res.statusCode != 200) {
       throw Exception('Password change failed: ${res.statusCode} ${res.body}');
     }
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyEmail({required String token}) async {
+    final res = await http.get(
+      Uri.parse('$_base/auth/verify-email?token=$token'),
+      headers: _headers(),
+    );
+    return _decode(res);
+  }
+
+  @override
+  Future<Map<String, dynamic>> resendVerification(
+      {required String email}) async {
+    final res = await http.post(
+      Uri.parse('$_base/auth/resend-verification'),
+      headers: _headers(),
+      body: jsonEncode({'email': email}),
+    );
+    return _decode(res);
   }
 
   Map<String, dynamic> _decode(http.Response res) {

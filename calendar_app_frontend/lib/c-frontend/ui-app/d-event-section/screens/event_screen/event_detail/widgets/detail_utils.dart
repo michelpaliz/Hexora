@@ -6,15 +6,17 @@ import 'package:intl/intl.dart';
 
 /// yyyy MMMM d • HH:mm–HH:mm   OR   <start d HH:mm> — <end d HH:mm>
 String formatDateRange(BuildContext context, DateTime start, DateTime end) {
+  final startLocal = start.toLocal();
+  final endLocal = end.toLocal();
   final localeTag = Localizations.localeOf(context).toLanguageTag();
-  final sameDay = start.year == end.year &&
-      start.month == end.month &&
-      start.day == end.day;
+  final sameDay = startLocal.year == endLocal.year &&
+      startLocal.month == endLocal.month &&
+      startLocal.day == endLocal.day;
   final d = DateFormat.yMMMMd(localeTag);
   final t = DateFormat.Hm(localeTag);
   return sameDay
-      ? '${d.format(start)} • ${t.format(start)}–${t.format(end)}'
-      : '${d.format(start)} ${t.format(start)}  —  ${d.format(end)} ${t.format(end)}';
+      ? '${d.format(startLocal)} • ${t.format(startLocal)}–${t.format(endLocal)}'
+      : '${d.format(startLocal)} ${t.format(startLocal)}  —  ${d.format(endLocal)} ${t.format(endLocal)}';
 }
 
 /// Map backend status → user-facing label (already localized by caller)

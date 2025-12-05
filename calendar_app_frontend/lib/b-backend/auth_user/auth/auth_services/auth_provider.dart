@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/api/i_auth_api_client.dart';
+import 'package:hexora/b-backend/auth_user/auth/models/verification_result.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/model/token_obj.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/token_store/Itoken_store.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
@@ -46,16 +47,26 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
   @override
   Future<String> createUser({
     required String name,
+    required String userName,
     required String email,
     required String password,
   }) async {
-    final res =
-        await _authApi.register(name: name, email: email, password: password);
+    final res = await _authApi.register(
+      name: name,
+      userName: userName,
+      email: email,
+      password: password,
+    );
     final status = res['_status'] as int? ?? 201;
     if (status == 201) return 'User created successfully';
 
     final errorMessage = (res['message']?.toString() ?? '').toLowerCase();
-    if (errorMessage.contains('email') && errorMessage.contains('already')) {
+    if (errorMessage.contains('username') && errorMessage.contains('already')) {
+      throw UsernameAlreadyUseAuthException();
+    } else if (errorMessage.contains('username') &&
+        (errorMessage.contains('required') || errorMessage.contains('missing'))) {
+      throw Exception('Username is required');
+    } else if (errorMessage.contains('email') && errorMessage.contains('already')) {
       throw EmailAlreadyUseAuthException();
     } else if (errorMessage.contains('weak') ||
         errorMessage.contains('password')) {
@@ -64,7 +75,7 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
         errorMessage.contains('email')) {
       throw InvalidEmailAuthException();
     }
-    throw GenericAuthException();
+    throw Exception(res['message']?.toString() ?? GenericAuthException().toString());
   }
 
   // LOGIN
@@ -73,7 +84,14 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
     final data = await _authApi.login(email: email, password: password);
 
     final status = data['_status'] as int? ?? 200;
-    if (status != 200) {
+    if (status == 403) {
+      final msg = data['message']?.toString() ?? 'Email not verified.';
+      throw EmailNotVerifiedAuthException(msg);
+    } else if (status == 401) {
+      throw WrongPasswordAuthException();
+    } else if (status == 404) {
+      throw UserNotFoundAuthException();
+    } else if (status != 200) {
       final msg = data['message']?.toString() ?? 'Login failed';
       throw Exception(msg);
     }
@@ -94,6 +112,13 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
     await _tokens.save(AuthTokens(access: accessToken, refresh: refreshToken));
 
     final user = await _userRepo.getUserById(userId);
+    if (user.emailVerified == false) {
+      await _tokens.clear();
+      _setCurrentUser(null);
+      throw EmailNotVerifiedAuthException(
+          data['message']?.toString() ?? 'Email not verified.');
+    }
+
     _setCurrentUser(user);
     return _user;
   }
@@ -107,7 +132,8 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
 
   @override
   Future<void> sendEmailVerification() async {
-    throw UnimplementedError('Handled by backend or removed entirely.');
+    if (_user == null) throw UserNotSignedInException();
+    await resendVerificationEmail(email: _user!.email);
   }
 
   // STARTUP
@@ -190,6 +216,31 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
     }
 
     return true;
+  }
+
+  @override
+  Future<void> resendVerificationEmail({required String email}) async {
+    final res =
+        await _authApi.resendVerification(email: email.trim().toLowerCase());
+    final status = res['_status'] as int? ?? 200;
+    if (status != 200) {
+      final msg = res['message']?.toString() ??
+          'Unable to resend verification email.';
+      throw Exception(msg);
+    }
+  }
+
+  @override
+  Future<VerificationResult> verifyEmailToken({required String token}) async {
+    final res = await _authApi.verifyEmail(token: token);
+    final status = res['_status'] as int? ?? 200;
+    final message = res['message']?.toString() ?? 'Email verified';
+    final success = status >= 200 && status < 300 && (res['_error'] != true);
+    if (success) return VerificationResult(success: true, message: message);
+    return VerificationResult(
+      success: false,
+      message: message.isNotEmpty ? message : 'Verification failed.',
+    );
   }
 
   @override

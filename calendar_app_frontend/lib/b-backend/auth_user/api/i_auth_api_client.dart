@@ -3,6 +3,7 @@
 abstract class IAuthApiClient {
   Future<Map<String, dynamic>> register({
     required String name,
+    required String userName,
     required String email,
     required String password,
   });
@@ -25,4 +26,8 @@ abstract class IAuthApiClient {
     required String currentPassword,
     required String newPassword,
   });
+
+  Future<Map<String, dynamic>> verifyEmail({required String token});
+
+  Future<Map<String, dynamic>> resendVerification({required String email});
 }

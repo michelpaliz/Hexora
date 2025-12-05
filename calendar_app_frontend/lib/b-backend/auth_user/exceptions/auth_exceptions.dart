@@ -63,3 +63,16 @@ class UserNotSignedInException implements Exception {
   @override
   String toString() => 'You are not signed in.';
 }
+
+class EmailNotVerifiedAuthException implements Exception {
+  final String message;
+  EmailNotVerifiedAuthException([this.message = 'Email not verified.']);
+
+  @override
+  String toString() => message;
+}
+
+class UsernameAlreadyUseAuthException implements Exception {
+  @override
+  String toString() => 'This username is already in use.';
+}

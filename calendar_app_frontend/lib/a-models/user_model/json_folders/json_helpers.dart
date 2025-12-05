@@ -32,6 +32,16 @@ List<String> optStringList(Map<String, dynamic> j, String key) {
   return <String>[];
 }
 
+bool? optBool(Map<String, dynamic> j, String key) {
+  final v = j[key];
+  if (v is bool) return v;
+  if (v is String) {
+    if (v.toLowerCase() == 'true') return true;
+    if (v.toLowerCase() == 'false') return false;
+  }
+  return null;
+}
+
 /// Returns first non-empty string among keys, else null.
 String? optStringAny(Map<String, dynamic> j, List<String> keys) {
   for (final k in keys) {

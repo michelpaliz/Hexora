@@ -149,6 +149,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get login => 'Iniciar sesión';
 
   @override
+  String get backToLogin => 'Volver al inicio de sesión';
+
+  @override
+  String get downloadMobileApp => 'Descargar la app móvil';
+
+  @override
   String get userNameHint =>
       'Introduce tu nombre de usuario (p.ej., john_doe123)';
 
@@ -188,13 +194,78 @@ class AppLocalizationsEs extends AppLocalizations {
   String get registrationError => 'Error de registro';
 
   @override
+  String get registerCheckEmail =>
+      'Cuenta creada. Revisa tu correo para verificar.';
+
+  @override
   String get userNotFound => 'Usuario no encontrado';
 
   @override
   String get wrongCredentials => 'Credenciales incorrectas';
 
   @override
+  String get loginInvalidCredentials =>
+      'Credenciales inválidas. Inténtalo de nuevo.';
+
+  @override
   String get authError => 'Error de autenticación';
+
+  @override
+  String get verifyEmailTitle => 'Verifica tu correo electrónico';
+
+  @override
+  String get verifyEmailInfo =>
+      'Te enviamos un enlace de verificación. Ábrelo desde tu correo para completar la verificación.';
+
+  @override
+  String get verifyingEmail => 'Verificando tu correo...';
+
+  @override
+  String get verifyEmailTryAgain => 'Intentar de nuevo';
+
+  @override
+  String get resendVerificationButton => 'Reenviar verificación';
+
+  @override
+  String get resendVerificationSending => 'Enviando...';
+
+  @override
+  String get resendVerificationInvalidEmail =>
+      'Ingresa un correo válido para reenviar.';
+
+  @override
+  String resendVerificationSent(String email) {
+    return 'Correo de verificación enviado a $email';
+  }
+
+  @override
+  String resendVerificationFailed(String error) {
+    return 'No se pudo reenviar la verificación: $error';
+  }
+
+  @override
+  String get verifySuccessTitle => 'Correo verificado';
+
+  @override
+  String get verifySuccessMessage =>
+      'Tu correo ha sido confirmado. Ya puedes iniciar sesión y usar la aplicación.';
+
+  @override
+  String get downloadAppTitle => 'Obtén Hexora en tu teléfono';
+
+  @override
+  String get downloadAppSubtitle =>
+      'Instala la app para Android o iOS y mantente al día donde estés.';
+
+  @override
+  String get downloadAppAndroid => 'Consíguela en Google Play';
+
+  @override
+  String get downloadAppIos => 'Descárgala en App Store';
+
+  @override
+  String get downloadAppOpenError =>
+      'No se pudo abrir el enlace de la tienda. Intenta de nuevo.';
 
   @override
   String get changePassword => 'Cambiar contraseña';
@@ -820,7 +891,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get removeRecurrence => 'Remove Recurrence';
+  String get removeRecurrence => 'Eliminar repetición';
 
   @override
   String get removeRecurrenceConfirm =>

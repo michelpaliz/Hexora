@@ -4,6 +4,9 @@ class AppRoutes {
   static const registerRoute = '/register';
   static const passwordRecoveryRoute = '/password-recovery';
   static const verifyEmailRoute = '/verify-email';
+  static const verifyEmailSuccessRoute = '/verify-email/success';
+  static const downloadApp = '/download-app';
+  static const downloadAppShort = '/download';
   static const agenda = '/agenda';
   static const groupDashboard = '/group-dashboard';
   static const createWorker = '/group/create-worker';

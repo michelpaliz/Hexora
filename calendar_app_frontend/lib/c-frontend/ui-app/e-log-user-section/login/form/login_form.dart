@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/home_page.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/register/ui/form/button_style_helper.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/text_field_widget.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/textfield_styles.dart'
     show TextFieldStyles;
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -25,6 +26,7 @@ class _LoginFormState extends State<LoginForm> {
 
   bool _showPassword = false;
   bool _canSubmit = false;
+  bool _isResending = false;
 
   @override
   void initState() {
@@ -50,12 +52,111 @@ class _LoginFormState extends State<LoginForm> {
     if (next != _canSubmit) setState(() => _canSubmit = next);
   }
 
+  void _showSnack(String message, {SnackBarAction? action}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), action: action),
+    );
+  }
+
+  Future<void> _resendVerification({String? overrideEmail}) async {
+    final l10n = AppLocalizations.of(context)!;
+    final email = (overrideEmail ?? _email.text).trim();
+    final emailOk = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email);
+    if (!emailOk) {
+      _showSnack(l10n.resendVerificationInvalidEmail);
+      return;
+    }
+
+    setState(() => _isResending = true);
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.resendVerificationEmail(email: email);
+      if (!mounted) return;
+      _showSnack(l10n.resendVerificationSent(email));
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack(l10n.resendVerificationFailed(e.toString().trim()));
+    } finally {
+      if (mounted) setState(() => _isResending = false);
+    }
+  }
+
+  void _promptEmailVerification(String email) {
+    final l10n = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child:
+                      Icon(Icons.mark_email_unread_rounded, color: cs.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.verifyEmailTitle,
+                    style: t.bodyMedium.copyWith(color: cs.onSurface),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              l10n.verifyEmailInfo,
+              style: t.bodyMedium.copyWith(
+                color: cs.onSurface.withOpacity(0.8),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 50,
+              child: FilledButton(
+                onPressed: _isResending
+                    ? null
+                    : () async {
+                        Navigator.of(context).pop(); // close sheet
+                        await _resendVerification(overrideEmail: email);
+                      },
+                child: _isResending
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l10n.resendVerificationButton, style: t.buttonText),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context); // ✅ grab themed text styles
+    final t = AppTypography.of(context);
 
     return Form(
       key: _formKey,
@@ -111,9 +212,31 @@ class _LoginFormState extends State<LoginForm> {
             validator: (val) =>
                 (val == null || val.isEmpty) ? l10n.passwordRequired : null,
           ),
+
+          // 🔹 UX IMPROVEMENT: Forgot Password immediately below input
+          // Aligned right, close to where the user just typed the password
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: widget.onForgotPassword,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                visualDensity: VisualDensity.compact,
+                foregroundColor: cs.primary,
+              ),
+              child: Text(
+                l10n.forgotPassword,
+                style: t.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: cs.primary,
+                ),
+              ),
+            ),
+          ),
+
           const SizedBox(height: 24),
 
-          // Submit
+          // Submit Button
           SizedBox(
             height: 56,
             child: ElevatedButton(
@@ -128,33 +251,27 @@ class _LoginFormState extends State<LoginForm> {
                             email: email, password: password);
                         if (!mounted) return;
 
-                        // Navigate to home after login
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(builder: (_) => const HomePage()),
                         );
                       } catch (e) {
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Login failed: $e')),
-                        );
+
+                        if (e is EmailNotVerifiedAuthException) {
+                          _promptEmailVerification(email);
+                        } else if (e is WrongPasswordAuthException) {
+                          _showSnack(l10n.loginInvalidCredentials);
+                        } else {
+                          _showSnack('Login failed: $e');
+                        }
                       }
                     }
                   : null,
-              child: Text(l10n.login, style: t.buttonText), // ✅ use themed text
+              child: Text(l10n.login, style: t.buttonText),
             ),
           ),
 
-          const SizedBox(height: 14),
-
-          // Forgot password → switches the card
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: widget.onForgotPassword,
-              child: Text(l10n.forgotPassword,
-                  style: t.bodyMedium.copyWith(color: cs.primary)),
-            ),
-          ),
+          const SizedBox(height: 20),
         ],
       ),
     );

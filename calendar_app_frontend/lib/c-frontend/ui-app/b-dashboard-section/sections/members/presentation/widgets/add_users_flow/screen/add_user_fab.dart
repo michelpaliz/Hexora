@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/errorClases/error_classes/error_classes.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/repository/i_group_repository.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_vm.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/screen/review_user_screen.dart';
@@ -38,6 +40,7 @@ class AddUsersFab extends StatelessWidget {
         if (users != null || roles != null) {
           final gd = context.read<GroupDomain>();
           final repo = gd.groupRepository;
+          final groupRepo = context.read<IGroupRepository>();
           final userDomain = context.read<UserDomain>();
 
           // Build an updated snapshot for immediate UI (even before refresh)
@@ -46,6 +49,7 @@ class AddUsersFab extends StatelessWidget {
             ...group.userIds,
             if (users != null) ...users.map((u) => u.id),
           }.toList();
+          final newUserIds = users?.map((u) => u.id).toSet() ?? const {};
 
           // Optimistically push snapshot so UI updates instantly
           gd.currentGroup = group.copyWith(
@@ -54,19 +58,25 @@ class AddUsersFab extends StatelessWidget {
           );
           gd.userRoles.value = mergedRoles;
 
-          // 🔹 Apply role changes individually
+          // 🔹 Apply role changes for existing members first (avoid 404)
           if (roles != null) {
             for (final entry in roles.entries) {
               final userId = entry.key;
               final desiredWire = entry.value; // already from backend list
               final currentWire = group.userRoles[userId];
 
-              if (currentWire != desiredWire) {
-                await repo.setUserRoleInGroup(
-                  groupId: group.id,
-                  userId: userId,
-                  roleWire: desiredWire,
-                );
+              final wasMember = group.userIds.contains(userId);
+              if (wasMember && currentWire != desiredWire) {
+                try {
+                  await repo.setUserRoleInGroup(
+                    groupId: group.id,
+                    userId: userId,
+                    roleWire: desiredWire,
+                  );
+                } on HttpFailure catch (e) {
+                  if (e.statusCode != 404) rethrow;
+                  // Ignore 404 if backend still considers user absent
+                }
               }
             }
           }
@@ -79,6 +89,44 @@ class AddUsersFab extends StatelessWidget {
             );
 
             await repo.updateGroup(updatedGroup);
+          }
+
+          // 🔹 Send invitations for newly added users (using desired role)
+          if (roles != null && newUserIds.isNotEmpty) {
+            for (final entry in roles.entries) {
+              final userId = entry.key;
+              if (!newUserIds.contains(userId)) continue;
+              final desiredWire = entry.value;
+              try {
+                await groupRepo.sendGroupInvitation(
+                  groupId: group.id,
+                  userId: userId,
+                  roleWire: desiredWire,
+                );
+              } on HttpFailure catch (e) {
+                if (e.statusCode != 404 && e.statusCode != 409) rethrow;
+                // Skip if backend still doesn't see membership/invite target or already member.
+              }
+            }
+          }
+
+          // 🔹 Apply role changes for newly added members (now that they exist)
+          if (roles != null && newUserIds.isNotEmpty) {
+            for (final entry in roles.entries) {
+              final userId = entry.key;
+              if (!newUserIds.contains(userId)) continue;
+              final desiredWire = entry.value;
+              try {
+                await repo.setUserRoleInGroup(
+                  groupId: group.id,
+                  userId: userId,
+                  roleWire: desiredWire,
+                );
+              } on HttpFailure catch (e) {
+                if (e.statusCode != 404) rethrow;
+                // Backend may not see membership yet; skip silently.
+              }
+            }
           }
 
           // 🔹 Refresh domain cache/stream and current group

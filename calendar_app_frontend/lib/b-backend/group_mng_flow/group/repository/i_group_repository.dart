@@ -56,6 +56,13 @@ abstract class IGroupRepository {
   /// Fetch supported group roles (wire values) from backend.
   Future<List<String>> getGroupRoles();
 
+  /// Send an invitation to join this group.
+  Future<void> sendGroupInvitation({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+  });
+
   // Lifecycle
   void dispose();
 }

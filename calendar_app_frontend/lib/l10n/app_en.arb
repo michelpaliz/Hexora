@@ -73,6 +73,8 @@
     "password": "Password",
     "register": "Register",
     "login": "Login",
+    "backToLogin": "Back to login",
+    "downloadMobileApp": "Download the mobile app",
     "userNameHint": "Enter your username (e.g., john_doe123)",
     "nameHint": "Enter your name",
     "emailHint": "Introduce your email",
@@ -85,9 +87,41 @@
     "emailTaken": "The email is already taken",
     "invalidEmail": "This is an invalid email address",
     "registrationError": "Registration error",
+    "registerCheckEmail": "Account created. Check your email to verify.",
     "userNotFound": "User not found",
     "wrongCredentials": "Wrong credentials",
+    "loginInvalidCredentials": "Invalid credentials. Please try again.",
     "authError": "Authentication error",
+    "verifyEmailTitle": "Verify your email",
+    "verifyEmailInfo": "We've sent you a verification link. Open the link from your email to finish verifying.",
+    "verifyingEmail": "Verifying your email...",
+    "verifyEmailTryAgain": "Try again",
+    "resendVerificationButton": "Resend verification email",
+    "resendVerificationSending": "Sending...",
+    "resendVerificationInvalidEmail": "Please enter a valid email to resend.",
+    "resendVerificationSent": "Verification email sent to {email}",
+    "@resendVerificationSent": {
+      "placeholders": {
+        "email": {
+          "type": "String"
+        }
+      }
+    },
+    "resendVerificationFailed": "Could not resend verification: {error}",
+    "@resendVerificationFailed": {
+      "placeholders": {
+        "error": {
+          "type": "String"
+        }
+      }
+    },
+    "verifySuccessTitle": "Email verified",
+    "verifySuccessMessage": "Your email has been confirmed. You can now sign in and start using the app.",
+    "downloadAppTitle": "Get Hexora on your phone",
+    "downloadAppSubtitle": "Install the Android or iOS app to stay in sync on the go.",
+    "downloadAppAndroid": "Get it on Google Play",
+    "downloadAppIos": "Download on the App Store",
+    "downloadAppOpenError": "Couldn't open the store link. Please try again.",
     "changePassword": "Change Password",
     "notRegistered": "Not registered yet?, Don't worry register here.",
     "alreadyRegistered": "Already registered?, Login here.",

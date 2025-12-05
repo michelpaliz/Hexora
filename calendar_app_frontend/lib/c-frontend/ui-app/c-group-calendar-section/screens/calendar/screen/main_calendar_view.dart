@@ -27,6 +27,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   late final CalendarScreenCoordinator _c;
   bool _isBootstrapped = false;
   bool _weatherIconsEnabled = true;
+  String? _selectedUserFilter;
 
   // Default to Week view (using new CalTab enum)
   int _initialIndex = CalTab.week.index;
@@ -41,9 +42,11 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   Future<void> _bootstrap() async {
     if (_isBootstrapped) return;
     try {
+      _selectedUserFilter = null;
       await _c.initSockets();
       await _c.loadData(initialGroup: widget.group);
       _c.calendarUI?.setShowWeatherIcons(_weatherIconsEnabled);
+      _c.calendarUI?.setEventFilter(userId: _selectedUserFilter);
       // If your coordinator exposes current view, you can map it to initialIndex here.
       _isBootstrapped = true;
     } finally {
@@ -69,6 +72,11 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     _weatherIconsEnabled = value;
     _c.calendarUI?.setShowWeatherIcons(value);
     setState(() {});
+  }
+
+  void _onUserFilterChanged(String? userId) {
+    setState(() => _selectedUserFilter = userId);
+    _c.calendarUI?.setEventFilter(userId: userId);
   }
 
   @override
@@ -134,7 +142,12 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                   child: Column(
                     children: [
                       // Presence strip
-                      PresenceStatusStrip(group: currentGroup, controller: _c),
+                      PresenceStatusStrip(
+                        group: currentGroup,
+                        controller: _c,
+                        selectedUserId: _selectedUserFilter,
+                        onUserSelected: _onUserFilterChanged,
+                      ),
                       const SizedBox(height: 10),
 
                       // Calendar content

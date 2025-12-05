@@ -230,6 +230,20 @@ class GroupRepository implements IGroupRepository {
     return _api.getGroupRoles(await _token());
   }
 
+  @override
+  Future<void> sendGroupInvitation({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+  }) async {
+    await _api.sendInvitation(
+      groupId: groupId,
+      userId: userId,
+      roleWire: roleWire,
+      token: await _token(),
+    );
+  }
+
   // ── Media ──────────────────────────────────────────────────────────────────
   @override
   Future<void> uploadAndCommitGroupPhoto({

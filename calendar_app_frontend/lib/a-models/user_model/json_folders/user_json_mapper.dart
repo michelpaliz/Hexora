@@ -10,6 +10,7 @@ Map<String, dynamic> userToJson(User u) {
     'displayName': u.displayName,
     'userName': u.userName,
     'email': u.email,
+    'emailVerified': u.emailVerified,
     'bio': u.bio,
     'phoneNumber': u.phoneNumber,
     'location': u.location,
@@ -42,6 +43,7 @@ User userFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
   final email = requireString(json, 'email');
 
   final userName = requireStringAny(json, ['userName', 'username']);
+  final emailVerified = optBool(json, 'emailVerified') ?? false;
 
   final bio = optStringAny(json, ['bio', 'about', 'description']);
   final phoneNumber = optStringAny(json, ['phoneNumber', 'phone']);
@@ -53,6 +55,7 @@ User userFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
     displayName: displayName,
     email: email,
     userName: userName,
+    emailVerified: emailVerified,
     bio: bio,
     phoneNumber: phoneNumber,
     location: location,

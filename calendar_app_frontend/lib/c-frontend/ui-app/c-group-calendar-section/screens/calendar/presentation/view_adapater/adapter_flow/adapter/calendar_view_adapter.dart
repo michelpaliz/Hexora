@@ -64,6 +64,12 @@ class CalendarViewAdapter implements SupportsViewMode {
 
   bool get showWeatherIcons => _state.showWeatherIcons.value;
 
+  void setEventFilter({String? userId}) {
+    _state.setEventFilter(userId);
+  }
+
+  String? get currentEventFilterUserId => _state.currentFilterUserId;
+
   // ---- UI -------------------------------------------------------------------
 
   Widget buildCalendar(BuildContext context, {double? height, double? width}) {

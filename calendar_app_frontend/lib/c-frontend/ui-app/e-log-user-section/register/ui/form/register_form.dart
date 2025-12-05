@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/register/ui/form/button_style_helper.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/register/utils/legal_text_helper.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/register/utils/password_utils.dart';
@@ -39,6 +41,7 @@ class _RegisterFormState extends State<RegisterForm> {
     controller = RegisterController();
 
     controller.name.addListener(_recomputeCanSubmit);
+    controller.userName.addListener(_recomputeCanSubmit);
     controller.email.addListener(_recomputeCanSubmit);
     controller.password.addListener(_recomputeCanSubmit);
 
@@ -54,6 +57,7 @@ class _RegisterFormState extends State<RegisterForm> {
   @override
   void dispose() {
     controller.name.removeListener(_recomputeCanSubmit);
+    controller.userName.removeListener(_recomputeCanSubmit);
     controller.email.removeListener(_recomputeCanSubmit);
     controller.password.removeListener(_recomputeCanSubmit);
     controller.dispose();
@@ -62,10 +66,11 @@ class _RegisterFormState extends State<RegisterForm> {
 
   void _recomputeCanSubmit() {
     final nameOk = controller.name.text.trim().isNotEmpty;
+    final userNameOk = controller.userName.text.trim().isNotEmpty;
     final emailOk =
         RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(controller.email.text.trim());
     final pwOk = controller.password.text.length >= 6;
-    final next = nameOk && emailOk && pwOk;
+    final next = nameOk && userNameOk && emailOk && pwOk;
     if (next != _canSubmit) {
       setState(() => _canSubmit = next);
     }
@@ -114,6 +119,21 @@ class _RegisterFormState extends State<RegisterForm> {
             ),
             validator: (val) =>
                 (val == null || val.trim().isEmpty) ? l10n.nameRequired : null,
+          ),
+          const SizedBox(height: 16),
+
+          // Username
+          TextFieldWidget(
+            controller: controller.userName,
+            keyboardType: TextInputType.text,
+            decoration: TextFieldStyles.saucyInputDecoration(
+              labelText: l10n.userName,
+              hintText: l10n.userNameHint,
+              suffixIcon: Icons.alternate_email,
+            ),
+            validator: (val) => (val == null || val.trim().isEmpty)
+                ? l10n.userNameRequired
+                : null,
           ),
           const SizedBox(height: 16),
 
@@ -201,24 +221,56 @@ class _RegisterFormState extends State<RegisterForm> {
                   ? () async {
                       if (!_formKey.currentState!.validate()) return;
                       final name = controller.name.text.trim();
+                      final userName = controller.userName.text.trim();
                       final email = controller.email.text.trim();
                       final password = controller.password.text;
 
                       try {
                         await authService.createUser(
                           name: name,
+                          userName: userName,
                           email: email,
                           password: password,
                         );
 
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Account created')),
+                          SnackBar(
+                            content: Text(l10n.registerCheckEmail),
+                          ),
+                        );
+                        Navigator.of(context).pushNamed(
+                          AppRoutes.verifyEmailRoute,
+                          arguments: {'email': email},
+                        );
+                      } on UsernameAlreadyUseAuthException {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l10n.userNameTaken)),
+                        );
+                      } on EmailAlreadyUseAuthException {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l10n.emailTaken)),
+                        );
+                      } on InvalidEmailAuthException {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l10n.invalidEmail)),
+                        );
+                      } on WeakPasswordException {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l10n.passwordLength)),
                         );
                       } catch (e) {
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Registration failed: $e')),
+                          SnackBar(
+                            content: Text(
+                              l10n.registrationError,
+                            ),
+                          ),
                         );
                       }
                     }

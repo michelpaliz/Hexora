@@ -26,6 +26,8 @@ class DateTimeSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final startLocal = startDate.toLocal();
+    final endLocal = endDate.toLocal();
 
     return cardBuilder(
       title: title,
@@ -47,7 +49,7 @@ class DateTimeSection extends StatelessWidget {
 
             final startField = _DateFieldTile(
               label: loc.startDate,
-              date: startDate,
+              date: startLocal,
               onTap: onStartTap,
               icon: Icons.event_available_rounded,
               baseColor: startBase,
@@ -55,7 +57,7 @@ class DateTimeSection extends StatelessWidget {
 
             final endField = _DateFieldTile(
               label: loc.endDate,
-              date: endDate,
+              date: endLocal,
               onTap: onEndTap,
               icon: Icons.event_busy_rounded,
               baseColor: endBase,
@@ -72,9 +74,21 @@ class DateTimeSection extends StatelessWidget {
             } else {
               return Column(
                 children: [
-                  startField,
+                  _DateFieldTile(
+                    label: loc.startDate,
+                    date: startLocal,
+                    onTap: onStartTap,
+                    icon: Icons.event_available_rounded,
+                    baseColor: startBase,
+                  ),
                   const SizedBox(height: 16),
-                  endField,
+                  _DateFieldTile(
+                    label: loc.endDate,
+                    date: endLocal,
+                    onTap: onEndTap,
+                    icon: Icons.event_busy_rounded,
+                    baseColor: endBase,
+                  ),
                 ],
               );
             }

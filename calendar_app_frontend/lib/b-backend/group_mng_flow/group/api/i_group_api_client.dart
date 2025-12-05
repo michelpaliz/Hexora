@@ -42,4 +42,12 @@ abstract class IGroupApiClient {
 
   /// Fetch supported group roles from backend (wire strings).
   Future<List<String>> getGroupRoles(String token);
+
+  /// Send an invitation to join a group.
+  Future<void> sendInvitation({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+    required String token,
+  });
 }
