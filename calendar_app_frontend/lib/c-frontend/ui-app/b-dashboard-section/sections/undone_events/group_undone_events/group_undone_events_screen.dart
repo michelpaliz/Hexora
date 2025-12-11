@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/shared/header_info.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_event_detail_sheet.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_widgets.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/widgets/group_undone_events_list_view.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/widgets/undone_events_segmented_tab_bar.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
@@ -61,9 +61,8 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -72,8 +71,11 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(loc.pendingEventsSectionTitle,
-                style: t.titleLarge.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              loc.pendingEventsSectionTitle,
+              style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+            ),
+            // If you want to re-enable group name later:
             // Text(
             //   group.name,
             //   style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
@@ -81,55 +83,9 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
           ],
         ),
         iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Consumer<GroupUndoneEventsViewModel>(
-            builder: (context, vm, _) {
-              final pendingLabel =
-                  '${loc.statusPending} · ${vm.pendingEvents.length}';
-              final completedLabel =
-                  '${loc.completedEventsSectionTitle} · ${vm.completedEvents.length}';
-              final trackBg = ThemeColors.cardBg(context);
-              final selectedText = ThemeColors.contrastOn(cs.primary);
-              final unselectedText =
-                  ThemeColors.textPrimary(context).withOpacity(0.7);
-
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: trackBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.onSurface.withOpacity(0.06)),
-                  ),
-                  child: TabBar(
-                    tabs: [
-                      Tab(text: pendingLabel),
-                      Tab(text: completedLabel),
-                    ],
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    labelColor: selectedText,
-                    unselectedLabelColor: unselectedText,
-                    labelStyle: t.bodySmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: .2,
-                    ),
-                    unselectedLabelStyle: t.bodySmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: .2,
-                    ),
-                    indicator: BoxDecoration(
-                      color: cs.primary,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    splashBorderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            },
-          ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(56),
+          child: UndoneEventsSegmentedTabBar(),
         ),
         actions: [
           IconButton(
@@ -168,7 +124,7 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
                     children: [
                       RefreshIndicator(
                         onRefresh: vm.refresh,
-                        child: _EventsListView(
+                        child: GroupUndoneEventsListView(
                           events: vm.pendingEvents,
                           emptyIcon: Icons.checklist_rtl_rounded,
                           emptyMessage: loc.pendingEventsEmpty,
@@ -177,18 +133,31 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
                           showError: vm.errorMessage != null &&
                               vm.pendingEvents.isEmpty,
                           allowAction: true,
+                          doneList: false,
                           viewModel: vm,
+                          onTapEvent: (event) => showEventDetailSheet(
+                            context: context,
+                            event: event,
+                            viewModel: vm,
+                            allowMarkComplete: true,
+                          ),
                         ),
                       ),
                       RefreshIndicator(
                         onRefresh: vm.refresh,
-                        child: _EventsListView(
+                        child: GroupUndoneEventsListView(
                           events: vm.completedEvents,
                           emptyIcon: Icons.task_alt_outlined,
                           emptyMessage: loc.completedEventsEmpty,
                           allowAction: false,
-                          viewModel: vm,
                           doneList: true,
+                          viewModel: vm,
+                          onTapEvent: (event) => showEventDetailSheet(
+                            context: context,
+                            event: event,
+                            viewModel: vm,
+                            allowMarkComplete: false,
+                          ),
                         ),
                       ),
                     ],
@@ -199,80 +168,6 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
           },
         ),
       ),
-    );
-  }
-}
-
-class _EventsListView extends StatelessWidget {
-  const _EventsListView({
-    required this.events,
-    required this.emptyIcon,
-    required this.emptyMessage,
-    required this.allowAction,
-    required this.viewModel,
-    this.doneList = false,
-    this.showError = false,
-    this.errorMessage,
-  });
-
-  final List<Event> events;
-  final IconData emptyIcon;
-  final String emptyMessage;
-  final bool allowAction;
-  final bool doneList;
-  final bool showError;
-  final String? errorMessage;
-  final GroupUndoneEventsViewModel viewModel;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final loc = AppLocalizations.of(context)!;
-
-    if (events.isEmpty) {
-      final placeholderMessage =
-          showError ? (errorMessage ?? emptyMessage) : emptyMessage;
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-        children: [
-          UndoneEventsPlaceholder(
-            icon: showError ? Icons.warning_amber_outlined : emptyIcon,
-            message: placeholderMessage,
-            actionLabel: showError ? loc.tryAgain : null,
-            onAction: showError ? viewModel.refresh : null,
-          ),
-        ],
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 24),
-      physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: events.length,
-      itemBuilder: (context, index) {
-        final event = events[index];
-        return Card(
-          elevation: doneList ? 0 : 1,
-          color: doneList
-              ? theme.colorScheme.surfaceContainerHigh
-              : theme.colorScheme.surface,
-          child: PendingEventTile(
-            event: event,
-            enableAction: allowAction,
-            isDone: doneList,
-            owner: viewModel.ownerInfoOf(event.ownerId),
-            viewModel: viewModel,
-            onTap: () => showEventDetailSheet(
-              context: context,
-              event: event,
-              viewModel: viewModel,
-              allowMarkComplete: allowAction,
-            ),
-          ),
-        );
-      },
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
     );
   }
 }

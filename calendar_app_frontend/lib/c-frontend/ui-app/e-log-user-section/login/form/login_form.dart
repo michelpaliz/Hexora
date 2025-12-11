@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
-import 'package:hexora/c-frontend/ui-app/a-home-section/home_page.dart';
+import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/home_page.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/register/ui/form/button_style_helper.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/text_field_widget.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/textfield_styles.dart'

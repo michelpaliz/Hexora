@@ -20,6 +20,7 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../dashboard/controller/group_dashboard_state.dart';
 
 class GroupDashboardBodyAdmin extends StatefulWidget {
   const GroupDashboardBodyAdmin({
@@ -29,8 +30,7 @@ class GroupDashboardBodyAdmin extends StatefulWidget {
     required this.onRefresh,
     required this.user,
     required this.role,
-    required this.fetchReadSas,
-    this.onGroupChanged,
+    this.onGroupChanged, required this.fetchReadSas,
   });
 
   final Group group;
@@ -139,16 +139,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             user: widget.user,
             role: widget.role,
             fetchReadSas: widget.fetchReadSas,
-            onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => RoleInfoScreen(
-                  group: _group,
-                  user: widget.user,
-                  role: widget.role,
-                  fetchReadSas: widget.fetchReadSas,
-                ),
-              ));
-            },
+            onTap: () => context.read<GroupDashboardState>().openSection('profile'),
           ),
 
           const SizedBox(height: 20),
@@ -173,7 +164,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             group: _group,
             user: widget.user,
             role: widget.role,
-            // cardColor: sectionCardColor,
+            onSeeAll: () =>
+                context.read<GroupDashboardState>().openSection('undone'),
           ),
 
           const SizedBox(height: 20),
@@ -187,8 +179,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                 '${NumberFormat.decimalPattern(l.localeName).format(membersShown)} ${l.membersTitle.toLowerCase()}',
                 style: tileSub,
               ),
-              onTap: () => Navigator.pushNamed(context, AppRoutes.groupMembers,
-                  arguments: _group),
+              onTap: () =>
+                  context.read<GroupDashboardState>().openSection('members'),
             ),
           ),
           const SizedBox(height: 8),
@@ -198,9 +190,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
               leading: const Icon(Icons.design_services_outlined),
               title: Text(l.servicesClientsTitle, style: tileTitle),
               subtitle: Text(l.servicesClientsSubtitle, style: tileSub),
-              onTap: () => Navigator.pushNamed(
-                  context, AppRoutes.groupServicesClients,
-                  arguments: _group),
+              onTap: () =>
+                  context.read<GroupDashboardState>().openSection('services'),
             ),
           ),
 
@@ -212,8 +203,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
               leading: const Icon(Icons.insights_outlined),
               title: Text(l.insightsTitle, style: tileTitle),
               subtitle: Text(l.insightsSubtitle, style: tileSub),
-              onTap: () => Navigator.pushNamed(context, AppRoutes.groupInsights,
-                  arguments: _group),
+              onTap: () =>
+                  context.read<GroupDashboardState>().openSection('insights'),
             ),
           ),
 
@@ -238,10 +229,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
               leading: const Icon(Icons.access_time_rounded),
               title: Text(l.timeTrackingTitle, style: tileTitle),
               subtitle: Text(l.timeTrackingHeaderHint, style: tileSub),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => GroupTimeTrackingScreen(group: _group)),
-              ),
+              onTap: () =>
+                  context.read<GroupDashboardState>().openSection('workers'),
             ),
           ),
 

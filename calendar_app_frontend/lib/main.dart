@@ -6,6 +6,7 @@ import 'package:hexora/b-backend/auth_user/auth/auth_services/auht_gate.dart';
 import 'package:hexora/c-frontend/routes/routes.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
+import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/f-themes/app_colors/themes/context_colors/theme_data.dart';
 import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -16,6 +17,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeAppServices();
   await setupLocalNotifications();
+
+  // Quick visibility into which API the app is targeting at runtime.
+  // Remove or adjust as needed for production logging policies.
+  debugPrint('📡 API base: ${ApiConstants.baseUrl}');
+  debugPrint('📦 CDN base: ${ApiConstants.cdnBaseUrl}');
 
   runApp(const HexoraApp());
 }

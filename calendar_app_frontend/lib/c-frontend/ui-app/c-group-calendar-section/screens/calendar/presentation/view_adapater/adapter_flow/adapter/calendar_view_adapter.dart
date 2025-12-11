@@ -8,9 +8,9 @@ import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calend
     as widgets;
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/screen/events_in_calendar/bridge/event_display_manager.dart';
 
+import '../view/appointment_builder_bridge.dart';
 import 'calendar_binding.dart';
 import 'calendar_state.dart';
-import '../view/appointment_builder_bridge.dart';
 
 class CalendarViewAdapter implements SupportsViewMode {
   final GroupDomain groupDomain;

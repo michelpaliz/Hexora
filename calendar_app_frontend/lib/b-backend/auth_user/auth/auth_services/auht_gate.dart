@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
 import 'package:provider/provider.dart';
 
-import 'package:hexora/c-frontend/ui-app/a-home-section/home_page.dart';
+import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/home_page.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/shared_utilities/auth_switcher_view.dart';
 
 /// Shows a splash while AuthService.initialize() runs,

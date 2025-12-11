@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/widgets/monthly_grid.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/widgets/overview_legend_raw.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/widgets/worker_overview_info_sheet.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/widgets/year_switcher.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -58,6 +61,7 @@ class _WorkerMonthlyOverviewScreenState
           final toLocal = (month < 12)
               ? DateTime(_year, month + 1, 1)
               : DateTime(_year + 1, 1, 1);
+
           final totals = await _repo.getWorkerTotals(
             widget.group.id,
             token,
@@ -65,6 +69,7 @@ class _WorkerMonthlyOverviewScreenState
             from: fromLocal.toUtc(),
             to: toLocal.toUtc(),
           );
+
           totalsByMonth[month] = totals;
         } catch (_) {
           totalsByMonth[month] = {
@@ -86,11 +91,13 @@ class _WorkerMonthlyOverviewScreenState
     }
   }
 
-  void _navigateToSelectedMonth() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => WorkerTimeTrackingScreen(
+  void _openSelectedMonthInline() {
+    showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.95,
+        child: WorkerTimeTrackingScreen(
           group: widget.group,
           worker: widget.worker,
           initialYear: _year,
@@ -102,107 +109,17 @@ class _WorkerMonthlyOverviewScreenState
 
   void _selectMonth(int month) {
     setState(() => _selectedMonth = month);
-    _navigateToSelectedMonth();
+    _openSelectedMonthInline();
   }
 
   void _showInfoSheet() {
-    final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l.overviewInfoTitle,
-                  style: t.titleLarge.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              Text(
-                l.overviewInfoBody,
-                style: t.bodyMedium.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.75),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _legendRow(context),
-              const SizedBox(height: 8),
-              Text(
-                '• ${l.tipTapMonthToOpen}\n• ${l.tipPullToRefresh}',
-                style: t.bodySmall.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.75),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _legendRow(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: [
-        _legendChip(
-          context,
-          icon: Icons.timer_outlined,
-          label: l.hours,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        _legendChip(
-          context,
-          icon: Icons.attach_money,
-          label: l.pay,
-          color: Theme.of(context).colorScheme.secondary,
-        ),
-        _legendChip(
-          context,
-          icon: Icons.task_alt,
-          label: l.entries,
-          color: Theme.of(context).colorScheme.tertiary,
-        ),
-      ],
-    );
-  }
-
-  Widget _legendChip(BuildContext context,
-      {required IconData icon, required String label, required Color color}) {
-    final t = AppTypography.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.22)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: t.bodySmall.copyWith(
-              fontWeight: FontWeight.w700,
-              color: color,
-              letterSpacing: .2,
-            ),
-          ),
-        ],
-      ),
+      builder: (ctx) => const WorkerOverviewInfoSheet(),
     );
   }
 
@@ -232,8 +149,10 @@ class _WorkerMonthlyOverviewScreenState
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.worker.displayName ?? 'Worker',
-                style: t.titleLarge.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              widget.worker.displayName ?? 'Worker',
+              style: t.titleLarge.copyWith(fontWeight: FontWeight.w700),
+            ),
             Text(
               '${widget.group.name} • $selectedLabel',
               style: t.bodyMedium.copyWith(
@@ -256,66 +175,29 @@ class _WorkerMonthlyOverviewScreenState
             ? ListView(
                 children: const [
                   SizedBox(
-                      height: 300,
-                      child: Center(child: CircularProgressIndicator())),
+                    height: 300,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
                 ],
               )
             : ListView(
                 children: [
-                  // Year switcher with higher contrast buttons
+                  // Year switcher
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Row(
-                      children: [
-                        IconButton.filledTonal(
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStatePropertyAll(
-                              theme.colorScheme.primaryContainer
-                                  .withOpacity(.5),
-                            ),
-                          ),
-                          tooltip: l.previous,
-                          icon: Icon(Icons.chevron_left,
-                              color: theme.colorScheme.onPrimaryContainer),
-                          onPressed: () {
-                            setState(() => _year -= 1);
-                            _loadAllMonths();
-                          },
-                        ),
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              '$_year',
-                              style: t.accentHeading.copyWith(
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: .2,
-                              ),
-                            ),
-                          ),
-                        ),
-                        IconButton.filledTonal(
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStatePropertyAll(
-                              theme.colorScheme.primaryContainer
-                                  .withOpacity(.5),
-                            ),
-                          ),
-                          tooltip: l.next,
-                          icon: Icon(Icons.chevron_right,
-                              color: theme.colorScheme.onPrimaryContainer),
-                          onPressed: () {
-                            setState(() => _year += 1);
-                            _loadAllMonths();
-                          },
-                        ),
-                      ],
+                    child: YearSwitcher(
+                      year: _year,
+                      onYearChanged: (newYear) {
+                        setState(() => _year = newYear);
+                        _loadAllMonths();
+                      },
                     ),
                   ),
 
                   // Legend row (subtle, compact)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                    child: _legendRow(context),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: OverviewLegendRow(),
                   ),
 
                   // 12-month grid with boosted contrast
@@ -347,7 +229,7 @@ class _WorkerMonthlyOverviewScreenState
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: FilledButton.icon(
-                      onPressed: _navigateToSelectedMonth,
+                      onPressed: _openSelectedMonthInline,
                       icon: const Icon(Icons.calendar_today),
                       label: Text(l.viewDetails),
                     ),

@@ -10,8 +10,9 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/widget/group_header_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/controller/group_dashboard_state.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -93,6 +94,15 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     if (custom != null) {
       custom();
       return;
+    }
+
+    final isWide = MediaQuery.of(context).size.width >= 900;
+    if (isWide) {
+      final state = context.read<GroupDashboardState?>();
+      if (state != null) {
+        state.openSection('editGroup');
+        return;
+      }
     }
 
     setState(() => _openingEditor = true);

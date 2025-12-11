@@ -31,6 +31,7 @@ class EventActionsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final isWide = MediaQuery.of(context).size.width >= 900;
 
     return SafeArea(
       child: Column(
@@ -41,14 +42,28 @@ class EventActionsSheet extends StatelessWidget {
             title: Text(loc.viewDetails),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EventDetailScreen(
-                    event: event,
+              final page = EventDetailScreen(event: event);
+              if (isWide) {
+                showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => FractionallySizedBox(
+                    heightFactor: 0.9,
+                    child: ClipRRect(
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(18)),
+                      child: page,
+                    ),
                   ),
-                ),
-              );
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => page),
+                );
+              }
             },
           ),
           if (canEdit)

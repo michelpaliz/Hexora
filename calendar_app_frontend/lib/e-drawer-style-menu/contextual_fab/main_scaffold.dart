@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/contextual_fab.dart';
-import 'package:hexora/e-drawer-style-menu/contextual_fab/horizontal_drawer_nav.dart';
+import 'package:hexora/e-drawer-style-menu/contextual_fab/horizontal_drawer_nav/horizontal_drawer_nav.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 
 class MainScaffold extends StatelessWidget {
@@ -19,6 +19,7 @@ class MainScaffold extends StatelessWidget {
   final Color? appBarBackgroundColor;
   final IconThemeData? iconTheme;
   final bool? centerTitle;
+  final bool showBottomNavAndFab;
 
   const MainScaffold({
     super.key,
@@ -28,10 +29,11 @@ class MainScaffold extends StatelessWidget {
     this.leading,
     this.actions,
     this.fab,
-    this.showAppBar = true, // 👈 new
+    this.showAppBar = true,
     this.appBarBackgroundColor,
     this.iconTheme,
     this.centerTitle,
+    this.showBottomNavAndFab = true,
   });
 
   @override
@@ -42,7 +44,8 @@ class MainScaffold extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: bg,
-      extendBody: true, // Allows body to extend behind bottom bar
+      extendBody:
+          false, // keep content clear of the BottomAppBar to avoid overlap
       appBar: showAppBar
           ? AppBar(
               backgroundColor: appBarBackgroundColor ?? bg,
@@ -59,26 +62,30 @@ class MainScaffold extends StatelessWidget {
               actionsIconTheme: iconTheme ?? IconThemeData(color: onSurface),
               automaticallyImplyLeading: false,
             )
-          : null, // 👈 no AppBar at all
-      // Removed SafeArea wrapper to let BottomAppBar handle safe areas
+          : null,
       body: Container(color: bg, child: body),
-      bottomNavigationBar: BottomAppBar(
-        shape: AutomaticNotchedShape(
-          const RoundedRectangleBorder(), // host
-          ContinuousRectangleBorder(
-            borderRadius: BorderRadius.circular(22), // guest (FAB)
-          ),
-        ),
-        notchMargin: 10,
-        elevation: 8,
-        color: (Theme.of(context).brightness == Brightness.dark
-                ? AppDarkColors.background
-                : AppColors.background)
-            .withOpacity(0.96),
-        child: const HorizontalDrawerNav(centerGapWidth: 96),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: const ContextualFab(),
+      bottomNavigationBar: showBottomNavAndFab
+          ? BottomAppBar(
+              shape: AutomaticNotchedShape(
+                const RoundedRectangleBorder(), // host
+                ContinuousRectangleBorder(
+                  borderRadius: BorderRadius.circular(22), // guest (FAB)
+                ),
+              ),
+              notchMargin: 10,
+              elevation: 8,
+              color: (Theme.of(context).brightness == Brightness.dark
+                      ? AppDarkColors.background
+                      : AppColors.background)
+                  .withOpacity(0.96),
+              child: const HorizontalDrawerNav(centerGapWidth: 96),
+            )
+          : null,
+      floatingActionButtonLocation: showBottomNavAndFab
+          ? FloatingActionButtonLocation.centerDocked
+          : null,
+      floatingActionButton:
+          showBottomNavAndFab ? const ContextualFab() : null,
     );
   }
 }

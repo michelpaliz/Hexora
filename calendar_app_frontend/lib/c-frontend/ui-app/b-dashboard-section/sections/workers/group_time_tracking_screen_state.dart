@@ -10,6 +10,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/wi
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_list_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/edit_worker/edit_worker_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -144,6 +145,20 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     }
   }
 
+  Future<void> _addSharedHoursFor(Worker worker) async {
+    final created = await Navigator.pushNamed(
+      context,
+      AppRoutes.createTimeEntry,
+      arguments: {
+        'group': widget.group,
+        'workers': [worker],
+      },
+    );
+    if (created == true) {
+      await _load();
+    }
+  }
+
   Future<bool?> _openEditWorkerDialog(
       BuildContext context, Group group, Worker worker) {
     return showModalBottomSheet<bool>(
@@ -262,6 +277,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                                   );
                                   if (updated == true) _load();
                                 },
+                                onAddHours: _addSharedHoursFor,
                                 onOpenOverview: (w) {
                                   Navigator.push(
                                     context,

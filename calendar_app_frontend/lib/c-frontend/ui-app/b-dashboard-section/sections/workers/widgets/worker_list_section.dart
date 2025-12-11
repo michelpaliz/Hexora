@@ -8,12 +8,14 @@ class WorkerListSection extends StatelessWidget {
     super.key,
     required this.workers,
     required this.onEdit,
-    required this.onOpenOverview,
+    required this.onAddHours,
+    this.onOpenOverview,
   });
 
   final List<Worker> workers;
   final void Function(Worker worker) onEdit;
-  final void Function(Worker worker) onOpenOverview;
+  final void Function(Worker worker) onAddHours;
+  final void Function(Worker worker)? onOpenOverview;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +37,8 @@ class WorkerListSection extends StatelessWidget {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () => onOpenOverview(w),
+            onTap: () =>
+                onOpenOverview != null ? onOpenOverview!(w) : onAddHours(w),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
@@ -82,11 +85,22 @@ class WorkerListSection extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    tooltip: l.editWorker,
-                    color: cs.primary,
-                    onPressed: () => onEdit(w),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.schedule_outlined),
+                        tooltip: l.addTimeEntryCta,
+                        color: cs.primary,
+                        onPressed: () => onAddHours(w),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        tooltip: l.editWorker,
+                        color: cs.primary,
+                        onPressed: () => onEdit(w),
+                      ),
+                    ],
                   ),
                 ],
               ),

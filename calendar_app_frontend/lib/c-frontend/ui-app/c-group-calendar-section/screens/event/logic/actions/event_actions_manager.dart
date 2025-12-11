@@ -65,14 +65,32 @@ class EventActionManager {
 
   void editEvent(Event event, BuildContext context) {
     final sharedeventDomain = eventDomain;
+    final isWide = MediaQuery.of(context).size.width >= 900;
+    final page = Provider<EventDomain>.value(
+      value: sharedeventDomain,
+      child: EditEventScreen(event: event),
+    );
+
+    if (isWide) {
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => FractionallySizedBox(
+          heightFactor: 0.92,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            child: page,
+          ),
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => Provider<EventDomain>.value(
-          value: sharedeventDomain,
-          child: EditEventScreen(event: event),
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => page),
     );
   }
 

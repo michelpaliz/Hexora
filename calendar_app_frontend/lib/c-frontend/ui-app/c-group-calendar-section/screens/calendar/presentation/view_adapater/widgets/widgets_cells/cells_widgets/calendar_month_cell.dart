@@ -94,9 +94,15 @@ Widget buildMonthCell({
   return LayoutBuilder(
     builder: (context, constraints) {
       final isCompact = constraints.maxHeight < 56;
+      final isDenseHeight = constraints.maxHeight < 44;
+      final showDots = eventsForDay.isNotEmpty && constraints.maxHeight >= 34;
 
       // Slightly smaller / tighter icon if the cell is really small
       final weatherFontSize = isCompact ? 10.0 : 12.0;
+      final dayFontSize = isDenseHeight ? 11.0 : 12.0;
+      final countFontSize = isDenseHeight ? 9.0 : 10.0;
+      final dotSize = isDenseHeight ? 5.0 : 6.0;
+      final dotRowHeight = isDenseHeight ? 10.0 : 12.0;
 
       return Container(
         margin: const EdgeInsets.all(2),
@@ -137,20 +143,24 @@ Widget buildMonthCell({
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: Center(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (!isCompact && eventsForDay.isNotEmpty)
                       Text(
                         '${eventsForDay.length} event${eventsForDay.length > 1 ? 's' : ''}',
-                        style: countStyle,
+                        style: countStyle.copyWith(fontSize: countFontSize),
+                        maxLines: 1,
+                        overflow: TextOverflow.fade,
+                        softWrap: false,
                       ),
                     Text(
                       '${date.day}',
-                      style: dayNumberStyle,
+                      style: dayNumberStyle.copyWith(fontSize: dayFontSize),
                     ),
-                    if (eventsForDay.isNotEmpty)
+                    if (showDots)
                       SizedBox(
-                        height: 12,
+                        height: dotRowHeight,
                         child: Wrap(
                           alignment: WrapAlignment.center,
                           spacing: 3,
@@ -163,8 +173,8 @@ Widget buildMonthCell({
                                     .eventColors[event.eventColorIndex]
                                 : (isDark ? Colors.white70 : Colors.black38);
                             return Container(
-                              width: 6,
-                              height: 6,
+                              width: dotSize,
+                              height: dotSize,
                               decoration: BoxDecoration(
                                 color: color,
                                 shape: BoxShape.circle,

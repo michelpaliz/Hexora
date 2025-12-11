@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/controller/group_dashboard_state.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/group_header_view.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/role_info_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/business_hours/group_business_hours_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/role_info/profile_role_card.dart';
@@ -12,6 +12,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/upcoming_e
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
 
 class GroupDashboardBodyMember extends StatelessWidget {
   const GroupDashboardBodyMember({
@@ -32,7 +33,7 @@ class GroupDashboardBodyMember extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final sectionTitle = t.bodyLarge.copyWith(fontWeight: FontWeight.w800);
-    final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+    Theme.of(context).textTheme.titleMedium?.copyWith(
           color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.w800,
         );
@@ -54,16 +55,8 @@ class GroupDashboardBodyMember extends StatelessWidget {
                 user: user,
                 role: role,
                 fetchReadSas: fetchReadSas,
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => RoleInfoScreen(
-                      group: group,
-                      user: user,
-                      role: role,
-                      fetchReadSas: fetchReadSas,
-                    ),
-                  ));
-                },
+                onTap: () =>
+                    context.read<GroupDashboardState>().openSection('profile'),
               ),
               const SizedBox(height: 20),
               SectionHeader(

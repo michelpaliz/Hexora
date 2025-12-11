@@ -4,7 +4,7 @@ import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_event_detail_sheet.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_widgets.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
@@ -18,12 +18,14 @@ class GroupUndoneEventsSection extends StatelessWidget {
     required this.user,
     required this.role,
     this.limit = 3,
+    this.onSeeAll,
   });
 
   final Group group;
   final User user;
   final GroupRole role;
   final int limit;
+  final VoidCallback? onSeeAll;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +51,7 @@ class GroupUndoneEventsSection extends StatelessWidget {
         user: user,
         role: role,
         limit: limit,
+        onSeeAll: onSeeAll,
       ),
     );
   }
@@ -60,23 +63,29 @@ class _GroupUndoneEventsSectionBody extends StatelessWidget {
     required this.user,
     required this.role,
     required this.limit,
+    this.onSeeAll,
   });
 
   final Group group;
   final User user;
   final GroupRole role;
   final int limit;
+  final VoidCallback? onSeeAll;
 
   void _openFullList(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => GroupUndoneEventsScreen(
-          group: group,
-          user: user,
-          role: role,
+    if (onSeeAll != null) {
+      onSeeAll!();
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GroupUndoneEventsScreen(
+            group: group,
+            user: user,
+            role: role,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   @override

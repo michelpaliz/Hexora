@@ -61,14 +61,14 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     final shortest = size.shortestSide;
     final portrait = MediaQuery.of(context).orientation == Orientation.portrait;
 
-    // Base height scales with width; clamp to sane bounds.
-    final base = size.width * (portrait ? 0.28 : 0.22);
+    // Base height scales with width; clamp to tighter bounds for web/inline.
+    final base = size.width * (portrait ? 0.18 : 0.15);
 
     // Slightly larger on tablets/desktop
-    final tabletBump = shortest >= 600 ? 32.0 : 0.0;
+    final tabletBump = shortest >= 600 ? 12.0 : 0.0;
 
-    // Clamp between 140–260 so images don’t get ridiculous
-    return base.clamp(140.0, 260.0) + tabletBump;
+    // Clamp between 110–190 so headers don’t dominate the card
+    return base.clamp(110.0, 190.0) + tabletBump;
   }
 
   @override
@@ -76,7 +76,9 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textColor = getTextColor(context);
     final backgroundColor = getBackgroundColor(context).withOpacity(0.8);
-    final fontSize = MediaQuery.of(context).size.width * 0.035;
+    // Keep headers legible but compact on web/inline layouts
+    final fontSize =
+        (MediaQuery.of(context).size.width * 0.018).clamp(13.0, 18.0);
     // inside build(BuildContext context) just after you compute fontSize, etc.
     final double monthHeaderHeight = _responsiveMonthHeaderHeight(context);
 
@@ -126,12 +128,8 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                 controller: _controller,
                                 dataSource: ds,
                                 view: _selectedView,
-                                allowedViews: const [
-                                  sf.CalendarView.day,
-                                  sf.CalendarView.week,
-                                  sf.CalendarView.month,
-                                  sf.CalendarView.schedule,
-                                ],
+                                headerHeight: 44,
+                                viewHeaderHeight: 55,
                                 onViewChanged: (_) =>
                                     _selectedView = _controller.view!,
                                 onSelectionChanged: (d) {

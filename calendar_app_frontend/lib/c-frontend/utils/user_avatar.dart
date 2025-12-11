@@ -64,26 +64,6 @@ class _UserAvatarState extends State<UserAvatar> {
     }
   }
 
-  // Future<void> _ensureSas() async {
-  //   final url = widget.user.photoUrl ?? '';
-  //   final blob = widget.user.photoBlobName ?? '';
-
-  //   if (url.isNotEmpty && url.contains('?')) {
-  //     setState(() => _sasUrl = url);
-  //     return;
-  //   }
-
-  //   if (blob.isEmpty || _loading) return;
-
-  //   _loading = true;
-  //   try {
-  //     final sas = await widget.fetchReadSas(blob);
-  //     if (!mounted) return;
-  //     setState(() => _sasUrl = sas);
-  //   } finally {
-  //     _loading = false;
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {

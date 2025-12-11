@@ -24,15 +24,18 @@ class ContextualFab extends StatelessWidget {
       accentColor: baseColor,
     );
 
-    return FabShell(
-      color: baseColor,
-      child: FloatingActionButton(
-        onPressed: action.onPressed,
-        elevation: 0,
-        shape: const CircleBorder(),
-        backgroundColor: baseColor,
-        foregroundColor: Colors.white,
-        child: Icon(action.icon, size: 26),
+    return Transform.translate(
+      offset: const Offset(0, 6), // drop the FAB slightly into the notch
+      child: FabShell(
+        color: baseColor,
+        child: FloatingActionButton(
+          onPressed: action.onPressed,
+          elevation: 0,
+          shape: const CircleBorder(),
+          backgroundColor: baseColor,
+          foregroundColor: Colors.white,
+          child: Icon(action.icon, size: 26),
+        ),
       ),
     );
   }

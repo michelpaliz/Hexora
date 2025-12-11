@@ -3,9 +3,9 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/controller/worker_time_tracking_controller.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/widgets/appbar_title.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/widgets/stats_header.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/widgets/time_entry_list.dart';
@@ -59,13 +59,16 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
 
   Future<void> _addEntry(BuildContext context) async {
     final c = context.read<WorkerTimeTrackingController>();
-    final created = await Navigator.pushNamed(
-      context,
-      AppRoutes.createTimeEntry,
-      arguments: {
-        'group': c.group,
-        'workers': [c.worker]
-      },
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.95,
+        child: CreateTimeEntryScreen(
+          group: c.group,
+          workers: [c.worker],
+        ),
+      ),
     );
     if (created == true) await c.load();
   }
@@ -97,6 +100,54 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     final l = AppLocalizations.of(context)!;
     return Consumer<WorkerTimeTrackingController>(
       builder: (context, c, _) {
+        final addButton = Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: () => _addEntry(context),
+              icon: const Icon(Icons.add),
+              label: Text(l.addTimeEntryCta),
+            ),
+          ),
+        );
+
+        final content = c.loading
+            ? const Center(child: CircularProgressIndicator())
+            : c.error
+                ? Center(child: Text(l.errorLoadingData))
+                : c.entries.isEmpty
+                    ? EmptyView(
+                        icon: Icons.timer_outlined,
+                        title: l.noTimeEntriesYetTitle,
+                        subtitle: l.noTimeEntriesYetSubtitle,
+                        cta: l.addTimeEntryCta,
+                        onPressed: () => _addEntry(context),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: c.load,
+                        child: Column(
+                          children: [
+                            StatsHeader(
+                                entries: c.entries,
+                                totals: c.totals,
+                                worker: c.worker),
+                            Expanded(
+                              child: TimeEntriesList(
+                                entries: c.entries,
+                                groupId: c.group.id,
+                                repo: context.read<ITimeTrackingRepository>(),
+                                getToken: () =>
+                                    context.read<UserDomain>().getAuthToken(),
+                                onUpdated: c.load,
+                                worker: c.worker,
+                                showMissingDays: _showMissingDays,
+                              ),
+                            ),
+                            addButton,
+                          ],
+                        ),
+                      );
         return Scaffold(
           appBar: AppBar(
             title: WorkerAppBarTitle(
@@ -121,46 +172,7 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
               ),
             ],
           ),
-          body: c.loading
-              ? const Center(child: CircularProgressIndicator())
-              : c.error
-                  ? Center(child: Text(l.errorLoadingData))
-                  : c.entries.isEmpty
-                      ? EmptyView(
-                          icon: Icons.timer_outlined,
-                          title: l.noTimeEntriesYetTitle,
-                          subtitle: l.noTimeEntriesYetSubtitle,
-                          cta: l.addTimeEntryCta,
-                          onPressed: () => _addEntry(context),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: c.load,
-                          child: Column(
-                            children: [
-                              StatsHeader(
-                                  entries: c.entries,
-                                  totals: c.totals,
-                                  worker: c.worker),
-                              Expanded(
-                                child: TimeEntriesList(
-                                  entries: c.entries,
-                                  groupId: c.group.id,
-                                  repo: context.read<ITimeTrackingRepository>(),
-                                  getToken: () =>
-                                      context.read<UserDomain>().getAuthToken(),
-                                  onUpdated: c.load,
-                                  worker: c.worker,
-                                  showMissingDays: _showMissingDays,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _addEntry(context),
-            icon: const Icon(Icons.add),
-            label: Text(l.addTimeEntryCta),
-          ),
+          body: content,
         );
       },
     );

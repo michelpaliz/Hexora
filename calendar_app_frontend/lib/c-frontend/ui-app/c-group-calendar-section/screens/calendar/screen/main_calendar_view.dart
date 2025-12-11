@@ -86,6 +86,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
     final loc = AppLocalizations.of(context)!;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth >= 1000;
 
     return ValueListenableBuilder<bool>(
       valueListenable: _c.loading,
@@ -121,6 +123,79 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         final canAddEvents =
             GroupPermissionHelper.canAddEvents(currentUser, currentGroup);
 
+        Widget actionButtons({required bool vertical}) {
+          final buttons = <Widget>[
+            RefreshCta(
+              isLoading: _c.loading.value,
+              onPressed: () async {
+                await _c.loadData(initialGroup: currentGroup);
+                if (mounted) setState(() {});
+              },
+            ),
+            if (canAddEvents)
+              AddEventCta(
+                onPressed: () async {
+                  final added =
+                      await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => AddEventScreen(group: currentGroup),
+                    ),
+                  );
+                  if (added == true) {
+                    _c.loadData(initialGroup: currentGroup);
+                  }
+                },
+              ),
+          ];
+
+          if (vertical) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < buttons.length; i++) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: buttons[i],
+                  ),
+                  if (i != buttons.length - 1) const SizedBox(height: 12),
+                ],
+              ],
+            );
+          }
+
+          return IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(child: buttons.first),
+                if (buttons.length > 1) ...[
+                  const SizedBox(width: 10),
+                  Expanded(child: buttons[1]),
+                ],
+              ],
+            ),
+          );
+        }
+
+        Widget calendarContent({required bool verticalActions}) {
+          return Column(
+            children: [
+              PresenceStatusStrip(
+                group: currentGroup,
+                controller: _c,
+                selectedUserId: _selectedUserFilter,
+                onUserSelected: _onUserFilterChanged,
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: _c.calendarUI?.buildCalendar(context) ??
+                    const SizedBox(),
+              ),
+              const SizedBox(height: 8),
+              if (!verticalActions) actionButtons(vertical: false),
+            ],
+          );
+        }
+
         return DefaultTabController(
           length: CalTab.values.length,
           initialIndex: _initialIndex,
@@ -137,68 +212,43 @@ class _MainCalendarViewState extends State<MainCalendarView> {
               ),
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               body: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                  child: Column(
-                    children: [
-                      // Presence strip
-                      PresenceStatusStrip(
-                        group: currentGroup,
-                        controller: _c,
-                        selectedUserId: _selectedUserFilter,
-                        onUserSelected: _onUserFilterChanged,
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Calendar content
-                      Expanded(
-                        child: _c.calendarUI?.buildCalendar(context) ??
-                            const SizedBox(),
-                      ),
-
-                      // Bottom actions
-                      // Bottom actions
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: IntrinsicHeight(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: RefreshCta(
-                                  isLoading: _c.loading.value,
-                                  onPressed: () async {
-                                    await _c.loadData(
-                                        initialGroup: currentGroup);
-                                    if (mounted) setState(() {});
-                                  },
-                                ),
-                              ),
-                              if (canAddEvents) ...[
-                                const SizedBox(width: 10),
+                child: isWide
+                    ? Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1200),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Expanded(
-                                  child: AddEventCta(
-                                    onPressed: () async {
-                                      final added = await Navigator.of(context)
-                                          .push<bool>(
-                                        MaterialPageRoute(
-                                          builder: (_) => AddEventScreen(
-                                              group: currentGroup),
-                                        ),
-                                      );
-                                      if (added == true) {
-                                        _c.loadData(initialGroup: currentGroup);
-                                      }
-                                    },
+                                  child: calendarContent(
+                                      verticalActions: true),
+                                ),
+                                const SizedBox(width: 16),
+                                SizedBox(
+                                  width: 280,
+                                  child: Card(
+                                    elevation: 2,
+                                    clipBehavior: Clip.antiAlias,
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          16, 18, 16, 20),
+                                      child: actionButtons(vertical: true),
+                                    ),
                                   ),
                                 ),
                               ],
-                            ],
+                            ),
                           ),
                         ),
+                      )
+                    : Padding(
+                        padding:
+                            const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                        child:
+                            calendarContent(verticalActions: false),
                       ),
-                    ],
-                  ),
-                ),
               ),
             ),
           ),
