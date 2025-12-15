@@ -14,6 +14,8 @@ class ClientsTab extends StatelessWidget {
   final bool showInlineCTA;
   final VoidCallback? onAddTap; // optional
   final void Function(GroupClient client)? onEdit; // tap-to-edit
+  final bool showInactive;
+  final ValueChanged<bool>? onToggleInactive;
 
   const ClientsTab({
     super.key,
@@ -24,6 +26,8 @@ class ClientsTab extends StatelessWidget {
     this.showInlineCTA = false,
     this.onAddTap,
     this.onEdit,
+    this.showInactive = false,
+    this.onToggleInactive,
   });
 
   @override
@@ -33,16 +37,23 @@ class ClientsTab extends StatelessWidget {
     final typo = AppTypography.of(context);
     final activeItems =
         items.where((c) => c.isActive != false).toList(growable: false);
+    final inactiveItems =
+        items.where((c) => c.isActive == false).toList(growable: false);
+    final visible =
+        showInactive ? [...activeItems, ...inactiveItems] : activeItems;
     final activeCount = activeItems.length;
+    final inactiveCount = inactiveItems.length;
 
     if (loading) return const Center(child: CircularProgressIndicator());
     if (error != null) return ErrorView(message: error!, onRetry: onRefresh);
 
-    if (activeItems.isEmpty) {
+    if (visible.isEmpty) {
       return EmptyView(
         icon: Icons.person_outline,
         title: l.noClientsYet,
-        subtitle: '${l.activeClientsSection} · 0',
+        subtitle: showInactive
+            ? '${l.activeClientsSection} · 0 · ${l.statusInactive}: 0'
+            : '${l.activeClientsSection} · 0',
         cta: showInlineCTA ? l.addClient : null,
         onPressed: showInlineCTA ? onAddTap : null,
       );
@@ -54,13 +65,36 @@ class ClientsTab extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
           child: Text(
-            '${l.activeClientsSection} · $activeCount',
+            showInactive
+                ? '${l.activeClientsSection} · $activeCount • ${l.statusInactive}: $inactiveCount'
+                : '${l.activeClientsSection} · $activeCount',
             style: typo.bodyMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: cs.onSurfaceVariant,
             ),
           ),
         ),
+        if (onToggleInactive != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: Row(
+              children: [
+                Text(
+                  l.statusInactive,
+                  style: typo.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                Switch(
+                  value: showInactive,
+                  onChanged: onToggleInactive,
+                  activeColor: cs.primary,
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: RefreshIndicator(
             color: cs.primary,
@@ -68,10 +102,10 @@ class ClientsTab extends StatelessWidget {
             onRefresh: onRefresh,
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              itemCount: activeItems.length,
+              itemCount: visible.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (_, i) {
-                final c = activeItems[i];
+                final c = visible[i];
                 return ClientListItem(
                   client: c,
                   onTap: onEdit == null ? null : () => onEdit!(c),

@@ -21,7 +21,8 @@ class UserStatusRow extends StatelessWidget {
     final items = List<UserPresence>.from(userList);
 
     return SizedBox(
-      height: 80,
+      // Extra height so 2-line labels don't overflow vertically on small screens.
+      height: 96,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -54,11 +55,11 @@ class UserStatusRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   SizedBox(
-                    width: 68,
+                    width: 80,
                     child: Text(
                       'All',
                       textAlign: TextAlign.center,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context)
                           .textTheme

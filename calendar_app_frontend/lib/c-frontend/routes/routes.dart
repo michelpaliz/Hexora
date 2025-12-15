@@ -14,6 +14,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/graphs/gro
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/screen/group_members_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/notifications/group_notifications_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/services_clients_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/create_worker/form/create_worker_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
@@ -108,6 +109,11 @@ final Map<String, WidgetBuilder> routes = {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     if (group == null) return const SizedBox.shrink();
     return ServicesClientsScreen(group: group);
+  },
+  AppRoutes.groupInvoices: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    if (group == null) return const SizedBox.shrink();
+    return GroupInvoicesScreen(group: group);
   },
   AppRoutes.agenda: (_) => const AgendaScreen(),
 

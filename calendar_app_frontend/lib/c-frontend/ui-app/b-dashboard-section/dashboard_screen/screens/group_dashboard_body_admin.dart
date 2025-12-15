@@ -30,7 +30,8 @@ class GroupDashboardBodyAdmin extends StatefulWidget {
     required this.onRefresh,
     required this.user,
     required this.role,
-    this.onGroupChanged, required this.fetchReadSas,
+    this.onGroupChanged,
+    required this.fetchReadSas,
   });
 
   final Group group;
@@ -139,7 +140,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             user: widget.user,
             role: widget.role,
             fetchReadSas: widget.fetchReadSas,
-            onTap: () => context.read<GroupDashboardState>().openSection('profile'),
+            onTap: () =>
+                context.read<GroupDashboardState>().openSection('profile'),
           ),
 
           const SizedBox(height: 20),
@@ -157,6 +159,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
           ),
           GroupUpcomingEventsCard(
             groupId: _group.id,
+            role: widget.role,
+            currentUserId: widget.user.id,
             // cardColor: sectionCardColor,
           ),
           const SizedBox(height: 12),
@@ -192,6 +196,17 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
               subtitle: Text(l.servicesClientsSubtitle, style: tileSub),
               onTap: () =>
                   context.read<GroupDashboardState>().openSection('services'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            color: tileBg,
+            child: ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: Text(l.invoicesNavLabel, style: tileTitle),
+              subtitle: Text(l.invoicesNavSubtitle, style: tileSub),
+              onTap: () =>
+                  context.read<GroupDashboardState>().openSection('invoices'),
             ),
           ),
 

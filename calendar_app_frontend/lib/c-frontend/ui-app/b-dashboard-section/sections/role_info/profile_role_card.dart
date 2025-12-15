@@ -51,7 +51,15 @@ class ProfileRoleCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                UserAvatar(user: user, fetchReadSas: fetchReadSas, radius: 20),
+                InkWell(
+                  onTap: onTap,
+                  customBorder: const CircleBorder(),
+                  child: UserAvatar(
+                    user: user,
+                    fetchReadSas: fetchReadSas,
+                    radius: 20,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

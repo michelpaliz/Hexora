@@ -2832,4 +2832,206 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationsSubtitle => 'Alerts, reminders and preferences';
+
+  @override
+  String get billingDetails => 'Billing details';
+
+  @override
+  String get billingDetailsSubtitle =>
+      'Captured for invoices (legal name, tax ID, address, contact).';
+
+  @override
+  String get billingLegalName => 'Legal name';
+
+  @override
+  String get billingTaxId => 'Tax ID';
+
+  @override
+  String get addressStreet => 'Street';
+
+  @override
+  String get addressExtra => 'Address extra';
+
+  @override
+  String get addressCity => 'City';
+
+  @override
+  String get addressProvince => 'Province/State';
+
+  @override
+  String get addressPostalCode => 'Postal code';
+
+  @override
+  String get addressCountry => 'Country';
+
+  @override
+  String get billingEmailLabel => 'Billing email';
+
+  @override
+  String get billingPhoneLabel => 'Billing phone';
+
+  @override
+  String get billingComplete => 'Billing ready';
+
+  @override
+  String get billingMissing => 'Billing incomplete';
+
+  @override
+  String get billingProfileTitle => 'Billing profile';
+
+  @override
+  String get billingProfileEmpty =>
+      'Add your issuer details (legal name, tax ID, address, VAT, IBAN) to issue invoices.';
+
+  @override
+  String get billingWebsite => 'Website';
+
+  @override
+  String get billingIban => 'IBAN';
+
+  @override
+  String get billingTaxRate => 'VAT rate';
+
+  @override
+  String get billingCurrency => 'Currency';
+
+  @override
+  String get billingLanguage => 'Language';
+
+  @override
+  String get billingAddress => 'Address';
+
+  @override
+  String get billingProfileSaved => 'Billing profile saved';
+
+  @override
+  String get createInvoiceCta => 'Create invoice';
+
+  @override
+  String get invoiceCreated => 'Invoice created';
+
+  @override
+  String get noInvoicesYet => 'No invoices yet';
+
+  @override
+  String get noInvoicesYetSubtitle =>
+      'Create your first invoice to keep billing organized.';
+
+  @override
+  String get invoicesListTitle => 'Invoices';
+
+  @override
+  String get invoicesNavLabel => 'Invoices';
+
+  @override
+  String get invoicesNavSubtitle => 'Create and track invoices';
+
+  @override
+  String invoicesTitle(String groupName) {
+    return 'Invoices · $groupName';
+  }
+
+  @override
+  String get openInvoicesWorkspace => 'Open invoices workspace';
+
+  @override
+  String get invoiceNumberLabel => 'Invoice number (NNN-YY)';
+
+  @override
+  String invoiceNumberHelper(String year) {
+    return 'Year suffix locked to $year. Enter the 3 digits.';
+  }
+
+  @override
+  String get invoiceNumberInvalid =>
+      'Use three digits (e.g., 001). Year is fixed to the current YY.';
+
+  @override
+  String get invoiceClientLabel => 'Client';
+
+  @override
+  String get invoiceClientRequired => 'Client is required';
+
+  @override
+  String get invoicePdfUrl => 'Invoice PDF URL';
+
+  @override
+  String get invoiceRegisteredAt => 'Registered at';
+
+  @override
+  String get invoiceRegisteredUnknown => 'Not set';
+
+  @override
+  String get invoiceParties => 'Parties';
+
+  @override
+  String get invoiceClientSection => 'Client billing';
+
+  @override
+  String get invoiceLinesTitle => 'Invoice lines';
+
+  @override
+  String get invoiceLinesPlaceholderTitle => 'Invoice lines coming soon';
+
+  @override
+  String get invoiceLinesPlaceholderSubtitle =>
+      'Lines will list items with qty, unit price, tax and totals.';
+
+  @override
+  String get unknownClient => 'Unknown client';
+
+  @override
+  String get optionalLabel => 'Optional';
+
+  @override
+  String get select => 'Select';
+
+  @override
+  String get change => 'Change';
+
+  @override
+  String get fieldIsRequired => 'This field is required';
+
+  @override
+  String get taxRateShort => 'VAT';
+
+  @override
+  String get invoiceStatusLabel => 'Status';
+
+  @override
+  String get statusDraft => 'Draft';
+
+  @override
+  String get statusIssued => 'Issued';
+
+  @override
+  String get invoiceNotesLabel => 'Notes';
+
+  @override
+  String get invoiceAddLine => 'Add line';
+
+  @override
+  String get invoiceLinesRequired => 'Add at least one line';
+
+  @override
+  String get lineDescription => 'Description';
+
+  @override
+  String get lineQuantity => 'Quantity';
+
+  @override
+  String get lineUnitPrice => 'Unit price';
+
+  @override
+  String get lineTaxRate => 'Tax rate';
+
+  @override
+  String get invoiceTotalLabel => 'Total';
+
+  @override
+  String get clientsTitle => 'Clients';
+
+  @override
+  String get selectClientFirst =>
+      'Select a client to view billing and invoices';
 }

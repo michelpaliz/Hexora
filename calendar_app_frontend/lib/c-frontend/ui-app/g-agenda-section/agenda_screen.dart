@@ -13,8 +13,9 @@ import 'package:provider/provider.dart';
 
 class AgendaScreen extends StatefulWidget {
   final String? groupId;
+  final bool showBottomNav;
 
-  const AgendaScreen({super.key, this.groupId});
+  const AgendaScreen({super.key, this.groupId, this.showBottomNav = true});
 
   @override
   State<AgendaScreen> createState() => _AgendaScreenState();
@@ -226,6 +227,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
     return MainScaffold(
       showAppBar: false,
+      showBottomNavAndFab: widget.showBottomNav,
       body: body,
     );
   }

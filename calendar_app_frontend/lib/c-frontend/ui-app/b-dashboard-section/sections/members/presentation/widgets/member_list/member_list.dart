@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_ref.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/common/empty_hint.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
@@ -9,6 +10,8 @@ import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/card_surface.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 
 class MembersList extends StatelessWidget {
   final List<MemberRef> accepted;
@@ -18,6 +21,7 @@ class MembersList extends StatelessWidget {
   final String acceptedLabel;
   final String pendingLabel;
   final String notAcceptedLabel;
+  final Group group;
 
   /// If true, wrap the list in a **neutral colored panel** (no gradient).
   final bool useGradientBackground;
@@ -33,6 +37,7 @@ class MembersList extends StatelessWidget {
     required this.acceptedLabel,
     required this.pendingLabel,
     required this.notAcceptedLabel,
+    required this.group,
     this.wrapInCard = true,
     this.useGradientBackground = false,
   });
@@ -109,6 +114,9 @@ class MembersList extends StatelessWidget {
               child: MemberRow(
                 ref: ref,
                 ownerId: ref.ownerId,
+                group: group,
+                currentUserId:
+                    context.read<UserDomain?>()?.user?.id ?? group.ownerId,
                 showRoleChip: true,
               ),
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
@@ -19,11 +20,15 @@ class MemberRow extends StatelessWidget {
   final MemberRef ref;
   final String ownerId;
   final bool showRoleChip;
+  final Group group;
+  final String? currentUserId;
 
   const MemberRow({
     super.key,
     required this.ref,
     required this.ownerId,
+    required this.group,
+    this.currentUserId,
     this.showRoleChip = true,
   });
 
@@ -72,6 +77,8 @@ class MemberRow extends StatelessWidget {
                   ref: ref,
                   isOwnerRowUser: isOwner,
                   isAdminRowUser: isAdmin,
+                  group: group,
+                  currentUserId: currentUserId,
                 ),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(

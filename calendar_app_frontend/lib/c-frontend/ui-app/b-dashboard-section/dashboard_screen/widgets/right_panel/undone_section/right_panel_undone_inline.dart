@@ -7,7 +7,6 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/pr
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_event_detail_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/widgets/group_undone_events_list_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/widgets/undone_events_segmented_tab_bar.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -45,16 +44,18 @@ class UndoneEventsInlinePanel extends StatelessWidget {
           },
         )..refresh();
       },
-      child: const DefaultTabController(
+      child: DefaultTabController(
         length: 2,
-        child: _UndoneEventsInlineBody(),
+        child: _UndoneEventsInlineBody(role: role),
       ),
     );
   }
 }
 
 class _UndoneEventsInlineBody extends StatelessWidget {
-  const _UndoneEventsInlineBody();
+  const _UndoneEventsInlineBody({required this.role});
+
+  final GroupRole role;
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +87,39 @@ class _UndoneEventsInlineBody extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 12),
           child: UndoneEventsSegmentedTabBar(),
         ),
+        if (role != GroupRole.member)
+          Consumer<GroupUndoneEventsViewModel>(
+            builder: (context, vm, __) {
+              final chips = vm.participantInfos;
+              if (chips.isEmpty) return const SizedBox.shrink();
+              return SingleChildScrollView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    FilterChip(
+                      label: Text(loc.all),
+                      selected: vm.filterUserId == null,
+                      onSelected: (v) =>
+                          vm.setFilterUser(v ? null : vm.filterUserId),
+                    ),
+                    const SizedBox(width: 8),
+                    ...chips.map(
+                      (info) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(info.displayName),
+                          selected: vm.filterUserId == info.id,
+                          onSelected: (_) => vm.setFilterUser(info.id),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         if (vm.isLoading) const LinearProgressIndicator(minHeight: 2),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -117,7 +151,8 @@ class _UndoneEventsInlineBody extends StatelessWidget {
                   emptyIcon: Icons.checklist_rtl_rounded,
                   emptyMessage: loc.pendingEventsEmpty,
                   errorMessage: vm.errorMessage ?? loc.pendingEventsError,
-                  showError: vm.errorMessage != null && vm.pendingEvents.isEmpty,
+                  showError:
+                      vm.errorMessage != null && vm.pendingEvents.isEmpty,
                   allowAction: true,
                   doneList: false,
                   viewModel: vm,
@@ -125,7 +160,7 @@ class _UndoneEventsInlineBody extends StatelessWidget {
                     context: context,
                     event: event,
                     viewModel: vm,
-                    allowMarkComplete: true,
+                    allowMarkComplete: vm.canManageEvent(event),
                   ),
                 ),
               ),

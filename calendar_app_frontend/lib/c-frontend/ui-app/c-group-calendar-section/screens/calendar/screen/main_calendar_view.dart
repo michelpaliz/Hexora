@@ -1,4 +1,5 @@
 // c-frontend/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
@@ -74,6 +75,48 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     setState(() {});
   }
 
+  Future<void> _openAddEvent(Group group) async {
+    bool? added;
+
+    if (kIsWeb) {
+      // On web, keep the 3-column layout in place by showing a dialog instead of full navigation.
+      added = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) {
+          final media = MediaQuery.of(dialogCtx).size;
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 980,
+                maxHeight: media.height * 0.9,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: media.width * 0.8,
+                  height: media.height * 0.86,
+                  child: AddEventScreen(group: group),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      added = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => AddEventScreen(group: group),
+        ),
+      );
+    }
+
+    if (added == true) {
+      await _c.loadData(initialGroup: group);
+      if (mounted) setState(() {});
+    }
+  }
+
   void _onUserFilterChanged(String? userId) {
     setState(() => _selectedUserFilter = userId);
     _c.calendarUI?.setEventFilter(userId: userId);
@@ -134,17 +177,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             ),
             if (canAddEvents)
               AddEventCta(
-                onPressed: () async {
-                  final added =
-                      await Navigator.of(context).push<bool>(
-                    MaterialPageRoute(
-                      builder: (_) => AddEventScreen(group: currentGroup),
-                    ),
-                  );
-                  if (added == true) {
-                    _c.loadData(initialGroup: currentGroup);
-                  }
-                },
+                onPressed: () => _openAddEvent(currentGroup),
               ),
           ];
 

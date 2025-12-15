@@ -57,6 +57,7 @@ class GroupUndoneEventsListView extends StatelessWidget {
       itemCount: events.length,
       itemBuilder: (context, index) {
         final event = events[index];
+        final canManage = viewModel.canManageEvent(event);
         return Card(
           elevation: doneList ? 0 : 1,
           color: doneList
@@ -64,7 +65,7 @@ class GroupUndoneEventsListView extends StatelessWidget {
               : theme.colorScheme.surface,
           child: PendingEventTile(
             event: event,
-            enableAction: allowAction,
+            enableAction: allowAction && canManage,
             isDone: doneList,
             owner: viewModel.ownerInfoOf(event.ownerId),
             viewModel: viewModel,

@@ -66,6 +66,8 @@ class ClientsApi {
         if ((client.email ?? '').trim().isNotEmpty)
           'email': client.email!.trim(),
       },
+      if (client.billing?.toPayload() != null)
+        'billing': client.billing!.toPayload(),
       // if you use meta on FE:
       // if (client.meta != null) 'meta': client.meta,
     };
@@ -96,6 +98,8 @@ class ClientsApi {
         'email':
             (client.email ?? '').trim().isEmpty ? null : client.email!.trim(),
       },
+      if (client.billing?.toPayload(includeNulls: true) != null)
+        'billing': client.billing!.toPayload(includeNulls: true),
       // if (client.meta != null) 'meta': client.meta,
     };
     final r = await http.patch(

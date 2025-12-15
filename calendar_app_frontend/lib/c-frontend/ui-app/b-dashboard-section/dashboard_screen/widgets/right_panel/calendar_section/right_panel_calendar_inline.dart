@@ -116,6 +116,8 @@ class _CalendarInlinePanelState extends State<CalendarInlinePanel>
       child: ValueListenableBuilder<bool>(
         valueListenable: _coordinator.loading,
         builder: (_, loading, __) {
+          final isWideTabs = MediaQuery.of(context).size.width >= 720;
+
           if (_error != null) {
             return CalendarInlineErrorView(
               error: _error!,
@@ -141,8 +143,15 @@ class _CalendarInlinePanelState extends State<CalendarInlinePanel>
                 const SizedBox(height: 8),
                 TabBar(
                   controller: _tabs,
-                  tabs: CalendarTabs.build(context),
-                  isScrollable: true,
+                  tabs: CalendarTabs.build(context, large: isWideTabs),
+                  isScrollable:
+                      !isWideTabs, // fill available space on wide screens
+                  labelPadding: EdgeInsets.symmetric(
+                    horizontal: isWideTabs ? 20 : 12,
+                  ),
+                  indicatorPadding: EdgeInsets.symmetric(
+                    horizontal: isWideTabs ? 14 : 8,
+                  ),
                   indicatorSize: TabBarIndicatorSize.tab,
                 ),
                 const SizedBox(height: 8),

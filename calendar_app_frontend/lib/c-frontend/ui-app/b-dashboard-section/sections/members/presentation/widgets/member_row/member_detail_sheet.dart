@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_ref.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_vm.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/member_row/components/role_chip.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
 
 Future<void> showMemberDetailSheet({
   required BuildContext context,
@@ -11,11 +16,23 @@ Future<void> showMemberDetailSheet({
   required MemberRef ref,
   required bool isOwnerRowUser,
   required bool isAdminRowUser,
+  required Group group,
+  required String? currentUserId,
 }) async {
   final l = AppLocalizations.of(context)!;
   final theme = Theme.of(context);
   final cs = theme.colorScheme;
   final typo = AppTypography.of(context); // ✅ Typo font
+  final gd = context.read<GroupDomain>();
+  final repo = gd.groupRepository;
+  final currentRoleWire =
+      gd.userRoles.value[currentUserId] ?? group.userRoles[currentUserId] ?? '';
+  final currentRole = GroupRole.fromWire(currentRoleWire);
+  final canManage = currentRole == GroupRole.owner ||
+      currentRole == GroupRole.admin ||
+      currentRole == GroupRole.coAdmin;
+  final targetRole = GroupRole.fromWire(ref.role);
+  final isSelf = currentUserId == user.id;
 
   final bodyText = (user.name.isNotEmpty ? user.name : user.userName);
 
@@ -118,15 +135,70 @@ Future<void> showMemberDetailSheet({
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed:
-                        () {}, // TODO: define action (e.g., message, promote)
-                    icon: const Icon(Icons.message_rounded),
-                    label: Text(l.contact,
-                        style: typo.bodySmall.copyWith(color: cs.onPrimary)),
+                if (canManage &&
+                    !isOwnerRowUser &&
+                    !isSelf) // admins/co-admin/owner only, not removing owners/self
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.redAccent.shade200,
+                      ),
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: Text(l.remove),
+                                content: Text(
+                                  '${l.remove} ${(user.name.isNotEmpty ? user.name : user.userName)}?',
+                                  style: typo.bodySmall,
+                                ),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: Text(l.cancel)),
+                                  FilledButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(true),
+                                    child: Text(l.remove),
+                                  ),
+                                ],
+                              ),
+                            ) ??
+                            false;
+                        if (!confirm) return;
+                        try {
+                          await repo.leaveGroup(user.id, group.id);
+                          final updatedUserIds =
+                              List<String>.from(group.userIds)..remove(user.id);
+                          final updatedRoles =
+                              Map<String, String>.from(gd.userRoles.value)
+                                ..remove(user.id);
+                          gd.userRoles.value = updatedRoles;
+                          gd.currentGroup = group.copyWith(
+                            userIds: updatedUserIds,
+                            userRoles: updatedRoles,
+                          );
+                          // Trigger UI refresh
+                          context.read<MembersVM>().refreshAll();
+                          Navigator.of(context).maybePop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l.remove)),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l.pendingEventsError)),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.person_remove_alt_1_rounded),
+                      label: Text(
+                        l.remove,
+                        style: typo.bodySmall.copyWith(
+                            color: cs.onPrimary, fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ),
-                ),
               ],
             ),
           ],

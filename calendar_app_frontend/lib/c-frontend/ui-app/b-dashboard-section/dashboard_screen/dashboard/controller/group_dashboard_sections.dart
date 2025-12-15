@@ -9,4 +9,5 @@ class Sections {
   static const undone = 'undone';
   static const profile = 'profile';
   static const editGroup = 'editGroup';
+  static const invoices = 'invoices';
 }

@@ -1,5 +1,6 @@
 // lib/.../widgets/members_section.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_ref.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/member_list/member_list.dart';
 
@@ -12,6 +13,7 @@ class Members extends StatelessWidget {
     required this.acceptedLabel,
     required this.pendingLabel,
     required this.notAcceptedLabel,
+    required this.group,
     this.useGradientBackground = false, // now means: use neutral colored panel
     this.wrapInCard = false,
   });
@@ -22,6 +24,7 @@ class Members extends StatelessWidget {
   final String acceptedLabel;
   final String pendingLabel;
   final String notAcceptedLabel;
+  final Group group;
 
   /// When true, parent uses a neutral colored panel (not a gradient).
   final bool useGradientBackground;
@@ -44,6 +47,7 @@ class Members extends StatelessWidget {
       acceptedLabel: acceptedLabel,
       pendingLabel: pendingLabel,
       notAcceptedLabel: notAcceptedLabel,
+      group: group,
       useGradientBackground: false, // forwarded
       wrapInCard: wrapInCard,
     );

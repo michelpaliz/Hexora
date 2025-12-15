@@ -1516,7 +1516,88 @@
   "groupSettingsDangerZoneNonOwner": "Only the group owner can delete this group.",
   "groupInfo": "Group info",
   "groupInfoSubtitle": "Name, description and basic details",
-  "notificationsSubtitle": "Alerts, reminders and preferences"
+  "notificationsSubtitle": "Alerts, reminders and preferences",
+
+  "billingDetails": "Billing details",
+  "billingDetailsSubtitle": "Captured for invoices (legal name, tax ID, address, contact).",
+  "billingLegalName": "Legal name",
+  "billingTaxId": "Tax ID",
+  "addressStreet": "Street",
+  "addressExtra": "Address extra",
+  "addressCity": "City",
+  "addressProvince": "Province/State",
+  "addressPostalCode": "Postal code",
+  "addressCountry": "Country",
+  "billingEmailLabel": "Billing email",
+  "billingPhoneLabel": "Billing phone",
+  "billingComplete": "Billing ready",
+  "billingMissing": "Billing incomplete",
+  "billingProfileTitle": "Billing profile",
+  "billingProfileEmpty": "Add your issuer details (legal name, tax ID, address, VAT, IBAN) to issue invoices.",
+  "billingWebsite": "Website",
+  "billingIban": "IBAN",
+  "billingTaxRate": "VAT rate",
+  "billingCurrency": "Currency",
+  "billingLanguage": "Language",
+  "billingAddress": "Address",
+  "billingProfileSaved": "Billing profile saved",
+
+  "createInvoiceCta": "Create invoice",
+  "invoiceCreated": "Invoice created",
+  "noInvoicesYet": "No invoices yet",
+  "noInvoicesYetSubtitle": "Create your first invoice to keep billing organized.",
+  "invoicesListTitle": "Invoices",
+  "invoicesNavLabel": "Invoices",
+  "invoicesNavSubtitle": "Create and track invoices",
+  "invoicesTitle": "Invoices · {groupName}",
+  "@invoicesTitle": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "openInvoicesWorkspace": "Open invoices workspace",
+  "invoiceNumberLabel": "Invoice number (NNN-YY)",
+  "invoiceNumberHelper": "Year suffix locked to {year}. Enter the 3 digits.",
+  "@invoiceNumberHelper": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "invoiceNumberInvalid": "Use three digits (e.g., 001). Year is fixed to the current YY.",
+  "invoiceClientLabel": "Client",
+  "invoiceClientRequired": "Client is required",
+  "invoicePdfUrl": "Invoice PDF URL",
+  "invoiceRegisteredAt": "Registered at",
+  "invoiceRegisteredUnknown": "Not set",
+  "invoiceParties": "Parties",
+  "invoiceClientSection": "Client billing",
+  "invoiceLinesTitle": "Invoice lines",
+  "invoiceLinesPlaceholderTitle": "Invoice lines coming soon",
+  "invoiceLinesPlaceholderSubtitle": "Lines will list items with qty, unit price, tax and totals.",
+  "unknownClient": "Unknown client",
+  "optionalLabel": "Optional",
+  "select": "Select",
+  "change": "Change",
+  "fieldIsRequired": "This field is required",
+  "taxRateShort": "VAT",
+  "invoiceStatusLabel": "Status",
+  "statusDraft": "Draft",
+  "statusIssued": "Issued",
+  "invoiceNotesLabel": "Notes",
+  "invoiceAddLine": "Add line",
+  "invoiceLinesRequired": "Add at least one line",
+  "lineDescription": "Description",
+  "lineQuantity": "Quantity",
+  "lineUnitPrice": "Unit price",
+  "lineTaxRate": "Tax rate",
+  "invoiceTotalLabel": "Total",
+  "remove": "Remove",
+  "clientsTitle": "Clients",
+  "selectClientFirst": "Select a client to view billing and invoices"
 
 
 }

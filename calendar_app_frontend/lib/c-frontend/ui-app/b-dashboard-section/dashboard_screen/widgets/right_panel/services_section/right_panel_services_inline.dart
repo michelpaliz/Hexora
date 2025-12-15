@@ -34,6 +34,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   List<GroupClient> _clients = [];
   List<Service> _services = [];
+  bool _showInactiveClients = false;
   bool _loadingClients = true, _loadingServices = true;
   String? _errClients, _errServices;
 
@@ -58,7 +59,8 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
       _errClients = null;
     });
     try {
-      final data = await _clientsApi.list(groupId: widget.group.id);
+      final data =
+          await _clientsApi.list(groupId: widget.group.id, active: null);
       setState(() => _clients = data);
     } catch (e) {
       setState(() => _errClients = e.toString());
@@ -243,6 +245,9 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                       loading: _loadingClients,
                       error: _errClients,
                       onRefresh: _loadClients,
+                      showInactive: _showInactiveClients,
+                      onToggleInactive: (v) =>
+                          setState(() => _showInactiveClients = v),
                       showInlineCTA: true,
                       onAddTap: _openAddClient,
                       onEdit: _openEditClient,

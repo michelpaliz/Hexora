@@ -1,25 +1,26 @@
 // lib/c-frontend/c-group-calendar-section/screens/calendar/calendar_screen_controller.dart
 import 'dart:developer' as devtools show log;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/b-backend/user/presence_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_manager.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/b-backend/user/presence_domain.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/coordinator/app_screen_manager.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/icapability/supports_view_mode.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/adapter_flow/adapter/calendar_view_adapter.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/logic/actions/event_actions_manager.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/screen/events_in_calendar/bridge/event_display_manager.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/screen/events_in_calendar/widgets/event_content_builder.dart';
-import 'package:hexora/c-frontend/utils/location/location_service.dart';
-import 'package:hexora/c-frontend/utils/weather/weather_service.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/utils/color_manager.dart';
+import 'package:hexora/c-frontend/utils/location/location_service.dart';
+import 'package:hexora/c-frontend/utils/weather/weather_service.dart';
 import 'package:provider/provider.dart';
 
 class CalendarScreenCoordinator {
@@ -193,9 +194,37 @@ class CalendarScreenCoordinator {
 
   /// Handle new event creation flow
   Future<void> handleAddEventPressed(BuildContext context, Group group) async {
-    final added = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => AddEventScreen(group: group)),
-    );
+    bool? added;
+
+    if (kIsWeb) {
+      added = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) {
+          final media = MediaQuery.of(dialogCtx).size;
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 980,
+                maxHeight: media.height * 0.9,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: media.width * 0.8,
+                  height: media.height * 0.86,
+                  child: AddEventScreen(group: group),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      added = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => AddEventScreen(group: group)),
+      );
+    }
 
     if (added == true) {
       // No full rebuild — just ask domain to refresh silently

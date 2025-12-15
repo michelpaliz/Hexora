@@ -47,16 +47,23 @@ class GroupUndoneEventsScreen extends StatelessWidget {
       },
       child: DefaultTabController(
         length: 2,
-        child: _GroupUndoneEventsScreenBody(group: group),
+        child: _GroupUndoneEventsScreenBody(
+          group: group,
+          role: role,
+        ),
       ),
     );
   }
 }
 
 class _GroupUndoneEventsScreenBody extends StatelessWidget {
-  const _GroupUndoneEventsScreenBody({required this.group});
+  const _GroupUndoneEventsScreenBody({
+    required this.group,
+    required this.role,
+  });
 
   final Group group;
+  final GroupRole role;
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +126,39 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (role != GroupRole.member)
+                  Consumer<GroupUndoneEventsViewModel>(
+                    builder: (context, vm, __) {
+                      final chips = vm.participantInfos;
+                      if (chips.isEmpty) return const SizedBox.shrink();
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            FilterChip(
+                              label: Text(loc.all),
+                              selected: vm.filterUserId == null,
+                              onSelected: (v) =>
+                                  vm.setFilterUser(v ? null : vm.filterUserId),
+                            ),
+                            const SizedBox(width: 8),
+                            ...chips.map(
+                              (info) => Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: FilterChip(
+                                  label: Text(info.displayName),
+                                  selected: vm.filterUserId == info.id,
+                                  onSelected: (_) => vm.setFilterUser(info.id),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 Expanded(
                   child: TabBarView(
                     children: [
@@ -139,7 +179,7 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
                             context: context,
                             event: event,
                             viewModel: vm,
-                            allowMarkComplete: true,
+                            allowMarkComplete: vm.canManageEvent(event),
                           ),
                         ),
                       ),

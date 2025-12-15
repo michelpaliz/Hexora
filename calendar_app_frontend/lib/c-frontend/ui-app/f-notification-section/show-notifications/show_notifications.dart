@@ -17,7 +17,10 @@ import 'sections/show_notifications_header.dart';
 
 class ShowNotifications extends StatefulWidget {
   final User user;
-  const ShowNotifications({required this.user, Key? key}) : super(key: key);
+  final bool showBottomNav;
+  const ShowNotifications(
+      {required this.user, this.showBottomNav = true, Key? key})
+      : super(key: key);
 
   @override
   State<ShowNotifications> createState() => _ShowNotificationsState();
@@ -126,6 +129,7 @@ class _ShowNotificationsState extends State<ShowNotifications> {
     return MainScaffold(
       title: '',
       showAppBar: true,
+      showBottomNavAndFab: widget.showBottomNav,
       appBarBackgroundColor: Theme.of(context).colorScheme.surface,
       iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
       centerTitle: true,

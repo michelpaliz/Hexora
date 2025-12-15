@@ -5109,6 +5109,390 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Alerts, reminders and preferences'**
   String get notificationsSubtitle;
+
+  /// No description provided for @billingDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing details'**
+  String get billingDetails;
+
+  /// No description provided for @billingDetailsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Captured for invoices (legal name, tax ID, address, contact).'**
+  String get billingDetailsSubtitle;
+
+  /// No description provided for @billingLegalName.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal name'**
+  String get billingLegalName;
+
+  /// No description provided for @billingTaxId.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax ID'**
+  String get billingTaxId;
+
+  /// No description provided for @addressStreet.
+  ///
+  /// In en, this message translates to:
+  /// **'Street'**
+  String get addressStreet;
+
+  /// No description provided for @addressExtra.
+  ///
+  /// In en, this message translates to:
+  /// **'Address extra'**
+  String get addressExtra;
+
+  /// No description provided for @addressCity.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get addressCity;
+
+  /// No description provided for @addressProvince.
+  ///
+  /// In en, this message translates to:
+  /// **'Province/State'**
+  String get addressProvince;
+
+  /// No description provided for @addressPostalCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Postal code'**
+  String get addressPostalCode;
+
+  /// No description provided for @addressCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get addressCountry;
+
+  /// No description provided for @billingEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing email'**
+  String get billingEmailLabel;
+
+  /// No description provided for @billingPhoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing phone'**
+  String get billingPhoneLabel;
+
+  /// No description provided for @billingComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing ready'**
+  String get billingComplete;
+
+  /// No description provided for @billingMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing incomplete'**
+  String get billingMissing;
+
+  /// No description provided for @billingProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing profile'**
+  String get billingProfileTitle;
+
+  /// No description provided for @billingProfileEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your issuer details (legal name, tax ID, address, VAT, IBAN) to issue invoices.'**
+  String get billingProfileEmpty;
+
+  /// No description provided for @billingWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Website'**
+  String get billingWebsite;
+
+  /// No description provided for @billingIban.
+  ///
+  /// In en, this message translates to:
+  /// **'IBAN'**
+  String get billingIban;
+
+  /// No description provided for @billingTaxRate.
+  ///
+  /// In en, this message translates to:
+  /// **'VAT rate'**
+  String get billingTaxRate;
+
+  /// No description provided for @billingCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get billingCurrency;
+
+  /// No description provided for @billingLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get billingLanguage;
+
+  /// No description provided for @billingAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get billingAddress;
+
+  /// No description provided for @billingProfileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing profile saved'**
+  String get billingProfileSaved;
+
+  /// No description provided for @createInvoiceCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Create invoice'**
+  String get createInvoiceCta;
+
+  /// No description provided for @invoiceCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice created'**
+  String get invoiceCreated;
+
+  /// No description provided for @noInvoicesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No invoices yet'**
+  String get noInvoicesYet;
+
+  /// No description provided for @noInvoicesYetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your first invoice to keep billing organized.'**
+  String get noInvoicesYetSubtitle;
+
+  /// No description provided for @invoicesListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices'**
+  String get invoicesListTitle;
+
+  /// No description provided for @invoicesNavLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices'**
+  String get invoicesNavLabel;
+
+  /// No description provided for @invoicesNavSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create and track invoices'**
+  String get invoicesNavSubtitle;
+
+  /// No description provided for @invoicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices · {groupName}'**
+  String invoicesTitle(String groupName);
+
+  /// No description provided for @openInvoicesWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Open invoices workspace'**
+  String get openInvoicesWorkspace;
+
+  /// No description provided for @invoiceNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice number (NNN-YY)'**
+  String get invoiceNumberLabel;
+
+  /// No description provided for @invoiceNumberHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Year suffix locked to {year}. Enter the 3 digits.'**
+  String invoiceNumberHelper(String year);
+
+  /// No description provided for @invoiceNumberInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Use three digits (e.g., 001). Year is fixed to the current YY.'**
+  String get invoiceNumberInvalid;
+
+  /// No description provided for @invoiceClientLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Client'**
+  String get invoiceClientLabel;
+
+  /// No description provided for @invoiceClientRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Client is required'**
+  String get invoiceClientRequired;
+
+  /// No description provided for @invoicePdfUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice PDF URL'**
+  String get invoicePdfUrl;
+
+  /// No description provided for @invoiceRegisteredAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered at'**
+  String get invoiceRegisteredAt;
+
+  /// No description provided for @invoiceRegisteredUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get invoiceRegisteredUnknown;
+
+  /// No description provided for @invoiceParties.
+  ///
+  /// In en, this message translates to:
+  /// **'Parties'**
+  String get invoiceParties;
+
+  /// No description provided for @invoiceClientSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Client billing'**
+  String get invoiceClientSection;
+
+  /// No description provided for @invoiceLinesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice lines'**
+  String get invoiceLinesTitle;
+
+  /// No description provided for @invoiceLinesPlaceholderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice lines coming soon'**
+  String get invoiceLinesPlaceholderTitle;
+
+  /// No description provided for @invoiceLinesPlaceholderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines will list items with qty, unit price, tax and totals.'**
+  String get invoiceLinesPlaceholderSubtitle;
+
+  /// No description provided for @unknownClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown client'**
+  String get unknownClient;
+
+  /// No description provided for @optionalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get optionalLabel;
+
+  /// No description provided for @select.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get select;
+
+  /// No description provided for @change.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get change;
+
+  /// No description provided for @fieldIsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'This field is required'**
+  String get fieldIsRequired;
+
+  /// No description provided for @taxRateShort.
+  ///
+  /// In en, this message translates to:
+  /// **'VAT'**
+  String get taxRateShort;
+
+  /// No description provided for @invoiceStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get invoiceStatusLabel;
+
+  /// No description provided for @statusDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get statusDraft;
+
+  /// No description provided for @statusIssued.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued'**
+  String get statusIssued;
+
+  /// No description provided for @invoiceNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get invoiceNotesLabel;
+
+  /// No description provided for @invoiceAddLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Add line'**
+  String get invoiceAddLine;
+
+  /// No description provided for @invoiceLinesRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one line'**
+  String get invoiceLinesRequired;
+
+  /// No description provided for @lineDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get lineDescription;
+
+  /// No description provided for @lineQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get lineQuantity;
+
+  /// No description provided for @lineUnitPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit price'**
+  String get lineUnitPrice;
+
+  /// No description provided for @lineTaxRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax rate'**
+  String get lineTaxRate;
+
+  /// No description provided for @invoiceTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get invoiceTotalLabel;
+
+  /// No description provided for @clientsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clients'**
+  String get clientsTitle;
+
+  /// No description provided for @selectClientFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a client to view billing and invoices'**
+  String get selectClientFirst;
 }
 
 class _AppLocalizationsDelegate

@@ -73,6 +73,8 @@ class GroupDashboardBodyMember extends StatelessWidget {
               ),
               GroupUpcomingEventsCard(
                 groupId: group.id,
+                role: role,
+                currentUserId: user.id,
                 // cardColor: sectionCardColor,
               ),
               const SizedBox(height: 12),

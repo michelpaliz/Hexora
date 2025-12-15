@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
+import 'package:hexora/a-models/invoice/client_billing.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -69,6 +70,35 @@ class ClientListItem extends StatelessWidget {
                       textStyle: metaStyle,
                       iconColor: cs.onSurfaceVariant.withOpacity(0.9),
                     ),
+                    if (client.billing != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.receipt_long_outlined,
+                                size: 16, color: cs.onSurfaceVariant),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                client.billing!.legalName?.isNotEmpty == true
+                                    ? client.billing!.legalName!
+                                    : AppLocalizations.of(context)!
+                                        .billingDetails,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: metaStyle.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                  fontStyle:
+                                      client.billing!.legalName?.isNotEmpty ==
+                                              true
+                                          ? null
+                                          : FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -79,6 +109,8 @@ class ClientListItem extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  _BillingChip(billing: client.billing),
+                  const SizedBox(width: 6),
                   _StatusChip(active: client.isActive),
                   const SizedBox(width: 6),
                   Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
@@ -156,6 +188,46 @@ class _MetaRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: rows,
+    );
+  }
+}
+
+class _BillingChip extends StatelessWidget {
+  final ClientBilling? billing;
+  const _BillingChip({required this.billing});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    final bool isComplete = billing?.isComplete == true;
+    final Color bg = isComplete ? cs.secondaryContainer : cs.surfaceVariant;
+    final Color fg = isComplete ? cs.onSecondaryContainer : cs.onSurfaceVariant;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.receipt_long_outlined, size: 16, color: fg),
+          const SizedBox(width: 4),
+          Text(
+            isComplete ? l.billingComplete : l.billingMissing,
+            style: t.bodySmall.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/b-backend/user/domain/user_agenda_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -11,10 +13,14 @@ class GroupUpcomingEventsCard extends StatefulWidget {
   final int daysRange;
   final int limit;
   final Color? cardColor;
+  final GroupRole role;
+  final String? currentUserId;
 
   const GroupUpcomingEventsCard({
     super.key,
     required this.groupId,
+    required this.role,
+    required this.currentUserId,
     this.daysRange = 14, // same default window as agenda
     this.limit = 5, // show top N concise items
     this.cardColor,
@@ -37,6 +43,8 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
   Future<List<Event>> _load() async {
     // 🔄 use UserAgendaDomain instead of UserDomain
     final agenda = context.read<UserAgendaDomain>();
+    final currentUserId =
+        widget.currentUserId ?? context.read<UserDomain>().user?.id;
 
     final events = await agenda.fetchAgendaUpcoming(
       groupId: widget.groupId,
@@ -52,8 +60,18 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
         .toList()
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
 
-    return filtered.take(widget.limit).toList();
+    final shouldFilterToMine =
+        widget.role == GroupRole.member && currentUserId != null;
+
+    final filteredByUser = shouldFilterToMine
+        ? filtered.where((e) => _isMine(e, currentUserId!)).toList()
+        : filtered;
+
+    return filteredByUser.take(widget.limit).toList();
   }
+
+  bool _isMine(Event e, String uid) =>
+      e.ownerId == uid || e.recipients.contains(uid);
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +139,8 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
           );
         }
 
+        final currentUserId =
+            widget.currentUserId ?? context.read<UserDomain>().user?.id;
         final items = snapshot.data ?? const <Event>[];
         if (items.isEmpty) {
           return styledCard(
@@ -135,7 +155,9 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                 ),
               ),
               subtitle: Text(
-                loc.nothingScheduledSoon,
+                widget.role == GroupRole.member
+                    ? loc.nothingScheduledSoon
+                    : loc.nothingScheduledSoon,
                 style: TextStyle(color: onSurfaceVar),
               ),
               trailing: const SizedBox.shrink(),
@@ -175,7 +197,15 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                   ),
                 ),
                 const Divider(height: 1),
-                ...items.map((e) => _EventRow(event: e)).toList(),
+                ...items
+                    .map(
+                      (e) => _EventRow(
+                        event: e,
+                        canManage: currentUserId != null &&
+                            _isMine(e, currentUserId),
+                      ),
+                    )
+                    .toList(),
               ],
             ),
           ),
@@ -187,7 +217,8 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
 
 class _EventRow extends StatelessWidget {
   final Event event;
-  const _EventRow({required this.event});
+  final bool canManage;
+  const _EventRow({required this.event, required this.canManage});
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +251,18 @@ class _EventRow extends StatelessWidget {
         style: theme.textTheme.bodySmall,
       ),
       onTap: () {
-        Navigator.pushNamed(context, AppRoutes.eventDetail, arguments: event);
+        if (canManage) {
+          Navigator.pushNamed(context, AppRoutes.eventDetail,
+              arguments: event);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  const Text('Only the owner or recipients can update this event.'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       },
     );
   }

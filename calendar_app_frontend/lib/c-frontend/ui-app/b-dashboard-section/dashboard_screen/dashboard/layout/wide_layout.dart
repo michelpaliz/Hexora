@@ -5,6 +5,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/wi
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../controller/group_dashboard_state.dart';
+
 class WideLayout extends StatelessWidget {
   final GroupDashboardState state;
   const WideLayout({super.key, required this.state});
@@ -17,6 +18,8 @@ class WideLayout extends StatelessWidget {
       (l.notifications, Icons.notifications_none_rounded, 'notifications'),
       (l.groupSettingsTitle, Icons.settings, 'settings'),
       (l.servicesClientsTitle, Icons.design_services_outlined, 'services'),
+      if (state.canSeeAdmin)
+        (l.invoicesNavLabel, Icons.receipt_long_outlined, 'invoices'),
       (l.insightsTitle, Icons.insights_outlined, 'insights'),
       (l.timeTrackingTitle, Icons.access_time_rounded, 'workers'),
       (l.pendingEventsSectionTitle, Icons.pending_actions_outlined, 'undone'),
@@ -66,8 +69,7 @@ class WideLayout extends StatelessWidget {
                   fetchReadSas: state.fetchReadSas,
                   usersInGroup: const [],
                   onOpenCalendar: () => state.openSection('calendar'),
-                  onOpenNotifications: () =>
-                      state.openSection('notifications'),
+                  onOpenNotifications: () => state.openSection('notifications'),
                   onOpenSettings: () => state.openSection('settings'),
                 ),
               ),

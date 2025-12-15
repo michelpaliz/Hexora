@@ -93,17 +93,17 @@ class UserItem extends StatelessWidget {
           Tooltip(
             message: user.userName,
             child: SizedBox(
-              width: 68,
+              width: 80,
               child: Text(
                 user.userName,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: typo.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  height: 1.1,
-                  color: cs.onSurface,
-                ),
+                    fontWeight: FontWeight.w600,
+                    height: 1.1,
+                    color: cs.onSurface,
+                  ),
               ),
             ),
           ),

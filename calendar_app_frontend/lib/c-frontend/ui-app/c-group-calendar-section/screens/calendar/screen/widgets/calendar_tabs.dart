@@ -44,16 +44,17 @@ class CalendarTabsTheme extends StatelessWidget {
 
 /// Factory for localized tabs + a coordinator-aware onChanged.
 class CalendarTabs {
-  static List<Tab> build(BuildContext context) {
+  static List<Tab> build(BuildContext context, {bool large = false}) {
     final loc = AppLocalizations.of(context)!;
+    final iconSize = large ? 20.0 : 18.0;
     return const [
       // We pass text; fonts/colors come from TabBarTheme above.
-      Tab(text: '___DAY___', icon: Icon(Icons.today_outlined, size: 18)),
-      Tab(text: '___WEEK___', icon: Icon(Icons.view_week_outlined, size: 18)),
+      Tab(text: '___DAY___', icon: Icon(Icons.today_outlined)),
+      Tab(text: '___WEEK___', icon: Icon(Icons.view_week_outlined)),
       Tab(
           text: '___MONTH___',
-          icon: Icon(Icons.calendar_month_outlined, size: 18)),
-      Tab(text: '___AGENDA___', icon: Icon(Icons.list_alt_outlined, size: 18)),
+          icon: Icon(Icons.calendar_month_outlined)),
+      Tab(text: '___AGENDA___', icon: Icon(Icons.list_alt_outlined)),
     ].map((t) {
       // Replace placeholders with localized strings at build time
       String label;
@@ -73,7 +74,15 @@ class CalendarTabs {
         default:
           label = t.text ?? '';
       }
-      return Tab(text: label, icon: t.icon);
+      return Tab(
+        text: label,
+        icon: t.icon != null
+            ? Icon(
+                (t.icon! as Icon).icon,
+                size: iconSize,
+              )
+            : null,
+      );
     }).toList(growable: false);
   }
 

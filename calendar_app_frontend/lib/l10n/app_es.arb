@@ -1485,7 +1485,88 @@
   "groupSettingsDangerZoneNonOwner": "Solo el propietario del grupo puede eliminarlo.",
   "groupInfo": "Información del grupo",
   "groupInfoSubtitle": "Nombre, descripción y detalles básicos",
-  "notificationsSubtitle": "Alertas, recordatorios y preferencias"
+  "notificationsSubtitle": "Alertas, recordatorios y preferencias",
+
+  "billingDetails": "Detalles de facturación",
+  "billingDetailsSubtitle": "Datos para facturas (razón social, CIF, dirección y contacto).",
+  "billingLegalName": "Razón social",
+  "billingTaxId": "NIF/CIF",
+  "addressStreet": "Calle",
+  "addressExtra": "Complemento de dirección",
+  "addressCity": "Ciudad",
+  "addressProvince": "Provincia/Estado",
+  "addressPostalCode": "Código postal",
+  "addressCountry": "País",
+  "billingEmailLabel": "Email de facturación",
+  "billingPhoneLabel": "Teléfono de facturación",
+  "billingComplete": "Facturación lista",
+  "billingMissing": "Faltan datos de facturación",
+  "billingProfileTitle": "Perfil de facturación",
+  "billingProfileEmpty": "Añade los datos del emisor (razón social, CIF, dirección, IVA, IBAN) para emitir facturas.",
+  "billingWebsite": "Sitio web",
+  "billingIban": "IBAN",
+  "billingTaxRate": "IVA",
+  "billingCurrency": "Moneda",
+  "billingLanguage": "Idioma",
+  "billingAddress": "Dirección",
+  "billingProfileSaved": "Perfil de facturación guardado",
+
+  "createInvoiceCta": "Crear factura",
+  "invoiceCreated": "Factura creada",
+  "noInvoicesYet": "Aún no hay facturas",
+  "noInvoicesYetSubtitle": "Crea tu primera factura para organizar la facturación.",
+  "invoicesListTitle": "Facturas",
+  "invoicesNavLabel": "Facturas",
+  "invoicesNavSubtitle": "Crear y gestionar facturas",
+  "invoicesTitle": "Facturas · {groupName}",
+  "@invoicesTitle": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "openInvoicesWorkspace": "Abrir espacio de facturas",
+  "invoiceNumberLabel": "Número de factura (NNN-AA)",
+  "invoiceNumberHelper": "El sufijo de año está fijado a {year}. Introduce los 3 dígitos.",
+  "@invoiceNumberHelper": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "invoiceNumberInvalid": "Usa tres dígitos (ej. 001). El año se fija al AA actual.",
+  "invoiceClientLabel": "Cliente",
+  "invoiceClientRequired": "Elige un cliente",
+  "invoicePdfUrl": "URL del PDF",
+  "invoiceRegisteredAt": "Registrada el",
+  "invoiceRegisteredUnknown": "Sin registrar",
+  "invoiceParties": "Partes",
+  "invoiceClientSection": "Datos de cliente",
+  "invoiceLinesTitle": "Líneas de factura",
+  "invoiceLinesPlaceholderTitle": "Líneas de factura pronto",
+  "invoiceLinesPlaceholderSubtitle": "Aquí verás los conceptos con cantidad, precio, impuesto y totales.",
+  "unknownClient": "Cliente desconocido",
+  "optionalLabel": "Opcional",
+  "select": "Seleccionar",
+  "change": "Cambiar",
+  "fieldIsRequired": "Este campo es obligatorio",
+  "taxRateShort": "IVA",
+  "invoiceStatusLabel": "Estado",
+  "statusDraft": "Borrador",
+  "statusIssued": "Emitida",
+  "invoiceNotesLabel": "Notas",
+  "invoiceAddLine": "Agregar línea",
+  "invoiceLinesRequired": "Añade al menos una línea",
+  "lineDescription": "Descripción",
+  "lineQuantity": "Cantidad",
+  "lineUnitPrice": "Precio unitario",
+  "lineTaxRate": "Impuesto",
+  "invoiceTotalLabel": "Total",
+  "remove": "Eliminar",
+  "clientsTitle": "Clientes",
+  "selectClientFirst": "Selecciona un cliente para ver facturación e invoices"
 
 
 }

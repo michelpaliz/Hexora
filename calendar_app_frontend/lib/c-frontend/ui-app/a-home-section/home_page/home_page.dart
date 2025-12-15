@@ -7,8 +7,11 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/widgets/home_left_nav.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/widgets/home_sliver_content.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/create_edit/models/create_group_data.dart';
+import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/show_notifications.dart';
+import 'package:hexora/c-frontend/ui-app/g-agenda-section/agenda_screen.dart';
+import 'package:hexora/c-frontend/ui-app/i-settings-section/screens/settings.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/main_scaffold.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -29,6 +32,7 @@ class _HomePageState extends State<HomePage> {
   final _phraseKey = GlobalKey();
   final _groupsKey = GlobalKey();
   String _activeSection = 'summary';
+  String _activeNavRoute = AppRoutes.homePage;
 
   @override
   void didChangeDependencies() {
@@ -128,36 +132,18 @@ class _HomePageState extends State<HomePage> {
               activeSection: _activeSection,
               sectionItems: sectionItems,
               onSectionSelected: handleSectionTap,
+              activeNavRoute: _activeNavRoute,
+              onNavSelected: (route) => setState(() => _activeNavRoute = route),
               isDark: isDark,
-              content: HomeSliverContent(
+              content: _buildWideContent(
                 user: user,
                 isWide: isWide,
                 bottomSafePadding: bottomSafePadding,
-                summaryKey: _summaryKey,
-                phraseKey: _phraseKey,
-                groupsKey: _groupsKey,
-                controller: _scrollController,
-                showSectionNavBar: false,
               ),
-              floatingAction: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isDark ? AppDarkColors.primary : AppColors.primary,
-                  foregroundColor: isDark
-                      ? AppDarkColors.primary
-                      : Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 4,
-                ),
-                icon: const Icon(Icons.group_add_rounded),
-                label: Text(loc.groupSectionTitle),
-                onPressed: () =>
-                    Navigator.pushNamed(context, AppRoutes.createGroupData),
-              ),
+              showSectionNavBar: false,
+              onCreateGroupInline: () =>
+                  setState(() => _activeNavRoute = AppRoutes.createGroupData),
+              floatingAction: null,
             )
           : HomeSliverContent(
               user: user,
@@ -167,11 +153,39 @@ class _HomePageState extends State<HomePage> {
               phraseKey: _phraseKey,
               groupsKey: _groupsKey,
               controller: _scrollController,
-              showSectionNavBar: true,
+              showSectionNavBar: false,
               sectionItems: sectionItems,
               activeSection: _activeSection,
               onSectionSelected: handleSectionTap,
             ),
     );
+  }
+
+  Widget _buildWideContent({
+    required User user,
+    required bool isWide,
+    required double bottomSafePadding,
+  }) {
+    switch (_activeNavRoute) {
+      case AppRoutes.agenda:
+        return const AgendaScreen(showBottomNav: false);
+      case AppRoutes.showNotifications:
+        return ShowNotifications(user: user, showBottomNav: false);
+      case AppRoutes.createGroupData:
+        return const CreateGroupData();
+      case AppRoutes.settings:
+        return const Settings();
+      default:
+        return HomeSliverContent(
+          user: user,
+          isWide: isWide,
+          bottomSafePadding: bottomSafePadding,
+          summaryKey: _summaryKey,
+          phraseKey: _phraseKey,
+          groupsKey: _groupsKey,
+          controller: _scrollController,
+          showSectionNavBar: false,
+        );
+    }
   }
 }

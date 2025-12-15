@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/role_info_screen.dart';
 
 import 'group_dashboard_sections.dart';
 import 'group_dashboard_state.dart';
@@ -52,6 +54,14 @@ class DashboardActions {
           arguments: state.group,
         );
         break;
+      case Sections.invoices:
+        if (!state.canSeeAdmin) return;
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupInvoices,
+          arguments: state.group,
+        );
+        break;
       case Sections.insights:
         Navigator.pushNamed(
           context,
@@ -63,6 +73,40 @@ class DashboardActions {
         Navigator.pushNamed(
           context,
           AppRoutes.groupTimeTracking,
+          arguments: state.group,
+        );
+        break;
+      case Sections.profile:
+        if (state.user != null && state.role != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RoleInfoScreen(
+                group: state.group,
+                user: state.user!,
+                role: state.role!,
+                fetchReadSas: state.fetchReadSas,
+              ),
+            ),
+          );
+        }
+        break;
+      case Sections.undone:
+        if (state.user != null && state.role != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => GroupUndoneEventsScreen(
+                group: state.group,
+                user: state.user!,
+                role: state.role!,
+              ),
+            ),
+          );
+        }
+        break;
+      case Sections.editGroup:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.editGroup,
           arguments: state.group,
         );
         break;

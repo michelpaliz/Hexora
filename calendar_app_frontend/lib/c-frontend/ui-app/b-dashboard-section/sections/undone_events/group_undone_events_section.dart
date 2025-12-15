@@ -183,6 +183,7 @@ class _GroupUndoneEventsSectionBody extends StatelessWidget {
                       context: context,
                       event: event,
                       viewModel: vm,
+                      allowMarkComplete: vm.canManageEvent(event),
                     ),
                   ),
                 )

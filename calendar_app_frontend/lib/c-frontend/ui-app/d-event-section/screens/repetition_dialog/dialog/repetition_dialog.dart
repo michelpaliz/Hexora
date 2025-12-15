@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/utils_recurrence_rule/custom_day_week.dart';
@@ -170,6 +171,8 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
 
     final dateRange =
         '${DateFormat.yMMMd(l.localeName).format(_selectedStartDate)}  •  ${DateFormat.yMMMd(l.localeName).format(_selectedEndDate)}';
+    final isWeb = kIsWeb;
+    final maxContentWidth = isWeb ? 1040.0 : 640.0;
 
     return Scaffold(
       backgroundColor: backdrop,
@@ -205,9 +208,14 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: EdgeInsets.fromLTRB(
+            isWeb ? 24 : 16,
+            isWeb ? 16 : 12,
+            isWeb ? 24 : 16,
+            isWeb ? 28 : 24,
+          ),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
+            constraints: BoxConstraints(maxWidth: maxContentWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

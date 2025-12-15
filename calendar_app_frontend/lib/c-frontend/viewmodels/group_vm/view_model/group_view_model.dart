@@ -231,20 +231,39 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   final UserResolver _userResolver;
 
   bool get _canViewAll => role != GroupRole.member;
+  bool _canManageEvent(Event event) =>
+      event.ownerId == currentUserId || event.recipients.contains(currentUserId);
 
   List<Event> _pendingEvents = const [];
   List<Event> _completedEvents = const [];
+  List<Event> _allVisibleEvents = const [];
   final Map<String, EventOwnerInfo> _ownerCache = {};
   final Set<String> _ownerFetchInFlight = {};
+  final Set<String> _participants = <String>{};
   bool _isLoading = false;
   String? _errorMessage;
   final Set<String> _processingIds = <String>{};
   bool _isDisposed = false;
+  String? _filterUserId;
 
   List<Event> get pendingEvents => List.unmodifiable(_pendingEvents);
   List<Event> get completedEvents => List.unmodifiable(_completedEvents);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get filterUserId => _filterUserId;
+  bool canManageEvent(Event event) => _canManageEvent(event);
+
+  List<EventOwnerInfo> get participantInfos {
+    final list = _participants
+        .map((id) => _ownerCache[id] ?? EventOwnerInfo.fallback(id))
+        .toList();
+    list.sort(
+      (a, b) => a.displayName.toLowerCase().compareTo(
+            b.displayName.toLowerCase(),
+          ),
+    );
+    return list;
+  }
 
   EventOwnerInfo? ownerInfoOf(String ownerId) => _ownerCache[ownerId];
 
@@ -270,19 +289,16 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
       final events = await _eventRepository.getEventsByGroupId(groupId);
       final visibleEvents = _canViewAll
           ? events
-          : events.where((event) => event.ownerId == currentUserId).toList();
-      final pending = visibleEvents
-          .where((event) => event.isDone != true)
-          .toList()
-        ..sort((a, b) => a.startDate.compareTo(b.startDate));
-      final completed = visibleEvents
-          .where((event) => event.isDone == true)
-          .toList()
-        ..sort((a, b) =>
-            (b.completedAt ?? b.endDate).compareTo(a.completedAt ?? a.endDate));
-      _pendingEvents = pending;
-      _completedEvents = completed;
-      await _ensureOwnersLoaded([...pending, ...completed]);
+          : events.where((event) => _canManageEvent(event)).toList();
+
+      _participants
+        ..clear()
+        ..addAll(visibleEvents.map((e) => e.ownerId))
+        ..addAll(visibleEvents.expand((e) => e.recipients));
+
+      _allVisibleEvents = visibleEvents;
+      await _ensureOwnersLoaded(_allVisibleEvents);
+      _applyFilterAndSplit();
     } catch (error) {
       _errorMessage = error.toString();
     } finally {
@@ -295,9 +311,15 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
     final key = baseId(eventId);
     if (key.isEmpty || _processingIds.contains(key)) return;
 
-    if (!_canViewAll &&
-        !_pendingEvents.any((event) =>
-            baseId(event.id) == key && event.ownerId == currentUserId)) {
+    Event? target;
+    for (final event in [..._pendingEvents, ..._completedEvents]) {
+      if (baseId(event.id) == key) {
+        target = event;
+        break;
+      }
+    }
+
+    if (target == null || !_canManageEvent(target)) {
       return;
     }
 
@@ -307,17 +329,12 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
     try {
       final updated =
           await _eventRepository.markEventAsDone(eventId, isDone: true);
-      _pendingEvents = _pendingEvents
-          .where((event) => baseId(event.id) != baseId(updated.id))
-          .toList();
-      if (_canViewAll || updated.ownerId == currentUserId) {
-        final updatedCompleted = List<Event>.from(_completedEvents)
-          ..add(updated)
-          ..sort((a, b) => (b.completedAt ?? b.endDate)
-              .compareTo(a.completedAt ?? a.endDate));
-        _completedEvents = updatedCompleted;
-      }
+      _allVisibleEvents = [
+        ..._allVisibleEvents.where((e) => baseId(e.id) != baseId(updated.id)),
+        updated,
+      ];
       await _ensureOwnersLoaded([updated]);
+      _applyFilterAndSplit();
     } catch (error) {
       _errorMessage = error.toString();
     } finally {
@@ -326,14 +343,52 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
     }
   }
 
+  void setFilterUser(String? userId) {
+    if (!_canViewAll) return;
+    _filterUserId = userId;
+    _applyFilterAndSplit();
+  }
+
+  bool _matchesFilter(Event event) {
+    if (!_canViewAll) return true;
+    if (_filterUserId == null) return true;
+    return event.ownerId == _filterUserId ||
+        event.recipients.contains(_filterUserId);
+  }
+
+  void _applyFilterAndSplit() {
+    final filtered = _allVisibleEvents.where(_matchesFilter).toList();
+    final pending = filtered
+        .where((event) => event.isDone != true)
+        .toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+    final completed = filtered
+        .where((event) => event.isDone == true)
+        .toList()
+      ..sort((a, b) => (b.completedAt ?? b.endDate)
+          .compareTo(a.completedAt ?? a.endDate));
+
+    _pendingEvents = pending;
+    _completedEvents = completed;
+    _notify();
+  }
+
   Future<void> _ensureOwnersLoaded(Iterable<Event> events) async {
     final idsToFetch = <String>{};
     for (final event in events) {
       final ownerId = event.ownerId;
-      if (ownerId.isEmpty) continue;
-      if (_ownerCache.containsKey(ownerId)) continue;
-      if (_ownerFetchInFlight.contains(ownerId)) continue;
-      idsToFetch.add(ownerId);
+      if (ownerId.isNotEmpty) {
+        if (!_ownerCache.containsKey(ownerId) &&
+            !_ownerFetchInFlight.contains(ownerId)) {
+          idsToFetch.add(ownerId);
+        }
+      }
+      for (final rid in event.recipients) {
+        if (rid.isEmpty) continue;
+        if (_ownerCache.containsKey(rid)) continue;
+        if (_ownerFetchInFlight.contains(rid)) continue;
+        idsToFetch.add(rid);
+      }
     }
     if (idsToFetch.isEmpty) return;
     _ownerFetchInFlight.addAll(idsToFetch);

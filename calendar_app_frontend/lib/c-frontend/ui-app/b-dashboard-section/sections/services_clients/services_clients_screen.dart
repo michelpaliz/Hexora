@@ -32,6 +32,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   List<Service> _services = [];
   bool _loadingClients = true, _loadingServices = true;
   String? _errClients, _errServices;
+  bool _showInactiveClients = false;
 
   @override
   void initState() {
@@ -53,7 +54,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       _errClients = null;
     });
     try {
-      final data = await _clientsApi.list(groupId: widget.group.id);
+      final data =
+          await _clientsApi.list(groupId: widget.group.id, active: null);
       setState(() => _clients = data);
     } catch (e) {
       setState(() => _errClients = e.toString());
@@ -247,6 +249,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
             error: _errClients,
             onRefresh: _loadClients,
             showInlineCTA: false,
+            showInactive: _showInactiveClients,
+            onToggleInactive: (v) => setState(() => _showInactiveClients = v),
             onEdit: _openEditClient,
           ),
           ServicesTab(

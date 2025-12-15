@@ -12,9 +12,13 @@ class HomeLeftNav extends StatelessWidget {
   final String activeSection;
   final List<HomeSectionNavItem> sectionItems;
   final ValueChanged<String> onSectionSelected;
+  final String? activeNavRoute;
+  final ValueChanged<String>? onNavSelected;
   final bool isDark;
   final Widget content;
   final Widget? floatingAction;
+  final bool showSectionNavBar;
+  final VoidCallback? onCreateGroupInline;
 
   const HomeLeftNav({
     super.key,
@@ -22,9 +26,13 @@ class HomeLeftNav extends StatelessWidget {
     required this.activeSection,
     required this.sectionItems,
     required this.onSectionSelected,
+    this.activeNavRoute,
+    this.onNavSelected,
     required this.isDark,
     required this.content,
     this.floatingAction,
+    this.showSectionNavBar = true,
+    this.onCreateGroupInline,
   });
 
   @override
@@ -76,6 +84,10 @@ class HomeLeftNav extends StatelessWidget {
                               icon: btn.icon,
                               route: btn.route,
                               isDark: isDark,
+                              isSelected: activeNavRoute == btn.route,
+                              onPressed: onNavSelected == null
+                                  ? null
+                                  : () => onNavSelected!(btn.route),
                             ),
                             if (btn != navButtons.last)
                               Divider(
@@ -91,23 +103,62 @@ class HomeLeftNav extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 8),
-                            child: OutlinedButton.icon(
-                              icon:
-                                  const Icon(Icons.group_add_rounded, size: 18),
-                              label: Text(loc.groupSectionTitle),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: isDark
-                                    ? AppDarkColors.primary
-                                    : AppColors.primary,
-                                side: BorderSide(
-                                  color: isDark
-                                      ? AppDarkColors.primary
-                                      : AppColors.primary,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    isDark
+                                        ? AppDarkColors.primary
+                                        : AppColors.primary,
+                                    (isDark
+                                            ? AppDarkColors.primary
+                                            : AppColors.primary)
+                                        .withOpacity(0.85),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
-                                minimumSize: const Size.fromHeight(44),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (isDark
+                                            ? AppDarkColors.primary
+                                            : AppColors.primary)
+                                        .withOpacity(0.35),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
                               ),
-                              onPressed: () => Navigator.pushNamed(
-                                  context, AppRoutes.createGroupData),
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.group_add_rounded,
+                                    size: 18),
+                                label: Text(
+                                  loc.groupSectionTitle,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelLarge
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  minimumSize: const Size.fromHeight(46),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                ),
+                                onPressed: onCreateGroupInline ??
+                                    () => Navigator.pushNamed(
+                                        context, AppRoutes.createGroupData),
+                                clipBehavior: Clip.antiAlias,
+                              ),
                             ),
                           ),
                         ],
@@ -123,20 +174,22 @@ class HomeLeftNav extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
-                          child: HomeSectionNav(
-                            items: sectionItems,
-                            selectedId: activeSection,
-                            onSelect: onSectionSelected,
-                            isDark: isDark,
-                            axis: Axis.horizontal,
-                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                        if (showSectionNavBar) ...[
+                          Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                            child: HomeSectionNav(
+                              items: sectionItems,
+                              selectedId: activeSection,
+                              onSelect: onSectionSelected,
+                              isDark: isDark,
+                              axis: Axis.horizontal,
+                              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
+                          const SizedBox(height: 12),
+                        ],
                         Expanded(child: content),
                       ],
                     ),
@@ -227,12 +280,16 @@ class _NavButton extends StatelessWidget {
   final IconData icon;
   final String route;
   final bool isDark;
+  final bool isSelected;
+  final VoidCallback? onPressed;
 
   const _NavButton({
     required this.label,
     required this.icon,
     required this.route,
     required this.isDark,
+    this.isSelected = false,
+    this.onPressed,
   });
 
   @override
@@ -241,24 +298,26 @@ class _NavButton extends StatelessWidget {
     final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
     final inactiveColor =
         isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
-    final isCurrent = ModalRoute.of(context)?.settings.name == route;
+    final selected = isSelected ||
+        (onPressed == null && ModalRoute.of(context)?.settings.name == route);
 
     return InkWell(
-      onTap: () {
-        if (isCurrent) return;
-        Navigator.pushReplacementNamed(context, route);
-      },
+      onTap: onPressed ??
+          () {
+            if (selected) return;
+            Navigator.pushReplacementNamed(context, route);
+          },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        color: isCurrent ? activeColor.withOpacity(0.08) : Colors.transparent,
+        color: selected ? activeColor.withOpacity(0.08) : Colors.transparent,
         child: Row(
           children: [
-            Icon(icon, color: isCurrent ? activeColor : inactiveColor),
+            Icon(icon, color: selected ? activeColor : inactiveColor),
             const SizedBox(width: 12),
             Text(
               label,
               style: theme.textTheme.labelLarge?.copyWith(
-                color: isCurrent ? activeColor : inactiveColor,
+                color: selected ? activeColor : inactiveColor,
                 fontWeight: FontWeight.w700,
               ),
             ),

@@ -8,6 +8,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/wi
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/services_section/right_panel_insights_inline.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/workers_section/right_panel_workers_inline.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/undone_section/right_panel_undone_inline.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/invoices_section/right_panel_invoices_inline.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/profile_section/right_panel_profile_inline.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/notifications_section/right_panel_notifications_inline.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/edit_group_section/right_panel_edit_group_inline.dart';
@@ -65,6 +66,20 @@ class GroupDashboardRightPanel extends StatelessWidget {
         content = ServicesClientsInlinePanel(
           group: group,
         );
+        break;
+      case 'invoices':
+        if (role != null && role != GroupRole.member) {
+          content = InvoicesInlinePanel(group: group);
+        } else {
+          content = CtaCard(
+            title: loc.invoicesNavLabel,
+            subtitle: loc.invoicesNavSubtitle,
+            icon: Icons.receipt_long_outlined,
+            onSurface: onSurface,
+            typo: typo,
+            onPressed: () {},
+          );
+        }
         break;
       case 'insights':
         content = InsightsInlinePanel(group: group);

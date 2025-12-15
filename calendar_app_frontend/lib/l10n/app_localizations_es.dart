@@ -2859,4 +2859,206 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get notificationsSubtitle => 'Alertas, recordatorios y preferencias';
+
+  @override
+  String get billingDetails => 'Detalles de facturación';
+
+  @override
+  String get billingDetailsSubtitle =>
+      'Datos para facturas (razón social, CIF, dirección y contacto).';
+
+  @override
+  String get billingLegalName => 'Razón social';
+
+  @override
+  String get billingTaxId => 'NIF/CIF';
+
+  @override
+  String get addressStreet => 'Calle';
+
+  @override
+  String get addressExtra => 'Complemento de dirección';
+
+  @override
+  String get addressCity => 'Ciudad';
+
+  @override
+  String get addressProvince => 'Provincia/Estado';
+
+  @override
+  String get addressPostalCode => 'Código postal';
+
+  @override
+  String get addressCountry => 'País';
+
+  @override
+  String get billingEmailLabel => 'Email de facturación';
+
+  @override
+  String get billingPhoneLabel => 'Teléfono de facturación';
+
+  @override
+  String get billingComplete => 'Facturación lista';
+
+  @override
+  String get billingMissing => 'Faltan datos de facturación';
+
+  @override
+  String get billingProfileTitle => 'Perfil de facturación';
+
+  @override
+  String get billingProfileEmpty =>
+      'Añade los datos del emisor (razón social, CIF, dirección, IVA, IBAN) para emitir facturas.';
+
+  @override
+  String get billingWebsite => 'Sitio web';
+
+  @override
+  String get billingIban => 'IBAN';
+
+  @override
+  String get billingTaxRate => 'IVA';
+
+  @override
+  String get billingCurrency => 'Moneda';
+
+  @override
+  String get billingLanguage => 'Idioma';
+
+  @override
+  String get billingAddress => 'Dirección';
+
+  @override
+  String get billingProfileSaved => 'Perfil de facturación guardado';
+
+  @override
+  String get createInvoiceCta => 'Crear factura';
+
+  @override
+  String get invoiceCreated => 'Factura creada';
+
+  @override
+  String get noInvoicesYet => 'Aún no hay facturas';
+
+  @override
+  String get noInvoicesYetSubtitle =>
+      'Crea tu primera factura para organizar la facturación.';
+
+  @override
+  String get invoicesListTitle => 'Facturas';
+
+  @override
+  String get invoicesNavLabel => 'Facturas';
+
+  @override
+  String get invoicesNavSubtitle => 'Crear y gestionar facturas';
+
+  @override
+  String invoicesTitle(String groupName) {
+    return 'Facturas · $groupName';
+  }
+
+  @override
+  String get openInvoicesWorkspace => 'Abrir espacio de facturas';
+
+  @override
+  String get invoiceNumberLabel => 'Número de factura (NNN-AA)';
+
+  @override
+  String invoiceNumberHelper(String year) {
+    return 'El sufijo de año está fijado a $year. Introduce los 3 dígitos.';
+  }
+
+  @override
+  String get invoiceNumberInvalid =>
+      'Usa tres dígitos (ej. 001). El año se fija al AA actual.';
+
+  @override
+  String get invoiceClientLabel => 'Cliente';
+
+  @override
+  String get invoiceClientRequired => 'Elige un cliente';
+
+  @override
+  String get invoicePdfUrl => 'URL del PDF';
+
+  @override
+  String get invoiceRegisteredAt => 'Registrada el';
+
+  @override
+  String get invoiceRegisteredUnknown => 'Sin registrar';
+
+  @override
+  String get invoiceParties => 'Partes';
+
+  @override
+  String get invoiceClientSection => 'Datos de cliente';
+
+  @override
+  String get invoiceLinesTitle => 'Líneas de factura';
+
+  @override
+  String get invoiceLinesPlaceholderTitle => 'Líneas de factura pronto';
+
+  @override
+  String get invoiceLinesPlaceholderSubtitle =>
+      'Aquí verás los conceptos con cantidad, precio, impuesto y totales.';
+
+  @override
+  String get unknownClient => 'Cliente desconocido';
+
+  @override
+  String get optionalLabel => 'Opcional';
+
+  @override
+  String get select => 'Seleccionar';
+
+  @override
+  String get change => 'Cambiar';
+
+  @override
+  String get fieldIsRequired => 'Este campo es obligatorio';
+
+  @override
+  String get taxRateShort => 'IVA';
+
+  @override
+  String get invoiceStatusLabel => 'Estado';
+
+  @override
+  String get statusDraft => 'Borrador';
+
+  @override
+  String get statusIssued => 'Emitida';
+
+  @override
+  String get invoiceNotesLabel => 'Notas';
+
+  @override
+  String get invoiceAddLine => 'Agregar línea';
+
+  @override
+  String get invoiceLinesRequired => 'Añade al menos una línea';
+
+  @override
+  String get lineDescription => 'Descripción';
+
+  @override
+  String get lineQuantity => 'Cantidad';
+
+  @override
+  String get lineUnitPrice => 'Precio unitario';
+
+  @override
+  String get lineTaxRate => 'Impuesto';
+
+  @override
+  String get invoiceTotalLabel => 'Total';
+
+  @override
+  String get clientsTitle => 'Clientes';
+
+  @override
+  String get selectClientFirst =>
+      'Selecciona un cliente para ver facturación e invoices';
 }

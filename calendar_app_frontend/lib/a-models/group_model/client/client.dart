@@ -1,4 +1,5 @@
 /// models/client.dart
+import 'package:hexora/a-models/invoice/client_billing.dart';
 class GroupClient {
   String id;
   String name;
@@ -10,6 +11,7 @@ class GroupClient {
 
   bool isActive;
   Map<String, dynamic>? meta;
+  ClientBilling? billing;
 
   // Optional timestamps if your API returns them (Mongoose timestamps: true)
   DateTime? createdAt;
@@ -23,6 +25,7 @@ class GroupClient {
     this.email,
     this.isActive = true,
     this.meta,
+    this.billing,
     this.createdAt,
     this.updatedAt,
   });
@@ -35,6 +38,7 @@ class GroupClient {
     String? email,
     bool? isActive,
     Map<String, dynamic>? meta,
+    ClientBilling? billing,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -46,6 +50,7 @@ class GroupClient {
       email: email ?? this.email,
       isActive: isActive ?? this.isActive,
       meta: meta ?? this.meta,
+      billing: billing ?? this.billing,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -61,6 +66,7 @@ class GroupClient {
         },
         'isActive': isActive,
         if (meta != null) 'meta': meta,
+        if (billing != null) 'billing': billing!.toJson(),
         if (createdAt != null)
           'createdAt': createdAt!.toUtc().toIso8601String(),
         if (updatedAt != null)
@@ -70,6 +76,7 @@ class GroupClient {
   factory GroupClient.fromJson(Map<String, dynamic> json) {
     final rawId = (json['id'] ?? json['_id'] ?? '').toString();
     final contact = (json['contact'] as Map?)?.cast<String, dynamic>();
+    final billingJson = (json['billing'] as Map?)?.cast<String, dynamic>();
     return GroupClient(
       id: rawId,
       name: (json['name'] ?? '').toString(),
@@ -78,6 +85,8 @@ class GroupClient {
       email: contact?['email']?.toString(),
       isActive: json['isActive'] is bool ? json['isActive'] as bool : true,
       meta: (json['meta'] as Map?)?.cast<String, dynamic>(),
+      billing:
+          billingJson != null ? ClientBilling.fromJson(billingJson) : null,
       createdAt:
           json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
       updatedAt:
