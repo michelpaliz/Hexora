@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hexora/app/bootstrapp/app_bootstrap.dart';
 import 'package:hexora/app/init_main.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auht_gate.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/c-frontend/routes/routes.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
@@ -22,6 +24,10 @@ void main() async {
   // Remove or adjust as needed for production logging policies.
   debugPrint('📡 API base: ${ApiConstants.baseUrl}');
   debugPrint('📦 CDN base: ${ApiConstants.cdnBaseUrl}');
+  if (kDebugMode) {
+    final token = await TokenService.loadToken();
+    debugPrint('🔑 access_token (debug): ${token ?? 'null'}');
+  }
 
   runApp(const HexoraApp());
 }

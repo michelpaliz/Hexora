@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as devtools show log;
 
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
@@ -26,6 +27,12 @@ class ClientsApi {
       final body = r.body.isEmpty ? null : jsonDecode(r.body);
       return map(body);
     }
+    // Emit body/status to aid debugging (e.g., address updates)
+    devtools.log(
+      'ClientsApi error ${r.request?.method} ${r.request?.url} '
+      'status=${r.statusCode} body=${r.body}',
+      name: 'ClientsApi',
+    );
     String msg;
     try {
       final j = jsonDecode(r.body);

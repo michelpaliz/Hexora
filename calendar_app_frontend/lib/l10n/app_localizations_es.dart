@@ -3061,4 +3061,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get selectClientFirst =>
       'Selecciona un cliente para ver facturación e invoices';
+
+  @override
+  String get billingDocumentType => 'Tipo de documento';
+
+  @override
+  String get documentTypeInvoice => 'Factura';
+
+  @override
+  String get documentTypeReceipt => 'Recibo';
 }

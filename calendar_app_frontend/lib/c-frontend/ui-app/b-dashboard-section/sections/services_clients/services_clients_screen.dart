@@ -8,7 +8,7 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
-import 'sheets/add_client_sheet.dart';
+import 'sheets/add_client_sheet/add_client_sheet.dart';
 import 'sheets/add_service_sheet.dart';
 import 'tabs/clients/clients_tab.dart';
 import 'tabs/services/services_tab.dart';

@@ -22,27 +22,110 @@ class InvoiceDetailParty extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l.invoiceParties,
-              style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            Text(l.billingProfileTitle,
-                style: t.bodySmall.copyWith(fontWeight: FontWeight.w700)),
-            _PartyBlock(profile: issuer, fallback: l.billingProfileEmpty),
-            const SizedBox(height: 8),
-            Text(l.invoiceClientSection,
-                style: t.bodySmall.copyWith(fontWeight: FontWeight.w700)),
-            _PartyBlock(
-              profile: clientBilling,
-              fallback: l.billingDetails,
-              isClient: true,
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 560;
+            final sectionBg = cs.surfaceContainerHighest;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.invoiceParties,
+                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                if (wide)
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _PartySection(
+                            title: l.billingProfileTitle,
+                            backgroundColor: sectionBg,
+                            child: _PartyBlock(
+                              profile: issuer,
+                              fallback: l.billingProfileEmpty,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _PartySection(
+                            title: l.invoiceClientSection,
+                            backgroundColor: sectionBg,
+                            child: _PartyBlock(
+                              profile: clientBilling,
+                              fallback: l.billingDetails,
+                              isClient: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  _PartySection(
+                    title: l.billingProfileTitle,
+                    backgroundColor: sectionBg,
+                    child: _PartyBlock(
+                      profile: issuer,
+                      fallback: l.billingProfileEmpty,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _PartySection(
+                    title: l.invoiceClientSection,
+                    backgroundColor: sectionBg,
+                    child: _PartyBlock(
+                      profile: clientBilling,
+                      fallback: l.billingDetails,
+                      isClient: true,
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
+      ),
+    );
+  }
+}
+
+class _PartySection extends StatelessWidget {
+  final String title;
+  final Color backgroundColor;
+  final Widget child;
+
+  const _PartySection({
+    required this.title,
+    required this.backgroundColor,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+          ),
+          child,
+        ],
       ),
     );
   }

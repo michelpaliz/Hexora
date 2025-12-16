@@ -4,7 +4,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/service/service.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/service/service_api_client.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_service_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/tabs/clients/clients_tab.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/tabs/services/services_tab.dart';

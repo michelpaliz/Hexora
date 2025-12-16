@@ -1597,7 +1597,10 @@
   "invoiceTotalLabel": "Total",
   "remove": "Remove",
   "clientsTitle": "Clients",
-  "selectClientFirst": "Select a client to view billing and invoices"
+  "selectClientFirst": "Select a client to view billing and invoices",
+  "billingDocumentType": "Document type",
+  "documentTypeInvoice": "Invoice",
+  "documentTypeReceipt": "Receipt"
 
 
 }

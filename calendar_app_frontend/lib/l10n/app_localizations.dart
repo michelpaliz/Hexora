@@ -5493,6 +5493,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select a client to view billing and invoices'**
   String get selectClientFirst;
+
+  /// No description provided for @billingDocumentType.
+  ///
+  /// In en, this message translates to:
+  /// **'Document type'**
+  String get billingDocumentType;
+
+  /// No description provided for @documentTypeInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice'**
+  String get documentTypeInvoice;
+
+  /// No description provided for @documentTypeReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt'**
+  String get documentTypeReceipt;
 }
 
 class _AppLocalizationsDelegate

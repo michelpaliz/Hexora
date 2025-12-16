@@ -51,8 +51,11 @@ class InvoicesApi {
     });
   }
 
-  Future<List<Invoice>> listByGroup(String groupId) async {
-    final r = await http.get(_u('/group/$groupId'), headers: await _headers());
+  Future<List<Invoice>> listByGroup(String groupId, {String? status}) async {
+    final uri = status == null
+        ? _u('/group/$groupId')
+        : _u('/group/$groupId?status=$status');
+    final r = await http.get(uri, headers: await _headers());
     return _decode<List<Invoice>>(r, (j) {
       if (j is! List) throw Exception('Unexpected invoices payload');
       final items =
@@ -69,5 +72,52 @@ class InvoicesApi {
   Future<Invoice> getById(String id) async {
     final r = await http.get(_u('/$id'), headers: await _headers());
     return _decode<Invoice>(r, (j) => Invoice.fromJson(j));
+  }
+
+  /// POST /invoices/:id/issue  -> locks invoice, assigns number/issueDate/status
+  Future<Invoice> issue(String id) async {
+    final r = await http.post(_u('/$id/issue'), headers: await _headers());
+    return _decode<Invoice>(r, (j) {
+      if (j is Map<String, dynamic>) return Invoice.fromJson(j);
+      throw Exception('Unexpected invoice payload');
+    });
+  }
+
+  /// GET /invoices/:id/pdf/preview  (inline PDF for drafts/issued)
+  Future<http.Response> previewPdf(String id) async {
+    final r = await http.get(
+      _u('/$id/pdf/preview'),
+      headers: await _headers(),
+    );
+    if (r.statusCode >= 200 && r.statusCode < 300) return r;
+    throw Exception(
+        'Failed to preview PDF (${r.statusCode}): ${r.reasonPhrase}');
+  }
+
+  /// GET /invoices/:id/pdf  (attachment PDF for issued)
+  Future<http.Response> downloadPdf(String id) async {
+    final r = await http.get(
+      _u('/$id/pdf'),
+      headers: await _headers(),
+    );
+    if (r.statusCode >= 200 && r.statusCode < 300) return r;
+    throw Exception(
+        'Failed to download PDF (${r.statusCode}): ${r.reasonPhrase}');
+  }
+
+  /// DELETE /invoices/:id  (useful for drafts cleanup, if supported by backend)
+  Future<void> delete(String id) async {
+    final r = await http.delete(_u('/$id'), headers: await _headers());
+    if (r.statusCode >= 200 && r.statusCode < 300) return;
+    String msg = r.reasonPhrase ?? 'Failed to delete invoice';
+    if (r.body.isNotEmpty) {
+      try {
+        final body = jsonDecode(r.body);
+        if (body is Map && body['message'] != null) {
+          msg = body['message'].toString();
+        }
+      } catch (_) {}
+    }
+    throw Exception(msg);
   }
 }

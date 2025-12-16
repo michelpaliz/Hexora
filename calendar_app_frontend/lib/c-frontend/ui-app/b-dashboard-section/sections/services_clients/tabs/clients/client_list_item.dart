@@ -205,6 +205,9 @@ class _BillingChip extends StatelessWidget {
     final bool isComplete = billing?.isComplete == true;
     final Color bg = isComplete ? cs.secondaryContainer : cs.surfaceVariant;
     final Color fg = isComplete ? cs.onSecondaryContainer : cs.onSurfaceVariant;
+    final doc = billing?.documentType ?? 'invoice';
+    final docLabel =
+        doc == 'receipt' ? l.documentTypeReceipt : l.documentTypeInvoice;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -224,6 +227,21 @@ class _BillingChip extends StatelessWidget {
               color: fg,
               fontWeight: FontWeight.w700,
               letterSpacing: .2,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: fg.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              docLabel,
+              style: t.caption.copyWith(
+                color: fg,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

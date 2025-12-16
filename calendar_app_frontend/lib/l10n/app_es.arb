@@ -1566,7 +1566,10 @@
   "invoiceTotalLabel": "Total",
   "remove": "Eliminar",
   "clientsTitle": "Clientes",
-  "selectClientFirst": "Selecciona un cliente para ver facturación e invoices"
+  "selectClientFirst": "Selecciona un cliente para ver facturación e invoices",
+  "billingDocumentType": "Tipo de documento",
+  "documentTypeInvoice": "Factura",
+  "documentTypeReceipt": "Recibo"
 
 
 }

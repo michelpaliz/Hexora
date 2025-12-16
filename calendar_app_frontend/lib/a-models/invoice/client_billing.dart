@@ -10,6 +10,7 @@ class ClientBilling {
   final String? email;
   final String? phone;
   final bool? isComplete;
+  final String? documentType; // invoice | receipt
   final DateTime? updatedAt;
 
   const ClientBilling({
@@ -24,6 +25,7 @@ class ClientBilling {
     this.email,
     this.phone,
     this.isComplete,
+    this.documentType,
     this.updatedAt,
   });
 
@@ -39,6 +41,7 @@ class ClientBilling {
     String? email,
     String? phone,
     bool? isComplete,
+    String? documentType,
     DateTime? updatedAt,
   }) {
     return ClientBilling(
@@ -53,6 +56,7 @@ class ClientBilling {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       isComplete: isComplete ?? this.isComplete,
+      documentType: documentType ?? this.documentType,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -78,6 +82,7 @@ class ClientBilling {
       phone: json['phone']?.toString(),
       isComplete:
           json['isComplete'] is bool ? json['isComplete'] as bool : null,
+      documentType: json['documentType']?.toString(),
       updatedAt: parseDate(json['updatedAt']),
     );
   }
@@ -94,6 +99,7 @@ class ClientBilling {
         if (email != null) 'email': email,
         if (phone != null) 'phone': phone,
         if (isComplete != null) 'isComplete': isComplete,
+        if (documentType != null) 'documentType': documentType,
         if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
       };
 
@@ -118,6 +124,8 @@ class ClientBilling {
         'addressCountry': clean(addressCountry),
       if (includeNulls || clean(email) != null) 'email': clean(email),
       if (includeNulls || clean(phone) != null) 'phone': clean(phone),
+      if (includeNulls || documentType != null)
+        'documentType': documentType ?? 'invoice',
     };
 
     final filtered = Map<String, dynamic>.fromEntries(

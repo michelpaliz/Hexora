@@ -9,12 +9,14 @@ class InvoiceListItem extends StatelessWidget {
   final Invoice invoice;
   final GroupClient client;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
   const InvoiceListItem({
     super.key,
     required this.invoice,
     required this.client,
     this.onTap,
+    this.onDelete,
   });
 
   @override
@@ -93,7 +95,15 @@ class InvoiceListItem extends StatelessWidget {
                 children: [
                   _StatusPill(status: invoice.status ?? 'draft'),
                   const SizedBox(height: 8),
-                  Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+                  if (onDelete != null)
+                    IconButton(
+                      tooltip: l.delete,
+                      icon: const Icon(Icons.delete_outline),
+                      color: cs.onSurfaceVariant,
+                      onPressed: onDelete,
+                    )
+                  else
+                    Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
                 ],
               ),
             ],

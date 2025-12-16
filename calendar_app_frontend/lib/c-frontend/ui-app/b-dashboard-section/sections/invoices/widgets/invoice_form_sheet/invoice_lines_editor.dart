@@ -127,6 +127,7 @@ class InvoiceLinesEditor extends StatelessWidget {
                         borderSide: BorderSide(color: cs.primary, width: 1.5),
                       ),
                     ),
+                    onChanged: (_) => onChanged(),
                     validator: (v) => (v == null || v.trim().isEmpty)
                         ? l.fieldIsRequired
                         : null,
@@ -151,6 +152,7 @@ class InvoiceLinesEditor extends StatelessWidget {
                             FilteringTextInputFormatter.allow(
                                 RegExp(r'[0-9.]')),
                           ],
+                          onChanged: (_) => onChanged(),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -171,6 +173,7 @@ class InvoiceLinesEditor extends StatelessWidget {
                             FilteringTextInputFormatter.allow(
                                 RegExp(r'[0-9.]')),
                           ],
+                          onChanged: (_) => onChanged(),
                         ),
                       ),
                     ],
@@ -191,6 +194,7 @@ class InvoiceLinesEditor extends StatelessWidget {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                     ],
+                    onChanged: (_) => onChanged(),
                   ),
                 ],
               ),
