@@ -24,7 +24,8 @@ dependencies:
   carousel_slider: ^5.0.0
   geolocator: ^13.0.4
   geocoding: ^3.0.0
-  syncfusion_flutter_calendar: ^29.1.37
+  syncfusion_flutter_calendar: ^29.2.11+1
+  syncfusion_flutter_charts: ^30.2.6+1
   image_picker: ^1.0.4
   cached_network_image: ^3.3.0
   anim_search_bar: ^2.0.3
@@ -45,6 +46,7 @@ dependencies:
   
   dio: ^5.4.3+1
   socket_io_client: ^2.0.3+1
+  file_picker: ^8.3.7
 
 
   # Freezed / JSON annotations

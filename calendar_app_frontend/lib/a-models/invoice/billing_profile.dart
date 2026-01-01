@@ -3,6 +3,7 @@ class BillingProfile {
   final String groupId;
   final String legalName;
   final String taxId;
+  final String? logoUrl;
   final String? addressStreet;
   final String? addressExtra;
   final String? addressCity;
@@ -24,6 +25,7 @@ class BillingProfile {
     required this.groupId,
     required this.legalName,
     required this.taxId,
+    this.logoUrl,
     this.addressStreet,
     this.addressExtra,
     this.addressCity,
@@ -46,6 +48,7 @@ class BillingProfile {
     String? groupId,
     String? legalName,
     String? taxId,
+    String? logoUrl,
     String? addressStreet,
     String? addressExtra,
     String? addressCity,
@@ -67,6 +70,7 @@ class BillingProfile {
       groupId: groupId ?? this.groupId,
       legalName: legalName ?? this.legalName,
       taxId: taxId ?? this.taxId,
+      logoUrl: logoUrl ?? this.logoUrl,
       addressStreet: addressStreet ?? this.addressStreet,
       addressExtra: addressExtra ?? this.addressExtra,
       addressCity: addressCity ?? this.addressCity,
@@ -98,6 +102,7 @@ class BillingProfile {
       groupId: (json['groupId'] ?? '').toString(),
       legalName: (json['legalName'] ?? '').toString(),
       taxId: (json['taxId'] ?? '').toString(),
+      logoUrl: json['logoUrl']?.toString(),
       addressStreet: json['addressStreet']?.toString(),
       addressExtra: json['addressExtra']?.toString(),
       addressCity: json['addressCity']?.toString(),
@@ -122,6 +127,7 @@ class BillingProfile {
         'groupId': groupId,
         'legalName': legalName,
         'taxId': taxId,
+        if (logoUrl != null) 'logoUrl': logoUrl,
         if (addressStreet != null) 'addressStreet': addressStreet,
         if (addressExtra != null) 'addressExtra': addressExtra,
         if (addressCity != null) 'addressCity': addressCity,
@@ -145,6 +151,7 @@ class BillingProfile {
       'groupId': groupId,
       'legalName': clean(legalName) ?? '',
       'taxId': clean(taxId) ?? '',
+      'logoUrl': clean(logoUrl),
       'addressStreet': clean(addressStreet),
       'addressExtra': clean(addressExtra),
       'addressCity': clean(addressCity),

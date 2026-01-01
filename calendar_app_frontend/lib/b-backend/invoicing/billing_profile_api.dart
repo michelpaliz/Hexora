@@ -31,6 +31,8 @@ class BillingProfileApi {
     String message = r.reasonPhrase ?? 'Request failed';
     if (body is Map && body['message'] != null) {
       message = body['message'].toString();
+    } else if (body is Map && body['error'] != null) {
+      message = body['error'].toString();
     } else if (body is String && body.trim().isNotEmpty) {
       message = body.trim();
     }
@@ -51,6 +53,36 @@ class BillingProfileApi {
     if (r.statusCode == 404) return null;
     return _decode<BillingProfile?>(r, (j) {
       if (j == null) return null;
+      if (j is Map<String, dynamic>) return BillingProfile.fromJson(j);
+      throw Exception('Unexpected billing profile payload');
+    });
+  }
+
+  Future<BillingProfile> updateLogo({
+    required String groupId,
+    required String logoUrl,
+  }) async {
+    final r = await http.patch(
+      _u('/group/$groupId/logo'),
+      headers: await _headers(),
+      body: jsonEncode({'logoUrl': logoUrl}),
+    );
+    return _decode<BillingProfile>(r, (j) {
+      if (j is Map<String, dynamic>) return BillingProfile.fromJson(j);
+      throw Exception('Unexpected billing profile payload');
+    });
+  }
+
+  Future<BillingProfile> updateWebsite({
+    required String groupId,
+    required String website,
+  }) async {
+    final r = await http.patch(
+      _u('/group/$groupId/website'),
+      headers: await _headers(),
+      body: jsonEncode({'website': website}),
+    );
+    return _decode<BillingProfile>(r, (j) {
       if (j is Map<String, dynamic>) return BillingProfile.fromJson(j);
       throw Exception('Unexpected billing profile payload');
     });

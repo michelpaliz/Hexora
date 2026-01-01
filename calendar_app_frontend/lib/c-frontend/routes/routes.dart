@@ -10,6 +10,9 @@ import 'package:hexora/c-frontend/routes/calendar/group_calendar_loader.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/home_page.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/group_dashboard.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/header_section.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/enable_banking_callback_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/enable_banking_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/statements/analytics/statements_analytics_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/graphs/group_insights_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/screen/group_members_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/notifications/group_notifications_screen.dart';
@@ -49,6 +52,10 @@ final Map<String, WidgetBuilder> routes = {
       const VerifyEmailSuccessView(),
   AppRoutes.downloadApp: (context) => const DownloadAppView(),
   AppRoutes.downloadAppShort: (context) => const DownloadAppView(),
+  AppRoutes.enableBanking: (context) => EnableBankingScreen.fromRoute(context),
+  AppRoutes.enableBankingCallback: (context) =>
+      const EnableBankingCallbackScreen(),
+  AppRoutes.statementsAnalytics: (context) => const StatementsAnalyticsScreen(),
   AppRoutes.groupDashboard: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     if (group == null) return const SizedBox.shrink();

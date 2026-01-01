@@ -26,7 +26,9 @@ void main() async {
   debugPrint('📦 CDN base: ${ApiConstants.cdnBaseUrl}');
   if (kDebugMode) {
     final token = await TokenService.loadToken();
-    debugPrint('🔑 access_token (debug): ${token ?? 'null'}');
+    debugPrint(
+      '🔑 access_token present: ${token != null && token.isNotEmpty} (len=${token?.length ?? 0})',
+    );
   }
 
   runApp(const HexoraApp());
@@ -65,7 +67,9 @@ class _AppShell extends StatelessWidget {
           routes: routes,
           // Allow deep links (e.g., /verify-email) to become the initial route.
           onGenerateRoute: (settings) {
-            final builder = routes[settings.name];
+            final name = settings.name;
+            final path = name == null ? null : Uri.tryParse(name)?.path;
+            final builder = routes[path ?? name];
             if (builder != null) {
               return MaterialPageRoute(
                 builder: builder,

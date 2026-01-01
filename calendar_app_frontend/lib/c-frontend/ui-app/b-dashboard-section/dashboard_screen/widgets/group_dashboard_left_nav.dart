@@ -3,14 +3,20 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
 class GroupDashboardLeftNav extends StatelessWidget {
+  static const double expandedWidth = 240;
+  static const double collapsedWidth = 84;
+
   final Group group;
   final User? user;
   final bool isDark;
   final List<(String, IconData, String)> sections;
   final void Function(String anchor)? onSectionTap;
   final String? selectedAnchor;
+  final bool collapsed;
+  final VoidCallback onToggleCollapse;
 
   const GroupDashboardLeftNav({
     super.key,
@@ -20,10 +26,14 @@ class GroupDashboardLeftNav extends StatelessWidget {
     required this.sections,
     this.onSectionTap,
     this.selectedAnchor,
+    required this.collapsed,
+    required this.onToggleCollapse,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final navWidth = collapsed ? collapsedWidth : expandedWidth;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1200),
@@ -33,11 +43,32 @@ class GroupDashboardLeftNav extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 240,
+                width: navWidth,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _GroupCard(group: group, isDark: isDark),
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: collapsed
+                              ? l.dashboardNavExpand
+                              : l.dashboardNavCollapse,
+                          onPressed: onToggleCollapse,
+                          icon: Icon(
+                              collapsed ? Icons.chevron_right : Icons.chevron_left),
+                        ),
+                        if (!collapsed)
+                          Text(
+                            l.dashboardNavTitle,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (collapsed)
+                      _GroupCompactCard(group: group, isDark: isDark)
+                    else
+                      _GroupCard(group: group, isDark: isDark),
                     const SizedBox(height: 12),
                     Card(
                       shape: RoundedRectangleBorder(
@@ -54,6 +85,7 @@ class GroupDashboardLeftNav extends StatelessWidget {
                                   ? null
                                   : () => onSectionTap!(s.$3),
                               isSelected: selectedAnchor == s.$3,
+                              collapsed: collapsed,
                             ),
                             if (s != sections.last)
                               Divider(
@@ -69,7 +101,10 @@ class GroupDashboardLeftNav extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    if (user != null) _UserCard(user: user!, isDark: isDark),
+                    if (user != null && collapsed)
+                      _UserCompactCard(user: user!, isDark: isDark)
+                    else if (user != null)
+                      _UserCard(user: user!, isDark: isDark),
                   ],
                 ),
               ),
@@ -87,6 +122,7 @@ class _NavRow extends StatelessWidget {
   final bool isDark;
   final VoidCallback? onTap;
   final bool isSelected;
+  final bool collapsed;
 
   const _NavRow({
     required this.label,
@@ -94,6 +130,7 @@ class _NavRow extends StatelessWidget {
     required this.isDark,
     this.onTap,
     this.isSelected = false,
+    this.collapsed = false,
   });
 
   @override
@@ -102,23 +139,66 @@ class _NavRow extends StatelessWidget {
         ? (isDark ? AppDarkColors.primary : AppColors.primary)
         : (isDark ? AppDarkColors.textPrimary : AppColors.textPrimary);
     final bg = isSelected ? fg.withOpacity(0.10) : Colors.transparent;
-    return InkWell(
+    final row = InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: collapsed ? 10 : 14, vertical: 12),
         color: bg,
         child: Row(
+          mainAxisAlignment:
+              collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
           children: [
             Icon(icon, color: fg),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: fg, fontWeight: FontWeight.w700),
-            ),
+            if (!collapsed) ...[
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(color: fg, fontWeight: FontWeight.w700),
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+    if (collapsed) {
+      return Tooltip(message: label, child: row);
+    }
+    return row;
+  }
+}
+
+class _GroupCompactCard extends StatelessWidget {
+  final Group group;
+  final bool isDark;
+  const _GroupCompactCard({required this.group, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDark ? AppDarkColors.surface : AppColors.surface;
+    final onSurface =
+        isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
+    return Tooltip(
+      message: group.name,
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: bg.withOpacity(0.92),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: CircleAvatar(
+            radius: 22,
+            backgroundColor: onSurface.withOpacity(0.12),
+            backgroundImage:
+                (group.photoUrl != null && group.photoUrl!.isNotEmpty)
+                    ? NetworkImage(group.photoUrl!)
+                    : null,
+            child: (group.photoUrl == null || group.photoUrl!.isEmpty)
+                ? Icon(Icons.group, color: onSurface)
+                : null,
+          ),
         ),
       ),
     );
@@ -178,6 +258,47 @@ class _GroupCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UserCompactCard extends StatelessWidget {
+  final User user;
+  final bool isDark;
+  const _UserCompactCard({required this.user, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDark ? AppDarkColors.surface : AppColors.surface;
+    final onSurface =
+        isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
+    return Tooltip(
+      message: user.name,
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        color: bg.withOpacity(0.92),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: CircleAvatar(
+            radius: 18,
+            backgroundColor: onSurface.withOpacity(0.12),
+            backgroundImage:
+                (user.photoUrl != null && user.photoUrl!.isNotEmpty)
+                    ? NetworkImage(user.photoUrl!)
+                    : null,
+            child: (user.photoUrl == null || user.photoUrl!.isEmpty)
+                ? Text(
+                    user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                    style: AppTypography.of(context).bodyMedium.copyWith(
+                          color: onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  )
+                : null,
+          ),
         ),
       ),
     );

@@ -6,12 +6,20 @@ import 'package:hexora/l10n/app_localizations.dart';
 
 import '../controller/group_dashboard_state.dart';
 
-class WideLayout extends StatelessWidget {
+class WideLayout extends StatefulWidget {
   final GroupDashboardState state;
   const WideLayout({super.key, required this.state});
 
   @override
+  State<WideLayout> createState() => _WideLayoutState();
+}
+
+class _WideLayoutState extends State<WideLayout> {
+  bool _navCollapsed = false;
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     final l = AppLocalizations.of(context)!;
     final leftSections = [
       (l.goToCalendar, Icons.calendar_month_rounded, 'calendar'),
@@ -20,11 +28,16 @@ class WideLayout extends StatelessWidget {
       (l.servicesClientsTitle, Icons.design_services_outlined, 'services'),
       if (state.canSeeAdmin)
         (l.invoicesNavLabel, Icons.receipt_long_outlined, 'invoices'),
+      if (state.canSeeAdmin)
+        ('Enable Banking', Icons.account_balance_outlined, 'enableBanking'),
       (l.insightsTitle, Icons.insights_outlined, 'insights'),
       (l.timeTrackingTitle, Icons.access_time_rounded, 'workers'),
       (l.pendingEventsSectionTitle, Icons.pending_actions_outlined, 'undone'),
     ];
     final rightFlex = state.isUltraWide ? 3 : 2;
+    final navWidth = _navCollapsed
+        ? GroupDashboardLeftNav.collapsedWidth + 24
+        : GroupDashboardLeftNav.expandedWidth + 24;
 
     return Center(
       child: ConstrainedBox(
@@ -36,7 +49,7 @@ class WideLayout extends StatelessWidget {
             children: [
               // Left navigation
               SizedBox(
-                width: 280,
+                width: navWidth,
                 child: GroupDashboardLeftNav(
                   group: state.group,
                   user: state.user,
@@ -44,6 +57,9 @@ class WideLayout extends StatelessWidget {
                   sections: leftSections,
                   selectedAnchor: state.activeSection,
                   onSectionTap: state.openSection,
+                  collapsed: _navCollapsed,
+                  onToggleCollapse: () =>
+                      setState(() => _navCollapsed = !_navCollapsed),
                 ),
               ),
               const SizedBox(width: 16),

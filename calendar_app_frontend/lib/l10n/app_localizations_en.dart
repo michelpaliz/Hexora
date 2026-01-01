@@ -188,6 +188,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invalidEmail => 'This is an invalid email address';
 
   @override
+  String get invalidUrl => 'This URL is not valid';
+
+  @override
   String get registrationError => 'Registration error';
 
   @override
@@ -2847,6 +2850,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billingTaxId => 'Tax ID';
 
   @override
+  String get billingTaxIdHelper => 'Used on invoices and PDFs.';
+
+  @override
   String get addressStreet => 'Street';
 
   @override
@@ -2890,13 +2896,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billingIban => 'IBAN';
 
   @override
+  String get billingIbanHelper => 'Shown on invoices for bank transfer.';
+
+  @override
   String get billingTaxRate => 'VAT rate';
+
+  @override
+  String get billingTaxRateHelper => 'Default VAT (0–100).';
 
   @override
   String get billingCurrency => 'Currency';
 
   @override
+  String get billingCurrencyHelper => 'Default currency (e.g. EUR).';
+
+  @override
   String get billingLanguage => 'Language';
+
+  @override
+  String get billingLanguageHelper => 'Invoice language code (e.g. es, en).';
 
   @override
   String get billingAddress => 'Address';
@@ -3029,11 +3047,304 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invoiceTotalLabel => 'Total';
 
   @override
+  String get invoiceEditorTitle => 'Invoice editor';
+
+  @override
+  String get invoiceCustomerTitle => 'Customer';
+
+  @override
+  String get invoiceDatesTitle => 'Dates';
+
+  @override
+  String get invoiceDateLabel => 'Invoice date';
+
+  @override
+  String get invoiceDueDateLabel => 'Due date';
+
+  @override
+  String get invoiceFromLabel => 'From';
+
+  @override
+  String get invoiceBillToLabel => 'Bill to';
+
+  @override
+  String get invoiceSelectClientLabel => 'Select client';
+
+  @override
+  String get invoiceSubtotalLabel => 'Subtotal';
+
+  @override
+  String get invoiceTaxLabel => 'Tax';
+
+  @override
+  String get invoiceNoLinesYet => 'No lines yet';
+
+  @override
+  String get invoicePdfGeneratedLabel => 'PDF generated';
+
+  @override
+  String get invoicePdfNotGeneratedLabel => 'PDF not generated';
+
+  @override
+  String get invoiceIssueCta => 'Issue invoice';
+
+  @override
+  String get invoiceSaveDraftCta => 'Save draft';
+
+  @override
+  String get invoicePdfCta => 'PDF';
+
+  @override
+  String get invoiceIssuingLabel => 'Issuing…';
+
+  @override
+  String get invoiceDetailsShowCta => 'Show details';
+
+  @override
+  String get invoiceDetailsHideCta => 'Hide details';
+
+  @override
+  String get invoiceClientSearchHint => 'Search client';
+
+  @override
+  String get invoiceNotesShowCta => 'Show';
+
+  @override
+  String get invoiceNotesHideCta => 'Hide';
+
+  @override
+  String get invoiceNotesOptionalLabel => 'Optional';
+
+  @override
+  String get invoiceClientInvoicesThisMonthLabel => 'Invoices this month';
+
+  @override
+  String get invoiceDraftInfoTooltip => 'Drafts info';
+
+  @override
+  String get invoiceDraftInfoTitle => 'Before creating a draft';
+
+  @override
+  String get invoiceDraftInfoMessage =>
+      'Before creating a draft, make sure you do not have any pending drafts.';
+
+  @override
+  String get invoicePendingDraftsLabel => 'Pending drafts';
+
+  @override
+  String get invoiceFillRequiredFieldsError =>
+      'Please fill the required fields';
+
+  @override
+  String invoiceDraftSavedSnack(Object invoiceNumber) {
+    return 'Draft saved: $invoiceNumber';
+  }
+
+  @override
+  String get invoiceDraftSavedSnackNoNumber => 'Draft saved';
+
+  @override
+  String get invoiceDraftSaveFailedSnack =>
+      'Could not save draft. Please try again.';
+
+  @override
+  String invoiceIssueSuccessSnack(Object invoiceNumber) {
+    return 'Invoice issued: $invoiceNumber';
+  }
+
+  @override
+  String get invoiceIssueFailedSnack =>
+      'Could not issue invoice. Please try again.';
+
+  @override
+  String get invoicePdfPreviewFailedSnack =>
+      'Could not generate PDF preview. Please try again.';
+
+  @override
+  String get invoiceLogoTitle => 'Invoice logo';
+
+  @override
+  String get invoiceLogoSubtitle => 'Shown on invoices and PDFs.';
+
+  @override
+  String get invoiceLogoUploadCta => 'Upload';
+
+  @override
+  String get invoiceLogoUrlLabel => 'Logo URL';
+
+  @override
+  String get invoiceLogoEmpty => 'No logo set';
+
+  @override
+  String get invoiceLogoUpdated => 'Logo updated';
+
+  @override
+  String get groupInvoicesBusinessTitle => 'Business';
+
+  @override
+  String get groupInvoicesTotalsTitle => 'Invoice totals';
+
+  @override
+  String get groupInvoicesExpandTooltip => 'Expand';
+
+  @override
+  String get groupInvoicesCollapseTooltip => 'Collapse';
+
+  @override
+  String get groupInvoicesClientsFlowCta => 'Clients invoice flow';
+
+  @override
+  String get groupInvoicesDraftInvoicesTitle => 'Draft invoices';
+
+  @override
+  String get groupInvoicesSelectInvoiceHint =>
+      'Select an invoice to see details';
+
+  @override
+  String groupInvoicesTabDrafts(Object count) {
+    return 'Drafts ($count)';
+  }
+
+  @override
+  String groupInvoicesTabInvoices(Object count) {
+    return 'Invoices ($count)';
+  }
+
+  @override
+  String groupInvoicesTotalsInline(Object draftsCount, Object issuedCount) {
+    return 'Issued: $issuedCount • Drafts: $draftsCount';
+  }
+
+  @override
+  String groupInvoicesTotalsIssuedButton(Object count) {
+    return 'Issued: $count';
+  }
+
+  @override
+  String groupInvoicesTotalsDraftsButton(Object count) {
+    return 'Drafts: $count';
+  }
+
+  @override
+  String get groupInvoicesRemoveDraftTitle => 'Remove draft?';
+
+  @override
+  String get groupInvoicesRemoveInvoiceTitle => 'Remove invoice?';
+
+  @override
+  String groupInvoicesRemoveInvoiceMessage(Object invoiceNumber) {
+    return 'This will delete the invoice $invoiceNumber.';
+  }
+
+  @override
+  String get groupInvoicesRemovedSnack => 'Invoice removed';
+
+  @override
+  String get groupInvoicesInvoiceAlreadyRemovedSnack =>
+      'Invoice not found (already removed). Refreshing…';
+
+  @override
+  String groupInvoicesRemoveFailedSnack(Object reason) {
+    return 'Could not remove invoice: $reason';
+  }
+
+  @override
   String get clientsTitle => 'Clients';
 
   @override
   String get selectClientFirst =>
       'Select a client to view billing and invoices';
+
+  @override
+  String get clientEntityTypeLabel => 'Entity type';
+
+  @override
+  String get clientEntityTypeHint => 'e.g. community, company, individual';
+
+  @override
+  String get clientPropertyKindLabel => 'Property kind';
+
+  @override
+  String get clientPropertyKindHint => 'e.g. building, apartment, chalet';
+
+  @override
+  String get clientClassificationTitle => 'Saved options';
+
+  @override
+  String get clientClassificationManageCta => 'Manage';
+
+  @override
+  String get clientClassificationManageTitle => 'Manage saved options';
+
+  @override
+  String get clientAddOptionHint => 'Add option (max 50)';
+
+  @override
+  String get clientClassificationManageHint =>
+      'These options are saved for the group and can be reused when assigning types to clients.';
+
+  @override
+  String get clientClassificationSaveCta => 'Save';
+
+  @override
+  String get clientClassificationSavedSnack => 'Options saved';
+
+  @override
+  String get clientClassificationRebuildCta => 'Rebuild';
+
+  @override
+  String get clientClassificationRebuiltSnack => 'Options rebuilt';
+
+  @override
+  String get clientClassificationSectionTitle => 'Classification';
+
+  @override
+  String get clientClassificationExpandTooltip => 'Expand';
+
+  @override
+  String get clientClassificationCollapseTooltip => 'Collapse';
+
+  @override
+  String get clientHideInactiveChip => 'Hide inactive';
+
+  @override
+  String get clientInactiveHiddenChip => 'Inactive hidden';
+
+  @override
+  String get clientDetailsExpandTooltip => 'Show details';
+
+  @override
+  String get clientDetailsCollapseTooltip => 'Hide details';
+
+  @override
+  String get clientSearchHint => 'Search clients…';
+
+  @override
+  String get clientFiltersTitle => 'Filters';
+
+  @override
+  String get clientFiltersClear => 'Clear';
+
+  @override
+  String get clientSelectedHiddenByFilters =>
+      'Selected client is hidden by filters';
+
+  @override
+  String get clientQuickAssignTitle => 'Quick assign';
+
+  @override
+  String get clientQuickAssignSubtitle => 'Tap to assign. Tap again to clear.';
+
+  @override
+  String get clientClassificationUpdatedSnack => 'Client updated';
+
+  @override
+  String get clientBillingMissingTitle => 'Missing billing information';
+
+  @override
+  String clientBillingMissingMessage(String fields) {
+    return 'Complete: $fields';
+  }
 
   @override
   String get billingDocumentType => 'Document type';
@@ -3043,4 +3354,870 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get documentTypeReceipt => 'Receipt';
+
+  @override
+  String get receiptsTitle => 'Receipts';
+
+  @override
+  String get createReceiptCta => 'Create receipt';
+
+  @override
+  String groupReceiptsTabDrafts(Object count) {
+    return 'Drafts ($count)';
+  }
+
+  @override
+  String groupReceiptsTabReceipts(Object count) {
+    return 'Receipts ($count)';
+  }
+
+  @override
+  String get groupReceiptsSelectReceiptHint =>
+      'Select a receipt to see details';
+
+  @override
+  String get groupReceiptsRemoveDraftTitle => 'Remove receipt draft?';
+
+  @override
+  String groupReceiptsRemoveDraftMessage(Object receiptNumber) {
+    return 'This will delete the receipt $receiptNumber.';
+  }
+
+  @override
+  String get groupReceiptsRemovedSnack => 'Receipt removed';
+
+  @override
+  String get groupReceiptsAlreadyRemovedSnack =>
+      'Receipt not found (already removed). Refreshing…';
+
+  @override
+  String get groupReceiptsCannotRemoveIssuedSnack =>
+      'Cannot remove an issued receipt';
+
+  @override
+  String groupReceiptsRemoveFailedSnack(Object reason) {
+    return 'Could not remove receipt: $reason';
+  }
+
+  @override
+  String get receiptDraftNumberPlaceholder => 'Draft receipt';
+
+  @override
+  String get receiptDateUnknown => 'Date unknown';
+
+  @override
+  String get receiptIssueDateLabel => 'Issue date';
+
+  @override
+  String get receiptLinesTitle => 'Receipt lines';
+
+  @override
+  String get receiptSummaryTitle => 'Summary';
+
+  @override
+  String get receiptNoLinesYet => 'No lines yet';
+
+  @override
+  String get receiptLineTotalLabel => 'Total';
+
+  @override
+  String get receiptSubtotalLabel => 'Subtotal';
+
+  @override
+  String get receiptTotalLabel => 'Total';
+
+  @override
+  String get receiptIssueCta => 'Issue receipt';
+
+  @override
+  String get receiptLockedHint => 'Issued receipts are locked';
+
+  @override
+  String receiptEditorTitle(Object number) {
+    return 'Receipt $number';
+  }
+
+  @override
+  String get receiptEditorFormTitle => 'Receipt';
+
+  @override
+  String get receiptSelectClientLabel => 'Select client';
+
+  @override
+  String get receiptClientRequired => 'Select a client first';
+
+  @override
+  String get receiptLinesRequired => 'Add at least one line';
+
+  @override
+  String get receiptNotesHint => 'Optional notes';
+
+  @override
+  String get receiptDraftSavedSnack => 'Draft saved';
+
+  @override
+  String get receiptSaveFailed => 'Could not save receipt';
+
+  @override
+  String get receiptPreviewFailed => 'Could not preview receipt PDF';
+
+  @override
+  String get receiptDownloadFailed => 'Could not download receipt PDF';
+
+  @override
+  String get receiptIssueConfirmTitle => 'Issue receipt?';
+
+  @override
+  String get receiptIssueConfirmMessage =>
+      'Assign final number and lock the receipt.';
+
+  @override
+  String receiptIssueSuccessSnack(Object receiptNumber) {
+    return 'Receipt issued: $receiptNumber';
+  }
+
+  @override
+  String get receiptIssueFailed => 'Could not issue receipt';
+
+  @override
+  String get preview => 'Preview';
+
+  @override
+  String get download => 'Download';
+
+  @override
+  String get saveDraft => 'Save draft';
+
+  @override
+  String get addLine => 'Add line';
+
+  @override
+  String get statementsTabTitle => 'Import Statements (Excel)';
+
+  @override
+  String get bankProvidersTabTitle => 'Bank Providers';
+
+  @override
+  String get statementsImportTabTitle => 'Import';
+
+  @override
+  String get statementsHistoryTabTitle => 'History';
+
+  @override
+  String get statementsStepUpload => 'Upload file';
+
+  @override
+  String get statementsStepReview => 'Review data';
+
+  @override
+  String get statementsStepConfirm => 'Confirm import';
+
+  @override
+  String get statementsReviewDisabled =>
+      'Upload a file to review parsed entries and deduplication.';
+
+  @override
+  String get statementsConfirmHelp =>
+      'Review the summary and confirm to finalize the import.';
+
+  @override
+  String get statementsConfirmDisabled =>
+      'Complete the upload to enable confirmation.';
+
+  @override
+  String get statementsConfirmAction => 'Confirm import';
+
+  @override
+  String get statementsConfirmSuccess => 'Import confirmed.';
+
+  @override
+  String get statementsStepDisabledHint =>
+      'Complete the previous step to continue.';
+
+  @override
+  String get statementsDragDropTitle => 'Upload your statement';
+
+  @override
+  String get statementsDragDropHint => 'Drag your file here or click to select';
+
+  @override
+  String get statementsFormatsHint =>
+      'Supported formats: .xls, .xlsx · Max 10 MB';
+
+  @override
+  String get statementsRemoveFile => 'Remove';
+
+  @override
+  String get statementsSecurityNote => '🔒 Your data is processed securely';
+
+  @override
+  String get statementsFileTooLarge => 'File exceeds 10 MB limit';
+
+  @override
+  String get statementsResultsTitle => 'Import results';
+
+  @override
+  String get statementsResultsHelp =>
+      'Review deduplication and client matching before confirming the import.';
+
+  @override
+  String get statementsResultsEmpty =>
+      'Upload a file to see the import result and preview.';
+
+  @override
+  String get statementsDuplicateFileError =>
+      'This file was already imported (duplicate checksum).';
+
+  @override
+  String get statementsFilterYear => 'Year';
+
+  @override
+  String get statementsFilterFrom => 'From';
+
+  @override
+  String get statementsFilterTo => 'To';
+
+  @override
+  String get statementsApplyFilters => 'Apply filters';
+
+  @override
+  String get statementsClearFilters => 'Clear';
+
+  @override
+  String get statementsPageSize => 'Page size';
+
+  @override
+  String statementsPageInfo(int page, int total) {
+    return 'Page $page of $total';
+  }
+
+  @override
+  String get statementsPrevPage => 'Prev';
+
+  @override
+  String get statementsNextPage => 'Next';
+
+  @override
+  String get statementsSummaryTitle => 'Summary';
+
+  @override
+  String get statementsSummaryMonthly => 'Monthly';
+
+  @override
+  String get statementsSummaryYearly => 'Yearly';
+
+  @override
+  String get statementsSummaryNet => 'Net';
+
+  @override
+  String get statementsSummaryIncome => 'Income';
+
+  @override
+  String get statementsSummaryExpense => 'Expense';
+
+  @override
+  String get statementsSummaryEmpty => 'No summary data for this range.';
+
+  @override
+  String statementsSummaryLine(String total, String count) {
+    return 'total $total • $count entries';
+  }
+
+  @override
+  String get statementsActionViewEntries => 'View entries';
+
+  @override
+  String get statementsReprocessTitle => 'Reprocess batch?';
+
+  @override
+  String get statementsReprocessMessage =>
+      'This will re-run the parser using the saved column map for this batch.';
+
+  @override
+  String get statementsReprocessAction => 'Reprocess';
+
+  @override
+  String get statementsDeleteTitle => 'Delete batch?';
+
+  @override
+  String get statementsDeleteMessage =>
+      'This will permanently remove the batch and all its entries.';
+
+  @override
+  String get statementsDeleteAction => 'Delete';
+
+  @override
+  String get statementsCancel => 'Cancel';
+
+  @override
+  String statementsDuplicateSummary(String count) {
+    return '$count duplicate movements skipped — View details';
+  }
+
+  @override
+  String get statementsViewDetails => 'View details';
+
+  @override
+  String get statementsStatusSuccess => 'Success';
+
+  @override
+  String get statementsStatusWarning => 'Warning';
+
+  @override
+  String get statementsShowTechDetails => 'View technical details';
+
+  @override
+  String get statementsHideTechDetails => 'Hide technical details';
+
+  @override
+  String get statementsTechBatchId => 'Batch ID';
+
+  @override
+  String get statementsTechChecksum => 'Checksum';
+
+  @override
+  String get statementsTechUploader => 'Uploaded by';
+
+  @override
+  String get statementsCopy => 'Copy';
+
+  @override
+  String get moreActions => 'More actions';
+
+  @override
+  String get statementsNoImportsHelp =>
+      'When you import a file, past batches will appear here for quick review.';
+
+  @override
+  String get statementsDownloadTemplate => 'Download Excel template';
+
+  @override
+  String get statementsViewExample => 'View example';
+
+  @override
+  String get statementsUploadDescription =>
+      'Upload XLS/XLSX statements to parse, dedupe, and link entries to clients. Duplicates are auto-skipped and reported separately.';
+
+  @override
+  String get statementsChooseFile => 'Choose XLS/XLSX';
+
+  @override
+  String get statementsNoFileSelected => 'No file selected';
+
+  @override
+  String statementsSelectedFile(String fileName) {
+    return 'Selected: $fileName';
+  }
+
+  @override
+  String get statementsUploadParse => 'Upload & parse';
+
+  @override
+  String get statementsUploadFailed => 'Upload failed';
+
+  @override
+  String get statementsUploadComplete => 'Upload complete';
+
+  @override
+  String get statementsFileReadError => 'Unable to read file bytes';
+
+  @override
+  String statementsBatchLabel(String batchId) {
+    return 'Batch: $batchId';
+  }
+
+  @override
+  String statementsSheetLabel(String sheet) {
+    return 'Sheet: $sheet';
+  }
+
+  @override
+  String statementsInsertedLabel(String count) {
+    return 'Inserted: $count';
+  }
+
+  @override
+  String statementsSkippedLabel(String count) {
+    return 'Skipped: $count';
+  }
+
+  @override
+  String statementsPreviewTitle(int count) {
+    return 'Preview (first $count entries)';
+  }
+
+  @override
+  String get statementsNoDescription => '(no description)';
+
+  @override
+  String statementsAmountLabel(String amount) {
+    return 'amount: $amount';
+  }
+
+  @override
+  String get statementsPastImports => 'Past imports';
+
+  @override
+  String get refreshAction => 'Refresh';
+
+  @override
+  String get statementsNoImports => 'No imports yet.';
+
+  @override
+  String get statementsBatchFallback => 'Batch';
+
+  @override
+  String statementsBatchTitle(String batchId) {
+    return 'Batch $batchId';
+  }
+
+  @override
+  String statementsUploadedAt(String uploadedAt) {
+    return 'uploaded: $uploadedAt';
+  }
+
+  @override
+  String statementsFileLabel(String fileName) {
+    return 'file: $fileName';
+  }
+
+  @override
+  String statementsChecksumLabel(String checksum) {
+    return 'checksum: $checksum';
+  }
+
+  @override
+  String statementsUploaderLabel(String uploader) {
+    return 'uploader: $uploader';
+  }
+
+  @override
+  String statementsEntryCount(String count) {
+    return 'entries: $count';
+  }
+
+  @override
+  String get statementsBatchEntries => 'Batch entries';
+
+  @override
+  String statementsBatchChip(String batchId) {
+    return 'batch: $batchId';
+  }
+
+  @override
+  String get statementsSelectBatch => 'Select a batch to view entries.';
+
+  @override
+  String get statementsHeaderDate => 'Date';
+
+  @override
+  String get statementsHeaderDescription => 'Description';
+
+  @override
+  String get statementsHeaderDetails => 'Details';
+
+  @override
+  String get statementsHeaderAmount => 'Amount';
+
+  @override
+  String get statementsHeaderBalance => 'Balance';
+
+  @override
+  String get statementsHeaderClient => 'Client';
+
+  @override
+  String get statementsHeaderActions => 'Actions';
+
+  @override
+  String get statementsHeaderBatch => 'Batch';
+
+  @override
+  String get statementsActionSuggest => 'Suggest';
+
+  @override
+  String get statementsActionLink => 'Link';
+
+  @override
+  String get statementsUnlinked => 'Unlinked';
+
+  @override
+  String get statementsAllDataTitle => 'All statements';
+
+  @override
+  String get statementsAllDataSubtitle =>
+      'Review all movements, link clients, and keep data clean.';
+
+  @override
+  String get statementsAllDataEmpty =>
+      'No entries yet. Import an Excel file to review movements here.';
+
+  @override
+  String get statementsFiltersTitle => 'Filters';
+
+  @override
+  String get statementsPaginationTitle => 'Pagination';
+
+  @override
+  String get statementsPresetsTitle => 'Quick ranges';
+
+  @override
+  String get statementsPickRange => 'Pick range';
+
+  @override
+  String get statementsPanelCollapse => 'Hide guidance panel';
+
+  @override
+  String get statementsPanelExpand => 'Show guidance panel';
+
+  @override
+  String get statementsStepContextUploadTitle => 'Step 1 · Upload file';
+
+  @override
+  String get statementsStepContextReviewTitle => 'Step 2 · Review data';
+
+  @override
+  String get statementsStepContextConfirmTitle => 'Step 3 · Confirm import';
+
+  @override
+  String get statementsImportSummaryTitle => 'Import summary';
+
+  @override
+  String get statementsConfirmChecklistTitle => 'Final checklist';
+
+  @override
+  String get statementsConfirmChecklistItem1 =>
+      'Verify duplicates and totals before confirming.';
+
+  @override
+  String get statementsConfirmChecklistItem2 =>
+      'You can still link clients after import.';
+
+  @override
+  String get statementsPresetThisMonth => 'This month';
+
+  @override
+  String get statementsPresetLast30Days => 'Last 30 days';
+
+  @override
+  String get statementsPresetThisYear => 'This year';
+
+  @override
+  String get statementsFiltersActive => 'Active filters';
+
+  @override
+  String get statementsFiltersNone => 'No active filters';
+
+  @override
+  String get statementsColumnBatchTooltip => 'Batch id';
+
+  @override
+  String get statementsColumnBatchCopy => 'Copy batch id';
+
+  @override
+  String get statementsActionsTooltipSuggest =>
+      'Suggest a client based on description';
+
+  @override
+  String get statementsActionsTooltipLink => 'Manually link a client';
+
+  @override
+  String statementsSelectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get statementsBulkSuggest => 'Suggest for selected';
+
+  @override
+  String get statementsBulkLink => 'Link in bulk';
+
+  @override
+  String get statementsClearSelection => 'Clear selection';
+
+  @override
+  String statementsBulkSuggestResult(int withSuggestions, int linked) {
+    return '$withSuggestions suggestions found · $linked linked';
+  }
+
+  @override
+  String get statementsBulkLinkTitle => 'Link selected entries';
+
+  @override
+  String get statementsTotalAmount => 'Total amount';
+
+  @override
+  String get statementsTotalCount => 'Total movements';
+
+  @override
+  String get statementsLastBalance => 'Latest balance';
+
+  @override
+  String statementsLastBalanceDate(String date) {
+    return 'as of $date';
+  }
+
+  @override
+  String get statementsNavTitle => 'Statements';
+
+  @override
+  String get statementsNavCollapse => 'Collapse menu';
+
+  @override
+  String get statementsNavExpand => 'Expand menu';
+
+  @override
+  String get statementsAnalyticsTitle => 'Statements Analytics';
+
+  @override
+  String get statementsAnalyticsBatch => 'Batch';
+
+  @override
+  String get statementsAnalyticsMonth => 'Month';
+
+  @override
+  String get statementsAnalyticsMode => 'Mode';
+
+  @override
+  String get statementsAnalyticsCompareMode => 'Comparison';
+
+  @override
+  String get statementsAnalyticsCompareTitle => 'Dual-period comparison';
+
+  @override
+  String get statementsAnalyticsCompareHelp =>
+      'Compare calendar month vs settlement window totals for each month in the selected year.';
+
+  @override
+  String get statementsAnalyticsComparePickYear =>
+      'Select a year to see the comparison.';
+
+  @override
+  String get statementsAnalyticsCompareBoth => 'Both';
+
+  @override
+  String get statementsAnalyticsCompareCalendar => 'Calendar';
+
+  @override
+  String get statementsAnalyticsCompareSettlement => 'Settlement';
+
+  @override
+  String get statementsAnalyticsCompareDelta => 'Delta';
+
+  @override
+  String get statementsAnalyticsModeCalendar => 'Calendar month';
+
+  @override
+  String get statementsAnalyticsModeSettlement => 'Settlement window';
+
+  @override
+  String statementsAnalyticsModeLabel(Object mode) {
+    return 'Mode: $mode';
+  }
+
+  @override
+  String get statementsAnalyticsSettlementStart => 'Start day';
+
+  @override
+  String get statementsAnalyticsSettlementEnd => 'End day';
+
+  @override
+  String statementsAnalyticsPeriodLabel(Object from, Object to) {
+    return 'Period: $from – $to';
+  }
+
+  @override
+  String get statementsAnalyticsPeriodPending =>
+      'Period: select a year and month';
+
+  @override
+  String get statementsAnalyticsTop => 'Top';
+
+  @override
+  String statementsAnalyticsTopHelp(int count) {
+    return 'Top $count';
+  }
+
+  @override
+  String get statementsAnalyticsTrends => 'Trends';
+
+  @override
+  String get statementsAnalyticsTrendsHelp =>
+      'Compare income, expense, and net across the selected range.';
+
+  @override
+  String get statementsAnalyticsYearAverageTitle => 'Year average';
+
+  @override
+  String get statementsAnalyticsYearAveragesTitle =>
+      'Average monthly income & expense by year';
+
+  @override
+  String get statementsAnalyticsAverageIncome => 'Avg income';
+
+  @override
+  String get statementsAnalyticsAverageExpense => 'Avg expense';
+
+  @override
+  String get statementsAnalyticsTotalsTab => 'Totals';
+
+  @override
+  String get statementsAnalyticsAverageTab => 'Average per entry';
+
+  @override
+  String get statementsAnalyticsTopMerchants => 'Top merchants';
+
+  @override
+  String get statementsAnalyticsTopHelpSubtitle =>
+      'Largest merchants by total amount for the selected filters.';
+
+  @override
+  String get statementsAnalyticsNoData => 'No analytics data yet.';
+
+  @override
+  String get statementsAnalyticsNoMerchants =>
+      'No merchant data for this range.';
+
+  @override
+  String get statementsAnalyticsNoBatches =>
+      'No statement batches available yet.';
+
+  @override
+  String get statementsAnalyticsAllBatches => 'All batches';
+
+  @override
+  String get statementsAnalyticsAllYears => 'All years';
+
+  @override
+  String get statementsAnalyticsAllMonths => 'All months';
+
+  @override
+  String get statementsAnalyticsNoSelection =>
+      'Select a batch to load analytics.';
+
+  @override
+  String statementsAnalyticsMonthHint(int month) {
+    return 'Month $month selected';
+  }
+
+  @override
+  String get statementsAnalyticsExpand => 'Show more';
+
+  @override
+  String get statementsAnalyticsCollapse => 'Show less';
+
+  @override
+  String get statementsFreshnessThreshold => 'Threshold (days)';
+
+  @override
+  String get statementsFreshnessLoading => 'Loading freshness...';
+
+  @override
+  String get statementsFreshnessNoData => 'No transactions yet';
+
+  @override
+  String statementsFreshnessStale(Object date, Object days) {
+    return 'Last entry: $date ($days days ago)';
+  }
+
+  @override
+  String statementsFreshnessUpToDate(Object date) {
+    return 'Up to date (Last entry: $date)';
+  }
+
+  @override
+  String get statementsFreshnessSendReminder => 'Send reminder';
+
+  @override
+  String get statementsFreshnessReminderSent => 'Reminder sent';
+
+  @override
+  String get statementsFreshnessReminderFailed => 'Failed to send reminder';
+
+  @override
+  String get statementsFreshnessNotStale =>
+      'Data is not stale. No notification sent.';
+
+  @override
+  String get statementsReminderSettingsTitle => 'Reminder settings';
+
+  @override
+  String get statementsReminderSettingsLoading =>
+      'Loading reminder settings...';
+
+  @override
+  String get statementsReminderSettingsAuto => 'Auto reminders';
+
+  @override
+  String get statementsReminderSettingsThreshold => 'Threshold (days)';
+
+  @override
+  String get statementsReminderSettingsSaved => 'Reminder settings saved';
+
+  @override
+  String get statementsReminderSettingsFailed =>
+      'Failed to save reminder settings';
+
+  @override
+  String statementsReminderStatusOn(Object days) {
+    return 'Auto reminders ON ($days days)';
+  }
+
+  @override
+  String get statementsReminderStatusOff => 'Auto reminders OFF';
+
+  @override
+  String get statementsReminderStatusUnknown => 'Auto reminders: N/A';
+
+  @override
+  String get statementsAllDataSummaryTitle => 'Summary for current range';
+
+  @override
+  String get dashboardNavTitle => 'Navigation';
+
+  @override
+  String get dashboardNavCollapse => 'Collapse menu';
+
+  @override
+  String get dashboardNavExpand => 'Expand menu';
+
+  @override
+  String get groupInvoicesNavCollapse => 'Collapse menu';
+
+  @override
+  String get groupInvoicesNavExpand => 'Expand menu';
+
+  @override
+  String get statementsRowDetailsTitle => 'Movement details';
+
+  @override
+  String statementsRowDetailsSubtitle(String batchId) {
+    return 'Batch $batchId';
+  }
+
+  @override
+  String get statementsRowDetailsRaw => 'Raw data';
+
+  @override
+  String get statementsNoSuggestions => 'No client suggestions found';
+
+  @override
+  String get statementsSuggestedClientsTitle => 'Suggested clients';
+
+  @override
+  String get statementsLinkClientTitle => 'Link client';
+
+  @override
+  String get statementsSearchClients => 'Search clients';
+
+  @override
+  String get statementsNoClientsMatch => 'No clients match your search';
+
+  @override
+  String get statementsClearLink => 'Clear link';
+
+  @override
+  String get statementsUnnamedClient => '(unnamed)';
+
+  @override
+  String get statementsImportExcelTab => 'Excel';
 }

@@ -5,6 +5,27 @@ import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
+class InvoicesApiException implements Exception {
+  final int statusCode;
+  final String message;
+  final String? responseBody;
+  final Map<String, String>? responseHeaders;
+  final Uri url;
+  final String method;
+
+  InvoicesApiException({
+    required this.statusCode,
+    required this.message,
+    required this.url,
+    required this.method,
+    required this.responseBody,
+    required this.responseHeaders,
+  });
+
+  @override
+  String toString() => 'Exception: $message';
+}
+
 class InvoicesApi {
   final String _base = '${ApiConstants.baseUrl}/invoices';
 
@@ -107,7 +128,8 @@ class InvoicesApi {
 
   /// DELETE /invoices/:id  (useful for drafts cleanup, if supported by backend)
   Future<void> delete(String id) async {
-    final r = await http.delete(_u('/$id'), headers: await _headers());
+    final uri = _u('/$id');
+    final r = await http.delete(uri, headers: await _headers());
     if (r.statusCode >= 200 && r.statusCode < 300) return;
     String msg = r.reasonPhrase ?? 'Failed to delete invoice';
     if (r.body.isNotEmpty) {
@@ -115,9 +137,27 @@ class InvoicesApi {
         final body = jsonDecode(r.body);
         if (body is Map && body['message'] != null) {
           msg = body['message'].toString();
+        } else if (body is Map && body['error'] != null) {
+          msg = body['error'].toString();
         }
       } catch (_) {}
     }
-    throw Exception(msg);
+    assert(() {
+      // ignore: avoid_print
+      print(
+        '[InvoicesApi] DELETE $uri -> ${r.statusCode} '
+        'reason=${r.reasonPhrase} body=${r.body.isEmpty ? '-' : r.body}',
+      );
+      return true;
+    }());
+
+    throw InvoicesApiException(
+      statusCode: r.statusCode,
+      message: msg,
+      url: uri,
+      method: 'DELETE',
+      responseBody: r.body.isEmpty ? null : r.body,
+      responseHeaders: r.headers,
+    );
   }
 }

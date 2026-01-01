@@ -440,6 +440,12 @@ abstract class AppLocalizations {
   /// **'This is an invalid email address'**
   String get invalidEmail;
 
+  /// No description provided for @invalidUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'This URL is not valid'**
+  String get invalidUrl;
+
   /// No description provided for @registrationError.
   ///
   /// In en, this message translates to:
@@ -5134,6 +5140,12 @@ abstract class AppLocalizations {
   /// **'Tax ID'**
   String get billingTaxId;
 
+  /// No description provided for @billingTaxIdHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Used on invoices and PDFs.'**
+  String get billingTaxIdHelper;
+
   /// No description provided for @addressStreet.
   ///
   /// In en, this message translates to:
@@ -5218,11 +5230,23 @@ abstract class AppLocalizations {
   /// **'IBAN'**
   String get billingIban;
 
+  /// No description provided for @billingIbanHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown on invoices for bank transfer.'**
+  String get billingIbanHelper;
+
   /// No description provided for @billingTaxRate.
   ///
   /// In en, this message translates to:
   /// **'VAT rate'**
   String get billingTaxRate;
+
+  /// No description provided for @billingTaxRateHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Default VAT (0–100).'**
+  String get billingTaxRateHelper;
 
   /// No description provided for @billingCurrency.
   ///
@@ -5230,11 +5254,23 @@ abstract class AppLocalizations {
   /// **'Currency'**
   String get billingCurrency;
 
+  /// No description provided for @billingCurrencyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Default currency (e.g. EUR).'**
+  String get billingCurrencyHelper;
+
   /// No description provided for @billingLanguage.
   ///
   /// In en, this message translates to:
   /// **'Language'**
   String get billingLanguage;
+
+  /// No description provided for @billingLanguageHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice language code (e.g. es, en).'**
+  String get billingLanguageHelper;
 
   /// No description provided for @billingAddress.
   ///
@@ -5482,6 +5518,360 @@ abstract class AppLocalizations {
   /// **'Total'**
   String get invoiceTotalLabel;
 
+  /// No description provided for @invoiceEditorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice editor'**
+  String get invoiceEditorTitle;
+
+  /// No description provided for @invoiceCustomerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer'**
+  String get invoiceCustomerTitle;
+
+  /// No description provided for @invoiceDatesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dates'**
+  String get invoiceDatesTitle;
+
+  /// No description provided for @invoiceDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice date'**
+  String get invoiceDateLabel;
+
+  /// No description provided for @invoiceDueDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date'**
+  String get invoiceDueDateLabel;
+
+  /// No description provided for @invoiceFromLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get invoiceFromLabel;
+
+  /// No description provided for @invoiceBillToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bill to'**
+  String get invoiceBillToLabel;
+
+  /// No description provided for @invoiceSelectClientLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Select client'**
+  String get invoiceSelectClientLabel;
+
+  /// No description provided for @invoiceSubtotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get invoiceSubtotalLabel;
+
+  /// No description provided for @invoiceTaxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get invoiceTaxLabel;
+
+  /// No description provided for @invoiceNoLinesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No lines yet'**
+  String get invoiceNoLinesYet;
+
+  /// No description provided for @invoicePdfGeneratedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF generated'**
+  String get invoicePdfGeneratedLabel;
+
+  /// No description provided for @invoicePdfNotGeneratedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF not generated'**
+  String get invoicePdfNotGeneratedLabel;
+
+  /// No description provided for @invoiceIssueCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue invoice'**
+  String get invoiceIssueCta;
+
+  /// No description provided for @invoiceSaveDraftCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Save draft'**
+  String get invoiceSaveDraftCta;
+
+  /// No description provided for @invoicePdfCta.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF'**
+  String get invoicePdfCta;
+
+  /// No description provided for @invoiceIssuingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Issuing…'**
+  String get invoiceIssuingLabel;
+
+  /// No description provided for @invoiceDetailsShowCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Show details'**
+  String get invoiceDetailsShowCta;
+
+  /// No description provided for @invoiceDetailsHideCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide details'**
+  String get invoiceDetailsHideCta;
+
+  /// No description provided for @invoiceClientSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search client'**
+  String get invoiceClientSearchHint;
+
+  /// No description provided for @invoiceNotesShowCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get invoiceNotesShowCta;
+
+  /// No description provided for @invoiceNotesHideCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get invoiceNotesHideCta;
+
+  /// No description provided for @invoiceNotesOptionalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get invoiceNotesOptionalLabel;
+
+  /// No description provided for @invoiceClientInvoicesThisMonthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices this month'**
+  String get invoiceClientInvoicesThisMonthLabel;
+
+  /// No description provided for @invoiceDraftInfoTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Drafts info'**
+  String get invoiceDraftInfoTooltip;
+
+  /// No description provided for @invoiceDraftInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Before creating a draft'**
+  String get invoiceDraftInfoTitle;
+
+  /// No description provided for @invoiceDraftInfoMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Before creating a draft, make sure you do not have any pending drafts.'**
+  String get invoiceDraftInfoMessage;
+
+  /// No description provided for @invoicePendingDraftsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending drafts'**
+  String get invoicePendingDraftsLabel;
+
+  /// No description provided for @invoiceFillRequiredFieldsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill the required fields'**
+  String get invoiceFillRequiredFieldsError;
+
+  /// No description provided for @invoiceDraftSavedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft saved: {invoiceNumber}'**
+  String invoiceDraftSavedSnack(Object invoiceNumber);
+
+  /// No description provided for @invoiceDraftSavedSnackNoNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft saved'**
+  String get invoiceDraftSavedSnackNoNumber;
+
+  /// No description provided for @invoiceDraftSaveFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save draft. Please try again.'**
+  String get invoiceDraftSaveFailedSnack;
+
+  /// No description provided for @invoiceIssueSuccessSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice issued: {invoiceNumber}'**
+  String invoiceIssueSuccessSnack(Object invoiceNumber);
+
+  /// No description provided for @invoiceIssueFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not issue invoice. Please try again.'**
+  String get invoiceIssueFailedSnack;
+
+  /// No description provided for @invoicePdfPreviewFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not generate PDF preview. Please try again.'**
+  String get invoicePdfPreviewFailedSnack;
+
+  /// No description provided for @invoiceLogoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice logo'**
+  String get invoiceLogoTitle;
+
+  /// No description provided for @invoiceLogoSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown on invoices and PDFs.'**
+  String get invoiceLogoSubtitle;
+
+  /// No description provided for @invoiceLogoUploadCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get invoiceLogoUploadCta;
+
+  /// No description provided for @invoiceLogoUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Logo URL'**
+  String get invoiceLogoUrlLabel;
+
+  /// No description provided for @invoiceLogoEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No logo set'**
+  String get invoiceLogoEmpty;
+
+  /// No description provided for @invoiceLogoUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Logo updated'**
+  String get invoiceLogoUpdated;
+
+  /// No description provided for @groupInvoicesBusinessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Business'**
+  String get groupInvoicesBusinessTitle;
+
+  /// No description provided for @groupInvoicesTotalsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice totals'**
+  String get groupInvoicesTotalsTitle;
+
+  /// No description provided for @groupInvoicesExpandTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get groupInvoicesExpandTooltip;
+
+  /// No description provided for @groupInvoicesCollapseTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get groupInvoicesCollapseTooltip;
+
+  /// No description provided for @groupInvoicesClientsFlowCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Clients invoice flow'**
+  String get groupInvoicesClientsFlowCta;
+
+  /// No description provided for @groupInvoicesDraftInvoicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft invoices'**
+  String get groupInvoicesDraftInvoicesTitle;
+
+  /// No description provided for @groupInvoicesSelectInvoiceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an invoice to see details'**
+  String get groupInvoicesSelectInvoiceHint;
+
+  /// No description provided for @groupInvoicesTabDrafts.
+  ///
+  /// In en, this message translates to:
+  /// **'Drafts ({count})'**
+  String groupInvoicesTabDrafts(Object count);
+
+  /// No description provided for @groupInvoicesTabInvoices.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices ({count})'**
+  String groupInvoicesTabInvoices(Object count);
+
+  /// No description provided for @groupInvoicesTotalsInline.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued: {issuedCount} • Drafts: {draftsCount}'**
+  String groupInvoicesTotalsInline(Object draftsCount, Object issuedCount);
+
+  /// No description provided for @groupInvoicesTotalsIssuedButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued: {count}'**
+  String groupInvoicesTotalsIssuedButton(Object count);
+
+  /// No description provided for @groupInvoicesTotalsDraftsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Drafts: {count}'**
+  String groupInvoicesTotalsDraftsButton(Object count);
+
+  /// No description provided for @groupInvoicesRemoveDraftTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove draft?'**
+  String get groupInvoicesRemoveDraftTitle;
+
+  /// No description provided for @groupInvoicesRemoveInvoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove invoice?'**
+  String get groupInvoicesRemoveInvoiceTitle;
+
+  /// No description provided for @groupInvoicesRemoveInvoiceMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will delete the invoice {invoiceNumber}.'**
+  String groupInvoicesRemoveInvoiceMessage(Object invoiceNumber);
+
+  /// No description provided for @groupInvoicesRemovedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice removed'**
+  String get groupInvoicesRemovedSnack;
+
+  /// No description provided for @groupInvoicesInvoiceAlreadyRemovedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice not found (already removed). Refreshing…'**
+  String get groupInvoicesInvoiceAlreadyRemovedSnack;
+
+  /// No description provided for @groupInvoicesRemoveFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remove invoice: {reason}'**
+  String groupInvoicesRemoveFailedSnack(Object reason);
+
   /// No description provided for @clientsTitle.
   ///
   /// In en, this message translates to:
@@ -5493,6 +5883,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select a client to view billing and invoices'**
   String get selectClientFirst;
+
+  /// No description provided for @clientEntityTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Entity type'**
+  String get clientEntityTypeLabel;
+
+  /// No description provided for @clientEntityTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. community, company, individual'**
+  String get clientEntityTypeHint;
+
+  /// No description provided for @clientPropertyKindLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Property kind'**
+  String get clientPropertyKindLabel;
+
+  /// No description provided for @clientPropertyKindHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. building, apartment, chalet'**
+  String get clientPropertyKindHint;
+
+  /// No description provided for @clientClassificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved options'**
+  String get clientClassificationTitle;
+
+  /// No description provided for @clientClassificationManageCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get clientClassificationManageCta;
+
+  /// No description provided for @clientClassificationManageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage saved options'**
+  String get clientClassificationManageTitle;
+
+  /// No description provided for @clientAddOptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add option (max 50)'**
+  String get clientAddOptionHint;
+
+  /// No description provided for @clientClassificationManageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'These options are saved for the group and can be reused when assigning types to clients.'**
+  String get clientClassificationManageHint;
+
+  /// No description provided for @clientClassificationSaveCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get clientClassificationSaveCta;
+
+  /// No description provided for @clientClassificationSavedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Options saved'**
+  String get clientClassificationSavedSnack;
+
+  /// No description provided for @clientClassificationRebuildCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebuild'**
+  String get clientClassificationRebuildCta;
+
+  /// No description provided for @clientClassificationRebuiltSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Options rebuilt'**
+  String get clientClassificationRebuiltSnack;
+
+  /// No description provided for @clientClassificationSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Classification'**
+  String get clientClassificationSectionTitle;
+
+  /// No description provided for @clientClassificationExpandTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get clientClassificationExpandTooltip;
+
+  /// No description provided for @clientClassificationCollapseTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get clientClassificationCollapseTooltip;
+
+  /// No description provided for @clientHideInactiveChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide inactive'**
+  String get clientHideInactiveChip;
+
+  /// No description provided for @clientInactiveHiddenChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive hidden'**
+  String get clientInactiveHiddenChip;
+
+  /// No description provided for @clientDetailsExpandTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show details'**
+  String get clientDetailsExpandTooltip;
+
+  /// No description provided for @clientDetailsCollapseTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide details'**
+  String get clientDetailsCollapseTooltip;
+
+  /// No description provided for @clientSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search clients…'**
+  String get clientSearchHint;
+
+  /// No description provided for @clientFiltersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get clientFiltersTitle;
+
+  /// No description provided for @clientFiltersClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clientFiltersClear;
+
+  /// No description provided for @clientSelectedHiddenByFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected client is hidden by filters'**
+  String get clientSelectedHiddenByFilters;
+
+  /// No description provided for @clientQuickAssignTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick assign'**
+  String get clientQuickAssignTitle;
+
+  /// No description provided for @clientQuickAssignSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to assign. Tap again to clear.'**
+  String get clientQuickAssignSubtitle;
+
+  /// No description provided for @clientClassificationUpdatedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Client updated'**
+  String get clientClassificationUpdatedSnack;
+
+  /// No description provided for @clientBillingMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing billing information'**
+  String get clientBillingMissingTitle;
+
+  /// No description provided for @clientBillingMissingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete: {fields}'**
+  String clientBillingMissingMessage(String fields);
 
   /// No description provided for @billingDocumentType.
   ///
@@ -5511,6 +6075,1536 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Receipt'**
   String get documentTypeReceipt;
+
+  /// No description provided for @receiptsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts'**
+  String get receiptsTitle;
+
+  /// No description provided for @createReceiptCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Create receipt'**
+  String get createReceiptCta;
+
+  /// No description provided for @groupReceiptsTabDrafts.
+  ///
+  /// In en, this message translates to:
+  /// **'Drafts ({count})'**
+  String groupReceiptsTabDrafts(Object count);
+
+  /// No description provided for @groupReceiptsTabReceipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts ({count})'**
+  String groupReceiptsTabReceipts(Object count);
+
+  /// No description provided for @groupReceiptsSelectReceiptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a receipt to see details'**
+  String get groupReceiptsSelectReceiptHint;
+
+  /// No description provided for @groupReceiptsRemoveDraftTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove receipt draft?'**
+  String get groupReceiptsRemoveDraftTitle;
+
+  /// No description provided for @groupReceiptsRemoveDraftMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will delete the receipt {receiptNumber}.'**
+  String groupReceiptsRemoveDraftMessage(Object receiptNumber);
+
+  /// No description provided for @groupReceiptsRemovedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt removed'**
+  String get groupReceiptsRemovedSnack;
+
+  /// No description provided for @groupReceiptsAlreadyRemovedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt not found (already removed). Refreshing…'**
+  String get groupReceiptsAlreadyRemovedSnack;
+
+  /// No description provided for @groupReceiptsCannotRemoveIssuedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot remove an issued receipt'**
+  String get groupReceiptsCannotRemoveIssuedSnack;
+
+  /// No description provided for @groupReceiptsRemoveFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remove receipt: {reason}'**
+  String groupReceiptsRemoveFailedSnack(Object reason);
+
+  /// No description provided for @receiptDraftNumberPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft receipt'**
+  String get receiptDraftNumberPlaceholder;
+
+  /// No description provided for @receiptDateUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Date unknown'**
+  String get receiptDateUnknown;
+
+  /// No description provided for @receiptIssueDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue date'**
+  String get receiptIssueDateLabel;
+
+  /// No description provided for @receiptLinesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt lines'**
+  String get receiptLinesTitle;
+
+  /// No description provided for @receiptSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get receiptSummaryTitle;
+
+  /// No description provided for @receiptNoLinesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No lines yet'**
+  String get receiptNoLinesYet;
+
+  /// No description provided for @receiptLineTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get receiptLineTotalLabel;
+
+  /// No description provided for @receiptSubtotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get receiptSubtotalLabel;
+
+  /// No description provided for @receiptTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get receiptTotalLabel;
+
+  /// No description provided for @receiptIssueCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue receipt'**
+  String get receiptIssueCta;
+
+  /// No description provided for @receiptLockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued receipts are locked'**
+  String get receiptLockedHint;
+
+  /// No description provided for @receiptEditorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt {number}'**
+  String receiptEditorTitle(Object number);
+
+  /// No description provided for @receiptEditorFormTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt'**
+  String get receiptEditorFormTitle;
+
+  /// No description provided for @receiptSelectClientLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Select client'**
+  String get receiptSelectClientLabel;
+
+  /// No description provided for @receiptClientRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a client first'**
+  String get receiptClientRequired;
+
+  /// No description provided for @receiptLinesRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one line'**
+  String get receiptLinesRequired;
+
+  /// No description provided for @receiptNotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional notes'**
+  String get receiptNotesHint;
+
+  /// No description provided for @receiptDraftSavedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft saved'**
+  String get receiptDraftSavedSnack;
+
+  /// No description provided for @receiptSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save receipt'**
+  String get receiptSaveFailed;
+
+  /// No description provided for @receiptPreviewFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not preview receipt PDF'**
+  String get receiptPreviewFailed;
+
+  /// No description provided for @receiptDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not download receipt PDF'**
+  String get receiptDownloadFailed;
+
+  /// No description provided for @receiptIssueConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue receipt?'**
+  String get receiptIssueConfirmTitle;
+
+  /// No description provided for @receiptIssueConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign final number and lock the receipt.'**
+  String get receiptIssueConfirmMessage;
+
+  /// No description provided for @receiptIssueSuccessSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt issued: {receiptNumber}'**
+  String receiptIssueSuccessSnack(Object receiptNumber);
+
+  /// No description provided for @receiptIssueFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not issue receipt'**
+  String get receiptIssueFailed;
+
+  /// No description provided for @preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get preview;
+
+  /// No description provided for @download.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get download;
+
+  /// No description provided for @saveDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Save draft'**
+  String get saveDraft;
+
+  /// No description provided for @addLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Add line'**
+  String get addLine;
+
+  /// No description provided for @statementsTabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Statements (Excel)'**
+  String get statementsTabTitle;
+
+  /// No description provided for @bankProvidersTabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank Providers'**
+  String get bankProvidersTabTitle;
+
+  /// No description provided for @statementsImportTabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get statementsImportTabTitle;
+
+  /// No description provided for @statementsHistoryTabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get statementsHistoryTabTitle;
+
+  /// No description provided for @statementsStepUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload file'**
+  String get statementsStepUpload;
+
+  /// No description provided for @statementsStepReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review data'**
+  String get statementsStepReview;
+
+  /// No description provided for @statementsStepConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm import'**
+  String get statementsStepConfirm;
+
+  /// No description provided for @statementsReviewDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload a file to review parsed entries and deduplication.'**
+  String get statementsReviewDisabled;
+
+  /// No description provided for @statementsConfirmHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the summary and confirm to finalize the import.'**
+  String get statementsConfirmHelp;
+
+  /// No description provided for @statementsConfirmDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the upload to enable confirmation.'**
+  String get statementsConfirmDisabled;
+
+  /// No description provided for @statementsConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm import'**
+  String get statementsConfirmAction;
+
+  /// No description provided for @statementsConfirmSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Import confirmed.'**
+  String get statementsConfirmSuccess;
+
+  /// No description provided for @statementsStepDisabledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the previous step to continue.'**
+  String get statementsStepDisabledHint;
+
+  /// No description provided for @statementsDragDropTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload your statement'**
+  String get statementsDragDropTitle;
+
+  /// No description provided for @statementsDragDropHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag your file here or click to select'**
+  String get statementsDragDropHint;
+
+  /// No description provided for @statementsFormatsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Supported formats: .xls, .xlsx · Max 10 MB'**
+  String get statementsFormatsHint;
+
+  /// No description provided for @statementsRemoveFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get statementsRemoveFile;
+
+  /// No description provided for @statementsSecurityNote.
+  ///
+  /// In en, this message translates to:
+  /// **'🔒 Your data is processed securely'**
+  String get statementsSecurityNote;
+
+  /// No description provided for @statementsFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File exceeds 10 MB limit'**
+  String get statementsFileTooLarge;
+
+  /// No description provided for @statementsResultsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import results'**
+  String get statementsResultsTitle;
+
+  /// No description provided for @statementsResultsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Review deduplication and client matching before confirming the import.'**
+  String get statementsResultsHelp;
+
+  /// No description provided for @statementsResultsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload a file to see the import result and preview.'**
+  String get statementsResultsEmpty;
+
+  /// No description provided for @statementsDuplicateFileError.
+  ///
+  /// In en, this message translates to:
+  /// **'This file was already imported (duplicate checksum).'**
+  String get statementsDuplicateFileError;
+
+  /// No description provided for @statementsFilterYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get statementsFilterYear;
+
+  /// No description provided for @statementsFilterFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get statementsFilterFrom;
+
+  /// No description provided for @statementsFilterTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get statementsFilterTo;
+
+  /// No description provided for @statementsApplyFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply filters'**
+  String get statementsApplyFilters;
+
+  /// No description provided for @statementsClearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get statementsClearFilters;
+
+  /// No description provided for @statementsPageSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Page size'**
+  String get statementsPageSize;
+
+  /// No description provided for @statementsPageInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page} of {total}'**
+  String statementsPageInfo(int page, int total);
+
+  /// No description provided for @statementsPrevPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Prev'**
+  String get statementsPrevPage;
+
+  /// No description provided for @statementsNextPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get statementsNextPage;
+
+  /// No description provided for @statementsSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get statementsSummaryTitle;
+
+  /// No description provided for @statementsSummaryMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get statementsSummaryMonthly;
+
+  /// No description provided for @statementsSummaryYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get statementsSummaryYearly;
+
+  /// No description provided for @statementsSummaryNet.
+  ///
+  /// In en, this message translates to:
+  /// **'Net'**
+  String get statementsSummaryNet;
+
+  /// No description provided for @statementsSummaryIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get statementsSummaryIncome;
+
+  /// No description provided for @statementsSummaryExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense'**
+  String get statementsSummaryExpense;
+
+  /// No description provided for @statementsSummaryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No summary data for this range.'**
+  String get statementsSummaryEmpty;
+
+  /// No description provided for @statementsSummaryLine.
+  ///
+  /// In en, this message translates to:
+  /// **'total {total} • {count} entries'**
+  String statementsSummaryLine(String total, String count);
+
+  /// No description provided for @statementsActionViewEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'View entries'**
+  String get statementsActionViewEntries;
+
+  /// No description provided for @statementsReprocessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reprocess batch?'**
+  String get statementsReprocessTitle;
+
+  /// No description provided for @statementsReprocessMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will re-run the parser using the saved column map for this batch.'**
+  String get statementsReprocessMessage;
+
+  /// No description provided for @statementsReprocessAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reprocess'**
+  String get statementsReprocessAction;
+
+  /// No description provided for @statementsDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete batch?'**
+  String get statementsDeleteTitle;
+
+  /// No description provided for @statementsDeleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will permanently remove the batch and all its entries.'**
+  String get statementsDeleteMessage;
+
+  /// No description provided for @statementsDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get statementsDeleteAction;
+
+  /// No description provided for @statementsCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get statementsCancel;
+
+  /// No description provided for @statementsDuplicateSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} duplicate movements skipped — View details'**
+  String statementsDuplicateSummary(String count);
+
+  /// No description provided for @statementsViewDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View details'**
+  String get statementsViewDetails;
+
+  /// No description provided for @statementsStatusSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Success'**
+  String get statementsStatusSuccess;
+
+  /// No description provided for @statementsStatusWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get statementsStatusWarning;
+
+  /// No description provided for @statementsShowTechDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View technical details'**
+  String get statementsShowTechDetails;
+
+  /// No description provided for @statementsHideTechDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide technical details'**
+  String get statementsHideTechDetails;
+
+  /// No description provided for @statementsTechBatchId.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch ID'**
+  String get statementsTechBatchId;
+
+  /// No description provided for @statementsTechChecksum.
+  ///
+  /// In en, this message translates to:
+  /// **'Checksum'**
+  String get statementsTechChecksum;
+
+  /// No description provided for @statementsTechUploader.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded by'**
+  String get statementsTechUploader;
+
+  /// No description provided for @statementsCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get statementsCopy;
+
+  /// No description provided for @moreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get moreActions;
+
+  /// No description provided for @statementsNoImportsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'When you import a file, past batches will appear here for quick review.'**
+  String get statementsNoImportsHelp;
+
+  /// No description provided for @statementsDownloadTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Excel template'**
+  String get statementsDownloadTemplate;
+
+  /// No description provided for @statementsViewExample.
+  ///
+  /// In en, this message translates to:
+  /// **'View example'**
+  String get statementsViewExample;
+
+  /// No description provided for @statementsUploadDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload XLS/XLSX statements to parse, dedupe, and link entries to clients. Duplicates are auto-skipped and reported separately.'**
+  String get statementsUploadDescription;
+
+  /// No description provided for @statementsChooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose XLS/XLSX'**
+  String get statementsChooseFile;
+
+  /// No description provided for @statementsNoFileSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No file selected'**
+  String get statementsNoFileSelected;
+
+  /// No description provided for @statementsSelectedFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected: {fileName}'**
+  String statementsSelectedFile(String fileName);
+
+  /// No description provided for @statementsUploadParse.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload & parse'**
+  String get statementsUploadParse;
+
+  /// No description provided for @statementsUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload failed'**
+  String get statementsUploadFailed;
+
+  /// No description provided for @statementsUploadComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload complete'**
+  String get statementsUploadComplete;
+
+  /// No description provided for @statementsFileReadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to read file bytes'**
+  String get statementsFileReadError;
+
+  /// No description provided for @statementsBatchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch: {batchId}'**
+  String statementsBatchLabel(String batchId);
+
+  /// No description provided for @statementsSheetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sheet: {sheet}'**
+  String statementsSheetLabel(String sheet);
+
+  /// No description provided for @statementsInsertedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Inserted: {count}'**
+  String statementsInsertedLabel(String count);
+
+  /// No description provided for @statementsSkippedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped: {count}'**
+  String statementsSkippedLabel(String count);
+
+  /// No description provided for @statementsPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview (first {count} entries)'**
+  String statementsPreviewTitle(int count);
+
+  /// No description provided for @statementsNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'(no description)'**
+  String get statementsNoDescription;
+
+  /// No description provided for @statementsAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'amount: {amount}'**
+  String statementsAmountLabel(String amount);
+
+  /// No description provided for @statementsPastImports.
+  ///
+  /// In en, this message translates to:
+  /// **'Past imports'**
+  String get statementsPastImports;
+
+  /// No description provided for @refreshAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refreshAction;
+
+  /// No description provided for @statementsNoImports.
+  ///
+  /// In en, this message translates to:
+  /// **'No imports yet.'**
+  String get statementsNoImports;
+
+  /// No description provided for @statementsBatchFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch'**
+  String get statementsBatchFallback;
+
+  /// No description provided for @statementsBatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch {batchId}'**
+  String statementsBatchTitle(String batchId);
+
+  /// No description provided for @statementsUploadedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'uploaded: {uploadedAt}'**
+  String statementsUploadedAt(String uploadedAt);
+
+  /// No description provided for @statementsFileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'file: {fileName}'**
+  String statementsFileLabel(String fileName);
+
+  /// No description provided for @statementsChecksumLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'checksum: {checksum}'**
+  String statementsChecksumLabel(String checksum);
+
+  /// No description provided for @statementsUploaderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'uploader: {uploader}'**
+  String statementsUploaderLabel(String uploader);
+
+  /// No description provided for @statementsEntryCount.
+  ///
+  /// In en, this message translates to:
+  /// **'entries: {count}'**
+  String statementsEntryCount(String count);
+
+  /// No description provided for @statementsBatchEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch entries'**
+  String get statementsBatchEntries;
+
+  /// No description provided for @statementsBatchChip.
+  ///
+  /// In en, this message translates to:
+  /// **'batch: {batchId}'**
+  String statementsBatchChip(String batchId);
+
+  /// No description provided for @statementsSelectBatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a batch to view entries.'**
+  String get statementsSelectBatch;
+
+  /// No description provided for @statementsHeaderDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get statementsHeaderDate;
+
+  /// No description provided for @statementsHeaderDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get statementsHeaderDescription;
+
+  /// No description provided for @statementsHeaderDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get statementsHeaderDetails;
+
+  /// No description provided for @statementsHeaderAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get statementsHeaderAmount;
+
+  /// No description provided for @statementsHeaderBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get statementsHeaderBalance;
+
+  /// No description provided for @statementsHeaderClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Client'**
+  String get statementsHeaderClient;
+
+  /// No description provided for @statementsHeaderActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get statementsHeaderActions;
+
+  /// No description provided for @statementsHeaderBatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch'**
+  String get statementsHeaderBatch;
+
+  /// No description provided for @statementsActionSuggest.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest'**
+  String get statementsActionSuggest;
+
+  /// No description provided for @statementsActionLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get statementsActionLink;
+
+  /// No description provided for @statementsUnlinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlinked'**
+  String get statementsUnlinked;
+
+  /// No description provided for @statementsAllDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All statements'**
+  String get statementsAllDataTitle;
+
+  /// No description provided for @statementsAllDataSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Review all movements, link clients, and keep data clean.'**
+  String get statementsAllDataSubtitle;
+
+  /// No description provided for @statementsAllDataEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries yet. Import an Excel file to review movements here.'**
+  String get statementsAllDataEmpty;
+
+  /// No description provided for @statementsFiltersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get statementsFiltersTitle;
+
+  /// No description provided for @statementsPaginationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pagination'**
+  String get statementsPaginationTitle;
+
+  /// No description provided for @statementsPresetsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick ranges'**
+  String get statementsPresetsTitle;
+
+  /// No description provided for @statementsPickRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick range'**
+  String get statementsPickRange;
+
+  /// No description provided for @statementsPanelCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide guidance panel'**
+  String get statementsPanelCollapse;
+
+  /// No description provided for @statementsPanelExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Show guidance panel'**
+  String get statementsPanelExpand;
+
+  /// No description provided for @statementsStepContextUploadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 1 · Upload file'**
+  String get statementsStepContextUploadTitle;
+
+  /// No description provided for @statementsStepContextReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 2 · Review data'**
+  String get statementsStepContextReviewTitle;
+
+  /// No description provided for @statementsStepContextConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 3 · Confirm import'**
+  String get statementsStepContextConfirmTitle;
+
+  /// No description provided for @statementsImportSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import summary'**
+  String get statementsImportSummaryTitle;
+
+  /// No description provided for @statementsConfirmChecklistTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Final checklist'**
+  String get statementsConfirmChecklistTitle;
+
+  /// No description provided for @statementsConfirmChecklistItem1.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify duplicates and totals before confirming.'**
+  String get statementsConfirmChecklistItem1;
+
+  /// No description provided for @statementsConfirmChecklistItem2.
+  ///
+  /// In en, this message translates to:
+  /// **'You can still link clients after import.'**
+  String get statementsConfirmChecklistItem2;
+
+  /// No description provided for @statementsPresetThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get statementsPresetThisMonth;
+
+  /// No description provided for @statementsPresetLast30Days.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 days'**
+  String get statementsPresetLast30Days;
+
+  /// No description provided for @statementsPresetThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'This year'**
+  String get statementsPresetThisYear;
+
+  /// No description provided for @statementsFiltersActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active filters'**
+  String get statementsFiltersActive;
+
+  /// No description provided for @statementsFiltersNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No active filters'**
+  String get statementsFiltersNone;
+
+  /// No description provided for @statementsColumnBatchTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch id'**
+  String get statementsColumnBatchTooltip;
+
+  /// No description provided for @statementsColumnBatchCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy batch id'**
+  String get statementsColumnBatchCopy;
+
+  /// No description provided for @statementsActionsTooltipSuggest.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a client based on description'**
+  String get statementsActionsTooltipSuggest;
+
+  /// No description provided for @statementsActionsTooltipLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Manually link a client'**
+  String get statementsActionsTooltipLink;
+
+  /// No description provided for @statementsSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String statementsSelectedCount(int count);
+
+  /// No description provided for @statementsBulkSuggest.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest for selected'**
+  String get statementsBulkSuggest;
+
+  /// No description provided for @statementsBulkLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link in bulk'**
+  String get statementsBulkLink;
+
+  /// No description provided for @statementsClearSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selection'**
+  String get statementsClearSelection;
+
+  /// No description provided for @statementsBulkSuggestResult.
+  ///
+  /// In en, this message translates to:
+  /// **'{withSuggestions} suggestions found · {linked} linked'**
+  String statementsBulkSuggestResult(int withSuggestions, int linked);
+
+  /// No description provided for @statementsBulkLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Link selected entries'**
+  String get statementsBulkLinkTitle;
+
+  /// No description provided for @statementsTotalAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total amount'**
+  String get statementsTotalAmount;
+
+  /// No description provided for @statementsTotalCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Total movements'**
+  String get statementsTotalCount;
+
+  /// No description provided for @statementsLastBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest balance'**
+  String get statementsLastBalance;
+
+  /// No description provided for @statementsLastBalanceDate.
+  ///
+  /// In en, this message translates to:
+  /// **'as of {date}'**
+  String statementsLastBalanceDate(String date);
+
+  /// No description provided for @statementsNavTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Statements'**
+  String get statementsNavTitle;
+
+  /// No description provided for @statementsNavCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse menu'**
+  String get statementsNavCollapse;
+
+  /// No description provided for @statementsNavExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand menu'**
+  String get statementsNavExpand;
+
+  /// No description provided for @statementsAnalyticsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Statements Analytics'**
+  String get statementsAnalyticsTitle;
+
+  /// No description provided for @statementsAnalyticsBatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch'**
+  String get statementsAnalyticsBatch;
+
+  /// No description provided for @statementsAnalyticsMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get statementsAnalyticsMonth;
+
+  /// No description provided for @statementsAnalyticsMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get statementsAnalyticsMode;
+
+  /// No description provided for @statementsAnalyticsCompareMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Comparison'**
+  String get statementsAnalyticsCompareMode;
+
+  /// No description provided for @statementsAnalyticsCompareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dual-period comparison'**
+  String get statementsAnalyticsCompareTitle;
+
+  /// No description provided for @statementsAnalyticsCompareHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare calendar month vs settlement window totals for each month in the selected year.'**
+  String get statementsAnalyticsCompareHelp;
+
+  /// No description provided for @statementsAnalyticsComparePickYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a year to see the comparison.'**
+  String get statementsAnalyticsComparePickYear;
+
+  /// No description provided for @statementsAnalyticsCompareBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Both'**
+  String get statementsAnalyticsCompareBoth;
+
+  /// No description provided for @statementsAnalyticsCompareCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get statementsAnalyticsCompareCalendar;
+
+  /// No description provided for @statementsAnalyticsCompareSettlement.
+  ///
+  /// In en, this message translates to:
+  /// **'Settlement'**
+  String get statementsAnalyticsCompareSettlement;
+
+  /// No description provided for @statementsAnalyticsCompareDelta.
+  ///
+  /// In en, this message translates to:
+  /// **'Delta'**
+  String get statementsAnalyticsCompareDelta;
+
+  /// No description provided for @statementsAnalyticsModeCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar month'**
+  String get statementsAnalyticsModeCalendar;
+
+  /// No description provided for @statementsAnalyticsModeSettlement.
+  ///
+  /// In en, this message translates to:
+  /// **'Settlement window'**
+  String get statementsAnalyticsModeSettlement;
+
+  /// No description provided for @statementsAnalyticsModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode: {mode}'**
+  String statementsAnalyticsModeLabel(Object mode);
+
+  /// No description provided for @statementsAnalyticsSettlementStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start day'**
+  String get statementsAnalyticsSettlementStart;
+
+  /// No description provided for @statementsAnalyticsSettlementEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End day'**
+  String get statementsAnalyticsSettlementEnd;
+
+  /// No description provided for @statementsAnalyticsPeriodLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Period: {from} – {to}'**
+  String statementsAnalyticsPeriodLabel(Object from, Object to);
+
+  /// No description provided for @statementsAnalyticsPeriodPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Period: select a year and month'**
+  String get statementsAnalyticsPeriodPending;
+
+  /// No description provided for @statementsAnalyticsTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Top'**
+  String get statementsAnalyticsTop;
+
+  /// No description provided for @statementsAnalyticsTopHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Top {count}'**
+  String statementsAnalyticsTopHelp(int count);
+
+  /// No description provided for @statementsAnalyticsTrends.
+  ///
+  /// In en, this message translates to:
+  /// **'Trends'**
+  String get statementsAnalyticsTrends;
+
+  /// No description provided for @statementsAnalyticsTrendsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare income, expense, and net across the selected range.'**
+  String get statementsAnalyticsTrendsHelp;
+
+  /// No description provided for @statementsAnalyticsYearAverageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Year average'**
+  String get statementsAnalyticsYearAverageTitle;
+
+  /// No description provided for @statementsAnalyticsYearAveragesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Average monthly income & expense by year'**
+  String get statementsAnalyticsYearAveragesTitle;
+
+  /// No description provided for @statementsAnalyticsAverageIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg income'**
+  String get statementsAnalyticsAverageIncome;
+
+  /// No description provided for @statementsAnalyticsAverageExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg expense'**
+  String get statementsAnalyticsAverageExpense;
+
+  /// No description provided for @statementsAnalyticsTotalsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals'**
+  String get statementsAnalyticsTotalsTab;
+
+  /// No description provided for @statementsAnalyticsAverageTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Average per entry'**
+  String get statementsAnalyticsAverageTab;
+
+  /// No description provided for @statementsAnalyticsTopMerchants.
+  ///
+  /// In en, this message translates to:
+  /// **'Top merchants'**
+  String get statementsAnalyticsTopMerchants;
+
+  /// No description provided for @statementsAnalyticsTopHelpSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Largest merchants by total amount for the selected filters.'**
+  String get statementsAnalyticsTopHelpSubtitle;
+
+  /// No description provided for @statementsAnalyticsNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No analytics data yet.'**
+  String get statementsAnalyticsNoData;
+
+  /// No description provided for @statementsAnalyticsNoMerchants.
+  ///
+  /// In en, this message translates to:
+  /// **'No merchant data for this range.'**
+  String get statementsAnalyticsNoMerchants;
+
+  /// No description provided for @statementsAnalyticsNoBatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No statement batches available yet.'**
+  String get statementsAnalyticsNoBatches;
+
+  /// No description provided for @statementsAnalyticsAllBatches.
+  ///
+  /// In en, this message translates to:
+  /// **'All batches'**
+  String get statementsAnalyticsAllBatches;
+
+  /// No description provided for @statementsAnalyticsAllYears.
+  ///
+  /// In en, this message translates to:
+  /// **'All years'**
+  String get statementsAnalyticsAllYears;
+
+  /// No description provided for @statementsAnalyticsAllMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'All months'**
+  String get statementsAnalyticsAllMonths;
+
+  /// No description provided for @statementsAnalyticsNoSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a batch to load analytics.'**
+  String get statementsAnalyticsNoSelection;
+
+  /// No description provided for @statementsAnalyticsMonthHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Month {month} selected'**
+  String statementsAnalyticsMonthHint(int month);
+
+  /// No description provided for @statementsAnalyticsExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more'**
+  String get statementsAnalyticsExpand;
+
+  /// No description provided for @statementsAnalyticsCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get statementsAnalyticsCollapse;
+
+  /// No description provided for @statementsFreshnessThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Threshold (days)'**
+  String get statementsFreshnessThreshold;
+
+  /// No description provided for @statementsFreshnessLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading freshness...'**
+  String get statementsFreshnessLoading;
+
+  /// No description provided for @statementsFreshnessNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No transactions yet'**
+  String get statementsFreshnessNoData;
+
+  /// No description provided for @statementsFreshnessStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Last entry: {date} ({days} days ago)'**
+  String statementsFreshnessStale(Object date, Object days);
+
+  /// No description provided for @statementsFreshnessUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to date (Last entry: {date})'**
+  String statementsFreshnessUpToDate(Object date);
+
+  /// No description provided for @statementsFreshnessSendReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reminder'**
+  String get statementsFreshnessSendReminder;
+
+  /// No description provided for @statementsFreshnessReminderSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder sent'**
+  String get statementsFreshnessReminderSent;
+
+  /// No description provided for @statementsFreshnessReminderFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send reminder'**
+  String get statementsFreshnessReminderFailed;
+
+  /// No description provided for @statementsFreshnessNotStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Data is not stale. No notification sent.'**
+  String get statementsFreshnessNotStale;
+
+  /// No description provided for @statementsReminderSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder settings'**
+  String get statementsReminderSettingsTitle;
+
+  /// No description provided for @statementsReminderSettingsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading reminder settings...'**
+  String get statementsReminderSettingsLoading;
+
+  /// No description provided for @statementsReminderSettingsAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto reminders'**
+  String get statementsReminderSettingsAuto;
+
+  /// No description provided for @statementsReminderSettingsThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Threshold (days)'**
+  String get statementsReminderSettingsThreshold;
+
+  /// No description provided for @statementsReminderSettingsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder settings saved'**
+  String get statementsReminderSettingsSaved;
+
+  /// No description provided for @statementsReminderSettingsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save reminder settings'**
+  String get statementsReminderSettingsFailed;
+
+  /// No description provided for @statementsReminderStatusOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto reminders ON ({days} days)'**
+  String statementsReminderStatusOn(Object days);
+
+  /// No description provided for @statementsReminderStatusOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto reminders OFF'**
+  String get statementsReminderStatusOff;
+
+  /// No description provided for @statementsReminderStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto reminders: N/A'**
+  String get statementsReminderStatusUnknown;
+
+  /// No description provided for @statementsAllDataSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary for current range'**
+  String get statementsAllDataSummaryTitle;
+
+  /// No description provided for @dashboardNavTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation'**
+  String get dashboardNavTitle;
+
+  /// No description provided for @dashboardNavCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse menu'**
+  String get dashboardNavCollapse;
+
+  /// No description provided for @dashboardNavExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand menu'**
+  String get dashboardNavExpand;
+
+  /// No description provided for @groupInvoicesNavCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse menu'**
+  String get groupInvoicesNavCollapse;
+
+  /// No description provided for @groupInvoicesNavExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand menu'**
+  String get groupInvoicesNavExpand;
+
+  /// No description provided for @statementsRowDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Movement details'**
+  String get statementsRowDetailsTitle;
+
+  /// No description provided for @statementsRowDetailsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch {batchId}'**
+  String statementsRowDetailsSubtitle(String batchId);
+
+  /// No description provided for @statementsRowDetailsRaw.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw data'**
+  String get statementsRowDetailsRaw;
+
+  /// No description provided for @statementsNoSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'No client suggestions found'**
+  String get statementsNoSuggestions;
+
+  /// No description provided for @statementsSuggestedClientsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested clients'**
+  String get statementsSuggestedClientsTitle;
+
+  /// No description provided for @statementsLinkClientTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Link client'**
+  String get statementsLinkClientTitle;
+
+  /// No description provided for @statementsSearchClients.
+  ///
+  /// In en, this message translates to:
+  /// **'Search clients'**
+  String get statementsSearchClients;
+
+  /// No description provided for @statementsNoClientsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No clients match your search'**
+  String get statementsNoClientsMatch;
+
+  /// No description provided for @statementsClearLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear link'**
+  String get statementsClearLink;
+
+  /// No description provided for @statementsUnnamedClient.
+  ///
+  /// In en, this message translates to:
+  /// **'(unnamed)'**
+  String get statementsUnnamedClient;
+
+  /// No description provided for @statementsImportExcelTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Excel'**
+  String get statementsImportExcelTab;
 }
 
 class _AppLocalizationsDelegate

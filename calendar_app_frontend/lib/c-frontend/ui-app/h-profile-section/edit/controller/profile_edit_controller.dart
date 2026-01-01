@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
@@ -31,9 +32,11 @@ class ProfileEditController {
       }
 
       // 1) Upload to Azure (helper returns blobName + (maybe) public photoUrl)
+      final bytes = kIsWeb ? await picked.readAsBytes() : null;
       final result = await uploadImageToAzure(
         scope: 'users',
-        file: File(picked.path),
+        file: kIsWeb ? null : File(picked.path),
+        bytes: bytes,
         accessToken: token,
       );
 

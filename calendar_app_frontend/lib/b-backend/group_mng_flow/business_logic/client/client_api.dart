@@ -66,6 +66,10 @@ class ClientsApi {
     final body = <String, dynamic>{
       'groupId': client.groupId,
       'name': client.name.trim(),
+      if ((client.entityType ?? '').trim().isNotEmpty)
+        'entityType': client.entityType!.trim(),
+      if ((client.propertyKind ?? '').trim().isNotEmpty)
+        'propertyKind': client.propertyKind!.trim(),
       'isActive': client.isActive,
       'contact': {
         if ((client.phone ?? '').trim().isNotEmpty)
@@ -98,6 +102,12 @@ class ClientsApi {
     if (client.id.isEmpty) throw Exception('Client.id is required');
     final patch = <String, dynamic>{
       'name': client.name.trim(),
+      'entityType': (client.entityType ?? '').trim().isEmpty
+          ? null
+          : client.entityType!.trim(),
+      'propertyKind': (client.propertyKind ?? '').trim().isEmpty
+          ? null
+          : client.propertyKind!.trim(),
       'isActive': client.isActive,
       'contact': {
         'phone':

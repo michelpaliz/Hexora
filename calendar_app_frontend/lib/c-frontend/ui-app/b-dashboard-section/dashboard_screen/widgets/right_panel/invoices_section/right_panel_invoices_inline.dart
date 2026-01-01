@@ -7,14 +7,14 @@ import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api
 import 'package:hexora/b-backend/invoicing/billing_profile_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/widgets/billing_profile_sheet/billing_profile_sheet.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/widgets/invoice_details_sheet/invoice_detail_sheet.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/widgets/invoice_list_item.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/billing_profile_sheet/billing_profile_sheet.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_details_sheet/invoice_detail_sheet.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_list_item.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
-import '../../../../sections/invoices/widgets/billing_profile_card.dart';
+import '../../../../sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/billing_profile_card.dart';
 
 class InvoicesInlinePanel extends StatefulWidget {
   final Group group;

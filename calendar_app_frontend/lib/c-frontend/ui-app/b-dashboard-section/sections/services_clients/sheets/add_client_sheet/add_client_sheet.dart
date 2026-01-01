@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/client_classification_store.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_active_switch.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/client_classification_manager_dialog.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -29,6 +31,8 @@ class AddClientSheet extends StatefulWidget {
 
 class _AddClientSheetState extends State<AddClientSheet> {
   late final AddClientController c;
+  List<String> _entityTypeOptions = const [];
+  List<String> _propertyKindOptions = const [];
 
   @override
   void initState() {
@@ -38,6 +42,32 @@ class _AddClientSheetState extends State<AddClientSheet> {
       groupId: widget.groupId,
       client: widget.client,
     );
+    _loadClassificationOptions();
+  }
+
+  Future<void> _loadClassificationOptions() async {
+    try {
+      final loaded = await ClientClassificationStore.getOptions(widget.groupId);
+      if (!mounted) return;
+      setState(() {
+        _entityTypeOptions = loaded.entityTypes;
+        _propertyKindOptions = loaded.propertyKinds;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _entityTypeOptions = const [];
+        _propertyKindOptions = const [];
+      });
+    }
+  }
+
+  Future<void> _manageClassificationOptions() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => ClientClassificationManagerDialog(groupId: widget.groupId),
+    );
+    await _loadClassificationOptions();
   }
 
   @override
@@ -56,6 +86,12 @@ class _AddClientSheetState extends State<AddClientSheet> {
     try {
       final result = await c.save();
       if (!mounted) return;
+      // Ensure options stay in sync with values actually used.
+      await ClientClassificationStore.merge(
+        groupId: widget.groupId,
+        entityType: result.entityType,
+        propertyKind: result.propertyKind,
+      );
       Navigator.of(context).pop<GroupClient>(result);
     } catch (e) {
       if (!mounted) return;
@@ -85,7 +121,13 @@ class _AddClientSheetState extends State<AddClientSheet> {
               const SizedBox(height: 14),
               BillingDivider(),
               const SizedBox(height: 14),
-              ClientContactForm(c: c),
+              ClientContactForm(
+                c: c,
+                entityTypeOptions: _entityTypeOptions,
+                propertyKindOptions: _propertyKindOptions,
+                onManageClassification: _manageClassificationOptions,
+                onClassificationChanged: () => setState(() {}),
+              ),
               const SizedBox(height: 12),
               BillingSection(c: c),
               const SizedBox(height: 6),
@@ -113,6 +155,6 @@ class BillingDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Divider(height: 1, color: cs.outlineVariant.withOpacity(0.4));
+    return Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.4));
   }
 }

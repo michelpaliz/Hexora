@@ -5,6 +5,12 @@ class GroupClient {
   String name;
   String? groupId;
 
+  /// Optional client classification (free text, lowercase suggested)
+  String? entityType;
+
+  /// Optional property type classification (free text, lowercase suggested)
+  String? propertyKind;
+
   // Nested contact info
   String? phone;
   String? email;
@@ -21,6 +27,8 @@ class GroupClient {
     required this.id,
     required this.name,
     this.groupId,
+    this.entityType,
+    this.propertyKind,
     this.phone,
     this.email,
     this.isActive = true,
@@ -34,6 +42,8 @@ class GroupClient {
     String? id,
     String? name,
     String? groupId,
+    String? entityType,
+    String? propertyKind,
     String? phone,
     String? email,
     bool? isActive,
@@ -46,6 +56,8 @@ class GroupClient {
       id: id ?? this.id,
       name: name ?? this.name,
       groupId: groupId ?? this.groupId,
+      entityType: entityType ?? this.entityType,
+      propertyKind: propertyKind ?? this.propertyKind,
       phone: phone ?? this.phone,
       email: email ?? this.email,
       isActive: isActive ?? this.isActive,
@@ -60,6 +72,8 @@ class GroupClient {
         'id': id,
         'name': name,
         'groupId': groupId,
+        if (entityType != null) 'entityType': entityType,
+        if (propertyKind != null) 'propertyKind': propertyKind,
         'contact': {
           if (phone != null) 'phone': phone,
           if (email != null) 'email': email,
@@ -81,6 +95,8 @@ class GroupClient {
       id: rawId,
       name: (json['name'] ?? '').toString(),
       groupId: json['groupId']?.toString(),
+      entityType: json['entityType']?.toString(),
+      propertyKind: json['propertyKind']?.toString(),
       phone: contact?['phone']?.toString(),
       email: contact?['email']?.toString(),
       isActive: json['isActive'] is bool ? json['isActive'] as bool : true,
@@ -96,15 +112,22 @@ class GroupClient {
 
   @override
   String toString() =>
-      'Client{id: $id, name: $name, groupId: $groupId, phone: $phone, email: $email, isActive: $isActive}';
+      'Client{id: $id, name: $name, groupId: $groupId, entityType: $entityType, propertyKind: $propertyKind, phone: $phone, email: $email, isActive: $isActive}';
 
   @override
   bool operator ==(Object other) =>
       other is GroupClient &&
       other.id == id &&
       other.name == name &&
-      other.groupId == groupId;
+      other.groupId == groupId &&
+      other.entityType == entityType &&
+      other.propertyKind == propertyKind;
 
   @override
-  int get hashCode => id.hashCode ^ name.hashCode ^ (groupId?.hashCode ?? 0);
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      (groupId?.hashCode ?? 0) ^
+      (entityType?.hashCode ?? 0) ^
+      (propertyKind?.hashCode ?? 0);
 }

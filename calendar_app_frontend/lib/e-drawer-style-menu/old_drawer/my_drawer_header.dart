@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
@@ -22,7 +23,6 @@ class MyHeaderDrawer extends StatefulWidget {
 }
 
 class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
-  XFile? _selectedImage;
   User? _currentUser = User.empty();
   late UserDomain _userDomain;
 
@@ -57,12 +57,11 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
-    _selectedImage = picked;
-    await _uploadProfileImageToBackend(File(picked.path));
+    await _uploadProfileImageToBackend(picked);
   }
 
   /// Upload using the shared helper + commit the avatar on the backend
-  Future<void> _uploadProfileImageToBackend(File file) async {
+  Future<void> _uploadProfileImageToBackend(XFile picked) async {
     if (!mounted) return;
 
     try {
@@ -71,9 +70,11 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
       if (accessToken == null || _currentUser == null) return;
 
       // 1) Upload to Azure (shared helper handles SAS + PUT + public/read URL)
+      final bytes = kIsWeb ? await picked.readAsBytes() : null;
       final result = await uploadImageToAzure(
         scope: 'users',
-        file: file,
+        file: kIsWeb ? null : File(picked.path),
+        bytes: bytes,
         accessToken: accessToken,
       );
 
@@ -118,9 +119,11 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    final headerBackgroundColor = ThemeColors.cardBg(context).withOpacity(0.95);
+    final headerBackgroundColor =
+        ThemeColors.cardBg(context).withValues(alpha: 0.95);
     final nameTextColor = ThemeColors.textPrimary(context);
-    final emailTextColor = ThemeColors.textPrimary(context).withOpacity(0.75);
+    final emailTextColor =
+        ThemeColors.textPrimary(context).withValues(alpha: 0.75);
 
     return Container(
       color: headerBackgroundColor,
@@ -142,7 +145,7 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
                   )
                 : CircleAvatar(
                     radius: 30,
-                    backgroundColor: cs.secondary.withOpacity(0.15),
+                    backgroundColor: cs.secondary.withValues(alpha: 0.15),
                     child: Icon(Icons.person, color: cs.secondary),
                   ),
           ),

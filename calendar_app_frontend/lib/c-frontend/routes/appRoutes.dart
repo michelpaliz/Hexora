@@ -8,6 +8,9 @@ class AppRoutes {
   static const downloadApp = '/download-app';
   static const downloadAppShort = '/download';
   static const agenda = '/agenda';
+  static const enableBanking = '/enablebanking';
+  static const enableBankingCallback = '/callback';
+  static const statementsAnalytics = '/statements-analytics';
   static const groupDashboard = '/group-dashboard';
   static const createWorker = '/group/create-worker';
   static const createTimeEntry = '/group/create-time-entry';

@@ -191,6 +191,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Esta dirección de correo electrónico no es válida';
 
   @override
+  String get invalidUrl => 'Esta URL no es válida';
+
+  @override
   String get registrationError => 'Error de registro';
 
   @override
@@ -2874,6 +2877,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get billingTaxId => 'NIF/CIF';
 
   @override
+  String get billingTaxIdHelper => 'Se usa en facturas y PDFs.';
+
+  @override
   String get addressStreet => 'Calle';
 
   @override
@@ -2917,13 +2923,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get billingIban => 'IBAN';
 
   @override
+  String get billingIbanHelper =>
+      'Se muestra en facturas para transferencia bancaria.';
+
+  @override
   String get billingTaxRate => 'IVA';
+
+  @override
+  String get billingTaxRateHelper => 'IVA por defecto (0–100).';
 
   @override
   String get billingCurrency => 'Moneda';
 
   @override
+  String get billingCurrencyHelper => 'Moneda por defecto (p. ej. EUR).';
+
+  @override
   String get billingLanguage => 'Idioma';
+
+  @override
+  String get billingLanguageHelper => 'Código de idioma (p. ej. es, en).';
 
   @override
   String get billingAddress => 'Dirección';
@@ -3056,11 +3075,306 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceTotalLabel => 'Total';
 
   @override
+  String get invoiceEditorTitle => 'Editor de facturas';
+
+  @override
+  String get invoiceCustomerTitle => 'Cliente';
+
+  @override
+  String get invoiceDatesTitle => 'Fechas';
+
+  @override
+  String get invoiceDateLabel => 'Fecha de factura';
+
+  @override
+  String get invoiceDueDateLabel => 'Fecha de vencimiento';
+
+  @override
+  String get invoiceFromLabel => 'Emisor';
+
+  @override
+  String get invoiceBillToLabel => 'Facturar a';
+
+  @override
+  String get invoiceSelectClientLabel => 'Seleccionar cliente';
+
+  @override
+  String get invoiceSubtotalLabel => 'Subtotal';
+
+  @override
+  String get invoiceTaxLabel => 'IVA';
+
+  @override
+  String get invoiceNoLinesYet => 'Sin líneas';
+
+  @override
+  String get invoicePdfGeneratedLabel => 'PDF generado';
+
+  @override
+  String get invoicePdfNotGeneratedLabel => 'PDF no generado';
+
+  @override
+  String get invoiceIssueCta => 'Emitir factura';
+
+  @override
+  String get invoiceSaveDraftCta => 'Guardar borrador';
+
+  @override
+  String get invoicePdfCta => 'PDF';
+
+  @override
+  String get invoiceIssuingLabel => 'Emitiendo…';
+
+  @override
+  String get invoiceDetailsShowCta => 'Mostrar detalles';
+
+  @override
+  String get invoiceDetailsHideCta => 'Ocultar detalles';
+
+  @override
+  String get invoiceClientSearchHint => 'Buscar cliente';
+
+  @override
+  String get invoiceNotesShowCta => 'Mostrar';
+
+  @override
+  String get invoiceNotesHideCta => 'Ocultar';
+
+  @override
+  String get invoiceNotesOptionalLabel => 'Opcional';
+
+  @override
+  String get invoiceClientInvoicesThisMonthLabel => 'Facturas este mes';
+
+  @override
+  String get invoiceDraftInfoTooltip => 'Info de borradores';
+
+  @override
+  String get invoiceDraftInfoTitle => 'Antes de crear un borrador';
+
+  @override
+  String get invoiceDraftInfoMessage =>
+      'Antes de crear un borrador, asegúrate de no tener borradores pendientes.';
+
+  @override
+  String get invoicePendingDraftsLabel => 'Borradores pendientes';
+
+  @override
+  String get invoiceFillRequiredFieldsError =>
+      'Rellena los campos obligatorios';
+
+  @override
+  String invoiceDraftSavedSnack(Object invoiceNumber) {
+    return 'Borrador guardado: $invoiceNumber';
+  }
+
+  @override
+  String get invoiceDraftSavedSnackNoNumber => 'Borrador guardado';
+
+  @override
+  String get invoiceDraftSaveFailedSnack =>
+      'No se pudo guardar el borrador. Inténtalo de nuevo.';
+
+  @override
+  String invoiceIssueSuccessSnack(Object invoiceNumber) {
+    return 'Factura emitida: $invoiceNumber';
+  }
+
+  @override
+  String get invoiceIssueFailedSnack =>
+      'No se pudo emitir la factura. Inténtalo de nuevo.';
+
+  @override
+  String get invoicePdfPreviewFailedSnack =>
+      'No se pudo generar la vista previa del PDF. Inténtalo de nuevo.';
+
+  @override
+  String get invoiceLogoTitle => 'Logo de factura';
+
+  @override
+  String get invoiceLogoSubtitle => 'Se muestra en facturas y PDFs.';
+
+  @override
+  String get invoiceLogoUploadCta => 'Subir';
+
+  @override
+  String get invoiceLogoUrlLabel => 'URL del logo';
+
+  @override
+  String get invoiceLogoEmpty => 'Sin logo';
+
+  @override
+  String get invoiceLogoUpdated => 'Logo actualizado';
+
+  @override
+  String get groupInvoicesBusinessTitle => 'Empresa';
+
+  @override
+  String get groupInvoicesTotalsTitle => 'Totales de facturas';
+
+  @override
+  String get groupInvoicesExpandTooltip => 'Expandir';
+
+  @override
+  String get groupInvoicesCollapseTooltip => 'Contraer';
+
+  @override
+  String get groupInvoicesClientsFlowCta => 'Flujo de facturas por cliente';
+
+  @override
+  String get groupInvoicesDraftInvoicesTitle => 'Borradores';
+
+  @override
+  String get groupInvoicesSelectInvoiceHint =>
+      'Selecciona una factura para ver los detalles';
+
+  @override
+  String groupInvoicesTabDrafts(Object count) {
+    return 'Borradores ($count)';
+  }
+
+  @override
+  String groupInvoicesTabInvoices(Object count) {
+    return 'Facturas ($count)';
+  }
+
+  @override
+  String groupInvoicesTotalsInline(Object draftsCount, Object issuedCount) {
+    return 'Emitidas: $issuedCount • Borradores: $draftsCount';
+  }
+
+  @override
+  String groupInvoicesTotalsIssuedButton(Object count) {
+    return 'Emitidas: $count';
+  }
+
+  @override
+  String groupInvoicesTotalsDraftsButton(Object count) {
+    return 'Borradores: $count';
+  }
+
+  @override
+  String get groupInvoicesRemoveDraftTitle => '¿Eliminar borrador?';
+
+  @override
+  String get groupInvoicesRemoveInvoiceTitle => '¿Eliminar factura?';
+
+  @override
+  String groupInvoicesRemoveInvoiceMessage(Object invoiceNumber) {
+    return 'Esto eliminará la factura $invoiceNumber.';
+  }
+
+  @override
+  String get groupInvoicesRemovedSnack => 'Factura eliminada';
+
+  @override
+  String get groupInvoicesInvoiceAlreadyRemovedSnack =>
+      'Factura no encontrada (ya eliminada). Actualizando…';
+
+  @override
+  String groupInvoicesRemoveFailedSnack(Object reason) {
+    return 'No se pudo eliminar la factura: $reason';
+  }
+
+  @override
   String get clientsTitle => 'Clientes';
 
   @override
   String get selectClientFirst =>
       'Selecciona un cliente para ver facturación e invoices';
+
+  @override
+  String get clientEntityTypeLabel => 'Tipo de entidad';
+
+  @override
+  String get clientEntityTypeHint => 'p. ej. comunidad, empresa, particular';
+
+  @override
+  String get clientPropertyKindLabel => 'Tipo de propiedad';
+
+  @override
+  String get clientPropertyKindHint => 'p. ej. edificio, apartamento, chalet';
+
+  @override
+  String get clientClassificationTitle => 'Opciones guardadas';
+
+  @override
+  String get clientClassificationManageCta => 'Administrar';
+
+  @override
+  String get clientClassificationManageTitle =>
+      'Administrar opciones guardadas';
+
+  @override
+  String get clientAddOptionHint => 'Agregar opción (máx. 50)';
+
+  @override
+  String get clientClassificationManageHint =>
+      'Estas opciones se guardan para el grupo y se pueden reutilizar al asignar tipos a los clientes.';
+
+  @override
+  String get clientClassificationSaveCta => 'Guardar';
+
+  @override
+  String get clientClassificationSavedSnack => 'Opciones guardadas';
+
+  @override
+  String get clientClassificationRebuildCta => 'Reconstruir';
+
+  @override
+  String get clientClassificationRebuiltSnack => 'Opciones reconstruidas';
+
+  @override
+  String get clientClassificationSectionTitle => 'Clasificación';
+
+  @override
+  String get clientClassificationExpandTooltip => 'Expandir';
+
+  @override
+  String get clientClassificationCollapseTooltip => 'Contraer';
+
+  @override
+  String get clientHideInactiveChip => 'Ocultar inactivos';
+
+  @override
+  String get clientInactiveHiddenChip => 'Inactivos ocultos';
+
+  @override
+  String get clientDetailsExpandTooltip => 'Mostrar detalles';
+
+  @override
+  String get clientDetailsCollapseTooltip => 'Ocultar detalles';
+
+  @override
+  String get clientSearchHint => 'Buscar clientes…';
+
+  @override
+  String get clientFiltersTitle => 'Filtros';
+
+  @override
+  String get clientFiltersClear => 'Limpiar';
+
+  @override
+  String get clientSelectedHiddenByFilters =>
+      'El cliente seleccionado está oculto por los filtros';
+
+  @override
+  String get clientQuickAssignTitle => 'Asignación rápida';
+
+  @override
+  String get clientQuickAssignSubtitle =>
+      'Toca para asignar. Toca de nuevo para borrar.';
+
+  @override
+  String get clientClassificationUpdatedSnack => 'Cliente actualizado';
+
+  @override
+  String get clientBillingMissingTitle => 'Faltan datos de facturación';
+
+  @override
+  String clientBillingMissingMessage(String fields) {
+    return 'Completa: $fields';
+  }
 
   @override
   String get billingDocumentType => 'Tipo de documento';
@@ -3070,4 +3384,883 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get documentTypeReceipt => 'Recibo';
+
+  @override
+  String get receiptsTitle => 'Recibos';
+
+  @override
+  String get createReceiptCta => 'Crear recibo';
+
+  @override
+  String groupReceiptsTabDrafts(Object count) {
+    return 'Borradores ($count)';
+  }
+
+  @override
+  String groupReceiptsTabReceipts(Object count) {
+    return 'Recibos ($count)';
+  }
+
+  @override
+  String get groupReceiptsSelectReceiptHint =>
+      'Selecciona un recibo para ver detalles';
+
+  @override
+  String get groupReceiptsRemoveDraftTitle => '¿Eliminar borrador de recibo?';
+
+  @override
+  String groupReceiptsRemoveDraftMessage(Object receiptNumber) {
+    return 'Esto eliminará el recibo $receiptNumber.';
+  }
+
+  @override
+  String get groupReceiptsRemovedSnack => 'Recibo eliminado';
+
+  @override
+  String get groupReceiptsAlreadyRemovedSnack =>
+      'Recibo no encontrado (ya eliminado). Actualizando…';
+
+  @override
+  String get groupReceiptsCannotRemoveIssuedSnack =>
+      'No se puede eliminar un recibo emitido';
+
+  @override
+  String groupReceiptsRemoveFailedSnack(Object reason) {
+    return 'No se pudo eliminar el recibo: $reason';
+  }
+
+  @override
+  String get receiptDraftNumberPlaceholder => 'Recibo en borrador';
+
+  @override
+  String get receiptDateUnknown => 'Fecha desconocida';
+
+  @override
+  String get receiptIssueDateLabel => 'Fecha de emisión';
+
+  @override
+  String get receiptLinesTitle => 'Líneas de recibo';
+
+  @override
+  String get receiptSummaryTitle => 'Resumen';
+
+  @override
+  String get receiptNoLinesYet => 'Aún no hay líneas';
+
+  @override
+  String get receiptLineTotalLabel => 'Total';
+
+  @override
+  String get receiptSubtotalLabel => 'Subtotal';
+
+  @override
+  String get receiptTotalLabel => 'Total';
+
+  @override
+  String get receiptIssueCta => 'Emitir recibo';
+
+  @override
+  String get receiptLockedHint => 'Los recibos emitidos están bloqueados';
+
+  @override
+  String receiptEditorTitle(Object number) {
+    return 'Recibo $number';
+  }
+
+  @override
+  String get receiptEditorFormTitle => 'Recibo';
+
+  @override
+  String get receiptSelectClientLabel => 'Selecciona cliente';
+
+  @override
+  String get receiptClientRequired => 'Selecciona un cliente primero';
+
+  @override
+  String get receiptLinesRequired => 'Agrega al menos una línea';
+
+  @override
+  String get receiptNotesHint => 'Notas opcionales';
+
+  @override
+  String get receiptDraftSavedSnack => 'Borrador guardado';
+
+  @override
+  String get receiptSaveFailed => 'No se pudo guardar el recibo';
+
+  @override
+  String get receiptPreviewFailed =>
+      'No se pudo previsualizar el PDF del recibo';
+
+  @override
+  String get receiptDownloadFailed => 'No se pudo descargar el PDF del recibo';
+
+  @override
+  String get receiptIssueConfirmTitle => '¿Emitir recibo?';
+
+  @override
+  String get receiptIssueConfirmMessage =>
+      'Asignar número final y bloquear el recibo.';
+
+  @override
+  String receiptIssueSuccessSnack(Object receiptNumber) {
+    return 'Recibo emitido: $receiptNumber';
+  }
+
+  @override
+  String get receiptIssueFailed => 'No se pudo emitir el recibo';
+
+  @override
+  String get preview => 'Vista previa';
+
+  @override
+  String get download => 'Descargar';
+
+  @override
+  String get saveDraft => 'Guardar borrador';
+
+  @override
+  String get addLine => 'Agregar línea';
+
+  @override
+  String get statementsTabTitle => 'Importar extractos (Excel)';
+
+  @override
+  String get bankProvidersTabTitle => 'Proveedores bancarios';
+
+  @override
+  String get statementsImportTabTitle => 'Importar';
+
+  @override
+  String get statementsHistoryTabTitle => 'Historial';
+
+  @override
+  String get statementsStepUpload => 'Subir archivo';
+
+  @override
+  String get statementsStepReview => 'Revisar datos';
+
+  @override
+  String get statementsStepConfirm => 'Confirmar importación';
+
+  @override
+  String get statementsReviewDisabled =>
+      'Sube un archivo para revisar entradas y deduplicación.';
+
+  @override
+  String get statementsConfirmHelp =>
+      'Revisa el resumen y confirma para finalizar la importación.';
+
+  @override
+  String get statementsConfirmDisabled =>
+      'Completa la subida para habilitar la confirmación.';
+
+  @override
+  String get statementsConfirmAction => 'Confirmar importación';
+
+  @override
+  String get statementsConfirmSuccess => 'Importación confirmada.';
+
+  @override
+  String get statementsStepDisabledHint =>
+      'Completa el paso anterior para continuar.';
+
+  @override
+  String get statementsDragDropTitle => 'Sube tu extracto';
+
+  @override
+  String get statementsDragDropHint =>
+      'Arrastra tu archivo aquí o haz clic para seleccionar';
+
+  @override
+  String get statementsFormatsHint =>
+      'Formatos soportados: .xls, .xlsx · Máx. 10 MB';
+
+  @override
+  String get statementsRemoveFile => 'Quitar';
+
+  @override
+  String get statementsSecurityNote =>
+      '🔒 Tus datos se procesan de forma segura';
+
+  @override
+  String get statementsFileTooLarge => 'El archivo supera el límite de 10 MB';
+
+  @override
+  String get statementsResultsTitle => 'Resultado de la importación';
+
+  @override
+  String get statementsResultsHelp =>
+      'Revisa la deduplicación y el emparejamiento de clientes antes de confirmar la importación.';
+
+  @override
+  String get statementsResultsEmpty =>
+      'Sube un archivo para ver el resultado y la vista previa.';
+
+  @override
+  String get statementsDuplicateFileError =>
+      'Este archivo ya fue importado (checksum duplicado).';
+
+  @override
+  String get statementsFilterYear => 'Año';
+
+  @override
+  String get statementsFilterFrom => 'Desde';
+
+  @override
+  String get statementsFilterTo => 'Hasta';
+
+  @override
+  String get statementsApplyFilters => 'Aplicar filtros';
+
+  @override
+  String get statementsClearFilters => 'Limpiar';
+
+  @override
+  String get statementsPageSize => 'Tamaño de página';
+
+  @override
+  String statementsPageInfo(int page, int total) {
+    return 'Página $page de $total';
+  }
+
+  @override
+  String get statementsPrevPage => 'Anterior';
+
+  @override
+  String get statementsNextPage => 'Siguiente';
+
+  @override
+  String get statementsSummaryTitle => 'Resumen';
+
+  @override
+  String get statementsSummaryMonthly => 'Mensual';
+
+  @override
+  String get statementsSummaryYearly => 'Anual';
+
+  @override
+  String get statementsSummaryNet => 'Neto';
+
+  @override
+  String get statementsSummaryIncome => 'Ingresos';
+
+  @override
+  String get statementsSummaryExpense => 'Gastos';
+
+  @override
+  String get statementsSummaryEmpty =>
+      'No hay datos de resumen para este rango.';
+
+  @override
+  String statementsSummaryLine(String total, String count) {
+    return 'total $total • $count movimientos';
+  }
+
+  @override
+  String get statementsActionViewEntries => 'Ver entradas';
+
+  @override
+  String get statementsReprocessTitle => '¿Reprocesar lote?';
+
+  @override
+  String get statementsReprocessMessage =>
+      'Se volverá a ejecutar el parser usando el mapa de columnas guardado.';
+
+  @override
+  String get statementsReprocessAction => 'Reprocesar';
+
+  @override
+  String get statementsDeleteTitle => '¿Eliminar lote?';
+
+  @override
+  String get statementsDeleteMessage =>
+      'Esto eliminará el lote y todas sus entradas de forma permanente.';
+
+  @override
+  String get statementsDeleteAction => 'Eliminar';
+
+  @override
+  String get statementsCancel => 'Cancelar';
+
+  @override
+  String statementsDuplicateSummary(String count) {
+    return '$count movimientos duplicados omitidos — Ver detalles';
+  }
+
+  @override
+  String get statementsViewDetails => 'Ver detalles';
+
+  @override
+  String get statementsStatusSuccess => 'Éxito';
+
+  @override
+  String get statementsStatusWarning => 'Advertencia';
+
+  @override
+  String get statementsShowTechDetails => 'Ver detalles técnicos';
+
+  @override
+  String get statementsHideTechDetails => 'Ocultar detalles técnicos';
+
+  @override
+  String get statementsTechBatchId => 'ID de lote';
+
+  @override
+  String get statementsTechChecksum => 'Checksum';
+
+  @override
+  String get statementsTechUploader => 'Subido por';
+
+  @override
+  String get statementsCopy => 'Copiar';
+
+  @override
+  String get moreActions => 'Más acciones';
+
+  @override
+  String get statementsNoImportsHelp =>
+      'Cuando importes un archivo, los lotes aparecerán aquí para revisión rápida.';
+
+  @override
+  String get statementsDownloadTemplate => 'Descargar plantilla Excel';
+
+  @override
+  String get statementsViewExample => 'Ver ejemplo';
+
+  @override
+  String get statementsUploadDescription =>
+      'Sube extractos XLS/XLSX para analizar, deduplicar y vincular entradas a clientes. Los duplicados se omiten automáticamente y se informan por separado.';
+
+  @override
+  String get statementsChooseFile => 'Elegir XLS/XLSX';
+
+  @override
+  String get statementsNoFileSelected => 'Ningún archivo seleccionado';
+
+  @override
+  String statementsSelectedFile(String fileName) {
+    return 'Seleccionado: $fileName';
+  }
+
+  @override
+  String get statementsUploadParse => 'Subir y procesar';
+
+  @override
+  String get statementsUploadFailed => 'Error al subir';
+
+  @override
+  String get statementsUploadComplete => 'Carga completa';
+
+  @override
+  String get statementsFileReadError =>
+      'No se pudieron leer los bytes del archivo';
+
+  @override
+  String statementsBatchLabel(String batchId) {
+    return 'Lote: $batchId';
+  }
+
+  @override
+  String statementsSheetLabel(String sheet) {
+    return 'Hoja: $sheet';
+  }
+
+  @override
+  String statementsInsertedLabel(String count) {
+    return 'Insertados: $count';
+  }
+
+  @override
+  String statementsSkippedLabel(String count) {
+    return 'Omitidos: $count';
+  }
+
+  @override
+  String statementsPreviewTitle(int count) {
+    return 'Vista previa (primeras $count entradas)';
+  }
+
+  @override
+  String get statementsNoDescription => '(sin descripción)';
+
+  @override
+  String statementsAmountLabel(String amount) {
+    return 'importe: $amount';
+  }
+
+  @override
+  String get statementsPastImports => 'Importaciones anteriores';
+
+  @override
+  String get refreshAction => 'Actualizar';
+
+  @override
+  String get statementsNoImports => 'Aún no hay importaciones.';
+
+  @override
+  String get statementsBatchFallback => 'Lote';
+
+  @override
+  String statementsBatchTitle(String batchId) {
+    return 'Lote $batchId';
+  }
+
+  @override
+  String statementsUploadedAt(String uploadedAt) {
+    return 'subido: $uploadedAt';
+  }
+
+  @override
+  String statementsFileLabel(String fileName) {
+    return 'archivo: $fileName';
+  }
+
+  @override
+  String statementsChecksumLabel(String checksum) {
+    return 'checksum: $checksum';
+  }
+
+  @override
+  String statementsUploaderLabel(String uploader) {
+    return 'cargado por: $uploader';
+  }
+
+  @override
+  String statementsEntryCount(String count) {
+    return 'entradas: $count';
+  }
+
+  @override
+  String get statementsBatchEntries => 'Entradas del lote';
+
+  @override
+  String statementsBatchChip(String batchId) {
+    return 'lote: $batchId';
+  }
+
+  @override
+  String get statementsSelectBatch =>
+      'Selecciona un lote para ver las entradas.';
+
+  @override
+  String get statementsHeaderDate => 'Fecha';
+
+  @override
+  String get statementsHeaderDescription => 'Descripción';
+
+  @override
+  String get statementsHeaderDetails => 'Detalles';
+
+  @override
+  String get statementsHeaderAmount => 'Importe';
+
+  @override
+  String get statementsHeaderBalance => 'Saldo';
+
+  @override
+  String get statementsHeaderClient => 'Cliente';
+
+  @override
+  String get statementsHeaderActions => 'Acciones';
+
+  @override
+  String get statementsHeaderBatch => 'Lote';
+
+  @override
+  String get statementsActionSuggest => 'Sugerir';
+
+  @override
+  String get statementsActionLink => 'Vincular';
+
+  @override
+  String get statementsUnlinked => 'Sin vincular';
+
+  @override
+  String get statementsAllDataTitle => 'Todos los movimientos';
+
+  @override
+  String get statementsAllDataSubtitle =>
+      'Revisa todos los movimientos, vincula clientes y mantén los datos limpios.';
+
+  @override
+  String get statementsAllDataEmpty =>
+      'Aún no hay movimientos. Importa un Excel para revisarlos aquí.';
+
+  @override
+  String get statementsFiltersTitle => 'Filtros';
+
+  @override
+  String get statementsPaginationTitle => 'Paginación';
+
+  @override
+  String get statementsPresetsTitle => 'Rangos rápidos';
+
+  @override
+  String get statementsPickRange => 'Elegir rango';
+
+  @override
+  String get statementsPanelCollapse => 'Ocultar panel de guía';
+
+  @override
+  String get statementsPanelExpand => 'Mostrar panel de guía';
+
+  @override
+  String get statementsStepContextUploadTitle => 'Paso 1 · Subir archivo';
+
+  @override
+  String get statementsStepContextReviewTitle => 'Paso 2 · Revisar datos';
+
+  @override
+  String get statementsStepContextConfirmTitle =>
+      'Paso 3 · Confirmar importación';
+
+  @override
+  String get statementsImportSummaryTitle => 'Resumen de importación';
+
+  @override
+  String get statementsConfirmChecklistTitle => 'Checklist final';
+
+  @override
+  String get statementsConfirmChecklistItem1 =>
+      'Verifica duplicados y totales antes de confirmar.';
+
+  @override
+  String get statementsConfirmChecklistItem2 =>
+      'Podrás vincular clientes después de importar.';
+
+  @override
+  String get statementsPresetThisMonth => 'Este mes';
+
+  @override
+  String get statementsPresetLast30Days => 'Últimos 30 días';
+
+  @override
+  String get statementsPresetThisYear => 'Este año';
+
+  @override
+  String get statementsFiltersActive => 'Filtros activos';
+
+  @override
+  String get statementsFiltersNone => 'Sin filtros activos';
+
+  @override
+  String get statementsColumnBatchTooltip => 'Id del lote';
+
+  @override
+  String get statementsColumnBatchCopy => 'Copiar id del lote';
+
+  @override
+  String get statementsActionsTooltipSuggest =>
+      'Sugerir cliente según la descripción';
+
+  @override
+  String get statementsActionsTooltipLink => 'Vincular un cliente manualmente';
+
+  @override
+  String statementsSelectedCount(int count) {
+    return '$count seleccionados';
+  }
+
+  @override
+  String get statementsBulkSuggest => 'Sugerir para seleccionados';
+
+  @override
+  String get statementsBulkLink => 'Vincular en lote';
+
+  @override
+  String get statementsClearSelection => 'Limpiar selección';
+
+  @override
+  String statementsBulkSuggestResult(int withSuggestions, int linked) {
+    return '$withSuggestions sugerencias encontradas · $linked vinculadas';
+  }
+
+  @override
+  String get statementsBulkLinkTitle => 'Vincular movimientos seleccionados';
+
+  @override
+  String get statementsTotalAmount => 'Importe total';
+
+  @override
+  String get statementsTotalCount => 'Total de movimientos';
+
+  @override
+  String get statementsLastBalance => 'Saldo más reciente';
+
+  @override
+  String statementsLastBalanceDate(String date) {
+    return 'al $date';
+  }
+
+  @override
+  String get statementsNavTitle => 'Extractos';
+
+  @override
+  String get statementsNavCollapse => 'Contraer menú';
+
+  @override
+  String get statementsNavExpand => 'Expandir menú';
+
+  @override
+  String get statementsAnalyticsTitle => 'Analíticas de extractos';
+
+  @override
+  String get statementsAnalyticsBatch => 'Lote';
+
+  @override
+  String get statementsAnalyticsMonth => 'Mes';
+
+  @override
+  String get statementsAnalyticsMode => 'Modo';
+
+  @override
+  String get statementsAnalyticsCompareMode => 'Comparación';
+
+  @override
+  String get statementsAnalyticsCompareTitle => 'Comparación de periodos';
+
+  @override
+  String get statementsAnalyticsCompareHelp =>
+      'Compara el mes calendario con la ventana de liquidación para cada mes del año seleccionado.';
+
+  @override
+  String get statementsAnalyticsComparePickYear =>
+      'Selecciona un año para ver la comparación.';
+
+  @override
+  String get statementsAnalyticsCompareBoth => 'Ambos';
+
+  @override
+  String get statementsAnalyticsCompareCalendar => 'Calendario';
+
+  @override
+  String get statementsAnalyticsCompareSettlement => 'Liquidación';
+
+  @override
+  String get statementsAnalyticsCompareDelta => 'Diferencia';
+
+  @override
+  String get statementsAnalyticsModeCalendar => 'Mes calendario';
+
+  @override
+  String get statementsAnalyticsModeSettlement => 'Ventana de liquidación';
+
+  @override
+  String statementsAnalyticsModeLabel(Object mode) {
+    return 'Modo: $mode';
+  }
+
+  @override
+  String get statementsAnalyticsSettlementStart => 'Día de inicio';
+
+  @override
+  String get statementsAnalyticsSettlementEnd => 'Día de fin';
+
+  @override
+  String statementsAnalyticsPeriodLabel(Object from, Object to) {
+    return 'Periodo: $from – $to';
+  }
+
+  @override
+  String get statementsAnalyticsPeriodPending =>
+      'Periodo: selecciona año y mes';
+
+  @override
+  String get statementsAnalyticsTop => 'Top';
+
+  @override
+  String statementsAnalyticsTopHelp(int count) {
+    return 'Top $count';
+  }
+
+  @override
+  String get statementsAnalyticsTrends => 'Tendencias';
+
+  @override
+  String get statementsAnalyticsTrendsHelp =>
+      'Compara ingresos, gastos y neto en el rango seleccionado.';
+
+  @override
+  String get statementsAnalyticsYearAverageTitle => 'Promedio anual';
+
+  @override
+  String get statementsAnalyticsYearAveragesTitle =>
+      'Promedio mensual de ingresos y gastos por año';
+
+  @override
+  String get statementsAnalyticsAverageIncome => 'Ingreso promedio';
+
+  @override
+  String get statementsAnalyticsAverageExpense => 'Gasto promedio';
+
+  @override
+  String get statementsAnalyticsTotalsTab => 'Totales';
+
+  @override
+  String get statementsAnalyticsAverageTab => 'Promedio por movimiento';
+
+  @override
+  String get statementsAnalyticsTopMerchants => 'Top comercios';
+
+  @override
+  String get statementsAnalyticsTopHelpSubtitle =>
+      'Comercios con mayor importe total para los filtros seleccionados.';
+
+  @override
+  String get statementsAnalyticsNoData => 'Aún no hay datos analíticos.';
+
+  @override
+  String get statementsAnalyticsNoMerchants =>
+      'No hay datos de comercios para este rango.';
+
+  @override
+  String get statementsAnalyticsNoBatches => 'Aún no hay lotes de extractos.';
+
+  @override
+  String get statementsAnalyticsAllBatches => 'Todos los lotes';
+
+  @override
+  String get statementsAnalyticsAllYears => 'Todos los años';
+
+  @override
+  String get statementsAnalyticsAllMonths => 'Todos los meses';
+
+  @override
+  String get statementsAnalyticsNoSelection =>
+      'Selecciona un lote para ver analíticas.';
+
+  @override
+  String statementsAnalyticsMonthHint(int month) {
+    return 'Mes $month seleccionado';
+  }
+
+  @override
+  String get statementsAnalyticsExpand => 'Ver más';
+
+  @override
+  String get statementsAnalyticsCollapse => 'Ver menos';
+
+  @override
+  String get statementsFreshnessThreshold => 'Umbral (días)';
+
+  @override
+  String get statementsFreshnessLoading => 'Cargando frescura...';
+
+  @override
+  String get statementsFreshnessNoData => 'Aún no hay transacciones';
+
+  @override
+  String statementsFreshnessStale(Object date, Object days) {
+    return 'Último movimiento: $date (hace $days días)';
+  }
+
+  @override
+  String statementsFreshnessUpToDate(Object date) {
+    return 'Al día (Último movimiento: $date)';
+  }
+
+  @override
+  String get statementsFreshnessSendReminder => 'Enviar recordatorio';
+
+  @override
+  String get statementsFreshnessReminderSent => 'Recordatorio enviado';
+
+  @override
+  String get statementsFreshnessReminderFailed =>
+      'No se pudo enviar el recordatorio';
+
+  @override
+  String get statementsFreshnessNotStale =>
+      'Los datos no están desactualizados. No se envió ninguna notificación.';
+
+  @override
+  String get statementsReminderSettingsTitle =>
+      'Configuración de recordatorios';
+
+  @override
+  String get statementsReminderSettingsLoading =>
+      'Cargando configuración de recordatorios...';
+
+  @override
+  String get statementsReminderSettingsAuto => 'Recordatorios automáticos';
+
+  @override
+  String get statementsReminderSettingsThreshold => 'Umbral (días)';
+
+  @override
+  String get statementsReminderSettingsSaved =>
+      'Configuración de recordatorios guardada';
+
+  @override
+  String get statementsReminderSettingsFailed =>
+      'No se pudo guardar la configuración de recordatorios';
+
+  @override
+  String statementsReminderStatusOn(Object days) {
+    return 'Recordatorios automáticos ACTIVOS ($days días)';
+  }
+
+  @override
+  String get statementsReminderStatusOff =>
+      'Recordatorios automáticos INACTIVOS';
+
+  @override
+  String get statementsReminderStatusUnknown =>
+      'Recordatorios automáticos: N/D';
+
+  @override
+  String get statementsAllDataSummaryTitle => 'Resumen del rango actual';
+
+  @override
+  String get dashboardNavTitle => 'Navegación';
+
+  @override
+  String get dashboardNavCollapse => 'Contraer menú';
+
+  @override
+  String get dashboardNavExpand => 'Expandir menú';
+
+  @override
+  String get groupInvoicesNavCollapse => 'Contraer menú';
+
+  @override
+  String get groupInvoicesNavExpand => 'Expandir menú';
+
+  @override
+  String get statementsRowDetailsTitle => 'Detalle del movimiento';
+
+  @override
+  String statementsRowDetailsSubtitle(String batchId) {
+    return 'Lote $batchId';
+  }
+
+  @override
+  String get statementsRowDetailsRaw => 'Datos en bruto';
+
+  @override
+  String get statementsNoSuggestions =>
+      'No se encontraron sugerencias de clientes';
+
+  @override
+  String get statementsSuggestedClientsTitle => 'Clientes sugeridos';
+
+  @override
+  String get statementsLinkClientTitle => 'Vincular cliente';
+
+  @override
+  String get statementsSearchClients => 'Buscar clientes';
+
+  @override
+  String get statementsNoClientsMatch =>
+      'Ningún cliente coincide con tu búsqueda';
+
+  @override
+  String get statementsClearLink => 'Quitar vínculo';
+
+  @override
+  String get statementsUnnamedClient => '(sin nombre)';
+
+  @override
+  String get statementsImportExcelTab => 'Excel';
 }

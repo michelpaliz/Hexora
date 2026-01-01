@@ -86,6 +86,7 @@
   "weakPassword": "Contraseña débil",
   "emailTaken": "El correo electrónico ya está en uso",
   "invalidEmail": "Esta dirección de correo electrónico no es válida",
+  "invalidUrl": "Esta URL no es válida",
   "registrationError": "Error de registro",
   "registerCheckEmail": "Cuenta creada. Revisa tu correo para verificar.",
   "userNotFound": "Usuario no encontrado",
@@ -1491,6 +1492,7 @@
   "billingDetailsSubtitle": "Datos para facturas (razón social, CIF, dirección y contacto).",
   "billingLegalName": "Razón social",
   "billingTaxId": "NIF/CIF",
+  "billingTaxIdHelper": "Se usa en facturas y PDFs.",
   "addressStreet": "Calle",
   "addressExtra": "Complemento de dirección",
   "addressCity": "Ciudad",
@@ -1505,9 +1507,13 @@
   "billingProfileEmpty": "Añade los datos del emisor (razón social, CIF, dirección, IVA, IBAN) para emitir facturas.",
   "billingWebsite": "Sitio web",
   "billingIban": "IBAN",
+  "billingIbanHelper": "Se muestra en facturas para transferencia bancaria.",
   "billingTaxRate": "IVA",
+  "billingTaxRateHelper": "IVA por defecto (0–100).",
   "billingCurrency": "Moneda",
+  "billingCurrencyHelper": "Moneda por defecto (p. ej. EUR).",
   "billingLanguage": "Idioma",
+  "billingLanguageHelper": "Código de idioma (p. ej. es, en).",
   "billingAddress": "Dirección",
   "billingProfileSaved": "Perfil de facturación guardado",
 
@@ -1564,12 +1570,559 @@
   "lineUnitPrice": "Precio unitario",
   "lineTaxRate": "Impuesto",
   "invoiceTotalLabel": "Total",
+  "invoiceEditorTitle": "Editor de facturas",
+  "invoiceCustomerTitle": "Cliente",
+  "invoiceDatesTitle": "Fechas",
+  "invoiceDateLabel": "Fecha de factura",
+  "invoiceDueDateLabel": "Fecha de vencimiento",
+  "invoiceFromLabel": "Emisor",
+  "invoiceBillToLabel": "Facturar a",
+  "invoiceSelectClientLabel": "Seleccionar cliente",
+  "invoiceSubtotalLabel": "Subtotal",
+  "invoiceTaxLabel": "IVA",
+  "invoiceNoLinesYet": "Sin líneas",
+  "invoicePdfGeneratedLabel": "PDF generado",
+  "invoicePdfNotGeneratedLabel": "PDF no generado",
+  "invoiceIssueCta": "Emitir factura",
+  "invoiceSaveDraftCta": "Guardar borrador",
+  "invoicePdfCta": "PDF",
+  "invoiceIssuingLabel": "Emitiendo…",
+  "invoiceDetailsShowCta": "Mostrar detalles",
+  "invoiceDetailsHideCta": "Ocultar detalles",
+  "invoiceClientSearchHint": "Buscar cliente",
+  "invoiceNotesShowCta": "Mostrar",
+  "invoiceNotesHideCta": "Ocultar",
+  "invoiceNotesOptionalLabel": "Opcional",
+  "invoiceClientInvoicesThisMonthLabel": "Facturas este mes",
+  "invoiceDraftInfoTooltip": "Info de borradores",
+  "invoiceDraftInfoTitle": "Antes de crear un borrador",
+  "invoiceDraftInfoMessage": "Antes de crear un borrador, asegúrate de no tener borradores pendientes.",
+  "invoicePendingDraftsLabel": "Borradores pendientes",
+  "invoiceFillRequiredFieldsError": "Rellena los campos obligatorios",
+  "invoiceDraftSavedSnack": "Borrador guardado: {invoiceNumber}",
+  "invoiceDraftSavedSnackNoNumber": "Borrador guardado",
+  "invoiceDraftSaveFailedSnack": "No se pudo guardar el borrador. Inténtalo de nuevo.",
+  "invoiceIssueSuccessSnack": "Factura emitida: {invoiceNumber}",
+  "invoiceIssueFailedSnack": "No se pudo emitir la factura. Inténtalo de nuevo.",
+  "invoicePdfPreviewFailedSnack": "No se pudo generar la vista previa del PDF. Inténtalo de nuevo.",
+  "invoiceLogoTitle": "Logo de factura",
+  "invoiceLogoSubtitle": "Se muestra en facturas y PDFs.",
+  "invoiceLogoUploadCta": "Subir",
+  "invoiceLogoUrlLabel": "URL del logo",
+  "invoiceLogoEmpty": "Sin logo",
+  "invoiceLogoUpdated": "Logo actualizado",
+  "groupInvoicesBusinessTitle": "Empresa",
+  "groupInvoicesTotalsTitle": "Totales de facturas",
+  "groupInvoicesExpandTooltip": "Expandir",
+  "groupInvoicesCollapseTooltip": "Contraer",
+  "groupInvoicesClientsFlowCta": "Flujo de facturas por cliente",
+  "groupInvoicesDraftInvoicesTitle": "Borradores",
+  "groupInvoicesSelectInvoiceHint": "Selecciona una factura para ver los detalles",
+  "groupInvoicesTabDrafts": "Borradores ({count})",
+  "groupInvoicesTabInvoices": "Facturas ({count})",
+  "groupInvoicesTotalsInline": "Emitidas: {issuedCount} • Borradores: {draftsCount}",
+  "groupInvoicesTotalsIssuedButton": "Emitidas: {count}",
+  "groupInvoicesTotalsDraftsButton": "Borradores: {count}",
+  "groupInvoicesRemoveDraftTitle": "¿Eliminar borrador?",
+  "groupInvoicesRemoveInvoiceTitle": "¿Eliminar factura?",
+  "groupInvoicesRemoveInvoiceMessage": "Esto eliminará la factura {invoiceNumber}.",
+  "groupInvoicesRemovedSnack": "Factura eliminada",
+  "groupInvoicesInvoiceAlreadyRemovedSnack": "Factura no encontrada (ya eliminada). Actualizando…",
+  "groupInvoicesRemoveFailedSnack": "No se pudo eliminar la factura: {reason}",
   "remove": "Eliminar",
   "clientsTitle": "Clientes",
   "selectClientFirst": "Selecciona un cliente para ver facturación e invoices",
+  "clientEntityTypeLabel": "Tipo de entidad",
+  "clientEntityTypeHint": "p. ej. comunidad, empresa, particular",
+  "clientPropertyKindLabel": "Tipo de propiedad",
+  "clientPropertyKindHint": "p. ej. edificio, apartamento, chalet",
+  "clientClassificationTitle": "Opciones guardadas",
+  "clientClassificationManageCta": "Administrar",
+  "clientClassificationManageTitle": "Administrar opciones guardadas",
+  "clientAddOptionHint": "Agregar opción (máx. 50)",
+  "clientClassificationManageHint": "Estas opciones se guardan para el grupo y se pueden reutilizar al asignar tipos a los clientes.",
+  "clientClassificationSaveCta": "Guardar",
+  "clientClassificationSavedSnack": "Opciones guardadas",
+  "clientClassificationRebuildCta": "Reconstruir",
+  "clientClassificationRebuiltSnack": "Opciones reconstruidas",
+  "clientClassificationSectionTitle": "Clasificación",
+  "clientClassificationExpandTooltip": "Expandir",
+  "clientClassificationCollapseTooltip": "Contraer",
+  "clientHideInactiveChip": "Ocultar inactivos",
+  "clientInactiveHiddenChip": "Inactivos ocultos",
+  "clientDetailsExpandTooltip": "Mostrar detalles",
+  "clientDetailsCollapseTooltip": "Ocultar detalles",
+  "clientSearchHint": "Buscar clientes…",
+  "clientFiltersTitle": "Filtros",
+  "clientFiltersClear": "Limpiar",
+  "clientSelectedHiddenByFilters": "El cliente seleccionado está oculto por los filtros",
+  "clientQuickAssignTitle": "Asignación rápida",
+  "clientQuickAssignSubtitle": "Toca para asignar. Toca de nuevo para borrar.",
+  "clientClassificationUpdatedSnack": "Cliente actualizado",
+  "clientBillingMissingTitle": "Faltan datos de facturación",
+  "clientBillingMissingMessage": "Completa: {fields}",
+  "@clientBillingMissingMessage": {
+    "placeholders": {
+      "fields": {
+        "type": "String"
+      }
+    }
+  },
   "billingDocumentType": "Tipo de documento",
   "documentTypeInvoice": "Factura",
-  "documentTypeReceipt": "Recibo"
+  "documentTypeReceipt": "Recibo",
+  "receiptsTitle": "Recibos",
+  "createReceiptCta": "Crear recibo",
+  "groupReceiptsTabDrafts": "Borradores ({count})",
+  "groupReceiptsTabReceipts": "Recibos ({count})",
+  "groupReceiptsSelectReceiptHint": "Selecciona un recibo para ver detalles",
+  "groupReceiptsRemoveDraftTitle": "¿Eliminar borrador de recibo?",
+  "groupReceiptsRemoveDraftMessage": "Esto eliminará el recibo {receiptNumber}.",
+  "groupReceiptsRemovedSnack": "Recibo eliminado",
+  "groupReceiptsAlreadyRemovedSnack": "Recibo no encontrado (ya eliminado). Actualizando…",
+  "groupReceiptsCannotRemoveIssuedSnack": "No se puede eliminar un recibo emitido",
+  "groupReceiptsRemoveFailedSnack": "No se pudo eliminar el recibo: {reason}",
+  "receiptDraftNumberPlaceholder": "Recibo en borrador",
+  "receiptDateUnknown": "Fecha desconocida",
+  "receiptIssueDateLabel": "Fecha de emisión",
+  "receiptLinesTitle": "Líneas de recibo",
+  "receiptSummaryTitle": "Resumen",
+  "receiptNoLinesYet": "Aún no hay líneas",
+  "receiptLineTotalLabel": "Total",
+  "receiptSubtotalLabel": "Subtotal",
+  "receiptTotalLabel": "Total",
+  "receiptIssueCta": "Emitir recibo",
+  "receiptLockedHint": "Los recibos emitidos están bloqueados",
+  "receiptEditorTitle": "Recibo {number}",
+  "receiptEditorFormTitle": "Recibo",
+  "receiptSelectClientLabel": "Selecciona cliente",
+  "receiptClientRequired": "Selecciona un cliente primero",
+  "receiptLinesRequired": "Agrega al menos una línea",
+  "receiptNotesHint": "Notas opcionales",
+  "receiptDraftSavedSnack": "Borrador guardado",
+  "receiptSaveFailed": "No se pudo guardar el recibo",
+  "receiptPreviewFailed": "No se pudo previsualizar el PDF del recibo",
+  "receiptDownloadFailed": "No se pudo descargar el PDF del recibo",
+  "receiptIssueConfirmTitle": "¿Emitir recibo?",
+  "receiptIssueConfirmMessage": "Asignar número final y bloquear el recibo.",
+  "receiptIssueSuccessSnack": "Recibo emitido: {receiptNumber}",
+  "receiptIssueFailed": "No se pudo emitir el recibo",
+  "preview": "Vista previa",
+  "download": "Descargar",
+  "saveDraft": "Guardar borrador",
+  "addLine": "Agregar línea",
+  "statementsTabTitle": "Importar extractos (Excel)",
+  "bankProvidersTabTitle": "Proveedores bancarios",
+  "statementsImportTabTitle": "Importar",
+  "statementsHistoryTabTitle": "Historial",
+  "statementsStepUpload": "Subir archivo",
+  "statementsStepReview": "Revisar datos",
+  "statementsStepConfirm": "Confirmar importación",
+  "statementsReviewDisabled": "Sube un archivo para revisar entradas y deduplicación.",
+  "statementsConfirmHelp": "Revisa el resumen y confirma para finalizar la importación.",
+  "statementsConfirmDisabled": "Completa la subida para habilitar la confirmación.",
+  "statementsConfirmAction": "Confirmar importación",
+  "statementsConfirmSuccess": "Importación confirmada.",
+  "statementsStepDisabledHint": "Completa el paso anterior para continuar.",
+  "statementsDragDropTitle": "Sube tu extracto",
+  "statementsDragDropHint": "Arrastra tu archivo aquí o haz clic para seleccionar",
+  "statementsFormatsHint": "Formatos soportados: .xls, .xlsx · Máx. 10 MB",
+  "statementsRemoveFile": "Quitar",
+  "statementsSecurityNote": "🔒 Tus datos se procesan de forma segura",
+  "statementsFileTooLarge": "El archivo supera el límite de 10 MB",
+  "statementsResultsTitle": "Resultado de la importación",
+  "statementsResultsHelp": "Revisa la deduplicación y el emparejamiento de clientes antes de confirmar la importación.",
+  "statementsResultsEmpty": "Sube un archivo para ver el resultado y la vista previa.",
+  "statementsDuplicateFileError": "Este archivo ya fue importado (checksum duplicado).",
+  "statementsFilterYear": "Año",
+  "statementsFilterFrom": "Desde",
+  "statementsFilterTo": "Hasta",
+  "statementsApplyFilters": "Aplicar filtros",
+  "statementsClearFilters": "Limpiar",
+  "statementsPageSize": "Tamaño de página",
+  "statementsPageInfo": "Página {page} de {total}",
+  "@statementsPageInfo": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "statementsPrevPage": "Anterior",
+  "statementsNextPage": "Siguiente",
+  "statementsSummaryTitle": "Resumen",
+  "statementsSummaryMonthly": "Mensual",
+  "statementsSummaryYearly": "Anual",
+  "statementsSummaryNet": "Neto",
+  "statementsSummaryIncome": "Ingresos",
+  "statementsSummaryExpense": "Gastos",
+  "statementsSummaryEmpty": "No hay datos de resumen para este rango.",
+  "statementsSummaryLine": "total {total} • {count} movimientos",
+  "@statementsSummaryLine": {
+    "placeholders": {
+      "total": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsActionViewEntries": "Ver entradas",
+  "statementsReprocessTitle": "¿Reprocesar lote?",
+  "statementsReprocessMessage": "Se volverá a ejecutar el parser usando el mapa de columnas guardado.",
+  "statementsReprocessAction": "Reprocesar",
+  "statementsDeleteTitle": "¿Eliminar lote?",
+  "statementsDeleteMessage": "Esto eliminará el lote y todas sus entradas de forma permanente.",
+  "statementsDeleteAction": "Eliminar",
+  "statementsCancel": "Cancelar",
+  "statementsDuplicateSummary": "{count} movimientos duplicados omitidos — Ver detalles",
+  "@statementsDuplicateSummary": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsViewDetails": "Ver detalles",
+  "statementsStatusSuccess": "Éxito",
+  "statementsStatusWarning": "Advertencia",
+  "statementsShowTechDetails": "Ver detalles técnicos",
+  "statementsHideTechDetails": "Ocultar detalles técnicos",
+  "statementsTechBatchId": "ID de lote",
+  "statementsTechChecksum": "Checksum",
+  "statementsTechUploader": "Subido por",
+  "statementsCopy": "Copiar",
+  "moreActions": "Más acciones",
+  "statementsNoImportsHelp": "Cuando importes un archivo, los lotes aparecerán aquí para revisión rápida.",
+  "statementsDownloadTemplate": "Descargar plantilla Excel",
+  "statementsViewExample": "Ver ejemplo",
+  "statementsUploadDescription": "Sube extractos XLS/XLSX para analizar, deduplicar y vincular entradas a clientes. Los duplicados se omiten automáticamente y se informan por separado.",
+  "statementsChooseFile": "Elegir XLS/XLSX",
+  "statementsNoFileSelected": "Ningún archivo seleccionado",
+  "statementsSelectedFile": "Seleccionado: {fileName}",
+  "@statementsSelectedFile": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsUploadParse": "Subir y procesar",
+  "statementsUploadFailed": "Error al subir",
+  "statementsUploadComplete": "Carga completa",
+  "statementsFileReadError": "No se pudieron leer los bytes del archivo",
+  "statementsBatchLabel": "Lote: {batchId}",
+  "@statementsBatchLabel": {
+    "placeholders": {
+      "batchId": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsSheetLabel": "Hoja: {sheet}",
+  "@statementsSheetLabel": {
+    "placeholders": {
+      "sheet": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsInsertedLabel": "Insertados: {count}",
+  "@statementsInsertedLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsSkippedLabel": "Omitidos: {count}",
+  "@statementsSkippedLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsPreviewTitle": "Vista previa (primeras {count} entradas)",
+  "@statementsPreviewTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statementsNoDescription": "(sin descripción)",
+  "statementsAmountLabel": "importe: {amount}",
+  "@statementsAmountLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsPastImports": "Importaciones anteriores",
+  "refreshAction": "Actualizar",
+  "statementsNoImports": "Aún no hay importaciones.",
+  "statementsBatchFallback": "Lote",
+  "statementsBatchTitle": "Lote {batchId}",
+  "@statementsBatchTitle": {
+    "placeholders": {
+      "batchId": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsUploadedAt": "subido: {uploadedAt}",
+  "@statementsUploadedAt": {
+    "placeholders": {
+      "uploadedAt": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsFileLabel": "archivo: {fileName}",
+  "@statementsFileLabel": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsChecksumLabel": "checksum: {checksum}",
+  "@statementsChecksumLabel": {
+    "placeholders": {
+      "checksum": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsUploaderLabel": "cargado por: {uploader}",
+  "@statementsUploaderLabel": {
+    "placeholders": {
+      "uploader": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsEntryCount": "entradas: {count}",
+  "@statementsEntryCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsBatchEntries": "Entradas del lote",
+  "statementsBatchChip": "lote: {batchId}",
+  "@statementsBatchChip": {
+    "placeholders": {
+      "batchId": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsSelectBatch": "Selecciona un lote para ver las entradas.",
+  "statementsHeaderDate": "Fecha",
+  "statementsHeaderDescription": "Descripción",
+  "statementsHeaderDetails": "Detalles",
+  "statementsHeaderAmount": "Importe",
+  "statementsHeaderBalance": "Saldo",
+  "statementsHeaderClient": "Cliente",
+  "statementsHeaderActions": "Acciones",
+  "statementsHeaderBatch": "Lote",
+  "statementsActionSuggest": "Sugerir",
+  "statementsActionLink": "Vincular",
+  "statementsUnlinked": "Sin vincular",
+  "statementsAllDataTitle": "Todos los movimientos",
+  "statementsAllDataSubtitle": "Revisa todos los movimientos, vincula clientes y mantén los datos limpios.",
+  "statementsAllDataEmpty": "Aún no hay movimientos. Importa un Excel para revisarlos aquí.",
+  "statementsFiltersTitle": "Filtros",
+  "statementsPaginationTitle": "Paginación",
+  "statementsPresetsTitle": "Rangos rápidos",
+  "statementsPickRange": "Elegir rango",
+  "statementsPanelCollapse": "Ocultar panel de guía",
+  "statementsPanelExpand": "Mostrar panel de guía",
+  "statementsStepContextUploadTitle": "Paso 1 · Subir archivo",
+  "statementsStepContextReviewTitle": "Paso 2 · Revisar datos",
+  "statementsStepContextConfirmTitle": "Paso 3 · Confirmar importación",
+  "statementsImportSummaryTitle": "Resumen de importación",
+  "statementsConfirmChecklistTitle": "Checklist final",
+  "statementsConfirmChecklistItem1": "Verifica duplicados y totales antes de confirmar.",
+  "statementsConfirmChecklistItem2": "Podrás vincular clientes después de importar.",
+  "statementsPresetThisMonth": "Este mes",
+  "statementsPresetLast30Days": "Últimos 30 días",
+  "statementsPresetThisYear": "Este año",
+  "statementsFiltersActive": "Filtros activos",
+  "statementsFiltersNone": "Sin filtros activos",
+  "statementsColumnBatchTooltip": "Id del lote",
+  "statementsColumnBatchCopy": "Copiar id del lote",
+  "statementsActionsTooltipSuggest": "Sugerir cliente según la descripción",
+  "statementsActionsTooltipLink": "Vincular un cliente manualmente",
+  "statementsSelectedCount": "{count} seleccionados",
+  "@statementsSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statementsBulkSuggest": "Sugerir para seleccionados",
+  "statementsBulkLink": "Vincular en lote",
+  "statementsClearSelection": "Limpiar selección",
+  "statementsBulkSuggestResult": "{withSuggestions} sugerencias encontradas · {linked} vinculadas",
+  "@statementsBulkSuggestResult": {
+    "placeholders": {
+      "withSuggestions": {
+        "type": "int"
+      },
+      "linked": {
+        "type": "int"
+      }
+    }
+  },
+  "statementsBulkLinkTitle": "Vincular movimientos seleccionados",
+  "statementsTotalAmount": "Importe total",
+  "statementsTotalCount": "Total de movimientos",
+  "statementsLastBalance": "Saldo más reciente",
+  "statementsLastBalanceDate": "al {date}",
+  "@statementsLastBalanceDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsNavTitle": "Extractos",
+  "statementsNavCollapse": "Contraer menú",
+  "statementsNavExpand": "Expandir menú",
+  "statementsAnalyticsTitle": "Analíticas de extractos",
+  "statementsAnalyticsBatch": "Lote",
+  "statementsAnalyticsMonth": "Mes",
+  "statementsAnalyticsMode": "Modo",
+  "statementsAnalyticsCompareMode": "Comparación",
+  "statementsAnalyticsCompareTitle": "Comparación de periodos",
+  "statementsAnalyticsCompareHelp": "Compara el mes calendario con la ventana de liquidación para cada mes del año seleccionado.",
+  "statementsAnalyticsComparePickYear": "Selecciona un año para ver la comparación.",
+  "statementsAnalyticsCompareBoth": "Ambos",
+  "statementsAnalyticsCompareCalendar": "Calendario",
+  "statementsAnalyticsCompareSettlement": "Liquidación",
+  "statementsAnalyticsCompareDelta": "Diferencia",
+  "statementsAnalyticsModeCalendar": "Mes calendario",
+  "statementsAnalyticsModeSettlement": "Ventana de liquidación",
+  "statementsAnalyticsModeLabel": "Modo: {mode}",
+  "@statementsAnalyticsModeLabel": {
+    "placeholders": {
+      "mode": {}
+    }
+  },
+  "statementsAnalyticsSettlementStart": "Día de inicio",
+  "statementsAnalyticsSettlementEnd": "Día de fin",
+  "statementsAnalyticsPeriodLabel": "Periodo: {from} – {to}",
+  "@statementsAnalyticsPeriodLabel": {
+    "placeholders": {
+      "from": {},
+      "to": {}
+    }
+  },
+  "statementsAnalyticsPeriodPending": "Periodo: selecciona año y mes",
+  "statementsAnalyticsTop": "Top",
+  "statementsAnalyticsTopHelp": "Top {count}",
+  "@statementsAnalyticsTopHelp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statementsAnalyticsTrends": "Tendencias",
+  "statementsAnalyticsTrendsHelp": "Compara ingresos, gastos y neto en el rango seleccionado.",
+  "statementsAnalyticsYearAverageTitle": "Promedio anual",
+  "statementsAnalyticsYearAveragesTitle": "Promedio mensual de ingresos y gastos por año",
+  "statementsAnalyticsAverageIncome": "Ingreso promedio",
+  "statementsAnalyticsAverageExpense": "Gasto promedio",
+  "statementsAnalyticsTotalsTab": "Totales",
+  "statementsAnalyticsAverageTab": "Promedio por movimiento",
+  "statementsAnalyticsTopMerchants": "Top comercios",
+  "statementsAnalyticsTopHelpSubtitle": "Comercios con mayor importe total para los filtros seleccionados.",
+  "statementsAnalyticsNoData": "Aún no hay datos analíticos.",
+  "statementsAnalyticsNoMerchants": "No hay datos de comercios para este rango.",
+  "statementsAnalyticsNoBatches": "Aún no hay lotes de extractos.",
+  "statementsAnalyticsAllBatches": "Todos los lotes",
+  "statementsAnalyticsAllYears": "Todos los años",
+  "statementsAnalyticsAllMonths": "Todos los meses",
+  "statementsAnalyticsNoSelection": "Selecciona un lote para ver analíticas.",
+  "statementsAnalyticsMonthHint": "Mes {month} seleccionado",
+  "statementsAnalyticsExpand": "Ver más",
+  "statementsAnalyticsCollapse": "Ver menos",
+  "statementsFreshnessThreshold": "Umbral (días)",
+  "statementsFreshnessLoading": "Cargando frescura...",
+  "statementsFreshnessNoData": "Aún no hay transacciones",
+  "statementsFreshnessStale": "Último movimiento: {date} (hace {days} días)",
+  "@statementsFreshnessStale": {
+    "placeholders": {
+      "date": {},
+      "days": {}
+    }
+  },
+  "statementsFreshnessUpToDate": "Al día (Último movimiento: {date})",
+  "@statementsFreshnessUpToDate": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "statementsFreshnessSendReminder": "Enviar recordatorio",
+  "statementsFreshnessReminderSent": "Recordatorio enviado",
+  "statementsFreshnessReminderFailed": "No se pudo enviar el recordatorio",
+  "statementsFreshnessNotStale": "Los datos no están desactualizados. No se envió ninguna notificación.",
+  "statementsReminderSettingsTitle": "Configuración de recordatorios",
+  "statementsReminderSettingsLoading": "Cargando configuración de recordatorios...",
+  "statementsReminderSettingsAuto": "Recordatorios automáticos",
+  "statementsReminderSettingsThreshold": "Umbral (días)",
+  "statementsReminderSettingsSaved": "Configuración de recordatorios guardada",
+  "statementsReminderSettingsFailed": "No se pudo guardar la configuración de recordatorios",
+  "statementsReminderStatusOn": "Recordatorios automáticos ACTIVOS ({days} días)",
+  "@statementsReminderStatusOn": {
+    "placeholders": {
+      "days": {}
+    }
+  },
+  "statementsReminderStatusOff": "Recordatorios automáticos INACTIVOS",
+  "statementsReminderStatusUnknown": "Recordatorios automáticos: N/D",
+  "statementsAllDataSummaryTitle": "Resumen del rango actual",
+  "@statementsAnalyticsMonthHint": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardNavTitle": "Navegación",
+  "dashboardNavCollapse": "Contraer menú",
+  "dashboardNavExpand": "Expandir menú",
+  "groupInvoicesNavCollapse": "Contraer menú",
+  "groupInvoicesNavExpand": "Expandir menú",
+  "statementsRowDetailsTitle": "Detalle del movimiento",
+  "statementsRowDetailsSubtitle": "Lote {batchId}",
+  "@statementsRowDetailsSubtitle": {
+    "placeholders": {
+      "batchId": {
+        "type": "String"
+      }
+    }
+  },
+  "statementsRowDetailsRaw": "Datos en bruto",
+  "statementsNoSuggestions": "No se encontraron sugerencias de clientes",
+  "statementsSuggestedClientsTitle": "Clientes sugeridos",
+  "statementsLinkClientTitle": "Vincular cliente",
+  "statementsSearchClients": "Buscar clientes",
+  "statementsNoClientsMatch": "Ningún cliente coincide con tu búsqueda",
+  "statementsClearLink": "Quitar vínculo",
+  "statementsUnnamedClient": "(sin nombre)",
+  "statementsImportExcelTab": "Excel"
 
 
 }

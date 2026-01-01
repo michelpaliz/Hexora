@@ -24,6 +24,10 @@ class AddClientController {
   final phone = TextEditingController();
   final email = TextEditingController();
 
+  // Classification (optional)
+  final entityType = TextEditingController();
+  final propertyKind = TextEditingController();
+
   // Billing
   final billingLegalName = TextEditingController();
   final billingTaxId = TextEditingController();
@@ -50,6 +54,8 @@ class AddClientController {
     name.text = c.name;
     phone.text = c.phone ?? '';
     email.text = c.email ?? '';
+    entityType.text = c.entityType ?? '';
+    propertyKind.text = c.propertyKind ?? '';
     active = c.isActive;
 
     final b = c.billing;
@@ -104,6 +110,8 @@ class AddClientController {
       name,
       phone,
       email,
+      entityType,
+      propertyKind,
       billingLegalName,
       billingTaxId,
       billingStreet,
@@ -123,9 +131,16 @@ class AddClientController {
     // Send only non-null billing fields to avoid backend wiping values.
     final billingPatch = billingPayload(includeNulls: false);
 
+    String? norm(String s) {
+      final v = s.trim().toLowerCase();
+      return v.isEmpty ? null : v;
+    }
+
     if (isEdit) {
       final patch = <String, dynamic>{
         'name': name.text.trim(),
+        'entityType': norm(entityType.text),
+        'propertyKind': norm(propertyKind.text),
         'isActive': active,
         'contact': {
           'phone': phone.text.trim().isEmpty ? null : phone.text.trim(),
@@ -147,6 +162,8 @@ class AddClientController {
         id: '',
         name: name.text.trim(),
         groupId: groupId,
+        entityType: norm(entityType.text),
+        propertyKind: norm(propertyKind.text),
         phone: phone.text.trim().isEmpty ? null : phone.text.trim(),
         email: email.text.trim().isEmpty ? null : email.text.trim(),
         isActive: active,
