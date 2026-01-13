@@ -148,7 +148,7 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
       cs.primary.withOpacity(
         theme.brightness == Brightness.dark ? 0.14 : 0.06,
       ),
-      cs.surfaceVariant,
+      cs.surfaceContainerHighest,
     );
     return Scaffold(
       backgroundColor: backdrop,

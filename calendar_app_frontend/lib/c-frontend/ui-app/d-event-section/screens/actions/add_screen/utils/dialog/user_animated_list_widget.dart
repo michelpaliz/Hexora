@@ -98,7 +98,7 @@ class AnimatedUsersList extends StatelessWidget {
                           : const AssetImage(
                                   'assets/images/default_profile.png')
                               as ImageProvider,
-                      backgroundColor: cs.surfaceVariant,
+                      backgroundColor: cs.surfaceContainerHighest,
                     ),
                   ),
 
@@ -214,7 +214,7 @@ class CompactUsersList extends StatelessWidget {
                 ? NetworkImage(user.photoUrl!)
                 : const AssetImage('assets/images/default_profile.png')
                     as ImageProvider,
-            backgroundColor: cs.surfaceVariant,
+            backgroundColor: cs.surfaceContainerHighest,
           ),
           const SizedBox(width: 6),
           ConstrainedBox(

@@ -154,8 +154,14 @@ class StatementsApi {
     );
   }
 
-  Future<List<Map<String, dynamic>>> batchEntries(String batchId) async {
-    final uri = _u('/$batchId/entries');
+  Future<List<Map<String, dynamic>>> batchEntries(
+    String batchId, {
+    String? order,
+  }) async {
+    final query = <String, String>{
+      if (order != null && order.isNotEmpty) 'order': order,
+    };
+    final uri = _u('/$batchId/entries', query.isEmpty ? null : query);
     final r = await http.get(uri, headers: await _headers());
     return _decode<List<Map<String, dynamic>>>(
       r,
@@ -183,6 +189,7 @@ class StatementsApi {
     int? year,
     String? dateFrom,
     String? dateTo,
+    String? order,
   }) async {
     final query = <String, String>{
       'page': page.toString(),
@@ -190,6 +197,7 @@ class StatementsApi {
       if (year != null) 'year': year.toString(),
       if (dateFrom != null && dateFrom.isNotEmpty) 'date_from': dateFrom,
       if (dateTo != null && dateTo.isNotEmpty) 'date_to': dateTo,
+      if (order != null && order.isNotEmpty) 'order': order,
     };
     final uri = _u('/$batchId/entries', query);
     final r = await http.get(uri, headers: await _headers());
@@ -367,6 +375,36 @@ class StatementsApi {
       uri,
       headers: await _headers(),
       body: jsonEncode({'clientId': clientId}),
+    );
+    _decode<void>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (_) => null,
+    );
+  }
+
+  Future<void> linkEntryInvoice({required String entryId, String? invoiceId}) async {
+    final uri = _u('/entries/$entryId/invoice');
+    final r = await http.post(
+      uri,
+      headers: await _headers(),
+      body: jsonEncode({'invoiceId': invoiceId}),
+    );
+    _decode<void>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (_) => null,
+    );
+  }
+
+  Future<void> linkEntryInvoiceExpense({required String entryId, String? invoiceId}) async {
+    final uri = _u('/entries/$entryId/invoice/expense');
+    final r = await http.post(
+      uri,
+      headers: await _headers(),
+      body: jsonEncode({'invoiceId': invoiceId}),
     );
     _decode<void>(
       r,

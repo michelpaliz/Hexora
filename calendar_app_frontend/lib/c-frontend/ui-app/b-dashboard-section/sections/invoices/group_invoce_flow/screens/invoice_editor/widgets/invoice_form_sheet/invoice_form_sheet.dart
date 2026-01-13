@@ -180,7 +180,7 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _status,
+                initialValue: _status,
                 decoration: InputDecoration(
                   labelText: l.invoiceStatusLabel,
                   enabledBorder: inputBorder,
@@ -224,7 +224,7 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _clientId,
+                initialValue: _clientId,
                 decoration: InputDecoration(
                   labelText: l.invoiceClientLabel,
                   enabledBorder: inputBorder,

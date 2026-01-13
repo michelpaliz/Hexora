@@ -72,7 +72,7 @@ class ReminderSection extends StatelessWidget {
               onChanged: onNotifyChanged,
 
               // 👇 Force visible colors for both states (works on stable Flutter)
-              activeColor: activeThumb, // thumb when ON
+              activeThumbColor: activeThumb, // thumb when ON
               activeTrackColor: activeTrack, // track when ON
               inactiveThumbColor: inactiveThumb, // thumb when OFF
               inactiveTrackColor: inactiveTrack, // track when OFF

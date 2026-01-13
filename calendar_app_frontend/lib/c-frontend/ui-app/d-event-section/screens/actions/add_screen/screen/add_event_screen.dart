@@ -106,7 +106,7 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
       cs.primary.withOpacity(
         theme.brightness == Brightness.dark ? 0.14 : 0.06,
       ),
-      cs.surfaceVariant,
+      cs.surfaceContainerHighest,
     );
 
     // single source of truth for CategoryApi

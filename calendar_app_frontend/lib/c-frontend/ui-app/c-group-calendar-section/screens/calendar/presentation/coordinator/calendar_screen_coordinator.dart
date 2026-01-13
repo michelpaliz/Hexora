@@ -69,6 +69,10 @@ class CalendarScreenCoordinator {
     calendarUI?.jumpToToday();
   }
 
+  void jumpTo(DateTime date) {
+    calendarUI?.jumpTo(date);
+  }
+
 // calendar_screen_controller.dart
 
   void setViewMode(String mode) {

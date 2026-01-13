@@ -42,7 +42,7 @@ class BillingProfileCard extends StatelessWidget {
                 ),
                 _StatusChip(
                   label: isComplete ? l.billingComplete : l.billingMissing,
-                  color: isComplete ? cs.secondaryContainer : cs.surfaceVariant,
+                  color: isComplete ? cs.secondaryContainer : cs.surfaceContainerHighest,
                   textColor: isComplete
                       ? cs.onSecondaryContainer
                       : cs.onSurfaceVariant,

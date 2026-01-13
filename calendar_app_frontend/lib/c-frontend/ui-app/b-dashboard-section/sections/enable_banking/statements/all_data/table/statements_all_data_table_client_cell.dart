@@ -20,7 +20,7 @@ class StatementsAllDataTableClientCell extends StatelessWidget {
     }
     return Text(
       label,
-      style: typography.bodySmall.copyWith(color: cs.onSurfaceVariant),
+      style: typography.bodyMedium.copyWith(color: cs.onSurfaceVariant),
       overflow: TextOverflow.ellipsis,
     );
   }

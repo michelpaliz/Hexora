@@ -3,19 +3,26 @@ import 'package:intl/intl.dart';
 
 class StatementsFormatters {
   static String formatDate(BuildContext context, dynamic value) {
-    if (value == null) return '';
     final locale = _resolveLocale(context);
-    DateTime? dt;
-    if (value is DateTime) {
-      dt = value;
-    } else {
-      final raw = value.toString().trim();
-      if (raw.isEmpty) return '';
-      dt = DateTime.tryParse(raw);
-    }
-    if (dt == null) return value.toString();
+    final dt = _parseDateValue(value, locale);
+    if (dt == null) return value?.toString() ?? '';
     final local = dt.toLocal();
     return DateFormat.yMd(locale).format(local);
+  }
+
+  static String formatDateTime(
+    BuildContext context,
+    dynamic value, {
+    bool includeTime = true,
+  }) {
+    final locale = _resolveLocale(context);
+    final dt = _parseDateValue(value, locale);
+    if (dt == null) return value?.toString() ?? '';
+    final local = dt.toLocal();
+    final date = DateFormat.yMd(locale).format(local);
+    if (!includeTime) return date;
+    final time = DateFormat.Hm(locale).format(local);
+    return '$date • $time';
   }
 
   static String formatAmount(
@@ -73,10 +80,24 @@ class StatementsFormatters {
   static num? _tryParseNum(dynamic value) {
     if (value == null) return null;
     if (value is num) return value;
-    final raw = value.toString().trim();
+    var raw = value.toString().trim();
     if (raw.isEmpty) return null;
+    var negative = false;
+    if (raw.startsWith('(') && raw.endsWith(')')) {
+      negative = true;
+      raw = raw.substring(1, raw.length - 1).trim();
+    }
+    if (raw.endsWith('-')) {
+      negative = true;
+      raw = raw.substring(0, raw.length - 1).trim();
+    }
+    raw = raw.replaceAll(RegExp(r'[^0-9,.\- ]'), '');
+    raw = raw.replaceAll(RegExp(r'(?<!^)-'), '');
     final normalized = _normalizeNumberString(raw);
-    return num.tryParse(normalized);
+    final parsed = num.tryParse(normalized);
+    if (parsed == null) return null;
+    if (negative && parsed > 0) return -parsed;
+    return parsed;
   }
 
   static String _normalizeNumberString(String raw) {
@@ -102,10 +123,90 @@ class StatementsFormatters {
   }
 
   static String _normalizeSingleSeparator(String raw, String sep) {
-    final parts = raw.split(sep);
-    if (parts.length == 2 && parts[1].length <= 3) {
-      return '${parts[0].replaceAll(sep, '')}.${parts[1]}'.replaceAll(' ', '');
+    final trimmed = raw.replaceAll(' ', '');
+    final isNegative = trimmed.startsWith('-');
+    final unsigned = isNegative ? trimmed.substring(1) : trimmed;
+    final parts = unsigned.split(sep);
+    if (parts.length == 2) {
+      if (parts[1].length == 3) {
+        final normalized = unsigned.replaceAll(sep, '');
+        return isNegative ? '-$normalized' : normalized;
+      }
+      if (parts[1].length <= 3) {
+        final normalized = '${parts[0]}.${parts[1]}';
+        return isNegative ? '-$normalized' : normalized;
+      }
+      final extraDecimals = parts[1].length - 3;
+      if (extraDecimals > 0) {
+        final digits = parts.join();
+        if (digits.length > extraDecimals) {
+          final splitAt = digits.length - extraDecimals;
+          final normalized =
+              '${digits.substring(0, splitAt)}.${digits.substring(splitAt)}';
+          return isNegative ? '-$normalized' : normalized;
+        }
+      }
     }
-    return raw.replaceAll(sep, '').replaceAll(' ', '');
+    final normalized = unsigned.replaceAll(sep, '');
+    return isNegative ? '-$normalized' : normalized;
+  }
+
+  static DateTime? _dateFromEpoch(int? epoch) {
+    if (epoch == null) return null;
+    if (epoch.abs() < 1000000000000) {
+      return DateTime.fromMillisecondsSinceEpoch(epoch * 1000, isUtc: true);
+    }
+    return DateTime.fromMillisecondsSinceEpoch(epoch, isUtc: true);
+  }
+
+  static DateTime? _tryParseDate(String raw, String locale) {
+    final useMonthFirst = locale.startsWith('en');
+    final monthFirst = [
+      'M/d/yyyy',
+      'M/d/yy',
+      'MM/dd/yyyy',
+      'MM/dd/yy',
+    ];
+    final dayFirst = [
+      'd/M/yyyy',
+      'd/M/yy',
+      'dd/MM/yyyy',
+      'dd/MM/yy',
+    ];
+    final shared = [
+      'yyyy/M/d',
+      'yyyy-MM-dd',
+      'yyyy.MM.dd',
+      'dd-MM-yyyy',
+      'dd.MM.yyyy',
+      'MM-dd-yyyy',
+      'MM.dd.yyyy',
+      'yyyyMMdd',
+    ];
+    final patterns = <String>[
+      ...(useMonthFirst ? monthFirst : dayFirst),
+      ...shared,
+      ...(useMonthFirst ? dayFirst : monthFirst),
+    ];
+    for (final pattern in patterns) {
+      try {
+        return DateFormat(pattern).parseStrict(raw);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  static DateTime? _parseDateValue(dynamic value, String locale) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is int) return _dateFromEpoch(value);
+    if (value is double) return _dateFromEpoch(value.round());
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return null;
+    if (RegExp(r'^\d+$').hasMatch(raw)) {
+      final epoch = int.tryParse(raw);
+      return _dateFromEpoch(epoch);
+    }
+    return DateTime.tryParse(raw) ?? _tryParseDate(raw, locale);
   }
 }

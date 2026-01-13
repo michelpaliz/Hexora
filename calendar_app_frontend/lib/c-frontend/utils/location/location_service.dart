@@ -46,7 +46,7 @@ class LocationService {
         place.locality,
         place.subAdministrativeArea,
         place.country,
-      ].where((p) => p != null && p!.trim().isNotEmpty).toList();
+      ].where((p) => p != null && p.trim().isNotEmpty).toList();
 
       final label = parts.join(', ');
       debugPrint('[LocationService] Resolved city: "$label"');

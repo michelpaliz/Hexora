@@ -105,6 +105,15 @@ class UserRepository implements IUserRepository {
           String userName) async =>
       _svc.getNotificationsByUser(userName, token: await _token());
 
+  // -------- Auto statement import --------
+  @override
+  Future<bool> setAutoStatementImportEnabled({required bool enabled}) async {
+    return _svc.setAutoStatementImportEnabled(
+      enabled: enabled,
+      token: await _token(),
+    );
+  }
+
   // -------- Generic selector --------
   @override
   Future<User> getUserBySelector(String selector) async =>

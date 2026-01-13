@@ -53,7 +53,7 @@ class RepeatFrequencySelector extends StatelessWidget {
           onSelected: (_) => onSelectFrequency(frequency),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           selectedColor: cs.primaryContainer,
-          backgroundColor: cs.surfaceVariant.withOpacity(0.65),
+          backgroundColor: cs.surfaceContainerHighest.withOpacity(0.65),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(

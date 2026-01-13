@@ -29,6 +29,7 @@ class _SettingsState extends State<Settings> {
   late User? currentUser;
   String userName = "";
   static const String _appVersion = '1.0.0';
+  bool _autoStatementImportLoading = false;
 
   @override
   void didChangeDependencies() {
@@ -167,6 +168,20 @@ class _SettingsState extends State<Settings> {
         .showSnackBar(SnackBar(content: Text(text, style: bodyS)));
   }
 
+  Future<void> _toggleAutoStatementImport(bool enabled) async {
+    if (_autoStatementImportLoading) return;
+    setState(() => _autoStatementImportLoading = true);
+    try {
+      await context.read<AuthProvider>().setAutoStatementImportEnabled(enabled);
+    } catch (_) {
+      _snack(AppLocalizations.of(context)!.autoStatementImportUpdateFailed);
+    } finally {
+      if (mounted) {
+        setState(() => _autoStatementImportLoading = false);
+      }
+    }
+  }
+
   // ===== UI =====
 
   @override
@@ -180,8 +195,8 @@ class _SettingsState extends State<Settings> {
     final bg = isDark ? AppDarkColors.background : AppColors.background;
     final cs = Theme.of(context).colorScheme;
 
-    return Consumer<ThemeModeProvider>(
-      builder: (_, themeModeProv, __) => Scaffold(
+    return Consumer2<ThemeModeProvider, AuthProvider>(
+      builder: (_, themeModeProv, authProvider, __) => Scaffold(
         appBar: AppBar(
           backgroundColor: cs.surface,
           iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
@@ -235,6 +250,11 @@ class _SettingsState extends State<Settings> {
                 onToggleDark: () => themeModeProv.toggleLightDark(),
                 languageName: _languageName(context),
                 onChangeLanguage: _openLanguageSheet,
+                autoStatementImportEnabled:
+                    authProvider.currentUser?.autoStatementImportEnabled ??
+                        false,
+                autoStatementImportBusy: _autoStatementImportLoading,
+                onToggleAutoStatementImport: _toggleAutoStatementImport,
               ),
             ),
             const SizedBox(height: 24),

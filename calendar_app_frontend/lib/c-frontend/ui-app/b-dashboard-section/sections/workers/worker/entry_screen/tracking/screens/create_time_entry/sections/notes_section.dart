@@ -39,7 +39,7 @@ class NotesSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             filled: true,
-            fillColor: Theme.of(context).colorScheme.surfaceVariant,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
           ),
           maxLines: 3,
         ),

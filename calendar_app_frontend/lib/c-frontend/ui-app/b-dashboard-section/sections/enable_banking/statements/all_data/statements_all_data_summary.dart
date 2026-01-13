@@ -25,7 +25,7 @@ class StatementsAllDataSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.35),
+        color: cs.surfaceContainerHighest.withOpacity(0.35),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

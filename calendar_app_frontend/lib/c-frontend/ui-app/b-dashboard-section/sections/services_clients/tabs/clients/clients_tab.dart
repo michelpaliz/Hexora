@@ -90,7 +90,7 @@ class ClientsTab extends StatelessWidget {
                 Switch(
                   value: showInactive,
                   onChanged: onToggleInactive,
-                  activeColor: cs.primary,
+                  activeThumbColor: cs.primary,
                 ),
               ],
             ),

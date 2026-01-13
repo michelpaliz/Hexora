@@ -30,6 +30,12 @@ abstract class IUserApiClient {
     required String token,
   });
 
+  // Auto statement import
+  Future<bool> setAutoStatementImportEnabled({
+    required bool enabled,
+    required String token,
+  });
+
   // Generic selector
   Future<User> getUserBySelector(String selector, {String? token});
 }

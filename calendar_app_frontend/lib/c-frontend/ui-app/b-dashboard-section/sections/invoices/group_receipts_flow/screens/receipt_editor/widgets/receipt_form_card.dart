@@ -75,7 +75,7 @@ class ReceiptFormCard extends StatelessWidget {
                 Expanded(
                   flex: 3,
                   child: DropdownButtonFormField<String>(
-                    value: clientId,
+                    initialValue: clientId,
                     items: clients
                         .map(
                           (c) => DropdownMenuItem(

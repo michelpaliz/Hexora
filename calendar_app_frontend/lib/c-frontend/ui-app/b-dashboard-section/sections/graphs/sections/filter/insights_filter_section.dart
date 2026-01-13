@@ -110,7 +110,7 @@ class InsightsFiltersSection extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 decoration: BoxDecoration(
                   // subtle fill + hairline border for emphasis
-                  color: cs.surfaceVariant.withOpacity(.55),
+                  color: cs.surfaceContainerHighest.withOpacity(.55),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: cs.outlineVariant.withOpacity(.6)),
                 ),

@@ -3566,6 +3566,17 @@ class AppLocalizationsEs extends AppLocalizations {
       'Completa el paso anterior para continuar.';
 
   @override
+  String get autoStatementImportTitle => 'Habilitar datos automáticos';
+
+  @override
+  String get autoStatementImportHelper =>
+      'Cuando está activado, importaremos automáticamente tu extracto diario de Caixa en tu cuenta.';
+
+  @override
+  String get autoStatementImportUpdateFailed =>
+      'No se pudo actualizar la configuración de datos automáticos.';
+
+  @override
   String get statementsDragDropTitle => 'Sube tu extracto';
 
   @override
@@ -4263,4 +4274,319 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statementsImportExcelTab => 'Excel';
+
+  @override
+  String get expenseUploadTitle => 'Subir gasto';
+
+  @override
+  String get expenseUploadFileSectionTitle => 'Archivo';
+
+  @override
+  String get expenseUploadFileDropHint => 'Arrastra el archivo aquí';
+
+  @override
+  String get expenseUploadFileOrLabel => 'o';
+
+  @override
+  String get expenseUploadFileSelectPlaceholder => 'Selecciona un archivo';
+
+  @override
+  String get expenseUploadFileSelectCta => 'Elegir archivo';
+
+  @override
+  String get expenseUploadProviderSavedLabel => 'Proveedor guardado';
+
+  @override
+  String get expenseUploadProviderManualOption => 'Proveedor manual';
+
+  @override
+  String get expenseUploadProviderSearchPlaceholder => 'Buscar proveedor';
+
+  @override
+  String get expenseUploadDataSectionTitle => 'Datos';
+
+  @override
+  String get expenseUploadVendorLabel => 'Proveedor';
+
+  @override
+  String get expenseUploadIssueDateLabel => 'Fecha emisión';
+
+  @override
+  String get expenseUploadDateButtonLabel => 'Fecha';
+
+  @override
+  String get expenseUploadTotalLabel => 'Total';
+
+  @override
+  String get expenseUploadVendorTaxIdLabel => 'NIF proveedor';
+
+  @override
+  String get expenseUploadInvoiceNumberLabel => 'Número factura';
+
+  @override
+  String get expenseUploadDueDateLabel => 'Fecha vencimiento';
+
+  @override
+  String get expenseUploadTaxTotalLabel => 'IVA total';
+
+  @override
+  String get expenseUploadCurrencyLabel => 'Moneda';
+
+  @override
+  String get expenseUploadNotesLabel => 'Notas';
+
+  @override
+  String get expenseUploadSubmitCta => 'Subir gasto';
+
+  @override
+  String get expenseUploadFileHelp =>
+      'Después de seleccionar el archivo, completa los datos en Organizar.';
+
+  @override
+  String get expenseUploadEmptyList => 'Sin gastos subidos en esta sesión.';
+
+  @override
+  String get expenseUploadNewProviderTitle => 'Nuevo proveedor';
+
+  @override
+  String get expenseUploadEditProviderTitle => 'Editar proveedor';
+
+  @override
+  String get expenseUploadProviderNameLabel => 'Nombre';
+
+  @override
+  String get expenseUploadProviderTaxIdLabel => 'NIF';
+
+  @override
+  String get expenseUploadProviderEmailLabel => 'Email';
+
+  @override
+  String get expenseUploadProviderPhoneLabel => 'Teléfono';
+
+  @override
+  String get expenseUploadProviderStreetLabel => 'Calle';
+
+  @override
+  String get expenseUploadProviderExtraLabel => 'Extra';
+
+  @override
+  String get expenseUploadProviderCityLabel => 'Ciudad';
+
+  @override
+  String get expenseUploadProviderProvinceLabel => 'Provincia';
+
+  @override
+  String get expenseUploadProviderPostalCodeLabel => 'Código postal';
+
+  @override
+  String get expenseUploadProviderCountryLabel => 'País';
+
+  @override
+  String get expenseUploadProviderSaveCta => 'Guardar';
+
+  @override
+  String get expenseUploadProviderUpdateCta => 'Actualizar';
+
+  @override
+  String get expenseUploadProviderClearCta => 'Limpiar';
+
+  @override
+  String get expenseUploadProvidersEmpty => 'Sin proveedores';
+
+  @override
+  String get expenseUploadProvidersSelectHint => 'Selecciona un proveedor';
+
+  @override
+  String get expenseUploadProvidersNoExpenses =>
+      'Sin gastos para este proveedor.';
+
+  @override
+  String get expenseUploadSelectFileError => 'Selecciona un archivo';
+
+  @override
+  String get expenseUploadRequiredFieldsError =>
+      'Proveedor y fecha son obligatorios';
+
+  @override
+  String get expenseUploadTotalOrLinesError =>
+      'Total o líneas son obligatorios';
+
+  @override
+  String get expenseUploadLinesInvalidError =>
+      'Completa descripción, cantidad, precio unitario y IVA en todas las líneas';
+
+  @override
+  String get expenseUploadInvalidIssueDateError => 'Fecha de emisión inválida';
+
+  @override
+  String get expenseUploadSuccessSnack => 'Gasto subido';
+
+  @override
+  String get expenseUploadTabOrganize => 'Organizar';
+
+  @override
+  String get expenseUploadTabFile => 'Archivo';
+
+  @override
+  String get expenseUploadTabList => 'Lista';
+
+  @override
+  String get expenseUploadTabUpload => 'Subir';
+
+  @override
+  String get expenseUploadTabByProvider => 'Por proveedor';
+
+  @override
+  String get expenseUploadTabProviders => 'Proveedores';
+
+  @override
+  String get expenseUploadProvidersListTitle => 'Proveedores';
+
+  @override
+  String get expenseUploadProvidersInvoicesTitle => 'Gastos del proveedor';
+
+  @override
+  String get expenseUploadLinesTitle => 'Líneas';
+
+  @override
+  String get expenseUploadLinesEmpty => 'Sin líneas todavía.';
+
+  @override
+  String get expenseUploadLinesAddCta => 'Añadir línea';
+
+  @override
+  String get expenseUploadLinesItemLabel => 'Línea';
+
+  @override
+  String get expenseUploadLinesDescriptionLabel => 'Descripción';
+
+  @override
+  String get expenseUploadLinesQuantityLabel => 'Cantidad';
+
+  @override
+  String get expenseUploadLinesUnitPriceLabel => 'Precio unitario';
+
+  @override
+  String get expenseUploadLinesTaxRateLabel => 'IVA %';
+
+  @override
+  String get expenseUploadLinesSubtotalLabel => 'Base';
+
+  @override
+  String get expenseUploadLinesTaxLabel => 'IVA';
+
+  @override
+  String get expenseUploadLinesTotalLabel => 'Total';
+
+  @override
+  String get expenseUploadTotalAutoHelper =>
+      'Calculado automáticamente desde las líneas';
+
+  @override
+  String get expenseUploadVatBreakdownTitle => 'Desglose IVA';
+
+  @override
+  String get expenseUploadVatRateLabel => 'Tipo';
+
+  @override
+  String get expenseUploadVatBaseLabel => 'Base';
+
+  @override
+  String get expenseUploadVatTaxLabel => 'IVA';
+
+  @override
+  String get vatSummaryMenuLabel => 'Resumen IVA';
+
+  @override
+  String get vatSummaryTitle => 'Resumen IVA';
+
+  @override
+  String get vatSummaryPrevYear => 'Año anterior';
+
+  @override
+  String get vatSummaryNextYear => 'Año siguiente';
+
+  @override
+  String get vatSummaryQuarterQ1 => 'T1';
+
+  @override
+  String get vatSummaryQuarterQ2 => 'T2';
+
+  @override
+  String get vatSummaryQuarterQ3 => 'T3';
+
+  @override
+  String get vatSummaryQuarterQ4 => 'T4';
+
+  @override
+  String vatSummaryQuarterRangeLabel(String quarter, String range) {
+    return 'Trimestre $quarter: $range';
+  }
+
+  @override
+  String vatSummaryQuarterRangeQ1(Object year) {
+    return '1 ene – 31 mar $year';
+  }
+
+  @override
+  String vatSummaryQuarterRangeQ2(Object year) {
+    return '1 abr – 30 jun $year';
+  }
+
+  @override
+  String vatSummaryQuarterRangeQ3(Object year) {
+    return '1 jul – 30 sep $year';
+  }
+
+  @override
+  String vatSummaryQuarterRangeQ4(Object year) {
+    return '1 oct – 31 dic $year';
+  }
+
+  @override
+  String vatSummaryQuarterDeadlineQ1(Object year) {
+    return 'Límite: 20 abr $year';
+  }
+
+  @override
+  String vatSummaryQuarterDeadlineQ2(Object year) {
+    return 'Límite: 20 jul $year';
+  }
+
+  @override
+  String vatSummaryQuarterDeadlineQ3(Object year) {
+    return 'Límite: 20 oct $year';
+  }
+
+  @override
+  String vatSummaryQuarterDeadlineQ4(Object year) {
+    return 'Límite: 30 ene $year';
+  }
+
+  @override
+  String get vatSummaryNoData => 'Sin resumen IVA disponible.';
+
+  @override
+  String get vatSummarySalesTitle => 'Ventas';
+
+  @override
+  String get vatSummaryPurchasesTitle => 'Compras';
+
+  @override
+  String get vatSummaryNetTitle => 'IVA neto';
+
+  @override
+  String get vatSummaryNoRates => 'Sin tipos para este trimestre.';
+
+  @override
+  String get vatSummaryRateLabel => 'Tipo';
+
+  @override
+  String get vatSummaryBaseLabel => 'Base';
+
+  @override
+  String get vatSummaryTaxLabel => 'IVA';
+
+  @override
+  String get vatSummaryTotalsLabel => 'Totales';
 }

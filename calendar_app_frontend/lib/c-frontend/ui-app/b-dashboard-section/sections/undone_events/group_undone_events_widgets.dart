@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 class UndoneEventsPlaceholder extends StatelessWidget {
   const UndoneEventsPlaceholder({
@@ -79,6 +79,14 @@ class PendingEventTile extends StatelessWidget {
     final timeRange =
         '${ml.formatTimeOfDay(TimeOfDay.fromDateTime(event.startDate))} – '
         '${ml.formatTimeOfDay(TimeOfDay.fromDateTime(event.endDate))}';
+    final durationStr = event.allDay
+        ? null
+        : _formatDuration(
+            event.endDate.difference(event.startDate),
+            Localizations.localeOf(context).toLanguageTag(),
+          );
+    final timeLine =
+        durationStr == null ? timeRange : '$timeRange • $durationStr';
     final title = event.title.isEmpty ? loc.untitledEvent : event.title.trim();
     final isBusy = viewModel.isProcessing(event.id);
     final iconColor = accentColor ??
@@ -125,7 +133,7 @@ class PendingEventTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            '$date · $timeRange',
+            '$date · $timeLine',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -152,4 +160,17 @@ class PendingEventTile extends StatelessWidget {
           : Icon(Icons.task_alt_rounded, color: iconColor),
     );
   }
+}
+
+String _formatDuration(Duration duration, String locale) {
+  final totalMinutes = duration.inMinutes;
+  if (totalMinutes <= 0) return '0m';
+  final hours = totalMinutes ~/ 60;
+  final minutes = totalMinutes % 60;
+  final nf = NumberFormat.decimalPattern(locale);
+  if (hours > 0 && minutes > 0) {
+    return '${nf.format(hours)}h ${nf.format(minutes)}m';
+  }
+  if (hours > 0) return '${nf.format(hours)}h';
+  return '${nf.format(minutes)}m';
 }

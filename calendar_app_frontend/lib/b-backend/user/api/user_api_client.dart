@@ -209,6 +209,34 @@ class UserApiClient implements IUserApiClient {
         'Failed to get notifications: ${res.statusCode} ${res.reasonPhrase}');
   }
 
+  // -------- Auto statement import --------
+  @override
+  Future<bool> setAutoStatementImportEnabled({
+    required bool enabled,
+    required String token,
+  }) async {
+    final res = await http.patch(
+      Uri.parse('${ApiConstants.baseUrl}/users/me/auto-statement-import'),
+      headers: _headers(token: token),
+      body: jsonEncode({'enabled': enabled}),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (res.body.isEmpty) return enabled;
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map &&
+          decoded['autoStatementImportEnabled'] is bool) {
+        return decoded['autoStatementImportEnabled'] as bool;
+      }
+      if (decoded is Map && decoded['enabled'] is bool) {
+        return decoded['enabled'] as bool;
+      }
+      return enabled;
+    }
+    throw Exception(
+        'Failed to update auto statement import: ${res.statusCode} ${res.reasonPhrase}');
+  }
+
   // -------- Generic selector --------
   @override
   Future<User> getUserBySelector(String selector, {String? token}) async {

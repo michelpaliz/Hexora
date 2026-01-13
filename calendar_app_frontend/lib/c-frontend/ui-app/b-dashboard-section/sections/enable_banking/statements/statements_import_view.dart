@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
-import 'statements_history_tab.dart';
 import '../statements_tab.dart';
+import 'statements_history_tab.dart';
 
 class StatementsImportView extends StatelessWidget {
   const StatementsImportView({super.key});

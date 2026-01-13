@@ -71,7 +71,7 @@ class WorkerRoleCard extends StatelessWidget {
                 SizedBox(
                   width: 150,
                   child: DropdownButtonFormField<String>(
-                    value: selectedCurrency,
+                    initialValue: selectedCurrency,
                     decoration: InputDecoration(
                       labelText: l.currencyLabel,
                       border: OutlineInputBorder(

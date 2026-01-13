@@ -54,7 +54,7 @@ class ServicesWrap extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            backgroundColor: cs.surfaceVariant.withOpacity(.6),
+            backgroundColor: cs.surfaceContainerHighest.withOpacity(.6),
             side: BorderSide(color: cs.outlineVariant, width: 0.6),
             onPressed: () {
               showModalBottomSheet(

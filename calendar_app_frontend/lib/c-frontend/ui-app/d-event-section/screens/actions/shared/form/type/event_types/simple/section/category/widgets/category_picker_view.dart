@@ -53,7 +53,7 @@ class CategoryPickerView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: LinearProgressIndicator(
           minHeight: 4,
-          backgroundColor: cs.surfaceVariant,
+          backgroundColor: cs.surfaceContainerHighest,
         ),
       );
     }
@@ -111,7 +111,7 @@ class CategoryPickerView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: cs.surfaceVariant.withOpacity(.5),
+              color: cs.surfaceContainerHighest.withOpacity(.5),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: cs.outlineVariant.withOpacity(.6)),
             ),
@@ -147,7 +147,7 @@ class CategoryPickerView extends StatelessWidget {
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: selectedCategoryId,
+                initialValue: selectedCategoryId,
                 decoration: InputDecoration(
                   labelText:
                       showFieldLabels ? l10n.category : null, // 🔑 no dup
@@ -178,7 +178,7 @@ class CategoryPickerView extends StatelessWidget {
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: selectedSubcategoryId,
+                initialValue: selectedSubcategoryId,
                 decoration: InputDecoration(
                   labelText:
                       showFieldLabels ? l10n.subcategory : null, // 🔑 no dup

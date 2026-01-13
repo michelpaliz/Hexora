@@ -92,7 +92,7 @@ class _Pill extends StatelessWidget {
     final pill = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.45),
+        color: cs.surfaceContainerHighest.withOpacity(0.45),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: cs.outlineVariant.withOpacity(0.4)),
       ),
@@ -132,7 +132,7 @@ class _PillsSkeleton extends StatelessWidget {
           width: w,
           height: 28,
           decoration: BoxDecoration(
-            color: cs.surfaceVariant.withOpacity(0.5),
+            color: cs.surfaceContainerHighest.withOpacity(0.5),
             borderRadius: BorderRadius.circular(999),
           ),
         );

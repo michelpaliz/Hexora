@@ -15,11 +15,18 @@ class ThemeModeProvider with ChangeNotifier {
   bool get isLoaded => _loaded;
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    _mode = _stringToMode(raw) ?? ThemeMode.system;
-    _loaded = true;
-    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_key);
+      _mode = _stringToMode(raw) ?? ThemeMode.system;
+    } catch (e) {
+      // Web localStorage can be corrupted; fall back to defaults.
+      _mode = ThemeMode.system;
+      debugPrint('[ThemeModeProvider] prefs init failed: $e');
+    } finally {
+      _loaded = true;
+      notifyListeners();
+    }
   }
 
   Future<void> setMode(ThemeMode mode) async {

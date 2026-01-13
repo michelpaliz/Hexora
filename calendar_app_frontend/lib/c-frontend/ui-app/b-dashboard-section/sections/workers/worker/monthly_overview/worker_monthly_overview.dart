@@ -139,7 +139,7 @@ class _WorkerMonthlyOverviewScreenState
         color: theme.colorScheme.surface,
       ),
       colorScheme: theme.colorScheme.copyWith(
-        surfaceVariant: theme.colorScheme.surface,
+        surfaceContainerHighest: theme.colorScheme.surface,
         onSurfaceVariant: theme.colorScheme.onSurface,
       ),
     );

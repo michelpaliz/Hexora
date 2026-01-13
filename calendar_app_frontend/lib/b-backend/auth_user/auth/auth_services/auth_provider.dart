@@ -190,6 +190,18 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
     return null;
   }
 
+  Future<bool> setAutoStatementImportEnabled(bool enabled) async {
+    if (_authToken == null) throw UserNotSignedInException();
+    final updated =
+        await _userRepo.setAutoStatementImportEnabled(enabled: enabled);
+    if (_user != null) {
+      _setCurrentUser(
+        _user!.copyWith(autoStatementImportEnabled: updated),
+      );
+    }
+    return updated;
+  }
+
   // REFRESH
   Future<bool> _tryRefreshToken() async {
     final refreshToken = await _tokens.readRefresh();

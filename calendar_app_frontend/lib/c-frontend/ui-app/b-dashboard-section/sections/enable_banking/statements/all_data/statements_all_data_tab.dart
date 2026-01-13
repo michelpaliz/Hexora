@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../statements_controller.dart';
 import '../statements_formatters.dart';
@@ -14,6 +16,7 @@ import 'statements_all_data_filters.dart';
 import 'statements_all_data_skeleton.dart';
 import 'statements_all_data_summary.dart';
 import 'table/statements_all_data_table.dart';
+import 'table/statements_all_data_table_theme.dart';
 
 class StatementsAllDataTab extends StatefulWidget {
   const StatementsAllDataTab({super.key});
@@ -31,6 +34,9 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   final Set<String> _selectedIds = <String>{};
   bool _didLoad = false;
   bool _filtersCollapsed = false;
+  bool _isSoftDarkTable = false;
+  bool _autoStatementImportLoading = false;
+  static const _tableThemePrefKey = 'statements_table_soft_dark';
 
   @override
   bool get wantKeepAlive => true;
@@ -41,6 +47,21 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     _fromController.dispose();
     _toController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTableThemePref();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _didLoad) return;
+      _didLoad = true;
+      final s = context.read<StatementsController>();
+      if (s.allEntries.isNotEmpty || s.loadingAllEntries) {
+        return;
+      }
+      s.loadAllEntries();
+    });
   }
 
   int? _parseYear(String value) {
@@ -55,6 +76,43 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final trimmed = value.trim();
     if (trimmed.isEmpty) return null;
     return DateTime.tryParse(trimmed);
+  }
+
+  DateTime? _entryDate(Map<String, dynamic> entry) {
+    final candidates = [
+      entry['valueDate'],
+      entry['date'],
+      entry['createdAt'],
+      entry['updatedAt'],
+    ];
+    for (final raw in candidates) {
+      if (raw == null) continue;
+      if (raw is DateTime) return raw;
+      if (raw is int) {
+        return DateTime.fromMillisecondsSinceEpoch(
+            raw.abs() < 1000000000000 ? raw * 1000 : raw,
+            isUtc: true);
+      }
+      if (raw is double) {
+        final v = raw.round();
+        return DateTime.fromMillisecondsSinceEpoch(
+            v.abs() < 1000000000000 ? v * 1000 : v,
+            isUtc: true);
+      }
+      final s = raw.toString().trim();
+      if (s.isEmpty) continue;
+      final parsed = DateTime.tryParse(s);
+      if (parsed != null) return parsed;
+      if (RegExp(r'^\d+$').hasMatch(s)) {
+        final v = int.tryParse(s);
+        if (v != null) {
+          return DateTime.fromMillisecondsSinceEpoch(
+              v.abs() < 1000000000000 ? v * 1000 : v,
+              isUtc: true);
+        }
+      }
+    }
+    return null;
   }
 
   Future<void> _applyFilters(StatementsController s) async {
@@ -214,7 +272,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       if (parsed != null) total += parsed;
       final dateText = StatementsShared.entryText(entry, ['valueDate', 'date']);
       final dt = DateTime.tryParse(dateText);
-      if (dt != null && (latestDate == null || dt.isAfter(latestDate!))) {
+      if (dt != null && (latestDate == null || dt.isAfter(latestDate))) {
         latestDate = dt;
         latestEntry = entry;
       }
@@ -375,27 +433,59 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _didLoad) return;
-      _didLoad = true;
-      final s = context.read<StatementsController>();
-      if (s.allEntries.isNotEmpty || s.loadingAllEntries) {
-        return;
-      }
-      s.loadAllEntries();
+  Future<void> _loadTableThemePref() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        _isSoftDarkTable = prefs.getBool(_tableThemePrefKey) ?? false;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _toggleTableTheme() async {
+    setState(() {
+      _isSoftDarkTable = !_isSoftDarkTable;
     });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_tableThemePrefKey, _isSoftDarkTable);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleAutoStatementImport(bool enabled) async {
+    if (_autoStatementImportLoading) return;
+    setState(() => _autoStatementImportLoading = true);
+    try {
+      await context.read<AuthProvider>().setAutoStatementImportEnabled(enabled);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.autoStatementImportUpdateFailed,
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _autoStatementImportLoading = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final s = context.watch<StatementsController>();
+    final auth = context.watch<AuthProvider>();
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final typography = AppTypography.of(context);
+    final tableTheme = _isSoftDarkTable
+        ? StatementsTableTheme.softDark(cs)
+        : StatementsTableTheme.light(cs);
 
     final totalPages = s.allEntriesSize == 0
         ? 1
@@ -405,6 +495,14 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final visibleEntries = (start >= 0 && start < s.allEntries.length)
         ? s.allEntries.sublist(start, end)
         : const <Map<String, dynamic>>[];
+    final sortedEntries = [...visibleEntries]..sort((a, b) {
+        final aDate = _entryDate(a);
+        final bDate = _entryDate(b);
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        return bDate.compareTo(aDate);
+      });
     final summary = _computeSummary(context, s.allEntries);
 
     if (s.allEntriesYear != null &&
@@ -421,6 +519,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     }
 
     final freshnessBatchId = _resolveFreshnessBatchId(s);
+    final autoImportEnabled =
+        auth.currentUser?.autoStatementImportEnabled ?? false;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -462,6 +562,21 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                     batchId: freshnessBatchId,
                   ),
                 ],
+                const SizedBox(height: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SwitchListTile.adaptive(
+                    title: Text(l.autoStatementImportTitle),
+                    subtitle: Text(l.autoStatementImportHelper),
+                    value: autoImportEnabled,
+                    onChanged: _autoStatementImportLoading
+                        ? null
+                        : (value) => _toggleAutoStatementImport(value),
+                  ),
+                ),
                 const SizedBox(height: 10),
                 Text(l.statementsAllDataSubtitle, style: typography.bodyMedium),
                 const SizedBox(height: 12),
@@ -574,48 +689,82 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                 else if (s.allEntries.isEmpty)
                   Text(l.statementsAllDataEmpty)
                 else
-                  StatementsAllDataTable(
-                    entries: visibleEntries,
-                    controller: s,
-                    selectedIds: _selectedIds,
-                    onToggleAll: (checked) {
-                      setState(() {
-                        if (checked) {
-                          for (final entry in visibleEntries) {
-                            final id =
-                                (entry['_id'] ?? entry['id'])?.toString();
-                            if (id != null && id.isNotEmpty) {
-                              _selectedIds.add(id);
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          tooltip: _isSoftDarkTable
+                              ? 'Tema claro'
+                              : 'Tema suave oscuro',
+                          onPressed: _toggleTableTheme,
+                          icon: Icon(
+                            _isSoftDarkTable
+                                ? Icons.light_mode_outlined
+                                : Icons.dark_mode_outlined,
+                            color: tableTheme.headerText,
+                          ),
+                        ),
+                      ),
+                      StatementsAllDataTable(
+                        entries: sortedEntries,
+                        controller: s,
+                        selectedIds: _selectedIds,
+                        tableTheme: tableTheme,
+                        onToggleAll: (checked) {
+                          setState(() {
+                            if (checked) {
+                              for (final entry in visibleEntries) {
+                                final id =
+                                    (entry['_id'] ?? entry['id'])?.toString();
+                                if (id != null && id.isNotEmpty) {
+                                  _selectedIds.add(id);
+                                }
+                              }
+                            } else {
+                              for (final entry in visibleEntries) {
+                                final id =
+                                    (entry['_id'] ?? entry['id'])?.toString();
+                                if (id != null) _selectedIds.remove(id);
+                              }
                             }
-                          }
-                        } else {
-                          for (final entry in visibleEntries) {
-                            final id =
-                                (entry['_id'] ?? entry['id'])?.toString();
-                            if (id != null) _selectedIds.remove(id);
-                          }
-                        }
-                      });
-                    },
-                    onToggleRow: (entryId) {
-                      setState(() {
-                        if (_selectedIds.contains(entryId)) {
-                          _selectedIds.remove(entryId);
-                        } else {
-                          _selectedIds.add(entryId);
-                        }
-                      });
-                    },
-                    onShowDetails: (entry) =>
-                        StatementsAllDataDetails.show(context, l, entry),
-                    onSuggest: (entry) async {
-                      await StatementsShared.showSuggestionsDialog(
-                          context, s, entry);
-                    },
-                    onLink: (entry) async {
-                      await StatementsShared.showClientPickerDialog(
-                          context, s, entry);
-                    },
+                          });
+                        },
+                        onToggleRow: (entryId) {
+                          setState(() {
+                            if (_selectedIds.contains(entryId)) {
+                              _selectedIds.remove(entryId);
+                            } else {
+                              _selectedIds.add(entryId);
+                            }
+                          });
+                        },
+                        onShowDetails: (entry) =>
+                            StatementsAllDataDetails.show(context, l, entry),
+                        onSuggest: (entry) async {
+                          await StatementsShared.showSuggestionsDialog(
+                              context, s, entry);
+                        },
+                        onLink: (entry) async {
+                          await StatementsShared.showClientPickerDialog(
+                              context, s, entry);
+                        },
+                        onLinkInvoice: (entry) async {
+                          final amountText =
+                              StatementsShared.entryText(entry, ['amount']);
+                          final amountValue =
+                              StatementsFormatters.parseAmount(amountText) ?? 0;
+                          final expenseOnly = amountValue < 0;
+                          await StatementsShared.showInvoiceLinkDialog(
+                            context,
+                            s,
+                            entry,
+                            expenseOnly: expenseOnly,
+                          );
+                        },
+                      ),
+                    ],
                   ),
               ],
             ),

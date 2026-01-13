@@ -92,7 +92,7 @@ class _EventFormRouterState extends State<EventFormRouter> {
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: cs.surfaceVariant.withOpacity(.5),
+            color: cs.surfaceContainerHighest.withOpacity(.5),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: cs.outlineVariant.withOpacity(.6)),
           ),

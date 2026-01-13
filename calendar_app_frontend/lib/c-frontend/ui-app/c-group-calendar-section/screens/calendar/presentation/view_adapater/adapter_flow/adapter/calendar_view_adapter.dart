@@ -1,5 +1,6 @@
 // lib/c-frontend/c-group-calendar-section/screens/calendar/presentation/view_adapater/adapter_flow/adapter/calendar_view_adapter.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/weather/day_summary.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
@@ -41,6 +42,10 @@ class CalendarViewAdapter implements SupportsViewMode {
     _state.jumpToToday();
   }
 
+  void jumpTo(DateTime date) {
+    _state.jumpTo(date);
+  }
+
   void rebindEventDomain(EventDomain newDomain) {
     _binding.rebind(newDomain);
   }
@@ -70,15 +75,23 @@ class CalendarViewAdapter implements SupportsViewMode {
 
   String? get currentEventFilterUserId => _state.currentFilterUserId;
 
+  ValueNotifier<List<Event>> get allEventsNotifier => _state.allEvents;
+
   // ---- UI -------------------------------------------------------------------
 
-  Widget buildCalendar(BuildContext context, {double? height, double? width}) {
+  Widget buildCalendar(
+    BuildContext context, {
+    double? height,
+    double? width,
+    String? forcedViewMode,
+  }) {
     return SizedBox(
       height: height,
       width: width,
       child: widgets.CalendarSurface(
         state: _state,
         apptBridge: _bridge,
+        forcedViewMode: forcedViewMode,
       ),
     );
   }

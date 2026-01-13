@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/services_section/right_panel_insights_inline.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/coordinator/calendar_screen_coordinator.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_tabs.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_topbar.dart';
@@ -12,6 +14,8 @@ import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calend
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/group_permissions_helper.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/presence_status_strip.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
+import 'package:hexora/c-frontend/ui-app/g-agenda-section/agenda_screen.dart';
+import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -24,14 +28,16 @@ class MainCalendarView extends StatefulWidget {
   State<MainCalendarView> createState() => _MainCalendarViewState();
 }
 
+enum _SidePanelView { upcoming, completed, insights }
+
 class _MainCalendarViewState extends State<MainCalendarView> {
   late final CalendarScreenCoordinator _c;
   bool _isBootstrapped = false;
   bool _weatherIconsEnabled = true;
   String? _selectedUserFilter;
-
-  // Default to Week view (using new CalTab enum)
-  int _initialIndex = CalTab.week.index;
+  _SidePanelView _panelView = _SidePanelView.upcoming;
+  bool _rightCollapsed = false;
+  bool _leftCollapsed = false;
 
   @override
   void initState() {
@@ -64,11 +70,6 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     }
   }
 
-  void _onTabChanged(int index) {
-    CalendarTabs.handleTabChanged(_c, index);
-    setState(() {});
-  }
-
   void _toggleWeatherIcons(bool value) {
     _weatherIconsEnabled = value;
     _c.calendarUI?.setShowWeatherIcons(value);
@@ -85,7 +86,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         builder: (dialogCtx) {
           final media = MediaQuery.of(dialogCtx).size;
           return Dialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: 980,
@@ -122,6 +124,19 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     _c.calendarUI?.setEventFilter(userId: userId);
   }
 
+  void _setPanelView(_SidePanelView view) {
+    if (_panelView == view) return;
+    setState(() => _panelView = view);
+  }
+
+  void _toggleRightPanel() {
+    setState(() => _rightCollapsed = !_rightCollapsed);
+  }
+
+  void _toggleLeftPanel() {
+    setState(() => _leftCollapsed = !_leftCollapsed);
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupDomain = context.watch<GroupDomain>();
@@ -149,7 +164,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             child: Scaffold(
               appBar: CalendarTopBar(
                 title: loc.calendarTitle, // localized
-                tabs: CalendarTabs.build(context), // themed & localized tabs
+                showTabs: false,
               ),
               body: SafeArea(
                 child: Center(
@@ -165,6 +180,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
         final canAddEvents =
             GroupPermissionHelper.canAddEvents(currentUser, currentGroup);
+        final currentRole =
+            GroupRole.fromWire(currentGroup.userRoles[currentUser.id]);
 
         Widget actionButtons({required bool vertical}) {
           final buttons = <Widget>[
@@ -209,7 +226,71 @@ class _MainCalendarViewState extends State<MainCalendarView> {
           );
         }
 
-        Widget calendarContent({required bool verticalActions}) {
+        Widget calendarContent({required bool showActions}) {
+          final calendarUI = _c.calendarUI;
+          final midTabs = [
+            Tab(text: loc.tabWeek),
+            Tab(text: loc.tabDay),
+            Tab(text: loc.tabAgenda),
+          ];
+          return DefaultTabController(
+            initialIndex: 0,
+            length: midTabs.length,
+            child: Column(
+              children: [
+                PresenceStatusStrip(
+                  group: currentGroup,
+                  controller: _c,
+                  selectedUserId: _selectedUserFilter,
+                  onUserSelected: _onUserFilterChanged,
+                ),
+                const SizedBox(height: 10),
+                TabBar(
+                  tabs: midTabs,
+                  isScrollable: false,
+                  labelStyle:
+                      typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                  unselectedLabelStyle: typo.bodySmall,
+                  labelColor: cs.primary,
+                  unselectedLabelColor: cs.onSurfaceVariant,
+                  indicator: const UnderlineTabIndicator(
+                    borderSide: BorderSide(width: 3),
+                  ),
+                  indicatorColor: cs.primary,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      calendarUI?.buildCalendar(
+                            context,
+                            forcedViewMode: 'week',
+                          ) ??
+                          const SizedBox(),
+                      calendarUI?.buildCalendar(
+                            context,
+                            forcedViewMode: 'day',
+                          ) ??
+                          const SizedBox(),
+                      calendarUI?.buildCalendar(
+                            context,
+                            forcedViewMode: 'agenda',
+                          ) ??
+                          const SizedBox(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (showActions) actionButtons(vertical: false),
+              ],
+            ),
+          );
+        }
+
+        Widget compactCalendarContent() {
+          final calendarUI = _c.calendarUI;
           return Column(
             children: [
               PresenceStatusStrip(
@@ -217,74 +298,330 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 controller: _c,
                 selectedUserId: _selectedUserFilter,
                 onUserSelected: _onUserFilterChanged,
+                showAllOption: false,
               ),
               const SizedBox(height: 10),
               Expanded(
-                child: _c.calendarUI?.buildCalendar(context) ??
-                    const SizedBox(),
+                child: TabBarView(
+                  children: [
+                    calendarUI?.buildCalendar(
+                          context,
+                          forcedViewMode: 'day',
+                        ) ??
+                        const SizedBox(),
+                    calendarUI?.buildCalendar(
+                          context,
+                          forcedViewMode: 'week',
+                        ) ??
+                        const SizedBox(),
+                    calendarUI?.buildCalendar(
+                          context,
+                          forcedViewMode: 'month',
+                        ) ??
+                        const SizedBox(),
+                    calendarUI?.buildCalendar(
+                          context,
+                          forcedViewMode: 'agenda',
+                        ) ??
+                        const SizedBox(),
+                  ],
+                ),
               ),
               const SizedBox(height: 8),
-              if (!verticalActions) actionButtons(vertical: false),
+              actionButtons(vertical: false),
             ],
           );
         }
 
-        return DefaultTabController(
-          length: CalTab.values.length,
-          initialIndex: _initialIndex,
-          child: CalendarTabsTheme(
-            child: Scaffold(
-              appBar: CalendarTopBar(
-                title: currentGroup.name,
-                tabs: CalendarTabs.build(context), // themed & localized tabs
-                onTabChanged: _onTabChanged,
-                actions: const [],
-                showWeatherToggle: true,
-                weatherIconsEnabled: _weatherIconsEnabled,
-                onWeatherToggle: _toggleWeatherIcons,
-              ),
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              body: SafeArea(
-                child: isWide
-                    ? Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1200),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: calendarContent(
-                                      verticalActions: true),
-                                ),
-                                const SizedBox(width: 16),
-                                SizedBox(
-                                  width: 280,
-                                  child: Card(
-                                    elevation: 2,
-                                    clipBehavior: Clip.antiAlias,
-                                    child: Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          16, 18, 16, 20),
-                                      child: actionButtons(vertical: true),
-                                    ),
-                                  ),
-                                ),
-                              ],
+        Widget calendarSidebar() {
+          final calendarUI = _c.calendarUI;
+          if (_leftCollapsed) {
+            return const Card(
+              elevation: 2,
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox.shrink(),
+            );
+          }
+          return Card(
+            elevation: 2,
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: calendarUI?.buildCalendar(
+                            context,
+                            forcedViewMode: 'month',
+                          ) ??
+                          Center(
+                            child: Text(
+                              loc.noGroupAvailable,
+                              style: typo.bodyMedium
+                                  .copyWith(color: cs.onSurfaceVariant),
                             ),
                           ),
-                        ),
-                      )
-                    : Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                        child:
-                            calendarContent(verticalActions: false),
-                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+          );
+        }
+
+        Widget eventsSidebar() {
+          final selectedColor = cs.primary;
+          final selectedBg = cs.primary.withOpacity(0.12);
+          final iconRail = Container(
+            width: 56,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withOpacity(0.35),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: cs.outlineVariant.withOpacity(0.4)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 6),
+                IconButton(
+                  tooltip: loc.sectionUpcoming,
+                  icon: Icon(
+                    Icons.upcoming_rounded,
+                    color: _panelView == _SidePanelView.upcoming
+                        ? selectedColor
+                        : cs.onSurfaceVariant,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: _panelView == _SidePanelView.upcoming
+                        ? selectedBg
+                        : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => _setPanelView(_SidePanelView.upcoming),
+                ),
+                IconButton(
+                  tooltip: loc.completedEventsSectionTitle,
+                  icon: Icon(
+                    Icons.task_alt_rounded,
+                    color: _panelView == _SidePanelView.completed
+                        ? selectedColor
+                        : cs.onSurfaceVariant,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: _panelView == _SidePanelView.completed
+                        ? selectedBg
+                        : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => _setPanelView(_SidePanelView.completed),
+                ),
+                IconButton(
+                  tooltip: loc.insightsTitle,
+                  icon: Icon(
+                    Icons.insights_rounded,
+                    color: _panelView == _SidePanelView.insights
+                        ? selectedColor
+                        : cs.onSurfaceVariant,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: _panelView == _SidePanelView.insights
+                        ? selectedBg
+                        : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => _setPanelView(_SidePanelView.insights),
+                ),
+                const SizedBox(height: 8),
+                Divider(
+                  height: 1,
+                  color: cs.outlineVariant.withOpacity(0.4),
+                ),
+                IconButton(
+                  tooltip: _rightCollapsed ? 'Expand' : 'Collapse',
+                  icon: Icon(
+                    _rightCollapsed
+                        ? Icons.chevron_left_rounded
+                        : Icons.chevron_right_rounded,
+                  ),
+                  onPressed: _toggleRightPanel,
+                ),
+              ],
+            ),
+          );
+
+          return SizedBox(
+            width: _rightCollapsed ? 56 : 420,
+            child: Row(
+              children: [
+                iconRail,
+                if (!_rightCollapsed) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: switch (_panelView) {
+                        _SidePanelView.upcoming => AgendaScreen(
+                            groupId: currentGroup.id,
+                            showBottomNav: false,
+                          ),
+                        _SidePanelView.completed => GroupUndoneEventsScreen(
+                            group: currentGroup,
+                            user: currentUser,
+                            role: currentRole,
+                            embedded: true,
+                          ),
+                        _SidePanelView.insights =>
+                          InsightsInlinePanel(group: currentGroup),
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+
+        final scaffold = Scaffold(
+          appBar: CalendarTopBar(
+            title: currentGroup.name,
+            showTabs: !isWide,
+            tabs: isWide ? const [] : CalendarTabs.build(context, large: true),
+            onTabChanged: isWide
+                ? null
+                : (index) => CalendarTabs.handleTabChanged(_c, index),
+            actions: isWide
+                ? [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: canAddEvents
+                          ? Container(
+                              decoration: BoxDecoration(
+                                color:
+                                    cs.surfaceContainerHighest.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: cs.outlineVariant.withOpacity(0.6),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.refresh_rounded),
+                                    tooltip: loc.refreshButton,
+                                    onPressed: _c.loading.value
+                                        ? null
+                                        : () async {
+                                            await _c.loadData(
+                                                initialGroup: currentGroup);
+                                            if (mounted) setState(() {});
+                                          },
+                                  ),
+                                  Container(
+                                    width: 1,
+                                    height: 24,
+                                    color: cs.outlineVariant.withOpacity(0.6),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        _openAddEvent(currentGroup),
+                                    icon:
+                                        const Icon(Icons.add_rounded, size: 18),
+                                    label: Text(
+                                      loc.addEvent,
+                                      style: typo.bodySmall.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: cs.onPrimary,
+                                      backgroundColor: cs.primary,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 10,
+                                      ),
+                                      shape: const StadiumBorder(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                              ),
+                            )
+                          : IconButton(
+                              icon: const Icon(Icons.refresh_rounded),
+                              tooltip: loc.refreshButton,
+                              onPressed: _c.loading.value
+                                  ? null
+                                  : () async {
+                                      await _c.loadData(
+                                          initialGroup: currentGroup);
+                                      if (mounted) setState(() {});
+                                    },
+                            ),
+                    ),
+                  ]
+                : null,
+            onToggleLeftPanel: isWide ? _toggleLeftPanel : null,
+            leftPanelCollapsed: _leftCollapsed,
+            showWeatherToggle: true,
+            weatherIconsEnabled: _weatherIconsEnabled,
+            onWeatherToggle: _toggleWeatherIcons,
           ),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: SafeArea(
+            child: isWide
+                ? Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1500),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: _leftCollapsed ? 56 : 420,
+                              child: Align(
+                                alignment: Alignment.topLeft,
+                                child: calendarSidebar(),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: calendarContent(
+                                showActions: false,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            eventsSidebar(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                    child: compactCalendarContent(),
+                  ),
+          ),
+        );
+
+        return CalendarTabsTheme(
+          child: isWide
+              ? scaffold
+              : DefaultTabController(
+                  length: 4,
+                  initialIndex: 1,
+                  child: scaffold,
+                ),
         );
       },
     );

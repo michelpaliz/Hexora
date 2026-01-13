@@ -18,6 +18,8 @@ class User {
   String? _phoneNumber;
   String? _location;
 
+  bool _autoStatementImportEnabled;
+
   List<String> _groupIds;
   List<String> _calendarsIds;
   List<String> _notificationsIds;
@@ -37,6 +39,7 @@ class User {
     String? photoBlobName,
     List<String>? sharedCalendars,
     List<String>? notifications,
+    bool autoStatementImportEnabled = false,
   })  : _id = id,
         _name = name,
         _displayName = displayName,
@@ -46,6 +49,7 @@ class User {
         _bio = bio,
         _phoneNumber = phoneNumber,
         _location = location,
+        _autoStatementImportEnabled = autoStatementImportEnabled,
         _groupIds = groupIds,
         _photoUrl = photoUrl,
         _photoBlobName = photoBlobName,
@@ -84,6 +88,9 @@ class User {
   String? get location => _location;
   set location(String? v) => _location = v;
 
+  bool get autoStatementImportEnabled => _autoStatementImportEnabled;
+  set autoStatementImportEnabled(bool v) => _autoStatementImportEnabled = v;
+
   List<String> get groupIds => _groupIds;
   set groupIds(List<String> v) => _groupIds = v;
 
@@ -115,6 +122,7 @@ class User {
     List<String>? groupIds,
     List<String>? sharedCalendars,
     List<String>? notifications,
+    bool? autoStatementImportEnabled,
   }) {
     return User(
       id: id ?? _id,
@@ -126,6 +134,8 @@ class User {
       bio: bio ?? _bio,
       phoneNumber: phoneNumber ?? _phoneNumber,
       location: location ?? _location,
+      autoStatementImportEnabled:
+          autoStatementImportEnabled ?? _autoStatementImportEnabled,
       photoUrl: photoUrl ?? _photoUrl,
       photoBlobName: photoBlobName ?? _photoBlobName,
       groupIds: groupIds ?? _groupIds,
@@ -146,6 +156,7 @@ class User {
       bio: '',
       phoneNumber: '',
       location: '',
+      autoStatementImportEnabled: false,
       photoUrl: '',
       photoBlobName: '',
       groupIds: const [],

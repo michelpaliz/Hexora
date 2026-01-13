@@ -26,7 +26,7 @@ class InvoiceEditorPreviewCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: cs.surfaceVariant,
+        color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant.withOpacity(0.4)),
       ),

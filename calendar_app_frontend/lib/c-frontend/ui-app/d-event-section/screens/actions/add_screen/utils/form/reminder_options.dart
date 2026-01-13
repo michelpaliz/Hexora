@@ -50,7 +50,7 @@ class ReminderTimeDropdownField extends StatelessWidget {
     final options = getLocalizedReminderOptions(context);
 
     return DropdownButtonFormField<int>(
-      value: value,
+      initialValue: value,
       onChanged: onChanged,
       validator: validator ??
           (val) {

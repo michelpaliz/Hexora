@@ -9,19 +9,22 @@ import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api
 import 'package:hexora/b-backend/invoicing/billing_profile_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/receipts/receipts_api.dart';
+import 'package:hexora/b-backend/vat/vat_summary_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/invoice_editor_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/billing_profile_sheet/billing_profile_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_details_sheet/invoice_detail_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_clients_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_invoices_view.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_receipts_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_side_menu.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_receipts_view.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_receipts_flow/screens/receipt_editor/receipt_editor_screen.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/client_classification_store.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -39,6 +42,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   final _billingApi = BillingProfileApi();
   final _clientsApi = ClientsApi();
   final _receiptsApi = ReceiptsApi();
+  final _vatApi = VatSummaryApi();
 
   List<Invoice> _invoices = [];
   List<Invoice> _drafts = [];
@@ -56,6 +60,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   String _selectedMenu = 'clients';
   bool _businessExpanded = false;
   bool _totalsExpanded = false;
+  bool _incomeExpanded = true;
+  bool _expensesExpanded = true;
   bool _menuCollapsed = false;
 
   @override
@@ -599,11 +605,18 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
               busyProfile: _busyProfile,
               businessExpanded: _businessExpanded,
               totalsExpanded: _totalsExpanded,
+              incomeExpanded: _incomeExpanded,
+              expensesExpanded: _expensesExpanded,
               issuedCount: _invoices.length,
               draftsCount: _drafts.length,
+              receiptsCount: _receipts.length + _receiptDrafts.length,
               onEditBillingProfile: _openBillingProfile,
               onToggleBusinessExpanded: _toggleBusinessExpanded,
               onToggleTotalsExpanded: _toggleTotalsExpanded,
+              onToggleIncomeExpanded: () =>
+                  setState(() => _incomeExpanded = !_incomeExpanded),
+              onToggleExpensesExpanded: () =>
+                  setState(() => _expensesExpanded = !_expensesExpanded),
               selectedMenu: _selectedMenu,
               onMenuChanged: (m) => setState(() => _selectedMenu = m),
               collapsed: _menuCollapsed,
@@ -647,16 +660,32 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                           onPreviewPdf: _previewReceiptPdf,
                           onDownloadPdf: _downloadReceiptPdf,
                         )
-                      : GroupInvoicesInvoicesView(
-                          drafts: _drafts,
-                          invoices: _invoices,
-                          clients: _clients,
-                          billingProfile: _billingProfile,
-                          selectedInvoice: _selectedInvoice,
-                          onSelectInvoice: (inv) =>
-                              setState(() => _selectedInvoice = inv),
-                          onDeleteInvoice: _deleteInvoice,
-                        ),
+                      : _selectedMenu == 'expenses'
+                          ? ExpenseUploadScreen(
+                              embedded: true,
+                              onUploaded: _loadAll,
+                              groupId: widget.group.id,
+                              groupName: widget.group.name,
+                            )
+                          : _selectedMenu == 'providers'
+                              ? ExpenseUploadScreen(
+                                  embedded: true,
+                                  providersOnly: true,
+                                  groupId: widget.group.id,
+                                  groupName: widget.group.name,
+                                )
+                              : _selectedMenu == 'vat'
+                                  ? VatSummaryView(api: _vatApi)
+                                  : GroupInvoicesInvoicesView(
+                                      drafts: _drafts,
+                                      invoices: _invoices,
+                                      clients: _clients,
+                                      billingProfile: _billingProfile,
+                                      selectedInvoice: _selectedInvoice,
+                                      onSelectInvoice: (inv) => setState(
+                                          () => _selectedInvoice = inv),
+                                      onDeleteInvoice: _deleteInvoice,
+                                    ),
             )
           ],
         ),
@@ -664,6 +693,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
 
     final fabIsReceipts = _selectedMenu == 'receipts';
+    final hideFab = _selectedMenu == 'expenses' ||
+        _selectedMenu == 'providers' ||
+        _selectedMenu == 'vat';
 
     return Scaffold(
       appBar: AppBar(
@@ -675,11 +707,15 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         iconTheme: IconThemeData(color: cs.onSurface),
       ),
       body: body,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: fabIsReceipts ? _openCreateReceipt : _openCreateInvoice,
-        icon: const Icon(Icons.add),
-        label: Text(fabIsReceipts ? l.createReceiptCta : l.createInvoiceCta),
-      ),
+      floatingActionButton: hideFab
+          ? null
+          : FloatingActionButton.extended(
+              onPressed:
+                  fabIsReceipts ? _openCreateReceipt : _openCreateInvoice,
+              icon: const Icon(Icons.add),
+              label:
+                  Text(fabIsReceipts ? l.createReceiptCta : l.createInvoiceCta),
+            ),
     );
   }
 }

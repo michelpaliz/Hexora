@@ -6,6 +6,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/wi
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/calendar_section/widgets/calendar_inline_header.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/calendar_section/widgets/calendar_no_group_placeholder.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/coordinator/calendar_screen_coordinator.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_tabs.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/group_permissions_helper.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/presence_status_strip.dart';
@@ -92,6 +93,14 @@ class _CalendarInlinePanelState extends State<CalendarInlinePanel>
     await _coordinator.handleAddEventPressed(context, widget.group);
   }
 
+  void _openFullCalendar() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MainCalendarView(group: widget.group),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _tabs.dispose();
@@ -139,6 +148,7 @@ class _CalendarInlinePanelState extends State<CalendarInlinePanel>
                   isLoading: loading,
                   onRefresh: _refresh,
                   onJumpToToday: _coordinator.jumpToToday,
+                  onOpenFullCalendar: _openFullCalendar,
                 ),
                 const SizedBox(height: 8),
                 TabBar(

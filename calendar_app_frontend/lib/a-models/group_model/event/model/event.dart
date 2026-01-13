@@ -207,6 +207,25 @@ class Event {
       throw Exception("❌ Missing 'id' and '_id' in map: $map");
     }
 
+    DateTime parseApiDate(String raw) {
+      final hasOffset = RegExp(r'(Z|[+-]\d{2}:?\d{2})$').hasMatch(raw);
+      final parsed = DateTime.parse(raw);
+      if (hasOffset) {
+        return parsed.isUtc ? parsed.toLocal() : parsed;
+      }
+      final asUtc = DateTime.utc(
+        parsed.year,
+        parsed.month,
+        parsed.day,
+        parsed.hour,
+        parsed.minute,
+        parsed.second,
+        parsed.millisecond,
+        parsed.microsecond,
+      );
+      return asUtc.toLocal();
+    }
+
     // Recurrence
     final raw = map['recurrenceRule'];
     LegacyRecurrenceRule? rule;
@@ -235,10 +254,16 @@ class Event {
             .toList() ??
         <VisitService>[];
 
+    final start = parseApiDate(map['startDate'] as String);
+    final end = parseApiDate(map['endDate'] as String);
+    final completedRaw = map['completedAt'] != null
+        ? parseApiDate(map['completedAt'] as String)
+        : null;
+
     return Event(
       id: rawId.toString(),
-      startDate: DateTime.parse(map['startDate'] as String),
-      endDate: DateTime.parse(map['endDate'] as String),
+      startDate: start,
+      endDate: end,
       title: map['title'] as String? ?? '',
       groupId: map['groupId'] as String?,
       calendarId: map['calendarId'] as String?,
@@ -251,9 +276,7 @@ class Event {
       allDay: map['allDay'] as bool? ?? false,
       reminderTime: map['reminderTime'] as int?,
       isDone: map['isDone'] as bool? ?? false,
-      completedAt: map['completedAt'] != null
-          ? DateTime.parse(map['completedAt'] as String)
-          : null,
+      completedAt: completedRaw,
       recipients: List<String>.from(map['recipients'] ?? []),
       ownerId: map['ownerId'] as String? ?? '',
       updateHistory: (map['updateHistory'] as List?)

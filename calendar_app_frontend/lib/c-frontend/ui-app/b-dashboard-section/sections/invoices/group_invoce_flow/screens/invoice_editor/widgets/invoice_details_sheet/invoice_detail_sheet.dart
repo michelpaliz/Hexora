@@ -276,7 +276,7 @@ class _StatusPill extends StatelessWidget {
     final t = AppTypography.of(context);
     final normalized = status.toLowerCase();
     final bool issued = normalized.contains('issue');
-    final Color bg = issued ? cs.secondaryContainer : cs.surfaceVariant;
+    final Color bg = issued ? cs.secondaryContainer : cs.surfaceContainerHighest;
     final Color fg = issued ? cs.onSecondaryContainer : cs.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

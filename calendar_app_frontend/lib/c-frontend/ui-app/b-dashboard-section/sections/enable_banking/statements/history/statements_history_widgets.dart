@@ -30,9 +30,16 @@ class StatusBadge extends StatelessWidget {
         children: [
           Icon(icon ?? Icons.verified_outlined, size: 14, color: color),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: t.caption.copyWith(color: cs.onSurface, fontWeight: FontWeight.w600),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.caption.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -41,23 +48,51 @@ class StatusBadge extends StatelessWidget {
 }
 
 class MetaItem extends StatelessWidget {
-  const MetaItem({super.key, required this.label, required this.icon});
+  const MetaItem({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.valueTooltip,
+  });
 
   final String label;
+  final String value;
   final IconData icon;
+  final String? valueTooltip;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    final valueText = Text(
+      value,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: t.bodySmall.copyWith(
+        color: cs.onSurface,
+        fontWeight: FontWeight.w600,
+      ),
+    );
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 16, color: cs.onSurfaceVariant),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: t.caption.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 2),
+              valueTooltip == null
+                  ? valueText
+                  : Tooltip(message: valueTooltip!, child: valueText),
+            ],
+          ),
         ),
       ],
     );

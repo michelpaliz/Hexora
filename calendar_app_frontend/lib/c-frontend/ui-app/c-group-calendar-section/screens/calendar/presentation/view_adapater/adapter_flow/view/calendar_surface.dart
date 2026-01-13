@@ -15,11 +15,13 @@ import 'appointment_builder_bridge.dart';
 class CalendarSurface extends StatefulWidget {
   final CalendarState state;
   final AppointmentBuilderBridge apptBridge;
+  final String? forcedViewMode;
 
   const CalendarSurface({
     super.key,
     required this.state,
     required this.apptBridge,
+    this.forcedViewMode,
   });
 
   @override
@@ -86,7 +88,8 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     return ValueListenableBuilder<String>(
       valueListenable: widget.state.viewMode,
       builder: (_, mode, __) {
-        final view = _mapModeToSf(mode);
+        final effectiveMode = widget.forcedViewMode ?? mode;
+        final view = _mapModeToSf(effectiveMode);
         if (_controller.view != view) {
           _controller.view = view;
           _selectedView = view;
@@ -124,7 +127,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                               decoration:
                                   buildContainerDecoration(backgroundColor),
                               child: sf.SfCalendar(
-                                key: ObjectKey('${ds.hashCode}-$mode'),
+                                key: ObjectKey('${ds.hashCode}-$effectiveMode'),
                                 controller: _controller,
                                 dataSource: ds,
                                 view: _selectedView,
@@ -136,12 +139,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                   if (d.date != null) {
                                     _selectedDate = d.date!;
                                     _controller.selectedDate = _selectedDate;
-                                    widget.state.selectedDate = _selectedDate;
-                                    widget.state.dailyEvents.value =
-                                        widget.state.eventsForDate(
-                                      _selectedDate!,
-                                      widget.state.allEvents.value,
-                                    );
+                                    widget.state.jumpTo(_selectedDate!);
                                   }
                                 },
                                 // ✅ Keep Month custom tiles (old behavior)

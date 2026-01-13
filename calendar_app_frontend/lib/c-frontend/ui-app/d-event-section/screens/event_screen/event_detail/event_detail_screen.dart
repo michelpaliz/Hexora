@@ -114,15 +114,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       final userDomain = context.read<UserDomain>();
       final owner = await userDomain.getUserById(ownerId);
       if (!mounted) return;
-      if (owner != null) {
-        setState(() {
-          _ownerDisplayName = _resolveDisplayName(owner);
-          _ownerUsername = _resolveUsername(owner);
-        });
-      } else {
-        setState(() => _ownerDisplayName = ownerId);
-      }
-    } catch (_) {
+      setState(() {
+        _ownerDisplayName = _resolveDisplayName(owner);
+        _ownerUsername = _resolveUsername(owner);
+      });
+        } catch (_) {
       if (mounted) {
         setState(() => _ownerDisplayName = _ownerDisplayName ?? ownerId);
       }

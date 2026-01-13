@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'statements/statements_controller.dart';
@@ -26,6 +27,7 @@ class _StatementsTabState extends State<StatementsTab>
   bool _confirmed = false;
   int _activeStep = 1;
   bool _collapseLeftPanel = false;
+  bool _autoStatementImportLoading = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -79,10 +81,33 @@ class _StatementsTabState extends State<StatementsTab>
     return '${mb.toStringAsFixed(1)} MB';
   }
 
+  Future<void> _toggleAutoStatementImport(bool enabled) async {
+    if (_autoStatementImportLoading) return;
+    setState(() => _autoStatementImportLoading = true);
+    try {
+      await context.read<AuthProvider>().setAutoStatementImportEnabled(enabled);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.autoStatementImportUpdateFailed,
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _autoStatementImportLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final s = context.watch<StatementsController>();
+    final auth = context.watch<AuthProvider>();
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final result = s.lastImportResult ?? const <String, dynamic>{};
@@ -121,6 +146,22 @@ class _StatementsTabState extends State<StatementsTab>
         ? (_confirmed ? _StepStatus.completed : _StepStatus.active)
         : _StepStatus.disabled;
 
+    Widget buildAutoImportCard() {
+      final enabled =
+          auth.currentUser?.autoStatementImportEnabled ?? false;
+      return Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: SwitchListTile.adaptive(
+          title: Text(l.autoStatementImportTitle),
+          subtitle: Text(l.autoStatementImportHelper),
+          value: enabled,
+          onChanged: _autoStatementImportLoading
+              ? null
+              : (value) => _toggleAutoStatementImport(value),
+        ),
+      );
+    }
+
     Widget buildUploadWorkspace() {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +173,7 @@ class _StatementsTabState extends State<StatementsTab>
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: cs.surfaceVariant.withOpacity(0.35),
+                color: cs.surfaceContainerHighest.withOpacity(0.35),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: _fileError != null ? cs.error : cs.outlineVariant,
@@ -278,7 +319,7 @@ class _StatementsTabState extends State<StatementsTab>
             Container(
               height: 140,
               decoration: BoxDecoration(
-                color: cs.surfaceVariant.withOpacity(0.3),
+                color: cs.surfaceContainerHighest.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(child: Icon(Icons.table_chart_outlined)),
@@ -552,6 +593,8 @@ class _StatementsTabState extends State<StatementsTab>
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              buildAutoImportCard(),
+              const SizedBox(height: 12),
               if (freshnessBatchId != null) ...[
                 StatementsFreshnessBanner(
                   controller: s,
@@ -564,7 +607,7 @@ class _StatementsTabState extends State<StatementsTab>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: cs.surfaceVariant.withOpacity(0.2),
+                  color: cs.surfaceContainerHighest.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: buildLeftPanel(_activeStep),
@@ -578,6 +621,8 @@ class _StatementsTabState extends State<StatementsTab>
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            buildAutoImportCard(),
+            const SizedBox(height: 12),
             if (freshnessBatchId != null) ...[
               StatementsFreshnessBanner(
                 controller: s,
@@ -596,7 +641,7 @@ class _StatementsTabState extends State<StatementsTab>
                     SizedBox(
                       width: constraints.maxWidth * (isTablet ? 0.3 : 0.28),
                       child: Card(
-                        color: cs.surfaceVariant.withOpacity(0.18),
+                        color: cs.surfaceContainerHighest.withOpacity(0.18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -710,7 +755,7 @@ class _StepBadge extends StatelessWidget {
     final isCompleted = status == _StepStatus.completed;
     final bg = isCompleted
         ? cs.primary
-        : (isActive ? cs.primaryContainer : cs.surfaceVariant);
+        : (isActive ? cs.primaryContainer : cs.surfaceContainerHighest);
     final fg = isCompleted
         ? cs.onPrimary
         : (isActive ? cs.onPrimaryContainer : cs.onSurfaceVariant);

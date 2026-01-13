@@ -14,8 +14,8 @@ class LoadingList extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (_, __) => _LoadingTile(
         bg: ThemeColors.listTileBg(context),
-        barColor: cs.surfaceVariant.withOpacity(0.6),
-        secondaryBarColor: cs.surfaceVariant.withOpacity(0.35),
+        barColor: cs.surfaceContainerHighest.withOpacity(0.6),
+        secondaryBarColor: cs.surfaceContainerHighest.withOpacity(0.35),
       ),
     );
   }

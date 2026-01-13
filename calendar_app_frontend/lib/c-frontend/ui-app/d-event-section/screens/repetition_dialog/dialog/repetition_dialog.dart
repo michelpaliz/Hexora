@@ -146,7 +146,7 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
       cs.primaryContainer.withOpacity(
         theme.brightness == Brightness.dark ? 0.18 : 0.12,
       ),
-      cs.surfaceVariant,
+      cs.surfaceContainerHighest,
     );
 
     Container section(Widget child) {

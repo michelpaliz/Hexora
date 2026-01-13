@@ -9,6 +9,9 @@ class PreferencesSection extends StatelessWidget {
   final VoidCallback onToggleDark;
   final String languageName;
   final VoidCallback onChangeLanguage;
+  final bool autoStatementImportEnabled;
+  final bool autoStatementImportBusy;
+  final ValueChanged<bool> onToggleAutoStatementImport;
 
   const PreferencesSection({
     super.key,
@@ -16,6 +19,9 @@ class PreferencesSection extends StatelessWidget {
     required this.onToggleDark,
     required this.languageName,
     required this.onChangeLanguage,
+    required this.autoStatementImportEnabled,
+    required this.autoStatementImportBusy,
+    required this.onToggleAutoStatementImport,
   });
 
   @override
@@ -30,6 +36,15 @@ class PreferencesSection extends StatelessWidget {
           title: l.darkMode,
           value: isDark,
           onChanged: (_) => onToggleDark(),
+        ),
+        const Divider(height: 0),
+        SwitchTile(
+          leading: const Icon(Icons.sync_rounded),
+          title: l.autoStatementImportTitle,
+          subtitle: l.autoStatementImportHelper,
+          value: autoStatementImportEnabled,
+          enabled: !autoStatementImportBusy,
+          onChanged: onToggleAutoStatementImport,
         ),
         const Divider(height: 0),
         // NavTile renders: title → bodyMedium, subtitle → bodySmall

@@ -36,7 +36,7 @@ class UserItem extends StatelessWidget {
     // Themed online/offline colors (no hardcoded green)
     final onlineColor = cs.primary; // your accent ring
     final offlineBorderColor = cs.outlineVariant;
-    final avatarBg = cs.surfaceVariant;
+    final avatarBg = cs.surfaceContainerHighest;
     final selectionBorder = cs.secondary;
 
     // Role badge color via your global role color helper

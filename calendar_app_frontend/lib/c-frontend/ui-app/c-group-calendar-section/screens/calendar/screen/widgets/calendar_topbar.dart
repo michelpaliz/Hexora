@@ -4,26 +4,33 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Tab> tabs;
+  final bool showTabs;
   final ValueChanged<int>? onTabChanged;
   final List<Widget>? actions;
   final bool showWeatherToggle;
   final bool weatherIconsEnabled;
   final ValueChanged<bool>? onWeatherToggle;
+  final VoidCallback? onToggleLeftPanel;
+  final bool leftPanelCollapsed;
 
   const CalendarTopBar({
     super.key,
     required this.title,
-    required this.tabs,
+    this.tabs = const [],
+    this.showTabs = true,
     this.onTabChanged,
     this.actions,
     this.showWeatherToggle = false,
     this.weatherIconsEnabled = true,
     this.onWeatherToggle,
+    this.onToggleLeftPanel,
+    this.leftPanelCollapsed = false,
   });
 
   @override
-  Size get preferredSize =>
-      const Size.fromHeight(kToolbarHeight + kTextTabBarHeight);
+  Size get preferredSize => showTabs && tabs.isNotEmpty
+      ? const Size.fromHeight(kToolbarHeight + kTextTabBarHeight)
+      : const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
@@ -31,12 +38,24 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
     final typo = AppTypography.of(context);
     final trailing = <Widget>[
       if (actions != null) ...actions!,
+      if (onToggleLeftPanel != null)
+        IconButton(
+          tooltip:
+              leftPanelCollapsed ? 'Expand left panel' : 'Collapse left panel',
+          icon: Icon(
+            leftPanelCollapsed
+                ? Icons.chevron_right_rounded
+                : Icons.chevron_left_rounded,
+            color: cs.onSurface,
+          ),
+          onPressed: onToggleLeftPanel,
+        ),
       if (showWeatherToggle)
         IconButton(
           tooltip:
               weatherIconsEnabled ? 'Hide weather icons' : 'Show weather icons',
           icon: Icon(
-            weatherIconsEnabled ? Icons.wb_sunny_outlined : Icons.cloud_off,
+            weatherIconsEnabled ? Icons.wb_sunny_rounded : Icons.cloud_rounded,
             color: cs.primary,
           ),
           onPressed: onWeatherToggle == null
@@ -60,22 +79,24 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
         overflow: TextOverflow.ellipsis,
       ),
       actions: trailing,
-      bottom: TabBar(
-        isScrollable: false,
-        tabs: tabs,
-        onTap: onTabChanged,
-        labelStyle: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-        unselectedLabelStyle: typo.bodySmall,
-        labelColor: cs.primary, // selected label color
-        unselectedLabelColor: cs.onSurfaceVariant,
-        indicator: const UnderlineTabIndicator(
-          // classic underline
-          borderSide: BorderSide(width: 3),
-        ),
-        indicatorColor: cs.primary,
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-      ),
+      bottom: showTabs && tabs.isNotEmpty
+          ? TabBar(
+              isScrollable: false,
+              tabs: tabs,
+              onTap: onTabChanged,
+              labelStyle: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+              unselectedLabelStyle: typo.bodySmall,
+              labelColor: cs.primary, // selected label color
+              unselectedLabelColor: cs.onSurfaceVariant,
+              indicator: const UnderlineTabIndicator(
+                // classic underline
+                borderSide: BorderSide(width: 3),
+              ),
+              indicatorColor: cs.primary,
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+            )
+          : null,
     );
   }
 }

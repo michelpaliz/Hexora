@@ -114,7 +114,7 @@ class StatsHeader extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.55),
+        color: cs.surfaceContainerHighest.withOpacity(0.55),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(

@@ -50,7 +50,7 @@ class WorkerSelectionSection extends StatelessWidget {
             final fg =
                 selected ? cs.onPrimary : ThemeColors.textPrimary(context);
             final bg =
-                selected ? cs.primary : cs.surfaceVariant.withOpacity(0.65);
+                selected ? cs.primary : cs.surfaceContainerHighest.withOpacity(0.65);
             return ChoiceChip(
               selected: selected,
               label: Text(

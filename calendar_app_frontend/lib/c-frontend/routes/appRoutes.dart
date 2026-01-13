@@ -21,6 +21,7 @@ class AppRoutes {
   static const groupTimeTracking = '/group/time-tracking';
   static const headerSection = '/dashboard-header-section';
   static const groupInvoices = '/group-invoices';
+  static const recurringInvoices = '/recurring-invoices';
 
   // View (details) + Edit
   static const profileDetails = '/profile-details';

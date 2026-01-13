@@ -134,7 +134,7 @@ class ClientContactForm extends StatelessWidget {
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: c.entityType.text.trim().isEmpty
+                initialValue: c.entityType.text.trim().isEmpty
                     ? ''
                     : c.entityType.text.trim(),
                 items: [
@@ -170,7 +170,7 @@ class ClientContactForm extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: c.propertyKind.text.trim().isEmpty
+                initialValue: c.propertyKind.text.trim().isEmpty
                     ? ''
                     : c.propertyKind.text.trim(),
                 items: [

@@ -95,7 +95,7 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
                             decoration: BoxDecoration(
                               color: Theme.of(context)
                                   .colorScheme
-                                  .surfaceVariant
+                                  .surfaceContainerHighest
                                   .withOpacity(0.4),
                               borderRadius: BorderRadius.circular(30),
                             ),

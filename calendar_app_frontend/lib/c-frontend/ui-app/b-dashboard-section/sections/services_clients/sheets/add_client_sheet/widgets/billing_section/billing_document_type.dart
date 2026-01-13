@@ -20,7 +20,7 @@ class BillingDocumentType extends StatelessWidget {
     final inputBorder = buildInputBorder(context);
 
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: l.billingDocumentType,
         enabledBorder: inputBorder,

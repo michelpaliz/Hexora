@@ -9,12 +9,14 @@ class CalendarInlineHeader extends StatelessWidget {
     required this.isLoading,
     required this.onRefresh,
     required this.onJumpToToday,
+    required this.onOpenFullCalendar,
   });
 
   final String groupName;
   final bool isLoading;
   final VoidCallback onRefresh;
   final VoidCallback onJumpToToday;
+  final VoidCallback onOpenFullCalendar;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +51,11 @@ class CalendarInlineHeader extends StatelessWidget {
           tooltip: l.tabDay,
           icon: const Icon(Icons.today_outlined),
           onPressed: onJumpToToday,
+        ),
+        IconButton(
+          tooltip: l.goToCalendar,
+          icon: const Icon(Icons.open_in_new_rounded),
+          onPressed: onOpenFullCalendar,
         ),
       ],
     );

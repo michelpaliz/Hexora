@@ -10,7 +10,6 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/wi
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_list_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/edit_worker/edit_worker_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';

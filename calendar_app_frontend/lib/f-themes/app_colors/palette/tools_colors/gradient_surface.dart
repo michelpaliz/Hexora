@@ -55,8 +55,8 @@ class GradientSurface extends StatelessWidget {
 
     // Neutral greys (soft, desaturated, theme-aware)
     final neutralStart = isDark
-        ? cs.surfaceVariant.withOpacity(0.22)
-        : cs.surfaceVariant.withOpacity(0.50);
+        ? cs.surfaceContainerHighest.withOpacity(0.22)
+        : cs.surfaceContainerHighest.withOpacity(0.50);
     final neutralEnd =
         isDark ? cs.surface.withOpacity(0.32) : cs.surface.withOpacity(0.80);
 

@@ -21,7 +21,7 @@ class DimensionTabs extends StatelessWidget {
           curve: Curves.easeOut,
           height: 44,
           decoration: BoxDecoration(
-            color: selected ? cs.primary : cs.surfaceVariant.withOpacity(0.7),
+            color: selected ? cs.primary : cs.surfaceContainerHighest.withOpacity(0.7),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected

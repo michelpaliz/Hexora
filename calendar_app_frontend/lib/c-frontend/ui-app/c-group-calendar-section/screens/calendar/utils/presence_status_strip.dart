@@ -9,12 +9,14 @@ class PresenceStatusStrip extends StatelessWidget {
   final CalendarScreenCoordinator controller;
   final String? selectedUserId;
   final ValueChanged<String?>? onUserSelected;
+  final bool showAllOption;
   const PresenceStatusStrip(
       {super.key,
       required this.group,
       required this.controller,
       this.selectedUserId,
-      this.onUserSelected});
+      this.onUserSelected,
+      this.showAllOption = true});
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +25,7 @@ class PresenceStatusStrip extends StatelessWidget {
       userList: connectedUsers,
       selectedUserId: selectedUserId,
       onUserSelected: onUserSelected,
+      showAllOption: showAllOption,
     );
   }
 }

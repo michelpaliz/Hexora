@@ -31,6 +31,9 @@ abstract class IUserRepository {
   // Notifications
   Future<List<NotificationUser>> getNotificationsByUser(String userName);
 
+  // Auto statement import
+  Future<bool> setAutoStatementImportEnabled({required bool enabled});
+
   // Generic selector
   Future<User> getUserBySelector(String selector);
 }

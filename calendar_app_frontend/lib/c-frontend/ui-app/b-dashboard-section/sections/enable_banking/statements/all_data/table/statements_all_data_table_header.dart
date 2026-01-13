@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
+import 'statements_all_data_table_layout.dart';
+import 'statements_all_data_table_theme.dart';
+
 class StatementsAllDataTableHeader extends StatelessWidget {
   const StatementsAllDataTableHeader({
     super.key,
@@ -9,38 +12,52 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     required this.isCompact,
     required this.allVisibleSelected,
     required this.onToggleAll,
+    required this.tableTheme,
   });
 
   final AppLocalizations label;
   final bool isCompact;
   final bool allVisibleSelected;
   final ValueChanged<bool> onToggleAll;
+  final StatementsTableTheme tableTheme;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final typography = AppTypography.of(context);
+    final isWide = MediaQuery.of(context).size.width > 1400;
+    final balanceMaxWidth =
+        isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
+    final balanceClientGap =
+        isWide ? 40.0 : StatementsAllDataTableLayout.balanceClientGap;
 
-    // ✅ Tighten description so it doesn't steal space from right-side columns
-    const descMinWidth = 220.0;
-    const descMaxWidth = 260.0;
-
-    // ✅ Guarantee room for finance-critical columns
-    const amountWidth = 140.0; // was 110
-    const balanceWidth = 150.0; // was 120
-    const clientWidth = 200.0; // was 170
-    const actionsWidth = 112.0; // was 140
+    final headerStyle = typography.bodyMedium.copyWith(
+      fontWeight: FontWeight.w800,
+      color: tableTheme.headerText,
+      letterSpacing: 0.8,
+    );
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(
+        vertical: 20,
+        horizontal: StatementsAllDataTableLayout.horizontalPadding,
+      ),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.75),
-        borderRadius: BorderRadius.circular(8),
+        color: tableTheme.headerBg,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
+          const SizedBox(width: StatementsAllDataTableLayout.leadingSpacer),
+
           SizedBox(
-            width: 36,
+            width: StatementsAllDataTableLayout.checkWidth,
             child: Checkbox(
               value: allVisibleSelected,
               onChanged: (checked) => onToggleAll(checked == true),
@@ -49,43 +66,31 @@ class StatementsAllDataTableHeader extends StatelessWidget {
 
           // Batch column (non-compact only)
           if (!isCompact) ...[
-            SizedBox(
-              width: 90,
-              child: Tooltip(
-                message: label.statementsColumnBatchTooltip,
-                child: Text(
-                  label.statementsHeaderBatch,
-                  style: typography.bodySmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurfaceVariant,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+            _fixedCell(
+              label.statementsHeaderBatch,
+              StatementsAllDataTableLayout.batchWidth,
+              headerStyle,
+              tooltip: label.statementsColumnBatchTooltip,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: StatementsAllDataTableLayout.columnGap),
           ],
 
-          // Date column
-          SizedBox(
-            width: 100,
-            child: Text(
-              label.statementsHeaderDate,
-              style: typography.bodySmall.copyWith(fontWeight: FontWeight.w600),
-              overflow: TextOverflow.ellipsis,
-            ),
+          // Date column (fixed)
+          _fixedCell(
+            label.statementsHeaderDate,
+            StatementsAllDataTableLayout.dateWidth,
+            headerStyle,
           ),
 
-          const SizedBox(width: 8),
+          const SizedBox(width: StatementsAllDataTableLayout.columnGap),
 
-          // Description column: flexible but capped
+          // Description column (capped)
           if (isCompact)
             Expanded(
-              flex: 4, // ✅ was 6; give more room to the right columns
+              flex: 4,
               child: Text(
                 label.statementsHeaderDescription,
-                style:
-                    typography.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                style: headerStyle,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
@@ -93,87 +98,108 @@ class StatementsAllDataTableHeader extends StatelessWidget {
           else
             ConstrainedBox(
               constraints: const BoxConstraints(
-                minWidth: descMinWidth,
-                maxWidth: descMaxWidth,
+                minWidth: StatementsAllDataTableLayout.descMinWidth,
+                maxWidth: StatementsAllDataTableLayout.descMaxWidth,
               ),
               child: Text(
                 label.statementsHeaderDescription,
-                style:
-                    typography.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                style: headerStyle,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
             ),
 
-          // Details column hidden for now.
-          const SizedBox(width: 8),
+          const SizedBox(width: StatementsAllDataTableLayout.columnGap),
 
-          // Amount column (right aligned)
-          SizedBox(
-            width: amountWidth,
-            child: Text(
-              label.statementsHeaderAmount,
-              textAlign: TextAlign.right,
-              style: typography.bodySmall.copyWith(fontWeight: FontWeight.w600),
-              overflow: TextOverflow.ellipsis,
-            ),
+          // Amount (fixed, right aligned)
+          _fixedCell(
+            label.statementsHeaderAmount,
+            StatementsAllDataTableLayout.amountWidth,
+            headerStyle,
+            align: TextAlign.right,
           ),
 
-          // Balance column (non-compact only, right aligned)
+          // ✅ Balance (flexible + constrained, right aligned)
           if (!isCompact) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: StatementsAllDataTableLayout.columnGap),
             SizedBox(
-              width: balanceWidth,
-              child: Text(
-                label.statementsHeaderBalance,
-                textAlign: TextAlign.right, // ✅ was center; better for numbers
-                style: typography.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: cs.onSurfaceVariant,
+              width: balanceMaxWidth,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  label.statementsHeaderBalance,
+                  textAlign: TextAlign.right,
+                  style: headerStyle,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
 
-          const SizedBox(width: 8),
+          SizedBox(width: balanceClientGap),
 
-          // Client column (left aligned reads better for text)
-          SizedBox(
-            width: clientWidth,
-            child: Text(
-              label.statementsHeaderClient,
-              textAlign:
-                  TextAlign.left, // ✅ was center; better for names/status
-              style: typography.bodySmall.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                color: cs.onSurfaceVariant,
+          // ✅ Client (EXPANDED to fill remaining right space)
+          Expanded(
+            flex: 3,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minWidth: StatementsAllDataTableLayout.clientMinWidth,
               ),
-              overflow: TextOverflow.ellipsis,
+              child: Align(
+                alignment: Alignment.center,
+                child: Text(
+                  label.statementsHeaderClient,
+                  textAlign: TextAlign.right,
+                  style: headerStyle,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
             ),
           ),
 
-          const SizedBox(width: 8),
+          const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
 
-          // Actions column (narrower)
-          SizedBox(
-            width: isCompact ? 44 : actionsWidth,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                label.statementsHeaderActions,
-                style: typography.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: cs.onSurfaceVariant,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+          _fixedCell(
+            label.documentTypeInvoice,
+            StatementsAllDataTableLayout.invoiceWidth,
+            headerStyle,
+            align: TextAlign.center,
+          ),
+
+          const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
+
+          _fixedCell(
+            label.statementsHeaderActions,
+            StatementsAllDataTableLayout.actionsWidth,
+            headerStyle,
+            align: TextAlign.right,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _fixedCell(
+    String text,
+    double width,
+    TextStyle style, {
+    TextAlign align = TextAlign.left,
+    String? tooltip,
+  }) {
+    final content = Text(
+      text,
+      style: style,
+      textAlign: align,
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+    );
+
+    return SizedBox(
+      width: width,
+      child:
+          tooltip == null ? content : Tooltip(message: tooltip, child: content),
     );
   }
 }

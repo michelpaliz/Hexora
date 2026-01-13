@@ -30,7 +30,7 @@ class ClientServicePickers extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DropdownButtonFormField<String>(
-          value: clientId,
+          initialValue: clientId,
           items: clients
               .map((c) => DropdownMenuItem<String>(
                     value: c.id as String?,
@@ -48,7 +48,7 @@ class ClientServicePickers extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
-          value: serviceId,
+          initialValue: serviceId,
           items: services
               .map((s) => DropdownMenuItem<String>(
                     value: s.id as String?,

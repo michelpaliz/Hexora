@@ -77,7 +77,7 @@ class _RoleEditDialogState extends State<RoleEditDialog> {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<GroupRole>(
-            value: _selected,
+            initialValue: _selected,
             decoration: InputDecoration(
               labelText: loc.roleLabel,
               border:

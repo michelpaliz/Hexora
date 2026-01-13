@@ -42,7 +42,7 @@ class RoleChangeDialogContent extends StatelessWidget {
             SizedBox(height: 20),
             if (showRoleDropdown)
               DropdownButtonFormField<String>(
-                value: selectedRole,
+                initialValue: selectedRole,
                 items: ['Co-Administrator', 'Member'].map((String role) {
                   return DropdownMenuItem<String>(
                     value: role,

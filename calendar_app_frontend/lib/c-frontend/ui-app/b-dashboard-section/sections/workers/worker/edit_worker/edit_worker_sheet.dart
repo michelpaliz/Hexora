@@ -148,7 +148,7 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _currency,
+                    initialValue: _currency,
                     items: workerCurrencyOptions
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
@@ -160,7 +160,7 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<WorkerStatus>(
-                    value: _status,
+                    initialValue: _status,
                     items: [
                       DropdownMenuItem(
                           value: WorkerStatus.active,

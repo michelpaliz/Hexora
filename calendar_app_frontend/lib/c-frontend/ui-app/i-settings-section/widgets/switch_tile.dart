@@ -9,6 +9,7 @@ class SwitchTile extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.subtitle,
+    this.enabled = true,
   });
 
   final Widget leading;
@@ -16,6 +17,7 @@ class SwitchTile extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final String? subtitle;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +27,7 @@ class SwitchTile extends StatelessWidget {
     final bodyS = theme.textTheme.bodySmall!;
 
     return InkWell(
-      onTap: () => onChanged(!value),
+      onTap: enabled ? () => onChanged(!value) : null,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -53,7 +55,7 @@ class SwitchTile extends StatelessWidget {
                     Text(
                       subtitle!,
                       style: bodyS.copyWith(color: cs.onSurfaceVariant),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -63,7 +65,7 @@ class SwitchTile extends StatelessWidget {
             const SizedBox(width: 8),
             Switch.adaptive(
               value: value,
-              onChanged: onChanged,
+              onChanged: enabled ? onChanged : null,
             ),
           ],
         ),

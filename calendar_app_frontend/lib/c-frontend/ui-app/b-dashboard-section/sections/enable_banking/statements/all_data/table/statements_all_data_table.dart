@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-
 import '../../statements_controller.dart';
 import 'statements_all_data_table_header.dart';
 import 'statements_all_data_table_row.dart';
+import 'statements_all_data_table_theme.dart';
 
-class StatementsAllDataTable extends StatefulWidget {
+class StatementsAllDataTable extends StatelessWidget {
   const StatementsAllDataTable({
     super.key,
     required this.entries,
@@ -16,6 +16,8 @@ class StatementsAllDataTable extends StatefulWidget {
     required this.onShowDetails,
     required this.onSuggest,
     required this.onLink,
+    required this.onLinkInvoice,
+    required this.tableTheme,
   });
 
   final List<Map<String, dynamic>> entries;
@@ -26,12 +28,9 @@ class StatementsAllDataTable extends StatefulWidget {
   final ValueChanged<Map<String, dynamic>> onShowDetails;
   final ValueChanged<Map<String, dynamic>> onSuggest;
   final ValueChanged<Map<String, dynamic>> onLink;
+  final ValueChanged<Map<String, dynamic>> onLinkInvoice;
+  final StatementsTableTheme tableTheme;
 
-  @override
-  State<StatementsAllDataTable> createState() => _StatementsAllDataTableState();
-}
-
-class _StatementsAllDataTableState extends State<StatementsAllDataTable> {
   bool _isCompact(BuildContext context) =>
       MediaQuery.of(context).size.width < 1100;
 
@@ -39,9 +38,9 @@ class _StatementsAllDataTableState extends State<StatementsAllDataTable> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isCompact = _isCompact(context);
-    final entries = widget.entries;
-    final controller = widget.controller;
-    final selectedIds = widget.selectedIds;
+    final entries = this.entries;
+    final controller = this.controller;
+    final selectedIds = this.selectedIds;
 
     final selectableVisible = entries.where((entry) {
       final id = (entry['_id'] ?? entry['id'])?.toString();
@@ -57,13 +56,15 @@ class _StatementsAllDataTableState extends State<StatementsAllDataTable> {
           label: l,
           isCompact: isCompact,
           allVisibleSelected: allVisibleSelected,
-          onToggleAll: widget.onToggleAll,
+          onToggleAll: onToggleAll,
+          tableTheme: tableTheme,
         ),
-        const SizedBox(height: 8),
-        ListView.builder(
+        const SizedBox(height: 24),
+        ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: entries.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
           itemBuilder: (context, index) {
             final entry = Map<String, dynamic>.from(entries[index]);
             return RepaintBoundary(
@@ -73,11 +74,12 @@ class _StatementsAllDataTableState extends State<StatementsAllDataTable> {
                 isCompact: isCompact,
                 controller: controller,
                 selectedIds: selectedIds,
-                hasSelection: selectedIds.isNotEmpty,
-                onToggleRow: widget.onToggleRow,
-                onShowDetails: widget.onShowDetails,
-                onSuggest: widget.onSuggest,
-                onLink: widget.onLink,
+                onToggleRow: onToggleRow,
+                onShowDetails: onShowDetails,
+                onSuggest: onSuggest,
+                onLink: onLink,
+                onLinkInvoice: onLinkInvoice,
+                tableTheme: tableTheme,
               ),
             );
           },

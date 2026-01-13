@@ -25,6 +25,7 @@ class StatementsAnalyticsController extends ChangeNotifier {
   bool loadingSummary = false;
   String? summaryError;
   Map<String, dynamic> summary = const {};
+  List<Map<String, dynamic>> settlementYearRows = const [];
 
   String? selectedBatchId;
   int? selectedYear;
@@ -42,10 +43,14 @@ class StatementsAnalyticsController extends ChangeNotifier {
   List<StatementsAnalyticsCompareRow> compareRows = const [];
 
   List<Map<String, dynamic>> get years =>
-      (summary['years'] as List? ?? const [])
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+      (periodMode == StatementsAnalyticsPeriodMode.settlementWindow &&
+              selectedYear == null &&
+              settlementYearRows.isNotEmpty)
+          ? settlementYearRows
+          : (summary['years'] as List? ?? const [])
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
 
   List<Map<String, dynamic>> get months =>
       (summary['months'] as List? ?? const [])
@@ -143,6 +148,7 @@ class StatementsAnalyticsController extends ChangeNotifier {
     summaryError = null;
     notifyListeners();
     try {
+      settlementYearRows = const [];
       final settlementRange = _settlementRange();
       final dateFrom = settlementRange == null
           ? null
@@ -165,6 +171,18 @@ class StatementsAnalyticsController extends ChangeNotifier {
           dateFrom: dateFrom,
           dateTo: dateTo,
         );
+      }
+      if (periodMode == StatementsAnalyticsPeriodMode.settlementWindow &&
+          selectedYear == null) {
+        final years = (summary['years'] as List? ?? const [])
+            .whereType<Map>()
+            .map((e) => int.tryParse(e['year']?.toString() ?? ''))
+            .whereType<int>()
+            .toList()
+          ..sort();
+        if (years.isNotEmpty) {
+          settlementYearRows = await _buildSettlementYearRows(years);
+        }
       }
     } catch (e) {
       summaryError = e.toString();
@@ -440,6 +458,39 @@ class StatementsAnalyticsController extends ChangeNotifier {
       net: net,
       count: count,
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _buildSettlementYearRows(
+    List<int> years,
+  ) async {
+    final rows = <Map<String, dynamic>>[];
+    for (final year in years) {
+      num income = 0;
+      num expense = 0;
+      num net = 0;
+      int count = 0;
+      for (var month = 1; month <= 12; month += 1) {
+        final range = _settlementWindowRange(year, month);
+        final totals = await _fetchRangeTotals(
+          dateFrom: _dateOnly(range.start),
+          dateTo: _dateOnly(range.end),
+        );
+        income += totals.income;
+        expense += totals.expense;
+        net += totals.net;
+        count += totals.count;
+      }
+      rows.add({
+        'year': year,
+        'income': income,
+        'expense': expense,
+        'net': net,
+        'count': count,
+      });
+    }
+    rows.sort((a, b) =>
+        (a['year'] as int).compareTo((b['year'] as int)));
+    return rows;
   }
 }
 

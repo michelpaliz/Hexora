@@ -235,7 +235,7 @@ class _TimeSelectionTile extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return Material(
-      color: cs.surfaceVariant.withOpacity(0.35),
+      color: cs.surfaceContainerHighest.withOpacity(0.35),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),

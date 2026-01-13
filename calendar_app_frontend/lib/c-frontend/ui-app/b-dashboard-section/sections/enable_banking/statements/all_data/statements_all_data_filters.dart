@@ -209,7 +209,7 @@ class StatementsAllDataPagination extends StatelessWidget {
           Text(l.statementsPaginationTitle, style: typography.bodySmall),
           const SizedBox(height: 6),
           DropdownButtonFormField<int>(
-            value: controller.allEntriesSize,
+            initialValue: controller.allEntriesSize,
             decoration: InputDecoration(
               labelText: l.statementsPageSize,
               isDense: true,

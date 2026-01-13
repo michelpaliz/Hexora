@@ -202,7 +202,7 @@ class _ShimmerPills extends StatelessWidget {
           width: w,
           height: 28,
           decoration: BoxDecoration(
-            color: cs.surfaceVariant.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withOpacity(0.35),
             borderRadius: BorderRadius.circular(999),
           ),
         );

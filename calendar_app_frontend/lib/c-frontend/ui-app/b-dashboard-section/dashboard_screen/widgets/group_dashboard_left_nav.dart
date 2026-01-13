@@ -54,8 +54,9 @@ class GroupDashboardLeftNav extends StatelessWidget {
                               ? l.dashboardNavExpand
                               : l.dashboardNavCollapse,
                           onPressed: onToggleCollapse,
-                          icon: Icon(
-                              collapsed ? Icons.chevron_right : Icons.chevron_left),
+                          icon: Icon(collapsed
+                              ? Icons.chevron_right
+                              : Icons.chevron_left),
                         ),
                         if (!collapsed)
                           Text(
@@ -65,46 +66,53 @@ class GroupDashboardLeftNav extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    if (collapsed)
-                      _GroupCompactCard(group: group, isDark: isDark)
-                    else
-                      _GroupCard(group: group, isDark: isDark),
-                    const SizedBox(height: 12),
-                    Card(
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      elevation: 2,
-                      child: Column(
+                    Expanded(
+                      child: ListView(
+                        padding: EdgeInsets.zero,
                         children: [
-                          for (final s in sections) ...[
-                            _NavRow(
-                              label: s.$1,
-                              icon: s.$2,
-                              isDark: isDark,
-                              onTap: onSectionTap == null
-                                  ? null
-                                  : () => onSectionTap!(s.$3),
-                              isSelected: selectedAnchor == s.$3,
-                              collapsed: collapsed,
+                          if (collapsed)
+                            _GroupCompactCard(group: group, isDark: isDark)
+                          else
+                            _GroupCard(group: group, isDark: isDark),
+                          const SizedBox(height: 12),
+                          Card(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                            elevation: 2,
+                            child: Column(
+                              children: [
+                                for (final s in sections) ...[
+                                  _NavRow(
+                                    label: s.$1,
+                                    icon: s.$2,
+                                    isDark: isDark,
+                                    onTap: onSectionTap == null
+                                        ? null
+                                        : () => onSectionTap!(s.$3),
+                                    isSelected: selectedAnchor == s.$3,
+                                    collapsed: collapsed,
+                                  ),
+                                  if (s != sections.last)
+                                    Divider(
+                                      height: 1,
+                                      thickness: 0.6,
+                                      color: (isDark
+                                              ? AppDarkColors.textSecondary
+                                              : AppColors.textSecondary)
+                                          .withOpacity(0.25),
+                                    ),
+                                ],
+                              ],
                             ),
-                            if (s != sections.last)
-                              Divider(
-                                height: 1,
-                                thickness: 0.6,
-                                color: (isDark
-                                        ? AppDarkColors.textSecondary
-                                        : AppColors.textSecondary)
-                                    .withOpacity(0.25),
-                              ),
-                          ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (user != null && collapsed)
+                            _UserCompactCard(user: user!, isDark: isDark)
+                          else if (user != null)
+                            _UserCard(user: user!, isDark: isDark),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    if (user != null && collapsed)
-                      _UserCompactCard(user: user!, isDark: isDark)
-                    else if (user != null)
-                      _UserCard(user: user!, isDark: isDark),
                   ],
                 ),
               ),
@@ -142,7 +150,8 @@ class _NavRow extends StatelessWidget {
     final row = InkWell(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: collapsed ? 10 : 14, vertical: 12),
+        padding:
+            EdgeInsets.symmetric(horizontal: collapsed ? 10 : 14, vertical: 12),
         color: bg,
         child: Row(
           mainAxisAlignment:

@@ -35,6 +35,7 @@ class StatementsController extends ChangeNotifier {
   int? entriesYear;
   String? entriesDateFrom;
   String? entriesDateTo;
+  String entriesOrder = 'source';
 
   // Client linking + suggestions
   final Map<String, bool> loadingSuggestions = {};
@@ -43,6 +44,8 @@ class StatementsController extends ChangeNotifier {
 
   final Map<String, bool> linkingClient = {};
   final Map<String, String?> linkClientError = {};
+  final Map<String, bool> linkingInvoice = {};
+  final Map<String, String?> linkInvoiceError = {};
 
   // Manual client picker data
   bool loadingClients = false;
@@ -144,6 +147,7 @@ class StatementsController extends ChangeNotifier {
     int? year,
     String? dateFrom,
     String? dateTo,
+    String? order,
   }) async {
     selectedBatchId = batchId;
     loadingEntries = true;
@@ -153,12 +157,13 @@ class StatementsController extends ChangeNotifier {
     if (year != null) entriesYear = year;
     if (dateFrom != null) entriesDateFrom = dateFrom;
     if (dateTo != null) entriesDateTo = dateTo;
+    if (order != null) entriesOrder = order;
     notifyListeners();
     try {
       if (kDebugMode) {
         debugPrint(
           '[Statements] fetchBatchEntries batch=$batchId page=$entriesPage size=$entriesSize '
-          'year=$entriesYear from=$entriesDateFrom to=$entriesDateTo',
+          'year=$entriesYear from=$entriesDateFrom to=$entriesDateTo order=$entriesOrder',
         );
       }
       final r = await _api.batchEntriesPaged(
@@ -168,6 +173,7 @@ class StatementsController extends ChangeNotifier {
         year: entriesYear,
         dateFrom: entriesDateFrom,
         dateTo: entriesDateTo,
+        order: entriesOrder,
       );
       entries = (r['entries'] as List? ?? const [])
           .whereType<Map>()
@@ -214,9 +220,7 @@ class StatementsController extends ChangeNotifier {
       final r = await _api.reminderSettings(batchId: batchId);
       final reminder = (r['reminder'] is Map)
           ? Map<String, dynamic>.from(r['reminder'] as Map)
-          : (r is Map<String, dynamic>
-              ? Map<String, dynamic>.from(r)
-              : <String, dynamic>{});
+          : (Map<String, dynamic>.from(r));
       reminderSettings[batchId] = reminder;
     } catch (e) {
       reminderSettingsError[batchId] = e.toString();
@@ -242,9 +246,7 @@ class StatementsController extends ChangeNotifier {
       );
       final reminder = (r['reminder'] is Map)
           ? Map<String, dynamic>.from(r['reminder'] as Map)
-          : (r is Map<String, dynamic>
-              ? Map<String, dynamic>.from(r)
-              : <String, dynamic>{});
+          : (Map<String, dynamic>.from(r));
       reminderSettings[batchId] = reminder;
       return reminder;
     } catch (e) {
@@ -356,6 +358,42 @@ class StatementsController extends ChangeNotifier {
       linkClientError[entryId] = e.toString();
     } finally {
       linkingClient[entryId] = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> linkInvoice({
+    required String entryId,
+    String? invoiceId,
+    required bool expenseOnly,
+  }) async {
+    linkingInvoice[entryId] = true;
+    linkInvoiceError[entryId] = null;
+    notifyListeners();
+    try {
+      if (expenseOnly) {
+        await _api.linkEntryInvoiceExpense(entryId: entryId, invoiceId: invoiceId);
+      } else {
+        await _api.linkEntryInvoice(entryId: entryId, invoiceId: invoiceId);
+      }
+      final idx =
+          entries.indexWhere((e) => (e['_id'] ?? e['id'])?.toString() == entryId);
+      if (idx >= 0) {
+        final updated = Map<String, dynamic>.from(entries[idx]);
+        updated['invoiceId'] = invoiceId;
+        entries = List<Map<String, dynamic>>.from(entries)..[idx] = updated;
+      }
+      final allIdx =
+          allEntries.indexWhere((e) => (e['_id'] ?? e['id'])?.toString() == entryId);
+      if (allIdx >= 0) {
+        final updated = Map<String, dynamic>.from(allEntries[allIdx]);
+        updated['invoiceId'] = invoiceId;
+        allEntries = List<Map<String, dynamic>>.from(allEntries)..[allIdx] = updated;
+      }
+    } catch (e) {
+      linkInvoiceError[entryId] = e.toString();
+    } finally {
+      linkingInvoice[entryId] = false;
       notifyListeners();
     }
   }

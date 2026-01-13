@@ -1,4 +1,3 @@
-import 'package:rrule/rrule.dart' as rrule;
 
 void main() {
   // final rule = rrule.RecurrenceRule.fromString(

@@ -33,71 +33,73 @@ class AnalyticsTrendChart extends StatelessWidget {
     }).toList();
 
     final hasMonths = rows.any((row) => row['month'] != null);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: 320,
-          child: SfCartesianChart(
-            legend: Legend(isVisible: true, position: LegendPosition.bottom),
-            primaryXAxis: CategoryAxis(
-              labelRotation: hasMonths ? 45 : 0,
-              labelIntersectAction: hasMonths
-                  ? AxisLabelIntersectAction.rotate45
-                  : AxisLabelIntersectAction.hide,
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 320,
+            child: SfCartesianChart(
+              legend: Legend(isVisible: true, position: LegendPosition.bottom),
+              primaryXAxis: CategoryAxis(
+                labelRotation: hasMonths ? 45 : 0,
+                labelIntersectAction: hasMonths
+                    ? AxisLabelIntersectAction.rotate45
+                    : AxisLabelIntersectAction.hide,
+              ),
+              primaryYAxis: NumericAxis(),
+              tooltipBehavior: TooltipBehavior(
+                enable: true,
+                builder: (data, point, series, pointIndex, seriesIndex) {
+                  final p = data as _TrendPoint;
+                  final title = series.name ?? '';
+                  final value = switch (seriesIndex) {
+                    0 => p.income,
+                    1 => p.expense,
+                    _ => p.net,
+                  };
+                  return _TooltipCard(
+                    title: title,
+                    label: p.label,
+                    value: StatementsFormatters.formatCurrency(context, value),
+                  );
+                },
+              ),
+              series: <CartesianSeries<_TrendPoint, String>>[
+                ColumnSeries<_TrendPoint, String>(
+                  name: l.statementsSummaryIncome,
+                  dataSource: points,
+                  xValueMapper: (p, _) => p.label,
+                  yValueMapper: (p, _) => p.income,
+                ),
+                ColumnSeries<_TrendPoint, String>(
+                  name: l.statementsSummaryExpense,
+                  dataSource: points,
+                  xValueMapper: (p, _) => p.label,
+                  yValueMapper: (p, _) => p.expense,
+                ),
+                LineSeries<_TrendPoint, String>(
+                  name: l.statementsSummaryNet,
+                  dataSource: points,
+                  xValueMapper: (p, _) => p.label,
+                  yValueMapper: (p, _) => p.net,
+                  markerSettings: const MarkerSettings(isVisible: true),
+                ),
+              ],
             ),
-            primaryYAxis: NumericAxis(),
-            tooltipBehavior: TooltipBehavior(
-              enable: true,
-              builder: (data, point, series, pointIndex, seriesIndex) {
-                final p = data as _TrendPoint;
-                final title = series.name ?? '';
-                final value = switch (seriesIndex) {
-                  0 => p.income,
-                  1 => p.expense,
-                  _ => p.net,
-                };
-                return _TooltipCard(
-                  title: title,
-                  label: p.label,
-                  value: StatementsFormatters.formatCurrency(context, value),
-                );
-              },
+          ),
+          if (!hasMonths) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: points.map((p) {
+                return _YearSummaryCard(point: p);
+              }).toList(),
             ),
-            series: <CartesianSeries<_TrendPoint, String>>[
-              ColumnSeries<_TrendPoint, String>(
-                name: l.statementsSummaryIncome,
-                dataSource: points,
-                xValueMapper: (p, _) => p.label,
-                yValueMapper: (p, _) => p.income,
-              ),
-              ColumnSeries<_TrendPoint, String>(
-                name: l.statementsSummaryExpense,
-                dataSource: points,
-                xValueMapper: (p, _) => p.label,
-                yValueMapper: (p, _) => p.expense,
-              ),
-              LineSeries<_TrendPoint, String>(
-                name: l.statementsSummaryNet,
-                dataSource: points,
-                xValueMapper: (p, _) => p.label,
-                yValueMapper: (p, _) => p.net,
-                markerSettings: const MarkerSettings(isVisible: true),
-              ),
-            ],
-          ),
-        ),
-        if (!hasMonths) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: points.map((p) {
-              return _YearSummaryCard(point: p);
-            }).toList(),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -230,7 +232,7 @@ class _YearSummaryCard extends StatelessWidget {
       width: 220,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.35),
+        color: cs.surfaceContainerHighest.withOpacity(0.35),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

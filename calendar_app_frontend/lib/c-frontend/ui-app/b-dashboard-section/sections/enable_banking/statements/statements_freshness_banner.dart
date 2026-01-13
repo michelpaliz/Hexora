@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 import 'statements_controller.dart';
 import 'statements_formatters.dart';
@@ -32,6 +34,9 @@ class StatementsFreshnessBanner extends StatelessWidget {
     final status = controller.batchStatus[id];
     final statusLoading = controller.loadingStatus[id] == true;
     final statusErr = controller.statusError[id];
+    final autoImportEnabled =
+        context.watch<AuthProvider>().currentUser?.autoStatementImportEnabled ??
+            false;
     final reminder = controller.reminderSettings[id];
     final reminderLoading = controller.loadingReminderSettings[id] == true;
     final reminderErr = controller.reminderSettingsError[id];
@@ -57,6 +62,7 @@ class StatementsFreshnessBanner extends StatelessWidget {
     if (!statusLoading &&
         status != null &&
         isAdmin &&
+        !autoImportEnabled &&
         reminder == null &&
         reminderErr == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -110,16 +116,10 @@ class StatementsFreshnessBanner extends StatelessWidget {
       );
     }
 
-    final reminderStatusText = !isAdmin
-        ? l.statementsReminderStatusUnknown
-        : reminderEnabled
-            ? l.statementsReminderStatusOn(reminderThreshold)
-            : l.statementsReminderStatusOff;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.35),
+        color: cs.surfaceContainerHighest.withOpacity(0.35),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Wrap(
@@ -128,15 +128,20 @@ class StatementsFreshnessBanner extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           buildBadge(),
-          Text(
-            reminderStatusText,
-            style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-          ),
+          if (!autoImportEnabled)
+            Text(
+              !isAdmin
+                  ? l.statementsReminderStatusUnknown
+                  : reminderEnabled
+                      ? l.statementsReminderStatusOn(reminderThreshold)
+                      : l.statementsReminderStatusOff,
+              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+            ),
           if (showThresholdSelector)
             SizedBox(
               width: 120,
               child: DropdownButtonFormField<int>(
-                value: controller.statusThreshold,
+                initialValue: controller.statusThreshold,
                 isExpanded: true,
                 decoration: InputDecoration(
                   labelText: l.statementsFreshnessThreshold,
@@ -157,7 +162,7 @@ class StatementsFreshnessBanner extends StatelessWidget {
                 },
               ),
             ),
-          if (isAdmin) ...[
+          if (isAdmin && !autoImportEnabled) ...[
             if (reminderLoading)
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -217,7 +222,7 @@ class StatementsFreshnessBanner extends StatelessWidget {
                   SizedBox(
                     width: 96,
                     child: DropdownButtonFormField<int>(
-                      value: reminderThreshold,
+                      initialValue: reminderThreshold,
                       isExpanded: true,
                       decoration: InputDecoration(
                         labelText: l.statementsReminderSettingsThreshold,

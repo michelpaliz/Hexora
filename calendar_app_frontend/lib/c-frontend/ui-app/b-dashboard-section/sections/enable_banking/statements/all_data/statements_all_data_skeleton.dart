@@ -14,7 +14,7 @@ class StatementsAllDataSkeleton extends StatelessWidget {
           height: 56,
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            color: cs.surfaceVariant.withOpacity(0.4),
+            color: cs.surfaceContainerHighest.withOpacity(0.4),
             borderRadius: BorderRadius.circular(8),
           ),
         );

@@ -203,7 +203,7 @@ class _BillingChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     final bool isComplete = billing?.isComplete == true;
-    final Color bg = isComplete ? cs.secondaryContainer : cs.surfaceVariant;
+    final Color bg = isComplete ? cs.secondaryContainer : cs.surfaceContainerHighest;
     final Color fg = isComplete ? cs.onSecondaryContainer : cs.onSurfaceVariant;
     final doc = billing?.documentType ?? 'invoice';
     final docLabel =

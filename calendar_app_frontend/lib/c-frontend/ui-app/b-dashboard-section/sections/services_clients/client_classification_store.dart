@@ -1,8 +1,8 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ClientClassificationOptions {
@@ -61,7 +61,8 @@ class ClientClassificationStore {
       );
     } catch (_) {
       final excerpt = r.body.trim();
-      final clipped = excerpt.length > 240 ? '${excerpt.substring(0, 240)}…' : excerpt;
+      final clipped =
+          excerpt.length > 240 ? '${excerpt.substring(0, 240)}…' : excerpt;
       return Exception(
         '${r.reasonPhrase ?? 'Request failed'} (status ${r.statusCode})'
         '${clipped.isEmpty ? '' : ': $clipped'}',
@@ -79,7 +80,8 @@ class ClientClassificationStore {
           '[ClientClassificationStore] GET ${r.request?.url} -> 404; returning empty options',
         );
       }
-      return const ClientClassificationOptions(entityTypes: [], propertyKinds: []);
+      return const ClientClassificationOptions(
+          entityTypes: [], propertyKinds: []);
     }
     if (r.statusCode < 200 || r.statusCode >= 300) throw _decodeError(r);
     final body = r.body.isEmpty ? null : jsonDecode(r.body);

@@ -29,30 +29,30 @@ class RefreshCta extends StatelessWidget {
         child: OutlinedButton(
           onPressed: isDisabled ? null : onPressed,
           style: ButtonStyle(
-            minimumSize: const MaterialStatePropertyAll(Size.fromHeight(48)),
-            padding: const MaterialStatePropertyAll(
+            minimumSize: const WidgetStatePropertyAll(Size.fromHeight(48)),
+            padding: const WidgetStatePropertyAll(
               EdgeInsets.symmetric(horizontal: 16),
             ),
-            shape: MaterialStatePropertyAll(
+            shape: WidgetStatePropertyAll(
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            side: MaterialStateProperty.resolveWith<BorderSide>(
+            side: WidgetStateProperty.resolveWith<BorderSide>(
               (states) => BorderSide(
-                color: states.contains(MaterialState.disabled)
+                color: states.contains(WidgetState.disabled)
                     ? cs.outlineVariant
                     : cs.primary,
                 width: 1.2,
               ),
             ),
-            foregroundColor: MaterialStateProperty.resolveWith<Color>(
-              (states) => states.contains(MaterialState.disabled)
+            foregroundColor: WidgetStateProperty.resolveWith<Color>(
+              (states) => states.contains(WidgetState.disabled)
                   ? cs.onSurfaceVariant
                   : cs.primary,
             ),
             overlayColor:
-                MaterialStatePropertyAll(cs.primary.withOpacity(0.08)),
-            backgroundColor: const MaterialStatePropertyAll(Colors.transparent),
-            elevation: const MaterialStatePropertyAll(0),
+                WidgetStatePropertyAll(cs.primary.withOpacity(0.08)),
+            backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+            elevation: const WidgetStatePropertyAll(0),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

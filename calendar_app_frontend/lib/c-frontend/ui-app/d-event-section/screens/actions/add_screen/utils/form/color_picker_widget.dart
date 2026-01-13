@@ -39,7 +39,7 @@ class ColorPickerWidget extends StatelessWidget {
 
         // Dropdown
         DropdownButtonFormField<Color>(
-          value: selectedEventColor,
+          initialValue: selectedEventColor,
           onChanged: onColorChanged,
           decoration: InputDecoration(
             labelText: l.chooseEventColor,

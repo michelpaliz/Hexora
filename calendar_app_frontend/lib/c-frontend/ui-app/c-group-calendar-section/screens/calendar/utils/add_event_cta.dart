@@ -16,7 +16,7 @@ class AddEventCta extends StatelessWidget {
     // Colors that adapt to the theme (context)
     final enabledBg = cs.primary;
     final enabledFg = cs.onPrimary; // high contrast on primary
-    final disabledBg = cs.surfaceVariant;
+    final disabledBg = cs.surfaceContainerHighest;
     final disabledFg = cs.onSurface.withOpacity(.60);
 
     return SizedBox(
@@ -24,23 +24,23 @@ class AddEventCta extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ButtonStyle(
-          minimumSize: const MaterialStatePropertyAll(Size.fromHeight(48)),
-          padding: const MaterialStatePropertyAll(
+          minimumSize: const WidgetStatePropertyAll(Size.fromHeight(48)),
+          padding: const WidgetStatePropertyAll(
             EdgeInsets.symmetric(horizontal: 16),
           ),
-          shape: MaterialStatePropertyAll(
+          shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          elevation: MaterialStateProperty.resolveWith<double>(
-            (s) => s.contains(MaterialState.disabled) ? 0 : 2,
+          elevation: WidgetStateProperty.resolveWith<double>(
+            (s) => s.contains(WidgetState.disabled) ? 0 : 2,
           ),
-          backgroundColor: MaterialStateProperty.resolveWith<Color>(
-            (s) => s.contains(MaterialState.disabled) ? disabledBg : enabledBg,
+          backgroundColor: WidgetStateProperty.resolveWith<Color>(
+            (s) => s.contains(WidgetState.disabled) ? disabledBg : enabledBg,
           ),
-          foregroundColor: MaterialStateProperty.resolveWith<Color>(
-            (s) => s.contains(MaterialState.disabled) ? disabledFg : enabledFg,
+          foregroundColor: WidgetStateProperty.resolveWith<Color>(
+            (s) => s.contains(WidgetState.disabled) ? disabledFg : enabledFg,
           ),
-          overlayColor: MaterialStatePropertyAll(enabledFg.withOpacity(0.10)),
+          overlayColor: WidgetStatePropertyAll(enabledFg.withOpacity(0.10)),
         ),
         // Ensure the icon inherits the same foreground color
         child: IconTheme(

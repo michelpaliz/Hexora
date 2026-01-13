@@ -90,16 +90,6 @@ abstract class EditEventLogic<T extends StatefulWidget>
       return;
     }
 
-    // At least one participant
-    if (selectedUsers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(loc.pleaseSelectAtLeastOneUser),
-            backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
-
     // Start before end
     if (selectedEndDate.isBefore(selectedStartDate)) {
       ScaffoldMessenger.of(context).showSnackBar(

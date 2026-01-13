@@ -30,7 +30,7 @@ class TimeSummarySection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.55),
+        color: cs.surfaceContainerHighest.withOpacity(0.55),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant),
       ),

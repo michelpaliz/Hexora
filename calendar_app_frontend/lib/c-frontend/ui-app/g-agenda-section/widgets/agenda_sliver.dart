@@ -46,10 +46,18 @@ class _AgendaTile extends StatelessWidget {
     final end = e.endDate.toLocal();
 
     final timeStr = _formatTimeRange(context, start, e.allDay ? null : end);
+    final durationStr = e.allDay
+        ? null
+        : _formatDuration(
+            end.difference(start),
+            Localizations.localeOf(context).toLanguageTag(),
+          );
     final secondary = [
       if (item.groupName != null) item.groupName!,
       if (e.localization?.isNotEmpty == true) e.localization!,
     ].join(' • ').replaceFirst(RegExp(r'^ • '), '');
+    final timeLine =
+        durationStr == null ? timeStr : '$timeStr • $durationStr';
 
     return Card(
       elevation: 0,
@@ -62,7 +70,7 @@ class _AgendaTile extends StatelessWidget {
         ),
         title: Text(e.title, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(
-          secondary.isEmpty ? timeStr : '$timeStr • $secondary',
+          secondary.isEmpty ? timeLine : '$timeLine • $secondary',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -115,4 +123,17 @@ String _formatTimeRange(BuildContext context, DateTime start, DateTime? end) {
     alwaysUse24HourFormat: true,
   );
   return '$s – $e';
+}
+
+String _formatDuration(Duration duration, String locale) {
+  final totalMinutes = duration.inMinutes;
+  if (totalMinutes <= 0) return '0m';
+  final hours = totalMinutes ~/ 60;
+  final minutes = totalMinutes % 60;
+  final nf = NumberFormat.decimalPattern(locale);
+  if (hours > 0 && minutes > 0) {
+    return '${nf.format(hours)}h ${nf.format(minutes)}m';
+  }
+  if (hours > 0) return '${nf.format(hours)}h';
+  return '${nf.format(minutes)}m';
 }

@@ -20,6 +20,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
   final List<int> _topOptions = const [5, 10, 20, 50];
   bool _showAllExpense = false;
   bool _showAllIncome = false;
+  bool _filtersExpanded = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -108,7 +109,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           wrapField(
             width: batchWidth,
             child: DropdownButtonFormField<String>(
-              value: c.selectedBatchId,
+              initialValue: c.selectedBatchId,
               isExpanded: true,
               style: t.bodyMedium,
               decoration: InputDecoration(
@@ -141,7 +142,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           wrapField(
             width: fieldWidth,
             child: DropdownButtonFormField<int?>(
-              value: c.selectedYear,
+              initialValue: c.selectedYear,
               isExpanded: true,
               style: t.bodyMedium,
               decoration: InputDecoration(
@@ -167,7 +168,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           wrapField(
             width: fieldWidth,
             child: DropdownButtonFormField<int?>(
-              value: c.selectedMonth,
+              initialValue: c.selectedMonth,
               isExpanded: true,
               style: t.bodyMedium,
               decoration: InputDecoration(
@@ -193,7 +194,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           wrapField(
             width: fieldWidth,
             child: DropdownButtonFormField<StatementsAnalyticsPeriodMode>(
-              value: c.periodMode,
+              initialValue: c.periodMode,
               isExpanded: true,
               style: t.bodyMedium,
               decoration: InputDecoration(
@@ -220,7 +221,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           wrapField(
             width: fieldWidth,
             child: DropdownButtonFormField<StatementsAnalyticsCompareMode>(
-              value: c.compareMode,
+              initialValue: c.compareMode,
               isExpanded: true,
               style: t.bodyMedium,
               decoration: InputDecoration(
@@ -246,7 +247,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             wrapField(
               width: 120,
               child: DropdownButtonFormField<int>(
-                value: c.settlementStartDay,
+                initialValue: c.settlementStartDay,
                 isExpanded: true,
                 style: t.bodyMedium,
                 decoration: InputDecoration(
@@ -270,7 +271,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             wrapField(
               width: 120,
               child: DropdownButtonFormField<int>(
-                value: c.settlementEndDay,
+                initialValue: c.settlementEndDay,
                 isExpanded: true,
                 style: t.bodyMedium,
                 decoration: InputDecoration(
@@ -293,7 +294,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           wrapField(
             width: topWidth,
             child: DropdownButtonFormField<int>(
-              value: c.top,
+              initialValue: c.top,
               isExpanded: true,
               style: t.bodyMedium,
               decoration: InputDecoration(
@@ -312,6 +313,73 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           ),
         ],
+      );
+    }
+
+    Widget buildFilterChips() {
+      final chips = <Widget>[];
+      final batchLabel = c.selectedBatchId == null
+          ? l.statementsAnalyticsAllBatches
+          : (c.selectedBatchId == 'all'
+              ? l.statementsAnalyticsAllBatches
+              : c.selectedBatchId!);
+      final modeLabel =
+          c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow
+              ? l.statementsAnalyticsModeSettlement
+              : l.statementsAnalyticsModeCalendar;
+      final compareLabel = compareOptions[c.compareMode]!;
+      chips.add(InputChip(
+        label: Text('${l.statementsAnalyticsBatch}: $batchLabel'),
+        onDeleted: c.selectedBatchId == null || c.selectedBatchId == 'all'
+            ? null
+            : () => c.selectBatch('all'),
+      ));
+      chips.add(InputChip(
+        label: Text('${l.statementsAnalyticsMode}: $modeLabel'),
+        onDeleted: c.periodMode == StatementsAnalyticsPeriodMode.calendarMonth
+            ? null
+            : () =>
+                c.setPeriodMode(StatementsAnalyticsPeriodMode.calendarMonth),
+      ));
+      chips.add(InputChip(
+        label: Text('${l.statementsAnalyticsCompareMode}: $compareLabel'),
+        onDeleted: c.compareMode == StatementsAnalyticsCompareMode.both
+            ? null
+            : () => c.setCompareMode(StatementsAnalyticsCompareMode.both),
+      ));
+      chips.add(InputChip(
+        label: Text('${l.statementsAnalyticsTop}: ${c.top}'),
+        onDeleted: c.top == _topOptions.first
+            ? null
+            : () => c.setTop(_topOptions.first),
+      ));
+      if (c.selectedYear != null) {
+        chips.add(InputChip(
+          label: Text('${l.statementsFilterYear}: ${c.selectedYear}'),
+          onDeleted: () => c.setYear(null),
+        ));
+      }
+      if (c.selectedMonth != null) {
+        chips.add(InputChip(
+          label: Text('${l.statementsAnalyticsMonth}: ${c.selectedMonth}'),
+          onDeleted: () => c.setMonth(null),
+        ));
+      }
+      if (c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow) {
+        final range = c.settlementRange();
+        if (range != null) {
+          final from = StatementsFormatters.formatDate(context, range.start);
+          final to = StatementsFormatters.formatDate(context, range.end);
+          chips.add(InputChip(
+            label: Text(l.statementsAnalyticsPeriodLabel(from, to)),
+            onDeleted: null,
+          ));
+        }
+      }
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: chips,
       );
     }
 
@@ -385,7 +453,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                       width: 240,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: cs.surfaceVariant.withOpacity(0.35),
+                        color: cs.surfaceContainerHighest.withOpacity(0.35),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -545,7 +613,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: cs.surfaceVariant.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withOpacity(0.35),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -608,7 +676,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: cs.surfaceVariant.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withOpacity(0.35),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -737,8 +805,13 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final headerHeight = constraints.maxWidth < 980 ? 190.0 : 150.0;
-        final headerMax = constraints.maxWidth < 980 ? 220.0 : 170.0;
+        final isNarrow = constraints.maxWidth < 980;
+        final headerHeight = _filtersExpanded
+            ? (isNarrow ? 230.0 : 190.0)
+            : (isNarrow ? 150.0 : 120.0);
+        final headerMax = _filtersExpanded
+            ? (isNarrow ? 260.0 : 220.0)
+            : (isNarrow ? 180.0 : 140.0);
         return CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
@@ -770,9 +843,37 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      buildSelectors(constraints),
+                      Row(
+                        children: [
+                          Text(
+                            _filtersExpanded
+                                ? l.statementsFiltersTitle
+                                : l.statementsFiltersActive,
+                            style: t.bodyMedium
+                                .copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: () => setState(
+                                () => _filtersExpanded = !_filtersExpanded),
+                            icon: Icon(
+                              _filtersExpanded ? Icons.expand_less : Icons.tune,
+                              size: 18,
+                            ),
+                            label: Text(_filtersExpanded
+                                ? l.statementsAnalyticsCollapse
+                                : l.statementsAnalyticsExpand),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
-                      Text(filterSummary(), style: t.bodySmall),
+                      if (_filtersExpanded) ...[
+                        buildSelectors(constraints),
+                        const SizedBox(height: 8),
+                        Text(filterSummary(), style: t.bodySmall),
+                      ] else ...[
+                        buildFilterChips(),
+                      ],
                     ],
                   ),
                 ),
@@ -865,7 +966,7 @@ class AnalyticsSkeleton extends StatelessWidget {
         Container(
           height: 220,
           decoration: BoxDecoration(
-            color: cs.surfaceVariant.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withOpacity(0.35),
             borderRadius: BorderRadius.circular(12),
           ),
         ),
@@ -873,7 +974,7 @@ class AnalyticsSkeleton extends StatelessWidget {
         Container(
           height: 260,
           decoration: BoxDecoration(
-            color: cs.surfaceVariant.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withOpacity(0.35),
             borderRadius: BorderRadius.circular(12),
           ),
         ),

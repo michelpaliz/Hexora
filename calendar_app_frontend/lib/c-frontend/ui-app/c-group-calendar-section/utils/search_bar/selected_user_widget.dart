@@ -73,7 +73,7 @@ class _UserChip extends StatelessWidget {
             child: CircleAvatar(
               radius: 28,
               backgroundImage: avatarProvider, // ✅ correct type
-              backgroundColor: cs.surfaceVariant,
+              backgroundColor: cs.surfaceContainerHighest,
             ),
           ),
           const SizedBox(height: 8),

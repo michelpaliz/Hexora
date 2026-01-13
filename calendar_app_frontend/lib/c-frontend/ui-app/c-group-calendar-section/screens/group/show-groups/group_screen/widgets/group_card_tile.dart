@@ -61,7 +61,7 @@ class GroupCardTile extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [
                   cs.surface,
-                  cs.surfaceVariant.withOpacity(0.3),
+                  cs.surfaceContainerHighest.withOpacity(0.3),
                 ],
               ),
               border: Border.all(

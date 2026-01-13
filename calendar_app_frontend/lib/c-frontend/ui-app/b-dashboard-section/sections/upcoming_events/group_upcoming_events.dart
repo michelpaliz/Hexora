@@ -64,7 +64,7 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
         widget.role == GroupRole.member && currentUserId != null;
 
     final filteredByUser = shouldFilterToMine
-        ? filtered.where((e) => _isMine(e, currentUserId!)).toList()
+        ? filtered.where((e) => _isMine(e, currentUserId)).toList()
         : filtered;
 
     return filteredByUser.take(widget.limit).toList();

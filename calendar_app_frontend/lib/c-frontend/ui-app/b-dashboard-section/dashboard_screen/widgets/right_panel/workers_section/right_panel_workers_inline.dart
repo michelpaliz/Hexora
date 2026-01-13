@@ -166,7 +166,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.6),
+        color: cs.surfaceContainerHighest.withOpacity(0.6),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

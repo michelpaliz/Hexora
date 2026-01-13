@@ -79,7 +79,7 @@ class WeeklyDaySelector extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               visualDensity: VisualDensity.compact,
               selectedColor: cs.primaryContainer,
-              backgroundColor: cs.surfaceVariant.withOpacity(0.65),
+              backgroundColor: cs.surfaceContainerHighest.withOpacity(0.65),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
                 side: BorderSide(

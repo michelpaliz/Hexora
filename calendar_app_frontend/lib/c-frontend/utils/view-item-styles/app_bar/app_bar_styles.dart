@@ -5,7 +5,7 @@ class AppBarStyles {
   static AppBarTheme defaultAppBarTheme({bool isDarkMode = false}) {
     return AppBarTheme(
       // Use primary blue in light mode, and its darker counterpart in dark mode
-      color: isDarkMode ? AppDarkColors.primary : AppColors.primary,
+      backgroundColor: isDarkMode ? AppDarkColors.primary : AppColors.primary,
       centerTitle: true,
       titleTextStyle: const TextStyle(
         color: Colors.white,

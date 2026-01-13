@@ -28,6 +28,15 @@ class StatementsHistoryList extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final thresholdOptions = const [3, 5, 7];
+    String labelFrom(String template) {
+      final cleaned = template.replaceAll(':', '').trim();
+      return cleaned.isEmpty ? template : cleaned;
+    }
+
+    final uploadedLabel = labelFrom(l.statementsUploadedAt(''));
+    final entriesLabel = labelFrom(l.statementsEntryCount(''));
+    final skippedLabelText = labelFrom(l.statementsSkippedLabel(''));
+    final sheetLabelText = labelFrom(l.statementsSheetLabel(''));
 
     return Card(
       child: Padding(
@@ -45,7 +54,7 @@ class StatementsHistoryList extends StatelessWidget {
                   SizedBox(
                     width: 120,
                     child: DropdownButtonFormField<int>(
-                      value: controller.statusThreshold,
+                      initialValue: controller.statusThreshold,
                       isExpanded: true,
                       decoration: InputDecoration(
                         labelText: l.statementsFreshnessThreshold,
@@ -157,7 +166,14 @@ class StatementsHistoryList extends StatelessWidget {
                     color: controller.selectedBatchId == id
                         ? cs.primaryContainer.withOpacity(0.35)
                         : null,
-                    elevation: 2,
+                    elevation: 1,
+                    shadowColor: cs.shadow.withOpacity(0.08),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(
+                        color: cs.outlineVariant.withOpacity(0.35),
+                      ),
+                    ),
                     child: InkWell(
                       onTap: id.isEmpty
                           ? null
@@ -169,7 +185,7 @@ class StatementsHistoryList extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                       hoverColor: cs.primary.withOpacity(0.06),
                       child: Padding(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -178,7 +194,7 @@ class StatementsHistoryList extends StatelessWidget {
                                 Expanded(
                                   child: Row(
                                     children: [
-                                      Expanded(
+                                      Flexible(
                                         child: Tooltip(
                                           message: fileLabel,
                                           child: Text(
@@ -199,51 +215,51 @@ class StatementsHistoryList extends StatelessWidget {
                                     ],
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 const Icon(Icons.chevron_right),
                               ],
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
                             LayoutBuilder(
                               builder: (context, constraints) {
-                                final colWidth =
-                                    (constraints.maxWidth - 16) / 2;
-                                return Wrap(
-                                  spacing: 16,
-                                  runSpacing: 8,
-                                  children: [
-                                    SizedBox(
-                                      width: colWidth,
-                                      child: MetaItem(
-                                        label:
-                                            l.statementsUploadedAt(dateLabel),
-                                        icon: Icons.calendar_today_outlined,
-                                      ),
+                                final columns =
+                                    constraints.maxWidth < 420 ? 1 : 2;
+                                final items = <Widget>[
+                                  MetaItem(
+                                    label: uploadedLabel,
+                                    value: dateLabel,
+                                    icon: Icons.calendar_today_outlined,
+                                  ),
+                                  MetaItem(
+                                    label: entriesLabel,
+                                    value: countLabel,
+                                    icon: Icons.table_rows_outlined,
+                                  ),
+                                  MetaItem(
+                                    label: skippedLabelText,
+                                    value: skippedLabel,
+                                    icon: Icons.copy_all_outlined,
+                                  ),
+                                  if (sheet != null && sheet.isNotEmpty)
+                                    MetaItem(
+                                      label: sheetLabelText,
+                                      value: sheet,
+                                      valueTooltip: sheet,
+                                      icon: Icons.grid_view_outlined,
                                     ),
-                                    SizedBox(
-                                      width: colWidth,
-                                      child: MetaItem(
-                                        label:
-                                            l.statementsEntryCount(countLabel),
-                                        icon: Icons.table_rows_outlined,
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: colWidth,
-                                      child: MetaItem(
-                                        label: l.statementsSkippedLabel(
-                                            skippedLabel),
-                                        icon: Icons.copy_all_outlined,
-                                      ),
-                                    ),
-                                    if (sheet != null && sheet.isNotEmpty)
-                                      SizedBox(
-                                        width: colWidth,
-                                        child: MetaItem(
-                                          label: l.statementsSheetLabel(sheet),
-                                          icon: Icons.grid_view_outlined,
-                                        ),
-                                      ),
-                                  ],
+                                ];
+                                return GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: items.length,
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: columns,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 8,
+                                    mainAxisExtent: 44,
+                                  ),
+                                  itemBuilder: (context, index) => items[index],
                                 );
                               },
                             ),
@@ -252,12 +268,15 @@ class StatementsHistoryList extends StatelessWidget {
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: cs.tertiaryContainer.withOpacity(0.3),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: cs.tertiaryContainer.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                      color: cs.tertiary.withOpacity(0.35)),
+                                    color: cs.tertiary.withOpacity(0.2),
+                                  ),
                                 ),
                                 child: Text(
                                   l.statementsSkippedLabel(skippedLabel),
@@ -269,7 +288,6 @@ class StatementsHistoryList extends StatelessWidget {
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 8),
                             const SizedBox(height: 10),
                             Wrap(
                               spacing: 8,
@@ -277,7 +295,7 @@ class StatementsHistoryList extends StatelessWidget {
                               alignment: WrapAlignment.start,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                FilledButton.tonal(
+                                FilledButton(
                                   onPressed: id.isEmpty ||
                                           deleting ||
                                           reprocessing
@@ -291,7 +309,6 @@ class StatementsHistoryList extends StatelessWidget {
                                         },
                                   child: Text(l.statementsActionViewEntries),
                                 ),
-                                const SizedBox(width: 8),
                                 OutlinedButton(
                                   onPressed: id.isEmpty ||
                                           deleting ||
@@ -427,7 +444,8 @@ class StatementsHistoryList extends StatelessWidget {
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: cs.surfaceVariant.withOpacity(0.3),
+                                  color: cs.surfaceContainerHighest
+                                      .withOpacity(0.3),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Column(

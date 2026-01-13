@@ -6394,6 +6394,24 @@ abstract class AppLocalizations {
   /// **'Complete the previous step to continue.'**
   String get statementsStepDisabledHint;
 
+  /// No description provided for @autoStatementImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable automatic data'**
+  String get autoStatementImportTitle;
+
+  /// No description provided for @autoStatementImportHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'When on, we\'ll automatically import your daily Caixa statement into your account.'**
+  String get autoStatementImportHelper;
+
+  /// No description provided for @autoStatementImportUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to update automatic data setting.'**
+  String get autoStatementImportUpdateFailed;
+
   /// No description provided for @statementsDragDropTitle.
   ///
   /// In en, this message translates to:
@@ -7605,6 +7623,588 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Excel'**
   String get statementsImportExcelTab;
+
+  /// No description provided for @expenseUploadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload expense'**
+  String get expenseUploadTitle;
+
+  /// No description provided for @expenseUploadFileSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get expenseUploadFileSectionTitle;
+
+  /// No description provided for @expenseUploadFileDropHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag the file here'**
+  String get expenseUploadFileDropHint;
+
+  /// No description provided for @expenseUploadFileOrLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get expenseUploadFileOrLabel;
+
+  /// No description provided for @expenseUploadFileSelectPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a file'**
+  String get expenseUploadFileSelectPlaceholder;
+
+  /// No description provided for @expenseUploadFileSelectCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file'**
+  String get expenseUploadFileSelectCta;
+
+  /// No description provided for @expenseUploadProviderSavedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved provider'**
+  String get expenseUploadProviderSavedLabel;
+
+  /// No description provided for @expenseUploadProviderManualOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual provider'**
+  String get expenseUploadProviderManualOption;
+
+  /// No description provided for @expenseUploadProviderSearchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search provider'**
+  String get expenseUploadProviderSearchPlaceholder;
+
+  /// No description provided for @expenseUploadDataSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get expenseUploadDataSectionTitle;
+
+  /// No description provided for @expenseUploadVendorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get expenseUploadVendorLabel;
+
+  /// No description provided for @expenseUploadIssueDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue date'**
+  String get expenseUploadIssueDateLabel;
+
+  /// No description provided for @expenseUploadDateButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get expenseUploadDateButtonLabel;
+
+  /// No description provided for @expenseUploadTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get expenseUploadTotalLabel;
+
+  /// No description provided for @expenseUploadVendorTaxIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider tax ID'**
+  String get expenseUploadVendorTaxIdLabel;
+
+  /// No description provided for @expenseUploadInvoiceNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice number'**
+  String get expenseUploadInvoiceNumberLabel;
+
+  /// No description provided for @expenseUploadDueDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date'**
+  String get expenseUploadDueDateLabel;
+
+  /// No description provided for @expenseUploadTaxTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'VAT total'**
+  String get expenseUploadTaxTotalLabel;
+
+  /// No description provided for @expenseUploadCurrencyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get expenseUploadCurrencyLabel;
+
+  /// No description provided for @expenseUploadNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get expenseUploadNotesLabel;
+
+  /// No description provided for @expenseUploadSubmitCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload expense'**
+  String get expenseUploadSubmitCta;
+
+  /// No description provided for @expenseUploadFileHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'After selecting the file, complete the details in Organize.'**
+  String get expenseUploadFileHelp;
+
+  /// No description provided for @expenseUploadEmptyList.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses uploaded in this session.'**
+  String get expenseUploadEmptyList;
+
+  /// No description provided for @expenseUploadNewProviderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New provider'**
+  String get expenseUploadNewProviderTitle;
+
+  /// No description provided for @expenseUploadEditProviderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit provider'**
+  String get expenseUploadEditProviderTitle;
+
+  /// No description provided for @expenseUploadProviderNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get expenseUploadProviderNameLabel;
+
+  /// No description provided for @expenseUploadProviderTaxIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax ID'**
+  String get expenseUploadProviderTaxIdLabel;
+
+  /// No description provided for @expenseUploadProviderEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get expenseUploadProviderEmailLabel;
+
+  /// No description provided for @expenseUploadProviderPhoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get expenseUploadProviderPhoneLabel;
+
+  /// No description provided for @expenseUploadProviderStreetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Street'**
+  String get expenseUploadProviderStreetLabel;
+
+  /// No description provided for @expenseUploadProviderExtraLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra'**
+  String get expenseUploadProviderExtraLabel;
+
+  /// No description provided for @expenseUploadProviderCityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get expenseUploadProviderCityLabel;
+
+  /// No description provided for @expenseUploadProviderProvinceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Province'**
+  String get expenseUploadProviderProvinceLabel;
+
+  /// No description provided for @expenseUploadProviderPostalCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Postal code'**
+  String get expenseUploadProviderPostalCodeLabel;
+
+  /// No description provided for @expenseUploadProviderCountryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get expenseUploadProviderCountryLabel;
+
+  /// No description provided for @expenseUploadProviderSaveCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get expenseUploadProviderSaveCta;
+
+  /// No description provided for @expenseUploadProviderUpdateCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get expenseUploadProviderUpdateCta;
+
+  /// No description provided for @expenseUploadProviderClearCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get expenseUploadProviderClearCta;
+
+  /// No description provided for @expenseUploadProvidersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No providers'**
+  String get expenseUploadProvidersEmpty;
+
+  /// No description provided for @expenseUploadProvidersSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a provider'**
+  String get expenseUploadProvidersSelectHint;
+
+  /// No description provided for @expenseUploadProvidersNoExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses for this provider.'**
+  String get expenseUploadProvidersNoExpenses;
+
+  /// No description provided for @expenseUploadSelectFileError.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a file'**
+  String get expenseUploadSelectFileError;
+
+  /// No description provided for @expenseUploadRequiredFieldsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider and issue date are required'**
+  String get expenseUploadRequiredFieldsError;
+
+  /// No description provided for @expenseUploadTotalOrLinesError.
+  ///
+  /// In en, this message translates to:
+  /// **'Total or line items are required'**
+  String get expenseUploadTotalOrLinesError;
+
+  /// No description provided for @expenseUploadLinesInvalidError.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in description, quantity, unit price, and tax rate for all lines'**
+  String get expenseUploadLinesInvalidError;
+
+  /// No description provided for @expenseUploadInvalidIssueDateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid issue date'**
+  String get expenseUploadInvalidIssueDateError;
+
+  /// No description provided for @expenseUploadSuccessSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense uploaded'**
+  String get expenseUploadSuccessSnack;
+
+  /// No description provided for @expenseUploadTabOrganize.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize'**
+  String get expenseUploadTabOrganize;
+
+  /// No description provided for @expenseUploadTabFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get expenseUploadTabFile;
+
+  /// No description provided for @expenseUploadTabList.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get expenseUploadTabList;
+
+  /// No description provided for @expenseUploadTabUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get expenseUploadTabUpload;
+
+  /// No description provided for @expenseUploadTabByProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'By provider'**
+  String get expenseUploadTabByProvider;
+
+  /// No description provided for @expenseUploadTabProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers'**
+  String get expenseUploadTabProviders;
+
+  /// No description provided for @expenseUploadProvidersListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers'**
+  String get expenseUploadProvidersListTitle;
+
+  /// No description provided for @expenseUploadProvidersInvoicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider expenses'**
+  String get expenseUploadProvidersInvoicesTitle;
+
+  /// No description provided for @expenseUploadLinesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Line items'**
+  String get expenseUploadLinesTitle;
+
+  /// No description provided for @expenseUploadLinesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No line items added yet.'**
+  String get expenseUploadLinesEmpty;
+
+  /// No description provided for @expenseUploadLinesAddCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Add line item'**
+  String get expenseUploadLinesAddCta;
+
+  /// No description provided for @expenseUploadLinesItemLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Line'**
+  String get expenseUploadLinesItemLabel;
+
+  /// No description provided for @expenseUploadLinesDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get expenseUploadLinesDescriptionLabel;
+
+  /// No description provided for @expenseUploadLinesQuantityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty'**
+  String get expenseUploadLinesQuantityLabel;
+
+  /// No description provided for @expenseUploadLinesUnitPriceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit price'**
+  String get expenseUploadLinesUnitPriceLabel;
+
+  /// No description provided for @expenseUploadLinesTaxRateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax rate %'**
+  String get expenseUploadLinesTaxRateLabel;
+
+  /// No description provided for @expenseUploadLinesSubtotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get expenseUploadLinesSubtotalLabel;
+
+  /// No description provided for @expenseUploadLinesTaxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get expenseUploadLinesTaxLabel;
+
+  /// No description provided for @expenseUploadLinesTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get expenseUploadLinesTotalLabel;
+
+  /// No description provided for @expenseUploadTotalAutoHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-calculated from line items'**
+  String get expenseUploadTotalAutoHelper;
+
+  /// No description provided for @expenseUploadVatBreakdownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'VAT breakdown'**
+  String get expenseUploadVatBreakdownTitle;
+
+  /// No description provided for @expenseUploadVatRateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate'**
+  String get expenseUploadVatRateLabel;
+
+  /// No description provided for @expenseUploadVatBaseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Base'**
+  String get expenseUploadVatBaseLabel;
+
+  /// No description provided for @expenseUploadVatTaxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get expenseUploadVatTaxLabel;
+
+  /// No description provided for @vatSummaryMenuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'VAT summary'**
+  String get vatSummaryMenuLabel;
+
+  /// No description provided for @vatSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'VAT summary'**
+  String get vatSummaryTitle;
+
+  /// No description provided for @vatSummaryPrevYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous year'**
+  String get vatSummaryPrevYear;
+
+  /// No description provided for @vatSummaryNextYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Next year'**
+  String get vatSummaryNextYear;
+
+  /// No description provided for @vatSummaryQuarterQ1.
+  ///
+  /// In en, this message translates to:
+  /// **'Q1'**
+  String get vatSummaryQuarterQ1;
+
+  /// No description provided for @vatSummaryQuarterQ2.
+  ///
+  /// In en, this message translates to:
+  /// **'Q2'**
+  String get vatSummaryQuarterQ2;
+
+  /// No description provided for @vatSummaryQuarterQ3.
+  ///
+  /// In en, this message translates to:
+  /// **'Q3'**
+  String get vatSummaryQuarterQ3;
+
+  /// No description provided for @vatSummaryQuarterQ4.
+  ///
+  /// In en, this message translates to:
+  /// **'Q4'**
+  String get vatSummaryQuarterQ4;
+
+  /// No description provided for @vatSummaryQuarterRangeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Quarter {quarter}: {range}'**
+  String vatSummaryQuarterRangeLabel(String quarter, String range);
+
+  /// No description provided for @vatSummaryQuarterRangeQ1.
+  ///
+  /// In en, this message translates to:
+  /// **'Jan 1 – Mar 31, {year}'**
+  String vatSummaryQuarterRangeQ1(Object year);
+
+  /// No description provided for @vatSummaryQuarterRangeQ2.
+  ///
+  /// In en, this message translates to:
+  /// **'Apr 1 – Jun 30, {year}'**
+  String vatSummaryQuarterRangeQ2(Object year);
+
+  /// No description provided for @vatSummaryQuarterRangeQ3.
+  ///
+  /// In en, this message translates to:
+  /// **'Jul 1 – Sep 30, {year}'**
+  String vatSummaryQuarterRangeQ3(Object year);
+
+  /// No description provided for @vatSummaryQuarterRangeQ4.
+  ///
+  /// In en, this message translates to:
+  /// **'Oct 1 – Dec 31, {year}'**
+  String vatSummaryQuarterRangeQ4(Object year);
+
+  /// No description provided for @vatSummaryQuarterDeadlineQ1.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline: Apr 20, {year}'**
+  String vatSummaryQuarterDeadlineQ1(Object year);
+
+  /// No description provided for @vatSummaryQuarterDeadlineQ2.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline: Jul 20, {year}'**
+  String vatSummaryQuarterDeadlineQ2(Object year);
+
+  /// No description provided for @vatSummaryQuarterDeadlineQ3.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline: Oct 20, {year}'**
+  String vatSummaryQuarterDeadlineQ3(Object year);
+
+  /// No description provided for @vatSummaryQuarterDeadlineQ4.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline: Jan 30, {year}'**
+  String vatSummaryQuarterDeadlineQ4(Object year);
+
+  /// No description provided for @vatSummaryNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No VAT summary available.'**
+  String get vatSummaryNoData;
+
+  /// No description provided for @vatSummarySalesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sales'**
+  String get vatSummarySalesTitle;
+
+  /// No description provided for @vatSummaryPurchasesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases'**
+  String get vatSummaryPurchasesTitle;
+
+  /// No description provided for @vatSummaryNetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Net VAT'**
+  String get vatSummaryNetTitle;
+
+  /// No description provided for @vatSummaryNoRates.
+  ///
+  /// In en, this message translates to:
+  /// **'No rates for this quarter.'**
+  String get vatSummaryNoRates;
+
+  /// No description provided for @vatSummaryRateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate'**
+  String get vatSummaryRateLabel;
+
+  /// No description provided for @vatSummaryBaseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Base'**
+  String get vatSummaryBaseLabel;
+
+  /// No description provided for @vatSummaryTaxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get vatSummaryTaxLabel;
+
+  /// No description provided for @vatSummaryTotalsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals'**
+  String get vatSummaryTotalsLabel;
 }
 
 class _AppLocalizationsDelegate

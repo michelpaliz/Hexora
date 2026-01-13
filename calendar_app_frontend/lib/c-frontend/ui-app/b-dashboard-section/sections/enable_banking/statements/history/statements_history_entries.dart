@@ -118,7 +118,7 @@ class StatementsHistoryEntries extends StatelessWidget {
                 SizedBox(
                   width: 120,
                   child: DropdownButtonFormField<int>(
-                    value: controller.entriesSize,
+                    initialValue: controller.entriesSize,
                     decoration: InputDecoration(
                       labelText: l.statementsPageSize,
                       isDense: true,
@@ -138,6 +138,35 @@ class StatementsHistoryEntries extends StatelessWidget {
                     },
                   ),
                 ),
+                SizedBox(
+                  width: 140,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: controller.entriesOrder,
+                    decoration: const InputDecoration(
+                      labelText: 'Orden',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'source',
+                        child: Text('Origen'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'date',
+                        child: Text('Fecha'),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      if (v == null || controller.selectedBatchId == null) return;
+                      controller.fetchBatchEntries(
+                        controller.selectedBatchId!,
+                        page: 1,
+                        order: v,
+                      );
+                    },
+                  ),
+                ),
                 FilledButton.tonal(
                   onPressed: controller.selectedBatchId == null ? null : onApplyFilters,
                   child: Text(l.statementsApplyFilters),
@@ -150,7 +179,7 @@ class StatementsHistoryEntries extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Card(
-              color: cs.surfaceVariant.withOpacity(0.4),
+              color: cs.surfaceContainerHighest.withOpacity(0.4),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
@@ -268,7 +297,7 @@ class StatementsHistoryEntries extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: cs.surfaceVariant,
+                      color: cs.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(

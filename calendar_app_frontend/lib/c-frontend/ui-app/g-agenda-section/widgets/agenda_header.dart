@@ -178,7 +178,7 @@ class _WeekStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final cardBg = Theme.of(context).colorScheme.surfaceVariant;
+    final cardBg = Theme.of(context).colorScheme.surfaceContainerHighest;
     final border = scheme.outlineVariant.withOpacity(.5);
     final todayFill = scheme.primary;
     final todayOn = scheme.onPrimary;

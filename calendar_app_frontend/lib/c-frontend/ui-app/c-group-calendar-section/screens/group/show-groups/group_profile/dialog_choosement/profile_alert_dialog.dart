@@ -93,7 +93,7 @@ void showProfileAlertDialog(
                     ),
 
                     // Actions
-                    ButtonBar(
+                    OverflowBar(
                       children: buildProfileDialogActions(
                         context,
                         group,

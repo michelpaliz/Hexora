@@ -27,7 +27,7 @@ class EventColorDropdown extends StatelessWidget {
           ),
         ),
         DropdownButtonFormField<Color>(
-          value: selectedColor,
+          initialValue: selectedColor,
           onChanged: (color) => onColorSelected(color!),
           items: colorList.map((color) {
             String colorName = ColorManager.getColorName(color);

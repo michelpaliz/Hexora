@@ -190,7 +190,7 @@ class _RegisterFormState extends State<RegisterForm> {
                     child: LinearProgressIndicator(
                       value: _strength,
                       minHeight: 8,
-                      backgroundColor: cs.surfaceVariant.withOpacity(0.4),
+                      backgroundColor: cs.surfaceContainerHighest.withOpacity(0.4),
                       valueColor: AlwaysStoppedAnimation<Color>(
                         _strength >= 0.85
                             ? Colors.green

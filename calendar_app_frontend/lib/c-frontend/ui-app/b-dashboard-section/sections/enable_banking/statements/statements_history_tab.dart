@@ -98,6 +98,7 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 1200;
+        final listWidth = (constraints.maxWidth * 0.42).clamp(380.0, 520.0);
         if (!wide) {
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -140,7 +141,7 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: 360,
+                  width: listWidth.toDouble(),
                   child: StatementsHistoryList(
                     controller: s,
                     expandedTech: _expandedTech,

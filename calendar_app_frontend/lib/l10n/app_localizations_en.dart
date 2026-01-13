@@ -3535,6 +3535,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Complete the previous step to continue.';
 
   @override
+  String get autoStatementImportTitle => 'Enable automatic data';
+
+  @override
+  String get autoStatementImportHelper =>
+      'When on, we\'ll automatically import your daily Caixa statement into your account.';
+
+  @override
+  String get autoStatementImportUpdateFailed =>
+      'Unable to update automatic data setting.';
+
+  @override
   String get statementsDragDropTitle => 'Upload your statement';
 
   @override
@@ -4220,4 +4231,318 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statementsImportExcelTab => 'Excel';
+
+  @override
+  String get expenseUploadTitle => 'Upload expense';
+
+  @override
+  String get expenseUploadFileSectionTitle => 'File';
+
+  @override
+  String get expenseUploadFileDropHint => 'Drag the file here';
+
+  @override
+  String get expenseUploadFileOrLabel => 'or';
+
+  @override
+  String get expenseUploadFileSelectPlaceholder => 'Select a file';
+
+  @override
+  String get expenseUploadFileSelectCta => 'Choose file';
+
+  @override
+  String get expenseUploadProviderSavedLabel => 'Saved provider';
+
+  @override
+  String get expenseUploadProviderManualOption => 'Manual provider';
+
+  @override
+  String get expenseUploadProviderSearchPlaceholder => 'Search provider';
+
+  @override
+  String get expenseUploadDataSectionTitle => 'Details';
+
+  @override
+  String get expenseUploadVendorLabel => 'Provider';
+
+  @override
+  String get expenseUploadIssueDateLabel => 'Issue date';
+
+  @override
+  String get expenseUploadDateButtonLabel => 'Date';
+
+  @override
+  String get expenseUploadTotalLabel => 'Total';
+
+  @override
+  String get expenseUploadVendorTaxIdLabel => 'Provider tax ID';
+
+  @override
+  String get expenseUploadInvoiceNumberLabel => 'Invoice number';
+
+  @override
+  String get expenseUploadDueDateLabel => 'Due date';
+
+  @override
+  String get expenseUploadTaxTotalLabel => 'VAT total';
+
+  @override
+  String get expenseUploadCurrencyLabel => 'Currency';
+
+  @override
+  String get expenseUploadNotesLabel => 'Notes';
+
+  @override
+  String get expenseUploadSubmitCta => 'Upload expense';
+
+  @override
+  String get expenseUploadFileHelp =>
+      'After selecting the file, complete the details in Organize.';
+
+  @override
+  String get expenseUploadEmptyList => 'No expenses uploaded in this session.';
+
+  @override
+  String get expenseUploadNewProviderTitle => 'New provider';
+
+  @override
+  String get expenseUploadEditProviderTitle => 'Edit provider';
+
+  @override
+  String get expenseUploadProviderNameLabel => 'Name';
+
+  @override
+  String get expenseUploadProviderTaxIdLabel => 'Tax ID';
+
+  @override
+  String get expenseUploadProviderEmailLabel => 'Email';
+
+  @override
+  String get expenseUploadProviderPhoneLabel => 'Phone';
+
+  @override
+  String get expenseUploadProviderStreetLabel => 'Street';
+
+  @override
+  String get expenseUploadProviderExtraLabel => 'Extra';
+
+  @override
+  String get expenseUploadProviderCityLabel => 'City';
+
+  @override
+  String get expenseUploadProviderProvinceLabel => 'Province';
+
+  @override
+  String get expenseUploadProviderPostalCodeLabel => 'Postal code';
+
+  @override
+  String get expenseUploadProviderCountryLabel => 'Country';
+
+  @override
+  String get expenseUploadProviderSaveCta => 'Save';
+
+  @override
+  String get expenseUploadProviderUpdateCta => 'Update';
+
+  @override
+  String get expenseUploadProviderClearCta => 'Clear';
+
+  @override
+  String get expenseUploadProvidersEmpty => 'No providers';
+
+  @override
+  String get expenseUploadProvidersSelectHint => 'Select a provider';
+
+  @override
+  String get expenseUploadProvidersNoExpenses =>
+      'No expenses for this provider.';
+
+  @override
+  String get expenseUploadSelectFileError => 'Select a file';
+
+  @override
+  String get expenseUploadRequiredFieldsError =>
+      'Provider and issue date are required';
+
+  @override
+  String get expenseUploadTotalOrLinesError =>
+      'Total or line items are required';
+
+  @override
+  String get expenseUploadLinesInvalidError =>
+      'Fill in description, quantity, unit price, and tax rate for all lines';
+
+  @override
+  String get expenseUploadInvalidIssueDateError => 'Invalid issue date';
+
+  @override
+  String get expenseUploadSuccessSnack => 'Expense uploaded';
+
+  @override
+  String get expenseUploadTabOrganize => 'Organize';
+
+  @override
+  String get expenseUploadTabFile => 'File';
+
+  @override
+  String get expenseUploadTabList => 'List';
+
+  @override
+  String get expenseUploadTabUpload => 'Upload';
+
+  @override
+  String get expenseUploadTabByProvider => 'By provider';
+
+  @override
+  String get expenseUploadTabProviders => 'Providers';
+
+  @override
+  String get expenseUploadProvidersListTitle => 'Providers';
+
+  @override
+  String get expenseUploadProvidersInvoicesTitle => 'Provider expenses';
+
+  @override
+  String get expenseUploadLinesTitle => 'Line items';
+
+  @override
+  String get expenseUploadLinesEmpty => 'No line items added yet.';
+
+  @override
+  String get expenseUploadLinesAddCta => 'Add line item';
+
+  @override
+  String get expenseUploadLinesItemLabel => 'Line';
+
+  @override
+  String get expenseUploadLinesDescriptionLabel => 'Description';
+
+  @override
+  String get expenseUploadLinesQuantityLabel => 'Qty';
+
+  @override
+  String get expenseUploadLinesUnitPriceLabel => 'Unit price';
+
+  @override
+  String get expenseUploadLinesTaxRateLabel => 'Tax rate %';
+
+  @override
+  String get expenseUploadLinesSubtotalLabel => 'Subtotal';
+
+  @override
+  String get expenseUploadLinesTaxLabel => 'Tax';
+
+  @override
+  String get expenseUploadLinesTotalLabel => 'Total';
+
+  @override
+  String get expenseUploadTotalAutoHelper => 'Auto-calculated from line items';
+
+  @override
+  String get expenseUploadVatBreakdownTitle => 'VAT breakdown';
+
+  @override
+  String get expenseUploadVatRateLabel => 'Rate';
+
+  @override
+  String get expenseUploadVatBaseLabel => 'Base';
+
+  @override
+  String get expenseUploadVatTaxLabel => 'Tax';
+
+  @override
+  String get vatSummaryMenuLabel => 'VAT summary';
+
+  @override
+  String get vatSummaryTitle => 'VAT summary';
+
+  @override
+  String get vatSummaryPrevYear => 'Previous year';
+
+  @override
+  String get vatSummaryNextYear => 'Next year';
+
+  @override
+  String get vatSummaryQuarterQ1 => 'Q1';
+
+  @override
+  String get vatSummaryQuarterQ2 => 'Q2';
+
+  @override
+  String get vatSummaryQuarterQ3 => 'Q3';
+
+  @override
+  String get vatSummaryQuarterQ4 => 'Q4';
+
+  @override
+  String vatSummaryQuarterRangeLabel(String quarter, String range) {
+    return 'Quarter $quarter: $range';
+  }
+
+  @override
+  String vatSummaryQuarterRangeQ1(Object year) {
+    return 'Jan 1 – Mar 31, $year';
+  }
+
+  @override
+  String vatSummaryQuarterRangeQ2(Object year) {
+    return 'Apr 1 – Jun 30, $year';
+  }
+
+  @override
+  String vatSummaryQuarterRangeQ3(Object year) {
+    return 'Jul 1 – Sep 30, $year';
+  }
+
+  @override
+  String vatSummaryQuarterRangeQ4(Object year) {
+    return 'Oct 1 – Dec 31, $year';
+  }
+
+  @override
+  String vatSummaryQuarterDeadlineQ1(Object year) {
+    return 'Deadline: Apr 20, $year';
+  }
+
+  @override
+  String vatSummaryQuarterDeadlineQ2(Object year) {
+    return 'Deadline: Jul 20, $year';
+  }
+
+  @override
+  String vatSummaryQuarterDeadlineQ3(Object year) {
+    return 'Deadline: Oct 20, $year';
+  }
+
+  @override
+  String vatSummaryQuarterDeadlineQ4(Object year) {
+    return 'Deadline: Jan 30, $year';
+  }
+
+  @override
+  String get vatSummaryNoData => 'No VAT summary available.';
+
+  @override
+  String get vatSummarySalesTitle => 'Sales';
+
+  @override
+  String get vatSummaryPurchasesTitle => 'Purchases';
+
+  @override
+  String get vatSummaryNetTitle => 'Net VAT';
+
+  @override
+  String get vatSummaryNoRates => 'No rates for this quarter.';
+
+  @override
+  String get vatSummaryRateLabel => 'Rate';
+
+  @override
+  String get vatSummaryBaseLabel => 'Base';
+
+  @override
+  String get vatSummaryTaxLabel => 'Tax';
+
+  @override
+  String get vatSummaryTotalsLabel => 'Totals';
 }

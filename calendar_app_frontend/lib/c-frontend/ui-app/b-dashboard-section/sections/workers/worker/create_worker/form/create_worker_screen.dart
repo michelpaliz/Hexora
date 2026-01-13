@@ -387,7 +387,7 @@ class _RoleCard extends StatelessWidget {
                 SizedBox(
                   width: 150,
                   child: DropdownButtonFormField<String>(
-                    value: selectedCurrency,
+                    initialValue: selectedCurrency,
                     decoration: InputDecoration(
                       labelText: l.currencyLabel,
                       border: OutlineInputBorder(
@@ -453,7 +453,7 @@ class _NotesCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceVariant,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
               style: t.bodyMedium.copyWith(
                 color: ThemeColors.textPrimary(context),

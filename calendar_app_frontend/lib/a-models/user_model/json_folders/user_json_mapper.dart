@@ -19,6 +19,7 @@ Map<String, dynamic> userToJson(User u) {
     'groupIds': u.groupIds,
     'sharedCalendars': u.sharedCalendars,
     'notifications': u.notifications,
+    'autoStatementImportEnabled': u.autoStatementImportEnabled,
   };
 }
 
@@ -48,6 +49,8 @@ User userFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
   final bio = optStringAny(json, ['bio', 'about', 'description']);
   final phoneNumber = optStringAny(json, ['phoneNumber', 'phone']);
   final location = optStringAny(json, ['location', 'city']);
+  final autoStatementImportEnabled =
+      optBool(json, 'autoStatementImportEnabled') ?? false;
 
   return User(
     id: id,
@@ -59,6 +62,7 @@ User userFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
     bio: bio,
     phoneNumber: phoneNumber,
     location: location,
+    autoStatementImportEnabled: autoStatementImportEnabled,
     groupIds: optStringList(json, 'groupIds'),
     photoUrl: optString(json, 'photoUrl'),
     photoBlobName: optString(json, 'photoBlobName'),

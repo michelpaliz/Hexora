@@ -86,7 +86,7 @@ class FilterChips extends StatelessWidget {
 
     final bgSelected = baseColor;
     final fgSelected = _onColor(bgSelected);
-    final bgUnselected = cs.surfaceVariant.withOpacity(0.5);
+    final bgUnselected = cs.surfaceContainerHighest.withOpacity(0.5);
     final borderUnselected = cs.outlineVariant.withOpacity(0.5);
     final fgUnselected = baseColor;
 

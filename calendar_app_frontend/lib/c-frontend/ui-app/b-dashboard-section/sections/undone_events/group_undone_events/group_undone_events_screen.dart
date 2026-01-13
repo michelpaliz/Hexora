@@ -20,11 +20,13 @@ class GroupUndoneEventsScreen extends StatelessWidget {
     required this.group,
     required this.user,
     required this.role,
+    this.embedded = false,
   });
 
   final Group group;
   final User user;
   final GroupRole role;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +52,7 @@ class GroupUndoneEventsScreen extends StatelessWidget {
         child: _GroupUndoneEventsScreenBody(
           group: group,
           role: role,
+          embedded: embedded,
         ),
       ),
     );
@@ -60,16 +63,155 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
   const _GroupUndoneEventsScreenBody({
     required this.group,
     required this.role,
+    required this.embedded,
   });
 
   final Group group;
   final GroupRole role;
+  final bool embedded;
+
+  Widget _buildContent(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+
+    return Consumer<GroupUndoneEventsViewModel>(
+      builder: (context, vm, _) {
+        return Column(
+          children: [
+            if (vm.isLoading) const LinearProgressIndicator(minHeight: 2),
+            InfoHeader(
+              title: loc.pendingEventsSectionTitle,
+              subtitle:
+                  '${loc.pendingEventsSectionSubtitle}\n${loc.completedEventsSectionSubtitle}',
+              stats: [
+                StatChip(
+                  label: loc.statusPending,
+                  count: vm.pendingEvents.length,
+                  icon: Icons.pending_actions_outlined,
+                ),
+                StatChip(
+                  label: loc.completedEventsSectionTitle,
+                  count: vm.completedEvents.length,
+                  icon: Icons.task_alt_rounded,
+                ),
+              ],
+            ),
+            if (role != GroupRole.member)
+              Consumer<GroupUndoneEventsViewModel>(
+                builder: (context, vm, __) {
+                  final chips = vm.participantInfos;
+                  if (chips.isEmpty) return const SizedBox.shrink();
+                  return SingleChildScrollView(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        FilterChip(
+                          label: Text(loc.all),
+                          selected: vm.filterUserId == null,
+                          onSelected: (v) =>
+                              vm.setFilterUser(v ? null : vm.filterUserId),
+                        ),
+                        const SizedBox(width: 8),
+                        ...chips.map(
+                          (info) => Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: Text(info.displayName),
+                              selected: vm.filterUserId == info.id,
+                              onSelected: (_) => vm.setFilterUser(info.id),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  RefreshIndicator(
+                    onRefresh: vm.refresh,
+                    child: GroupUndoneEventsListView(
+                      events: vm.pendingEvents,
+                      emptyIcon: Icons.checklist_rtl_rounded,
+                      emptyMessage: loc.pendingEventsEmpty,
+                      errorMessage: vm.errorMessage ?? loc.pendingEventsError,
+                      showError:
+                          vm.errorMessage != null && vm.pendingEvents.isEmpty,
+                      allowAction: true,
+                      doneList: false,
+                      viewModel: vm,
+                      onTapEvent: (event) => showEventDetailSheet(
+                        context: context,
+                        event: event,
+                        viewModel: vm,
+                        allowMarkComplete: vm.canManageEvent(event),
+                      ),
+                    ),
+                  ),
+                  RefreshIndicator(
+                    onRefresh: vm.refresh,
+                    child: GroupUndoneEventsListView(
+                      events: vm.completedEvents,
+                      emptyIcon: Icons.task_alt_outlined,
+                      emptyMessage: loc.completedEventsEmpty,
+                      allowAction: false,
+                      doneList: true,
+                      viewModel: vm,
+                      onTapEvent: (event) => showEventDetailSheet(
+                        context: context,
+                        event: event,
+                        viewModel: vm,
+                        allowMarkComplete: false,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+
+    if (embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    loc.pendingEventsSectionTitle,
+                    style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: loc.refreshButton,
+                  onPressed:
+                      context.read<GroupUndoneEventsViewModel>().refresh,
+                ),
+              ],
+            ),
+          ),
+          const UndoneEventsSegmentedTabBar(),
+          Expanded(child: _buildContent(context)),
+        ],
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -103,111 +245,7 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(
-        child: Consumer<GroupUndoneEventsViewModel>(
-          builder: (context, vm, _) {
-            return Column(
-              children: [
-                if (vm.isLoading) const LinearProgressIndicator(minHeight: 2),
-                InfoHeader(
-                  title: loc.pendingEventsSectionTitle,
-                  subtitle:
-                      '${loc.pendingEventsSectionSubtitle}\n${loc.completedEventsSectionSubtitle}',
-                  stats: [
-                    StatChip(
-                      label: loc.statusPending,
-                      count: vm.pendingEvents.length,
-                      icon: Icons.pending_actions_outlined,
-                    ),
-                    StatChip(
-                      label: loc.completedEventsSectionTitle,
-                      count: vm.completedEvents.length,
-                      icon: Icons.task_alt_rounded,
-                    ),
-                  ],
-                ),
-                if (role != GroupRole.member)
-                  Consumer<GroupUndoneEventsViewModel>(
-                    builder: (context, vm, __) {
-                      final chips = vm.participantInfos;
-                      if (chips.isEmpty) return const SizedBox.shrink();
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            FilterChip(
-                              label: Text(loc.all),
-                              selected: vm.filterUserId == null,
-                              onSelected: (v) =>
-                                  vm.setFilterUser(v ? null : vm.filterUserId),
-                            ),
-                            const SizedBox(width: 8),
-                            ...chips.map(
-                              (info) => Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: FilterChip(
-                                  label: Text(info.displayName),
-                                  selected: vm.filterUserId == info.id,
-                                  onSelected: (_) => vm.setFilterUser(info.id),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      RefreshIndicator(
-                        onRefresh: vm.refresh,
-                        child: GroupUndoneEventsListView(
-                          events: vm.pendingEvents,
-                          emptyIcon: Icons.checklist_rtl_rounded,
-                          emptyMessage: loc.pendingEventsEmpty,
-                          errorMessage:
-                              vm.errorMessage ?? loc.pendingEventsError,
-                          showError: vm.errorMessage != null &&
-                              vm.pendingEvents.isEmpty,
-                          allowAction: true,
-                          doneList: false,
-                          viewModel: vm,
-                          onTapEvent: (event) => showEventDetailSheet(
-                            context: context,
-                            event: event,
-                            viewModel: vm,
-                            allowMarkComplete: vm.canManageEvent(event),
-                          ),
-                        ),
-                      ),
-                      RefreshIndicator(
-                        onRefresh: vm.refresh,
-                        child: GroupUndoneEventsListView(
-                          events: vm.completedEvents,
-                          emptyIcon: Icons.task_alt_outlined,
-                          emptyMessage: loc.completedEventsEmpty,
-                          allowAction: false,
-                          doneList: true,
-                          viewModel: vm,
-                          onTapEvent: (event) => showEventDetailSheet(
-                            context: context,
-                            event: event,
-                            viewModel: vm,
-                            allowMarkComplete: false,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
+      body: SafeArea(child: _buildContent(context)),
     );
   }
 }
