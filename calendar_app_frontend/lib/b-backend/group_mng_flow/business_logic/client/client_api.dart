@@ -147,4 +147,12 @@ class ClientsApi {
     );
     return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
   }
+
+  // DELETE /clients/:id
+  Future<bool> delete(String id) async {
+    final r = await http.delete(_u('/$id'), headers: await _headers());
+    if (r.statusCode == 404) return false;
+    _decode<void>(r, (_) => null);
+    return true;
+  }
 }

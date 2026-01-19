@@ -10,15 +10,6 @@ class DashboardActions {
   static void openSection(GroupDashboardState state, String section) {
     final context = state.context;
 
-    if (section == Sections.enableBanking) {
-      Navigator.pushNamed(
-        context,
-        AppRoutes.enableBanking,
-        arguments: state.group,
-      );
-      return;
-    }
-
     if (state.isWide) {
       state.activeSection = section;
       state.notifyListeners();
@@ -68,6 +59,13 @@ class DashboardActions {
         Navigator.pushNamed(
           context,
           AppRoutes.groupInvoices,
+          arguments: state.group,
+        );
+        break;
+      case Sections.enableBanking:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.enableBanking,
           arguments: state.group,
         );
         break;

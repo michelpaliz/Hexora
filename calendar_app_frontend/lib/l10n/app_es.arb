@@ -312,6 +312,63 @@
   "confirmRemovalMessage": "¿Estás seguro de que quieres eliminar este grupo?",
   "confirmRemoval": "Confirmar eliminación",
   "groupDeletedSuccessfully": "¡Grupo eliminado con éxito!",
+  "showInactiveClients": "Mostrar clientes inactivos",
+  "@showInactiveClients": {
+    "description": "Etiqueta para mostrar clientes inactivos"
+  },
+  "hideInactiveClients": "Ocultar clientes inactivos",
+  "@hideInactiveClients": {
+    "description": "Etiqueta para ocultar clientes inactivos"
+  },
+  "removeClientConfirm": "¿Eliminar el cliente \"{name}\"?",
+  "@removeClientConfirm": {
+    "description": "Mensaje de confirmación para eliminar un cliente",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "removeServiceConfirm": "¿Eliminar el servicio \"{name}\"?",
+  "@removeServiceConfirm": {
+    "description": "Mensaje de confirmación para eliminar un servicio",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "clientRemovedSnack": "Cliente eliminado: {name}",
+  "@clientRemovedSnack": {
+    "description": "Snackbar al eliminar un cliente",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "serviceRemovedSnack": "Servicio eliminado: {name}",
+  "clientDeactivatedSnack": "Cliente pasado a inactivo: {name}",
+  "@clientDeactivatedSnack": {
+    "description": "Snackbar cuando el cliente se desactiva como alternativa",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "serviceDeactivatedSnack": "Servicio pasado a inactivo: {name}",
+  "@serviceDeactivatedSnack": {
+    "description": "Snackbar cuando el servicio se desactiva como alternativa",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "@serviceRemovedSnack": {
+    "description": "Snackbar al eliminar un servicio",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "removeFailedWithReason": "No se pudo eliminar: {reason}",
+  "@removeFailedWithReason": {
+    "description": "Mensaje genérico de error al eliminar",
+    "placeholders": {
+      "reason": {}
+    }
+  },
   "noGroupsAvailable": "NO SE ENCONTRARON GRUPOS",
   "noGroupsFound": "No se encontraron grupos",
   "noGroupsDescription": "Crea o únete a un grupo para comenzar",
@@ -762,6 +819,10 @@
     "description": "Título para editar un servicio existente"
   },
   "createService": "Crear servicio",
+  "serviceNameExample": "Ej.: Mantenimiento de jardines",
+  "@serviceNameExample": {
+    "description": "Ejemplo de placeholder para el nombre del servicio"
+  },
   "@createService": {
     "description": "Título para crear un nuevo servicio"
   },
@@ -1503,6 +1564,14 @@
   "billingPhoneLabel": "Teléfono de facturación",
   "billingComplete": "Facturación lista",
   "billingMissing": "Faltan datos de facturación",
+  "billingProgressLabel": "{completed}/{total} completados",
+  "@billingProgressLabel": {
+    "description": "Etiqueta de progreso de campos de facturación requeridos",
+    "placeholders": {
+      "completed": {},
+      "total": {}
+    }
+  },
   "billingProfileTitle": "Perfil de facturación",
   "billingProfileEmpty": "Añade los datos del emisor (razón social, CIF, dirección, IVA, IBAN) para emitir facturas.",
   "billingWebsite": "Sitio web",
@@ -1586,6 +1655,33 @@
   "invoiceIssueCta": "Emitir factura",
   "invoiceSaveDraftCta": "Guardar borrador",
   "invoicePdfCta": "PDF",
+  "invoicePreviewCta": "Vista previa (PDF)",
+  "invoiceStepsTitle": "Pasos",
+  "invoiceStepCreateTitle": "Paso 1 - Crear factura",
+  "invoiceStepCreateShort": "Crear",
+  "invoiceStepPreviewTitle": "Paso 2 - Vista previa",
+  "invoiceStepPreviewShort": "Vista previa",
+  "invoiceStepIssueTitle": "Paso 3 - Emitir factura",
+  "invoiceStepIssueShort": "Emitir",
+  "invoiceChecklistClient": "Cliente seleccionado",
+  "invoiceChecklistDates": "Fecha de factura seleccionada",
+  "invoiceChecklistLines": "Líneas agregadas",
+  "invoiceWarningsTitle": "Advertencias",
+  "invoiceWarningDueDateBefore": "La fecha de vencimiento es anterior a la fecha de factura",
+  "invoiceWarningPendingDrafts": "Tienes borradores pendientes. Resuélvelos antes de continuar.",
+  "invoicePreviewNeedsClient": "Selecciona un cliente para continuar.",
+  "invoicePreviewNeedsDate": "Selecciona la fecha de factura para continuar.",
+  "invoicePreviewInvalidDates": "La fecha de vencimiento no puede ser anterior.",
+  "invoicePreviewNeedsLines": "Agrega al menos una línea con precio para continuar.",
+  "invoicePreviewNeedsDraft": "Guarda un borrador para generar la vista previa en PDF.",
+  "invoiceIssueNeedsPreview": "Revisa la factura en vista previa antes de emitirla.",
+  "invoiceSummaryTitle": "Resumen",
+  "invoiceNumberSummaryLabel": "Número de factura",
+  "invoicePreviewPendingLabel": "Vista previa pendiente",
+  "invoicePreviewReviewedStatus": "Vista previa revisada",
+  "invoicePreviewReviewedLabel": "Has revisado la factura",
+  "invoiceIssueConfirmTitle": "Emitir factura",
+  "invoiceIssueConfirmMessage": "Esta acción no se puede deshacer.",
   "invoiceIssuingLabel": "Emitiendo…",
   "invoiceDetailsShowCta": "Mostrar detalles",
   "invoiceDetailsHideCta": "Ocultar detalles",
@@ -2170,6 +2266,7 @@
   "expenseUploadSelectFileError": "Selecciona un archivo",
   "expenseUploadRequiredFieldsError": "Proveedor y fecha son obligatorios",
   "expenseUploadTotalOrLinesError": "Total o líneas son obligatorios",
+  "expenseUploadLinesRequiredError": "Las líneas son obligatorias",
   "expenseUploadLinesInvalidError": "Completa descripción, cantidad, precio unitario y IVA en todas las líneas",
   "expenseUploadInvalidIssueDateError": "Fecha de emisión inválida",
   "expenseUploadSuccessSnack": "Gasto subido",
@@ -2232,5 +2329,7 @@
   "vatSummaryRateLabel": "Tipo",
   "vatSummaryBaseLabel": "Base",
   "vatSummaryTaxLabel": "IVA",
-  "vatSummaryTotalsLabel": "Totales"
+  "vatSummaryTotalsLabel": "Totales",
+  "vatSummaryProvidersTitle": "Proveedores",
+  "vatSummaryProvidersEmpty": "Sin proveedores para este trimestre."
 }

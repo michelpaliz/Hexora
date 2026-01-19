@@ -185,6 +185,27 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (invoice.recurringSeriesId?.trim().isNotEmpty == true)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cs.primaryContainer,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'Recurrente',
+                            style: t.bodySmall.copyWith(
+                              color: cs.onPrimaryContainer,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 4),
                     Text(
                       [

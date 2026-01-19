@@ -14,9 +14,14 @@ import 'statements/statements_import_view.dart';
 import 'truelayer_controller.dart';
 
 class EnableBankingScreen extends StatelessWidget {
-  const EnableBankingScreen({super.key, this.group});
+  const EnableBankingScreen({
+    super.key,
+    this.group,
+    this.embedded = false,
+  });
 
   final Group? group;
+  final bool embedded;
 
   static EnableBankingScreen fromRoute(BuildContext context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
@@ -34,15 +39,19 @@ class EnableBankingScreen extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => StatementsAnalyticsController()),
       ],
-      child: _EnableBankingView(group: group),
+      child: _EnableBankingView(group: group, embedded: embedded),
     );
   }
 }
 
 class _EnableBankingView extends StatefulWidget {
-  const _EnableBankingView({required this.group});
+  const _EnableBankingView({
+    required this.group,
+    required this.embedded,
+  });
 
   final Group? group;
+  final bool embedded;
 
   @override
   State<_EnableBankingView> createState() => _EnableBankingViewState();
@@ -95,6 +104,34 @@ class _EnableBankingViewState extends State<_EnableBankingView> {
   @override
   Widget build(BuildContext context) {
     final group = widget.group;
+    final content = Row(
+      children: [
+        const SizedBox(width: 12),
+        EnableBankingLeftNav(
+          selected: _selectedMenu,
+          onSelect: (menu) => setState(() => _selectedMenu = menu),
+          collapsed: _navCollapsed,
+          onToggleCollapse: () =>
+              setState(() => _navCollapsed = !_navCollapsed),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _selectedMenu == EnableBankingMenu.imports
+              ? const StatementsImportView()
+              : (_selectedMenu == EnableBankingMenu.allData
+                  ? const StatementsAllDataTab()
+                  : (_selectedMenu == EnableBankingMenu.analytics
+                      ? const StatementsAnalyticsView()
+                      : const BankingTab())),
+        ),
+        const SizedBox(width: 12),
+      ],
+    );
+
+    if (widget.embedded) {
+      return content;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(group == null
@@ -109,28 +146,7 @@ class _EnableBankingViewState extends State<_EnableBankingView> {
           ),
         ],
       ),
-      body: Row(
-        children: [
-          const SizedBox(width: 12),
-          EnableBankingLeftNav(
-            selected: _selectedMenu,
-            onSelect: (menu) => setState(() => _selectedMenu = menu),
-            collapsed: _navCollapsed,
-            onToggleCollapse: () => setState(() => _navCollapsed = !_navCollapsed),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _selectedMenu == EnableBankingMenu.imports
-                ? const StatementsImportView()
-                : (_selectedMenu == EnableBankingMenu.allData
-                    ? const StatementsAllDataTab()
-                    : (_selectedMenu == EnableBankingMenu.analytics
-                        ? const StatementsAnalyticsView()
-                        : const BankingTab())),
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
+      body: content,
     );
   }
 }

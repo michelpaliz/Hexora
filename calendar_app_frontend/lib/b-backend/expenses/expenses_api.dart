@@ -147,7 +147,15 @@ class ExpensesApi {
       req.fields['providerId'] = providerId;
     }
     if (lines != null && lines.isNotEmpty) {
-      req.fields['lines'] = jsonEncode(lines);
+      for (var i = 0; i < lines.length; i++) {
+        final line = lines[i];
+        for (final entry in line.entries) {
+          final key = entry.key;
+          final value = entry.value;
+          if (value == null) continue;
+          req.fields['lines[$i][$key]'] = value.toString();
+        }
+      }
     }
     final streamed = await req.send();
     final r = await http.Response.fromStream(streamed);
@@ -269,6 +277,57 @@ class ExpensesApi {
       method: 'GET',
       map: (j) =>
           (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> fetchExpenseFile(String id) async {
+    final uri = _u('/$id/file');
+    final r = await http.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> summary({
+    String? groupId,
+    String? from,
+    String? to,
+  }) async {
+    final params = <String, String>{};
+    if (groupId != null && groupId.trim().isNotEmpty) {
+      params['groupId'] = groupId.trim();
+    }
+    if (from != null && from.trim().isNotEmpty) {
+      params['from'] = from.trim();
+    }
+    if (to != null && to.trim().isNotEmpty) {
+      params['to'] = to.trim();
+    }
+    final uri = _u('/summary', params.isEmpty ? null : params);
+    final r = await http.get(uri, headers: await _headers());
+    return _decode<List<Map<String, dynamic>>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) {
+        if (j is Map && j['summary'] is List) {
+          return (j['summary'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+        if (j is List) {
+          return j
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+        return <Map<String, dynamic>>[];
+      },
     );
   }
 }

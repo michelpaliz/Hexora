@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/billing_profile_summary_card.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class GroupInvoicesSideMenu extends StatelessWidget {
   static const double expandedWidth = 280;
@@ -14,17 +14,21 @@ class GroupInvoicesSideMenu extends StatelessWidget {
   final BillingProfile? billingProfile;
   final bool busyProfile;
   final bool businessExpanded;
-  final bool totalsExpanded;
-  final bool incomeExpanded;
-  final bool expensesExpanded;
+  final bool facturacionExpanded;
+  final bool gastosExpanded;
+  final bool impuestosExpanded;
+  final bool informesExpanded;
   final int issuedCount;
   final int draftsCount;
   final int receiptsCount;
+  final VoidCallback onCreateInvoice;
+  final VoidCallback onCreateReceipt;
   final VoidCallback onEditBillingProfile;
   final VoidCallback onToggleBusinessExpanded;
-  final VoidCallback onToggleTotalsExpanded;
-  final VoidCallback onToggleIncomeExpanded;
-  final VoidCallback onToggleExpensesExpanded;
+  final VoidCallback onToggleFacturacionExpanded;
+  final VoidCallback onToggleGastosExpanded;
+  final VoidCallback onToggleImpuestosExpanded;
+  final VoidCallback onToggleInformesExpanded;
   final String selectedMenu;
   final ValueChanged<String> onMenuChanged;
   final bool collapsed;
@@ -36,17 +40,21 @@ class GroupInvoicesSideMenu extends StatelessWidget {
     required this.billingProfile,
     required this.busyProfile,
     required this.businessExpanded,
-    required this.totalsExpanded,
-    required this.incomeExpanded,
-    required this.expensesExpanded,
+    required this.facturacionExpanded,
+    required this.gastosExpanded,
+    required this.impuestosExpanded,
+    required this.informesExpanded,
     required this.issuedCount,
     required this.draftsCount,
     required this.receiptsCount,
+    required this.onCreateInvoice,
+    required this.onCreateReceipt,
     required this.onEditBillingProfile,
     required this.onToggleBusinessExpanded,
-    required this.onToggleTotalsExpanded,
-    required this.onToggleIncomeExpanded,
-    required this.onToggleExpensesExpanded,
+    required this.onToggleFacturacionExpanded,
+    required this.onToggleGastosExpanded,
+    required this.onToggleImpuestosExpanded,
+    required this.onToggleInformesExpanded,
     required this.selectedMenu,
     required this.onMenuChanged,
     required this.collapsed,
@@ -58,7 +66,6 @@ class GroupInvoicesSideMenu extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final invoicesTotal = issuedCount + draftsCount;
 
     final menuWidth = collapsed ? collapsedWidth : expandedWidth;
 
@@ -86,14 +93,6 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                     ),
                   ),
                   if (!collapsed) ...[
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundImage: NetworkImage(group.photoUrl ?? ''),
-                      child: group.photoUrl == null
-                          ? const Icon(Icons.group)
-                          : null,
-                    ),
-                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         group.name,
@@ -115,451 +114,231 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (!collapsed) ...[
-                      FilledButton.icon(
-                        icon: const Icon(Icons.repeat_rounded),
-                        label: const Text('Recurring Invoices'),
-                        onPressed: () => Navigator.pushNamed(
-                          context,
-                          AppRoutes.recurringInvoices,
-                          arguments: group,
-                        ),
+                      _CompanyHeader(
+                        group: group,
+                        billingProfile: billingProfile,
+                        busyProfile: busyProfile,
+                        expanded: businessExpanded,
+                        onToggleExpanded: onToggleBusinessExpanded,
+                        onEdit: onEditBillingProfile,
                       ),
-                      const SizedBox(height: 10),
-                    ],
-                    if (!collapsed) ...[
                       const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      _NavSection(
+                        title: 'Ingresos',
+                        icon: Icons.description_outlined,
+                        expanded: facturacionExpanded,
+                        onToggle: onToggleFacturacionExpanded,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: onToggleBusinessExpanded,
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 6,
-                                      ),
-                                      child: Text(
-                                        l.groupInvoicesBusinessTitle,
-                                        style: t.bodySmall.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                          color: cs.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: l.edit,
-                                  onPressed:
-                                      busyProfile ? null : onEditBillingProfile,
-                                  icon: busyProfile
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : const Icon(Icons.edit_outlined),
-                                ),
-                                IconButton(
-                                  tooltip: businessExpanded
-                                      ? l.groupInvoicesCollapseTooltip
-                                      : l.groupInvoicesExpandTooltip,
-                                  onPressed: onToggleBusinessExpanded,
-                                  icon: Icon(
-                                    businessExpanded
-                                        ? Icons.expand_less
-                                        : Icons.expand_more,
-                                  ),
-                                ),
-                              ],
+                            const _SectionLabel('Facturas'),
+                            _SubMenuItem(
+                              icon: Icons.add_rounded,
+                              label: l.createInvoiceCta,
+                              selected: false,
+                              onPressed: onCreateInvoice,
                             ),
-                            BillingProfileSummaryCard(
-                              profile: billingProfile,
-                              expanded: businessExpanded,
-                              onToggleExpanded: onToggleBusinessExpanded,
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.receipt_long_outlined,
+                              label: 'Emitidas',
+                              count: issuedCount,
+                              selected: selectedMenu == 'invoices_issued',
+                              onPressed: () => onMenuChanged('invoices_issued'),
+                            ),
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.drafts_outlined,
+                              label: 'Borradores',
+                              count: draftsCount,
+                              selected: selectedMenu == 'invoices_drafts',
+                              onPressed: () => onMenuChanged('invoices_drafts'),
+                            ),
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.repeat_rounded,
+                              label: 'Recurrentes',
+                              selected: selectedMenu == 'recurring',
+                              onPressed: () => onMenuChanged('recurring'),
                             ),
                             const SizedBox(height: 10),
-                            InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: busyProfile ? null : onEditBillingProfile,
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: cs.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: cs.outlineVariant
-                                        .withValues(alpha: 0.35),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: SizedBox(
-                                        width: 34,
-                                        height: 34,
-                                        child: (billingProfile?.logoUrl
-                                                    ?.trim()
-                                                    .isNotEmpty ==
-                                                true)
-                                            ? Image.network(
-                                                billingProfile!.logoUrl!.trim(),
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) =>
-                                                    Container(
-                                                  color: cs
-                                                      .surfaceContainerHighest,
-                                                  child: Icon(
-                                                    Icons
-                                                        .image_not_supported_outlined,
-                                                    color: cs.onSurfaceVariant,
-                                                  ),
-                                                ),
-                                              )
-                                            : Container(
-                                                color:
-                                                    cs.surfaceContainerHighest,
-                                                child: Icon(
-                                                  Icons.image_outlined,
-                                                  color: cs.onSurfaceVariant,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            l.invoiceLogoTitle,
-                                            style: t.bodySmall.copyWith(
-                                              fontWeight: FontWeight.w800,
-                                              color: cs.onSurfaceVariant,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            billingProfile?.logoUrl
-                                                        ?.trim()
-                                                        .isNotEmpty ==
-                                                    true
-                                                ? billingProfile!.logoUrl!
-                                                    .trim()
-                                                : l.invoiceLogoUploadCta,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: t.bodySmall.copyWith(
-                                              color: cs.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Icon(
-                                      Icons.chevron_right,
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            _SubMenuItem(
+                              icon: Icons.people_outline,
+                              label: 'Clientes',
+                              selected: selectedMenu == 'clients',
+                              onPressed: () => onMenuChanged('clients'),
+                            ),
+                            const SizedBox(height: 6),
+                            const _SectionLabel('Recibos'),
+                            _SubMenuItem(
+                              icon: Icons.add_rounded,
+                              label: l.createReceiptCta,
+                              selected: false,
+                              onPressed: onCreateReceipt,
+                            ),
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.description_outlined,
+                              label: 'Recibos',
+                              count: receiptsCount,
+                              selected: selectedMenu == 'receipts',
+                              onPressed: () => onMenuChanged('receipts'),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      const SizedBox(height: 10),
+                      _NavSection(
+                        title: 'Gastos',
+                        icon: Icons.trending_down_outlined,
+                        expanded: gastosExpanded,
+                        onToggle: onToggleGastosExpanded,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: onToggleTotalsExpanded,
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 6,
-                                      ),
-                                      child: Text(
-                                        l.groupInvoicesTotalsTitle,
-                                        style: t.bodySmall.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                          color: cs.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: totalsExpanded
-                                      ? l.groupInvoicesCollapseTooltip
-                                      : l.groupInvoicesExpandTooltip,
-                                  onPressed: onToggleTotalsExpanded,
-                                  icon: Icon(
-                                    totalsExpanded
-                                        ? Icons.expand_less
-                                        : Icons.expand_more,
-                                  ),
-                                ),
-                              ],
+                            _PrimaryMenuItem(
+                              icon: Icons.upload_file_outlined,
+                              label: 'Subir gasto',
+                              selected: selectedMenu == 'expenses_upload',
+                              onPressed: () => onMenuChanged('expenses_upload'),
                             ),
-                            if (!totalsExpanded)
-                              Text(
-                                l.groupInvoicesTotalsInline(
-                                    issuedCount, draftsCount),
-                                style: t.bodySmall.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              )
-                            else ...[
-                              const SizedBox(height: 10),
-                              ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxHeight: 160),
-                                child: SingleChildScrollView(
-                                  child: Column(
-                                    children: [
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: FilledButton.icon(
-                                          icon: const Icon(
-                                            Icons.check_circle_outline,
-                                          ),
-                                          label: Text(
-                                            l.groupInvoicesTotalsIssuedButton(
-                                              issuedCount,
-                                            ),
-                                          ),
-                                          onPressed: () {},
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: FilledButton.tonalIcon(
-                                          icon: const Icon(
-                                            Icons.drafts_outlined,
-                                          ),
-                                          label: Text(
-                                            l.groupInvoicesTotalsDraftsButton(
-                                              draftsCount,
-                                            ),
-                                          ),
-                                          onPressed: () {},
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        icon: const Icon(Icons.people_outline),
-                        label: Text(l.groupInvoicesClientsFlowCta),
-                        onPressed: () => onMenuChanged('clients'),
-                      ),
-                      const SizedBox(height: 10),
-                      FilledButton.tonalIcon(
-                        icon: const Icon(Icons.percent),
-                        label: Text(l.vatSummaryMenuLabel),
-                        onPressed: () => onMenuChanged('vat'),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            InkWell(
-                              borderRadius: BorderRadius.circular(8),
-                              onTap: onToggleIncomeExpanded,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 6,
-                                  horizontal: 4,
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.trending_up_outlined,
-                                        size: 18),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Ingresos',
-                                        style: t.bodySmall.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                          color: cs.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                    Icon(
-                                      incomeExpanded
-                                          ? Icons.expand_less
-                                          : Icons.expand_more,
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.store_mall_directory_outlined,
+                              label: 'Proveedores',
+                              selected: selectedMenu == 'providers',
+                              onPressed: () => onMenuChanged('providers'),
                             ),
-                            if (incomeExpanded) ...[
-                              const SizedBox(height: 6),
-                              _SubMenuItem(
-                                icon: Icons.receipt_long_outlined,
-                                label: l.invoicesListTitle,
-                                count: invoicesTotal,
-                                selected: selectedMenu == 'invoices',
-                                onPressed: () => onMenuChanged('invoices'),
-                              ),
-                              const SizedBox(height: 6),
-                              _SubMenuItem(
-                                icon: Icons.description_outlined,
-                                label: l.receiptsTitle,
-                                count: receiptsCount,
-                                selected: selectedMenu == 'receipts',
-                                onPressed: () => onMenuChanged('receipts'),
-                              ),
-                            ],
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.receipt_outlined,
+                              label: 'Gastos registrados',
+                              selected: selectedMenu == 'expenses_list',
+                              onPressed: () => onMenuChanged('expenses_list'),
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      _NavSection(
+                        title: 'Impuestos',
+                        icon: Icons.percent,
+                        expanded: impuestosExpanded,
+                        onToggle: onToggleImpuestosExpanded,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            InkWell(
-                              borderRadius: BorderRadius.circular(8),
-                              onTap: onToggleExpensesExpanded,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 6,
-                                  horizontal: 4,
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.trending_down_outlined,
-                                        size: 18),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Gastos',
-                                        style: t.bodySmall.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                          color: cs.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                    Icon(
-                                      expensesExpanded
-                                          ? Icons.expand_less
-                                          : Icons.expand_more,
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            _SubMenuItem(
+                              icon: Icons.calculate_outlined,
+                              label: 'Resumen IVA',
+                              selected: selectedMenu == 'vat',
+                              onPressed: () => onMenuChanged('vat'),
                             ),
-                            if (expensesExpanded) ...[
-                              const SizedBox(height: 6),
-                              _SubMenuItem(
-                                icon: Icons.upload_file_outlined,
-                                label: 'Subir gasto',
-                                selected: selectedMenu == 'expenses',
-                                onPressed: () => onMenuChanged('expenses'),
-                              ),
-                              const SizedBox(height: 6),
-                              _SubMenuItem(
-                                icon: Icons.store_mall_directory_outlined,
-                                label: 'Proveedores',
-                                selected: selectedMenu == 'providers',
-                                onPressed: () => onMenuChanged('providers'),
-                              ),
-                            ],
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.calendar_month_outlined,
+                              label: 'IVA por trimestre',
+                              selected: selectedMenu == 'vat',
+                              onPressed: () => onMenuChanged('vat'),
+                            ),
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.history_toggle_off,
+                              label: 'Histórico impuestos',
+                              selected: false,
+                              onPressed: null,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _NavSection(
+                        title: 'Informes',
+                        icon: Icons.insights_outlined,
+                        expanded: informesExpanded,
+                        onToggle: onToggleInformesExpanded,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _SubMenuItem(
+                              icon: Icons.account_tree_outlined,
+                              label: l.groupInvoicesClientsFlowCta,
+                              selected: selectedMenu == 'clients_flow',
+                              onPressed: () => onMenuChanged('clients_flow'),
+                            ),
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.stacked_line_chart_outlined,
+                              label: 'Ingresos vs Gastos',
+                              selected: false,
+                              onPressed: null,
+                            ),
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.show_chart_outlined,
+                              label: 'Beneficio neto',
+                              selected: false,
+                              onPressed: null,
+                            ),
                           ],
                         ),
                       ),
                     ] else ...[
                       const SizedBox(height: 16),
                       _MenuIconButton(
-                        icon: Icons.repeat_rounded,
-                        label: 'Recurring Invoices',
+                        icon: Icons.add_rounded,
+                        label: l.createInvoiceCta,
                         selected: false,
-                        onPressed: () => Navigator.pushNamed(
-                          context,
-                          AppRoutes.recurringInvoices,
-                          arguments: group,
-                        ),
+                        onPressed: onCreateInvoice,
+                      ),
+                      const SizedBox(height: 8),
+                      _MenuIconButton(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'Emitidas',
+                        selected: selectedMenu == 'invoices_issued',
+                        onPressed: () => onMenuChanged('invoices_issued'),
+                      ),
+                      const SizedBox(height: 8),
+                      _MenuIconButton(
+                        icon: Icons.drafts_outlined,
+                        label: 'Borradores',
+                        selected: selectedMenu == 'invoices_drafts',
+                        onPressed: () => onMenuChanged('invoices_drafts'),
+                      ),
+                      const SizedBox(height: 8),
+                      _MenuIconButton(
+                        icon: Icons.repeat_rounded,
+                        label: 'Recurrentes',
+                        selected: selectedMenu == 'recurring',
+                        onPressed: () => onMenuChanged('recurring'),
                       ),
                       const SizedBox(height: 8),
                       _MenuIconButton(
                         icon: Icons.people_outline,
-                        label: l.groupInvoicesClientsFlowCta,
+                        label: 'Clientes',
                         selected: selectedMenu == 'clients',
                         onPressed: () => onMenuChanged('clients'),
                       ),
                       const SizedBox(height: 8),
                       _MenuIconButton(
-                        icon: Icons.receipt_long_outlined,
-                        label: l.invoicesListTitle,
-                        selected: selectedMenu == 'invoices',
-                        onPressed: () => onMenuChanged('invoices'),
-                      ),
-                      const SizedBox(height: 8),
-                      _MenuIconButton(
                         icon: Icons.description_outlined,
-                        label: l.receiptsTitle,
+                        label: 'Recibos',
                         selected: selectedMenu == 'receipts',
                         onPressed: () => onMenuChanged('receipts'),
                       ),
                       const SizedBox(height: 8),
                       _MenuIconButton(
-                        icon: Icons.percent,
-                        label: l.vatSummaryMenuLabel,
-                        selected: selectedMenu == 'vat',
-                        onPressed: () => onMenuChanged('vat'),
+                        icon: Icons.add_rounded,
+                        label: l.createReceiptCta,
+                        selected: false,
+                        onPressed: onCreateReceipt,
                       ),
                       const SizedBox(height: 8),
                       _MenuIconButton(
                         icon: Icons.upload_file_outlined,
                         label: 'Subir gasto',
-                        selected: selectedMenu == 'expenses',
-                        onPressed: () => onMenuChanged('expenses'),
+                        selected: selectedMenu == 'expenses_upload',
+                        onPressed: () => onMenuChanged('expenses_upload'),
                       ),
                       const SizedBox(height: 8),
                       _MenuIconButton(
@@ -568,9 +347,326 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                         selected: selectedMenu == 'providers',
                         onPressed: () => onMenuChanged('providers'),
                       ),
+                      const SizedBox(height: 8),
+                      _MenuIconButton(
+                        icon: Icons.percent,
+                        label: 'Resumen IVA',
+                        selected: selectedMenu == 'vat',
+                        onPressed: () => onMenuChanged('vat'),
+                      ),
                     ],
-                    if (selectedMenu.isNotEmpty) const SizedBox.shrink(),
                   ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompanyHeader extends StatelessWidget {
+  final Group group;
+  final BillingProfile? billingProfile;
+  final bool busyProfile;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+  final VoidCallback onEdit;
+
+  const _CompanyHeader({
+    required this.group,
+    required this.billingProfile,
+    required this.busyProfile,
+    required this.expanded,
+    required this.onToggleExpanded,
+    required this.onEdit,
+  });
+
+  Future<void> _openEmail(BuildContext context, String email) async {
+    final uri = Uri(scheme: 'mailto', path: email);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(email)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final name = billingProfile?.legalName.trim().isNotEmpty == true
+        ? billingProfile!.legalName.trim()
+        : group.name;
+    final taxId = billingProfile?.taxId.trim().isNotEmpty == true
+        ? billingProfile!.taxId.trim()
+        : '-';
+    final isComplete = billingProfile?.isComplete == true;
+    final statusLabel = isComplete ? l.billingComplete : l.billingMissing;
+    final statusBg = isComplete ? cs.primaryContainer : cs.errorContainer;
+    final statusFg = isComplete ? cs.onPrimaryContainer : cs.onErrorContainer;
+    final email = billingProfile?.email?.trim() ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundImage: NetworkImage(group.photoUrl ?? ''),
+                child: group.photoUrl == null
+                    ? const Icon(Icons.business_outlined)
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'CIF/NIF: $taxId',
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusBg,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: t.bodySmall.copyWith(
+                    color: statusFg,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              if (email.isNotEmpty)
+                Icon(Icons.mail_outline, size: 16, color: cs.onSurfaceVariant),
+              if (email.isNotEmpty) const SizedBox(width: 6),
+              if (email.isNotEmpty)
+                Expanded(
+                  child: Text(
+                    email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              if (email.isEmpty)
+                Expanded(
+                  child: Text(
+                    l.billingEmailLabel,
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              if (email.isNotEmpty)
+                IconButton(
+                  tooltip: l.emailLabel,
+                  onPressed: () => _openEmail(context, email),
+                  icon: const Icon(Icons.send_outlined),
+                ),
+              IconButton(
+                tooltip: l.edit,
+                onPressed: busyProfile ? null : onEdit,
+                icon: busyProfile
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.edit_outlined),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onToggleExpanded,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Text(
+                    l.billingDetails,
+                    style: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expanded)
+            BillingProfileSummaryCard(
+              profile: billingProfile,
+              expanded: expanded,
+              onToggleExpanded: onToggleExpanded,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final Widget child;
+
+  const _NavSection({
+    required this.title,
+    required this.icon,
+    required this.expanded,
+    required this.onToggle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Row(
+                children: [
+                  Icon(icon, size: 18, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: t.bodySmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expanded) ...[
+            const SizedBox(height: 6),
+            child,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+
+  const _SectionLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Text(
+        label.toUpperCase(),
+        style: t.bodySmall.copyWith(
+          color: cs.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+        ),
+      ),
+    );
+  }
+}
+
+class _PrimaryMenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  const _PrimaryMenuItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final bg = selected ? cs.primary : cs.primaryContainer;
+    final fg = selected ? cs.onPrimary : cs.onPrimaryContainer;
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: fg),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: t.bodySmall.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -630,24 +726,31 @@ class _SubMenuItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final int? count;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    final enabled = onPressed != null;
     final bg = selected ? cs.primaryContainer : cs.surface;
-    final fg = selected ? cs.onPrimaryContainer : cs.onSurfaceVariant;
+    final fg = selected
+        ? cs.onPrimaryContainer
+        : (enabled ? cs.onSurfaceVariant : cs.outline);
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: bg,
+          color: enabled ? bg : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
+          border: Border.all(
+            color: enabled
+                ? cs.outlineVariant.withOpacity(0.5)
+                : cs.outlineVariant.withOpacity(0.3),
+          ),
         ),
         child: Row(
           children: [
@@ -675,6 +778,17 @@ class _SubMenuItem extends StatelessWidget {
                   style: t.bodySmall.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            if (!enabled)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Text(
+                  'Pronto',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

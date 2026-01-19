@@ -39,6 +39,7 @@ class _ReceiptEditorScreenState extends State<ReceiptEditorScreen> {
   final _notesCtrl = TextEditingController();
 
   Receipt? _saved;
+  bool _didPersist = false;
   String? _clientId;
   DateTime? _issueDate;
   bool _saving = false;
@@ -159,6 +160,7 @@ class _ReceiptEditorScreenState extends State<ReceiptEditorScreen> {
           : await _api.update(_saved!.id, payload.toUpdatePayload());
       if (!mounted) return saved;
       setState(() => _saved = saved);
+      _didPersist = true;
       if (showSnack) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l.receiptDraftSavedSnack)),
@@ -259,6 +261,7 @@ class _ReceiptEditorScreenState extends State<ReceiptEditorScreen> {
       final issued = await _api.issue(saved.id);
       if (!mounted) return;
       setState(() => _saved = issued);
+      _didPersist = true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content:
@@ -287,57 +290,62 @@ class _ReceiptEditorScreenState extends State<ReceiptEditorScreen> {
     final status = (_saved?.status ?? 'draft').toLowerCase();
     final fmt = DateFormat.yMMMd(l.localeName);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          l.receiptEditorTitle(receiptNumber),
-          style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          if (_previewing)
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: Center(
-                child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pop(_didPersist);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            l.receiptEditorTitle(receiptNumber),
+            style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+          ),
+          actions: [
+            if (_previewing)
+              const Padding(
+                padding: EdgeInsets.only(right: 16),
+                child: Center(
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
+              )
+            else
+              IconButton(
+                tooltip: l.preview,
+                onPressed: _previewPdf,
+                icon: const Icon(Icons.picture_as_pdf_outlined),
               ),
-            )
-          else
-            IconButton(
-              tooltip: l.preview,
-              onPressed: _previewPdf,
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-            ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 980;
-            final form = ReceiptFormCard(
-              clientId: _clientId,
-              clients: widget.clients,
-              issueDateLabel:
-                  _issueDate == null ? '-' : fmt.format(_issueDate!),
-              notesController: _notesCtrl,
-              canEdit: _isDraft,
-              onPickDate: _pickIssueDate,
-              onClientChanged: (v) => setState(() => _clientId = v),
-              lines: _lines,
-              onLinesChanged: () => setState(() {}),
-              onAddLine: () =>
-                  setState(() => _lines.add(ReceiptLineDraft.empty())),
-              onRemoveLine: (idx) {
-                setState(() {
-                  _lines.removeAt(idx).dispose();
-                  if (_lines.isEmpty) _lines.add(ReceiptLineDraft.empty());
-                });
-              },
-            );
+          ],
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 980;
+              final form = ReceiptFormCard(
+                clientId: _clientId,
+                clients: widget.clients,
+                issueDateLabel:
+                    _issueDate == null ? '-' : fmt.format(_issueDate!),
+                notesController: _notesCtrl,
+                canEdit: _isDraft,
+                onPickDate: _pickIssueDate,
+                onClientChanged: (v) => setState(() => _clientId = v),
+                lines: _lines,
+                onLinesChanged: () => setState(() {}),
+                onAddLine: () =>
+                    setState(() => _lines.add(ReceiptLineDraft.empty())),
+                onRemoveLine: (idx) {
+                  setState(() {
+                    _lines.removeAt(idx).dispose();
+                    if (_lines.isEmpty) _lines.add(ReceiptLineDraft.empty());
+                  });
+                },
+              );
 
             final summary = ReceiptSummaryCard(
               status: status,
@@ -384,6 +392,7 @@ class _ReceiptEditorScreenState extends State<ReceiptEditorScreen> {
               ],
             );
           },
+          ),
         ),
       ),
     );

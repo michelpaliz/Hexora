@@ -52,6 +52,7 @@ class InvoiceEditorController extends ChangeNotifier {
   String? _clientId;
   bool _saving = false;
   bool _issuing = false;
+  bool _previewedPdf = false;
   Invoice? _savedInvoice;
   int _issuedThisMonthCount = 0;
   int _pendingDraftsCount = 0;
@@ -65,6 +66,7 @@ class InvoiceEditorController extends ChangeNotifier {
   String? get clientId => _clientId;
   bool get saving => _saving;
   bool get issuing => _issuing;
+  bool get previewedPdf => _previewedPdf;
   Invoice? get savedInvoice => _savedInvoice;
   int get issuedThisMonthCount => _issuedThisMonthCount;
   int get pendingDraftsCount => _pendingDraftsCount;
@@ -111,12 +113,14 @@ class InvoiceEditorController extends ChangeNotifier {
   void notifyUi() {
     // Any form change makes the saved draft stale (there is no update API).
     _savedInvoice = null;
+    _previewedPdf = false;
     notifyListeners();
   }
 
   void setClientId(String? v) {
     _clientId = v;
     _savedInvoice = null;
+    _previewedPdf = false;
     _refreshClientStats();
     notifyListeners();
   }
@@ -253,8 +257,12 @@ class InvoiceEditorController extends ChangeNotifier {
 
   Future<void> previewPdf(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    if (_savedInvoice == null) await saveDraft(context);
-    if (_savedInvoice == null) return;
+    if (_savedInvoice == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.invoicePreviewNeedsDraft)),
+      );
+      return;
+    }
 
     try {
       final r = await _invoicesApi.previewPdf(_savedInvoice!.id);
@@ -264,6 +272,8 @@ class InvoiceEditorController extends ChangeNotifier {
         bytes,
         fileName: 'invoice-${_savedInvoice!.invoiceNumber}.pdf',
       );
+      _previewedPdf = true;
+      notifyListeners();
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -312,8 +322,8 @@ class InvoiceEditorController extends ChangeNotifier {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(l.billingTaxRate), // reusing your string as in original
-        content: const Text('Assign final number and lock invoice?'),
+        title: Text(l.invoiceIssueConfirmTitle),
+        content: Text(l.invoiceIssueConfirmMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -321,7 +331,7 @@ class InvoiceEditorController extends ChangeNotifier {
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l.createInvoiceCta),
+            child: Text(l.invoiceIssueCta),
           ),
         ],
       ),

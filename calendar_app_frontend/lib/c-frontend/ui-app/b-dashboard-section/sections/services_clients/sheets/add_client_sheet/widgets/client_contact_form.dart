@@ -11,6 +11,9 @@ class ClientContactForm extends StatelessWidget {
   final List<String> propertyKindOptions;
   final VoidCallback onManageClassification;
   final VoidCallback onClassificationChanged;
+  final bool showValidation;
+  final VoidCallback onFieldChanged;
+  final ValueChanged<String> onFieldBlur;
 
   const ClientContactForm({
     super.key,
@@ -19,6 +22,9 @@ class ClientContactForm extends StatelessWidget {
     required this.propertyKindOptions,
     required this.onManageClassification,
     required this.onClassificationChanged,
+    required this.showValidation,
+    required this.onFieldChanged,
+    required this.onFieldBlur,
   });
 
   @override
@@ -26,7 +32,6 @@ class ClientContactForm extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
-    final inputBorder = buildInputBorder(context);
 
     List<String> ensureCurrent(List<String> options, String current) {
       final v = current.trim();
@@ -41,75 +46,77 @@ class ClientContactForm extends StatelessWidget {
 
     return Column(
       children: [
-        TextFormField(
-          controller: c.name,
-          style: typo.bodyMedium,
-          decoration: InputDecoration(
-            labelText: '${l.nameLabel} *',
-            labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            hintText: l.e_gJohnDoe,
-            hintStyle: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-            ),
-            prefixIcon: const Icon(Icons.person_outline),
-            enabledBorder: inputBorder,
-            focusedBorder: inputBorder.copyWith(
-              borderSide: BorderSide(color: cs.primary, width: 1.5),
-            ),
-            errorBorder: inputBorder.copyWith(
-              borderSide: BorderSide(color: cs.error),
-            ),
-            focusedErrorBorder: inputBorder.copyWith(
-              borderSide: BorderSide(color: cs.error, width: 1.5),
-            ),
-          ),
-          textInputAction: TextInputAction.next,
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? l.nameIsRequired : null,
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: c.phone,
-          style: typo.bodyMedium,
-          keyboardType: TextInputType.phone,
-          decoration: InputDecoration(
-            labelText: l.phoneLabel,
-            labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            hintText: l.e_gPhone,
-            hintStyle: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-            ),
-            prefixIcon: const Icon(Icons.phone_outlined),
-            enabledBorder: inputBorder,
-            focusedBorder: inputBorder.copyWith(
-              borderSide: BorderSide(color: cs.primary, width: 1.5),
-            ),
-          ),
-          textInputAction: TextInputAction.next,
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: c.email,
-          style: typo.bodyMedium,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(
-            labelText: l.emailLabel,
-            labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            hintText: l.e_gEmail,
-            hintStyle: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-            ),
-            prefixIcon: const Icon(Icons.alternate_email),
-            enabledBorder: inputBorder,
-            focusedBorder: inputBorder.copyWith(
-              borderSide: BorderSide(color: cs.primary, width: 1.5),
-            ),
-          ),
-          validator: (v) {
-            if (v == null || v.isEmpty) return null;
-            final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v);
-            return ok ? null : l.invalidEmail;
+        Focus(
+          onFocusChange: (hasFocus) {
+            if (!hasFocus) onFieldBlur('name');
           },
+          child: TextFormField(
+            controller: c.name,
+            style: typo.bodyMedium,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            decoration: buildInputDecoration(
+              context,
+              label: l.nameLabel,
+              hintText: l.e_gJohnDoe,
+              prefixIcon: const Icon(Icons.person_outline),
+              isRequired: true,
+              isFilled: c.name.text.trim().isNotEmpty,
+              showCheck: c.name.text.trim().isNotEmpty,
+            ),
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => onFieldChanged(),
+            validator: (v) {
+              if (!c.shouldShowError('name', showValidation)) return null;
+              return (v == null || v.trim().isEmpty) ? l.nameIsRequired : null;
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Focus(
+          onFocusChange: (hasFocus) {
+            if (!hasFocus) onFieldBlur('phone');
+          },
+          child: TextFormField(
+            controller: c.phone,
+            style: typo.bodyMedium,
+            keyboardType: TextInputType.phone,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            decoration: buildInputDecoration(
+              context,
+              label: l.phoneLabel,
+              hintText: l.e_gPhone,
+              prefixIcon: const Icon(Icons.phone_outlined),
+              isFilled: c.phone.text.trim().isNotEmpty,
+            ),
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => onFieldChanged(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Focus(
+          onFocusChange: (hasFocus) {
+            if (!hasFocus) onFieldBlur('email');
+          },
+          child: TextFormField(
+            controller: c.email,
+            style: typo.bodyMedium,
+            keyboardType: TextInputType.emailAddress,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            decoration: buildInputDecoration(
+              context,
+              label: l.emailLabel,
+              hintText: l.e_gEmail,
+              prefixIcon: const Icon(Icons.alternate_email),
+              isFilled: c.email.text.trim().isNotEmpty,
+            ),
+            onChanged: (_) => onFieldChanged(),
+            validator: (v) {
+              if (!c.shouldShowError('email', showValidation)) return null;
+              if (v == null || v.isEmpty) return null;
+              final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v);
+              return ok ? null : l.invalidEmail;
+            },
+          ),
         ),
         const SizedBox(height: 12),
         Row(
@@ -134,19 +141,16 @@ class ClientContactForm extends StatelessWidget {
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                initialValue: c.entityType.text.trim().isEmpty
-                    ? ''
-                    : c.entityType.text.trim(),
-                items: [
-                  DropdownMenuItem(
-                    value: '',
-                    child: Text(
-                      '-',
-                      style: typo.bodyMedium.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
+                value:
+                    c.entityType.text.trim().isEmpty ? null : c.entityType.text.trim(),
+                hint: Text(
+                  '${l.select}...',
+                  style: typo.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant.withOpacity(0.65),
                   ),
+                ),
+                style: typo.bodyMedium.copyWith(color: cs.onSurface),
+                items: [
                   ...entityOptions.map(
                     (e) => DropdownMenuItem(value: e, child: Text(e)),
                   ),
@@ -154,35 +158,31 @@ class ClientContactForm extends StatelessWidget {
                 onChanged: (v) {
                   c.entityType.text = (v ?? '').trim();
                   onClassificationChanged();
+                  onFieldChanged();
                 },
-                decoration: InputDecoration(
-                  labelText: l.clientEntityTypeLabel,
-                  labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                decoration: buildInputDecoration(
+                  context,
+                  label: l.clientEntityTypeLabel,
                   helperText: l.clientEntityTypeHint,
                   prefixIcon: const Icon(Icons.badge_outlined),
-                  enabledBorder: inputBorder,
-                  focusedBorder: inputBorder.copyWith(
-                    borderSide: BorderSide(color: cs.primary, width: 1.5),
-                  ),
+                  isFilled: c.entityType.text.trim().isNotEmpty,
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: DropdownButtonFormField<String>(
-                initialValue: c.propertyKind.text.trim().isEmpty
-                    ? ''
+                value: c.propertyKind.text.trim().isEmpty
+                    ? null
                     : c.propertyKind.text.trim(),
-                items: [
-                  DropdownMenuItem(
-                    value: '',
-                    child: Text(
-                      '-',
-                      style: typo.bodyMedium.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
+                hint: Text(
+                  '${l.select}...',
+                  style: typo.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant.withOpacity(0.65),
                   ),
+                ),
+                style: typo.bodyMedium.copyWith(color: cs.onSurface),
+                items: [
                   ...propertyOptions.map(
                     (e) => DropdownMenuItem(value: e, child: Text(e)),
                   ),
@@ -190,16 +190,14 @@ class ClientContactForm extends StatelessWidget {
                 onChanged: (v) {
                   c.propertyKind.text = (v ?? '').trim();
                   onClassificationChanged();
+                  onFieldChanged();
                 },
-                decoration: InputDecoration(
-                  labelText: l.clientPropertyKindLabel,
-                  labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                decoration: buildInputDecoration(
+                  context,
+                  label: l.clientPropertyKindLabel,
                   helperText: l.clientPropertyKindHint,
                   prefixIcon: const Icon(Icons.home_work_outlined),
-                  enabledBorder: inputBorder,
-                  focusedBorder: inputBorder.copyWith(
-                    borderSide: BorderSide(color: cs.primary, width: 1.5),
-                  ),
+                  isFilled: c.propertyKind.text.trim().isNotEmpty,
                 ),
               ),
             ),

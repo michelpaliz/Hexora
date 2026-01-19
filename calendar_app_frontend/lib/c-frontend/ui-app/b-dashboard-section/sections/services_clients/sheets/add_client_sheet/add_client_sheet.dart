@@ -17,12 +17,16 @@ class AddClientSheet extends StatefulWidget {
   final String groupId;
   final ClientsApi api;
   final GroupClient? client;
+  final ValueChanged<GroupClient>? onSaved;
+  final bool closeOnSave;
 
   const AddClientSheet({
     super.key,
     required this.groupId,
     required this.api,
     this.client,
+    this.onSaved,
+    this.closeOnSave = true,
   });
 
   @override
@@ -33,6 +37,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
   late final AddClientController c;
   List<String> _entityTypeOptions = const [];
   List<String> _propertyKindOptions = const [];
+  bool _showValidation = false;
 
   @override
   void initState() {
@@ -80,6 +85,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
     final l = AppLocalizations.of(context)!;
     final typo = AppTypography.of(context);
 
+    setState(() => _showValidation = true);
     if (!c.formKey.currentState!.validate()) return;
 
     setState(() => c.saving = true);
@@ -92,7 +98,10 @@ class _AddClientSheetState extends State<AddClientSheet> {
         entityType: result.entityType,
         propertyKind: result.propertyKind,
       );
-      Navigator.of(context).pop<GroupClient>(result);
+      widget.onSaved?.call(result);
+      if (widget.closeOnSave) {
+        Navigator.of(context).pop<GroupClient>(result);
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -127,9 +136,17 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 propertyKindOptions: _propertyKindOptions,
                 onManageClassification: _manageClassificationOptions,
                 onClassificationChanged: () => setState(() {}),
+                showValidation: _showValidation,
+                onFieldChanged: () => setState(() {}),
+                onFieldBlur: (key) => setState(() => c.markTouched(key)),
               ),
               const SizedBox(height: 12),
-              BillingSection(c: c),
+              BillingSection(
+                c: c,
+                showValidation: _showValidation,
+                onFieldChanged: () => setState(() {}),
+                onFieldBlur: (key) => setState(() => c.markTouched(key)),
+              ),
               const SizedBox(height: 6),
               ActiveSwitch(
                 value: c.active,

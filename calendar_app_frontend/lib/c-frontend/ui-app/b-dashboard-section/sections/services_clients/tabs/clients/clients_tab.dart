@@ -16,6 +16,10 @@ class ClientsTab extends StatelessWidget {
   final void Function(GroupClient client)? onEdit; // tap-to-edit
   final bool showInactive;
   final ValueChanged<bool>? onToggleInactive;
+  final String? propertyKindFilter;
+  final List<String> propertyKindOptions;
+  final ValueChanged<String?>? onPropertyKindChanged;
+  final void Function(GroupClient client)? onDelete;
 
   const ClientsTab({
     super.key,
@@ -28,6 +32,10 @@ class ClientsTab extends StatelessWidget {
     this.onEdit,
     this.showInactive = false,
     this.onToggleInactive,
+    this.propertyKindFilter,
+    this.propertyKindOptions = const [],
+    this.onPropertyKindChanged,
+    this.onDelete,
   });
 
   @override
@@ -35,10 +43,16 @@ class ClientsTab extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
+    final filtered = propertyKindFilter == null || propertyKindFilter!.isEmpty
+        ? items
+        : items
+            .where((c) =>
+                (c.propertyKind ?? '').trim() == propertyKindFilter!.trim())
+            .toList(growable: false);
     final activeItems =
-        items.where((c) => c.isActive != false).toList(growable: false);
+        filtered.where((c) => c.isActive != false).toList(growable: false);
     final inactiveItems =
-        items.where((c) => c.isActive == false).toList(growable: false);
+        filtered.where((c) => c.isActive == false).toList(growable: false);
     final visible =
         showInactive ? [...activeItems, ...inactiveItems] : activeItems;
     final activeCount = activeItems.length;
@@ -80,7 +94,7 @@ class ClientsTab extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  l.statusInactive,
+                  showInactive ? l.hideInactiveClients : l.showInactiveClients,
                   style: typo.bodySmall.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -95,12 +109,55 @@ class ClientsTab extends StatelessWidget {
               ],
             ),
           ),
+        if (propertyKindOptions.isNotEmpty && onPropertyKindChanged != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: DropdownButtonFormField<String?>(
+              value: propertyKindFilter,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: l.clientPropertyKindLabel,
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+                labelStyle: typo.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+                hintText: '${l.select}...',
+                hintStyle: typo.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant.withOpacity(0.65),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: cs.primary, width: 1.4),
+                ),
+              ),
+              items: [
+                DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text(l.all),
+                ),
+                ...propertyKindOptions.map(
+                  (opt) => DropdownMenuItem<String?>(
+                    value: opt,
+                    child: Text(opt),
+                  ),
+                ),
+              ],
+              onChanged: onPropertyKindChanged,
+            ),
+          ),
         Expanded(
           child: RefreshIndicator(
             color: cs.primary,
             backgroundColor: cs.surface,
             onRefresh: onRefresh,
             child: ListView.separated(
+              cacheExtent: 800,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               itemCount: visible.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -109,6 +166,7 @@ class ClientsTab extends StatelessWidget {
                 return ClientListItem(
                   client: c,
                   onTap: onEdit == null ? null : () => onEdit!(c),
+                  onDelete: onDelete == null ? null : () => onDelete!(c),
                   nameStyle: typo.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     letterSpacing: .2,

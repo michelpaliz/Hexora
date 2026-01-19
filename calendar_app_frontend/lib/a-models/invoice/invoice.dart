@@ -17,6 +17,8 @@ class Invoice {
   final num? taxTotal;
   final num? total;
   final String? notes;
+  final String? recurringSeriesId;
+  final DateTime? occurrenceDate;
   final BillingProfile? issuerSnapshot;
   final ClientBilling? clientSnapshot;
   final List<InvoiceLine> lines;
@@ -36,6 +38,8 @@ class Invoice {
     this.taxTotal,
     this.total,
     this.notes,
+    this.recurringSeriesId,
+    this.occurrenceDate,
     this.issuerSnapshot,
     this.clientSnapshot,
     this.lines = const [],
@@ -56,6 +60,8 @@ class Invoice {
     num? taxTotal,
     num? total,
     String? notes,
+    String? recurringSeriesId,
+    DateTime? occurrenceDate,
     BillingProfile? issuerSnapshot,
     ClientBilling? clientSnapshot,
     List<InvoiceLine>? lines,
@@ -75,6 +81,8 @@ class Invoice {
       taxTotal: taxTotal ?? this.taxTotal,
       total: total ?? this.total,
       notes: notes ?? this.notes,
+      recurringSeriesId: recurringSeriesId ?? this.recurringSeriesId,
+      occurrenceDate: occurrenceDate ?? this.occurrenceDate,
       issuerSnapshot: issuerSnapshot ?? this.issuerSnapshot,
       clientSnapshot: clientSnapshot ?? this.clientSnapshot,
       lines: lines ?? this.lines,
@@ -112,6 +120,11 @@ class Invoice {
       taxTotal: json['taxTotal'] is num ? json['taxTotal'] as num : null,
       total: json['total'] is num ? json['total'] as num : null,
       notes: json['notes']?.toString(),
+      recurringSeriesId: (json['recurringSeriesId'] ??
+              json['seriesId'] ??
+              json['recurrenceSeriesId'])
+          ?.toString(),
+      occurrenceDate: parseDate(json['occurrenceDate']),
       issuerSnapshot: json['issuerSnapshot'] is Map<String, dynamic>
           ? BillingProfile.fromJson(json['issuerSnapshot'])
           : null,
@@ -144,6 +157,10 @@ class Invoice {
         if (taxTotal != null) 'taxTotal': taxTotal,
         if (total != null) 'total': total,
         if (notes != null) 'notes': notes,
+        if (recurringSeriesId != null)
+          'recurringSeriesId': recurringSeriesId,
+        if (occurrenceDate != null)
+          'occurrenceDate': occurrenceDate!.toIso8601String(),
         if (issuerSnapshot != null) 'issuerSnapshot': issuerSnapshot!.toJson(),
         if (clientSnapshot != null) 'clientSnapshot': clientSnapshot!.toJson(),
         if (lines.isNotEmpty) 'lines': lines.map((l) => l.toJson()).toList(),

@@ -15,6 +15,9 @@ class GroupInvoicesInvoicesView extends StatelessWidget {
   final Invoice? selectedInvoice;
   final ValueChanged<Invoice> onSelectInvoice;
   final ValueChanged<Invoice> onDeleteInvoice;
+  final VoidCallback onCreateInvoice;
+  final int initialTabIndex;
+  final ValueChanged<String>? onOpenRecurringSeries;
 
   const GroupInvoicesInvoicesView({
     super.key,
@@ -25,6 +28,9 @@ class GroupInvoicesInvoicesView extends StatelessWidget {
     required this.selectedInvoice,
     required this.onSelectInvoice,
     required this.onDeleteInvoice,
+    required this.onCreateInvoice,
+    this.initialTabIndex = 0,
+    this.onOpenRecurringSeries,
   });
 
   @override
@@ -41,9 +47,29 @@ class GroupInvoicesInvoicesView extends StatelessWidget {
             flex: 2,
             child: DefaultTabController(
               length: 2,
+              initialIndex: initialTabIndex.clamp(0, 1),
               child: Card(
-                child: Column(
+              child: Column(
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l.invoicesListTitle,
+                              style:
+                                  t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          FilledButton.icon(
+                            onPressed: onCreateInvoice,
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: Text(l.createInvoiceCta),
+                          ),
+                        ],
+                      ),
+                    ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                       child: TabBar(
@@ -137,6 +163,7 @@ class GroupInvoicesInvoicesView extends StatelessWidget {
                         ),
                       ),
                       billingProfile: billingProfile,
+                      onOpenRecurringSeries: onOpenRecurringSeries,
                     ),
             ),
           ),

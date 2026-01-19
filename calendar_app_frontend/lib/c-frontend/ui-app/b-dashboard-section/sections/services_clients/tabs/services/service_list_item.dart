@@ -7,6 +7,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 class ServiceListItem extends StatelessWidget {
   final Service service;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
   /// Typography (injected)
   final TextStyle nameStyle;
@@ -16,6 +17,7 @@ class ServiceListItem extends StatelessWidget {
     super.key,
     required this.service,
     this.onTap,
+    this.onDelete,
     required this.nameStyle,
     required this.metaStyle,
   });
@@ -78,6 +80,13 @@ class ServiceListItem extends StatelessWidget {
                 children: [
                   _StatusChip(active: service.isActive),
                   const SizedBox(width: 6),
+                  if (onDelete != null)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      color: cs.error,
+                      tooltip: AppLocalizations.of(context)!.remove,
+                      onPressed: onDelete,
+                    ),
                   Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
                 ],
               ),

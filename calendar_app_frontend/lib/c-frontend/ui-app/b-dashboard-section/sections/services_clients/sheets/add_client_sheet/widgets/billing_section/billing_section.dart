@@ -10,8 +10,17 @@ import '../../add_client_controller.dart';
 
 class BillingSection extends StatefulWidget {
   final AddClientController c;
+  final bool showValidation;
+  final VoidCallback onFieldChanged;
+  final ValueChanged<String> onFieldBlur;
 
-  const BillingSection({super.key, required this.c});
+  const BillingSection({
+    super.key,
+    required this.c,
+    required this.showValidation,
+    required this.onFieldChanged,
+    required this.onFieldBlur,
+  });
 
   @override
   State<BillingSection> createState() => _BillingSectionState();
@@ -28,6 +37,9 @@ class _BillingSectionState extends State<BillingSection> {
 
     // mirrors: initiallyExpanded: _billingExpanded || _hasBillingData
     final initiallyExpanded = c.billingExpanded || c.hasBillingData;
+    final requireBilling = c.hasBillingData || c.billingExpanded || widget.showValidation;
+    final completed = c.billingCompletedCount;
+    final total = c.billingRequiredTotal;
 
     return Container(
       decoration: BoxDecoration(
@@ -47,7 +59,10 @@ class _BillingSectionState extends State<BillingSection> {
                 style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
-            _BillingStatusChip(c: c),
+            _BillingStatusChip(
+              completed: completed,
+              total: total,
+            ),
           ],
         ),
         subtitle: Text(
@@ -62,11 +77,29 @@ class _BillingSectionState extends State<BillingSection> {
             onChanged: (v) => setState(() => c.billingDocType = v),
           ),
           const SizedBox(height: 10),
-          BillingLegalAndTax(c: c),
+          BillingLegalAndTax(
+            c: c,
+            requireBilling: requireBilling,
+            showValidation: widget.showValidation,
+            onFieldChanged: widget.onFieldChanged,
+            onFieldBlur: widget.onFieldBlur,
+          ),
           const SizedBox(height: 10),
-          BillingAddressForm(c: c),
+          BillingAddressForm(
+            c: c,
+            requireBilling: requireBilling,
+            showValidation: widget.showValidation,
+            onFieldChanged: widget.onFieldChanged,
+            onFieldBlur: widget.onFieldBlur,
+          ),
           const SizedBox(height: 10),
-          BillingContactForm(c: c),
+          BillingContactForm(
+            c: c,
+            requireBilling: requireBilling,
+            showValidation: widget.showValidation,
+            onFieldChanged: widget.onFieldChanged,
+            onFieldBlur: widget.onFieldBlur,
+          ),
         ],
       ),
     );
@@ -74,9 +107,13 @@ class _BillingSectionState extends State<BillingSection> {
 }
 
 class _BillingStatusChip extends StatelessWidget {
-  final AddClientController c;
+  final int completed;
+  final int total;
 
-  const _BillingStatusChip({required this.c});
+  const _BillingStatusChip({
+    required this.completed,
+    required this.total,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +121,7 @@ class _BillingStatusChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
 
-    final complete = c.client?.billing?.isComplete ?? false;
+    final complete = completed >= total && total > 0;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -94,7 +131,7 @@ class _BillingStatusChip extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
       ),
       child: Text(
-        complete ? l.billingComplete : l.billingMissing,
+        l.billingProgressLabel(completed, total),
         style: typo.bodySmall.copyWith(
           fontWeight: FontWeight.w700,
           color: complete ? cs.onSecondaryContainer : cs.onErrorContainer,

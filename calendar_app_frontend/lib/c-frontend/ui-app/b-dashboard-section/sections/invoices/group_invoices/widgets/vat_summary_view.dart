@@ -3,12 +3,42 @@ import 'package:hexora/b-backend/vat/vat_summary_api.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
+double? _parseNum(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  final raw = value.toString().trim();
+  if (raw.isEmpty) return null;
+  return double.tryParse(raw.replaceAll(',', '.'));
+}
+
+String _formatAmount(dynamic value) {
+  final parsed = _parseNum(value);
+  if (parsed == null) return value?.toString() ?? '-';
+  return parsed.toStringAsFixed(2);
+}
+
+String _formatDate(DateTime value) {
+  final y = value.year.toString().padLeft(4, '0');
+  final m = value.month.toString().padLeft(2, '0');
+  final d = value.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
+}
+
+(DateTime, DateTime) _quarterRangeDates(int year, int quarter) {
+  final startMonth = 1 + (quarter - 1) * 3;
+  final start = DateTime(year, startMonth, 1);
+  final end = DateTime(year, startMonth + 3, 0);
+  return (start, end);
+}
+
 class VatSummaryView extends StatefulWidget {
   final VatSummaryApi api;
+  final String? groupId;
 
   const VatSummaryView({
     super.key,
     required this.api,
+    this.groupId,
   });
 
   @override
@@ -51,8 +81,15 @@ class _VatSummaryViewState extends State<VatSummaryView>
       _loading[quarter] = true;
       _errors[quarter] = null;
     });
+    final range = _quarterRangeDates(_year, quarter);
+    final from = _formatDate(range.$1);
+    final to = _formatDate(range.$2);
     try {
-      final data = await widget.api.getSummary(year: _year, quarter: quarter);
+      final data = await widget.api.getSummary(
+        groupId: widget.groupId,
+        from: from,
+        to: to,
+      );
       if (!mounted) return;
       setState(() => _data[quarter] = data);
     } catch (e) {
@@ -94,24 +131,51 @@ class _VatSummaryViewState extends State<VatSummaryView>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Card(
-          child: Padding(
+          child: Container(
             padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     l.vatSummaryTitle,
-                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                    style: t.titleLarge.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        size: 16,
+                        color: cs.onPrimaryContainer,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _year.toString(),
+                        style: t.bodySmall.copyWith(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
                   tooltip: l.vatSummaryPrevYear,
                   onPressed: () => _changeYear(-1),
                   icon: const Icon(Icons.chevron_left),
-                ),
-                Text(
-                  _year.toString(),
-                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
                 ),
                 IconButton(
                   tooltip: l.vatSummaryNextYear,
@@ -126,25 +190,30 @@ class _VatSummaryViewState extends State<VatSummaryView>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest,
+            gradient: LinearGradient(
+              colors: [
+                cs.primaryContainer.withOpacity(0.7),
+                cs.secondaryContainer.withOpacity(0.7),
+              ],
+            ),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              Icon(Icons.event, size: 18, color: cs.onSurfaceVariant),
+              Icon(Icons.event, size: 18, color: cs.onPrimaryContainer),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   rangeLabel,
-                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  style: t.bodySmall.copyWith(color: cs.onPrimaryContainer),
                 ),
               ),
               const SizedBox(width: 12),
-              Icon(Icons.schedule, size: 18, color: cs.onSurfaceVariant),
+              Icon(Icons.schedule, size: 18, color: cs.onPrimaryContainer),
               const SizedBox(width: 6),
               Text(
                 deadlineLabel,
-                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                style: t.bodySmall.copyWith(color: cs.onPrimaryContainer),
               ),
             ],
           ),
@@ -152,7 +221,11 @@ class _VatSummaryViewState extends State<VatSummaryView>
         const SizedBox(height: 12),
         TabBar(
           controller: _tabs,
-          labelColor: cs.onSurface,
+          labelColor: cs.primary,
+          unselectedLabelColor: cs.onSurfaceVariant,
+          indicator: UnderlineTabIndicator(
+            borderSide: BorderSide(color: cs.primary, width: 3),
+          ),
           tabs: [
             Tab(text: l.vatSummaryQuarterQ1),
             Tab(text: l.vatSummaryQuarterQ2),
@@ -167,7 +240,6 @@ class _VatSummaryViewState extends State<VatSummaryView>
             children: List.generate(4, (index) {
               final quarter = index + 1;
               return _QuarterSummary(
-                quarter: quarter,
                 loading: _loading[quarter] == true,
                 error: _errors[quarter],
                 data: _data[quarter],
@@ -223,27 +295,25 @@ String _quarterDeadlineLabel(
 }
 
 class _QuarterSummary extends StatelessWidget {
-  final int quarter;
   final bool loading;
   final String? error;
   final Map<String, dynamic>? data;
   final VoidCallback onRetry;
 
   const _QuarterSummary({
-    required this.quarter,
     required this.loading,
     required this.error,
     required this.data,
     required this.onRetry,
   });
 
-  Map<String, dynamic>? _section(String key) {
-    final raw = data?[key];
+  Map<String, dynamic>? _totals() {
+    final raw = data?['totals'];
     return raw is Map ? Map<String, dynamic>.from(raw) : null;
   }
 
-  List<Map<String, dynamic>> _rates(Map<String, dynamic>? section) {
-    final raw = section?['rates'];
+  List<Map<String, dynamic>> _entries(String key) {
+    final raw = data?[key];
     if (raw is List) {
       return raw
           .whereType<Map>()
@@ -257,6 +327,7 @@ class _QuarterSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
     if (loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -281,25 +352,36 @@ class _QuarterSummary extends StatelessWidget {
       );
     }
 
-    final sales = _section('sales');
-    final purchases = _section('purchases');
-    final netVat = data?['netVat'];
+    final totals = _totals();
+    final ingresos = _entries('ingresos_by_client');
+    final gastos = _entries('gastos_by_provider');
+    final ivaResult = totals?['ivaResult'];
+    final ivaValue = _parseNum(ivaResult) ?? 0;
 
     return ListView(
       padding: const EdgeInsets.all(8),
       children: [
         _VatSectionCard(
           title: l.vatSummarySalesTitle,
-          rates: _rates(sales),
-          totalBase: sales?['totalBase'],
-          totalTax: sales?['totalTax'],
+          entries: ingresos,
+          nameKey: 'clientName',
+          idKey: 'clientId',
+          totalBase: totals?['ingresosBase'],
+          totalTax: totals?['ingresosVat'],
+          accentColor: cs.primary,
+          icon: Icons.trending_up,
         ),
         const SizedBox(height: 10),
         _VatSectionCard(
           title: l.vatSummaryPurchasesTitle,
-          rates: _rates(purchases),
-          totalBase: purchases?['totalBase'],
-          totalTax: purchases?['totalTax'],
+          entries: gastos,
+          nameKey: 'providerName',
+          idKey: 'providerId',
+          countKey: 'count',
+          totalBase: totals?['gastosBase'],
+          totalTax: totals?['gastosVat'],
+          accentColor: cs.tertiary,
+          icon: Icons.shopping_bag_outlined,
         ),
         const SizedBox(height: 10),
         Card(
@@ -307,15 +389,46 @@ class _QuarterSummary extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color:
+                        ivaValue >= 0 ? cs.primaryContainer : cs.errorContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    ivaValue >= 0 ? Icons.south_west : Icons.north_east,
+                    color: ivaValue >= 0
+                        ? cs.onPrimaryContainer
+                        : cs.onErrorContainer,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     l.vatSummaryNetTitle,
                     style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
-                Text(
-                  netVat?.toString() ?? '-',
-                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color:
+                        ivaValue >= 0 ? cs.primaryContainer : cs.errorContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _formatAmount(ivaResult),
+                    style: t.bodySmall.copyWith(
+                      color: ivaValue >= 0
+                          ? cs.onPrimaryContainer
+                          : cs.onErrorContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -328,56 +441,131 @@ class _QuarterSummary extends StatelessWidget {
 
 class _VatSectionCard extends StatelessWidget {
   final String title;
-  final List<Map<String, dynamic>> rates;
+  final List<Map<String, dynamic>> entries;
+  final String nameKey;
+  final String? idKey;
+  final String? countKey;
   final dynamic totalBase;
   final dynamic totalTax;
+  final Color accentColor;
+  final IconData icon;
 
   const _VatSectionCard({
     required this.title,
-    required this.rates,
+    required this.entries,
+    required this.nameKey,
+    this.idKey,
+    this.countKey,
     required this.totalBase,
     required this.totalTax,
+    required this.accentColor,
+    required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final hasTotals =
+        (_parseNum(totalBase) ?? 0) != 0 || (_parseNum(totalTax) ?? 0) != 0;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(title,
-                style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.16),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 18, color: accentColor),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
-            if (rates.isEmpty)
+            if (entries.isEmpty && !hasTotals)
               Text(l.vatSummaryNoRates, style: t.bodySmall)
             else
               Column(
-                children: rates.map((rate) {
-                  final r = rate['rate']?.toString() ?? '-';
-                  final base = rate['base']?.toString() ?? '-';
-                  final tax = rate['tax']?.toString() ?? '-';
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                children: entries.map((entry) {
+                  final name = entry[nameKey]?.toString().trim() ?? '';
+                  final fallbackId = idKey == null
+                      ? ''
+                      : (entry[idKey]?.toString().trim() ?? '');
+                  final displayName = name.isNotEmpty
+                      ? name
+                      : (fallbackId.isNotEmpty ? 'ID: $fallbackId' : '-');
+                  final count = countKey == null
+                      ? ''
+                      : (entry[countKey]?.toString().trim() ?? '');
+                  final base = _formatAmount(entry['baseTotal']);
+                  final tax = _formatAmount(entry['vatTotal']);
+                  final total = _formatAmount(entry['grandTotal']);
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: cs.surfaceContainerHigh),
+                    ),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
-                            '${l.vatSummaryRateLabel} $r',
+                            [
+                              displayName,
+                              if (count.isNotEmpty) '($count)',
+                            ].join(' '),
                             style: t.bodySmall,
                           ),
                         ),
-                        Text(
-                          '${l.vatSummaryBaseLabel} $base',
-                          style: t.bodySmall,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          '${l.vatSummaryTaxLabel} $tax',
-                          style: t.bodySmall,
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            _AmountChip(
+                              label: l.vatSummaryBaseLabel,
+                              value: base,
+                              color: accentColor.withOpacity(0.12),
+                              textColor: accentColor,
+                            ),
+                            _AmountChip(
+                              label: l.vatSummaryTaxLabel,
+                              value: tax,
+                              color: cs.secondaryContainer,
+                              textColor: cs.onSecondaryContainer,
+                            ),
+                            _AmountChip(
+                              label: l.expenseUploadLinesTotalLabel,
+                              value: total,
+                              color: cs.primaryContainer,
+                              textColor: cs.onPrimaryContainer,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -393,18 +581,66 @@ class _VatSectionCard extends StatelessWidget {
                     style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
-                Text(
-                  '${l.vatSummaryBaseLabel} ${totalBase ?? '-'}',
-                  style: t.bodySmall,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '${l.vatSummaryTaxLabel} ${totalTax ?? '-'}',
-                  style: t.bodySmall,
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    _AmountChip(
+                      label: l.vatSummaryBaseLabel,
+                      value: _formatAmount(totalBase),
+                      color: accentColor.withOpacity(0.12),
+                      textColor: accentColor,
+                    ),
+                    _AmountChip(
+                      label: l.vatSummaryTaxLabel,
+                      value: _formatAmount(totalTax),
+                      color: cs.secondaryContainer,
+                      textColor: cs.onSecondaryContainer,
+                    ),
+                    _AmountChip(
+                      label: l.expenseUploadLinesTotalLabel,
+                      value: _formatAmount((_parseNum(totalBase) ?? 0) +
+                          (_parseNum(totalTax) ?? 0)),
+                      color: cs.primaryContainer,
+                      textColor: cs.onPrimaryContainer,
+                    ),
+                  ],
                 ),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AmountChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final Color textColor;
+
+  const _AmountChip({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        '$label $value',
+        style: t.bodySmall.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

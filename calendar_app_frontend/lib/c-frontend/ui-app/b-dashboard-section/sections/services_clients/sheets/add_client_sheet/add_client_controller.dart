@@ -44,6 +44,7 @@ class AddClientController {
   bool active = true;
   bool billingExpanded = false;
   bool saving = false;
+  final Map<String, bool> _touched = {};
 
   bool get isEdit => client != null;
 
@@ -104,6 +105,50 @@ class AddClientController {
 
   bool get hasBillingData =>
       billingFromInputs(includeNulls: false)?.hasData ?? false;
+
+  static const List<String> billingRequiredKeys = [
+    'billingTaxId',
+  ];
+
+  int get billingRequiredTotal => billingRequiredKeys.length;
+
+  int get billingCompletedCount =>
+      billingRequiredKeys.where(isBillingFieldFilled).length;
+
+  bool isBillingFieldFilled(String key) =>
+      _billingControllerFor(key)?.text.trim().isNotEmpty ?? false;
+
+  bool isBillingRequired(String key) => billingRequiredKeys.contains(key);
+
+  TextEditingController? _billingControllerFor(String key) {
+    switch (key) {
+      case 'billingLegalName':
+        return billingLegalName;
+      case 'billingTaxId':
+        return billingTaxId;
+      case 'billingStreet':
+        return billingStreet;
+      case 'billingCity':
+        return billingCity;
+      case 'billingPostal':
+        return billingPostal;
+      case 'billingCountry':
+        return billingCountry;
+      case 'billingEmail':
+        return billingEmail;
+      case 'billingPhone':
+        return billingPhone;
+      default:
+        return null;
+    }
+  }
+
+  void markTouched(String key) {
+    _touched[key] = true;
+  }
+
+  bool shouldShowError(String key, bool force) =>
+      force || (_touched[key] ?? false);
 
   void dispose() {
     for (final c in [

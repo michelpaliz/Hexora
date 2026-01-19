@@ -1,7 +1,9 @@
 // c-frontend/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/services_section/right_panel_insights_inline.dart';
@@ -14,21 +16,44 @@ import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calend
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/group_permissions_helper.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/presence_status_strip.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
+import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/agenda_screen.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
+class CalendarDashboardActions {
+  final Future<void> Function() onAddEvent;
+  final VoidCallback onToggleLeftPanel;
+  final ValueNotifier<bool> leftPanelCollapsed;
+  final bool canAddEvents;
+
+  const CalendarDashboardActions({
+    required this.onAddEvent,
+    required this.onToggleLeftPanel,
+    required this.leftPanelCollapsed,
+    required this.canAddEvents,
+  });
+}
+
 class MainCalendarView extends StatefulWidget {
   final Group? group;
-  const MainCalendarView({super.key, this.group});
+  final bool embedded;
+  final ValueChanged<CalendarDashboardActions?>? onActionsReady;
+
+  const MainCalendarView({
+    super.key,
+    this.group,
+    this.embedded = false,
+    this.onActionsReady,
+  });
 
   @override
   State<MainCalendarView> createState() => _MainCalendarViewState();
 }
 
-enum _SidePanelView { upcoming, completed, insights }
+enum _SidePanelView { upcoming, completed, insights, addEvent, editEvent }
 
 class _MainCalendarViewState extends State<MainCalendarView> {
   late final CalendarScreenCoordinator _c;
@@ -38,11 +63,15 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   _SidePanelView _panelView = _SidePanelView.upcoming;
   bool _rightCollapsed = false;
   bool _leftCollapsed = false;
+  final ValueNotifier<bool> _leftCollapsedNotifier = ValueNotifier(false);
+  bool _canAddEvents = false;
+  Event? _editingEvent;
 
   @override
   void initState() {
     super.initState();
     _c = CalendarScreenCoordinator(context: context);
+    _emitActions();
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
 
@@ -78,6 +107,14 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
   Future<void> _openAddEvent(Group group) async {
     bool? added;
+
+    if (widget.embedded && kIsWeb) {
+      setState(() {
+        _panelView = _SidePanelView.addEvent;
+        _rightCollapsed = false;
+      });
+      return;
+    }
 
     if (kIsWeb) {
       // On web, keep the 3-column layout in place by showing a dialog instead of full navigation.
@@ -135,6 +172,39 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
   void _toggleLeftPanel() {
     setState(() => _leftCollapsed = !_leftCollapsed);
+    _leftCollapsedNotifier.value = _leftCollapsed;
+  }
+
+  void _openEditEventInline(Event event) {
+    setState(() {
+      _editingEvent = event;
+      _panelView = _SidePanelView.editEvent;
+      _rightCollapsed = false;
+    });
+  }
+
+  void _emitActions() {
+    widget.onActionsReady?.call(
+      CalendarDashboardActions(
+        onAddEvent: _openAddEventFromMenu,
+        onToggleLeftPanel: _toggleLeftPanel,
+        leftPanelCollapsed: _leftCollapsedNotifier,
+        canAddEvents: _canAddEvents,
+      ),
+    );
+  }
+
+  Future<void> _openAddEventFromMenu() async {
+    final groupDomain = context.read<GroupDomain>();
+    final targetGroup = widget.group ?? groupDomain.currentGroup;
+    if (targetGroup == null) return;
+    await _openAddEvent(targetGroup);
+  }
+
+  void _syncInlineEditHandler() {
+    _c.setInlineEditHandler(
+      widget.embedded && kIsWeb ? _openEditEventInline : null,
+    );
   }
 
   @override
@@ -180,6 +250,11 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
         final canAddEvents =
             GroupPermissionHelper.canAddEvents(currentUser, currentGroup);
+        if (canAddEvents != _canAddEvents) {
+          _canAddEvents = canAddEvents;
+          WidgetsBinding.instance.addPostFrameCallback((_) => _emitActions());
+        }
+        _syncInlineEditHandler();
         final currentRole =
             GroupRole.fromWire(currentGroup.userRoles[currentUser.id]);
 
@@ -440,6 +515,25 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                   ),
                   onPressed: () => _setPanelView(_SidePanelView.insights),
                 ),
+                if (canAddEvents)
+                  IconButton(
+                    tooltip: loc.addEvent,
+                    icon: Icon(
+                      Icons.add_circle_outline,
+                      color: _panelView == _SidePanelView.addEvent
+                          ? selectedColor
+                          : cs.onSurfaceVariant,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: _panelView == _SidePanelView.addEvent
+                          ? selectedBg
+                          : Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () => _setPanelView(_SidePanelView.addEvent),
+                  ),
                 const SizedBox(height: 8),
                 Divider(
                   height: 1,
@@ -481,6 +575,53 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                           ),
                         _SidePanelView.insights =>
                           InsightsInlinePanel(group: currentGroup),
+                        _SidePanelView.addEvent => Navigator(
+                            onPopPage: (route, result) {
+                              if (!route.didPop(result)) return false;
+                              if (mounted) {
+                                setState(
+                                  () => _panelView = _SidePanelView.upcoming,
+                                );
+                              }
+                              return true;
+                            },
+                            pages: [
+                              MaterialPage(
+                                child: AddEventScreen(group: currentGroup),
+                              ),
+                            ],
+                          ),
+                        _SidePanelView.editEvent => _editingEvent == null
+                            ? Center(
+                                child: Text(
+                                  loc.noEventsFoundForDate,
+                                  style: typo.bodySmall.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              )
+                            : Navigator(
+                                onPopPage: (route, result) {
+                                  if (!route.didPop(result)) return false;
+                                  if (mounted) {
+                                    setState(
+                                      () =>
+                                          _panelView = _SidePanelView.upcoming,
+                                    );
+                                  }
+                                  return true;
+                                },
+                                pages: [
+                                  MaterialPage(
+                                    child: Provider<EventDomain>.value(
+                                      value: context.read<EventDomain>(),
+                                      child: EditEventScreen(
+                                        event: _editingEvent!,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                       },
                     ),
                   ),
@@ -490,32 +631,81 @@ class _MainCalendarViewState extends State<MainCalendarView> {
           );
         }
 
+        final showCalendarTopBar = !(widget.embedded && kIsWeb);
         final scaffold = Scaffold(
-          appBar: CalendarTopBar(
-            title: currentGroup.name,
-            showTabs: !isWide,
-            tabs: isWide ? const [] : CalendarTabs.build(context, large: true),
-            onTabChanged: isWide
-                ? null
-                : (index) => CalendarTabs.handleTabChanged(_c, index),
-            actions: isWide
-                ? [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: canAddEvents
-                          ? Container(
-                              decoration: BoxDecoration(
-                                color:
-                                    cs.surfaceContainerHighest.withOpacity(0.6),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: cs.outlineVariant.withOpacity(0.6),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
+          appBar: showCalendarTopBar
+              ? CalendarTopBar(
+                  title: currentGroup.name,
+                  showTabs: !isWide,
+                  tabs: isWide
+                      ? const []
+                      : CalendarTabs.build(context, large: true),
+                  onTabChanged: isWide
+                      ? null
+                      : (index) => CalendarTabs.handleTabChanged(_c, index),
+                  actions: isWide
+                      ? [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: canAddEvents
+                                ? Container(
+                                    decoration: BoxDecoration(
+                                      color: cs.surfaceContainerHighest
+                                          .withOpacity(0.6),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color:
+                                            cs.outlineVariant.withOpacity(0.6),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon:
+                                              const Icon(Icons.refresh_rounded),
+                                          tooltip: loc.refreshButton,
+                                          onPressed: _c.loading.value
+                                              ? null
+                                              : () async {
+                                                  await _c.loadData(
+                                                      initialGroup:
+                                                          currentGroup);
+                                                  if (mounted) setState(() {});
+                                                },
+                                        ),
+                                        Container(
+                                          width: 1,
+                                          height: 24,
+                                          color: cs.outlineVariant
+                                              .withOpacity(0.6),
+                                        ),
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _openAddEvent(currentGroup),
+                                          icon: const Icon(Icons.add_rounded,
+                                              size: 18),
+                                          label: Text(
+                                            loc.addEvent,
+                                            style: typo.bodySmall.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: cs.onPrimary,
+                                            backgroundColor: cs.primary,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 10,
+                                            ),
+                                            shape: const StadiumBorder(),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                      ],
+                                    ),
+                                  )
+                                : IconButton(
                                     icon: const Icon(Icons.refresh_rounded),
                                     tooltip: loc.refreshButton,
                                     onPressed: _c.loading.value
@@ -526,56 +716,16 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                             if (mounted) setState(() {});
                                           },
                                   ),
-                                  Container(
-                                    width: 1,
-                                    height: 24,
-                                    color: cs.outlineVariant.withOpacity(0.6),
-                                  ),
-                                  TextButton.icon(
-                                    onPressed: () =>
-                                        _openAddEvent(currentGroup),
-                                    icon:
-                                        const Icon(Icons.add_rounded, size: 18),
-                                    label: Text(
-                                      loc.addEvent,
-                                      style: typo.bodySmall.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: cs.onPrimary,
-                                      backgroundColor: cs.primary,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 10,
-                                      ),
-                                      shape: const StadiumBorder(),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                ],
-                              ),
-                            )
-                          : IconButton(
-                              icon: const Icon(Icons.refresh_rounded),
-                              tooltip: loc.refreshButton,
-                              onPressed: _c.loading.value
-                                  ? null
-                                  : () async {
-                                      await _c.loadData(
-                                          initialGroup: currentGroup);
-                                      if (mounted) setState(() {});
-                                    },
-                            ),
-                    ),
-                  ]
-                : null,
-            onToggleLeftPanel: isWide ? _toggleLeftPanel : null,
-            leftPanelCollapsed: _leftCollapsed,
-            showWeatherToggle: true,
-            weatherIconsEnabled: _weatherIconsEnabled,
-            onWeatherToggle: _toggleWeatherIcons,
-          ),
+                          ),
+                        ]
+                      : null,
+                  onToggleLeftPanel: isWide ? _toggleLeftPanel : null,
+                  leftPanelCollapsed: _leftCollapsed,
+                  showWeatherToggle: true,
+                  weatherIconsEnabled: _weatherIconsEnabled,
+                  onWeatherToggle: _toggleWeatherIcons,
+                )
+              : null,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SafeArea(
             child: isWide
@@ -629,6 +779,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
   @override
   void dispose() {
+    widget.onActionsReady?.call(null);
+    _leftCollapsedNotifier.dispose();
     _c.dispose();
     super.dispose();
   }

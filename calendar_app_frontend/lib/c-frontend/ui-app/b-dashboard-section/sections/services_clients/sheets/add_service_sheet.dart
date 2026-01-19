@@ -9,12 +9,16 @@ class AddServiceSheet extends StatefulWidget {
   final String groupId; // used on create
   final ServiceApi api;
   final Service? service; // null = create, non-null = edit
+  final ValueChanged<Service>? onSaved;
+  final bool closeOnSave;
 
   const AddServiceSheet({
     super.key,
     required this.groupId,
     required this.api,
     this.service,
+    this.onSaved,
+    this.closeOnSave = true,
   });
 
   @override
@@ -27,6 +31,8 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
   final _minutes = TextEditingController();
   bool _active = true;
   bool _saving = false;
+  bool _showValidation = false;
+  bool _nameTouched = false;
 
   static const _palette = <String>[
     '#3b82f6',
@@ -73,6 +79,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
   Future<void> _save() async {
     final l = AppLocalizations.of(context)!;
     final typo = AppTypography.of(context);
+    setState(() => _showValidation = true);
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
@@ -92,7 +99,10 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
         final updated =
             await widget.api.updateFields(widget.service!.id, patch);
         if (!mounted) return;
-        Navigator.of(context).pop<Service>(updated);
+        widget.onSaved?.call(updated);
+        if (widget.closeOnSave) {
+          Navigator.of(context).pop<Service>(updated);
+        }
       } else {
         final created = await widget.api.create(
           Service(
@@ -108,7 +118,10 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
           ),
         );
         if (!mounted) return;
-        Navigator.of(context).pop<Service>(created);
+        widget.onSaved?.call(created);
+        if (widget.closeOnSave) {
+          Navigator.of(context).pop<Service>(created);
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -129,10 +142,54 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
     final typo = AppTypography.of(context);
     final pad = MediaQuery.of(context).viewInsets.bottom + 16;
 
-    final inputBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
-    );
+    InputDecoration buildServiceInputDecoration({
+      required String label,
+      String? hintText,
+      Widget? prefixIcon,
+      bool isRequired = false,
+      bool isFilled = false,
+      bool showCheck = false,
+    }) {
+      return InputDecoration(
+        labelText: isRequired ? '$label *' : label,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        labelStyle: typo.bodySmall.copyWith(
+          color: cs.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+        floatingLabelStyle: typo.bodySmall.copyWith(
+          color: cs.primary,
+          fontWeight: FontWeight.w700,
+        ),
+        hintText: hintText,
+        hintStyle: typo.bodySmall.copyWith(
+          color: cs.onSurfaceVariant.withOpacity(0.6),
+          fontWeight: FontWeight.w500,
+        ),
+        prefixIcon: prefixIcon,
+        suffixIcon: showCheck
+            ? Icon(Icons.check_circle_rounded, color: cs.secondary)
+            : null,
+        filled: true,
+        fillColor: isFilled ? cs.primary.withOpacity(0.06) : cs.surface,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: cs.primary, width: 1.6),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: cs.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: cs.error, width: 1.6),
+        ),
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 12, 16, pad),
@@ -178,30 +235,31 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
             const SizedBox(height: 14),
 
             // Name
-            TextFormField(
-              controller: _name,
-              style: typo.bodyMedium,
-              decoration: InputDecoration(
-                labelText: '${l.nameLabel} *',
-                labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                hintText: l.e_gJohnDoe, // reuse generic hint
-                hintStyle: typo.bodySmall
-                    .copyWith(color: cs.onSurfaceVariant.withOpacity(0.7)),
-                prefixIcon: const Icon(Icons.design_services_outlined),
-                enabledBorder: inputBorder,
-                focusedBorder: inputBorder.copyWith(
-                  borderSide: BorderSide(color: cs.primary, width: 1.5),
+            Focus(
+              onFocusChange: (hasFocus) {
+                if (!hasFocus) setState(() => _nameTouched = true);
+              },
+              child: TextFormField(
+                controller: _name,
+                style: typo.bodyMedium,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                decoration: buildServiceInputDecoration(
+                  label: l.nameLabel,
+                  hintText: l.serviceNameExample,
+                  prefixIcon: const Icon(Icons.design_services_outlined),
+                  isRequired: true,
+                  isFilled: _name.text.trim().isNotEmpty,
+                  showCheck: _name.text.trim().isNotEmpty,
                 ),
-                errorBorder: inputBorder.copyWith(
-                  borderSide: BorderSide(color: cs.error),
-                ),
-                focusedErrorBorder: inputBorder.copyWith(
-                  borderSide: BorderSide(color: cs.error, width: 1.5),
-                ),
+                textInputAction: TextInputAction.next,
+                onChanged: (_) => setState(() {}),
+                validator: (v) {
+                  if (!_showValidation && !_nameTouched) return null;
+                  return (v == null || v.trim().isEmpty)
+                      ? l.nameIsRequired
+                      : null;
+                },
               ),
-              textInputAction: TextInputAction.next,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? l.nameIsRequired : null,
             ),
             const SizedBox(height: 12),
 
@@ -211,18 +269,13 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
               style: typo.bodyMedium,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: l.defaultMinutesLabel,
-                labelStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              decoration: buildServiceInputDecoration(
+                label: l.defaultMinutesLabel,
                 hintText: l.defaultMinutesHint,
-                hintStyle: typo.bodySmall
-                    .copyWith(color: cs.onSurfaceVariant.withOpacity(0.7)),
                 prefixIcon: const Icon(Icons.timer_outlined),
-                enabledBorder: inputBorder,
-                focusedBorder: inputBorder.copyWith(
-                  borderSide: BorderSide(color: cs.primary, width: 1.5),
-                ),
+                isFilled: _minutes.text.trim().isNotEmpty,
               ),
+              onChanged: (_) => setState(() {}),
             ),
 
             const SizedBox(height: 16),

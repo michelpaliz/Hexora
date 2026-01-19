@@ -11,6 +11,7 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ExpenseUploadScreen extends StatefulWidget {
   const ExpenseUploadScreen({
@@ -78,6 +79,9 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
   String? _selectedProviderSummaryId;
   final List<ExpenseLineDraft> _lines = [];
   List<Map<String, dynamic>>? _vatBreakdown;
+  Map<String, String>? _selectedRecentExpense;
+  bool _loadingPreview = false;
+  String? _previewError;
 
   @override
   void initState() {
@@ -261,6 +265,11 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
   String _formatAmount(double? value) =>
       value == null ? '-' : value.toStringAsFixed(2);
 
+  List<Map<String, dynamic>>? _buildLinesPayload() {
+    if (_lines.isEmpty) return null;
+    return _lines.map((line) => line.toJson()).toList();
+  }
+
   Future<void> _saveProvider() async {
     if (_savingProvider) return;
     final groupId = _resolveGroupId();
@@ -381,11 +390,272 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
         _recentUploads
           ..clear()
           ..addAll(items.map(_mapExpenseToRecent));
+        final selectedId = _selectedRecentExpense?['id'];
+        if (selectedId != null && selectedId.isNotEmpty) {
+          _selectedRecentExpense = _recentUploads.firstWhere(
+            (item) => item['id'] == selectedId,
+            orElse: () => const <String, String>{},
+          );
+          if (_selectedRecentExpense!.isEmpty) {
+            _selectedRecentExpense = null;
+          }
+        }
       });
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Failed to load expenses: $e');
       }
+    }
+  }
+
+  void _applyExpenseFileToRecent(
+    String id, {
+    String? url,
+    String? mimeType,
+    String? fileName,
+  }) {
+    final idx = _recentUploads.indexWhere((item) => item['id'] == id);
+    if (idx == -1) return;
+    final updated = Map<String, String>.from(_recentUploads[idx]);
+    if (url != null) updated['fileUrl'] = url;
+    if (mimeType != null) updated['mimeType'] = mimeType;
+    if (fileName != null && fileName.trim().isNotEmpty) {
+      updated['file'] = fileName.trim();
+    }
+    _recentUploads[idx] = updated;
+    if (_selectedRecentExpense?['id'] == id) {
+      _selectedRecentExpense = updated;
+    }
+  }
+
+  void _applyExpenseDetailsToRecent(
+    String id, {
+    int? linesCount,
+    String? linesSummary,
+    String? linesSubtotal,
+    String? linesTotal,
+    String? total,
+    String? taxTotal,
+  }) {
+    final idx = _recentUploads.indexWhere((item) => item['id'] == id);
+    if (idx == -1) return;
+    final updated = Map<String, String>.from(_recentUploads[idx]);
+    if (linesCount != null) updated['linesCount'] = linesCount.toString();
+    if (linesSummary != null) updated['linesSummary'] = linesSummary;
+    if (linesSubtotal != null) updated['linesSubtotal'] = linesSubtotal;
+    if (linesTotal != null) updated['linesTotal'] = linesTotal;
+    if (total != null) updated['total'] = total;
+    if (taxTotal != null) updated['tax'] = taxTotal;
+    _recentUploads[idx] = updated;
+    if (_selectedRecentExpense?['id'] == id) {
+      _selectedRecentExpense = updated;
+    }
+  }
+
+  Future<void> _loadExpensePreview(Map<String, String> item) async {
+    final id = (item['id'] ?? '').toString().trim();
+    if (id.isEmpty) return;
+    setState(() {
+      _loadingPreview = true;
+      _previewError = null;
+    });
+    try {
+      final result = await _api.fetchExpenseFile(id);
+      if (!mounted) return;
+      final url = (result['url'] ?? '').toString().trim();
+      final mimeType = (result['mimeType'] ?? '').toString().trim();
+      final fileName = (result['fileName'] ?? '').toString().trim();
+      setState(() {
+        _applyExpenseFileToRecent(
+          id,
+          url: url,
+          mimeType: mimeType,
+          fileName: fileName,
+        );
+        _loadingPreview = false;
+      });
+    } on ExpensesApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _applyExpenseFileToRecent(id, url: '', mimeType: '', fileName: '');
+        _loadingPreview = false;
+        _previewError = e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingPreview = false;
+        _previewError = e.toString();
+      });
+    }
+  }
+
+  double? _parseNum(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return null;
+    return double.tryParse(raw.replaceAll(',', '.'));
+  }
+
+  Map<String, dynamic> _summarizeLines(List lines) {
+    String? firstDescription;
+    double subtotal = 0;
+    double tax = 0;
+    double total = 0;
+    for (final entry in lines) {
+      if (entry is! Map) continue;
+      final description = entry['description']?.toString().trim() ?? '';
+      if (firstDescription == null && description.isNotEmpty) {
+        firstDescription = description;
+      }
+      final qty = _parseNum(entry['quantity']) ?? 1;
+      final unitPrice = _parseNum(entry['unitPrice']) ?? 0;
+      final taxRate = _parseNum(entry['taxRate']) ?? 0;
+      final lineSubtotal =
+          _parseNum(entry['lineSubtotal']) ?? (qty * unitPrice);
+      final lineTax =
+          _parseNum(entry['lineTax']) ?? (lineSubtotal * taxRate / 100);
+      final lineTotal =
+          _parseNum(entry['lineTotal']) ?? (lineSubtotal + lineTax);
+      subtotal += lineSubtotal;
+      tax += lineTax;
+      total += lineTotal;
+    }
+    final count = lines.length;
+    String summary = '';
+    if (firstDescription != null && firstDescription.isNotEmpty) {
+      summary = count > 1
+          ? '$firstDescription +${count - 1}'
+          : firstDescription;
+    } else if (count > 0) {
+      summary = '$count items';
+    }
+    return {
+      'count': count,
+      'summary': summary,
+      'subtotal': subtotal,
+      'tax': tax,
+      'total': total,
+    };
+  }
+
+  Future<void> _loadExpenseDetails(Map<String, String> item) async {
+    final id = (item['id'] ?? '').toString().trim();
+    if (id.isEmpty) return;
+    try {
+      final result = await _api.fetchExpense(id);
+      if (!mounted) return;
+      final lines = result['lines'];
+      int? linesCount;
+      String? linesSummary;
+      String? linesSubtotal;
+      String? linesTotal;
+      String? taxTotal;
+      if (lines is List) {
+        final summary = _summarizeLines(lines);
+        linesCount = summary['count'] as int?;
+        linesSummary = (summary['summary'] ?? '').toString();
+        final subtotal = summary['subtotal'] as double?;
+        final tax = summary['tax'] as double?;
+        final total = summary['total'] as double?;
+        if (subtotal != null) {
+          linesSubtotal = subtotal.toStringAsFixed(2);
+        }
+        if (total != null) {
+          linesTotal = total.toStringAsFixed(2);
+        }
+        if (tax != null) {
+          taxTotal = tax.toStringAsFixed(2);
+        }
+      }
+      final total = result['total']?.toString();
+      setState(() {
+        _applyExpenseDetailsToRecent(
+          id,
+          linesCount: linesCount,
+          linesSummary: linesSummary,
+          linesSubtotal: linesSubtotal,
+          linesTotal: linesTotal,
+          total: total,
+          taxTotal: taxTotal ?? result['taxTotal']?.toString(),
+        );
+      });
+    } catch (_) {
+      // Ignore detail fetch errors; preview/list still render.
+    }
+  }
+
+  void _selectRecentExpense(Map<String, String> item) {
+    setState(() {
+      _selectedRecentExpense = item;
+      _previewError = null;
+    });
+    _loadExpensePreview(item);
+    _loadExpenseDetails(item);
+  }
+
+  Future<void> _previewExpenseFromProviders(Map<String, String> item) async {
+    final l = AppLocalizations.of(context)!;
+    final id = (item['id'] ?? '').toString().trim();
+    if (id.isEmpty) return;
+    setState(() {
+      _loadingPreview = true;
+      _previewError = null;
+    });
+    try {
+      var fileUrl = (item['fileUrl'] ?? '').toString().trim();
+      var mimeType = (item['mimeType'] ?? '').toString().trim();
+      var fileName = (item['file'] ?? '').toString().trim();
+      if (fileUrl.isEmpty) {
+        final result = await _api.fetchExpenseFile(id);
+        if (!mounted) return;
+        fileUrl = (result['url'] ?? '').toString().trim();
+        mimeType = (result['mimeType'] ?? '').toString().trim();
+        fileName = (result['fileName'] ?? '').toString().trim();
+        setState(() {
+          _applyExpenseFileToRecent(
+            id,
+            url: fileUrl,
+            mimeType: mimeType,
+            fileName: fileName,
+          );
+        });
+      }
+      if (!mounted) return;
+      setState(() => _loadingPreview = false);
+      if (fileUrl.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${l.preview} unavailable')),
+        );
+        return;
+      }
+      final url = Uri.tryParse(fileUrl);
+      if (url == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${l.preview} unavailable')),
+        );
+        return;
+      }
+      await launchUrl(url);
+    } on ExpensesApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingPreview = false;
+        _previewError = e.message;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingPreview = false;
+        _previewError = e.toString();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${l.preview} unavailable')),
+      );
     }
   }
 
@@ -426,6 +696,19 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
       return '';
     }
 
+    String providerName() {
+      final provider = item['provider'];
+      if (provider is Map) {
+        final name = provider['name']?.toString().trim() ?? '';
+        if (name.isNotEmpty) return name;
+      }
+      final direct = item['providerName'];
+      if (direct != null && direct.toString().trim().isNotEmpty) {
+        return direct.toString().trim();
+      }
+      return '';
+    }
+
     String providerId() {
       final direct = item['providerId'];
       if (direct != null && direct.toString().trim().isNotEmpty) {
@@ -442,13 +725,39 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
       return '';
     }
 
+    String fileUrl() {
+      final candidates = [
+        item['fileUrl'],
+        item['fileURL'],
+        item['url'],
+        item['file'],
+        item['filePath'],
+      ];
+      for (final c in candidates) {
+        if (c == null) continue;
+        final v = c.toString().trim();
+        if (v.startsWith('http://') || v.startsWith('https://')) {
+          return v;
+        }
+      }
+      return '';
+    }
+
     return {
       'id': expenseId(),
       'vendor': pick(['vendorName', 'vendor']),
       'total': pick(['total']),
       'date': pick(['issueDate', 'date']),
       'file': pick(['fileName', 'file']),
+      'mimeType': pick(['mimeType']),
       'providerId': providerId(),
+      'fileUrl': fileUrl(),
+      'providerName': providerName(),
+      'invoice': pick(['invoiceNumber']),
+      'currency': pick(['currency']),
+      'tax': pick(['taxTotal', 'vatTotal', 'tax']),
+      'due': pick(['dueDate']),
+      'status': pick(['status']),
     };
   }
 
@@ -521,10 +830,10 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
       );
       return;
     }
-    if (_lines.isEmpty && _totalController.text.trim().isEmpty) {
+    if (_lines.isEmpty) {
       setState(
         () => _error =
-            AppLocalizations.of(context)!.expenseUploadTotalOrLinesError,
+            AppLocalizations.of(context)!.expenseUploadLinesRequiredError,
       );
       return;
     }
@@ -557,7 +866,7 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
         bytes: _fileBytes!,
         filename: _fileName!,
         vendorName: _vendorController.text.trim(),
-        issueDate: issueDate.toIso8601String(),
+        issueDate: DateFormat('yyyy-MM-dd').format(issueDate),
         total: _totalController.text.trim(),
         groupId: groupId,
         vendorTaxId: _vendorTaxIdController.text.trim().isEmpty
@@ -566,7 +875,8 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
         invoiceNumber: _invoiceNumberController.text.trim().isEmpty
             ? null
             : _invoiceNumberController.text.trim(),
-        dueDate: dueDate == null ? null : dueDate.toIso8601String(),
+        dueDate:
+            dueDate == null ? null : DateFormat('yyyy-MM-dd').format(dueDate),
         taxTotal: _taxTotalController.text.trim().isEmpty
             ? null
             : _taxTotalController.text.trim(),
@@ -579,9 +889,7 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
         clientId: _clientIdController.text.trim().isEmpty
             ? null
             : _clientIdController.text.trim(),
-        lines: _lines.isEmpty
-            ? null
-            : _lines.map((line) => line.toJson()).toList(),
+        lines: _buildLinesPayload(),
         providerId: _selectedProviderId,
       );
       if (!mounted) return;
@@ -603,6 +911,13 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
       final newId = (response['id'] ?? response['_id'] ?? response['expenseId'])
           ?.toString()
           .trim();
+      final selectedProvider = _providers.firstWhere(
+        (p) =>
+            (p['id'] ?? p['_id'] ?? p['providerId'])?.toString() ==
+            _selectedProviderId,
+        orElse: () => const <String, dynamic>{},
+      );
+      final providerName = selectedProvider['name']?.toString().trim() ?? '';
       setState(() {
         _recentUploads.insert(0, {
           if (newId != null && newId.isNotEmpty) 'id': newId,
@@ -611,7 +926,17 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
           'date': _issueDateController.text.trim(),
           'file': _fileName ?? '',
           'providerId': _selectedProviderId ?? '',
+          if (providerName.isNotEmpty) 'providerName': providerName,
+          if (_invoiceNumberController.text.trim().isNotEmpty)
+            'invoice': _invoiceNumberController.text.trim(),
+          if (_currencyController.text.trim().isNotEmpty)
+            'currency': _currencyController.text.trim(),
+          if (_taxTotalController.text.trim().isNotEmpty)
+            'tax': _taxTotalController.text.trim(),
+          if (_dueDateController.text.trim().isNotEmpty)
+            'due': _dueDateController.text.trim(),
         });
+        _selectedRecentExpense = _recentUploads.first;
       });
       widget.onUploaded?.call();
       if (!widget.embedded) {
@@ -657,6 +982,12 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
     final computedTotal = hasLines ? _computeTotalFromLines() : '';
     if (hasLines && computedTotal != _totalController.text) {
       _totalController.text = computedTotal;
+    }
+    if (hasLines) {
+      final computedTax = _linesTax().toStringAsFixed(2);
+      if (computedTax != _taxTotalController.text) {
+        _taxTotalController.text = computedTax;
+      }
     }
     final summarySubtotal = hasLines
         ? _formatAmount(_linesSubtotal())
@@ -756,6 +1087,7 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
                   }
                   _editProvider(provider);
                 },
+                onPreviewExpense: _previewExpenseFromProviders,
                 onSaveProvider: _saveProvider,
                 onResetProviderForm: _resetProviderForm,
                 onDeleteProvider: _deleteProvider,
@@ -780,6 +1112,11 @@ class _ExpenseUploadScreenState extends State<ExpenseUploadScreen>
                   ExpenseRecentUploadsTab(
                     recentUploads: _recentUploads,
                     onDeleteExpense: _deleteRecentExpense,
+                    selectedExpense: _selectedRecentExpense,
+                    previewLoading: _loadingPreview,
+                    previewError: _previewError,
+                    groupId: displayGroupId,
+                    onSelectExpense: _selectRecentExpense,
                   ),
                   Column(
                     children: [

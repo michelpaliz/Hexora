@@ -8,6 +8,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 class ClientListItem extends StatelessWidget {
   final GroupClient client;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
   /// Typography (injected)
   final TextStyle nameStyle;
@@ -17,6 +18,7 @@ class ClientListItem extends StatelessWidget {
     super.key,
     required this.client,
     this.onTap,
+    this.onDelete,
     required this.nameStyle,
     required this.metaStyle,
   });
@@ -27,7 +29,8 @@ class ClientListItem extends StatelessWidget {
 
     return Card(
       color: cs.surface,
-      elevation: 1,
+      elevation: 0,
+      shadowColor: Colors.transparent,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
@@ -113,6 +116,13 @@ class ClientListItem extends StatelessWidget {
                   const SizedBox(width: 6),
                   _StatusChip(active: client.isActive),
                   const SizedBox(width: 6),
+                  if (onDelete != null)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      color: cs.error,
+                      tooltip: AppLocalizations.of(context)!.remove,
+                      onPressed: onDelete,
+                    ),
                   Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
                 ],
               ),
@@ -271,13 +281,7 @@ class _StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border:
             Border.all(color: cs.outlineVariant.withOpacity(0.25), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: ThemeColors.chipGlow(context, bg),
-            blurRadius: active ? 8 : 4,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Text(
         active ? l.active : l.inactive,

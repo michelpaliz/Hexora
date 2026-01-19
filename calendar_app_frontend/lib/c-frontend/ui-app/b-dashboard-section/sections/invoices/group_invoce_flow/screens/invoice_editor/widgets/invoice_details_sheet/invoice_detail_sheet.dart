@@ -21,12 +21,14 @@ class InvoiceDetailSheet extends StatefulWidget {
   final Invoice invoice;
   final GroupClient client;
   final BillingProfile? billingProfile;
+  final ValueChanged<String>? onOpenRecurringSeries;
 
   const InvoiceDetailSheet({
     super.key,
     required this.invoice,
     required this.client,
     required this.billingProfile,
+    this.onOpenRecurringSeries,
   });
 
   @override
@@ -182,6 +184,38 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet> {
               textAlign: TextAlign.start,
               style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
             ),
+            if (widget.invoice.recurringSeriesId?.trim().isNotEmpty == true)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'Recurrente',
+                        style: t.bodySmall.copyWith(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    if (widget.onOpenRecurringSeries != null)
+                      TextButton(
+                        onPressed: () => widget.onOpenRecurringSeries!(
+                            widget.invoice.recurringSeriesId!.trim()),
+                        child: const Text('Ver recurrencia'),
+                      ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 12),
             _InfoRow(
               label: l.invoiceRegisteredAt,

@@ -1,13 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/notification_model/userInvitation_status.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
-import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
 import 'package:provider/provider.dart';
 
 class EventActionManager {
@@ -16,6 +17,7 @@ class EventActionManager {
   final UserDomain userDomain;
   final NotificationDomain notificationDomain;
   Map<String, UserInviteStatus>? invitedUsers;
+  ValueChanged<Event>? _inlineEditHandler;
 
   EventActionManager(
     this.groupDomain,
@@ -23,6 +25,10 @@ class EventActionManager {
     this.notificationDomain, {
     required this.eventDomain,
   });
+
+  void setInlineEditHandler(ValueChanged<Event>? handler) {
+    _inlineEditHandler = handler;
+  }
 
   // Build the add event button
   Widget buildAddEventButton(BuildContext context, Group group) {
@@ -64,6 +70,10 @@ class EventActionManager {
   }
 
   void editEvent(Event event, BuildContext context) {
+    if (kIsWeb && _inlineEditHandler != null) {
+      _inlineEditHandler!(event);
+      return;
+    }
     final sharedeventDomain = eventDomain;
     final isWide = MediaQuery.of(context).size.width >= 900;
     final page = Provider<EventDomain>.value(

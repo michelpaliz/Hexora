@@ -42,9 +42,14 @@ class _LinesTableEditorState extends State<LinesTableEditor> {
     final cs = Theme.of(context).colorScheme;
     const minTableWidth = 980.0;
 
-    final inputBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+    final inputBorder = UnderlineInputBorder(
+      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
+    );
+    final focusedBorder = UnderlineInputBorder(
+      borderSide: BorderSide(color: cs.primary, width: 1.8),
+    );
+    final errorBorder = UnderlineInputBorder(
+      borderSide: BorderSide(color: cs.error, width: 1.4),
     );
 
     InputDecoration fieldDec({
@@ -55,13 +60,12 @@ class _LinesTableEditorState extends State<LinesTableEditor> {
         hintText: hint,
         suffixText: suffixText,
         enabledBorder: inputBorder,
-        focusedBorder: inputBorder.copyWith(
-          borderSide: BorderSide(color: cs.primary, width: 1.5),
-        ),
+        focusedBorder: focusedBorder,
+        errorBorder: errorBorder,
+        focusedErrorBorder: errorBorder,
         isDense: true,
-        filled: true,
-        fillColor: cs.surfaceContainerHighest,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        filled: false,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
       );
     }
 
@@ -91,8 +95,11 @@ class _LinesTableEditorState extends State<LinesTableEditor> {
             else
               ...List.generate(widget.lines.length, (i) {
                 final line = widget.lines[i];
+                final isLast = i == widget.lines.length - 1;
+                final shouldAutofocus =
+                    isLast && line.description.text.trim().isEmpty;
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 10),
                   child: _LineRow(
                     index: i,
                     line: line,
@@ -105,6 +112,13 @@ class _LinesTableEditorState extends State<LinesTableEditor> {
                       }
                       widget.onChanged();
                     },
+                    onAddLine: () {
+                      final nextPos = widget.lines.length + 1;
+                      widget.lines.add(LineDraft(position: nextPos));
+                      widget.onChanged();
+                    },
+                    autoFocus: shouldAutofocus,
+                    isLast: isLast,
                   ),
                 );
               }),
@@ -175,13 +189,16 @@ class _HeaderRow extends StatelessWidget {
   }
 }
 
-class _LineRow extends StatelessWidget {
+class _LineRow extends StatefulWidget {
   final int index;
   final LineDraft line;
   final InputDecoration Function({required String hint, String? suffixText})
       fieldDec;
   final VoidCallback onChanged;
   final VoidCallback onDelete;
+  final VoidCallback onAddLine;
+  final bool autoFocus;
+  final bool isLast;
 
   const _LineRow({
     required this.index,
@@ -189,7 +206,42 @@ class _LineRow extends StatelessWidget {
     required this.fieldDec,
     required this.onChanged,
     required this.onDelete,
+    required this.onAddLine,
+    required this.autoFocus,
+    required this.isLast,
   });
+
+  @override
+  State<_LineRow> createState() => _LineRowState();
+}
+
+class _LineRowState extends State<_LineRow> {
+  final _descFocus = FocusNode();
+  final _qtyFocus = FocusNode();
+  final _unitFocus = FocusNode();
+  final _vatFocus = FocusNode();
+  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _descFocus.dispose();
+    _qtyFocus.dispose();
+    _unitFocus.dispose();
+    _vatFocus.dispose();
+    super.dispose();
+  }
+
+  void _focusNext(FocusNode next) {
+    if (!mounted) return;
+    FocusScope.of(context).requestFocus(next);
+  }
+
+  void _handleVatSubmit() {
+    if (widget.isLast) {
+      widget.onAddLine();
+    }
+    Future.microtask(() => FocusScope.of(context).nextFocus());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -197,103 +249,159 @@ class _LineRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
 
-    final qty = line.quantity ?? 1;
-    final unit = line.unitPrice ?? 0;
-    final taxRate = line.taxRate ?? 21;
+    final qty = widget.line.quantity ?? 1;
+    final unit = widget.line.unitPrice ?? 0;
+    final taxRate = widget.line.taxRate ?? 21;
     final subtotal = qty * unit;
     final tax = subtotal * (taxRate / 100);
     final total = subtotal + tax;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 3,
-          child: TextFormField(
-            controller: line.description,
-            decoration: fieldDec(hint: l.lineDescription),
-            onChanged: (_) => onChanged(),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
-          ),
+    String? priceValidator(String? v) {
+      final parsed = num.tryParse((v ?? '').trim()) ?? 0;
+      if (parsed <= 0) return l.invoicePreviewNeedsLines;
+      return null;
+    }
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: _hovered
+              ? cs.surfaceContainerHighest.withValues(alpha: 0.35)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
         ),
-        const SizedBox(width: LinesTableEditor._gap),
-        SizedBox(
-          width: LinesTableEditor._qtyWidth,
-          child: TextFormField(
-            controller: line.quantityCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            textAlign: TextAlign.center,
-            decoration: fieldDec(hint: l.lineQuantity),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-            ],
-            onChanged: (_) => onChanged(),
-          ),
-        ),
-        const SizedBox(width: LinesTableEditor._gap),
-        SizedBox(
-          width: LinesTableEditor._unitWidth,
-          child: TextFormField(
-            controller: line.unitPriceCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            textAlign: TextAlign.center,
-            decoration: fieldDec(hint: l.lineUnitPrice),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-            ],
-            onChanged: (_) => onChanged(),
-          ),
-        ),
-        const SizedBox(width: LinesTableEditor._gap),
-        SizedBox(
-          width: LinesTableEditor._vatWidth,
-          child: TextFormField(
-            controller: line.taxRateCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            textAlign: TextAlign.center,
-            decoration: fieldDec(hint: '${l.taxRateShort}%', suffixText: '%'),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-            ],
-            onChanged: (_) => onChanged(),
-          ),
-        ),
-        const SizedBox(width: LinesTableEditor._gap),
-        SizedBox(
-          width: LinesTableEditor._totalWidth,
-          child: Container(
-            height: 48,
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-            ),
-            child: Text(
-              NumberFormat.simpleCurrency(name: '').format(total),
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Focus(
+                onKeyEvent: (_, event) {
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.backspace &&
+                      widget.line.description.text.trim().isEmpty) {
+                    widget.onDelete();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: TextFormField(
+                  controller: widget.line.description,
+                  focusNode: _descFocus,
+                  autofocus: widget.autoFocus,
+                  textInputAction: TextInputAction.next,
+                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                  decoration: widget.fieldDec(hint: l.lineDescription),
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  onChanged: (_) => widget.onChanged(),
+                  onFieldSubmitted: (_) => _focusNext(_qtyFocus),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
+                ),
               ),
-              textAlign: TextAlign.right,
             ),
-          ),
+            const SizedBox(width: LinesTableEditor._gap),
+            SizedBox(
+              width: LinesTableEditor._qtyWidth,
+              child: TextFormField(
+                controller: widget.line.quantityCtrl,
+                focusNode: _qtyFocus,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.center,
+                textInputAction: TextInputAction.next,
+                style: t.bodySmall,
+                decoration: widget.fieldDec(hint: l.lineQuantity),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                onChanged: (_) => widget.onChanged(),
+                onFieldSubmitted: (_) => _focusNext(_unitFocus),
+              ),
+            ),
+            const SizedBox(width: LinesTableEditor._gap),
+            SizedBox(
+              width: LinesTableEditor._unitWidth,
+              child: TextFormField(
+                controller: widget.line.unitPriceCtrl,
+                focusNode: _unitFocus,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.center,
+                textInputAction: TextInputAction.next,
+                style: t.bodySmall,
+                decoration: widget.fieldDec(hint: l.lineUnitPrice),
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                onChanged: (_) => widget.onChanged(),
+                onFieldSubmitted: (_) => _focusNext(_vatFocus),
+                validator: priceValidator,
+              ),
+            ),
+            const SizedBox(width: LinesTableEditor._gap),
+            SizedBox(
+              width: LinesTableEditor._vatWidth,
+              child: TextFormField(
+                controller: widget.line.taxRateCtrl,
+                focusNode: _vatFocus,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.center,
+                textInputAction: TextInputAction.done,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                decoration:
+                    widget.fieldDec(hint: '${l.taxRateShort}%', suffixText: '%'),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                onChanged: (_) => widget.onChanged(),
+                onFieldSubmitted: (_) => _handleVatSubmit(),
+              ),
+            ),
+            const SizedBox(width: LinesTableEditor._gap),
+            SizedBox(
+              width: LinesTableEditor._totalWidth,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  transitionBuilder: (child, anim) =>
+                      FadeTransition(opacity: anim, child: child),
+                  child: Text(
+                    NumberFormat.simpleCurrency(name: '').format(total),
+                    key: ValueKey<double>(total.toDouble()),
+                    style: t.bodyMedium.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            SizedBox(
+              width: LinesTableEditor._deleteWidth,
+              height: 48,
+              child: AnimatedOpacity(
+                opacity: _hovered ? 1 : 0,
+                duration: const Duration(milliseconds: 150),
+                child: IconButton(
+                  tooltip: l.remove,
+                  onPressed: _hovered ? widget.onDelete : null,
+                  icon: const Icon(Icons.delete_outline),
+                  color: cs.error,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 4),
-        SizedBox(
-          width: LinesTableEditor._deleteWidth,
-          height: 48,
-          child: IconButton(
-            tooltip: l.remove,
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline),
-            color: cs.error,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

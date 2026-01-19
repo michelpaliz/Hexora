@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/b-backend/expenses/expenses_api.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+
+String _formatMoneyValue(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return '';
+  final normalized = trimmed.replaceAll(',', '.');
+  final parsed = double.tryParse(normalized);
+  if (parsed == null) return trimmed;
+  return parsed.toStringAsFixed(2);
+}
 
 class ExpenseProvidersTab extends StatelessWidget {
   final String groupName;
@@ -54,6 +64,7 @@ class ExpenseProvidersTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -81,7 +92,7 @@ class ExpenseProvidersTab extends StatelessWidget {
                       editingProviderId == null
                           ? l.expenseUploadNewProviderTitle
                           : l.expenseUploadEditProviderTitle,
-                      style: t.bodyMedium,
+                      style: t.titleLarge,
                     ),
                     const SizedBox(height: 10),
                     ConstrainedBox(
@@ -97,34 +108,6 @@ class ExpenseProvidersTab extends StatelessWidget {
                             spacing: 12,
                             runSpacing: 10,
                             children: [
-                              field(
-                                InputDecorator(
-                                  decoration: InputDecoration(
-                                    labelText: l.groupNameLabel,
-                                    border: const OutlineInputBorder(),
-                                    isDense: true,
-                                  ),
-                                  child: Text(
-                                    groupName.isEmpty ? '-' : groupName,
-                                    style: t.bodyMedium,
-                                  ),
-                                ),
-                                fullWidth: true,
-                              ),
-                              field(
-                                InputDecorator(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Group ID',
-                                    border: OutlineInputBorder(),
-                                    isDense: true,
-                                  ),
-                                  child: Text(
-                                    groupId.isEmpty ? '-' : groupId,
-                                    style: t.bodyMedium,
-                                  ),
-                                ),
-                                fullWidth: true,
-                              ),
                               field(
                                 TextField(
                                   controller: providerNameController,
@@ -301,19 +284,45 @@ class ExpenseProvidersTab extends StatelessWidget {
                           final taxId = p['taxId']?.toString() ?? '';
                           final subtitle = taxId.isEmpty ? null : taxId;
                           return ListTile(
-                            title: Text(name),
-                            subtitle: subtitle == null ? null : Text(subtitle),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            leading: CircleAvatar(
+                              radius: 16,
+                              backgroundColor: scheme.primary.withOpacity(0.12),
+                              child: Text(
+                                name.trim().isEmpty
+                                    ? '?'
+                                    : name.trim()[0].toUpperCase(),
+                                style: t.caption.copyWith(
+                                  color: scheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              name,
+                              style: t.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: subtitle == null
+                                ? null
+                                : Text(subtitle, style: t.bodySmall),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
                                   tooltip: l.edit,
                                   icon: const Icon(Icons.edit_outlined),
+                                  visualDensity: VisualDensity.compact,
                                   onPressed: () => onEditProvider(p),
                                 ),
                                 IconButton(
                                   tooltip: l.remove,
                                   icon: const Icon(Icons.delete_outline),
+                                  visualDensity: VisualDensity.compact,
                                   onPressed: id == null
                                       ? null
                                       : () => onDeleteProvider(id),
@@ -336,6 +345,7 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
   final bool loadingProviders;
   final String? selectedProviderId;
   final ValueChanged<String> onSelectProvider;
+  final ValueChanged<Map<String, String>>? onPreviewExpense;
   final String? Function(Map<String, dynamic> provider) providerId;
   final String Function(Map<String, dynamic> provider) providerName;
 
@@ -346,6 +356,7 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
     required this.loadingProviders,
     required this.selectedProviderId,
     required this.onSelectProvider,
+    required this.onPreviewExpense,
     required this.providerId,
     required this.providerName,
   });
@@ -354,6 +365,7 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final scheme = Theme.of(context).colorScheme;
     Map<String, dynamic>? selectedProvider;
     if (selectedProviderId != null) {
       selectedProvider = providers.firstWhere(
@@ -395,9 +407,29 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
           final subtitle = taxId.isEmpty ? null : taxId;
           final selected = id != null && id == selectedProviderId;
           return ListTile(
-            title: Text(name.isEmpty ? '-' : name),
-            subtitle: subtitle == null ? null : Text(subtitle),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            leading: CircleAvatar(
+              radius: 16,
+              backgroundColor: scheme.primary.withOpacity(0.12),
+              child: Text(
+                name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase(),
+                style: t.caption.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            title: Text(
+              name.isEmpty ? '-' : name,
+              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            ),
+            subtitle:
+                subtitle == null ? null : Text(subtitle, style: t.bodySmall),
             selected: selected,
+            selectedTileColor: scheme.primary.withOpacity(0.06),
             onTap: id == null ? null : () => onSelectProvider(id),
           );
         },
@@ -427,6 +459,28 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
         itemBuilder: (_, index) {
           final item = items[index];
           final title = (item['vendor'] ?? '').toString().trim();
+          final invoice = (item['invoice'] ?? '').toString().trim();
+          final date = (item['date'] ?? '').toString().trim();
+          final due = (item['due'] ?? '').toString().trim();
+          final total = (item['total'] ?? '').toString().trim();
+          final totalDisplay = _formatMoneyValue(total);
+          final currency = (item['currency'] ?? '').toString().trim();
+          final tax = (item['tax'] ?? '').toString().trim();
+          final taxDisplay = _formatMoneyValue(tax);
+          final file = (item['file'] ?? '').toString().trim();
+          final headerLine = [
+            if (invoice.isNotEmpty)
+              '${l.expenseUploadInvoiceNumberLabel}: $invoice',
+            if (date.isNotEmpty) '${l.expenseUploadIssueDateLabel}: $date',
+            if (due.isNotEmpty) '${l.expenseUploadDueDateLabel}: $due',
+          ].join(' • ');
+          final amountLine = [
+            if (totalDisplay.isNotEmpty)
+              '${l.expenseUploadTotalLabel}: $totalDisplay'
+                  '${currency.isEmpty ? '' : ' $currency'}',
+            if (taxDisplay.isNotEmpty)
+              '${l.expenseUploadTaxTotalLabel}: $taxDisplay',
+          ].join(' • ');
           final subtitle = [
             if ((item['date'] ?? '').toString().trim().isNotEmpty)
               item['date']!.toString(),
@@ -434,8 +488,37 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
               item['file']!.toString(),
           ].join(' • ');
           return ListTile(
-            title: Text(title.isEmpty ? '-' : title),
-            subtitle: subtitle.isEmpty ? null : Text(subtitle),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            title: Text(
+              title.isEmpty ? '-' : title,
+              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            ),
+            onTap:
+                onPreviewExpense == null ? null : () => onPreviewExpense!(item),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (headerLine.isNotEmpty) Text(headerLine, style: t.bodySmall),
+                if (amountLine.isNotEmpty) Text(amountLine, style: t.bodySmall),
+                if (file.isNotEmpty) Text(file, style: t.caption),
+                if (headerLine.isEmpty &&
+                    amountLine.isEmpty &&
+                    file.isEmpty &&
+                    subtitle.isNotEmpty)
+                  Text(subtitle, style: t.bodySmall),
+              ],
+            ),
+            trailing: onPreviewExpense == null
+                ? null
+                : IconButton(
+                    tooltip: l.preview,
+                    icon: const Icon(Icons.preview_outlined),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => onPreviewExpense!(item),
+                  ),
           );
         },
       );
@@ -506,6 +589,7 @@ class ExpenseProvidersManagementView extends StatefulWidget {
   final TextEditingController providerPostalCodeController;
   final TextEditingController providerCountryController;
   final ValueChanged<Map<String, dynamic>> onSelectProvider;
+  final ValueChanged<Map<String, String>>? onPreviewExpense;
   final VoidCallback onSaveProvider;
   final VoidCallback onResetProviderForm;
   final ValueChanged<String> onDeleteProvider;
@@ -534,6 +618,7 @@ class ExpenseProvidersManagementView extends StatefulWidget {
     required this.providerPostalCodeController,
     required this.providerCountryController,
     required this.onSelectProvider,
+    required this.onPreviewExpense,
     required this.onSaveProvider,
     required this.onResetProviderForm,
     required this.onDeleteProvider,
@@ -546,12 +631,18 @@ class ExpenseProvidersManagementView extends StatefulWidget {
 
 class _ExpenseProvidersManagementViewState
     extends State<ExpenseProvidersManagementView> {
+  final _expensesApi = ExpensesApi();
   bool _formExpanded = true;
+  bool _summaryLoading = false;
+  String? _summaryError;
+  final Map<String, Map<String, dynamic>> _summaryByProviderId = {};
+  final Map<String, Map<String, dynamic>> _summaryByProviderName = {};
 
   @override
   void initState() {
     super.initState();
     _formExpanded = widget.editingProviderId != null;
+    _loadSummary();
   }
 
   @override
@@ -561,12 +652,71 @@ class _ExpenseProvidersManagementViewState
         widget.editingProviderId != oldWidget.editingProviderId) {
       setState(() => _formExpanded = true);
     }
+    if (widget.groupId != oldWidget.groupId ||
+        widget.recentUploads.length != oldWidget.recentUploads.length) {
+      _loadSummary();
+    }
+  }
+
+  Future<void> _loadSummary() async {
+    if (widget.groupId.trim().isEmpty) return;
+    setState(() {
+      _summaryLoading = true;
+      _summaryError = null;
+    });
+    try {
+      final items = await _expensesApi.summary(groupId: widget.groupId);
+      if (!mounted) return;
+      _summaryByProviderId.clear();
+      _summaryByProviderName.clear();
+      for (final item in items) {
+        final providerId = item['providerId']?.toString().trim();
+        final providerName = item['providerName']?.toString().trim();
+        if (providerId != null && providerId.isNotEmpty) {
+          _summaryByProviderId[providerId] = item;
+        }
+        if (providerName != null && providerName.isNotEmpty) {
+          _summaryByProviderName[providerName] = item;
+        }
+      }
+      setState(() => _summaryLoading = false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _summaryError = e.toString();
+        _summaryLoading = false;
+      });
+    }
+  }
+
+  Map<String, dynamic>? _summaryForProvider(
+    String? providerId,
+    String providerName,
+  ) {
+    if (providerId != null && _summaryByProviderId.containsKey(providerId)) {
+      return _summaryByProviderId[providerId];
+    }
+    if (providerName.isNotEmpty &&
+        _summaryByProviderName.containsKey(providerName)) {
+      return _summaryByProviderName[providerName];
+    }
+    return null;
+  }
+
+  String _formatAmount(dynamic value) {
+    if (value == null) return '';
+    if (value is num) return value.toStringAsFixed(2);
+    final parsed =
+        double.tryParse(value.toString().trim().replaceAll(',', '.'));
+    if (parsed == null) return value.toString();
+    return parsed.toStringAsFixed(2);
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final scheme = Theme.of(context).colorScheme;
 
     Map<String, dynamic>? selectedProvider;
     if (widget.selectedProviderId != null) {
@@ -606,12 +756,42 @@ class _ExpenseProvidersManagementViewState
           final id = widget.providerId(p);
           final name = widget.providerName(p);
           final taxId = p['taxId']?.toString().trim() ?? '';
-          final subtitle = taxId.isEmpty ? null : taxId;
+          final summary = _summaryForProvider(id, name);
+          final totalAmount =
+              summary == null ? '' : _formatAmount(summary['totalAmount']);
+          final subtitleParts = <String>[];
+          if (taxId.isNotEmpty) subtitleParts.add(taxId);
+          if (totalAmount.isNotEmpty) {
+            subtitleParts
+                .add('${l.expenseUploadLinesTotalLabel}: $totalAmount');
+          }
+          final subtitle =
+              subtitleParts.isEmpty ? null : subtitleParts.join(' • ');
           final selected = id != null && id == widget.selectedProviderId;
           return ListTile(
-            title: Text(name.isEmpty ? '-' : name),
-            subtitle: subtitle == null ? null : Text(subtitle),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            leading: CircleAvatar(
+              radius: 16,
+              backgroundColor: scheme.primary.withOpacity(0.12),
+              child: Text(
+                name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase(),
+                style: t.caption.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            title: Text(
+              name.isEmpty ? '-' : name,
+              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            ),
+            subtitle:
+                subtitle == null ? null : Text(subtitle, style: t.bodySmall),
             selected: selected,
+            selectedTileColor: scheme.primary.withOpacity(0.06),
             onTap: () => widget.onSelectProvider(p),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -619,11 +799,13 @@ class _ExpenseProvidersManagementViewState
                 IconButton(
                   tooltip: l.edit,
                   icon: const Icon(Icons.edit_outlined),
+                  visualDensity: VisualDensity.compact,
                   onPressed: () => widget.onSelectProvider(p),
                 ),
                 IconButton(
                   tooltip: l.remove,
                   icon: const Icon(Icons.delete_outline),
+                  visualDensity: VisualDensity.compact,
                   onPressed:
                       id == null ? null : () => widget.onDeleteProvider(id),
                 ),
@@ -644,7 +826,7 @@ class _ExpenseProvidersManagementViewState
             widget.editingProviderId == null
                 ? l.expenseUploadNewProviderTitle
                 : l.expenseUploadEditProviderTitle,
-            style: t.bodyMedium,
+            style: t.titleLarge,
           ),
           childrenPadding: EdgeInsets.zero,
           children: [
@@ -680,38 +862,6 @@ class _ExpenseProvidersManagementViewState
                               spacing: 12,
                               runSpacing: 10,
                               children: [
-                                field(
-                                  InputDecorator(
-                                    decoration: InputDecoration(
-                                      labelText: l.groupNameLabel,
-                                      border: const OutlineInputBorder(),
-                                      isDense: true,
-                                    ),
-                                    child: Text(
-                                      widget.groupName.isEmpty
-                                          ? '-'
-                                          : widget.groupName,
-                                      style: t.bodyMedium,
-                                    ),
-                                  ),
-                                  fullWidth: true,
-                                ),
-                                field(
-                                  InputDecorator(
-                                    decoration: const InputDecoration(
-                                      labelText: 'Group ID',
-                                      border: OutlineInputBorder(),
-                                      isDense: true,
-                                    ),
-                                    child: Text(
-                                      widget.groupId.isEmpty
-                                          ? '-'
-                                          : widget.groupId,
-                                      style: t.bodyMedium,
-                                    ),
-                                  ),
-                                  fullWidth: true,
-                                ),
                                 field(
                                   TextField(
                                     controller: widget.providerNameController,
@@ -900,6 +1050,28 @@ class _ExpenseProvidersManagementViewState
         itemBuilder: (_, index) {
           final item = items[index];
           final title = (item['vendor'] ?? '').toString().trim();
+          final invoice = (item['invoice'] ?? '').toString().trim();
+          final date = (item['date'] ?? '').toString().trim();
+          final due = (item['due'] ?? '').toString().trim();
+          final total = (item['total'] ?? '').toString().trim();
+          final totalDisplay = _formatMoneyValue(total);
+          final currency = (item['currency'] ?? '').toString().trim();
+          final tax = (item['tax'] ?? '').toString().trim();
+          final taxDisplay = _formatMoneyValue(tax);
+          final file = (item['file'] ?? '').toString().trim();
+          final headerLine = [
+            if (invoice.isNotEmpty)
+              '${l.expenseUploadInvoiceNumberLabel}: $invoice',
+            if (date.isNotEmpty) '${l.expenseUploadIssueDateLabel}: $date',
+            if (due.isNotEmpty) '${l.expenseUploadDueDateLabel}: $due',
+          ].join(' • ');
+          final amountLine = [
+            if (totalDisplay.isNotEmpty)
+              '${l.expenseUploadTotalLabel}: $totalDisplay'
+                  '${currency.isEmpty ? '' : ' $currency'}',
+            if (taxDisplay.isNotEmpty)
+              '${l.expenseUploadTaxTotalLabel}: $taxDisplay',
+          ].join(' • ');
           final subtitle = [
             if ((item['date'] ?? '').toString().trim().isNotEmpty)
               item['date']!.toString(),
@@ -907,14 +1079,55 @@ class _ExpenseProvidersManagementViewState
               item['file']!.toString(),
           ].join(' • ');
           return ListTile(
-            title: Text(title.isEmpty ? '-' : title),
-            subtitle: subtitle.isEmpty ? null : Text(subtitle),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            title: Text(
+              title.isEmpty ? '-' : title,
+              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            ),
+            onTap: widget.onPreviewExpense == null
+                ? null
+                : () => widget.onPreviewExpense!(item),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (headerLine.isNotEmpty) Text(headerLine, style: t.bodySmall),
+                if (amountLine.isNotEmpty) Text(amountLine, style: t.bodySmall),
+                if (file.isNotEmpty) Text(file, style: t.caption),
+                if (headerLine.isEmpty &&
+                    amountLine.isEmpty &&
+                    file.isEmpty &&
+                    subtitle.isNotEmpty)
+                  Text(subtitle, style: t.bodySmall),
+              ],
+            ),
+            trailing: widget.onPreviewExpense == null
+                ? null
+                : IconButton(
+                    tooltip: l.preview,
+                    icon: const Icon(Icons.preview_outlined),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => widget.onPreviewExpense!(item),
+                  ),
           );
         },
       );
     }
 
     Widget buildRightColumn() {
+      final summary = _summaryForProvider(
+        widget.selectedProviderId,
+        selectedName,
+      );
+      final totalAmount =
+          summary == null ? '' : _formatAmount(summary['totalAmount']);
+      final totalBase =
+          summary == null ? '' : _formatAmount(summary['totalBase']);
+      final totalTax =
+          summary == null ? '' : _formatAmount(summary['totalTax']);
+      final count = summary?['count']?.toString() ?? '';
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -929,9 +1142,49 @@ class _ExpenseProvidersManagementViewState
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Text(
                       l.expenseUploadProvidersInvoicesTitle,
-                      style: t.bodyMedium,
+                      style: t.titleLarge,
                     ),
                   ),
+                  if (_summaryLoading)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
+                      child: LinearProgressIndicator(minHeight: 2),
+                    )
+                  else if (_summaryError != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                      child: Text(_summaryError!, style: t.bodySmall),
+                    )
+                  else if (summary != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 4,
+                        children: [
+                          if (count.isNotEmpty)
+                            Text(
+                              '${l.expenseUploadLinesTitle}: $count',
+                              style: t.bodySmall,
+                            ),
+                          if (totalBase.isNotEmpty)
+                            Text(
+                              '${l.expenseUploadLinesSubtotalLabel}: $totalBase',
+                              style: t.bodySmall,
+                            ),
+                          if (totalTax.isNotEmpty)
+                            Text(
+                              '${l.expenseUploadLinesTaxLabel}: $totalTax',
+                              style: t.bodySmall,
+                            ),
+                          if (totalAmount.isNotEmpty)
+                            Text(
+                              '${l.expenseUploadLinesTotalLabel}: $totalAmount',
+                              style: t.bodySmall,
+                            ),
+                        ],
+                      ),
+                    ),
                   const SizedBox(height: 8),
                   Expanded(child: buildProviderInvoices()),
                 ],
@@ -958,7 +1211,7 @@ class _ExpenseProvidersManagementViewState
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                         child: Text(
                           l.expenseUploadProvidersListTitle,
-                          style: t.bodyMedium,
+                          style: t.titleLarge,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -986,7 +1239,7 @@ class _ExpenseProvidersManagementViewState
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                       child: Text(
                         l.expenseUploadProvidersListTitle,
-                        style: t.bodyMedium,
+                        style: t.titleLarge,
                       ),
                     ),
                     const SizedBox(height: 8),

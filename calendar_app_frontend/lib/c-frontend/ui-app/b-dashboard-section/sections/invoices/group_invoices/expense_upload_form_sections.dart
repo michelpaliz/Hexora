@@ -1,8 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/b-backend/expenses/expenses_api.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ExpenseFilePickerCard extends StatelessWidget {
   final String? fileName;
@@ -410,34 +413,6 @@ class ExpenseFormFields extends StatelessWidget {
                           spacing: 12,
                           runSpacing: 10,
                           children: [
-                            field(
-                              InputDecorator(
-                                decoration: InputDecoration(
-                                  labelText: l.groupNameLabel,
-                                  border: const OutlineInputBorder(),
-                                  isDense: true,
-                                ),
-                                child: Text(
-                                  groupName.isEmpty ? '-' : groupName,
-                                  style: t.bodyMedium,
-                                ),
-                              ),
-                              fullWidth: true,
-                            ),
-                            field(
-                              InputDecorator(
-                                decoration: const InputDecoration(
-                                  labelText: 'Group ID',
-                                  border: OutlineInputBorder(),
-                                  isDense: true,
-                                ),
-                                child: Text(
-                                  groupId.isEmpty ? '-' : groupId,
-                                  style: t.bodyMedium,
-                                ),
-                              ),
-                              fullWidth: true,
-                            ),
                             field(providerPicker, fullWidth: true),
                             field(
                               TextField(
@@ -722,21 +697,121 @@ class ExpenseUploadTab extends StatelessWidget {
   }
 }
 
-class ExpenseRecentUploadsTab extends StatelessWidget {
+class ExpenseRecentUploadsTab extends StatefulWidget {
   final List<Map<String, String>> recentUploads;
   final ValueChanged<String> onDeleteExpense;
+  final Map<String, String>? selectedExpense;
+  final ValueChanged<Map<String, String>> onSelectExpense;
+  final bool previewLoading;
+  final String? previewError;
+  final String groupId;
 
   const ExpenseRecentUploadsTab({
     super.key,
     required this.recentUploads,
     required this.onDeleteExpense,
+    required this.selectedExpense,
+    required this.onSelectExpense,
+    required this.previewLoading,
+    required this.previewError,
+    required this.groupId,
   });
+
+  @override
+  State<ExpenseRecentUploadsTab> createState() =>
+      _ExpenseRecentUploadsTabState();
+}
+
+class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
+    with SingleTickerProviderStateMixin {
+  final _expensesApi = ExpensesApi();
+  late final TabController _tabs;
+  int _year = DateTime.now().year;
+  final Map<int, List<Map<String, dynamic>>> _summary = {};
+  final Map<int, String?> _summaryErrors = {};
+  final Map<int, bool> _summaryLoading = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 4, vsync: this);
+    _tabs.addListener(() {
+      if (_tabs.indexIsChanging) return;
+      _ensureLoaded(_tabs.index + 1);
+      if (mounted) setState(() {});
+    });
+    _ensureLoaded(_tabs.index + 1);
+  }
+
+  @override
+  void didUpdateWidget(covariant ExpenseRecentUploadsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.groupId != oldWidget.groupId) {
+      _summary.clear();
+      _summaryErrors.clear();
+      _summaryLoading.clear();
+      _ensureLoaded(_tabs.index + 1);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  void _ensureLoaded(int quarter) {
+    if (widget.groupId.trim().isEmpty) return;
+    if (_summaryLoading[quarter] == true || _summary.containsKey(quarter)) {
+      return;
+    }
+    _loadSummary(quarter);
+  }
+
+  Future<void> _loadSummary(int quarter) async {
+    setState(() {
+      _summaryLoading[quarter] = true;
+      _summaryErrors[quarter] = null;
+    });
+    final range = _quarterRangeDates(_year, quarter);
+    final from = _formatDate(range.$1);
+    final to = _formatDate(range.$2);
+    try {
+      final items = await _expensesApi.summary(
+        groupId: widget.groupId,
+        from: from,
+        to: to,
+      );
+      if (!mounted) return;
+      setState(() => _summary[quarter] = items);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _summaryErrors[quarter] = e.toString());
+    } finally {
+      if (mounted) setState(() => _summaryLoading[quarter] = false);
+    }
+  }
+
+  String _formatDate(DateTime value) {
+    final y = value.year.toString().padLeft(4, '0');
+    final m = value.month.toString().padLeft(2, '0');
+    final d = value.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  (DateTime, DateTime) _quarterRangeDates(int year, int quarter) {
+    final startMonth = 1 + (quarter - 1) * 3;
+    final start = DateTime(year, startMonth, 1);
+    final end = DateTime(year, startMonth + 3, 0);
+    return (start, end);
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
-    if (recentUploads.isEmpty) {
+    final cs = Theme.of(context).colorScheme;
+    if (widget.recentUploads.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(8),
         child: Text(
@@ -745,28 +820,465 @@ class ExpenseRecentUploadsTab extends StatelessWidget {
         ),
       );
     }
-    return ListView.separated(
-      itemCount: recentUploads.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (_, index) {
-        final item = recentUploads[index];
-        final id = (item['id'] ?? '').toString();
-        final title = item['vendor'] ?? '-';
-        final subtitle = [
-          if ((item['date'] ?? '').isNotEmpty) item['date']!,
-          if ((item['total'] ?? '').isNotEmpty) item['total']!,
-          if ((item['file'] ?? '').isNotEmpty) item['file']!,
-        ].join(' • ');
-        return ListTile(
-          title: Text(title),
-          subtitle: Text(subtitle),
-          trailing: IconButton(
-            tooltip: l.remove,
-            icon: const Icon(Icons.delete_outline),
-            onPressed: id.isEmpty ? null : () => onDeleteExpense(id),
+    Widget buildList() {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.receipt_long, color: cs.onSurface, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  l.expenseUploadTabList,
+                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
           ),
-        );
+          Expanded(
+            child: ListView.separated(
+              itemCount: widget.recentUploads.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, index) {
+                final item = widget.recentUploads[index];
+                final id = (item['id'] ?? '').toString();
+                final vendor = (item['vendor'] ?? '-').toString();
+                final total = (item['total'] ?? '').toString();
+                final currency = (item['currency'] ?? '').toString();
+                final date = (item['date'] ?? '').toString();
+                final due = (item['due'] ?? '').toString();
+                final tax = (item['tax'] ?? '').toString();
+                final file = (item['file'] ?? '').toString();
+                final invoice = (item['invoice'] ?? '').toString();
+                final provider = (item['providerName'] ?? '').toString();
+                final status = (item['status'] ?? '').toString();
+                final linesCount = (item['linesCount'] ?? '').toString();
+                final linesSummary = (item['linesSummary'] ?? '').toString();
+                final linesSubtotal = (item['linesSubtotal'] ?? '').toString();
+                final base = _computeBaseAmount(total, tax, linesSubtotal);
+                final shortDate = _shortDate(date);
+                final totalDisplay = _formatAmountOrText(total);
+                final subtitleColor = cs.onSurfaceVariant;
+                final zebra = index.isOdd
+                    ? cs.surfaceContainerHighest.withOpacity(0.35)
+                    : Colors.transparent;
+                final selected = widget.selectedExpense?['id'] == item['id'];
+
+                return Container(
+                  color: selected ? cs.primary.withOpacity(0.08) : zebra,
+                  child: ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            vendor,
+                            style: t.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (total.isNotEmpty)
+                          Text(
+                            [
+                              totalDisplay,
+                              if (currency.isNotEmpty) currency,
+                            ].join(' '),
+                            style: t.bodyMedium.copyWith(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                      ],
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 4,
+                        children: [
+                          if (shortDate.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.event_outlined,
+                              label: shortDate,
+                              color: subtitleColor,
+                            ),
+                          if (due.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.calendar_month_outlined,
+                              label: '${l.expenseUploadDueDateLabel}: $due',
+                              color: subtitleColor,
+                            ),
+                          if (invoice.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.tag_outlined,
+                              label: invoice,
+                              color: subtitleColor,
+                            ),
+                          if (tax.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.percent_outlined,
+                              label: '${l.expenseUploadTaxTotalLabel}: $tax',
+                              color: subtitleColor,
+                            ),
+                          if (linesSummary.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.list_alt_outlined,
+                              label:
+                                  '${l.expenseUploadLinesTitle}: $linesSummary',
+                              color: subtitleColor,
+                            ),
+                          if (linesCount.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.list_alt_outlined,
+                              label: '${l.expenseUploadLinesTitle}: $linesCount',
+                              color: subtitleColor,
+                            ),
+                          if (base.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.layers_outlined,
+                              label:
+                                  '${l.expenseUploadLinesSubtotalLabel}: $base',
+                              color: subtitleColor,
+                            ),
+                          if (provider.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.business_outlined,
+                              label: provider,
+                              color: subtitleColor,
+                            ),
+                          if (file.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.attach_file,
+                              label: file,
+                              color: subtitleColor,
+                            ),
+                          if (status.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.flag_outlined,
+                              label: status,
+                              color: subtitleColor,
+                            ),
+                        ],
+                      ),
+                    ),
+                    trailing: IconButton(
+                      tooltip: l.remove,
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed:
+                          id.isEmpty ? null : () => widget.onDeleteExpense(id),
+                    ),
+                    onTap: () => widget.onSelectExpense(item),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    Widget buildPreview() {
+      final item = widget.selectedExpense;
+      final empty = item == null || item.isEmpty;
+      final vendor = (item?['vendor'] ?? '-').toString();
+      final total = (item?['total'] ?? '').toString();
+      final currency = (item?['currency'] ?? '').toString();
+      final date = (item?['date'] ?? '').toString();
+      final due = (item?['due'] ?? '').toString();
+      final tax = (item?['tax'] ?? '').toString();
+      final file = (item?['file'] ?? '').toString();
+      final invoice = (item?['invoice'] ?? '').toString();
+      final provider = (item?['providerName'] ?? '').toString();
+      final status = (item?['status'] ?? '').toString();
+      final linesCount = (item?['linesCount'] ?? '').toString();
+      final linesSummary = (item?['linesSummary'] ?? '').toString();
+      final linesSubtotal = (item?['linesSubtotal'] ?? '').toString();
+      final base = _computeBaseAmount(total, tax, linesSubtotal);
+      final shortDate = _shortDate(date);
+      final totalDisplay = _formatAmountOrText(total);
+      final fileUrl = (item?['fileUrl'] ?? '').toString();
+      final mimeType = (item?['mimeType'] ?? '').toString();
+      final lcUrl = fileUrl.toLowerCase();
+      final lcFile = file.toLowerCase();
+      final isImage = mimeType.startsWith('image/') ||
+          lcUrl.endsWith('.png') ||
+          lcUrl.endsWith('.jpg') ||
+          lcUrl.endsWith('.jpeg') ||
+          lcFile.endsWith('.png') ||
+          lcFile.endsWith('.jpg') ||
+          lcFile.endsWith('.jpeg');
+      final isPdf = mimeType == 'application/pdf' ||
+          lcUrl.endsWith('.pdf') ||
+          lcFile.endsWith('.pdf');
+
+      return Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHigh,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.preview, color: cs.onSurface, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    l.preview,
+                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: empty
+                    ? Center(
+                        child: Text(
+                          l.groupInvoicesSelectInvoiceHint,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            vendor,
+                            style: t.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          if (total.isNotEmpty)
+                            Text(
+                              [
+                                totalDisplay,
+                                if (currency.isNotEmpty) currency,
+                              ].join(' '),
+                              style: t.bodyLarge.copyWith(
+                                color: cs.primary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 6,
+                            children: [
+                              if (shortDate.isNotEmpty)
+                                _ExpenseMetaItem(
+                                  icon: Icons.event_outlined,
+                                  label: shortDate,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              if (due.isNotEmpty)
+                                _ExpenseMetaItem(
+                                  icon: Icons.calendar_month_outlined,
+                                  label:
+                                      '${l.expenseUploadDueDateLabel}: $due',
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              if (invoice.isNotEmpty)
+                                _ExpenseMetaItem(
+                                  icon: Icons.tag_outlined,
+                                  label: invoice,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              if (tax.isNotEmpty)
+                                _ExpenseMetaItem(
+                                  icon: Icons.percent_outlined,
+                                  label:
+                                      '${l.expenseUploadTaxTotalLabel}: $tax',
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              if (linesSummary.isNotEmpty)
+                                _ExpenseMetaItem(
+                                  icon: Icons.list_alt_outlined,
+                                  label:
+                                      '${l.expenseUploadLinesTitle}: $linesSummary',
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              if (linesCount.isNotEmpty)
+                                _ExpenseMetaItem(
+                                  icon: Icons.list_alt_outlined,
+                                  label:
+                                      '${l.expenseUploadLinesTitle}: $linesCount',
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              if (base.isNotEmpty)
+                                _ExpenseMetaItem(
+                                  icon: Icons.layers_outlined,
+                                  label:
+                                      '${l.expenseUploadLinesSubtotalLabel}: $base',
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              if (provider.isNotEmpty)
+                                _ExpenseMetaItem(
+                                  icon: Icons.business_outlined,
+                                  label: provider,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              if (status.isNotEmpty)
+                                _ExpenseMetaItem(
+                                  icon: Icons.flag_outlined,
+                                  label: status,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (file.isNotEmpty)
+                            _ExpenseMetaItem(
+                              icon: Icons.attach_file,
+                              label: file,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          const SizedBox(height: 12),
+                          if (widget.previewLoading)
+                            const Expanded(
+                              child: Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          else if (fileUrl.isNotEmpty && isImage)
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  fileUrl,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            )
+                          else if (fileUrl.isNotEmpty && isPdf)
+                            FilledButton.icon(
+                              onPressed: () async {
+                                final url = Uri.tryParse(fileUrl);
+                                if (url != null) {
+                                  await launchUrl(url);
+                                }
+                              },
+                              icon: const Icon(Icons.picture_as_pdf_outlined),
+                              label: Text(l.preview),
+                            )
+                          else if (fileUrl.isNotEmpty)
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final url = Uri.tryParse(fileUrl);
+                                if (url != null) {
+                                  await launchUrl(url);
+                                }
+                              },
+                              icon: const Icon(Icons.open_in_new),
+                              label: Text(l.viewDetails),
+                            )
+                          else if (widget.previewError != null)
+                            Text(
+                              'Preview unavailable',
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            )
+                          else
+                            Text(
+                              'No file available',
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 1000;
+        if (isWide) {
+          return Row(
+            children: [
+              Expanded(flex: 3, child: buildList()),
+              const SizedBox(width: 12),
+              Expanded(flex: 2, child: buildPreview()),
+            ],
+          );
+        }
+        return buildList();
       },
+    );
+  }
+
+  String _shortDate(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return '';
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return value;
+    return DateFormat('dd MMM yy').format(parsed);
+  }
+
+  String _computeBaseAmount(String total, String tax, String linesSubtotal) {
+    final linesValue = linesSubtotal.trim();
+    if (linesValue.isNotEmpty) {
+      final parsed = double.tryParse(linesValue.replaceAll(',', '.'));
+      if (parsed != null) return parsed.toStringAsFixed(2);
+    }
+    if (total.trim().isEmpty || tax.trim().isEmpty) return '';
+    final t = double.tryParse(total.replaceAll(',', '.'));
+    final v = double.tryParse(tax.replaceAll(',', '.'));
+    if (t == null || v == null) return '';
+    return (t - v).toStringAsFixed(2);
+  }
+
+  String _formatAmountOrText(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+    final parsed = double.tryParse(trimmed.replaceAll(',', '.'));
+    if (parsed == null) return value;
+    return parsed.toStringAsFixed(2);
+  }
+}
+
+class _ExpenseMetaItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _ExpenseMetaItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(label, style: t.bodySmall.copyWith(color: color)),
+      ],
     );
   }
 }

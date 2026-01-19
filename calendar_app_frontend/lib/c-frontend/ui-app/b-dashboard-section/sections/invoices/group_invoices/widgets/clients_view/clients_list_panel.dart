@@ -308,15 +308,9 @@ class _ClientRow extends StatelessWidget {
     final subtitleColor = selected
         ? ThemeColors.contrastOn(bg).withValues(alpha: 0.82)
         : ThemeColors.textSecondary(context);
-    final border = selected
-        ? Border(
-            left: BorderSide(color: cs.primary, width: 3),
-            top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
-            right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
-            bottom:
-                BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
-          )
-        : Border.all(color: cs.outlineVariant.withValues(alpha: 0.18));
+    final borderColor = selected
+        ? cs.outlineVariant.withValues(alpha: 0.35)
+        : cs.outlineVariant.withValues(alpha: 0.18);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -326,68 +320,92 @@ class _ClientRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(12),
-          border: border,
+          border: Border.all(color: borderColor),
         ),
-        child: InkWell(
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: selected
-                      ? cs.primaryContainer
-                      : cs.surfaceContainerHighest,
-                  child: Text(
-                    title.trim().isEmpty ? '?' : title.trim().substring(0, 1),
-                    style: t.bodySmall.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: selected
-                          ? cs.onPrimaryContainer
-                          : ThemeColors.textSecondary(context),
-                    ),
+          child: Stack(
+            children: [
+              if (selected)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 3,
+                    color: cs.primary,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _HorizontalText(
-                        title,
-                        style: t.bodyMedium.copyWith(
-                          fontWeight:
-                              selected ? FontWeight.w900 : FontWeight.w800,
-                          color: titleColor,
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 4),
-                        _HorizontalText(
-                          subtitle!,
-                          style: t.bodySmall.copyWith(
-                            color: subtitleColor,
-                            fontWeight:
-                                selected ? FontWeight.w700 : FontWeight.w600,
+              Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: onTap,
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: selected
+                              ? cs.primaryContainer
+                              : cs.surfaceContainerHighest,
+                          child: Text(
+                            title.trim().isEmpty
+                                ? '?'
+                                : title.trim().substring(0, 1),
+                            style: t.bodySmall.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: selected
+                                  ? cs.onPrimaryContainer
+                                  : ThemeColors.textSecondary(context),
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _HorizontalText(
+                                title,
+                                style: t.bodyMedium.copyWith(
+                                  fontWeight:
+                                      selected ? FontWeight.w900 : FontWeight.w800,
+                                  color: titleColor,
+                                ),
+                              ),
+                              if (subtitle != null) ...[
+                                const SizedBox(height: 4),
+                                _HorizontalText(
+                                  subtitle!,
+                                  style: t.bodySmall.copyWith(
+                                    color: subtitleColor,
+                                    fontWeight: selected
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (!client.isActive)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10),
+                            child: Icon(
+                              Icons.pause_circle_outline,
+                              size: 18,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
                       ],
-                    ],
-                  ),
-                ),
-                if (!client.isActive)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 10),
-                    child: Icon(
-                      Icons.pause_circle_outline,
-                      size: 18,
-                      color: cs.onSurfaceVariant,
                     ),
                   ),
-              ],
-            ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

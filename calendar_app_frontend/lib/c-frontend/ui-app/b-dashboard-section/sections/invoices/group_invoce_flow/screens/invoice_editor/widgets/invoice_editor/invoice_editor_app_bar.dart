@@ -9,6 +9,8 @@ class InvoiceEditorAppBar extends StatelessWidget
   final bool issuing;
   final VoidCallback onSaveDraft;
   final VoidCallback onIssue;
+  final bool showClose;
+  final VoidCallback? onClose;
 
   const InvoiceEditorAppBar({
     super.key,
@@ -17,6 +19,8 @@ class InvoiceEditorAppBar extends StatelessWidget
     required this.issuing,
     required this.onSaveDraft,
     required this.onIssue,
+    this.showClose = false,
+    this.onClose,
   });
 
   @override
@@ -29,6 +33,14 @@ class InvoiceEditorAppBar extends StatelessWidget
       title: Text(l.invoiceEditorTitle, style: titleStyle),
       backgroundColor: cs.surface,
       iconTheme: IconThemeData(color: cs.onSurface),
+      automaticallyImplyLeading: !showClose,
+      leading: showClose
+          ? IconButton(
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+              onPressed: onClose,
+              icon: const Icon(Icons.close),
+            )
+          : null,
       actions: [
         TextButton(
           onPressed: saving ? null : onSaveDraft,

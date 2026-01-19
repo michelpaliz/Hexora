@@ -1004,6 +1004,60 @@ abstract class AppLocalizations {
   /// **'Group deleted successfully!'**
   String get groupDeletedSuccessfully;
 
+  /// Toggle label to show inactive clients
+  ///
+  /// In en, this message translates to:
+  /// **'Show inactive clients'**
+  String get showInactiveClients;
+
+  /// Toggle label to hide inactive clients
+  ///
+  /// In en, this message translates to:
+  /// **'Hide inactive clients'**
+  String get hideInactiveClients;
+
+  /// Confirmation message for removing a client
+  ///
+  /// In en, this message translates to:
+  /// **'Remove client \"{name}\"?'**
+  String removeClientConfirm(Object name);
+
+  /// Confirmation message for removing a service
+  ///
+  /// In en, this message translates to:
+  /// **'Remove service \"{name}\"?'**
+  String removeServiceConfirm(Object name);
+
+  /// Snackbar after removing a client
+  ///
+  /// In en, this message translates to:
+  /// **'Client removed: {name}'**
+  String clientRemovedSnack(Object name);
+
+  /// Snackbar after removing a service
+  ///
+  /// In en, this message translates to:
+  /// **'Service removed: {name}'**
+  String serviceRemovedSnack(Object name);
+
+  /// Snackbar when client is deactivated as fallback
+  ///
+  /// In en, this message translates to:
+  /// **'Client moved to inactive: {name}'**
+  String clientDeactivatedSnack(Object name);
+
+  /// Snackbar when service is deactivated as fallback
+  ///
+  /// In en, this message translates to:
+  /// **'Service moved to inactive: {name}'**
+  String serviceDeactivatedSnack(Object name);
+
+  /// Generic failure message for removals
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remove item: {reason}'**
+  String removeFailedWithReason(Object reason);
+
   /// No description provided for @noGroupsAvailable.
   ///
   /// In en, this message translates to:
@@ -2576,6 +2630,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create Service'**
   String get createService;
+
+  /// Placeholder example for service name field
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Garden maintenance'**
+  String get serviceNameExample;
 
   /// Label for default minutes field
   ///
@@ -5206,6 +5266,12 @@ abstract class AppLocalizations {
   /// **'Billing incomplete'**
   String get billingMissing;
 
+  /// Progress label for required billing fields
+  ///
+  /// In en, this message translates to:
+  /// **'{completed}/{total} completed'**
+  String billingProgressLabel(Object completed, Object total);
+
   /// No description provided for @billingProfileTitle.
   ///
   /// In en, this message translates to:
@@ -5613,6 +5679,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'PDF'**
   String get invoicePdfCta;
+
+  /// No description provided for @invoicePreviewCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview (PDF)'**
+  String get invoicePreviewCta;
+
+  /// No description provided for @invoiceStepsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get invoiceStepsTitle;
+
+  /// No description provided for @invoiceStepCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 1 - Create invoice'**
+  String get invoiceStepCreateTitle;
+
+  /// No description provided for @invoiceStepCreateShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get invoiceStepCreateShort;
+
+  /// No description provided for @invoiceStepPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 2 - Preview'**
+  String get invoiceStepPreviewTitle;
+
+  /// No description provided for @invoiceStepPreviewShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get invoiceStepPreviewShort;
+
+  /// No description provided for @invoiceStepIssueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 3 - Issue invoice'**
+  String get invoiceStepIssueTitle;
+
+  /// No description provided for @invoiceStepIssueShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue'**
+  String get invoiceStepIssueShort;
+
+  /// No description provided for @invoiceChecklistClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Client selected'**
+  String get invoiceChecklistClient;
+
+  /// No description provided for @invoiceChecklistDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice date selected'**
+  String get invoiceChecklistDates;
+
+  /// No description provided for @invoiceChecklistLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines added'**
+  String get invoiceChecklistLines;
+
+  /// No description provided for @invoiceWarningsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get invoiceWarningsTitle;
+
+  /// No description provided for @invoiceWarningDueDateBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date is before invoice date'**
+  String get invoiceWarningDueDateBefore;
+
+  /// No description provided for @invoiceWarningPendingDrafts.
+  ///
+  /// In en, this message translates to:
+  /// **'You have pending drafts. Resolve them before continuing.'**
+  String get invoiceWarningPendingDrafts;
+
+  /// No description provided for @invoicePreviewNeedsClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a client to continue.'**
+  String get invoicePreviewNeedsClient;
+
+  /// No description provided for @invoicePreviewNeedsDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the invoice date to continue.'**
+  String get invoicePreviewNeedsDate;
+
+  /// No description provided for @invoicePreviewInvalidDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date cannot be before invoice date.'**
+  String get invoicePreviewInvalidDates;
+
+  /// No description provided for @invoicePreviewNeedsLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one line with a price to continue.'**
+  String get invoicePreviewNeedsLines;
+
+  /// No description provided for @invoicePreviewNeedsDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a draft to generate the PDF preview.'**
+  String get invoicePreviewNeedsDraft;
+
+  /// No description provided for @invoiceIssueNeedsPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview the invoice before issuing.'**
+  String get invoiceIssueNeedsPreview;
+
+  /// No description provided for @invoiceSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get invoiceSummaryTitle;
+
+  /// No description provided for @invoiceNumberSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice number'**
+  String get invoiceNumberSummaryLabel;
+
+  /// No description provided for @invoicePreviewPendingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview pending'**
+  String get invoicePreviewPendingLabel;
+
+  /// No description provided for @invoicePreviewReviewedStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview reviewed'**
+  String get invoicePreviewReviewedStatus;
+
+  /// No description provided for @invoicePreviewReviewedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'You have reviewed the invoice'**
+  String get invoicePreviewReviewedLabel;
+
+  /// No description provided for @invoiceIssueConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue invoice'**
+  String get invoiceIssueConfirmTitle;
+
+  /// No description provided for @invoiceIssueConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This action cannot be undone.'**
+  String get invoiceIssueConfirmMessage;
 
   /// No description provided for @invoiceIssuingLabel.
   ///
@@ -7888,6 +8116,12 @@ abstract class AppLocalizations {
   /// **'Total or line items are required'**
   String get expenseUploadTotalOrLinesError;
 
+  /// No description provided for @expenseUploadLinesRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Line items are required'**
+  String get expenseUploadLinesRequiredError;
+
   /// No description provided for @expenseUploadLinesInvalidError.
   ///
   /// In en, this message translates to:
@@ -8205,6 +8439,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Totals'**
   String get vatSummaryTotalsLabel;
+
+  /// No description provided for @vatSummaryProvidersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers'**
+  String get vatSummaryProvidersTitle;
+
+  /// No description provided for @vatSummaryProvidersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No providers for this quarter.'**
+  String get vatSummaryProvidersEmpty;
 }
 
 class _AppLocalizationsDelegate

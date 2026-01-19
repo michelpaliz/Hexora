@@ -3,6 +3,7 @@ import 'dart:developer' as devtools show log;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
@@ -44,6 +45,7 @@ class CalendarScreenCoordinator {
   CalendarViewAdapter? calendarUI;
   late final EventDisplayManager _displayManager;
   EventActionManager? _eventActionManager;
+  ValueChanged<Event>? _inlineEditHandler;
   final WeatherService _weatherService = WeatherService();
   final LocationService _locationService = LocationService();
   String? _lastWeatherLocation;
@@ -63,6 +65,11 @@ class CalendarScreenCoordinator {
     final colorManager = ColorManager();
     final contentBuilder = EventContentBuilder(colorManager: colorManager);
     _displayManager = EventDisplayManager(null, builder: contentBuilder);
+  }
+
+  void setInlineEditHandler(ValueChanged<Event>? handler) {
+    _inlineEditHandler = handler;
+    _eventActionManager?.setInlineEditHandler(handler);
   }
 
   void jumpToToday() {
@@ -161,6 +168,7 @@ class CalendarScreenCoordinator {
           notifMgmt,
           eventDomain: eventDomain,
         );
+        _eventActionManager!.setInlineEditHandler(_inlineEditHandler);
         _displayManager.setEventActionManager(_eventActionManager!);
 
         _lastEventDomain = eventDomain;
@@ -206,7 +214,8 @@ class CalendarScreenCoordinator {
         builder: (dialogCtx) {
           final media = MediaQuery.of(dialogCtx).size;
           return Dialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: 980,

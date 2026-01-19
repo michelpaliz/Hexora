@@ -10,6 +10,8 @@ class StatementsController extends ChangeNotifier {
   })  : _api = api ?? StatementsApi(),
         _clientsApi = clientsApi ?? ClientsApi();
 
+  bool _isDisposed = false;
+
   final StatementsApi _api;
   final ClientsApi _clientsApi;
   final String? groupId;
@@ -95,7 +97,7 @@ class StatementsController extends ChangeNotifier {
   }) async {
     uploading = true;
     uploadError = null;
-    notifyListeners();
+    _notify();
     try {
       final r = await _api.importStatement(bytes: bytes, filename: filename);
       lastImportResult = r;
@@ -116,14 +118,14 @@ class StatementsController extends ChangeNotifier {
       return null;
     } finally {
       uploading = false;
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<void> listImports() async {
     loadingImports = true;
     importsError = null;
-    notifyListeners();
+    _notify();
     try {
       imports = await _api.listImports();
       for (final b in imports) {
@@ -136,7 +138,7 @@ class StatementsController extends ChangeNotifier {
       importsError = e.toString();
     } finally {
       loadingImports = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -158,7 +160,7 @@ class StatementsController extends ChangeNotifier {
     if (dateFrom != null) entriesDateFrom = dateFrom;
     if (dateTo != null) entriesDateTo = dateTo;
     if (order != null) entriesOrder = order;
-    notifyListeners();
+    _notify();
     try {
       if (kDebugMode) {
         debugPrint(
@@ -192,14 +194,14 @@ class StatementsController extends ChangeNotifier {
       entriesError = e.toString();
     } finally {
       loadingEntries = false;
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<void> fetchBatchStatus(String batchId, {int? threshold}) async {
     loadingStatus[batchId] = true;
     statusError[batchId] = null;
-    notifyListeners();
+    _notify();
     try {
       final t = threshold ?? statusThreshold;
       final r = await _api.batchStatus(batchId: batchId, threshold: t);
@@ -208,14 +210,14 @@ class StatementsController extends ChangeNotifier {
       statusError[batchId] = e.toString();
     } finally {
       loadingStatus[batchId] = false;
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<void> fetchReminderSettings(String batchId) async {
     loadingReminderSettings[batchId] = true;
     reminderSettingsError[batchId] = null;
-    notifyListeners();
+    _notify();
     try {
       final r = await _api.reminderSettings(batchId: batchId);
       final reminder = (r['reminder'] is Map)
@@ -226,7 +228,7 @@ class StatementsController extends ChangeNotifier {
       reminderSettingsError[batchId] = e.toString();
     } finally {
       loadingReminderSettings[batchId] = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -237,7 +239,7 @@ class StatementsController extends ChangeNotifier {
   }) async {
     savingReminderSettings[batchId] = true;
     saveReminderSettingsError[batchId] = null;
-    notifyListeners();
+    _notify();
     try {
       final r = await _api.updateReminderSettings(
         batchId: batchId,
@@ -254,7 +256,7 @@ class StatementsController extends ChangeNotifier {
       return null;
     } finally {
       savingReminderSettings[batchId] = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -262,7 +264,7 @@ class StatementsController extends ChangeNotifier {
       {int? threshold}) async {
     notifyingStatus[batchId] = true;
     notifyError[batchId] = null;
-    notifyListeners();
+    _notify();
     try {
       final t = threshold ?? statusThreshold;
       final r = await _api.notifyStale(batchId: batchId, threshold: t);
@@ -272,13 +274,13 @@ class StatementsController extends ChangeNotifier {
       return null;
     } finally {
       notifyingStatus[batchId] = false;
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<void> setStatusThreshold(int value) async {
     statusThreshold = value;
-    notifyListeners();
+    _notify();
     for (final b in imports) {
       final id = (b['batchId'] ?? b['_id'] ?? b['id'])?.toString() ?? '';
       if (id.isEmpty) continue;
@@ -297,7 +299,7 @@ class StatementsController extends ChangeNotifier {
     loadingSummary = true;
     summaryError = null;
     if (group != null) summaryGroup = group;
-    notifyListeners();
+    _notify();
     try {
       final r = await _api.batchSummary(
         batchId: batchId,
@@ -314,14 +316,14 @@ class StatementsController extends ChangeNotifier {
       summaryError = e.toString();
     } finally {
       loadingSummary = false;
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<List<Map<String, dynamic>>> suggestClients(String entryId) async {
     loadingSuggestions[entryId] = true;
     suggestionsError[entryId] = null;
-    notifyListeners();
+    _notify();
     try {
       final r = await _api.suggestClients(entryId);
       suggestions[entryId] = r;
@@ -331,14 +333,14 @@ class StatementsController extends ChangeNotifier {
       return const [];
     } finally {
       loadingSuggestions[entryId] = false;
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<void> linkClient({required String entryId, String? clientId}) async {
     linkingClient[entryId] = true;
     linkClientError[entryId] = null;
-    notifyListeners();
+    _notify();
     try {
       await _api.linkEntryClient(entryId: entryId, clientId: clientId);
       final idx = entries.indexWhere((e) => (e['_id'] ?? e['id'])?.toString() == entryId);
@@ -358,7 +360,7 @@ class StatementsController extends ChangeNotifier {
       linkClientError[entryId] = e.toString();
     } finally {
       linkingClient[entryId] = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -369,7 +371,7 @@ class StatementsController extends ChangeNotifier {
   }) async {
     linkingInvoice[entryId] = true;
     linkInvoiceError[entryId] = null;
-    notifyListeners();
+    _notify();
     try {
       if (expenseOnly) {
         await _api.linkEntryInvoiceExpense(entryId: entryId, invoiceId: invoiceId);
@@ -394,7 +396,7 @@ class StatementsController extends ChangeNotifier {
       linkInvoiceError[entryId] = e.toString();
     } finally {
       linkingInvoice[entryId] = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -402,7 +404,7 @@ class StatementsController extends ChangeNotifier {
     if (loadingClients) return;
     loadingClients = true;
     clientsError = null;
-    notifyListeners();
+    _notify();
     try {
       final list = await _clientsApi.list(groupId: groupId, active: true);
       clients = list
@@ -416,7 +418,7 @@ class StatementsController extends ChangeNotifier {
       clientsError = e.toString();
     } finally {
       loadingClients = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -439,7 +441,7 @@ class StatementsController extends ChangeNotifier {
     } else {
       allEntriesPage = 1;
     }
-    notifyListeners();
+    _notify();
     try {
       if (kDebugMode) {
         debugPrint(
@@ -503,7 +505,7 @@ class StatementsController extends ChangeNotifier {
       allEntriesError = e.toString();
     } finally {
       loadingAllEntries = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -518,7 +520,7 @@ class StatementsController extends ChangeNotifier {
   Future<void> deleteBatch(String batchId) async {
     deletingBatch[batchId] = true;
     deleteBatchError[batchId] = null;
-    notifyListeners();
+    _notify();
     try {
       await _api.deleteBatch(batchId);
       if (selectedBatchId == batchId) {
@@ -534,14 +536,14 @@ class StatementsController extends ChangeNotifier {
       deleteBatchError[batchId] = e.toString();
     } finally {
       deletingBatch[batchId] = false;
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<void> reprocessBatch(String batchId) async {
     reprocessingBatch[batchId] = true;
     reprocessBatchError[batchId] = null;
-    notifyListeners();
+    _notify();
     try {
       await _api.reprocessBatch(batchId);
       await listImports();
@@ -550,7 +552,18 @@ class StatementsController extends ChangeNotifier {
       reprocessBatchError[batchId] = e.toString();
     } finally {
       reprocessingBatch[batchId] = false;
-      notifyListeners();
+      _notify();
     }
+  }
+
+  void _notify() {
+    if (_isDisposed) return;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }

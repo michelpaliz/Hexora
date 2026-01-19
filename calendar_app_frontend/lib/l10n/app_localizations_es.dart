@@ -524,6 +524,47 @@ class AppLocalizationsEs extends AppLocalizations {
   String get groupDeletedSuccessfully => '¡Grupo eliminado con éxito!';
 
   @override
+  String get showInactiveClients => 'Mostrar clientes inactivos';
+
+  @override
+  String get hideInactiveClients => 'Ocultar clientes inactivos';
+
+  @override
+  String removeClientConfirm(Object name) {
+    return '¿Eliminar el cliente \"$name\"?';
+  }
+
+  @override
+  String removeServiceConfirm(Object name) {
+    return '¿Eliminar el servicio \"$name\"?';
+  }
+
+  @override
+  String clientRemovedSnack(Object name) {
+    return 'Cliente eliminado: $name';
+  }
+
+  @override
+  String serviceRemovedSnack(Object name) {
+    return 'Servicio eliminado: $name';
+  }
+
+  @override
+  String clientDeactivatedSnack(Object name) {
+    return 'Cliente pasado a inactivo: $name';
+  }
+
+  @override
+  String serviceDeactivatedSnack(Object name) {
+    return 'Servicio pasado a inactivo: $name';
+  }
+
+  @override
+  String removeFailedWithReason(Object reason) {
+    return 'No se pudo eliminar: $reason';
+  }
+
+  @override
   String get noGroupsAvailable => 'NO SE ENCONTRARON GRUPOS';
 
   @override
@@ -1410,6 +1451,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get createService => 'Crear servicio';
+
+  @override
+  String get serviceNameExample => 'Ej.: Mantenimiento de jardines';
 
   @override
   String get defaultMinutesLabel => 'Minutos predeterminados';
@@ -2910,6 +2954,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get billingMissing => 'Faltan datos de facturación';
 
   @override
+  String billingProgressLabel(Object completed, Object total) {
+    return '$completed/$total completados';
+  }
+
+  @override
   String get billingProfileTitle => 'Perfil de facturación';
 
   @override
@@ -3121,6 +3170,95 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invoicePdfCta => 'PDF';
+
+  @override
+  String get invoicePreviewCta => 'Vista previa (PDF)';
+
+  @override
+  String get invoiceStepsTitle => 'Pasos';
+
+  @override
+  String get invoiceStepCreateTitle => 'Paso 1 - Crear factura';
+
+  @override
+  String get invoiceStepCreateShort => 'Crear';
+
+  @override
+  String get invoiceStepPreviewTitle => 'Paso 2 - Vista previa';
+
+  @override
+  String get invoiceStepPreviewShort => 'Vista previa';
+
+  @override
+  String get invoiceStepIssueTitle => 'Paso 3 - Emitir factura';
+
+  @override
+  String get invoiceStepIssueShort => 'Emitir';
+
+  @override
+  String get invoiceChecklistClient => 'Cliente seleccionado';
+
+  @override
+  String get invoiceChecklistDates => 'Fecha de factura seleccionada';
+
+  @override
+  String get invoiceChecklistLines => 'Líneas agregadas';
+
+  @override
+  String get invoiceWarningsTitle => 'Advertencias';
+
+  @override
+  String get invoiceWarningDueDateBefore =>
+      'La fecha de vencimiento es anterior a la fecha de factura';
+
+  @override
+  String get invoiceWarningPendingDrafts =>
+      'Tienes borradores pendientes. Resuélvelos antes de continuar.';
+
+  @override
+  String get invoicePreviewNeedsClient =>
+      'Selecciona un cliente para continuar.';
+
+  @override
+  String get invoicePreviewNeedsDate =>
+      'Selecciona la fecha de factura para continuar.';
+
+  @override
+  String get invoicePreviewInvalidDates =>
+      'La fecha de vencimiento no puede ser anterior.';
+
+  @override
+  String get invoicePreviewNeedsLines =>
+      'Agrega al menos una línea con precio para continuar.';
+
+  @override
+  String get invoicePreviewNeedsDraft =>
+      'Guarda un borrador para generar la vista previa en PDF.';
+
+  @override
+  String get invoiceIssueNeedsPreview =>
+      'Revisa la factura en vista previa antes de emitirla.';
+
+  @override
+  String get invoiceSummaryTitle => 'Resumen';
+
+  @override
+  String get invoiceNumberSummaryLabel => 'Número de factura';
+
+  @override
+  String get invoicePreviewPendingLabel => 'Vista previa pendiente';
+
+  @override
+  String get invoicePreviewReviewedStatus => 'Vista previa revisada';
+
+  @override
+  String get invoicePreviewReviewedLabel => 'Has revisado la factura';
+
+  @override
+  String get invoiceIssueConfirmTitle => 'Emitir factura';
+
+  @override
+  String get invoiceIssueConfirmMessage => 'Esta acción no se puede deshacer.';
 
   @override
   String get invoiceIssuingLabel => 'Emitiendo…';
@@ -4412,6 +4550,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Total o líneas son obligatorios';
 
   @override
+  String get expenseUploadLinesRequiredError => 'Las líneas son obligatorias';
+
+  @override
   String get expenseUploadLinesInvalidError =>
       'Completa descripción, cantidad, precio unitario y IVA en todas las líneas';
 
@@ -4589,4 +4730,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get vatSummaryTotalsLabel => 'Totales';
+
+  @override
+  String get vatSummaryProvidersTitle => 'Proveedores';
+
+  @override
+  String get vatSummaryProvidersEmpty => 'Sin proveedores para este trimestre.';
 }

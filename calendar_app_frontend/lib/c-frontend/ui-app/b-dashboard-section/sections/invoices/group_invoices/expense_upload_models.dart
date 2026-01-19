@@ -7,9 +7,14 @@ class ExpenseLineDraft {
   final TextEditingController unitPriceController = TextEditingController();
   final TextEditingController taxRateController = TextEditingController();
 
-  double get quantity => double.tryParse(quantityController.text) ?? 0;
-  double get unitPrice => double.tryParse(unitPriceController.text) ?? 0;
-  double get taxRate => double.tryParse(taxRateController.text) ?? 0;
+  double _parseNum(String raw) {
+    final value = raw.trim().replaceAll(',', '.');
+    return double.tryParse(value) ?? 0;
+  }
+
+  double get quantity => _parseNum(quantityController.text);
+  double get unitPrice => _parseNum(unitPriceController.text);
+  double get taxRate => _parseNum(taxRateController.text);
 
   double get subtotal => quantity * unitPrice;
   double get taxAmount => subtotal * (taxRate / 100);
@@ -21,6 +26,9 @@ class ExpenseLineDraft {
       'quantity': quantity,
       'unitPrice': unitPrice,
       'taxRate': taxRate,
+      'lineSubtotal': subtotal,
+      'lineTax': taxAmount,
+      'lineTotal': total,
     };
   }
 

@@ -8,8 +8,6 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
 class InvoiceEditorForm extends StatefulWidget {
-  final GlobalKey<FormState> formKey;
-
   final List<GroupClient> clients;
   final String? clientId;
   final ValueChanged<String?> onClientChanged;
@@ -17,11 +15,6 @@ class InvoiceEditorForm extends StatefulWidget {
   final TextEditingController currencyController;
   final ValueNotifier<DateTime?> invoiceDate;
   final ValueNotifier<DateTime?> dueDate;
-
-  final TextEditingController notesController;
-
-  final List<LineDraft> lines;
-  final VoidCallback onLinesChanged;
 
   final VoidCallback onPickInvoiceDate;
   final VoidCallback onPickDueDate;
@@ -32,16 +25,12 @@ class InvoiceEditorForm extends StatefulWidget {
 
   const InvoiceEditorForm({
     super.key,
-    required this.formKey,
     required this.clients,
     required this.clientId,
     required this.onClientChanged,
     required this.currencyController,
     required this.invoiceDate,
     required this.dueDate,
-    required this.notesController,
-    required this.lines,
-    required this.onLinesChanged,
     required this.onPickInvoiceDate,
     required this.onPickDueDate,
     required this.issuedThisMonthCount,
@@ -53,173 +42,291 @@ class InvoiceEditorForm extends StatefulWidget {
   State<InvoiceEditorForm> createState() => _InvoiceEditorFormState();
 }
 
-class _InvoiceEditorFormState extends State<InvoiceEditorForm> {
-  bool _showCustomerDetails = true;
-  bool _showNotes = false;
+class InvoiceHeaderFields extends StatelessWidget {
+  final List<GroupClient> clients;
+  final String? clientId;
+  final ValueChanged<String?> onClientChanged;
+  final TextEditingController currencyController;
+  final ValueNotifier<DateTime?> invoiceDate;
+  final ValueNotifier<DateTime?> dueDate;
+  final VoidCallback onPickInvoiceDate;
+  final VoidCallback onPickDueDate;
 
-  @override
-  void initState() {
-    super.initState();
-    _showNotes = widget.notesController.text.trim().isNotEmpty;
-  }
+  const InvoiceHeaderFields({
+    super.key,
+    required this.clients,
+    required this.clientId,
+    required this.onClientChanged,
+    required this.currencyController,
+    required this.invoiceDate,
+    required this.dueDate,
+    required this.onPickInvoiceDate,
+    required this.onPickDueDate,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
 
-    return Form(
-      key: widget.formKey,
-      child: Column(
-        children: [
-          SectionCard(
-            title: l.invoiceCustomerTitle,
-            trailing: TextButton(
-              onPressed: () =>
-                  setState(() => _showCustomerDetails = !_showCustomerDetails),
-              child: Text(
-                _showCustomerDetails
-                    ? l.invoiceDetailsHideCta
-                    : l.invoiceDetailsShowCta,
-              ),
-            ),
-            child: ValueListenableBuilder<DateTime?>(
-              valueListenable: widget.invoiceDate,
-              builder: (_, invDate, __) => ValueListenableBuilder<DateTime?>(
-                valueListenable: widget.dueDate,
-                builder: (_, dueDate, __) {
-                  final selectedName = widget.clientId == null
-                      ? l.invoiceSelectClientLabel
-                      : widget.clients
-                          .firstWhere(
-                            (c) => c.id == widget.clientId,
-                            orElse: () => GroupClient(
-                              id: widget.clientId!,
-                              name: l.invoiceSelectClientLabel,
-                              isActive: true,
-                            ),
-                          )
-                          .name;
+    return ValueListenableBuilder<DateTime?>(
+      valueListenable: invoiceDate,
+      builder: (_, invDate, __) => ValueListenableBuilder<DateTime?>(
+        valueListenable: dueDate,
+        builder: (_, due, __) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 860;
+              final dateBox = _DatesBox(
+                invoiceDate: invDate,
+                dueDate: due,
+                onPickInvoiceDate: onPickInvoiceDate,
+                onPickDueDate: onPickDueDate,
+              );
 
-                  final currency = widget.currencyController.text.trim().isEmpty
-                      ? 'EUR'
-                      : widget.currencyController.text.trim();
-
-                  if (!_showCustomerDetails) {
-                    return _CustomerCollapsedSummary(
-                      clientName: selectedName,
-                      currency: currency,
-                      invoiceDate: invDate,
-                      dueDate: dueDate,
-                      issuedCount: widget.issuedThisMonthCount,
-                      pendingDrafts: widget.pendingDraftsCount,
-                      loading: widget.loadingClientStats,
-                      onExpand: () =>
-                          setState(() => _showCustomerDetails = true),
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _ClientPickerField(
-                                    value: widget.clientId,
-                                    labelText: l.invoiceClientLabel,
-                                    clients: widget.clients,
-                                    onChanged: widget.onClientChanged,
-                                    validator: (v) => v == null
-                                        ? l.invoiceClientRequired
-                                        : null,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                _CurrencyPill(currency: currency),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: _DatesBox(
-                              invoiceDate: invDate,
-                              dueDate: dueDate,
-                              onPickInvoiceDate: widget.onPickInvoiceDate,
-                              onPickDueDate: widget.onPickDueDate,
-                            ),
-                          ),
-                        ],
+              if (wide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: _ClientPickerField(
+                        value: clientId,
+                        labelText: l.invoiceClientLabel,
+                        clients: clients,
+                        onChanged: onClientChanged,
+                        validator: (v) =>
+                            v == null ? l.invoiceClientRequired : null,
                       ),
-                      const SizedBox(height: 12),
-                      _ClientMonthlyStatsBox(
-                        issuedCount: widget.issuedThisMonthCount,
-                        pendingDrafts: widget.pendingDraftsCount,
-                        loading: widget.loadingClientStats,
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SectionCard(
-            title: l.invoiceNotesLabel,
-            trailing: TextButton(
-              onPressed: () => setState(() => _showNotes = !_showNotes),
-              child: Text(
-                _showNotes ? l.invoiceNotesHideCta : l.invoiceNotesShowCta,
-              ),
-            ),
-            child: _showNotes
-                ? ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 140),
-                    child: TextFormField(
-                      controller: widget.notesController,
-                      minLines: 3,
-                      maxLines: null,
-                      onChanged: (_) => widget.onLinesChanged(),
-                      decoration: InputDecoration(
-                        labelText: l.invoiceNotesLabel,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(
-                            color: cs.outlineVariant.withValues(alpha: 0.5),
-                          ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 120,
+                      child: TextFormField(
+                        controller: currencyController,
+                        readOnly: true,
+                        enableInteractiveSelection: false,
+                        decoration: InputDecoration(
+                          labelText: l.currencyLabel,
+                          suffixIcon: const Icon(Icons.lock_outline),
                         ),
                       ),
                     ),
-                  )
-                : Text(
-                    widget.notesController.text.trim().isEmpty
-                        ? l.invoiceNotesOptionalLabel
-                        : widget.notesController.text.trim(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.of(context).bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
+                    const SizedBox(width: 12),
+                    Expanded(flex: 3, child: dateBox),
+                  ],
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ClientPickerField(
+                          value: clientId,
+                          labelText: l.invoiceClientLabel,
+                          clients: clients,
+                          onChanged: onClientChanged,
+                          validator: (v) =>
+                              v == null ? l.invoiceClientRequired : null,
                         ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 120,
+                        child: TextFormField(
+                          controller: currencyController,
+                          readOnly: true,
+                          enableInteractiveSelection: false,
+                          decoration: InputDecoration(
+                            labelText: l.currencyLabel,
+                            suffixIcon: const Icon(Icons.lock_outline),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-          ),
-          const SizedBox(height: 12),
-          SectionCard(
-            title: l.invoiceLinesTitle,
-            trailing: FilledButton.tonalIcon(
-              onPressed: () {
-                final nextPos = widget.lines.length + 1;
-                widget.lines.add(LineDraft(position: nextPos));
-                widget.onLinesChanged();
-              },
-              icon: const Icon(Icons.add),
-              label: Text(l.invoiceAddLine),
+                  const SizedBox(height: 12),
+                  dateBox,
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _InvoiceEditorFormState extends State<InvoiceEditorForm> {
+  bool _showCustomerDetails = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
+    return Column(
+      children: [
+        SectionCard(
+          title: l.invoiceCustomerTitle,
+          trailing: TextButton(
+            onPressed: () =>
+                setState(() => _showCustomerDetails = !_showCustomerDetails),
+            child: Text(
+              _showCustomerDetails
+                  ? l.invoiceDetailsHideCta
+                  : l.invoiceDetailsShowCta,
             ),
-            child: LinesTableEditor(
-                lines: widget.lines, onChanged: widget.onLinesChanged),
+          ),
+          child: ValueListenableBuilder<DateTime?>(
+            valueListenable: widget.invoiceDate,
+            builder: (_, invDate, __) => ValueListenableBuilder<DateTime?>(
+              valueListenable: widget.dueDate,
+              builder: (_, dueDate, __) {
+                final selectedName = widget.clientId == null
+                    ? l.invoiceSelectClientLabel
+                    : widget.clients
+                        .firstWhere(
+                          (c) => c.id == widget.clientId,
+                          orElse: () => GroupClient(
+                            id: widget.clientId!,
+                            name: l.invoiceSelectClientLabel,
+                            isActive: true,
+                          ),
+                        )
+                        .name;
+
+                final currency = widget.currencyController.text.trim().isEmpty
+                    ? 'EUR'
+                    : widget.currencyController.text.trim();
+
+                if (!_showCustomerDetails) {
+                  return _CustomerCollapsedSummary(
+                    clientName: selectedName,
+                    currency: currency,
+                    invoiceDate: invDate,
+                    dueDate: dueDate,
+                    issuedCount: widget.issuedThisMonthCount,
+                    pendingDrafts: widget.pendingDraftsCount,
+                    loading: widget.loadingClientStats,
+                    onExpand: () => setState(() => _showCustomerDetails = true),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _ClientPickerField(
+                                  value: widget.clientId,
+                                  labelText: l.invoiceClientLabel,
+                                  clients: widget.clients,
+                                  onChanged: widget.onClientChanged,
+                                  validator: (v) => v == null
+                                      ? l.invoiceClientRequired
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                width: 120,
+                                child: TextFormField(
+                                  controller: widget.currencyController,
+                                  readOnly: true,
+                                  enableInteractiveSelection: false,
+                                  decoration: InputDecoration(
+                                    labelText: l.currencyLabel,
+                                    suffixIcon: const Icon(Icons.lock_outline),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: _DatesBox(
+                            invoiceDate: invDate,
+                            dueDate: dueDate,
+                            onPickInvoiceDate: widget.onPickInvoiceDate,
+                            onPickDueDate: widget.onPickDueDate,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _ClientMonthlyStatsBox(
+                      issuedCount: widget.issuedThisMonthCount,
+                      pendingDrafts: widget.pendingDraftsCount,
+                      loading: widget.loadingClientStats,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class InvoiceLinesSection extends StatelessWidget {
+  final List<LineDraft> lines;
+  final VoidCallback onLinesChanged;
+  final num total;
+
+  const InvoiceLinesSection({
+    super.key,
+    required this.lines,
+    required this.onLinesChanged,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    return SectionCard(
+      title: l.invoiceLinesTitle,
+      trailing: FilledButton.tonalIcon(
+        onPressed: () {
+          final nextPos = lines.length + 1;
+          lines.add(LineDraft(position: nextPos));
+          onLinesChanged();
+        },
+        icon: const Icon(Icons.add),
+        label: Text(l.invoiceAddLine),
+      ),
+      child: Column(
+        children: [
+          LinesTableEditor(lines: lines, onChanged: onLinesChanged),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Spacer(),
+              Text(
+                l.invoiceTotalLabel,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                NumberFormat.simpleCurrency(name: '').format(total),
+                style: t.titleLarge.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: cs.onSurface,
+                ),
+              ),
+            ],
           ),
         ],
       ),

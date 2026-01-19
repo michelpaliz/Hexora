@@ -14,6 +14,7 @@ class ServicesTab extends StatelessWidget {
   final bool showInlineCTA;
   final VoidCallback? onAddTap;
   final void Function(Service service)? onEdit; // optional
+  final void Function(Service service)? onDelete; // optional
 
   const ServicesTab({
     super.key,
@@ -24,6 +25,7 @@ class ServicesTab extends StatelessWidget {
     this.showInlineCTA = false,
     this.onAddTap,
     this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -58,6 +60,7 @@ class ServicesTab extends StatelessWidget {
           return ServiceListItem(
             service: s,
             onTap: onEdit == null ? null : () => onEdit!(s),
+            onDelete: onDelete == null ? null : () => onDelete!(s),
             nameStyle: typo.bodyMedium.copyWith(
               fontWeight: FontWeight.w700,
               letterSpacing: .2,

@@ -519,6 +519,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupDeletedSuccessfully => 'Group deleted successfully!';
 
   @override
+  String get showInactiveClients => 'Show inactive clients';
+
+  @override
+  String get hideInactiveClients => 'Hide inactive clients';
+
+  @override
+  String removeClientConfirm(Object name) {
+    return 'Remove client \"$name\"?';
+  }
+
+  @override
+  String removeServiceConfirm(Object name) {
+    return 'Remove service \"$name\"?';
+  }
+
+  @override
+  String clientRemovedSnack(Object name) {
+    return 'Client removed: $name';
+  }
+
+  @override
+  String serviceRemovedSnack(Object name) {
+    return 'Service removed: $name';
+  }
+
+  @override
+  String clientDeactivatedSnack(Object name) {
+    return 'Client moved to inactive: $name';
+  }
+
+  @override
+  String serviceDeactivatedSnack(Object name) {
+    return 'Service moved to inactive: $name';
+  }
+
+  @override
+  String removeFailedWithReason(Object reason) {
+    return 'Could not remove item: $reason';
+  }
+
+  @override
   String get noGroupsAvailable => 'NO GROUP/S FOUND/S';
 
   @override
@@ -1398,6 +1439,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get createService => 'Create Service';
+
+  @override
+  String get serviceNameExample => 'e.g. Garden maintenance';
 
   @override
   String get defaultMinutesLabel => 'Default minutes';
@@ -2883,6 +2927,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billingMissing => 'Billing incomplete';
 
   @override
+  String billingProgressLabel(Object completed, Object total) {
+    return '$completed/$total completed';
+  }
+
+  @override
   String get billingProfileTitle => 'Billing profile';
 
   @override
@@ -3093,6 +3142,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get invoicePdfCta => 'PDF';
+
+  @override
+  String get invoicePreviewCta => 'Preview (PDF)';
+
+  @override
+  String get invoiceStepsTitle => 'Steps';
+
+  @override
+  String get invoiceStepCreateTitle => 'Step 1 - Create invoice';
+
+  @override
+  String get invoiceStepCreateShort => 'Create';
+
+  @override
+  String get invoiceStepPreviewTitle => 'Step 2 - Preview';
+
+  @override
+  String get invoiceStepPreviewShort => 'Preview';
+
+  @override
+  String get invoiceStepIssueTitle => 'Step 3 - Issue invoice';
+
+  @override
+  String get invoiceStepIssueShort => 'Issue';
+
+  @override
+  String get invoiceChecklistClient => 'Client selected';
+
+  @override
+  String get invoiceChecklistDates => 'Invoice date selected';
+
+  @override
+  String get invoiceChecklistLines => 'Lines added';
+
+  @override
+  String get invoiceWarningsTitle => 'Warnings';
+
+  @override
+  String get invoiceWarningDueDateBefore => 'Due date is before invoice date';
+
+  @override
+  String get invoiceWarningPendingDrafts =>
+      'You have pending drafts. Resolve them before continuing.';
+
+  @override
+  String get invoicePreviewNeedsClient => 'Select a client to continue.';
+
+  @override
+  String get invoicePreviewNeedsDate => 'Select the invoice date to continue.';
+
+  @override
+  String get invoicePreviewInvalidDates =>
+      'Due date cannot be before invoice date.';
+
+  @override
+  String get invoicePreviewNeedsLines =>
+      'Add at least one line with a price to continue.';
+
+  @override
+  String get invoicePreviewNeedsDraft =>
+      'Save a draft to generate the PDF preview.';
+
+  @override
+  String get invoiceIssueNeedsPreview => 'Preview the invoice before issuing.';
+
+  @override
+  String get invoiceSummaryTitle => 'Summary';
+
+  @override
+  String get invoiceNumberSummaryLabel => 'Invoice number';
+
+  @override
+  String get invoicePreviewPendingLabel => 'Preview pending';
+
+  @override
+  String get invoicePreviewReviewedStatus => 'Preview reviewed';
+
+  @override
+  String get invoicePreviewReviewedLabel => 'You have reviewed the invoice';
+
+  @override
+  String get invoiceIssueConfirmTitle => 'Issue invoice';
+
+  @override
+  String get invoiceIssueConfirmMessage => 'This action cannot be undone.';
 
   @override
   String get invoiceIssuingLabel => 'Issuing…';
@@ -4369,6 +4503,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Total or line items are required';
 
   @override
+  String get expenseUploadLinesRequiredError => 'Line items are required';
+
+  @override
   String get expenseUploadLinesInvalidError =>
       'Fill in description, quantity, unit price, and tax rate for all lines';
 
@@ -4545,4 +4682,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vatSummaryTotalsLabel => 'Totals';
+
+  @override
+  String get vatSummaryProvidersTitle => 'Providers';
+
+  @override
+  String get vatSummaryProvidersEmpty => 'No providers for this quarter.';
 }

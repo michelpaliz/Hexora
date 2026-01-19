@@ -31,14 +31,22 @@ class VatSummaryApiException implements Exception {
 
 class VatSummaryApi {
   final String _base = ApiConstants.baseUrl.endsWith('/api')
-      ? '${ApiConstants.baseUrl}/vat/summary'
-      : '${ApiConstants.baseUrl}/api/vat/summary';
+      ? '${ApiConstants.baseUrl}/tax/iva/summary'
+      : '${ApiConstants.baseUrl}/api/tax/iva/summary';
 
-  Uri _u({required int year, required int quarter}) =>
-      Uri.parse(_base).replace(queryParameters: {
-        'year': year.toString(),
-        'quarter': quarter.toString(),
-      });
+  Uri _u({String? groupId, String? from, String? to}) {
+    final params = <String, String>{};
+    if (groupId != null && groupId.trim().isNotEmpty) {
+      params['groupId'] = groupId.trim();
+    }
+    if (from != null && from.trim().isNotEmpty) {
+      params['from'] = from.trim();
+    }
+    if (to != null && to.trim().isNotEmpty) {
+      params['to'] = to.trim();
+    }
+    return Uri.parse(_base).replace(queryParameters: params);
+  }
 
   Future<Map<String, String>> _headers() async {
     final token = await TokenService.loadToken();
@@ -87,10 +95,11 @@ class VatSummaryApi {
   }
 
   Future<Map<String, dynamic>> getSummary({
-    required int year,
-    required int quarter,
+    String? groupId,
+    String? from,
+    String? to,
   }) async {
-    final uri = _u(year: year, quarter: quarter);
+    final uri = _u(groupId: groupId, from: from, to: to);
     final r = await http.get(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,

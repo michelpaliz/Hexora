@@ -22,6 +22,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_side_menu.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_receipts_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/recurring_invoices_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_receipts_flow/screens/receipt_editor/receipt_editor_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/client_classification_store.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
@@ -31,7 +32,13 @@ import 'package:hexora/l10n/app_localizations.dart';
 
 class GroupInvoicesScreen extends StatefulWidget {
   final Group group;
-  const GroupInvoicesScreen({super.key, required this.group});
+  final bool embedded;
+
+  const GroupInvoicesScreen({
+    super.key,
+    required this.group,
+    this.embedded = false,
+  });
 
   @override
   State<GroupInvoicesScreen> createState() => _GroupInvoicesScreenState();
@@ -53,15 +60,19 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   GroupClient? _selectedClient;
   Invoice? _selectedInvoice;
   Receipt? _selectedReceipt;
+  String? _recurringSeriesToOpen;
+  String _menuBeforeInvoiceEditor = 'clients';
+  String? _invoiceEditorClientId;
 
   bool _loading = true;
   String? _error;
   bool _busyProfile = false;
   String _selectedMenu = 'clients';
   bool _businessExpanded = false;
-  bool _totalsExpanded = false;
-  bool _incomeExpanded = true;
-  bool _expensesExpanded = true;
+  bool _facturacionExpanded = true;
+  bool _gastosExpanded = true;
+  bool _impuestosExpanded = true;
+  bool _informesExpanded = false;
   bool _menuCollapsed = false;
 
   @override
@@ -128,7 +139,15 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       );
       return;
     }
-    await Navigator.of(context).push(
+    if (widget.embedded && kIsWeb) {
+      setState(() {
+        _menuBeforeInvoiceEditor = _selectedMenu;
+        _invoiceEditorClientId = _selectedClient?.id;
+        _selectedMenu = 'invoice_editor';
+      });
+      return;
+    }
+    final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => InvoiceEditorScreen(
           group: widget.group,
@@ -137,7 +156,15 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         ),
       ),
     );
-    if (mounted) _loadAll();
+    if (mounted && changed == true) _loadAll();
+  }
+
+  void _closeInlineInvoiceEditor({required bool changed}) {
+    setState(() {
+      _selectedMenu = _menuBeforeInvoiceEditor;
+      _invoiceEditorClientId = null;
+    });
+    if (changed) _loadAll();
   }
 
   Future<void> _openCreateReceipt() async {
@@ -147,30 +174,87 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           .showSnackBar(SnackBar(content: Text(l.noClientsYet)));
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ReceiptEditorScreen(
-          group: widget.group,
-          clients: _clients,
-          initialClientId: _selectedClient?.id,
+    bool? changed;
+    if (widget.embedded && kIsWeb) {
+      changed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) {
+          final media = MediaQuery.of(dialogCtx).size;
+          return Dialog(
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 1200,
+                maxHeight: media.height * 0.92,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ReceiptEditorScreen(
+                  group: widget.group,
+                  clients: _clients,
+                  initialClientId: _selectedClient?.id,
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => ReceiptEditorScreen(
+            group: widget.group,
+            clients: _clients,
+            initialClientId: _selectedClient?.id,
+          ),
         ),
-      ),
-    );
-    if (mounted) _loadAll();
+      );
+    }
+    if (mounted && changed == true) _loadAll();
   }
 
   Future<void> _openEditReceipt(Receipt receipt) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ReceiptEditorScreen(
-          group: widget.group,
-          clients: _clients,
-          initialReceipt: receipt,
-          initialClientId: receipt.clientId,
+    bool? changed;
+    if (widget.embedded && kIsWeb) {
+      changed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) {
+          final media = MediaQuery.of(dialogCtx).size;
+          return Dialog(
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 1200,
+                maxHeight: media.height * 0.92,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ReceiptEditorScreen(
+                  group: widget.group,
+                  clients: _clients,
+                  initialReceipt: receipt,
+                  initialClientId: receipt.clientId,
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => ReceiptEditorScreen(
+            group: widget.group,
+            clients: _clients,
+            initialReceipt: receipt,
+            initialClientId: receipt.clientId,
+          ),
         ),
-      ),
-    );
-    if (mounted) _loadAll();
+      );
+    }
+    if (mounted && changed == true) _loadAll();
   }
 
   Future<void> _openBillingProfile() async {
@@ -201,10 +285,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     setState(() => _businessExpanded = !_businessExpanded);
   }
 
-  void _toggleTotalsExpanded() {
-    setState(() => _totalsExpanded = !_totalsExpanded);
-  }
-
   void _openInvoiceDetail(Invoice invoice) {
     showModalBottomSheet<void>(
       context: context,
@@ -221,6 +301,13 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           ),
         ),
         billingProfile: _billingProfile,
+        onOpenRecurringSeries: (seriesId) {
+          Navigator.of(context).pop();
+          setState(() {
+            _recurringSeriesToOpen = seriesId;
+            _selectedMenu = 'recurring';
+          });
+        },
       ),
     );
   }
@@ -577,6 +664,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isWide = MediaQuery.of(context).size.width >= 980;
 
     Widget body;
     if (_loading) {
@@ -604,19 +692,53 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
               billingProfile: _billingProfile,
               busyProfile: _busyProfile,
               businessExpanded: _businessExpanded,
-              totalsExpanded: _totalsExpanded,
-              incomeExpanded: _incomeExpanded,
-              expensesExpanded: _expensesExpanded,
+              facturacionExpanded: _facturacionExpanded,
+              gastosExpanded: _gastosExpanded,
+              impuestosExpanded: _impuestosExpanded,
+              informesExpanded: _informesExpanded,
               issuedCount: _invoices.length,
               draftsCount: _drafts.length,
               receiptsCount: _receipts.length + _receiptDrafts.length,
+              onCreateInvoice: _openCreateInvoice,
+              onCreateReceipt: _openCreateReceipt,
               onEditBillingProfile: _openBillingProfile,
               onToggleBusinessExpanded: _toggleBusinessExpanded,
-              onToggleTotalsExpanded: _toggleTotalsExpanded,
-              onToggleIncomeExpanded: () =>
-                  setState(() => _incomeExpanded = !_incomeExpanded),
-              onToggleExpensesExpanded: () =>
-                  setState(() => _expensesExpanded = !_expensesExpanded),
+              onToggleFacturacionExpanded: () => setState(() {
+                    final next = !_facturacionExpanded;
+                    if (!isWide && next) {
+                      _gastosExpanded = false;
+                      _impuestosExpanded = false;
+                      _informesExpanded = false;
+                    }
+                    _facturacionExpanded = next;
+                  }),
+              onToggleGastosExpanded: () => setState(() {
+                    final next = !_gastosExpanded;
+                    if (!isWide && next) {
+                      _facturacionExpanded = false;
+                      _impuestosExpanded = false;
+                      _informesExpanded = false;
+                    }
+                    _gastosExpanded = next;
+                  }),
+              onToggleImpuestosExpanded: () => setState(() {
+                    final next = !_impuestosExpanded;
+                    if (!isWide && next) {
+                      _facturacionExpanded = false;
+                      _gastosExpanded = false;
+                      _informesExpanded = false;
+                    }
+                    _impuestosExpanded = next;
+                  }),
+              onToggleInformesExpanded: () => setState(() {
+                    final next = !_informesExpanded;
+                    if (!isWide && next) {
+                      _facturacionExpanded = false;
+                      _gastosExpanded = false;
+                      _impuestosExpanded = false;
+                    }
+                    _informesExpanded = next;
+                  }),
               selectedMenu: _selectedMenu,
               onMenuChanged: (m) => setState(() => _selectedMenu = m),
               collapsed: _menuCollapsed,
@@ -624,68 +746,176 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                   setState(() => _menuCollapsed = !_menuCollapsed),
             ),
             Expanded(
-              child: _selectedMenu == 'clients'
-                  ? GroupInvoicesClientsView(
-                      groupId: widget.group.id,
+              child: _selectedMenu == 'invoice_editor'
+                  ? InvoiceEditorScreen(
+                      group: widget.group,
                       clients: _clients,
-                      selectedClient: _selectedClient,
-                      issuedInvoices: visibleInvoices,
-                      draftInvoices: draftInvoices,
-                      onSelectClient: (c) =>
-                          setState(() => _selectedClient = c),
-                      onCreateInvoice: _openCreateInvoice,
-                      onCreateReceipt: _openCreateReceipt,
-                      onEditSelectedClient: () {
-                        if (_selectedClient != null) {
-                          _openEditClient(_selectedClient!);
-                        }
-                      },
-                      onOpenInvoiceDetail: _openInvoiceDetail,
-                      onDeleteInvoice: _deleteInvoice,
-                      onUpdateClientClassification: _updateClientClassification,
+                      initialClientId: _invoiceEditorClientId,
+                      embedded: true,
+                      onDataChanged: _loadAll,
+                      onClose: (changed) =>
+                          _closeInlineInvoiceEditor(changed: changed),
                     )
-                  : _selectedMenu == 'receipts'
-                      ? GroupReceiptsView(
-                          drafts: _receiptDrafts,
-                          receipts: _receipts,
+                  : _selectedMenu == 'clients' ||
+                          _selectedMenu == 'clients_flow'
+                      ? GroupInvoicesClientsView(
+                          groupId: widget.group.id,
                           clients: _clients,
-                          billingProfile: _billingProfile,
-                          selectedReceipt: _selectedReceipt,
-                          onSelectReceipt: (r) =>
-                              setState(() => _selectedReceipt = r),
+                          selectedClient: _selectedClient,
+                          issuedInvoices: visibleInvoices,
+                          draftInvoices: draftInvoices,
+                          onSelectClient: (c) =>
+                              setState(() => _selectedClient = c),
+                          onCreateInvoice: _openCreateInvoice,
                           onCreateReceipt: _openCreateReceipt,
-                          onEditReceipt: _openEditReceipt,
-                          onIssueReceipt: _issueReceipt,
-                          onDeleteReceipt: _deleteReceipt,
-                          onPreviewPdf: _previewReceiptPdf,
-                          onDownloadPdf: _downloadReceiptPdf,
+                          onEditSelectedClient: () {
+                            if (_selectedClient != null) {
+                              _openEditClient(_selectedClient!);
+                            }
+                          },
+                          onOpenInvoiceDetail: _openInvoiceDetail,
+                          onDeleteInvoice: _deleteInvoice,
+                          onUpdateClientClassification:
+                              _updateClientClassification,
                         )
-                      : _selectedMenu == 'expenses'
-                          ? ExpenseUploadScreen(
-                              embedded: true,
-                              onUploaded: _loadAll,
-                              groupId: widget.group.id,
-                              groupName: widget.group.name,
+                      : _selectedMenu == 'receipts'
+                          ? GroupReceiptsView(
+                              drafts: _receiptDrafts,
+                              receipts: _receipts,
+                              clients: _clients,
+                              billingProfile: _billingProfile,
+                              selectedReceipt: _selectedReceipt,
+                              onSelectReceipt: (r) =>
+                                  setState(() => _selectedReceipt = r),
+                              onCreateReceipt: _openCreateReceipt,
+                              onEditReceipt: _openEditReceipt,
+                              onIssueReceipt: _issueReceipt,
+                              onDeleteReceipt: _deleteReceipt,
+                              onPreviewPdf: _previewReceiptPdf,
+                              onDownloadPdf: _downloadReceiptPdf,
                             )
-                          : _selectedMenu == 'providers'
+                          : _selectedMenu == 'expenses_upload'
                               ? ExpenseUploadScreen(
                                   embedded: true,
-                                  providersOnly: true,
+                                  onUploaded: _loadAll,
+                                  initialTabIndex: 1,
                                   groupId: widget.group.id,
                                   groupName: widget.group.name,
                                 )
-                              : _selectedMenu == 'vat'
-                                  ? VatSummaryView(api: _vatApi)
-                                  : GroupInvoicesInvoicesView(
-                                      drafts: _drafts,
-                                      invoices: _invoices,
-                                      clients: _clients,
-                                      billingProfile: _billingProfile,
-                                      selectedInvoice: _selectedInvoice,
-                                      onSelectInvoice: (inv) => setState(
-                                          () => _selectedInvoice = inv),
-                                      onDeleteInvoice: _deleteInvoice,
-                                    ),
+                              : _selectedMenu == 'expenses_list'
+                                  ? ExpenseUploadScreen(
+                                      embedded: true,
+                                      onUploaded: _loadAll,
+                                      initialTabIndex: 0,
+                                      groupId: widget.group.id,
+                                      groupName: widget.group.name,
+                                    )
+                                  : _selectedMenu == 'providers'
+                                      ? ExpenseUploadScreen(
+                                          embedded: true,
+                                          providersOnly: true,
+                                          groupId: widget.group.id,
+                                          groupName: widget.group.name,
+                                        )
+                                      : _selectedMenu == 'vat'
+                                          ? VatSummaryView(
+                                              api: _vatApi,
+                                              groupId: widget.group.id,
+                                            )
+                                          : _selectedMenu == 'recurring'
+                                              ? RecurringInvoicesScreen(
+                                                  group: widget.group,
+                                                  embedded: true,
+                                                  initialSeriesId:
+                                                      _recurringSeriesToOpen,
+                                                  onSeriesOpened: () =>
+                                                      setState(() =>
+                                                          _recurringSeriesToOpen =
+                                                              null),
+                                                )
+                                              : _selectedMenu ==
+                                                      'invoices_drafts'
+                                                  ? GroupInvoicesInvoicesView(
+                                                      drafts: _drafts,
+                                                      invoices: _invoices,
+                                                      clients: _clients,
+                                                      billingProfile:
+                                                          _billingProfile,
+                                                      selectedInvoice:
+                                                          _selectedInvoice,
+                                                      onSelectInvoice: (inv) =>
+                                                          setState(() =>
+                                                              _selectedInvoice =
+                                                                  inv),
+                                                      onDeleteInvoice:
+                                                          _deleteInvoice,
+                                                      onCreateInvoice:
+                                                          _openCreateInvoice,
+                                                      initialTabIndex: 0,
+                                                      onOpenRecurringSeries:
+                                                          (seriesId) =>
+                                                              setState(() {
+                                                        _recurringSeriesToOpen =
+                                                            seriesId;
+                                                        _selectedMenu =
+                                                            'recurring';
+                                                      }),
+                                                    )
+                                                  : _selectedMenu ==
+                                                          'invoices_issued'
+                                                      ? GroupInvoicesInvoicesView(
+                                                          drafts: _drafts,
+                                                          invoices: _invoices,
+                                                          clients: _clients,
+                                                          billingProfile:
+                                                              _billingProfile,
+                                                          selectedInvoice:
+                                                              _selectedInvoice,
+                                                          onSelectInvoice:
+                                                              (inv) =>
+                                                                  setState(() =>
+                                                                      _selectedInvoice =
+                                                                          inv),
+                                                          onDeleteInvoice:
+                                                              _deleteInvoice,
+                                                          onCreateInvoice:
+                                                              _openCreateInvoice,
+                                                          initialTabIndex: 1,
+                                                          onOpenRecurringSeries:
+                                                              (seriesId) =>
+                                                                  setState(() {
+                                                            _recurringSeriesToOpen =
+                                                                seriesId;
+                                                            _selectedMenu =
+                                                                'recurring';
+                                                          }),
+                                                        )
+                                                      : GroupInvoicesInvoicesView(
+                                                          drafts: _drafts,
+                                                          invoices: _invoices,
+                                                          clients: _clients,
+                                                          billingProfile:
+                                                              _billingProfile,
+                                                          selectedInvoice:
+                                                              _selectedInvoice,
+                                                          onSelectInvoice:
+                                                              (inv) =>
+                                                                  setState(() =>
+                                                                      _selectedInvoice =
+                                                                          inv),
+                                                          onDeleteInvoice:
+                                                              _deleteInvoice,
+                                                          onCreateInvoice:
+                                                              _openCreateInvoice,
+                                                          onOpenRecurringSeries:
+                                                              (seriesId) =>
+                                                                  setState(() {
+                                                            _recurringSeriesToOpen =
+                                                                seriesId;
+                                                            _selectedMenu =
+                                                                'recurring';
+                                                          }),
+                                                        ),
             )
           ],
         ),
@@ -693,9 +923,38 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
 
     final fabIsReceipts = _selectedMenu == 'receipts';
-    final hideFab = _selectedMenu == 'expenses' ||
+    final hideFab = _selectedMenu == 'invoices' ||
+        _selectedMenu == 'invoices_drafts' ||
+        _selectedMenu == 'invoices_issued' ||
+        _selectedMenu == 'invoice_editor' ||
+        _selectedMenu == 'receipts' ||
+        _selectedMenu == 'expenses' ||
+        _selectedMenu == 'expenses_upload' ||
+        _selectedMenu == 'expenses_list' ||
         _selectedMenu == 'providers' ||
-        _selectedMenu == 'vat';
+        _selectedMenu == 'vat' ||
+        _selectedMenu == 'recurring';
+
+    if (widget.embedded && kIsWeb) {
+      return Stack(
+        children: [
+          Positioned.fill(child: body),
+          if (!hideFab)
+            Positioned(
+              right: 20,
+              bottom: 20,
+              child: FloatingActionButton.extended(
+                onPressed:
+                    fabIsReceipts ? _openCreateReceipt : _openCreateInvoice,
+                icon: const Icon(Icons.add),
+                label: Text(
+                  fabIsReceipts ? l.createReceiptCta : l.createInvoiceCta,
+                ),
+              ),
+            ),
+        ],
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(

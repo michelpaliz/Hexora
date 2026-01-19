@@ -225,4 +225,12 @@ class ServiceApi {
     return _decode<Service>(
         r, (j) => Service.fromJson(j as Map<String, dynamic>));
   }
+
+  // DELETE /services/:id
+  Future<bool> delete(String id) async {
+    final r = await http.delete(_u('/$id'), headers: await _headers());
+    if (r.statusCode == 404) return false;
+    _decode<void>(r, (_) => null);
+    return true;
+  }
 }

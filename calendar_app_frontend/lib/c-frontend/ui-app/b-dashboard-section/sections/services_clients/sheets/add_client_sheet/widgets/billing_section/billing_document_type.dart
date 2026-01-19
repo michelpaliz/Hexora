@@ -16,17 +16,13 @@ class BillingDocumentType extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final inputBorder = buildInputBorder(context);
 
     return DropdownButtonFormField<String>(
       initialValue: value,
-      decoration: InputDecoration(
-        labelText: l.billingDocumentType,
-        enabledBorder: inputBorder,
-        focusedBorder: inputBorder.copyWith(
-          borderSide: BorderSide(color: cs.primary, width: 1.5),
-        ),
+      decoration: buildInputDecoration(
+        context,
+        label: l.billingDocumentType,
+        isFilled: true,
       ),
       items: [
         DropdownMenuItem(value: 'invoice', child: Text(l.documentTypeInvoice)),
