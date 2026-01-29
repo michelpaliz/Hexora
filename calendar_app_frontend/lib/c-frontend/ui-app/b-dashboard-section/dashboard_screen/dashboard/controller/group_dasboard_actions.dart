@@ -16,6 +16,13 @@ class DashboardActions {
       return;
     }
 
+    if (section == Sections.emails) {
+      if (!state.canSeeAdmin) return;
+      state.activeSection = section;
+      state.notifyListeners();
+      return;
+    }
+
     switch (section) {
       case Sections.calendar:
         Navigator.pushNamed(
@@ -61,6 +68,9 @@ class DashboardActions {
           AppRoutes.groupInvoices,
           arguments: state.group,
         );
+        break;
+      case Sections.emails:
+        if (!state.canSeeAdmin) return;
         break;
       case Sections.enableBanking:
         Navigator.pushNamed(

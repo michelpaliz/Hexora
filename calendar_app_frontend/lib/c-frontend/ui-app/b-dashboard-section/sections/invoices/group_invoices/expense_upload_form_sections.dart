@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/expenses/expenses_api.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -198,6 +199,7 @@ class ExpenseProviderPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final selected = providers.firstWhere(
       (p) =>
@@ -245,13 +247,23 @@ class ExpenseProviderPicker extends StatelessWidget {
                       child: ListView.separated(
                         shrinkWrap: true,
                         itemCount: filtered.length + 1,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (_, index) {
                           if (index == 0) {
-                            return ListTile(
-                              leading: const Icon(Icons.edit_outlined),
-                              title: Text(l.expenseUploadProviderManualOption),
+                            return ListItemCard(
+                              leading: CircleAvatar(
+                                radius: 16,
+                                backgroundColor:
+                                    cs.primary.withValues(alpha: 0.08),
+                                child: Icon(
+                                  Icons.edit_outlined,
+                                  size: 16,
+                                  color: cs.primary,
+                                ),
+                              ),
+                              title: l.expenseUploadProviderManualOption,
                               selected: selectedId == null,
+                              showLeadingStripe: true,
                               onTap: () {
                                 onSelectProvider(null);
                                 Navigator.of(context).pop();
@@ -264,9 +276,24 @@ class ExpenseProviderPicker extends StatelessWidget {
                                   provider['providerId'])
                               ?.toString();
                           final name = provider['name']?.toString() ?? '-';
-                          return ListTile(
-                            title: Text(name),
+                          return ListItemCard(
+                            leading: CircleAvatar(
+                              radius: 16,
+                              backgroundColor:
+                                  cs.primary.withValues(alpha: 0.08),
+                              child: Text(
+                                name.trim().isEmpty
+                                    ? '?'
+                                    : name.trim()[0].toUpperCase(),
+                                style: t.bodySmall.copyWith(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            title: name,
                             selected: id != null && id == selectedId,
+                            showLeadingStripe: true,
                             onTap: id == null
                                 ? null
                                 : () {
@@ -844,7 +871,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           Expanded(
             child: ListView.separated(
               itemCount: widget.recentUploads.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (_, index) {
                 final item = widget.recentUploads[index];
                 final id = (item['id'] ?? '').toString();
@@ -865,118 +892,116 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                 final shortDate = _shortDate(date);
                 final totalDisplay = _formatAmountOrText(total);
                 final subtitleColor = cs.onSurfaceVariant;
-                final zebra = index.isOdd
-                    ? cs.surfaceContainerHighest.withOpacity(0.35)
-                    : Colors.transparent;
                 final selected = widget.selectedExpense?['id'] == item['id'];
 
-                return Container(
-                  color: selected ? cs.primary.withOpacity(0.08) : zebra,
-                  child: ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    title: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            vendor,
-                            style: t.bodyMedium.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                return ListItemCard(
+                  leading: CircleAvatar(
+                    radius: 16,
+                    backgroundColor: cs.primary.withValues(alpha: 0.08),
+                    child: Icon(
+                      Icons.receipt_long_outlined,
+                      size: 16,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  titleWidget: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          vendor,
+                          style: t.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        if (total.isNotEmpty)
-                          Text(
-                            [
-                              totalDisplay,
-                              if (currency.isNotEmpty) currency,
-                            ].join(' '),
-                            style: t.bodyMedium.copyWith(
-                              color: cs.primary,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                      ],
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 4,
-                        children: [
-                          if (shortDate.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.event_outlined,
-                              label: shortDate,
-                              color: subtitleColor,
-                            ),
-                          if (due.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.calendar_month_outlined,
-                              label: '${l.expenseUploadDueDateLabel}: $due',
-                              color: subtitleColor,
-                            ),
-                          if (invoice.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.tag_outlined,
-                              label: invoice,
-                              color: subtitleColor,
-                            ),
-                          if (tax.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.percent_outlined,
-                              label: '${l.expenseUploadTaxTotalLabel}: $tax',
-                              color: subtitleColor,
-                            ),
-                          if (linesSummary.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.list_alt_outlined,
-                              label:
-                                  '${l.expenseUploadLinesTitle}: $linesSummary',
-                              color: subtitleColor,
-                            ),
-                          if (linesCount.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.list_alt_outlined,
-                              label: '${l.expenseUploadLinesTitle}: $linesCount',
-                              color: subtitleColor,
-                            ),
-                          if (base.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.layers_outlined,
-                              label:
-                                  '${l.expenseUploadLinesSubtotalLabel}: $base',
-                              color: subtitleColor,
-                            ),
-                          if (provider.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.business_outlined,
-                              label: provider,
-                              color: subtitleColor,
-                            ),
-                          if (file.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.attach_file,
-                              label: file,
-                              color: subtitleColor,
-                            ),
-                          if (status.isNotEmpty)
-                            _ExpenseMetaItem(
-                              icon: Icons.flag_outlined,
-                              label: status,
-                              color: subtitleColor,
-                            ),
-                        ],
                       ),
-                    ),
-                    trailing: IconButton(
-                      tooltip: l.remove,
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed:
-                          id.isEmpty ? null : () => widget.onDeleteExpense(id),
-                    ),
-                    onTap: () => widget.onSelectExpense(item),
+                      if (total.isNotEmpty)
+                        Text(
+                          [
+                            totalDisplay,
+                            if (currency.isNotEmpty) currency,
+                          ].join(' '),
+                          style: t.bodyMedium.copyWith(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                    ],
                   ),
+                  subtitleWidget: Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: [
+                      if (shortDate.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.event_outlined,
+                          label: shortDate,
+                          color: subtitleColor,
+                        ),
+                      if (due.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.calendar_month_outlined,
+                          label: '${l.expenseUploadDueDateLabel}: $due',
+                          color: subtitleColor,
+                        ),
+                      if (invoice.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.tag_outlined,
+                          label: invoice,
+                          color: subtitleColor,
+                        ),
+                      if (tax.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.percent_outlined,
+                          label: '${l.expenseUploadTaxTotalLabel}: $tax',
+                          color: subtitleColor,
+                        ),
+                      if (linesSummary.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.list_alt_outlined,
+                          label: '${l.expenseUploadLinesTitle}: $linesSummary',
+                          color: subtitleColor,
+                        ),
+                      if (linesCount.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.list_alt_outlined,
+                          label: '${l.expenseUploadLinesTitle}: $linesCount',
+                          color: subtitleColor,
+                        ),
+                      if (base.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.layers_outlined,
+                          label: '${l.expenseUploadLinesSubtotalLabel}: $base',
+                          color: subtitleColor,
+                        ),
+                      if (provider.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.business_outlined,
+                          label: provider,
+                          color: subtitleColor,
+                        ),
+                      if (file.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.attach_file,
+                          label: file,
+                          color: subtitleColor,
+                        ),
+                      if (status.isNotEmpty)
+                        _ExpenseMetaItem(
+                          icon: Icons.flag_outlined,
+                          label: status,
+                          color: subtitleColor,
+                        ),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    tooltip: l.remove,
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed:
+                        id.isEmpty ? null : () => widget.onDeleteExpense(id),
+                  ),
+                  selected: selected,
+                  showLeadingStripe: true,
+                  onTap: () => widget.onSelectExpense(item),
                 );
               },
             ),
@@ -1090,8 +1115,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                               if (due.isNotEmpty)
                                 _ExpenseMetaItem(
                                   icon: Icons.calendar_month_outlined,
-                                  label:
-                                      '${l.expenseUploadDueDateLabel}: $due',
+                                  label: '${l.expenseUploadDueDateLabel}: $due',
                                   color: cs.onSurfaceVariant,
                                 ),
                               if (invoice.isNotEmpty)

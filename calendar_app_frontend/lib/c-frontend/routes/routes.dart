@@ -119,9 +119,17 @@ final Map<String, WidgetBuilder> routes = {
     return ServicesClientsScreen(group: group);
   },
   AppRoutes.groupInvoices: (context) {
-    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    Group? group;
+    String? initialMenu;
+    if (args is Group) {
+      group = args;
+    } else if (args is Map) {
+      group = args['group'] as Group?;
+      initialMenu = args['initialMenu']?.toString();
+    }
     if (group == null) return const SizedBox.shrink();
-    return GroupInvoicesScreen(group: group);
+    return GroupInvoicesScreen(group: group, initialMenu: initialMenu);
   },
   AppRoutes.recurringInvoices: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;

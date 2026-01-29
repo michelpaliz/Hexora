@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/invoice/invoice_line.dart';
+import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -13,6 +15,7 @@ class InvoiceListItem extends StatefulWidget {
   final GroupClient client;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final bool selected;
 
   const InvoiceListItem({
     super.key,
@@ -20,6 +23,7 @@ class InvoiceListItem extends StatefulWidget {
     required this.client,
     this.onTap,
     this.onDelete,
+    this.selected = false,
   });
 
   @override
@@ -27,6 +31,7 @@ class InvoiceListItem extends StatefulWidget {
 }
 
 class _InvoiceListItemState extends State<InvoiceListItem> {
+  final _invoicesApi = InvoicesApi();
   final _linesApi = InvoiceLinesApi();
   bool _loadingMeta = false;
   String? _metaError;
@@ -35,6 +40,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   num? _taxTotal;
   num? _total;
   bool _breakdownExpanded = false;
+  bool _downloadingPdf = false;
 
   @override
   void initState() {
@@ -122,6 +128,50 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
   }
 
+  String _fileNameFromHeaders(Map<String, String> headers) {
+    final raw = headers['content-disposition'] ?? headers['Content-Disposition'];
+    if (raw != null && raw.isNotEmpty) {
+      final utf8Match =
+          RegExp(r"filename\\*=UTF-8''([^;]+)", caseSensitive: false)
+              .firstMatch(raw);
+      if (utf8Match != null) {
+        final name = Uri.decodeComponent(utf8Match.group(1)!);
+        if (name.trim().isNotEmpty) return name;
+      }
+      final match =
+          RegExp(r'filename="?([^";]+)"?', caseSensitive: false).firstMatch(raw);
+      if (match != null) {
+        final name = match.group(1);
+        if (name != null && name.trim().isNotEmpty) return name.trim();
+      }
+    }
+    final fallback = widget.invoice.invoiceNumber.trim().isNotEmpty
+        ? widget.invoice.invoiceNumber.trim()
+        : widget.invoice.id.trim();
+    return fallback.endsWith('.pdf') ? fallback : 'invoice-$fallback.pdf';
+  }
+
+  Future<void> _downloadPdf() async {
+    if (_downloadingPdf) return;
+    if (widget.invoice.id.trim().isEmpty) return;
+    setState(() => _downloadingPdf = true);
+    try {
+      final r = await _invoicesApi.downloadPdf(widget.invoice.id);
+      final fileName = _fileNameFromHeaders(r.headers);
+      await launchFileDownload(
+        r.bodyBytes,
+        fileName: fileName,
+        mimeType: 'application/pdf',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _downloadingPdf = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -148,11 +198,25 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final totalLabel =
         _total == null ? (_loadingMeta ? '…' : dash) : money.format(_total);
     final hasBreakdown = _subtotal != null || _taxTotal != null;
+    final selected = widget.selected;
+    final cardColor = selected
+        ? cs.primaryContainer.withValues(alpha: 0.45)
+        : cs.surface;
+    final borderColor = selected
+        ? cs.primary.withValues(alpha: 0.7)
+        : cs.outlineVariant.withValues(alpha: 0.4);
 
     return Card(
-      elevation: 3,
+      elevation: selected ? 2 : 1,
+      color: cardColor,
       shadowColor: ThemeColors.cardShadow(context),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: borderColor,
+          width: selected ? 1.2 : 1,
+        ),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -163,12 +227,12 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                radius: 18,
-                backgroundColor: cs.primary.withValues(alpha: 0.12),
+                radius: 16,
+                backgroundColor: cs.primary.withValues(alpha: 0.08),
                 child: Icon(
                   Icons.receipt_long_outlined,
-                  color: cs.primary,
-                  size: 18,
+                  color: cs.onSurfaceVariant,
+                  size: 16,
                 ),
               ),
               const SizedBox(width: 10),
@@ -176,36 +240,54 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      client.name,
-                      style: t.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (invoice.recurringSeriesId?.trim().isNotEmpty == true)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: cs.primaryContainer,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
+                    Row(
+                      children: [
+                        Expanded(
                           child: Text(
-                            'Recurrente',
-                            style: t.bodySmall.copyWith(
-                              color: cs.onPrimaryContainer,
-                              fontWeight: FontWeight.w700,
+                            client.name,
+                            style: t.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: cs.onSurface,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ),
+                        Text(
+                          totalLabel,
+                          style: t.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (invoice.recurringSeriesId?.trim().isNotEmpty == true)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cs.primaryContainer,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              '${l.createdByLabel} ${l.invoiceRecurringLabel.toLowerCase()}',
+                              style: t.bodySmall.copyWith(
+                                color: cs.onPrimaryContainer,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        _StatusPill(status: invoice.status ?? 'draft'),
+                      ],
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       [
@@ -213,21 +295,17 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                         dateLabel,
                         if (linesCountLabel != dash)
                           '${l.invoiceLinesTitle}: $linesCountLabel',
+                        if (invoice.occurrenceDate != null)
+                          DateFormat.yMMMd(l.localeName)
+                              .add_Hm()
+                              .format(invoice.occurrenceDate!),
                       ].where((e) => e.trim().isNotEmpty).join(' · '),
                       style: t.bodySmall.copyWith(
                         color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      totalLabel,
-                      style: t.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
                     ),
                     if (_breakdownExpanded && hasBreakdown) ...[
                       const SizedBox(height: 6),
@@ -277,8 +355,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _StatusPill(status: invoice.status ?? 'draft'),
-                  const SizedBox(height: 4),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -293,21 +369,33 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                             _breakdownExpanded
                                 ? Icons.expand_less
                                 : Icons.expand_more,
-                            color: cs.onSurfaceVariant,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                         ),
+                      _downloadingPdf
+                          ? const SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : IconButton(
+                              tooltip: l.download,
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(Icons.download_outlined),
+                              onPressed: _downloadPdf,
+                            ),
                       if (widget.onDelete != null)
                         IconButton(
                           tooltip: l.delete,
                           visualDensity: VisualDensity.compact,
                           icon: const Icon(Icons.delete_outline),
-                          color: cs.error,
+                          color: cs.error.withValues(alpha: 0.8),
                           onPressed: widget.onDelete,
                         )
                       else
                         Icon(
                           Icons.chevron_right,
-                          color: cs.onSurfaceVariant,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                         ),
                     ],
                   ),
@@ -331,22 +419,25 @@ class _StatusPill extends StatelessWidget {
     final t = AppTypography.of(context);
     final normalized = status.toLowerCase();
     final bool issued = normalized.contains('issue');
-    final Color bg =
-        issued ? cs.secondaryContainer : cs.surfaceContainerHighest;
+    final Color bg = issued
+        ? cs.secondaryContainer
+        : cs.surface.withValues(alpha: 0.5);
     final Color fg = issued ? cs.onSecondaryContainer : cs.onSurfaceVariant;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: issued ? 0.2 : 0.25),
+        ),
       ),
       child: Text(
         normalized.isEmpty ? 'draft' : normalized,
         style: t.bodySmall.copyWith(
           color: fg,
-          fontWeight: FontWeight.w700,
-          letterSpacing: .2,
+          fontWeight: FontWeight.w600,
+          letterSpacing: .1,
         ),
       ),
     );

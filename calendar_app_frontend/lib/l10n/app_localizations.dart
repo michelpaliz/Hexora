@@ -5470,6 +5470,246 @@ abstract class AppLocalizations {
   /// **'Invoice lines'**
   String get invoiceLinesTitle;
 
+  /// No description provided for @invoiceBlocksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice blocks'**
+  String get invoiceBlocksTitle;
+
+  /// No description provided for @invoiceBlocksModeBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks'**
+  String get invoiceBlocksModeBlocks;
+
+  /// No description provided for @invoiceBlocksModeLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines'**
+  String get invoiceBlocksModeLines;
+
+  /// No description provided for @invoiceAddBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Add block'**
+  String get invoiceAddBlock;
+
+  /// No description provided for @invoiceBlocksInfoTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks let you mix items with headers, notes, and checklists. Only billable items affect totals.'**
+  String get invoiceBlocksInfoTooltip;
+
+  /// No description provided for @invoiceBlocksEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Start your invoice with blocks (Date, Section, Items...).'**
+  String get invoiceBlocksEmptyMessage;
+
+  /// No description provided for @invoiceBlocksQuickItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get invoiceBlocksQuickItem;
+
+  /// No description provided for @invoiceBlocksQuickDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get invoiceBlocksQuickDate;
+
+  /// No description provided for @invoiceHeaderCompactCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact header'**
+  String get invoiceHeaderCompactCta;
+
+  /// No description provided for @invoiceHeaderExpandCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand header'**
+  String get invoiceHeaderExpandCta;
+
+  /// No description provided for @invoiceBlockAdvancedShowCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get invoiceBlockAdvancedShowCta;
+
+  /// No description provided for @invoiceBlockAdvancedHideCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide advanced'**
+  String get invoiceBlockAdvancedHideCta;
+
+  /// No description provided for @invoiceAddBlockMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More...'**
+  String get invoiceAddBlockMore;
+
+  /// No description provided for @invoiceAddBlockRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get invoiceAddBlockRecommended;
+
+  /// No description provided for @invoiceAddBlockFooterInsert.
+  ///
+  /// In en, this message translates to:
+  /// **'Will be added below the current block'**
+  String get invoiceAddBlockFooterInsert;
+
+  /// No description provided for @invoiceAddBlockFooterOutsideWrapper.
+  ///
+  /// In en, this message translates to:
+  /// **'Will be added outside the grouped block'**
+  String get invoiceAddBlockFooterOutsideWrapper;
+
+  /// No description provided for @invoiceWrapperAddInsideLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add inside'**
+  String get invoiceWrapperAddInsideLabel;
+
+  /// No description provided for @invoiceBlockDateAutoFormatCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Use auto format'**
+  String get invoiceBlockDateAutoFormatCta;
+
+  /// No description provided for @invoiceBlockTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Block type'**
+  String get invoiceBlockTypeLabel;
+
+  /// No description provided for @invoiceBlockTypeItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get invoiceBlockTypeItem;
+
+  /// No description provided for @invoiceBlockTypeDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get invoiceBlockTypeDate;
+
+  /// No description provided for @invoiceBlockTypeSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Section'**
+  String get invoiceBlockTypeSection;
+
+  /// No description provided for @invoiceBlockTypeSubsection.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsection'**
+  String get invoiceBlockTypeSubsection;
+
+  /// No description provided for @invoiceBlockTypeDivider.
+  ///
+  /// In en, this message translates to:
+  /// **'Divider'**
+  String get invoiceBlockTypeDivider;
+
+  /// No description provided for @invoiceBlockTypeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get invoiceBlockTypeNote;
+
+  /// No description provided for @invoiceBlockTypeChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist'**
+  String get invoiceBlockTypeChecklist;
+
+  /// No description provided for @invoiceBlockSkuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'SKU'**
+  String get invoiceBlockSkuLabel;
+
+  /// No description provided for @invoiceBlockUnitLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get invoiceBlockUnitLabel;
+
+  /// No description provided for @invoiceBlockLevelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level'**
+  String get invoiceBlockLevelLabel;
+
+  /// No description provided for @invoiceBlockBillableLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Billable item'**
+  String get invoiceBlockBillableLabel;
+
+  /// No description provided for @invoiceBlockTitleLabelDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date title'**
+  String get invoiceBlockTitleLabelDate;
+
+  /// No description provided for @invoiceBlockTitleLabelSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Section title'**
+  String get invoiceBlockTitleLabelSection;
+
+  /// No description provided for @invoiceBlockTitleLabelSubsection.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsection title'**
+  String get invoiceBlockTitleLabelSubsection;
+
+  /// No description provided for @invoiceBlockNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get invoiceBlockNoteLabel;
+
+  /// No description provided for @invoiceBlockChecklistItemLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist item'**
+  String get invoiceBlockChecklistItemLabel;
+
+  /// No description provided for @invoiceBlockAddChecklistItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Add checklist item'**
+  String get invoiceBlockAddChecklistItem;
+
+  /// No description provided for @invoiceBlockMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get invoiceBlockMoveUp;
+
+  /// No description provided for @invoiceBlockMoveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get invoiceBlockMoveDown;
+
+  /// No description provided for @invoiceValidationNonNegative.
+  ///
+  /// In en, this message translates to:
+  /// **'Must be 0 or higher'**
+  String get invoiceValidationNonNegative;
+
+  /// No description provided for @invoiceValidationTaxRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax rate must be 0-100'**
+  String get invoiceValidationTaxRate;
+
   /// No description provided for @invoiceLinesPlaceholderTitle.
   ///
   /// In en, this message translates to:
@@ -5505,6 +5745,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Change'**
   String get change;
+
+  /// Label for step indicator (e.g., Step 2 of 4)
+  ///
+  /// In en, this message translates to:
+  /// **'Step'**
+  String get stepLabel;
+
+  /// Separator for step indicator (e.g., Step 2 of 4)
+  ///
+  /// In en, this message translates to:
+  /// **'of'**
+  String get ofLabel;
 
   /// No description provided for @fieldIsRequired.
   ///
@@ -5583,6 +5835,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total'**
   String get invoiceTotalLabel;
+
+  /// No description provided for @invoiceTotalsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals'**
+  String get invoiceTotalsTitle;
 
   /// No description provided for @invoiceEditorTitle.
   ///
@@ -5680,11 +5938,95 @@ abstract class AppLocalizations {
   /// **'PDF'**
   String get invoicePdfCta;
 
+  /// No description provided for @invoicePdfDownloadCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Download PDF'**
+  String get invoicePdfDownloadCta;
+
+  /// No description provided for @invoiceOpenCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Open invoice'**
+  String get invoiceOpenCta;
+
+  /// No description provided for @invoiceBillingNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Client billing details'**
+  String get invoiceBillingNameTitle;
+
+  /// No description provided for @invoiceBillingNameEditCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit client billing details'**
+  String get invoiceBillingNameEditCta;
+
+  /// No description provided for @invoiceBillingNameCurrentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current billing name'**
+  String get invoiceBillingNameCurrentLabel;
+
+  /// No description provided for @invoiceBillingNameNewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing name'**
+  String get invoiceBillingNameNewLabel;
+
+  /// No description provided for @invoiceBillingNameReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get invoiceBillingNameReasonLabel;
+
+  /// No description provided for @invoiceBillingNameNewRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing name is required'**
+  String get invoiceBillingNameNewRequired;
+
+  /// No description provided for @invoiceBillingNameUpdateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Client billing details updated'**
+  String get invoiceBillingNameUpdateSuccess;
+
+  /// No description provided for @invoiceChangeHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get invoiceChangeHistoryTitle;
+
+  /// No description provided for @invoiceChangeHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes yet.'**
+  String get invoiceChangeHistoryEmpty;
+
+  /// No description provided for @reasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason'**
+  String get reasonLabel;
+
+  /// No description provided for @updatedByLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated by'**
+  String get updatedByLabel;
+
   /// No description provided for @invoicePreviewCta.
   ///
   /// In en, this message translates to:
   /// **'Preview (PDF)'**
   String get invoicePreviewCta;
+
+  /// No description provided for @invoiceSendCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Send invoice'**
+  String get invoiceSendCta;
 
   /// No description provided for @invoiceStepsTitle.
   ///
@@ -5938,6 +6280,30 @@ abstract class AppLocalizations {
   /// **'Could not save draft. Please try again.'**
   String get invoiceDraftSaveFailedSnack;
 
+  /// No description provided for @invoiceDraftRemoveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove draft?'**
+  String get invoiceDraftRemoveTitle;
+
+  /// No description provided for @invoiceDraftRemoveMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will delete the current draft.'**
+  String get invoiceDraftRemoveMessage;
+
+  /// No description provided for @invoiceDraftRemovedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft removed'**
+  String get invoiceDraftRemovedSnack;
+
+  /// No description provided for @invoiceDraftRemoveFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remove draft. Please try again.'**
+  String get invoiceDraftRemoveFailedSnack;
+
   /// No description provided for @invoiceIssueSuccessSnack.
   ///
   /// In en, this message translates to:
@@ -5955,6 +6321,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not generate PDF preview. Please try again.'**
   String get invoicePdfPreviewFailedSnack;
+
+  /// No description provided for @invoiceSortByNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by number'**
+  String get invoiceSortByNumberLabel;
+
+  /// No description provided for @invoiceSortByNumberRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Most recent'**
+  String get invoiceSortByNumberRecent;
+
+  /// No description provided for @invoiceSortByNumberAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Number (ascending)'**
+  String get invoiceSortByNumberAsc;
+
+  /// No description provided for @invoiceSortByNumberDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Number (descending)'**
+  String get invoiceSortByNumberDesc;
+
+  /// No description provided for @invoiceStatusDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get invoiceStatusDraft;
+
+  /// No description provided for @invoiceStatusSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get invoiceStatusSent;
+
+  /// No description provided for @invoiceStatusPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get invoiceStatusPaid;
+
+  /// No description provided for @invoiceStatusOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get invoiceStatusOverdue;
+
+  /// No description provided for @invoiceStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get invoiceStatusCancelled;
+
+  /// No description provided for @invoiceStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get invoiceStatusUnknown;
+
+  /// No description provided for @invoiceRecurringLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring'**
+  String get invoiceRecurringLabel;
+
+  /// No description provided for @invoiceEmailSettingsChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking email settings...'**
+  String get invoiceEmailSettingsChecking;
+
+  /// No description provided for @invoiceEmailSettingsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Email settings unavailable'**
+  String get invoiceEmailSettingsUnavailable;
+
+  /// No description provided for @invoiceEmailSettingsConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Email sending is configured ✅'**
+  String get invoiceEmailSettingsConfigured;
+
+  /// No description provided for @invoiceEmailSettingsNeedsSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Email sending needs setup ⚠️'**
+  String get invoiceEmailSettingsNeedsSetup;
+
+  /// No description provided for @invoiceEmailConfigureCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure email'**
+  String get invoiceEmailConfigureCta;
+
+  /// No description provided for @invoiceEmailCopyLinkCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy invoice link'**
+  String get invoiceEmailCopyLinkCta;
+
+  /// No description provided for @invoiceEmailNoSentYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No email sent yet'**
+  String get invoiceEmailNoSentYet;
+
+  /// No description provided for @invoiceEmailHistoryShowCta.
+  ///
+  /// In en, this message translates to:
+  /// **'View history'**
+  String get invoiceEmailHistoryShowCta;
+
+  /// No description provided for @invoiceEmailHistoryHideCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide history'**
+  String get invoiceEmailHistoryHideCta;
+
+  /// No description provided for @invoiceEmailNoHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No email history yet.'**
+  String get invoiceEmailNoHistory;
+
+  /// No description provided for @invoiceEmailResentSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice email resent'**
+  String get invoiceEmailResentSnack;
+
+  /// No description provided for @invoiceEmailDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email details'**
+  String get invoiceEmailDetailsTitle;
+
+  /// No description provided for @invoiceEmailStatusNotSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sent'**
+  String get invoiceEmailStatusNotSent;
+
+  /// No description provided for @invoiceEmailLogToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get invoiceEmailLogToLabel;
+
+  /// No description provided for @invoiceEmailLogCcLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'CC'**
+  String get invoiceEmailLogCcLabel;
+
+  /// No description provided for @invoiceEmailViewDetailsCta.
+  ///
+  /// In en, this message translates to:
+  /// **'View details'**
+  String get invoiceEmailViewDetailsCta;
+
+  /// No description provided for @invoiceEmailResendCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get invoiceEmailResendCta;
+
+  /// No description provided for @invoiceEmailResendingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Resending...'**
+  String get invoiceEmailResendingLabel;
+
+  /// No description provided for @invoiceEmailSubjectTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice {invoiceNumber}'**
+  String invoiceEmailSubjectTemplate(Object invoiceNumber);
+
+  /// No description provided for @invoiceEmailMessageTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi {clientName},\n\nPlease find your invoice {invoiceNumber} attached.\n\nThanks,'**
+  String invoiceEmailMessageTemplate(Object clientName, Object invoiceNumber);
+
+  /// No description provided for @invoiceEmailSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send invoice'**
+  String get invoiceEmailSheetTitle;
+
+  /// No description provided for @invoiceEmailSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose and preview your invoice email.'**
+  String get invoiceEmailSheetSubtitle;
+
+  /// No description provided for @invoiceEmailAttachPdfLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach PDF'**
+  String get invoiceEmailAttachPdfLabel;
+
+  /// No description provided for @invoiceEmailSendLinkLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Send link'**
+  String get invoiceEmailSendLinkLabel;
+
+  /// No description provided for @invoiceEmailTabEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get invoiceEmailTabEdit;
+
+  /// No description provided for @invoiceEmailTabPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get invoiceEmailTabPreview;
+
+  /// No description provided for @invoiceEmailToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get invoiceEmailToLabel;
+
+  /// No description provided for @invoiceEmailCcLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'CC (optional)'**
+  String get invoiceEmailCcLabel;
+
+  /// No description provided for @invoiceEmailSubjectLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get invoiceEmailSubjectLabel;
+
+  /// No description provided for @invoiceEmailMessageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get invoiceEmailMessageLabel;
+
+  /// No description provided for @invoiceEmailNoPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'No preview yet. Tap refresh to generate.'**
+  String get invoiceEmailNoPreview;
+
+  /// No description provided for @invoiceEmailPreviewRefreshCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh preview'**
+  String get invoiceEmailPreviewRefreshCta;
+
+  /// No description provided for @invoiceEmailSendCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get invoiceEmailSendCta;
+
+  /// No description provided for @invoiceEmailSendingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending...'**
+  String get invoiceEmailSendingLabel;
+
+  /// No description provided for @invoiceEmailSentAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent {timestamp}'**
+  String invoiceEmailSentAtLabel(Object timestamp);
 
   /// No description provided for @invoiceLogoTitle.
   ///
@@ -6195,6 +6837,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Classification'**
   String get clientClassificationSectionTitle;
+
+  /// No description provided for @clientClassificationAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add classification'**
+  String get clientClassificationAddTitle;
+
+  /// No description provided for @clientClassificationTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get clientClassificationTypeLabel;
+
+  /// No description provided for @clientClassificationNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get clientClassificationNameLabel;
+
+  /// No description provided for @clientClassificationSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a classification to see assignments'**
+  String get clientClassificationSelectHint;
+
+  /// No description provided for @clientClassificationAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned clients ({count})'**
+  String clientClassificationAssignedCount(int count);
+
+  /// No description provided for @clientClassificationNoClients.
+  ///
+  /// In en, this message translates to:
+  /// **'No clients assigned yet.'**
+  String get clientClassificationNoClients;
 
   /// No description provided for @clientClassificationExpandTooltip.
   ///
@@ -8451,6 +9129,1165 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No providers for this quarter.'**
   String get vatSummaryProvidersEmpty;
+
+  /// No description provided for @recurringInvoicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring invoices'**
+  String get recurringInvoicesTitle;
+
+  /// No description provided for @recurringInvoicesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create and automate billing schedules.'**
+  String get recurringInvoicesSubtitle;
+
+  /// No description provided for @recurringInvoicesRefreshCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get recurringInvoicesRefreshCta;
+
+  /// No description provided for @recurringInvoicesCreateCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Create series'**
+  String get recurringInvoicesCreateCta;
+
+  /// No description provided for @recurringInvoicesStatusFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get recurringInvoicesStatusFilterLabel;
+
+  /// No description provided for @recurringInvoicesStatusAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get recurringInvoicesStatusAll;
+
+  /// No description provided for @recurringInvoicesStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get recurringInvoicesStatusActive;
+
+  /// No description provided for @recurringInvoicesStatusPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get recurringInvoicesStatusPaused;
+
+  /// No description provided for @recurringInvoicesStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get recurringInvoicesStatusCancelled;
+
+  /// No description provided for @recurringInvoicesStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get recurringInvoicesStatusCompleted;
+
+  /// No description provided for @recurringInvoicesClientFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Client'**
+  String get recurringInvoicesClientFilterLabel;
+
+  /// No description provided for @recurringInvoicesDueSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Due soon'**
+  String get recurringInvoicesDueSoon;
+
+  /// No description provided for @recurringInvoicesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No recurring invoices yet.'**
+  String get recurringInvoicesEmpty;
+
+  /// No description provided for @recurringInvoicesNextRunLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get recurringInvoicesNextRunLabel;
+
+  /// No description provided for @recurringInvoicesPreviewCta.
+  ///
+  /// In en, this message translates to:
+  /// **'View upcoming invoices'**
+  String get recurringInvoicesPreviewCta;
+
+  /// No description provided for @recurringInvoicesPauseCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get recurringInvoicesPauseCta;
+
+  /// No description provided for @recurringInvoicesResumeCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get recurringInvoicesResumeCta;
+
+  /// No description provided for @recurringInvoicesCancelCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel series'**
+  String get recurringInvoicesCancelCta;
+
+  /// No description provided for @recurringInvoicesRunNowCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Run now'**
+  String get recurringInvoicesRunNowCta;
+
+  /// No description provided for @recurringInvoicesNoRunsSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending invoices to generate.'**
+  String get recurringInvoicesNoRunsSnack;
+
+  /// No description provided for @recurringInvoicesRunCreatedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices created: {count}'**
+  String recurringInvoicesRunCreatedSnack(Object count);
+
+  /// No description provided for @recurringInvoicesCreateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring series created'**
+  String get recurringInvoicesCreateSuccess;
+
+  /// No description provided for @recurringInvoicesCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create recurring series. Please try again.'**
+  String get recurringInvoicesCreateFailed;
+
+  /// No description provided for @recurringInvoicesChangesNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes only affect future invoices; generated invoices are snapshots.'**
+  String get recurringInvoicesChangesNote;
+
+  /// No description provided for @recurringInvoicesRuleTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule'**
+  String get recurringInvoicesRuleTab;
+
+  /// No description provided for @recurringInvoicesTemplateTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Template'**
+  String get recurringInvoicesTemplateTab;
+
+  /// No description provided for @recurringInvoicesGeneratedTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated'**
+  String get recurringInvoicesGeneratedTab;
+
+  /// No description provided for @recurringInvoicesSeriesInvoicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices from this series'**
+  String get recurringInvoicesSeriesInvoicesTitle;
+
+  /// No description provided for @recurringInvoicesSeriesInvoicesCta.
+  ///
+  /// In en, this message translates to:
+  /// **'View generated invoices'**
+  String get recurringInvoicesSeriesInvoicesCta;
+
+  /// No description provided for @recurringInvoicesSeriesInvoicesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Load all invoices generated by this recurrence.'**
+  String get recurringInvoicesSeriesInvoicesHint;
+
+  /// No description provided for @recurringInvoicesSeriesInvoicesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No invoices generated yet.'**
+  String get recurringInvoicesSeriesInvoicesEmpty;
+
+  /// No description provided for @recurringInvoicesActivityTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get recurringInvoicesActivityTab;
+
+  /// No description provided for @recurringInvoicesSaveRuleCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Save rule'**
+  String get recurringInvoicesSaveRuleCta;
+
+  /// No description provided for @recurringInvoicesSavingRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving...'**
+  String get recurringInvoicesSavingRule;
+
+  /// No description provided for @recurringInvoicesSaveTemplateCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Save template'**
+  String get recurringInvoicesSaveTemplateCta;
+
+  /// No description provided for @recurringInvoicesSavingTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving...'**
+  String get recurringInvoicesSavingTemplate;
+
+  /// No description provided for @recurringInvoicesGeneratedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated invoices appear in Drafts.'**
+  String get recurringInvoicesGeneratedHint;
+
+  /// No description provided for @recurringInvoicesActivityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity coming soon.'**
+  String get recurringInvoicesActivityHint;
+
+  /// No description provided for @recurringInvoicesCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create series'**
+  String get recurringInvoicesCreateTitle;
+
+  /// No description provided for @recurringInvoicesStepClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Client'**
+  String get recurringInvoicesStepClient;
+
+  /// No description provided for @recurringInvoicesStepTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Template'**
+  String get recurringInvoicesStepTemplate;
+
+  /// No description provided for @recurringInvoicesStepSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get recurringInvoicesStepSchedule;
+
+  /// No description provided for @recurringInvoicesStepPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get recurringInvoicesStepPreview;
+
+  /// No description provided for @recurringInvoicesNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get recurringInvoicesNameLabel;
+
+  /// No description provided for @recurringInvoicesNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name required'**
+  String get recurringInvoicesNameRequired;
+
+  /// No description provided for @recurringInvoicesFrequencyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Frequency'**
+  String get recurringInvoicesFrequencyLabel;
+
+  /// No description provided for @recurringInvoicesIntervalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Interval'**
+  String get recurringInvoicesIntervalLabel;
+
+  /// No description provided for @recurringInvoicesStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get recurringInvoicesStartLabel;
+
+  /// No description provided for @recurringInvoicesTimeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get recurringInvoicesTimeLabel;
+
+  /// No description provided for @recurringInvoicesLocalTimeHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled in your local time ({timezone}). Saved as UTC.'**
+  String recurringInvoicesLocalTimeHelper(Object timezone);
+
+  /// No description provided for @recurringInvoicesLocalTimeSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected: {local} ({timezone}) · Saved: {utc} UTC'**
+  String recurringInvoicesLocalTimeSummary(
+      Object local, Object timezone, Object utc);
+
+  /// No description provided for @recurringInvoicesEndLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get recurringInvoicesEndLabel;
+
+  /// No description provided for @recurringInvoicesEndNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get recurringInvoicesEndNever;
+
+  /// No description provided for @recurringInvoicesEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Until date'**
+  String get recurringInvoicesEndDate;
+
+  /// No description provided for @recurringInvoicesEndCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Occurrences'**
+  String get recurringInvoicesEndCount;
+
+  /// No description provided for @recurringInvoicesEndDateSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select date'**
+  String get recurringInvoicesEndDateSelect;
+
+  /// No description provided for @recurringInvoicesEndDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Until: {date}'**
+  String recurringInvoicesEndDateLabel(Object date);
+
+  /// No description provided for @recurringInvoicesCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of invoices'**
+  String get recurringInvoicesCountLabel;
+
+  /// No description provided for @recurringInvoicesBillDayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing day (1-31)'**
+  String get recurringInvoicesBillDayLabel;
+
+  /// No description provided for @recurringInvoicesBillDayHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'If the month lacks that day, the last day is used.'**
+  String get recurringInvoicesBillDayHelper;
+
+  /// No description provided for @recurringInvoicesWeekDayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday (0-6)'**
+  String get recurringInvoicesWeekDayLabel;
+
+  /// No description provided for @recurringInvoicesWeekDayHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'0=Sunday, 6=Saturday.'**
+  String get recurringInvoicesWeekDayHelper;
+
+  /// No description provided for @recurringInvoicesTimezoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Timezone'**
+  String get recurringInvoicesTimezoneLabel;
+
+  /// No description provided for @recurringInvoicesExceptionsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Exceptions'**
+  String get recurringInvoicesExceptionsLabel;
+
+  /// No description provided for @recurringInvoicesAddExceptionCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Add date'**
+  String get recurringInvoicesAddExceptionCta;
+
+  /// No description provided for @recurringInvoicesNoExceptions.
+  ///
+  /// In en, this message translates to:
+  /// **'No exceptions.'**
+  String get recurringInvoicesNoExceptions;
+
+  /// No description provided for @recurringInvoicesPreviewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No dates calculated yet.'**
+  String get recurringInvoicesPreviewEmpty;
+
+  /// No description provided for @recurringInvoicesPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming invoices'**
+  String get recurringInvoicesPreviewTitle;
+
+  /// No description provided for @recurringInvoicesPreviewDialogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No dates calculated.'**
+  String get recurringInvoicesPreviewDialogEmpty;
+
+  /// No description provided for @recurringInvoicesContinueCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get recurringInvoicesContinueCta;
+
+  /// No description provided for @recurringInvoicesBackCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get recurringInvoicesBackCta;
+
+  /// No description provided for @recurringFrequencyDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get recurringFrequencyDaily;
+
+  /// No description provided for @recurringFrequencyWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get recurringFrequencyWeekly;
+
+  /// No description provided for @recurringFrequencyMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get recurringFrequencyMonthly;
+
+  /// No description provided for @recurringFrequencyYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get recurringFrequencyYearly;
+
+  /// No description provided for @recurringEveryDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} days'**
+  String recurringEveryDays(Object count);
+
+  /// No description provided for @recurringEveryWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} weeks'**
+  String recurringEveryWeeks(Object count);
+
+  /// No description provided for @recurringEveryMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} months'**
+  String recurringEveryMonths(Object count);
+
+  /// No description provided for @recurringEveryYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} years'**
+  String recurringEveryYears(Object count);
+
+  /// No description provided for @recurringBillDaySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'day {day}'**
+  String recurringBillDaySummary(Object day);
+
+  /// No description provided for @recurringStartFromLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'from {date}'**
+  String recurringStartFromLabel(Object date);
+
+  /// No description provided for @recurringRuleEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No schedule'**
+  String get recurringRuleEmpty;
+
+  /// No description provided for @recurringInvoicesTimezoneSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search timezone'**
+  String get recurringInvoicesTimezoneSearchHint;
+
+  /// No description provided for @recurringInvoicesTimezoneUseCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Use'**
+  String get recurringInvoicesTimezoneUseCta;
+
+  /// No description provided for @mailDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get mailDetailTitle;
+
+  /// No description provided for @mailDetailFromLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get mailDetailFromLabel;
+
+  /// No description provided for @mailDetailToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get mailDetailToLabel;
+
+  /// No description provided for @mailDetailDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get mailDetailDateLabel;
+
+  /// No description provided for @mailDetailBodyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get mailDetailBodyLabel;
+
+  /// No description provided for @mailDetailAttachmentsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get mailDetailAttachmentsLabel;
+
+  /// No description provided for @mailDetailUnknownSender.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown sender'**
+  String get mailDetailUnknownSender;
+
+  /// No description provided for @mailDetailNoSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'(no subject)'**
+  String get mailDetailNoSubject;
+
+  /// No description provided for @mailDetailNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Message not found.'**
+  String get mailDetailNotFound;
+
+  /// No description provided for @mailDetailMarkRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark read'**
+  String get mailDetailMarkRead;
+
+  /// No description provided for @mailDetailMarkUnread.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark unread'**
+  String get mailDetailMarkUnread;
+
+  /// No description provided for @mailDetailArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get mailDetailArchive;
+
+  /// No description provided for @mailDetailTrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Trash'**
+  String get mailDetailTrash;
+
+  /// No description provided for @mailDetailSpam.
+  ///
+  /// In en, this message translates to:
+  /// **'Spam'**
+  String get mailDetailSpam;
+
+  /// No description provided for @mailDetailMarkedRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as read.'**
+  String get mailDetailMarkedRead;
+
+  /// No description provided for @mailDetailMarkedUnread.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as unread.'**
+  String get mailDetailMarkedUnread;
+
+  /// No description provided for @mailDetailArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived.'**
+  String get mailDetailArchived;
+
+  /// No description provided for @mailDetailTrashed.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to trash.'**
+  String get mailDetailTrashed;
+
+  /// No description provided for @mailDetailSpammed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported as spam.'**
+  String get mailDetailSpammed;
+
+  /// Shown when a mail action fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Action failed: {error}'**
+  String mailDetailActionFailed(Object error);
+
+  /// Shown when attachment download fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed: {error}'**
+  String mailDetailDownloadFailed(Object error);
+
+  /// No description provided for @mailDetailDownloadUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads are only supported on web for now.'**
+  String get mailDetailDownloadUnsupported;
+
+  /// No description provided for @mailDetailDownloadTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get mailDetailDownloadTooltip;
+
+  /// No description provided for @mailDetailAttachmentFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment'**
+  String get mailDetailAttachmentFallback;
+
+  /// No description provided for @mailInboxTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get mailInboxTitle;
+
+  /// No description provided for @mailSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search mail'**
+  String get mailSearchHint;
+
+  /// No description provided for @mailSearchClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get mailSearchClear;
+
+  /// No description provided for @mailSearchMinChars.
+  ///
+  /// In en, this message translates to:
+  /// **'Search query must be at least 2 characters.'**
+  String get mailSearchMinChars;
+
+  /// No description provided for @mailSearchUnreadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread only'**
+  String get mailSearchUnreadOnly;
+
+  /// No description provided for @mailSearchDateRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Date range'**
+  String get mailSearchDateRange;
+
+  /// No description provided for @mailSearchClearDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear dates'**
+  String get mailSearchClearDates;
+
+  /// No description provided for @mailSearchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages found.'**
+  String get mailSearchNoResults;
+
+  /// No description provided for @mailThreadsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Threads'**
+  String get mailThreadsTitle;
+
+  /// No description provided for @mailThreadsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No threads found.'**
+  String get mailThreadsEmpty;
+
+  /// No description provided for @mailThreadDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thread'**
+  String get mailThreadDetailTitle;
+
+  /// No description provided for @mailThreadParticipantsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants'**
+  String get mailThreadParticipantsLabel;
+
+  /// No description provided for @mailThreadMessageCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get mailThreadMessageCountLabel;
+
+  /// No description provided for @mailThreadUnreadCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread'**
+  String get mailThreadUnreadCountLabel;
+
+  /// No description provided for @mailThreadNoMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages in this thread.'**
+  String get mailThreadNoMessages;
+
+  /// No description provided for @mailThreadNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Thread not found.'**
+  String get mailThreadNotFound;
+
+  /// No description provided for @mailThreadOpenMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open message'**
+  String get mailThreadOpenMessage;
+
+  /// No description provided for @mailThreadOpenThread.
+  ///
+  /// In en, this message translates to:
+  /// **'Open thread'**
+  String get mailThreadOpenThread;
+
+  /// No description provided for @mailConsoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mail'**
+  String get mailConsoleTitle;
+
+  /// No description provided for @mailConsoleFoldersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Folders'**
+  String get mailConsoleFoldersTitle;
+
+  /// No description provided for @mailConsoleSearchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search threads (coming soon)'**
+  String get mailConsoleSearchPlaceholder;
+
+  /// No description provided for @mailConsoleSelectThread.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a thread to view messages.'**
+  String get mailConsoleSelectThread;
+
+  /// No description provided for @mailConsoleLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load mailbox. Retry.'**
+  String get mailConsoleLoadError;
+
+  /// No description provided for @mailConsoleReplyPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a reply…'**
+  String get mailConsoleReplyPlaceholder;
+
+  /// No description provided for @mailConsoleReplySend.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get mailConsoleReplySend;
+
+  /// No description provided for @mailConsoleReplySending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get mailConsoleReplySending;
+
+  /// No description provided for @mailConsoleReplySent.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply sent.'**
+  String get mailConsoleReplySent;
+
+  /// No description provided for @mailConsoleClientPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Client & invoices'**
+  String get mailConsoleClientPanelTitle;
+
+  /// No description provided for @mailConsoleClientNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No client found for this thread.'**
+  String get mailConsoleClientNotFound;
+
+  /// No description provided for @mailConsoleClientEmailMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Client email is missing.'**
+  String get mailConsoleClientEmailMissing;
+
+  /// No description provided for @mailConsoleOpenInvoicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open invoices'**
+  String get mailConsoleOpenInvoicesTitle;
+
+  /// No description provided for @mailConsoleInvoicesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No open invoices.'**
+  String get mailConsoleInvoicesEmpty;
+
+  /// No description provided for @mailConsoleInvoiceActionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice actions'**
+  String get mailConsoleInvoiceActionsTitle;
+
+  /// No description provided for @mailConsoleResendInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend invoice'**
+  String get mailConsoleResendInvoice;
+
+  /// No description provided for @mailConsoleSendPaymentLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Send payment link'**
+  String get mailConsoleSendPaymentLink;
+
+  /// No description provided for @mailConsoleMarkPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark paid'**
+  String get mailConsoleMarkPaid;
+
+  /// No description provided for @mailConsoleInvoiceUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice'**
+  String get mailConsoleInvoiceUnknown;
+
+  /// No description provided for @mailConsoleInvoiceResent.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice resent.'**
+  String get mailConsoleInvoiceResent;
+
+  /// No description provided for @mailConsolePaymentLinkSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment link sent.'**
+  String get mailConsolePaymentLinkSent;
+
+  /// No description provided for @mailConsoleMarkedPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice marked paid.'**
+  String get mailConsoleMarkedPaid;
+
+  /// Shown when a mail console action fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Action failed: {error}'**
+  String mailConsoleActionFailed(Object error);
+
+  /// No description provided for @mailConsoleInvoiceSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice {number}'**
+  String mailConsoleInvoiceSubject(Object number);
+
+  /// No description provided for @mailConsoleInvoiceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Please see invoice {number}.'**
+  String mailConsoleInvoiceBody(Object number);
+
+  /// No description provided for @mailComposeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose'**
+  String get mailComposeTitle;
+
+  /// No description provided for @mailComposeToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get mailComposeToLabel;
+
+  /// No description provided for @mailComposeToHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter recipient emails'**
+  String get mailComposeToHint;
+
+  /// No description provided for @mailComposeCcLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cc'**
+  String get mailComposeCcLabel;
+
+  /// No description provided for @mailComposeCcHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add cc emails'**
+  String get mailComposeCcHint;
+
+  /// No description provided for @mailComposeBccLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bcc'**
+  String get mailComposeBccLabel;
+
+  /// No description provided for @mailComposeBccHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add bcc emails'**
+  String get mailComposeBccHint;
+
+  /// No description provided for @mailComposeSubjectLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get mailComposeSubjectLabel;
+
+  /// No description provided for @mailComposeSubjectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get mailComposeSubjectHint;
+
+  /// No description provided for @mailComposeBodyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Body'**
+  String get mailComposeBodyLabel;
+
+  /// No description provided for @mailComposeHtmlToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'HTML'**
+  String get mailComposeHtmlToggle;
+
+  /// No description provided for @mailComposeHtmlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste HTML content'**
+  String get mailComposeHtmlHint;
+
+  /// No description provided for @mailComposeTextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your message'**
+  String get mailComposeTextHint;
+
+  /// No description provided for @mailComposeAttachmentsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get mailComposeAttachmentsLabel;
+
+  /// No description provided for @mailComposeAttachmentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No attachments yet.'**
+  String get mailComposeAttachmentsEmpty;
+
+  /// No description provided for @mailComposeAddAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Add attachment'**
+  String get mailComposeAddAttachment;
+
+  /// No description provided for @mailComposeStorageKeyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage key'**
+  String get mailComposeStorageKeyLabel;
+
+  /// No description provided for @mailComposeStorageKeyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. uploads/abc.pdf'**
+  String get mailComposeStorageKeyHint;
+
+  /// No description provided for @mailComposeFilenameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Filename (optional)'**
+  String get mailComposeFilenameLabel;
+
+  /// No description provided for @mailComposeFilenameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'invoice.pdf'**
+  String get mailComposeFilenameHint;
+
+  /// No description provided for @mailComposeContentTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Content type (optional)'**
+  String get mailComposeContentTypeLabel;
+
+  /// No description provided for @mailComposeContentTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'application/pdf'**
+  String get mailComposeContentTypeHint;
+
+  /// No description provided for @mailComposeSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Size (optional)'**
+  String get mailComposeSizeLabel;
+
+  /// No description provided for @mailComposeSizeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Bytes'**
+  String get mailComposeSizeHint;
+
+  /// No description provided for @mailComposeCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mailComposeCancel;
+
+  /// No description provided for @mailComposeStorageKeyRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage key is required.'**
+  String get mailComposeStorageKeyRequired;
+
+  /// No description provided for @mailComposeInvoiceOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice options'**
+  String get mailComposeInvoiceOptions;
+
+  /// No description provided for @mailComposeInvoiceIdsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice IDs'**
+  String get mailComposeInvoiceIdsLabel;
+
+  /// No description provided for @mailComposeInvoiceIdsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma-separated IDs'**
+  String get mailComposeInvoiceIdsHint;
+
+  /// No description provided for @mailComposeAttachInvoicePdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach invoice PDF'**
+  String get mailComposeAttachInvoicePdf;
+
+  /// No description provided for @mailComposeIncludeInvoiceLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Include invoice links'**
+  String get mailComposeIncludeInvoiceLinks;
+
+  /// No description provided for @mailComposeUploadAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload file'**
+  String get mailComposeUploadAttachment;
+
+  /// No description provided for @mailComposeUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading…'**
+  String get mailComposeUploading;
+
+  /// No description provided for @mailComposeFileReadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the selected file.'**
+  String get mailComposeFileReadError;
+
+  /// Shown when attachment upload fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload failed: {error}'**
+  String mailComposeUploadFailed(Object error);
+
+  /// No description provided for @mailComposeSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get mailComposeSend;
+
+  /// No description provided for @mailComposeSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get mailComposeSending;
+
+  /// No description provided for @mailComposeSentToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get mailComposeSentToast;
+
+  /// No description provided for @mailComposeToRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please add at least one recipient.'**
+  String get mailComposeToRequired;
+
+  /// No description provided for @mailComposeSubjectRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject is required.'**
+  String get mailComposeSubjectRequired;
+
+  /// No description provided for @mailComposeBodyRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Message body is required.'**
+  String get mailComposeBodyRequired;
+
+  /// Shown when sending a message fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send: {error}'**
+  String mailComposeSendFailed(Object error);
 }
 
 class _AppLocalizationsDelegate

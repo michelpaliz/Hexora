@@ -3038,6 +3038,130 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invoiceLinesTitle => 'Invoice lines';
 
   @override
+  String get invoiceBlocksTitle => 'Invoice blocks';
+
+  @override
+  String get invoiceBlocksModeBlocks => 'Blocks';
+
+  @override
+  String get invoiceBlocksModeLines => 'Lines';
+
+  @override
+  String get invoiceAddBlock => 'Add block';
+
+  @override
+  String get invoiceBlocksInfoTooltip =>
+      'Blocks let you mix items with headers, notes, and checklists. Only billable items affect totals.';
+
+  @override
+  String get invoiceBlocksEmptyMessage =>
+      'Start your invoice with blocks (Date, Section, Items...).';
+
+  @override
+  String get invoiceBlocksQuickItem => 'Item';
+
+  @override
+  String get invoiceBlocksQuickDate => 'Date';
+
+  @override
+  String get invoiceHeaderCompactCta => 'Compact header';
+
+  @override
+  String get invoiceHeaderExpandCta => 'Expand header';
+
+  @override
+  String get invoiceBlockAdvancedShowCta => 'Advanced';
+
+  @override
+  String get invoiceBlockAdvancedHideCta => 'Hide advanced';
+
+  @override
+  String get invoiceAddBlockMore => 'More...';
+
+  @override
+  String get invoiceAddBlockRecommended => 'Recommended';
+
+  @override
+  String get invoiceAddBlockFooterInsert =>
+      'Will be added below the current block';
+
+  @override
+  String get invoiceAddBlockFooterOutsideWrapper =>
+      'Will be added outside the grouped block';
+
+  @override
+  String get invoiceWrapperAddInsideLabel => 'Add inside';
+
+  @override
+  String get invoiceBlockDateAutoFormatCta => 'Use auto format';
+
+  @override
+  String get invoiceBlockTypeLabel => 'Block type';
+
+  @override
+  String get invoiceBlockTypeItem => 'Item';
+
+  @override
+  String get invoiceBlockTypeDate => 'Date';
+
+  @override
+  String get invoiceBlockTypeSection => 'Section';
+
+  @override
+  String get invoiceBlockTypeSubsection => 'Subsection';
+
+  @override
+  String get invoiceBlockTypeDivider => 'Divider';
+
+  @override
+  String get invoiceBlockTypeNote => 'Note';
+
+  @override
+  String get invoiceBlockTypeChecklist => 'Checklist';
+
+  @override
+  String get invoiceBlockSkuLabel => 'SKU';
+
+  @override
+  String get invoiceBlockUnitLabel => 'Unit';
+
+  @override
+  String get invoiceBlockLevelLabel => 'Level';
+
+  @override
+  String get invoiceBlockBillableLabel => 'Billable item';
+
+  @override
+  String get invoiceBlockTitleLabelDate => 'Date title';
+
+  @override
+  String get invoiceBlockTitleLabelSection => 'Section title';
+
+  @override
+  String get invoiceBlockTitleLabelSubsection => 'Subsection title';
+
+  @override
+  String get invoiceBlockNoteLabel => 'Note';
+
+  @override
+  String get invoiceBlockChecklistItemLabel => 'Checklist item';
+
+  @override
+  String get invoiceBlockAddChecklistItem => 'Add checklist item';
+
+  @override
+  String get invoiceBlockMoveUp => 'Move up';
+
+  @override
+  String get invoiceBlockMoveDown => 'Move down';
+
+  @override
+  String get invoiceValidationNonNegative => 'Must be 0 or higher';
+
+  @override
+  String get invoiceValidationTaxRate => 'Tax rate must be 0-100';
+
+  @override
   String get invoiceLinesPlaceholderTitle => 'Invoice lines coming soon';
 
   @override
@@ -3055,6 +3179,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get change => 'Change';
+
+  @override
+  String get stepLabel => 'Step';
+
+  @override
+  String get ofLabel => 'of';
 
   @override
   String get fieldIsRequired => 'This field is required';
@@ -3094,6 +3224,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get invoiceTotalLabel => 'Total';
+
+  @override
+  String get invoiceTotalsTitle => 'Totals';
 
   @override
   String get invoiceEditorTitle => 'Invoice editor';
@@ -3144,7 +3277,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invoicePdfCta => 'PDF';
 
   @override
+  String get invoicePdfDownloadCta => 'Download PDF';
+
+  @override
+  String get invoiceOpenCta => 'Open invoice';
+
+  @override
+  String get invoiceBillingNameTitle => 'Client billing details';
+
+  @override
+  String get invoiceBillingNameEditCta => 'Edit client billing details';
+
+  @override
+  String get invoiceBillingNameCurrentLabel => 'Current billing name';
+
+  @override
+  String get invoiceBillingNameNewLabel => 'Billing name';
+
+  @override
+  String get invoiceBillingNameReasonLabel => 'Reason (optional)';
+
+  @override
+  String get invoiceBillingNameNewRequired => 'Billing name is required';
+
+  @override
+  String get invoiceBillingNameUpdateSuccess =>
+      'Client billing details updated';
+
+  @override
+  String get invoiceChangeHistoryTitle => 'Changes';
+
+  @override
+  String get invoiceChangeHistoryEmpty => 'No changes yet.';
+
+  @override
+  String get reasonLabel => 'Reason';
+
+  @override
+  String get updatedByLabel => 'Updated by';
+
+  @override
   String get invoicePreviewCta => 'Preview (PDF)';
+
+  @override
+  String get invoiceSendCta => 'Send invoice';
 
   @override
   String get invoiceStepsTitle => 'Steps';
@@ -3282,6 +3458,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not save draft. Please try again.';
 
   @override
+  String get invoiceDraftRemoveTitle => 'Remove draft?';
+
+  @override
+  String get invoiceDraftRemoveMessage => 'This will delete the current draft.';
+
+  @override
+  String get invoiceDraftRemovedSnack => 'Draft removed';
+
+  @override
+  String get invoiceDraftRemoveFailedSnack =>
+      'Could not remove draft. Please try again.';
+
+  @override
   String invoiceIssueSuccessSnack(Object invoiceNumber) {
     return 'Invoice issued: $invoiceNumber';
   }
@@ -3293,6 +3482,152 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get invoicePdfPreviewFailedSnack =>
       'Could not generate PDF preview. Please try again.';
+
+  @override
+  String get invoiceSortByNumberLabel => 'Sort by number';
+
+  @override
+  String get invoiceSortByNumberRecent => 'Most recent';
+
+  @override
+  String get invoiceSortByNumberAsc => 'Number (ascending)';
+
+  @override
+  String get invoiceSortByNumberDesc => 'Number (descending)';
+
+  @override
+  String get invoiceStatusDraft => 'Draft';
+
+  @override
+  String get invoiceStatusSent => 'Sent';
+
+  @override
+  String get invoiceStatusPaid => 'Paid';
+
+  @override
+  String get invoiceStatusOverdue => 'Overdue';
+
+  @override
+  String get invoiceStatusCancelled => 'Cancelled';
+
+  @override
+  String get invoiceStatusUnknown => 'Unknown';
+
+  @override
+  String get invoiceRecurringLabel => 'Recurring';
+
+  @override
+  String get invoiceEmailSettingsChecking => 'Checking email settings...';
+
+  @override
+  String get invoiceEmailSettingsUnavailable => 'Email settings unavailable';
+
+  @override
+  String get invoiceEmailSettingsConfigured => 'Email sending is configured ✅';
+
+  @override
+  String get invoiceEmailSettingsNeedsSetup => 'Email sending needs setup ⚠️';
+
+  @override
+  String get invoiceEmailConfigureCta => 'Configure email';
+
+  @override
+  String get invoiceEmailCopyLinkCta => 'Copy invoice link';
+
+  @override
+  String get invoiceEmailNoSentYet => 'No email sent yet';
+
+  @override
+  String get invoiceEmailHistoryShowCta => 'View history';
+
+  @override
+  String get invoiceEmailHistoryHideCta => 'Hide history';
+
+  @override
+  String get invoiceEmailNoHistory => 'No email history yet.';
+
+  @override
+  String get invoiceEmailResentSnack => 'Invoice email resent';
+
+  @override
+  String get invoiceEmailDetailsTitle => 'Email details';
+
+  @override
+  String get invoiceEmailStatusNotSent => 'Not sent';
+
+  @override
+  String get invoiceEmailLogToLabel => 'To';
+
+  @override
+  String get invoiceEmailLogCcLabel => 'CC';
+
+  @override
+  String get invoiceEmailViewDetailsCta => 'View details';
+
+  @override
+  String get invoiceEmailResendCta => 'Resend';
+
+  @override
+  String get invoiceEmailResendingLabel => 'Resending...';
+
+  @override
+  String invoiceEmailSubjectTemplate(Object invoiceNumber) {
+    return 'Invoice $invoiceNumber';
+  }
+
+  @override
+  String invoiceEmailMessageTemplate(Object clientName, Object invoiceNumber) {
+    return 'Hi $clientName,\n\nPlease find your invoice $invoiceNumber attached.\n\nThanks,';
+  }
+
+  @override
+  String get invoiceEmailSheetTitle => 'Send invoice';
+
+  @override
+  String get invoiceEmailSheetSubtitle =>
+      'Compose and preview your invoice email.';
+
+  @override
+  String get invoiceEmailAttachPdfLabel => 'Attach PDF';
+
+  @override
+  String get invoiceEmailSendLinkLabel => 'Send link';
+
+  @override
+  String get invoiceEmailTabEdit => 'Edit';
+
+  @override
+  String get invoiceEmailTabPreview => 'Preview';
+
+  @override
+  String get invoiceEmailToLabel => 'To';
+
+  @override
+  String get invoiceEmailCcLabel => 'CC (optional)';
+
+  @override
+  String get invoiceEmailSubjectLabel => 'Subject';
+
+  @override
+  String get invoiceEmailMessageLabel => 'Message';
+
+  @override
+  String get invoiceEmailNoPreview =>
+      'No preview yet. Tap refresh to generate.';
+
+  @override
+  String get invoiceEmailPreviewRefreshCta => 'Refresh preview';
+
+  @override
+  String get invoiceEmailSendCta => 'Send';
+
+  @override
+  String get invoiceEmailSendingLabel => 'Sending...';
+
+  @override
+  String invoiceEmailSentAtLabel(Object timestamp) {
+    return 'Sent $timestamp';
+  }
 
   @override
   String get invoiceLogoTitle => 'Invoice logo';
@@ -3431,6 +3766,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clientClassificationSectionTitle => 'Classification';
+
+  @override
+  String get clientClassificationAddTitle => 'Add classification';
+
+  @override
+  String get clientClassificationTypeLabel => 'Type';
+
+  @override
+  String get clientClassificationNameLabel => 'Name';
+
+  @override
+  String get clientClassificationSelectHint =>
+      'Select a classification to see assignments';
+
+  @override
+  String clientClassificationAssignedCount(int count) {
+    return 'Assigned clients ($count)';
+  }
+
+  @override
+  String get clientClassificationNoClients => 'No clients assigned yet.';
 
   @override
   String get clientClassificationExpandTooltip => 'Expand';
@@ -4688,4 +5044,628 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vatSummaryProvidersEmpty => 'No providers for this quarter.';
+
+  @override
+  String get recurringInvoicesTitle => 'Recurring invoices';
+
+  @override
+  String get recurringInvoicesSubtitle =>
+      'Create and automate billing schedules.';
+
+  @override
+  String get recurringInvoicesRefreshCta => 'Refresh';
+
+  @override
+  String get recurringInvoicesCreateCta => 'Create series';
+
+  @override
+  String get recurringInvoicesStatusFilterLabel => 'Status';
+
+  @override
+  String get recurringInvoicesStatusAll => 'All';
+
+  @override
+  String get recurringInvoicesStatusActive => 'Active';
+
+  @override
+  String get recurringInvoicesStatusPaused => 'Paused';
+
+  @override
+  String get recurringInvoicesStatusCancelled => 'Cancelled';
+
+  @override
+  String get recurringInvoicesStatusCompleted => 'Completed';
+
+  @override
+  String get recurringInvoicesClientFilterLabel => 'Client';
+
+  @override
+  String get recurringInvoicesDueSoon => 'Due soon';
+
+  @override
+  String get recurringInvoicesEmpty => 'No recurring invoices yet.';
+
+  @override
+  String get recurringInvoicesNextRunLabel => 'Next';
+
+  @override
+  String get recurringInvoicesPreviewCta => 'View upcoming invoices';
+
+  @override
+  String get recurringInvoicesPauseCta => 'Pause';
+
+  @override
+  String get recurringInvoicesResumeCta => 'Resume';
+
+  @override
+  String get recurringInvoicesCancelCta => 'Cancel series';
+
+  @override
+  String get recurringInvoicesRunNowCta => 'Run now';
+
+  @override
+  String get recurringInvoicesNoRunsSnack => 'No pending invoices to generate.';
+
+  @override
+  String recurringInvoicesRunCreatedSnack(Object count) {
+    return 'Invoices created: $count';
+  }
+
+  @override
+  String get recurringInvoicesCreateSuccess => 'Recurring series created';
+
+  @override
+  String get recurringInvoicesCreateFailed =>
+      'Could not create recurring series. Please try again.';
+
+  @override
+  String get recurringInvoicesChangesNote =>
+      'Changes only affect future invoices; generated invoices are snapshots.';
+
+  @override
+  String get recurringInvoicesRuleTab => 'Rule';
+
+  @override
+  String get recurringInvoicesTemplateTab => 'Template';
+
+  @override
+  String get recurringInvoicesGeneratedTab => 'Generated';
+
+  @override
+  String get recurringInvoicesSeriesInvoicesTitle =>
+      'Invoices from this series';
+
+  @override
+  String get recurringInvoicesSeriesInvoicesCta => 'View generated invoices';
+
+  @override
+  String get recurringInvoicesSeriesInvoicesHint =>
+      'Load all invoices generated by this recurrence.';
+
+  @override
+  String get recurringInvoicesSeriesInvoicesEmpty =>
+      'No invoices generated yet.';
+
+  @override
+  String get recurringInvoicesActivityTab => 'Activity';
+
+  @override
+  String get recurringInvoicesSaveRuleCta => 'Save rule';
+
+  @override
+  String get recurringInvoicesSavingRule => 'Saving...';
+
+  @override
+  String get recurringInvoicesSaveTemplateCta => 'Save template';
+
+  @override
+  String get recurringInvoicesSavingTemplate => 'Saving...';
+
+  @override
+  String get recurringInvoicesGeneratedHint =>
+      'Generated invoices appear in Drafts.';
+
+  @override
+  String get recurringInvoicesActivityHint => 'Activity coming soon.';
+
+  @override
+  String get recurringInvoicesCreateTitle => 'Create series';
+
+  @override
+  String get recurringInvoicesStepClient => 'Client';
+
+  @override
+  String get recurringInvoicesStepTemplate => 'Template';
+
+  @override
+  String get recurringInvoicesStepSchedule => 'Schedule';
+
+  @override
+  String get recurringInvoicesStepPreview => 'Preview';
+
+  @override
+  String get recurringInvoicesNameLabel => 'Name';
+
+  @override
+  String get recurringInvoicesNameRequired => 'Name required';
+
+  @override
+  String get recurringInvoicesFrequencyLabel => 'Frequency';
+
+  @override
+  String get recurringInvoicesIntervalLabel => 'Interval';
+
+  @override
+  String get recurringInvoicesStartLabel => 'Start';
+
+  @override
+  String get recurringInvoicesTimeLabel => 'Time';
+
+  @override
+  String recurringInvoicesLocalTimeHelper(Object timezone) {
+    return 'Scheduled in your local time ($timezone). Saved as UTC.';
+  }
+
+  @override
+  String recurringInvoicesLocalTimeSummary(
+      Object local, Object timezone, Object utc) {
+    return 'Selected: $local ($timezone) · Saved: $utc UTC';
+  }
+
+  @override
+  String get recurringInvoicesEndLabel => 'End';
+
+  @override
+  String get recurringInvoicesEndNever => 'Never';
+
+  @override
+  String get recurringInvoicesEndDate => 'Until date';
+
+  @override
+  String get recurringInvoicesEndCount => 'Occurrences';
+
+  @override
+  String get recurringInvoicesEndDateSelect => 'Select date';
+
+  @override
+  String recurringInvoicesEndDateLabel(Object date) {
+    return 'Until: $date';
+  }
+
+  @override
+  String get recurringInvoicesCountLabel => 'Number of invoices';
+
+  @override
+  String get recurringInvoicesBillDayLabel => 'Billing day (1-31)';
+
+  @override
+  String get recurringInvoicesBillDayHelper =>
+      'If the month lacks that day, the last day is used.';
+
+  @override
+  String get recurringInvoicesWeekDayLabel => 'Weekday (0-6)';
+
+  @override
+  String get recurringInvoicesWeekDayHelper => '0=Sunday, 6=Saturday.';
+
+  @override
+  String get recurringInvoicesTimezoneLabel => 'Timezone';
+
+  @override
+  String get recurringInvoicesExceptionsLabel => 'Exceptions';
+
+  @override
+  String get recurringInvoicesAddExceptionCta => 'Add date';
+
+  @override
+  String get recurringInvoicesNoExceptions => 'No exceptions.';
+
+  @override
+  String get recurringInvoicesPreviewEmpty => 'No dates calculated yet.';
+
+  @override
+  String get recurringInvoicesPreviewTitle => 'Upcoming invoices';
+
+  @override
+  String get recurringInvoicesPreviewDialogEmpty => 'No dates calculated.';
+
+  @override
+  String get recurringInvoicesContinueCta => 'Continue';
+
+  @override
+  String get recurringInvoicesBackCta => 'Back';
+
+  @override
+  String get recurringFrequencyDaily => 'Daily';
+
+  @override
+  String get recurringFrequencyWeekly => 'Weekly';
+
+  @override
+  String get recurringFrequencyMonthly => 'Monthly';
+
+  @override
+  String get recurringFrequencyYearly => 'Yearly';
+
+  @override
+  String recurringEveryDays(Object count) {
+    return 'Every $count days';
+  }
+
+  @override
+  String recurringEveryWeeks(Object count) {
+    return 'Every $count weeks';
+  }
+
+  @override
+  String recurringEveryMonths(Object count) {
+    return 'Every $count months';
+  }
+
+  @override
+  String recurringEveryYears(Object count) {
+    return 'Every $count years';
+  }
+
+  @override
+  String recurringBillDaySummary(Object day) {
+    return 'day $day';
+  }
+
+  @override
+  String recurringStartFromLabel(Object date) {
+    return 'from $date';
+  }
+
+  @override
+  String get recurringRuleEmpty => 'No schedule';
+
+  @override
+  String get recurringInvoicesTimezoneSearchHint => 'Search timezone';
+
+  @override
+  String get recurringInvoicesTimezoneUseCta => 'Use';
+
+  @override
+  String get mailDetailTitle => 'Message';
+
+  @override
+  String get mailDetailFromLabel => 'From';
+
+  @override
+  String get mailDetailToLabel => 'To';
+
+  @override
+  String get mailDetailDateLabel => 'Date';
+
+  @override
+  String get mailDetailBodyLabel => 'Message';
+
+  @override
+  String get mailDetailAttachmentsLabel => 'Attachments';
+
+  @override
+  String get mailDetailUnknownSender => 'Unknown sender';
+
+  @override
+  String get mailDetailNoSubject => '(no subject)';
+
+  @override
+  String get mailDetailNotFound => 'Message not found.';
+
+  @override
+  String get mailDetailMarkRead => 'Mark read';
+
+  @override
+  String get mailDetailMarkUnread => 'Mark unread';
+
+  @override
+  String get mailDetailArchive => 'Archive';
+
+  @override
+  String get mailDetailTrash => 'Trash';
+
+  @override
+  String get mailDetailSpam => 'Spam';
+
+  @override
+  String get mailDetailMarkedRead => 'Marked as read.';
+
+  @override
+  String get mailDetailMarkedUnread => 'Marked as unread.';
+
+  @override
+  String get mailDetailArchived => 'Archived.';
+
+  @override
+  String get mailDetailTrashed => 'Moved to trash.';
+
+  @override
+  String get mailDetailSpammed => 'Reported as spam.';
+
+  @override
+  String mailDetailActionFailed(Object error) {
+    return 'Action failed: $error';
+  }
+
+  @override
+  String mailDetailDownloadFailed(Object error) {
+    return 'Download failed: $error';
+  }
+
+  @override
+  String get mailDetailDownloadUnsupported =>
+      'Downloads are only supported on web for now.';
+
+  @override
+  String get mailDetailDownloadTooltip => 'Download';
+
+  @override
+  String get mailDetailAttachmentFallback => 'Attachment';
+
+  @override
+  String get mailInboxTitle => 'Inbox';
+
+  @override
+  String get mailSearchHint => 'Search mail';
+
+  @override
+  String get mailSearchClear => 'Clear search';
+
+  @override
+  String get mailSearchMinChars =>
+      'Search query must be at least 2 characters.';
+
+  @override
+  String get mailSearchUnreadOnly => 'Unread only';
+
+  @override
+  String get mailSearchDateRange => 'Date range';
+
+  @override
+  String get mailSearchClearDates => 'Clear dates';
+
+  @override
+  String get mailSearchNoResults => 'No messages found.';
+
+  @override
+  String get mailThreadsTitle => 'Threads';
+
+  @override
+  String get mailThreadsEmpty => 'No threads found.';
+
+  @override
+  String get mailThreadDetailTitle => 'Thread';
+
+  @override
+  String get mailThreadParticipantsLabel => 'Participants';
+
+  @override
+  String get mailThreadMessageCountLabel => 'Messages';
+
+  @override
+  String get mailThreadUnreadCountLabel => 'Unread';
+
+  @override
+  String get mailThreadNoMessages => 'No messages in this thread.';
+
+  @override
+  String get mailThreadNotFound => 'Thread not found.';
+
+  @override
+  String get mailThreadOpenMessage => 'Open message';
+
+  @override
+  String get mailThreadOpenThread => 'Open thread';
+
+  @override
+  String get mailConsoleTitle => 'Mail';
+
+  @override
+  String get mailConsoleFoldersTitle => 'Folders';
+
+  @override
+  String get mailConsoleSearchPlaceholder => 'Search threads (coming soon)';
+
+  @override
+  String get mailConsoleSelectThread => 'Select a thread to view messages.';
+
+  @override
+  String get mailConsoleLoadError => 'Couldn\'t load mailbox. Retry.';
+
+  @override
+  String get mailConsoleReplyPlaceholder => 'Write a reply…';
+
+  @override
+  String get mailConsoleReplySend => 'Reply';
+
+  @override
+  String get mailConsoleReplySending => 'Sending…';
+
+  @override
+  String get mailConsoleReplySent => 'Reply sent.';
+
+  @override
+  String get mailConsoleClientPanelTitle => 'Client & invoices';
+
+  @override
+  String get mailConsoleClientNotFound => 'No client found for this thread.';
+
+  @override
+  String get mailConsoleClientEmailMissing => 'Client email is missing.';
+
+  @override
+  String get mailConsoleOpenInvoicesTitle => 'Open invoices';
+
+  @override
+  String get mailConsoleInvoicesEmpty => 'No open invoices.';
+
+  @override
+  String get mailConsoleInvoiceActionsTitle => 'Invoice actions';
+
+  @override
+  String get mailConsoleResendInvoice => 'Resend invoice';
+
+  @override
+  String get mailConsoleSendPaymentLink => 'Send payment link';
+
+  @override
+  String get mailConsoleMarkPaid => 'Mark paid';
+
+  @override
+  String get mailConsoleInvoiceUnknown => 'Invoice';
+
+  @override
+  String get mailConsoleInvoiceResent => 'Invoice resent.';
+
+  @override
+  String get mailConsolePaymentLinkSent => 'Payment link sent.';
+
+  @override
+  String get mailConsoleMarkedPaid => 'Invoice marked paid.';
+
+  @override
+  String mailConsoleActionFailed(Object error) {
+    return 'Action failed: $error';
+  }
+
+  @override
+  String mailConsoleInvoiceSubject(Object number) {
+    return 'Invoice $number';
+  }
+
+  @override
+  String mailConsoleInvoiceBody(Object number) {
+    return 'Please see invoice $number.';
+  }
+
+  @override
+  String get mailComposeTitle => 'Compose';
+
+  @override
+  String get mailComposeToLabel => 'To';
+
+  @override
+  String get mailComposeToHint => 'Enter recipient emails';
+
+  @override
+  String get mailComposeCcLabel => 'Cc';
+
+  @override
+  String get mailComposeCcHint => 'Add cc emails';
+
+  @override
+  String get mailComposeBccLabel => 'Bcc';
+
+  @override
+  String get mailComposeBccHint => 'Add bcc emails';
+
+  @override
+  String get mailComposeSubjectLabel => 'Subject';
+
+  @override
+  String get mailComposeSubjectHint => 'Subject';
+
+  @override
+  String get mailComposeBodyLabel => 'Body';
+
+  @override
+  String get mailComposeHtmlToggle => 'HTML';
+
+  @override
+  String get mailComposeHtmlHint => 'Paste HTML content';
+
+  @override
+  String get mailComposeTextHint => 'Write your message';
+
+  @override
+  String get mailComposeAttachmentsLabel => 'Attachments';
+
+  @override
+  String get mailComposeAttachmentsEmpty => 'No attachments yet.';
+
+  @override
+  String get mailComposeAddAttachment => 'Add attachment';
+
+  @override
+  String get mailComposeStorageKeyLabel => 'Storage key';
+
+  @override
+  String get mailComposeStorageKeyHint => 'e.g. uploads/abc.pdf';
+
+  @override
+  String get mailComposeFilenameLabel => 'Filename (optional)';
+
+  @override
+  String get mailComposeFilenameHint => 'invoice.pdf';
+
+  @override
+  String get mailComposeContentTypeLabel => 'Content type (optional)';
+
+  @override
+  String get mailComposeContentTypeHint => 'application/pdf';
+
+  @override
+  String get mailComposeSizeLabel => 'Size (optional)';
+
+  @override
+  String get mailComposeSizeHint => 'Bytes';
+
+  @override
+  String get mailComposeCancel => 'Cancel';
+
+  @override
+  String get mailComposeStorageKeyRequired => 'Storage key is required.';
+
+  @override
+  String get mailComposeInvoiceOptions => 'Invoice options';
+
+  @override
+  String get mailComposeInvoiceIdsLabel => 'Invoice IDs';
+
+  @override
+  String get mailComposeInvoiceIdsHint => 'Comma-separated IDs';
+
+  @override
+  String get mailComposeAttachInvoicePdf => 'Attach invoice PDF';
+
+  @override
+  String get mailComposeIncludeInvoiceLinks => 'Include invoice links';
+
+  @override
+  String get mailComposeUploadAttachment => 'Upload file';
+
+  @override
+  String get mailComposeUploading => 'Uploading…';
+
+  @override
+  String get mailComposeFileReadError => 'Could not read the selected file.';
+
+  @override
+  String mailComposeUploadFailed(Object error) {
+    return 'Upload failed: $error';
+  }
+
+  @override
+  String get mailComposeSend => 'Send';
+
+  @override
+  String get mailComposeSending => 'Sending…';
+
+  @override
+  String get mailComposeSentToast => 'Sent';
+
+  @override
+  String get mailComposeToRequired => 'Please add at least one recipient.';
+
+  @override
+  String get mailComposeSubjectRequired => 'Subject is required.';
+
+  @override
+  String get mailComposeBodyRequired => 'Message body is required.';
+
+  @override
+  String mailComposeSendFailed(Object error) {
+    return 'Failed to send: $error';
+  }
 }

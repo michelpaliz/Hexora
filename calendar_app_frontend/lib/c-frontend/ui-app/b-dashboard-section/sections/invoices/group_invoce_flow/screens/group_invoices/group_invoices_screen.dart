@@ -63,6 +63,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         invoice: invoice,
         client: _clientOrUnknown(l, clients, invoice.clientId),
         billingProfile: billingProfile,
+        group: widget.group,
       ),
     );
   }
@@ -181,6 +182,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                             client:
                                 _clientOrUnknown(l, s.clients, inv.clientId),
                             billingProfile: s.billingProfile,
+                            group: widget.group,
                           ),
                           invoiceItemBuilder: (inv, client,
                               {VoidCallback? onDelete,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class EmptyView extends StatelessWidget {
   final IconData icon;
@@ -71,6 +72,133 @@ class ErrorView extends StatelessWidget {
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
               onPressed: () => onRetry(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ListItemCard extends StatelessWidget {
+  final Widget leading;
+  final String? title;
+  final Widget? titleWidget;
+  final String? subtitle;
+  final Widget? subtitleWidget;
+  final TextStyle? titleStyle;
+  final TextStyle? subtitleStyle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final bool selected;
+  final bool showLeadingStripe;
+  final EdgeInsetsGeometry padding;
+  final BorderRadius? borderRadius;
+
+  const ListItemCard({
+    super.key,
+    required this.leading,
+    this.title,
+    this.titleWidget,
+    this.subtitle,
+    this.subtitleWidget,
+    this.titleStyle,
+    this.subtitleStyle,
+    this.trailing,
+    this.onTap,
+    this.selected = false,
+    this.showLeadingStripe = false,
+    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    this.borderRadius,
+  }) : assert(title != null || titleWidget != null);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final bg = selected ? cs.surfaceContainerHighest : cs.surface;
+    final borderColor = selected
+        ? cs.outlineVariant.withValues(alpha: 0.4)
+        : cs.outlineVariant.withValues(alpha: 0.3);
+    final effectiveTitleStyle = titleStyle ??
+        t.bodyMedium.copyWith(
+          fontWeight: FontWeight.w800,
+          color: cs.onSurface,
+        );
+    final effectiveSubtitleStyle = subtitleStyle ??
+        t.bodySmall.copyWith(
+          color: cs.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        );
+
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(12);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: effectiveRadius,
+        border: Border.all(color: borderColor),
+      ),
+      child: ClipRRect(
+        borderRadius: effectiveRadius,
+        child: Stack(
+          children: [
+            if (selected && showLeadingStripe)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 3,
+                  color: cs.primary,
+                ),
+              ),
+            Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                borderRadius: effectiveRadius,
+                onTap: onTap,
+                child: Padding(
+                  padding: padding,
+                  child: Row(
+                    children: [
+                      leading,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            titleWidget ??
+                                Text(
+                                  title ?? '',
+                                  style: effectiveTitleStyle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            if (subtitleWidget != null ||
+                                (subtitle != null && subtitle!.isNotEmpty)) ...[
+                              const SizedBox(height: 4),
+                              subtitleWidget ??
+                                  Text(
+                                    subtitle ?? '',
+                                    style: effectiveSubtitleStyle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (trailing != null) ...[
+                        const SizedBox(width: 8),
+                        trailing!,
+                      ],
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),

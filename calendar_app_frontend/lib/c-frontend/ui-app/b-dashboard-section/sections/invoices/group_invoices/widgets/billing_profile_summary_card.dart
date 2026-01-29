@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class BillingProfileSummaryCard extends StatelessWidget {
   final BillingProfile? profile;
@@ -57,29 +56,6 @@ class BillingProfileSummaryCard extends StatelessWidget {
     );
   }
 
-  Future<void> _openEmail(BuildContext context, String email) async {
-    final uri = Uri(scheme: 'mailto', path: email);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-      return;
-    }
-    await _copy(context, email);
-  }
-
-  Future<void> _openWebsite(BuildContext context, String website) async {
-    final raw = website.trim();
-    if (raw.isEmpty) return;
-    final uri = Uri.tryParse(raw) ??
-        Uri.tryParse('https://$raw') ??
-        Uri.parse('https://$raw');
-    final url = uri.hasScheme ? uri : uri.replace(scheme: 'https');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-      return;
-    }
-    await _copy(context, raw);
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -92,43 +68,20 @@ class BillingProfileSummaryCard extends StatelessWidget {
     final statusBg = ready ? cs.secondaryContainer : cs.surfaceContainerHighest;
     final statusFg = ready ? cs.onSecondaryContainer : cs.onSurfaceVariant;
 
-    final name = profile == null || !_has(profile!.legalName)
-        ? l.billingProfileEmpty
-        : profile!.legalName.trim();
-
     final taxId =
         (profile != null && _has(profile!.taxId)) ? profile!.taxId.trim() : '-';
-    final email = (profile != null && _has(profile!.email))
-        ? profile!.email!.trim()
-        : null;
-    final website = (profile != null && _has(profile!.website))
-        ? profile!.website!.trim()
-        : null;
     final iban =
         (profile != null && _has(profile!.iban)) ? profile!.iban!.trim() : null;
-
-    final codeStyle = t.bodySmall.copyWith(
-      fontFamily: 'monospace',
-      letterSpacing: 0.2,
-      fontWeight: FontWeight.w800,
-      color: cs.onSurfaceVariant,
-    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text(
-                name,
-                maxLines: expanded ? 2 : 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: cs.onSurface,
-                ),
-              ),
+            Icon(
+              ready ? Icons.verified_outlined : Icons.report_gmailerrorred,
+              size: 16,
+              color: cs.onSurfaceVariant,
             ),
             const SizedBox(width: 8),
             Container(
@@ -150,58 +103,15 @@ class BillingProfileSummaryCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${l.billingTaxId}: $taxId',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: codeStyle,
-              ),
-            ),
-            if (taxId != '-')
-              IconButton(
-                tooltip: MaterialLocalizations.of(context).copyButtonLabel,
-                visualDensity: VisualDensity.compact,
-                onPressed: () => _copy(context, taxId),
-                icon: Icon(
-                  Icons.content_copy_outlined,
-                  size: 18,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-          ],
+        const SizedBox(height: 4),
+        _InfoRow(
+          label: l.billingTaxId,
+          value: taxId,
+          icon: Icons.badge_outlined,
+          monospace: true,
+          inline: true,
+          onCopy: taxId == '-' ? null : () => _copy(context, taxId),
         ),
-        if (email != null) ...[
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  email,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: l.emailLabel,
-                visualDensity: VisualDensity.compact,
-                onPressed: () => _openEmail(context, email),
-                icon: Icon(
-                  Icons.email_outlined,
-                  size: 18,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ],
         if (!expanded && !ready) ...[
           const SizedBox(height: 6),
           Text(
@@ -212,15 +122,7 @@ class BillingProfileSummaryCard extends StatelessWidget {
           ),
         ],
         if (expanded) ...[
-          const SizedBox(height: 10),
-          if (website != null)
-            _InfoRow(
-              label: l.billingWebsite,
-              value: website,
-              icon: Icons.language_outlined,
-              onTap: () => _openWebsite(context, website),
-              onCopy: () => _copy(context, website),
-            ),
+          const SizedBox(height: 8),
           if (iban != null)
             _InfoRow(
               label: l.billingIban,
@@ -234,28 +136,6 @@ class BillingProfileSummaryCard extends StatelessWidget {
             value: profile == null ? '-' : _addressInline(profile!),
             icon: Icons.place_outlined,
           ),
-          if (profile != null)
-            Row(
-              children: [
-                Expanded(
-                  child: _InfoRow(
-                    label: l.billingTaxRate,
-                    value: '${profile!.vatRate}%',
-                    icon: Icons.percent,
-                    inline: true,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _InfoRow(
-                    label: l.billingCurrency,
-                    value: profile!.currency,
-                    icon: Icons.currency_exchange_outlined,
-                    inline: true,
-                  ),
-                ),
-              ],
-            ),
         ],
         const SizedBox(height: 6),
         Align(

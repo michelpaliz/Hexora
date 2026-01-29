@@ -4,7 +4,6 @@ import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/billing_profile_summary_card.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class GroupInvoicesSideMenu extends StatelessWidget {
   static const double expandedWidth = 280;
@@ -92,18 +91,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                       collapsed ? Icons.chevron_right : Icons.chevron_left,
                     ),
                   ),
-                  if (!collapsed) ...[
-                    Expanded(
-                      child: Text(
-                        group.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
+                  if (!collapsed) const Spacer(),
                 ],
               ),
             ),
@@ -141,18 +129,11 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                             const SizedBox(height: 6),
                             _SubMenuItem(
                               icon: Icons.receipt_long_outlined,
-                              label: 'Emitidas',
-                              count: issuedCount,
-                              selected: selectedMenu == 'invoices_issued',
+                              label: 'Emitidas/Borrador',
+                              count: issuedCount + draftsCount,
+                              selected: selectedMenu == 'invoices_issued' ||
+                                  selectedMenu == 'invoices_drafts',
                               onPressed: () => onMenuChanged('invoices_issued'),
-                            ),
-                            const SizedBox(height: 6),
-                            _SubMenuItem(
-                              icon: Icons.drafts_outlined,
-                              label: 'Borradores',
-                              count: draftsCount,
-                              selected: selectedMenu == 'invoices_drafts',
-                              onPressed: () => onMenuChanged('invoices_drafts'),
                             ),
                             const SizedBox(height: 6),
                             _SubMenuItem(
@@ -167,6 +148,15 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                               label: 'Clientes',
                               selected: selectedMenu == 'clients',
                               onPressed: () => onMenuChanged('clients'),
+                            ),
+                            const SizedBox(height: 6),
+                            _SubMenuItem(
+                              icon: Icons.category_outlined,
+                              label: l.clientClassificationTitle,
+                              selected:
+                                  selectedMenu == 'client_classifications',
+                              onPressed: () =>
+                                  onMenuChanged('client_classifications'),
                             ),
                             const SizedBox(height: 6),
                             const _SectionLabel('Recibos'),
@@ -294,16 +284,10 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                       const SizedBox(height: 8),
                       _MenuIconButton(
                         icon: Icons.receipt_long_outlined,
-                        label: 'Emitidas',
-                        selected: selectedMenu == 'invoices_issued',
+                        label: 'Emitidas/Borrador',
+                        selected: selectedMenu == 'invoices_issued' ||
+                            selectedMenu == 'invoices_drafts',
                         onPressed: () => onMenuChanged('invoices_issued'),
-                      ),
-                      const SizedBox(height: 8),
-                      _MenuIconButton(
-                        icon: Icons.drafts_outlined,
-                        label: 'Borradores',
-                        selected: selectedMenu == 'invoices_drafts',
-                        onPressed: () => onMenuChanged('invoices_drafts'),
                       ),
                       const SizedBox(height: 8),
                       _MenuIconButton(
@@ -320,6 +304,13 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                         onPressed: () => onMenuChanged('clients'),
                       ),
                       const SizedBox(height: 8),
+                      _MenuIconButton(
+                        icon: Icons.category_outlined,
+                        label: l.clientClassificationTitle,
+                        selected: selectedMenu == 'client_classifications',
+                        onPressed: () =>
+                            onMenuChanged('client_classifications'),
+                      ),
                       _MenuIconButton(
                         icon: Icons.description_outlined,
                         label: 'Recibos',
@@ -383,17 +374,6 @@ class _CompanyHeader extends StatelessWidget {
     required this.onEdit,
   });
 
-  Future<void> _openEmail(BuildContext context, String email) async {
-    final uri = Uri(scheme: 'mailto', path: email);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(email)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -402,17 +382,10 @@ class _CompanyHeader extends StatelessWidget {
     final name = billingProfile?.legalName.trim().isNotEmpty == true
         ? billingProfile!.legalName.trim()
         : group.name;
-    final taxId = billingProfile?.taxId.trim().isNotEmpty == true
-        ? billingProfile!.taxId.trim()
-        : '-';
-    final isComplete = billingProfile?.isComplete == true;
-    final statusLabel = isComplete ? l.billingComplete : l.billingMissing;
-    final statusBg = isComplete ? cs.primaryContainer : cs.errorContainer;
-    final statusFg = isComplete ? cs.onPrimaryContainer : cs.onErrorContainer;
-    final email = billingProfile?.email?.trim() ?? '';
-
+    final logoUrl = billingProfile?.logoUrl?.trim();
+    final hasLogo = logoUrl != null && logoUrl.isNotEmpty;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(14),
@@ -423,11 +396,21 @@ class _CompanyHeader extends StatelessWidget {
           Row(
             children: [
               CircleAvatar(
-                radius: 22,
-                backgroundImage: NetworkImage(group.photoUrl ?? ''),
-                child: group.photoUrl == null
-                    ? const Icon(Icons.business_outlined)
-                    : null,
+                radius: 20,
+                backgroundColor: cs.surface,
+                child: hasLogo
+                    ? ClipOval(
+                        child: Image.network(
+                          logoUrl!,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Icon(
+                        Icons.receipt_long_outlined,
+                        color: cs.onSurfaceVariant,
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -438,75 +421,23 @@ class _CompanyHeader extends StatelessWidget {
                   style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'CIF/NIF: $taxId',
-                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusBg,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: t.bodySmall.copyWith(
-                    color: statusFg,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              if (email.isNotEmpty)
-                Icon(Icons.mail_outline, size: 16, color: cs.onSurfaceVariant),
-              if (email.isNotEmpty) const SizedBox(width: 6),
-              if (email.isNotEmpty)
-                Expanded(
-                  child: Text(
-                    email,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ),
-              if (email.isEmpty)
-                Expanded(
-                  child: Text(
-                    l.billingEmailLabel,
-                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ),
-              if (email.isNotEmpty)
-                IconButton(
-                  tooltip: l.emailLabel,
-                  onPressed: () => _openEmail(context, email),
-                  icon: const Icon(Icons.send_outlined),
-                ),
-              IconButton(
-                tooltip: l.edit,
+              TextButton(
                 onPressed: busyProfile ? null : onEdit,
-                icon: busyProfile
+                child: busyProfile
                     ? const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.edit_outlined),
+                    : Text(
+                        'Editar',
+                        style:
+                            t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                      ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: onToggleExpanded,

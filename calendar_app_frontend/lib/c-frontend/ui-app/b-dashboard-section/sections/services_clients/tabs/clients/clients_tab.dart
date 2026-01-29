@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/clients_search_filters.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import 'client_list_item.dart';
 
-class ClientsTab extends StatelessWidget {
+class ClientsTab extends StatefulWidget {
   final List<GroupClient> items;
   final bool loading;
   final String? error;
@@ -39,123 +40,107 @@ class ClientsTab extends StatelessWidget {
   });
 
   @override
+  State<ClientsTab> createState() => _ClientsTabState();
+}
+
+class _ClientsTabState extends State<ClientsTab> {
+  final TextEditingController _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  bool _matchesSearch(GroupClient c) {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    final haystack = <String>[
+      c.name,
+      c.email ?? '',
+      c.phone ?? '',
+      c.billing?.legalName ?? '',
+    ].join(' ').toLowerCase();
+    return haystack.contains(q);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
-    final filtered = propertyKindFilter == null || propertyKindFilter!.isEmpty
-        ? items
-        : items
-            .where((c) =>
-                (c.propertyKind ?? '').trim() == propertyKindFilter!.trim())
-            .toList(growable: false);
+    final filtered =
+        widget.propertyKindFilter == null || widget.propertyKindFilter!.isEmpty
+            ? widget.items
+            : widget.items
+                .where((c) =>
+                    (c.propertyKind ?? '').trim() ==
+                    widget.propertyKindFilter!.trim())
+                .toList(growable: false);
+    final searched = filtered.where(_matchesSearch).toList(growable: false);
     final activeItems =
-        filtered.where((c) => c.isActive != false).toList(growable: false);
+        searched.where((c) => c.isActive != false).toList(growable: false);
     final inactiveItems =
-        filtered.where((c) => c.isActive == false).toList(growable: false);
+        searched.where((c) => c.isActive == false).toList(growable: false);
     final visible =
-        showInactive ? [...activeItems, ...inactiveItems] : activeItems;
+        widget.showInactive ? [...activeItems, ...inactiveItems] : activeItems;
     final activeCount = activeItems.length;
     final inactiveCount = inactiveItems.length;
 
-    if (loading) return const Center(child: CircularProgressIndicator());
-    if (error != null) return ErrorView(message: error!, onRetry: onRefresh);
+    if (widget.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (widget.error != null) {
+      return ErrorView(message: widget.error!, onRetry: widget.onRefresh);
+    }
 
     if (visible.isEmpty) {
       return EmptyView(
         icon: Icons.person_outline,
         title: l.noClientsYet,
-        subtitle: showInactive
+        subtitle: widget.showInactive
             ? '${l.activeClientsSection} · 0 · ${l.statusInactive}: 0'
             : '${l.activeClientsSection} · 0',
-        cta: showInlineCTA ? l.addClient : null,
-        onPressed: showInlineCTA ? onAddTap : null,
+        cta: widget.showInlineCTA ? l.addClient : null,
+        onPressed: widget.showInlineCTA ? widget.onAddTap : null,
       );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
-          child: Text(
-            showInactive
-                ? '${l.activeClientsSection} · $activeCount • ${l.statusInactive}: $inactiveCount'
-                : '${l.activeClientsSection} · $activeCount',
-            style: typo.bodyMedium.copyWith(
-              fontWeight: FontWeight.w700,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
+        ClientsSearchFilters(
+          searchController: _searchCtrl,
+          onSearchChanged: () => setState(() {}),
+          searchHint: l.clientSearchHint,
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+          clientsForCounts: widget.items,
+          activeCountLabel: l.activeClientsSection,
+          inactiveCountLabel: l.statusInactive,
+          inactiveValue: widget.showInactive,
+          onInactiveChanged: widget.onToggleInactive,
+          inactiveLabelOn: l.hideInactiveClients,
+          inactiveLabelOff: l.showInactiveClients,
+          countInactiveAsFilter: true,
+          clearInactiveOnClear: true,
+          propertyLabel: l.clientPropertyKindLabel,
+          propertyOptions: widget.propertyKindOptions,
+          propertyFilter: widget.propertyKindFilter,
+          onToggleProperty: widget.onPropertyKindChanged == null
+              ? null
+              : (v) => widget.onPropertyKindChanged!(v),
+          onClearProperty: widget.onPropertyKindChanged == null
+              ? null
+              : () => widget.onPropertyKindChanged!(null),
+          entityLabel: null,
+          entityOptions: const [],
+          entityFilter: null,
         ),
-        if (onToggleInactive != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            child: Row(
-              children: [
-                Text(
-                  showInactive ? l.hideInactiveClients : l.showInactiveClients,
-                  style: typo.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Switch(
-                  value: showInactive,
-                  onChanged: onToggleInactive,
-                  activeThumbColor: cs.primary,
-                ),
-              ],
-            ),
-          ),
-        if (propertyKindOptions.isNotEmpty && onPropertyKindChanged != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-            child: DropdownButtonFormField<String?>(
-              value: propertyKindFilter,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: l.clientPropertyKindLabel,
-                floatingLabelBehavior: FloatingLabelBehavior.always,
-                labelStyle: typo.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-                hintText: '${l.select}...',
-                hintStyle: typo.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant.withOpacity(0.65),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.primary, width: 1.4),
-                ),
-              ),
-              items: [
-                DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text(l.all),
-                ),
-                ...propertyKindOptions.map(
-                  (opt) => DropdownMenuItem<String?>(
-                    value: opt,
-                    child: Text(opt),
-                  ),
-                ),
-              ],
-              onChanged: onPropertyKindChanged,
-            ),
-          ),
         Expanded(
           child: RefreshIndicator(
             color: cs.primary,
             backgroundColor: cs.surface,
-            onRefresh: onRefresh,
+            onRefresh: widget.onRefresh,
             child: ListView.separated(
               cacheExtent: 800,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -165,8 +150,10 @@ class ClientsTab extends StatelessWidget {
                 final c = visible[i];
                 return ClientListItem(
                   client: c,
-                  onTap: onEdit == null ? null : () => onEdit!(c),
-                  onDelete: onDelete == null ? null : () => onDelete!(c),
+                  onTap: widget.onEdit == null ? null : () => widget.onEdit!(c),
+                  onDelete: widget.onDelete == null
+                      ? null
+                      : () => widget.onDelete!(c),
                   nameStyle: typo.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     letterSpacing: .2,

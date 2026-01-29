@@ -22,7 +22,7 @@ class GroupDashboardState extends ChangeNotifier {
   GroupDashboardState(this.context, this.group) {
     _gm = context.read<GroupDomain>();
     _ud = context.read<UserDomain>();
-    _loadAll();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAll());
   }
 
   // Dependencies
@@ -41,8 +41,12 @@ class GroupDashboardState extends ChangeNotifier {
   CalendarDashboardActions? calendarActions;
 
   void setCalendarActions(CalendarDashboardActions? actions) {
-    calendarActions = actions;
-    notifyListeners();
+    if (calendarActions == actions) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (calendarActions == actions) return;
+      calendarActions = actions;
+      notifyListeners();
+    });
   }
 
   // Breakpoints
@@ -144,10 +148,12 @@ class GroupDashboardState extends ChangeNotifier {
       ),
       if (canSeeAdmin)
         (l.invoicesNavLabel, Icons.receipt_long_outlined, Sections.invoices),
+      if (canSeeAdmin) ('Emails', Icons.email_outlined, Sections.emails),
       if (canSeeAdmin)
         ('Enable Banking', Icons.account_balance_outlined, 'enableBanking'),
       (l.insightsTitle, Icons.insights_outlined, Sections.insights),
       (l.timeTrackingTitle, Icons.access_time_rounded, Sections.workers),
+      if (canSeeAdmin) (l.groupSettingsTitle, Icons.tune_rounded, Sections.settings),
     ];
 
     return AppBar(

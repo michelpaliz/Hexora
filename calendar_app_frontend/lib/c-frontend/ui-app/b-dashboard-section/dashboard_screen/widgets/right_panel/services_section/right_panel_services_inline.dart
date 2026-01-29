@@ -58,6 +58,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
   }
 
   Future<void> _loadClients() async {
+    if (!mounted) return;
     setState(() {
       _loadingClients = true;
       _errClients = null;
@@ -65,8 +66,10 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
     try {
       final data =
           await _clientsApi.list(groupId: widget.group.id, active: null);
+      if (!mounted) return;
       setState(() => _clients = data);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _errClients = e.toString());
     } finally {
       if (mounted) setState(() => _loadingClients = false);
@@ -74,14 +77,17 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
   }
 
   Future<void> _loadServices() async {
+    if (!mounted) return;
     setState(() {
       _loadingServices = true;
       _errServices = null;
     });
     try {
       final data = await _servicesApi.list(groupId: widget.group.id);
+      if (!mounted) return;
       setState(() => _services = data);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _errServices = e.toString());
     } finally {
       if (mounted) setState(() => _loadingServices = false);

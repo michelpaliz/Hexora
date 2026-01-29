@@ -41,10 +41,14 @@ class _InvoiceSummaryLinesAndTotalsState
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    final linesHeaderStyle = t.bodySmall.copyWith(
+    final currencyFormatter = NumberFormat.simpleCurrency(name: '');
+    final linesHeaderStyle = t.bodyMedium.copyWith(
       color: cs.onSurfaceVariant,
-      fontWeight: FontWeight.w800,
+      fontWeight: FontWeight.w700,
     );
+    final priceAccent = cs.primary;
+    final priceMuted = cs.primary.withValues(alpha: 0.75);
+    final totalChipBg = cs.primaryContainer.withValues(alpha: 0.75);
 
     final linesTable = Column(
       children: [
@@ -104,7 +108,7 @@ class _InvoiceSummaryLinesAndTotalsState
             alignment: Alignment.centerLeft,
             child: Text(
               l.invoiceNoLinesYet,
-              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
             ),
           )
         else
@@ -129,7 +133,7 @@ class _InvoiceSummaryLinesAndTotalsState
                       desc,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                      style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                   const SizedBox(width: InvoiceSummaryLayout.gap),
@@ -137,7 +141,7 @@ class _InvoiceSummaryLinesAndTotalsState
                     width: InvoiceSummaryLayout.qtyWidth,
                     child: Text(
                       NumberFormat.compact().format(qty),
-                      style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                      style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
                       textAlign: TextAlign.right,
                     ),
                   ),
@@ -145,8 +149,11 @@ class _InvoiceSummaryLinesAndTotalsState
                   SizedBox(
                     width: InvoiceSummaryLayout.unitWidth,
                     child: Text(
-                      NumberFormat.compactCurrency(name: '').format(unit),
-                      style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                      currencyFormatter.format(unit),
+                      style: t.bodyMedium.copyWith(
+                        color: priceMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
                       textAlign: TextAlign.right,
                     ),
                   ),
@@ -155,7 +162,7 @@ class _InvoiceSummaryLinesAndTotalsState
                     width: InvoiceSummaryLayout.vatWidth,
                     child: Text(
                       '${vat.toString()}%',
-                      style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                      style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
                       textAlign: TextAlign.right,
                     ),
                   ),
@@ -163,10 +170,10 @@ class _InvoiceSummaryLinesAndTotalsState
                   SizedBox(
                     width: InvoiceSummaryLayout.totalWidth,
                     child: Text(
-                      NumberFormat.compactCurrency(name: '').format(total),
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w700,
+                      currencyFormatter.format(total),
+                      style: t.bodyMedium.copyWith(
+                        color: priceAccent,
+                        fontWeight: FontWeight.w900,
                       ),
                       textAlign: TextAlign.right,
                     ),
@@ -183,52 +190,85 @@ class _InvoiceSummaryLinesAndTotalsState
       required String value,
       bool strong = false,
     }) {
+      final row = Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: (strong ? t.bodyLarge : t.bodyMedium).copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: InvoiceSummaryLayout.totalWidth,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: (strong ? t.bodyLarge : t.bodyMedium).copyWith(
+                color: strong ? priceAccent : cs.onSurface,
+                fontWeight: strong ? FontWeight.w900 : FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      );
+      if (!strong) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: row,
+        );
+      }
       return Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: (strong ? t.bodyMedium : t.bodySmall).copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: totalChipBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: priceAccent.withValues(alpha: 0.35),
+              width: 1,
             ),
-            SizedBox(
-              width: InvoiceSummaryLayout.totalWidth,
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                style: (strong ? t.titleLarge : t.bodySmall).copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
+          ),
+          child: row,
         ),
       );
     }
 
-    final totals = Column(
-      children: [
-        totalsRow(
-          label: l.invoiceSubtotalLabel,
-          value: NumberFormat.simpleCurrency(name: '').format(widget.subtotal),
-        ),
-        totalsRow(
-          label: l.invoiceTaxLabel,
-          value: NumberFormat.simpleCurrency(name: '').format(widget.tax),
-        ),
-        const SizedBox(height: 6),
-        totalsRow(
-          label: l.invoiceTotalLabel,
-          value: NumberFormat.simpleCurrency(name: '').format(widget.total),
-          strong: true,
-        ),
-      ],
+    final totals = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          totalsRow(
+            label: l.invoiceSubtotalLabel,
+            value: currencyFormatter.format(widget.subtotal),
+          ),
+          totalsRow(
+            label: l.invoiceTaxLabel,
+            value: currencyFormatter.format(widget.tax),
+          ),
+          const SizedBox(height: 6),
+          totalsRow(
+            label: l.invoiceTotalLabel,
+            value: currencyFormatter.format(widget.total),
+            strong: true,
+          ),
+        ],
+      ),
     );
 
     return LayoutBuilder(
@@ -269,4 +309,3 @@ class _InvoiceSummaryLinesAndTotalsState
     );
   }
 }
-

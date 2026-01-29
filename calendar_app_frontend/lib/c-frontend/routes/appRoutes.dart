@@ -48,4 +48,9 @@ class AppRoutes {
   static const settings = '/settings';
 
   static const groupInsights = '/group-insights';
+
+  // Mail
+  static const mailInbox = '/mail';
+  static const mailThreads = '/mail/threads';
+  static const mailCompose = '/mail/compose';
 }

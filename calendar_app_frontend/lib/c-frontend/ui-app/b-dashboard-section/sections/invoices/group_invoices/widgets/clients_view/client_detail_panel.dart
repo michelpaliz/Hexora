@@ -4,6 +4,7 @@ import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_list_item.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/clients_view/billing_verification_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/clients_view/quick_assignment_card.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/date_range_filter_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -50,7 +51,7 @@ class ClientDetailPanel extends StatefulWidget {
 }
 
 class _ClientDetailPanelState extends State<ClientDetailPanel> {
-  bool _headerExpanded = true;
+  bool _headerExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -375,6 +376,7 @@ class _ClientTabs extends StatelessWidget {
       overlayColor: WidgetStatePropertyAll(
         cs.primary.withValues(alpha: 0.08),
       ),
+      indicatorSize: TabBarIndicatorSize.tab,
       indicator: BoxDecoration(
         color: cs.primaryContainer,
         borderRadius: BorderRadius.circular(999),
@@ -383,7 +385,8 @@ class _ClientTabs extends StatelessWidget {
       unselectedLabelColor: cs.onSurfaceVariant,
       labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
       unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-      indicatorPadding: const EdgeInsets.symmetric(vertical: 6),
+      indicatorPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+      labelPadding: EdgeInsets.zero,
       tabs: [
         Tab(text: l.groupInvoicesTabInvoices(invoicesCount)),
         Tab(text: l.groupInvoicesTabDrafts(draftsCount)),
@@ -443,7 +446,7 @@ class _QuickAssignAndBilling extends StatelessWidget {
   }
 }
 
-class _InvoiceList extends StatelessWidget {
+class _InvoiceList extends StatefulWidget {
   final String emptyTitle;
   final String emptySubtitle;
   final IconData icon;
@@ -465,38 +468,162 @@ class _InvoiceList extends StatelessWidget {
   });
 
   @override
+  State<_InvoiceList> createState() => _InvoiceListState();
+}
+
+class _InvoiceListState extends State<_InvoiceList> {
+  DateTime? _fromDate;
+  DateTime? _toDate;
+  DateQuickRange _quickRange = DateQuickRange.none;
+  bool _filtersExpanded = false;
+
+  DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
+  DateTime _endOfDay(DateTime d) =>
+      DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
+
+  DateTime? _invoiceDate(Invoice inv) =>
+      inv.issueDate ?? inv.registeredAt ?? inv.occurrenceDate;
+
+  void _setRangeDays(int days) {
+    final now = DateTime.now();
+    setState(() {
+      _toDate = now;
+      _fromDate = now.subtract(Duration(days: days - 1));
+      _quickRange = DateQuickRange.month;
+    });
+  }
+
+  void _setRangeMonths(int months) {
+    final now = DateTime.now();
+    setState(() {
+      _toDate = now;
+      _fromDate = DateTime(now.year, now.month - (months - 1), now.day);
+      _quickRange = DateQuickRange.quarter;
+    });
+  }
+
+  Future<void> _pickFromDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _fromDate ?? _toDate ?? now,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked == null) return;
+    setState(() {
+      _fromDate = picked;
+      if (_toDate != null && _toDate!.isBefore(_fromDate!)) {
+        _toDate = _fromDate;
+      }
+      _quickRange = DateQuickRange.none;
+    });
+  }
+
+  Future<void> _pickToDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _toDate ?? _fromDate ?? now,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked == null) return;
+    setState(() {
+      _toDate = picked;
+      if (_fromDate != null && _toDate!.isBefore(_fromDate!)) {
+        _fromDate = _toDate;
+      }
+      _quickRange = DateQuickRange.none;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (invoices.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(12),
-        child: Center(
-          child: EmptyView(
-            icon: icon,
-            title: emptyTitle,
-            subtitle: emptySubtitle,
-          ),
-        ),
-      );
-    }
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final hasFilter = _fromDate != null || _toDate != null;
+    final filtered = widget.invoices.where((inv) {
+      final date = _invoiceDate(inv);
+      if (!hasFilter) return true;
+      if (date == null) return false;
+      if (_fromDate != null && date.isBefore(_startOfDay(_fromDate!))) {
+        return false;
+      }
+      if (_toDate != null && date.isAfter(_endOfDay(_toDate!))) {
+        return false;
+      }
+      return true;
+    }).toList();
 
-    return ListView.separated(
+    return Padding(
       padding: const EdgeInsets.all(12),
-      itemCount: invoices.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final inv = invoices[i];
-        final client = clients.firstWhere(
-          (c) => c.id == inv.clientId,
-          orElse: () => fallbackClient,
-        );
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DateRangeFilterCard(
+            quickRange: _quickRange,
+            expanded: _filtersExpanded,
+            fromDate: _fromDate,
+            toDate: _toDate,
+            showLabel: false,
+            onToggleExpanded: () =>
+                setState(() => _filtersExpanded = !_filtersExpanded),
+            onClear: () => setState(() {
+              _fromDate = null;
+              _toDate = null;
+              _quickRange = DateQuickRange.none;
+            }),
+            onPickFrom: _pickFromDate,
+            onPickTo: _pickToDate,
+            onSelectQuickRange: (value) {
+              if (value == DateQuickRange.month) {
+                _setRangeDays(30);
+              } else if (value == DateQuickRange.quarter) {
+                _setRangeMonths(3);
+              } else {
+                setState(() {
+                  _quickRange = DateQuickRange.custom;
+                  _filtersExpanded = true;
+                });
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: EmptyView(
+                      icon: widget.icon,
+                      title: widget.emptyTitle,
+                      subtitle: widget.emptySubtitle,
+                    ),
+                  )
+                : ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final inv = filtered[i];
+                      final client = widget.clients.firstWhere(
+                        (c) => c.id == inv.clientId,
+                        orElse: () => widget.fallbackClient,
+                      );
 
-        return InvoiceListItem(
-          invoice: inv,
-          client: client,
-          onTap: () => onTap(inv),
-          onDelete: onDelete == null ? null : () => onDelete!(inv),
-        );
-      },
+                      return InvoiceListItem(
+                        invoice: inv,
+                        client: client,
+                        onTap: () => widget.onTap(inv),
+                        onDelete: widget.onDelete == null
+                            ? null
+                            : () => widget.onDelete!(inv),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

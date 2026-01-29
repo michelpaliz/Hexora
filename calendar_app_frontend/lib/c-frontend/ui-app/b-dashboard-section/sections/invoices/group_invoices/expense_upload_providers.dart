@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/expenses/expenses_api.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -275,7 +276,7 @@ class ExpenseProvidersTab extends StatelessWidget {
                       )
                     : ListView.separated(
                         itemCount: providers.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (_, index) {
                           final p = providers[index];
                           final id = (p['id'] ?? p['_id'] ?? p['providerId'])
@@ -283,33 +284,28 @@ class ExpenseProvidersTab extends StatelessWidget {
                           final name = p['name']?.toString() ?? '-';
                           final taxId = p['taxId']?.toString() ?? '';
                           final subtitle = taxId.isEmpty ? null : taxId;
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 4,
-                            ),
+                          return ListItemCard(
                             leading: CircleAvatar(
                               radius: 16,
-                              backgroundColor: scheme.primary.withOpacity(0.12),
+                              backgroundColor: scheme.primary.withOpacity(0.08),
                               child: Text(
                                 name.trim().isEmpty
                                     ? '?'
                                     : name.trim()[0].toUpperCase(),
-                                style: t.caption.copyWith(
+                                style: t.bodySmall.copyWith(
                                   color: scheme.primary,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
-                            title: Text(
-                              name,
-                              style: t.bodyLarge.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                            title: name,
+                            subtitle: subtitle,
+                            titleStyle: t.bodyLarge.copyWith(
+                              fontWeight: FontWeight.w700,
                             ),
-                            subtitle: subtitle == null
-                                ? null
-                                : Text(subtitle, style: t.bodySmall),
+                            subtitleStyle: t.bodySmall.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -398,7 +394,7 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
       }
       return ListView.separated(
         itemCount: providers.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, index) {
           final p = providers[index];
           final id = providerId(p);
@@ -406,30 +402,26 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
           final taxId = p['taxId']?.toString().trim() ?? '';
           final subtitle = taxId.isEmpty ? null : taxId;
           final selected = id != null && id == selectedProviderId;
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 4,
-            ),
+          return ListItemCard(
             leading: CircleAvatar(
               radius: 16,
-              backgroundColor: scheme.primary.withOpacity(0.12),
+              backgroundColor: scheme.primary.withOpacity(0.08),
               child: Text(
                 name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase(),
-                style: t.caption.copyWith(
+                style: t.bodySmall.copyWith(
                   color: scheme.primary,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            title: Text(
-              name.isEmpty ? '-' : name,
-              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            title: name.isEmpty ? '-' : name,
+            subtitle: subtitle,
+            titleStyle: t.bodyLarge.copyWith(fontWeight: FontWeight.w700),
+            subtitleStyle: t.bodySmall.copyWith(
+              color: scheme.onSurfaceVariant,
             ),
-            subtitle:
-                subtitle == null ? null : Text(subtitle, style: t.bodySmall),
             selected: selected,
-            selectedTileColor: scheme.primary.withOpacity(0.06),
+            showLeadingStripe: true,
             onTap: id == null ? null : () => onSelectProvider(id),
           );
         },
@@ -455,7 +447,7 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
       }
       return ListView.separated(
         itemCount: items.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, index) {
           final item = items[index];
           final title = (item['vendor'] ?? '').toString().trim();
@@ -487,18 +479,19 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
             if ((item['file'] ?? '').toString().trim().isNotEmpty)
               item['file']!.toString(),
           ].join(' • ');
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 4,
+          return ListItemCard(
+            leading: CircleAvatar(
+              radius: 16,
+              backgroundColor: scheme.primary.withOpacity(0.08),
+              child: Icon(
+                Icons.receipt_long_outlined,
+                size: 16,
+                color: scheme.onSurfaceVariant,
+              ),
             ),
-            title: Text(
-              title.isEmpty ? '-' : title,
-              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w600),
-            ),
-            onTap:
-                onPreviewExpense == null ? null : () => onPreviewExpense!(item),
-            subtitle: Column(
+            title: title.isEmpty ? '-' : title,
+            titleStyle: t.bodyLarge.copyWith(fontWeight: FontWeight.w700),
+            subtitleWidget: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (headerLine.isNotEmpty) Text(headerLine, style: t.bodySmall),
@@ -511,6 +504,8 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
                   Text(subtitle, style: t.bodySmall),
               ],
             ),
+            onTap:
+                onPreviewExpense == null ? null : () => onPreviewExpense!(item),
             trailing: onPreviewExpense == null
                 ? null
                 : IconButton(
@@ -750,7 +745,7 @@ class _ExpenseProvidersManagementViewState
       }
       return ListView.separated(
         itemCount: widget.providers.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, index) {
           final p = widget.providers[index];
           final id = widget.providerId(p);
@@ -768,30 +763,26 @@ class _ExpenseProvidersManagementViewState
           final subtitle =
               subtitleParts.isEmpty ? null : subtitleParts.join(' • ');
           final selected = id != null && id == widget.selectedProviderId;
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 4,
-            ),
+          return ListItemCard(
             leading: CircleAvatar(
               radius: 16,
-              backgroundColor: scheme.primary.withOpacity(0.12),
+              backgroundColor: scheme.primary.withOpacity(0.08),
               child: Text(
                 name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase(),
-                style: t.caption.copyWith(
+                style: t.bodySmall.copyWith(
                   color: scheme.primary,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            title: Text(
-              name.isEmpty ? '-' : name,
-              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            title: name.isEmpty ? '-' : name,
+            subtitle: subtitle,
+            titleStyle: t.bodyLarge.copyWith(fontWeight: FontWeight.w700),
+            subtitleStyle: t.bodySmall.copyWith(
+              color: scheme.onSurfaceVariant,
             ),
-            subtitle:
-                subtitle == null ? null : Text(subtitle, style: t.bodySmall),
             selected: selected,
-            selectedTileColor: scheme.primary.withOpacity(0.06),
+            showLeadingStripe: true,
             onTap: () => widget.onSelectProvider(p),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1046,7 +1037,7 @@ class _ExpenseProvidersManagementViewState
       }
       return ListView.separated(
         itemCount: items.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, index) {
           final item = items[index];
           final title = (item['vendor'] ?? '').toString().trim();
@@ -1078,19 +1069,19 @@ class _ExpenseProvidersManagementViewState
             if ((item['file'] ?? '').toString().trim().isNotEmpty)
               item['file']!.toString(),
           ].join(' • ');
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 4,
+          return ListItemCard(
+            leading: CircleAvatar(
+              radius: 16,
+              backgroundColor: scheme.primary.withOpacity(0.08),
+              child: Icon(
+                Icons.receipt_long_outlined,
+                size: 16,
+                color: scheme.onSurfaceVariant,
+              ),
             ),
-            title: Text(
-              title.isEmpty ? '-' : title,
-              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w600),
-            ),
-            onTap: widget.onPreviewExpense == null
-                ? null
-                : () => widget.onPreviewExpense!(item),
-            subtitle: Column(
+            title: title.isEmpty ? '-' : title,
+            titleStyle: t.bodyLarge.copyWith(fontWeight: FontWeight.w700),
+            subtitleWidget: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (headerLine.isNotEmpty) Text(headerLine, style: t.bodySmall),
@@ -1103,6 +1094,9 @@ class _ExpenseProvidersManagementViewState
                   Text(subtitle, style: t.bodySmall),
               ],
             ),
+            onTap: widget.onPreviewExpense == null
+                ? null
+                : () => widget.onPreviewExpense!(item),
             trailing: widget.onPreviewExpense == null
                 ? null
                 : IconButton(

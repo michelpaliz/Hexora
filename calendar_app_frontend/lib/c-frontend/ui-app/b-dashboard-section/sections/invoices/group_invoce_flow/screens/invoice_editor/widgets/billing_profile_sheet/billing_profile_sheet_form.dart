@@ -387,7 +387,8 @@ class BillingProfileSheetForm extends StatelessWidget {
                         validator: (v) {
                           final txt = (v ?? '').trim();
                           if (txt.isEmpty) return null;
-                          final ok = RegExp(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+                          final ok =
+                              RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
                               .hasMatch(txt);
                           return ok ? null : l.invalidEmail;
                         },
@@ -403,8 +404,9 @@ class BillingProfileSheetForm extends StatelessWidget {
                           final txt = (v ?? '').trim();
                           if (txt.isEmpty) return null;
                           final uri = Uri.tryParse(txt);
-                          final ok = uri != null &&
-                              (uri.hasScheme || uri.host.isNotEmpty);
+                          final ok = (uri != null &&
+                                  (uri.hasScheme || uri.host.isNotEmpty)) ||
+                              txt.contains('.');
                           return ok ? null : l.invalidUrl;
                         },
                       ),

@@ -201,8 +201,8 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                     .map(
                       (e) => _EventRow(
                         event: e,
-                        canManage: currentUserId != null &&
-                            _isMine(e, currentUserId),
+                        canManage:
+                            currentUserId != null && _isMine(e, currentUserId),
                       ),
                     )
                     .toList(),
@@ -252,13 +252,12 @@ class _EventRow extends StatelessWidget {
       ),
       onTap: () {
         if (canManage) {
-          Navigator.pushNamed(context, AppRoutes.eventDetail,
-              arguments: event);
+          Navigator.pushNamed(context, AppRoutes.eventDetail, arguments: event);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content:
-                  const Text('Only the owner or recipients can update this event.'),
+              content: const Text(
+                  'Only the owner or recipients can update this event.'),
               duration: const Duration(seconds: 2),
             ),
           );

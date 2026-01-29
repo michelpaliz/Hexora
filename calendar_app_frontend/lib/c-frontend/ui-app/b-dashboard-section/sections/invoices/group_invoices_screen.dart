@@ -17,13 +17,15 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/client_classifications_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_clients_view.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_emails_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_invoices_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_side_menu.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_receipts_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/recurring_invoices_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_receipts_flow/screens/receipt_editor/receipt_editor_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/recurring_invoices_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/client_classification_store.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
@@ -33,11 +35,13 @@ import 'package:hexora/l10n/app_localizations.dart';
 class GroupInvoicesScreen extends StatefulWidget {
   final Group group;
   final bool embedded;
+  final String? initialMenu;
 
   const GroupInvoicesScreen({
     super.key,
     required this.group,
     this.embedded = false,
+    this.initialMenu,
   });
 
   @override
@@ -74,23 +78,58 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   bool _impuestosExpanded = true;
   bool _informesExpanded = false;
   bool _menuCollapsed = false;
+  InvoiceNumberSort? _invoiceNumberSort;
+  bool? _sortingInvoices;
+
+  InvoiceNumberSort get _effectiveInvoiceNumberSort =>
+      _invoiceNumberSort ?? InvoiceNumberSort.recent;
+  bool get _effectiveSortingInvoices => _sortingInvoices ?? false;
 
   @override
   void initState() {
     super.initState();
+    if (widget.initialMenu != null && widget.initialMenu!.trim().isNotEmpty) {
+      _selectedMenu = widget.initialMenu!.trim();
+    }
     _loadAll();
   }
 
-  Future<void> _loadAll() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  (String?, String?) _invoiceSortParams() {
+    return switch (_effectiveInvoiceNumberSort) {
+      InvoiceNumberSort.recent => (null, null),
+      InvoiceNumberSort.numberAsc => ('number', 'asc'),
+      InvoiceNumberSort.numberDesc => ('number', 'desc'),
+    };
+  }
+
+  Future<void> _loadAll({
+    bool sortingInvoices = false,
+    bool showErrorSnack = false,
+  }) async {
+    if (sortingInvoices) {
+      setState(() => _sortingInvoices = true);
+    } else {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
+      final (sortBy, sortDir) = _invoiceSortParams();
       final results = await Future.wait([
         _clientsApi.list(groupId: widget.group.id, active: null),
-        _invoicesApi.listByGroup(widget.group.id, status: 'issued'),
-        _invoicesApi.listByGroup(widget.group.id, status: 'draft'),
+        _invoicesApi.listByGroup(
+          widget.group.id,
+          status: 'issued',
+          sortBy: sortBy,
+          sortDir: sortDir,
+        ),
+        _invoicesApi.listByGroup(
+          widget.group.id,
+          status: 'draft',
+          sortBy: sortBy,
+          sortDir: sortDir,
+        ),
         _receiptsApi.list(groupId: widget.group.id, status: 'issued'),
         _receiptsApi.list(groupId: widget.group.id, status: 'draft'),
         _billingApi.getByGroup(widget.group.id),
@@ -126,10 +165,28 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString());
+      final message = e.toString();
+      if (showErrorSnack) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+      if (!sortingInvoices) {
+        setState(() => _error = message);
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      if (sortingInvoices) {
+        setState(() => _sortingInvoices = false);
+      } else {
+        setState(() => _loading = false);
+      }
     }
+  }
+
+  Future<void> _handleInvoiceSortChanged(InvoiceNumberSort sort) async {
+    if (sort == _effectiveInvoiceNumberSort) return;
+    setState(() => _invoiceNumberSort = sort);
+    await _loadAll(sortingInvoices: true, showErrorSnack: true);
   }
 
   Future<void> _openCreateInvoice() async {
@@ -301,6 +358,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           ),
         ),
         billingProfile: _billingProfile,
+        group: widget.group,
         onOpenRecurringSeries: (seriesId) {
           Navigator.of(context).pop();
           setState(() {
@@ -704,41 +762,41 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
               onEditBillingProfile: _openBillingProfile,
               onToggleBusinessExpanded: _toggleBusinessExpanded,
               onToggleFacturacionExpanded: () => setState(() {
-                    final next = !_facturacionExpanded;
-                    if (!isWide && next) {
-                      _gastosExpanded = false;
-                      _impuestosExpanded = false;
-                      _informesExpanded = false;
-                    }
-                    _facturacionExpanded = next;
-                  }),
+                final next = !_facturacionExpanded;
+                if (!isWide && next) {
+                  _gastosExpanded = false;
+                  _impuestosExpanded = false;
+                  _informesExpanded = false;
+                }
+                _facturacionExpanded = next;
+              }),
               onToggleGastosExpanded: () => setState(() {
-                    final next = !_gastosExpanded;
-                    if (!isWide && next) {
-                      _facturacionExpanded = false;
-                      _impuestosExpanded = false;
-                      _informesExpanded = false;
-                    }
-                    _gastosExpanded = next;
-                  }),
+                final next = !_gastosExpanded;
+                if (!isWide && next) {
+                  _facturacionExpanded = false;
+                  _impuestosExpanded = false;
+                  _informesExpanded = false;
+                }
+                _gastosExpanded = next;
+              }),
               onToggleImpuestosExpanded: () => setState(() {
-                    final next = !_impuestosExpanded;
-                    if (!isWide && next) {
-                      _facturacionExpanded = false;
-                      _gastosExpanded = false;
-                      _informesExpanded = false;
-                    }
-                    _impuestosExpanded = next;
-                  }),
+                final next = !_impuestosExpanded;
+                if (!isWide && next) {
+                  _facturacionExpanded = false;
+                  _gastosExpanded = false;
+                  _informesExpanded = false;
+                }
+                _impuestosExpanded = next;
+              }),
               onToggleInformesExpanded: () => setState(() {
-                    final next = !_informesExpanded;
-                    if (!isWide && next) {
-                      _facturacionExpanded = false;
-                      _gastosExpanded = false;
-                      _impuestosExpanded = false;
-                    }
-                    _informesExpanded = next;
-                  }),
+                final next = !_informesExpanded;
+                if (!isWide && next) {
+                  _facturacionExpanded = false;
+                  _gastosExpanded = false;
+                  _impuestosExpanded = false;
+                }
+                _informesExpanded = next;
+              }),
               selectedMenu: _selectedMenu,
               onMenuChanged: (m) => setState(() => _selectedMenu = m),
               collapsed: _menuCollapsed,
@@ -834,53 +892,38 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                                                               null),
                                                 )
                                               : _selectedMenu ==
-                                                      'invoices_drafts'
-                                                  ? GroupInvoicesInvoicesView(
-                                                      drafts: _drafts,
-                                                      invoices: _invoices,
+                                                      'client_classifications'
+                                                  ? ClientClassificationsView(
+                                                      groupId: widget.group.id,
                                                       clients: _clients,
-                                                      billingProfile:
-                                                          _billingProfile,
-                                                      selectedInvoice:
-                                                          _selectedInvoice,
-                                                      onSelectInvoice: (inv) =>
-                                                          setState(() =>
-                                                              _selectedInvoice =
-                                                                  inv),
-                                                      onDeleteInvoice:
-                                                          _deleteInvoice,
-                                                      onCreateInvoice:
-                                                          _openCreateInvoice,
-                                                      initialTabIndex: 0,
-                                                      onOpenRecurringSeries:
-                                                          (seriesId) =>
-                                                              setState(() {
-                                                        _recurringSeriesToOpen =
-                                                            seriesId;
-                                                        _selectedMenu =
-                                                            'recurring';
-                                                      }),
                                                     )
                                                   : _selectedMenu ==
-                                                          'invoices_issued'
+                                                          'invoices_drafts'
                                                       ? GroupInvoicesInvoicesView(
                                                           drafts: _drafts,
                                                           invoices: _invoices,
                                                           clients: _clients,
                                                           billingProfile:
                                                               _billingProfile,
+                                                          group: widget.group,
                                                           selectedInvoice:
                                                               _selectedInvoice,
-                                                          onSelectInvoice:
-                                                              (inv) =>
-                                                                  setState(() =>
-                                                                      _selectedInvoice =
-                                                                          inv),
+                                                          onSelectInvoice: (inv) =>
+                                                              setState(() =>
+                                                                  _selectedInvoice =
+                                                                      inv),
                                                           onDeleteInvoice:
                                                               _deleteInvoice,
                                                           onCreateInvoice:
                                                               _openCreateInvoice,
-                                                          initialTabIndex: 1,
+                                                          onRefresh: _loadAll,
+                                                          numberSort:
+                                                              _effectiveInvoiceNumberSort,
+                                                          onNumberSortChanged:
+                                                              _handleInvoiceSortChanged,
+                                                          sortLoading:
+                                                              _effectiveSortingInvoices,
+                                                          initialTabIndex: 0,
                                                           onOpenRecurringSeries:
                                                               (seriesId) =>
                                                                   setState(() {
@@ -890,32 +933,97 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                                                                 'recurring';
                                                           }),
                                                         )
-                                                      : GroupInvoicesInvoicesView(
-                                                          drafts: _drafts,
-                                                          invoices: _invoices,
-                                                          clients: _clients,
-                                                          billingProfile:
-                                                              _billingProfile,
-                                                          selectedInvoice:
-                                                              _selectedInvoice,
-                                                          onSelectInvoice:
-                                                              (inv) =>
-                                                                  setState(() =>
-                                                                      _selectedInvoice =
-                                                                          inv),
-                                                          onDeleteInvoice:
-                                                              _deleteInvoice,
-                                                          onCreateInvoice:
-                                                              _openCreateInvoice,
-                                                          onOpenRecurringSeries:
-                                                              (seriesId) =>
-                                                                  setState(() {
-                                                            _recurringSeriesToOpen =
-                                                                seriesId;
-                                                            _selectedMenu =
-                                                                'recurring';
-                                                          }),
-                                                        ),
+                                                      : _selectedMenu ==
+                                                              'emails'
+                                                          ? GroupInvoicesEmailsView(
+                                                              group:
+                                                                  widget.group,
+                                                              selectedInvoice:
+                                                                  _selectedInvoice,
+                                                              clients: _clients,
+                                                            )
+                                                          : _selectedMenu ==
+                                                                  'invoices_issued'
+                                                              ? GroupInvoicesInvoicesView(
+                                                                  drafts:
+                                                                      _drafts,
+                                                                  invoices:
+                                                                      _invoices,
+                                                                  clients:
+                                                                      _clients,
+                                                                  billingProfile:
+                                                                      _billingProfile,
+                                                                  group: widget
+                                                                      .group,
+                                                                  selectedInvoice:
+                                                                      _selectedInvoice,
+                                                                  onSelectInvoice: (inv) =>
+                                                                      setState(() =>
+                                                                          _selectedInvoice =
+                                                                              inv),
+                                                                  onDeleteInvoice:
+                                                                      _deleteInvoice,
+                                                                  onCreateInvoice:
+                                                                      _openCreateInvoice,
+                                                                  onRefresh:
+                                                                      _loadAll,
+                                                                  numberSort:
+                                                                      _effectiveInvoiceNumberSort,
+                                                                  onNumberSortChanged:
+                                                                      _handleInvoiceSortChanged,
+                                                                  sortLoading:
+                                                                      _effectiveSortingInvoices,
+                                                                  initialTabIndex:
+                                                                      1,
+                                                                  onOpenRecurringSeries:
+                                                                      (seriesId) =>
+                                                                          setState(
+                                                                              () {
+                                                                    _recurringSeriesToOpen =
+                                                                        seriesId;
+                                                                    _selectedMenu =
+                                                                        'recurring';
+                                                                  }),
+                                                                )
+                                                              : GroupInvoicesInvoicesView(
+                                                                  drafts:
+                                                                      _drafts,
+                                                                  invoices:
+                                                                      _invoices,
+                                                                  clients:
+                                                                      _clients,
+                                                                  billingProfile:
+                                                                      _billingProfile,
+                                                                  group: widget
+                                                                      .group,
+                                                                  selectedInvoice:
+                                                                      _selectedInvoice,
+                                                                  onSelectInvoice: (inv) =>
+                                                                      setState(() =>
+                                                                          _selectedInvoice =
+                                                                              inv),
+                                                                  onDeleteInvoice:
+                                                                      _deleteInvoice,
+                                                                  onCreateInvoice:
+                                                                      _openCreateInvoice,
+                                                                  onRefresh:
+                                                                      _loadAll,
+                                                                  numberSort:
+                                                                      _effectiveInvoiceNumberSort,
+                                                                  onNumberSortChanged:
+                                                                      _handleInvoiceSortChanged,
+                                                                  sortLoading:
+                                                                      _effectiveSortingInvoices,
+                                                                  onOpenRecurringSeries:
+                                                                      (seriesId) =>
+                                                                          setState(
+                                                                              () {
+                                                                    _recurringSeriesToOpen =
+                                                                        seriesId;
+                                                                    _selectedMenu =
+                                                                        'recurring';
+                                                                  }),
+                                                                ),
             )
           ],
         ),
@@ -927,7 +1035,11 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         _selectedMenu == 'invoices_drafts' ||
         _selectedMenu == 'invoices_issued' ||
         _selectedMenu == 'invoice_editor' ||
+        _selectedMenu == 'clients' ||
+        _selectedMenu == 'clients_flow' ||
         _selectedMenu == 'receipts' ||
+        _selectedMenu == 'emails' ||
+        _selectedMenu == 'client_classifications' ||
         _selectedMenu == 'expenses' ||
         _selectedMenu == 'expenses_upload' ||
         _selectedMenu == 'expenses_list' ||

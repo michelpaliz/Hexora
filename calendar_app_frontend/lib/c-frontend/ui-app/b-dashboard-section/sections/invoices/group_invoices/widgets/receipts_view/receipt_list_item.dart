@@ -45,9 +45,15 @@ class ReceiptListItem extends StatelessWidget {
         : l.receiptDraftNumberPlaceholder;
 
     return Card(
-      elevation: 3,
+      elevation: 1,
+      color: cs.surface,
       shadowColor: ThemeColors.cardShadow(context),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: cs.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -58,12 +64,12 @@ class ReceiptListItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                radius: 18,
-                backgroundColor: cs.tertiary.withValues(alpha: 0.12),
+                radius: 16,
+                backgroundColor: cs.tertiary.withValues(alpha: 0.08),
                 child: Icon(
                   Icons.description_outlined,
-                  color: cs.tertiary,
-                  size: 18,
+                  color: cs.onSurfaceVariant,
+                  size: 16,
                 ),
               ),
               const SizedBox(width: 10),
@@ -71,15 +77,30 @@ class ReceiptListItem extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      client.name,
-                      style: t.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            client.name,
+                            style: t.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: cs.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          totalLabel,
+                          style: t.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 4),
+                    _StatusPill(status: receipt.status ?? 'draft'),
                     const SizedBox(height: 4),
                     Text(
                       [
@@ -94,14 +115,6 @@ class ReceiptListItem extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      totalLabel,
-                      style: t.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -110,18 +123,19 @@ class ReceiptListItem extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _StatusPill(status: receipt.status ?? 'draft'),
-                  const SizedBox(height: 4),
                   if (onDelete != null)
                     IconButton(
                       tooltip: l.delete,
                       visualDensity: VisualDensity.compact,
                       icon: const Icon(Icons.delete_outline),
-                      color: cs.error,
+                      color: cs.error.withValues(alpha: 0.8),
                       onPressed: onDelete,
                     )
                   else
-                    Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+                    Icon(
+                      Icons.chevron_right,
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
                 ],
               ),
             ],
@@ -142,22 +156,25 @@ class _StatusPill extends StatelessWidget {
     final t = AppTypography.of(context);
     final normalized = status.toLowerCase();
     final bool issued = normalized.contains('issue');
-    final Color bg =
-        issued ? cs.secondaryContainer : cs.surfaceContainerHighest;
+    final Color bg = issued
+        ? cs.secondaryContainer
+        : cs.surface.withValues(alpha: 0.5);
     final Color fg = issued ? cs.onSecondaryContainer : cs.onSurfaceVariant;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: issued ? 0.2 : 0.25),
+        ),
       ),
       child: Text(
         normalized.isEmpty ? 'draft' : normalized,
         style: t.bodySmall.copyWith(
           color: fg,
-          fontWeight: FontWeight.w700,
-          letterSpacing: .2,
+          fontWeight: FontWeight.w600,
+          letterSpacing: .1,
         ),
       ),
     );

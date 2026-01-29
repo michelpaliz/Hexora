@@ -18,7 +18,13 @@ import 'package:hexora/b-backend/group_mng_flow/invite/api/invite_api_client.dar
 import 'package:hexora/b-backend/group_mng_flow/invite/domain/invite_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/recurrenceRule/recurrence_rule_api_client.dart';
+import 'package:hexora/b-backend/mail/api/i_mail_api_client.dart';
+import 'package:hexora/b-backend/mail/api/mail_api_client.dart';
+import 'package:hexora/b-backend/mail/domain/mail_domain.dart';
+import 'package:hexora/b-backend/mail/repository/i_mail_repository.dart';
+import 'package:hexora/b-backend/mail/repository/mail_repository.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
@@ -67,6 +73,24 @@ final List<SingleChildWidget> featureProviders = [
       groupEventResolver: ctx.read<GroupEventResolver>(),
       user: null,
     ),
+  ),
+
+  // Mail
+  Provider<IMailApiClient>(
+    create: (ctx) => MailApiClient(client: ctx.read<http.Client>()),
+  ),
+  Provider<IMailRepository>(
+    create: (ctx) => MailRepository(
+      apiClient: ctx.read<IMailApiClient>(),
+      tokenSupplier: () async {
+        final token = await ctx.read<AuthService>().getToken();
+        if (token == null) throw Exception('Not authenticated');
+        return token;
+      },
+    ),
+  ),
+  ChangeNotifierProvider(
+    create: (ctx) => MailDomain(repository: ctx.read<IMailRepository>()),
   ),
 
   // Invitations

@@ -105,6 +105,7 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
         groupId: widget.groupId,
         clientId: _clientId!,
         pdfUrl: _pdfUrl.text.trim().isEmpty ? null : _pdfUrl.text.trim(),
+        currency: 'EUR',
         registeredAt: _registeredAt,
         status: _status,
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),

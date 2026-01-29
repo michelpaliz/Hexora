@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
+import 'package:hexora/a-models/invoice/invoice_block.dart';
 import 'package:hexora/a-models/invoice/invoice_line.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_formatters.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
@@ -48,12 +50,18 @@ class InvoiceEditorController extends ChangeNotifier {
   final pdfUrl = TextEditingController();
 
   final List<LineDraft> lines = <LineDraft>[LineDraft(position: 1)];
+  final List<InvoiceBlockDraft> blocks = <InvoiceBlockDraft>[
+    InvoiceBlockDraft.item()
+  ];
 
   String? _clientId;
   bool _saving = false;
   bool _issuing = false;
   bool _previewedPdf = false;
+  bool _useBlocks = true;
+  bool _deletingDraft = false;
   Invoice? _savedInvoice;
+  List<Invoice> _pendingDrafts = const [];
   int _issuedThisMonthCount = 0;
   int _pendingDraftsCount = 0;
   bool _loadingClientStats = false;
@@ -70,7 +78,10 @@ class InvoiceEditorController extends ChangeNotifier {
   Invoice? get savedInvoice => _savedInvoice;
   int get issuedThisMonthCount => _issuedThisMonthCount;
   int get pendingDraftsCount => _pendingDraftsCount;
+  List<Invoice> get pendingDrafts => _pendingDrafts;
   bool get loadingClientStats => _loadingClientStats;
+  bool get useBlocks => _useBlocks;
+  bool get deletingDraft => _deletingDraft;
 
   String get invoiceNumber => InvoiceEditorFormatters.invoiceNumber(
         digitsText: digits.text,
@@ -82,7 +93,17 @@ class InvoiceEditorController extends ChangeNotifier {
 
   bool get hasLines => lines.isNotEmpty;
 
-  num get total => InvoiceEditorFormatters.total(lines);
+  bool get hasBillableEntries {
+    if (_useBlocks) {
+      return blocks.any((block) => block.hasBillableContent);
+    }
+    return lines.any((line) =>
+        line.description.text.trim().isNotEmpty && (line.unitPrice ?? 0) > 0);
+  }
+
+  num get total => _useBlocks
+      ? InvoiceEditorFormatters.totalBlocks(blocks)
+      : InvoiceEditorFormatters.total(lines);
 
   String _safeErrorMessage(
     BuildContext context,
@@ -117,6 +138,12 @@ class InvoiceEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setUseBlocks(bool value) {
+    if (_useBlocks == value) return;
+    _useBlocks = value;
+    notifyUi();
+  }
+
   void setClientId(String? v) {
     _clientId = v;
     _savedInvoice = null;
@@ -135,6 +162,9 @@ class InvoiceEditorController extends ChangeNotifier {
     pdfUrl.dispose();
     for (final l in lines) {
       l.dispose();
+    }
+    for (final b in blocks) {
+      b.dispose();
     }
     super.dispose();
   }
@@ -165,6 +195,7 @@ class InvoiceEditorController extends ChangeNotifier {
       final drafts = await _invoicesApi.listByGroup(group.id, status: 'draft');
 
       _pendingDraftsCount = drafts.length;
+      _pendingDrafts = drafts;
 
       if (_clientId == null) {
         _issuedThisMonthCount = 0;
@@ -190,7 +221,12 @@ class InvoiceEditorController extends ChangeNotifier {
     if (!formKey.currentState!.validate()) {
       throw Exception(l.invoiceFillRequiredFieldsError);
     }
-    if (!hasLines) {
+    if (_useBlocks) {
+      if (!hasBillableEntries) {
+        throw Exception(l.invoiceLinesRequired);
+      }
+      _validateBlocks(l);
+    } else if (!hasLines) {
       throw Exception(l.invoiceLinesRequired);
     }
     if (_clientId == null) {
@@ -200,33 +236,99 @@ class InvoiceEditorController extends ChangeNotifier {
     _saving = true;
     notifyListeners();
     try {
+      final sanitizedBlocks =
+          _useBlocks ? _sanitizeBlocks(blocks) : const <InvoiceBlock>[];
       final invoice = Invoice(
         id: '',
         invoiceNumber: invoiceNumber,
         groupId: group.id,
         clientId: _clientId!,
         pdfUrl: pdfUrl.text.trim().isEmpty ? null : pdfUrl.text.trim(),
-        registeredAt: invoiceDate.value,
-        status: 'draft',
+        currency: currency.text.trim().isEmpty ? 'EUR' : currency.text.trim(),
+        issueDate: invoiceDate.value,
         notes: notes.text.trim().isEmpty ? null : notes.text.trim(),
+        blocks: sanitizedBlocks,
       );
 
+      final payload = invoice.toCreatePayload();
+      debugPrint('[InvoiceDraft] create payload: $payload');
       final created = await _invoicesApi.create(invoice);
-
-      final createdLines = <InvoiceLine>[];
-      for (final d in lines) {
-        final saved = await _linesApi.create(created.id, d.toLine());
-        createdLines.add(saved);
+      debugPrint('[InvoiceDraft] create response: ${created.toJson()}');
+      try {
+        final fetched = await _invoicesApi.getById(created.id);
+        debugPrint('[InvoiceDraft] fetched response: ${fetched.toJson()}');
+      } catch (e) {
+        debugPrint('[InvoiceDraft] fetch failed: $e');
       }
 
-      final merged = created.copyWith(lines: createdLines);
-      _savedInvoice = merged;
+      final createdLines = <InvoiceLine>[];
+      if (!_useBlocks) {
+        for (final d in lines) {
+          final saved = await _linesApi.create(created.id, d.toLine());
+          createdLines.add(saved);
+        }
+        _savedInvoice = created.copyWith(lines: createdLines);
+      } else {
+        _savedInvoice = created.copyWith(blocks: sanitizedBlocks);
+      }
+      if (_savedInvoice?.status == 'draft') {
+        final savedDraft = _savedInvoice!;
+        _pendingDrafts = [
+          savedDraft,
+          ..._pendingDrafts.where((inv) => inv.id != savedDraft.id),
+        ];
+        _pendingDraftsCount = _pendingDrafts.length;
+      }
       notifyListeners();
-      return merged;
+      return _savedInvoice!;
     } finally {
       _saving = false;
       notifyListeners();
     }
+  }
+
+  List<InvoiceBlock> _sanitizeBlocks(List<InvoiceBlockDraft> draftBlocks) {
+    return draftBlocks.map((draft) {
+      final block = draft.toBlock();
+      final type = block.type;
+      if (type == InvoiceBlockType.item) {
+        return InvoiceBlock(
+          type: type,
+          sku: block.sku,
+          description: block.description,
+          qty: block.qty,
+          unit: block.unit,
+          unitPrice: block.unitPrice,
+          taxRate: block.taxRate,
+          level: block.level,
+          isBillable: block.isBillable,
+        );
+      }
+      if (type == InvoiceBlockType.date ||
+          type == InvoiceBlockType.section ||
+          type == InvoiceBlockType.subsection) {
+        return InvoiceBlock(
+          type: type,
+          title: block.title,
+          level: type == InvoiceBlockType.subsection ? block.level : null,
+        );
+      }
+      if (type == InvoiceBlockType.note) {
+        return InvoiceBlock(
+          type: type,
+          text: block.text,
+          level: block.level,
+        );
+      }
+      if (type == InvoiceBlockType.checklist) {
+        return InvoiceBlock(
+          type: type,
+          items: block.items,
+          level: block.level,
+        );
+      }
+      return InvoiceBlock(type: type);
+    }).toList();
   }
 
   Future<void> handleSaveDraft(BuildContext context) async {
@@ -240,6 +342,7 @@ class InvoiceEditorController extends ChangeNotifier {
           : l.invoiceDraftSavedSnackNoNumber;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
+      debugPrint('[InvoicePreview] $e');
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -293,7 +396,7 @@ class InvoiceEditorController extends ChangeNotifier {
   Future<void> issue(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
 
-    if (!hasLines || total <= 0 || _clientId == null) {
+    if (!hasBillableEntries || total <= 0 || _clientId == null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(l.invoiceLinesRequired)));
       return;
@@ -366,6 +469,182 @@ class InvoiceEditorController extends ChangeNotifier {
       );
     } finally {
       _issuing = false;
+      notifyListeners();
+    }
+  }
+
+  void _validateBlocks(AppLocalizations l) {
+    if (blocks.isEmpty) {
+      throw Exception(l.invoiceLinesRequired);
+    }
+    for (final block in blocks) {
+      final type = block.type;
+      if (type == InvoiceBlockType.item) {
+        final qty = block.qty;
+        final price = block.unitPrice;
+        final tax = block.taxRate;
+        if (qty != null && qty < 0) {
+          throw Exception(l.invoiceValidationNonNegative);
+        }
+        if (price != null && price < 0) {
+          throw Exception(l.invoiceValidationNonNegative);
+        }
+        if (tax != null && (tax < 0 || tax > 100)) {
+          throw Exception(l.invoiceValidationTaxRate);
+        }
+        if (block.description.text.trim().isEmpty) {
+          throw Exception(l.fieldIsRequired);
+        }
+      } else if (type == InvoiceBlockType.date ||
+          type == InvoiceBlockType.section ||
+          type == InvoiceBlockType.subsection) {
+        if (block.title.text.trim().isEmpty) {
+          throw Exception(l.fieldIsRequired);
+        }
+      } else if (type == InvoiceBlockType.note) {
+        if (block.text.text.trim().isEmpty) {
+          throw Exception(l.fieldIsRequired);
+        }
+      } else if (type == InvoiceBlockType.checklist) {
+        if (block.checklistItems.isEmpty) {
+          throw Exception(l.fieldIsRequired);
+        }
+        for (final item in block.checklistItems) {
+          if (item.text.text.trim().isEmpty) {
+            throw Exception(l.fieldIsRequired);
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> deleteDraft(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    final draft = _savedInvoice;
+    if (draft == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(l.invoiceDraftRemoveTitle),
+        content: Text(l.invoiceDraftRemoveMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l.remove),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    _deletingDraft = true;
+    notifyListeners();
+    try {
+      await _invoicesApi.delete(draft.id);
+      _savedInvoice = null;
+      _previewedPdf = false;
+      await _refreshClientStats();
+      notifyListeners();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.invoiceDraftRemovedSnack)),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _safeErrorMessage(
+              context,
+              e,
+              fallback: l.invoiceDraftRemoveFailedSnack,
+            ),
+          ),
+        ),
+      );
+    } finally {
+      _deletingDraft = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> previewDraft(BuildContext context, Invoice draft) async {
+    final l = AppLocalizations.of(context)!;
+    try {
+      final r = await _invoicesApi.previewPdf(draft.id);
+      final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
+      await pdf_launcher.launchPdfPreview(
+        bytes,
+        fileName: 'invoice-${draft.invoiceNumber}.pdf',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _safeErrorMessage(
+              context,
+              e,
+              fallback: l.invoicePdfPreviewFailedSnack,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> deleteDraftById(BuildContext context, Invoice draft) async {
+    final l = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(l.invoiceDraftRemoveTitle),
+        content: Text(l.invoiceDraftRemoveMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l.remove),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    _deletingDraft = true;
+    notifyListeners();
+    try {
+      await _invoicesApi.delete(draft.id);
+      _pendingDrafts = _pendingDrafts.where((d) => d.id != draft.id).toList();
+      _pendingDraftsCount = _pendingDrafts.length;
+      notifyListeners();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.invoiceDraftRemovedSnack)),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _safeErrorMessage(
+              context,
+              e,
+              fallback: l.invoiceDraftRemoveFailedSnack,
+            ),
+          ),
+        ),
+      );
+    } finally {
+      _deletingDraft = false;
       notifyListeners();
     }
   }

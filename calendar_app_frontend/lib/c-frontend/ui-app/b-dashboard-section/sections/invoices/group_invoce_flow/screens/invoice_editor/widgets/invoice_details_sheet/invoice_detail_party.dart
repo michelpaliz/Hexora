@@ -21,19 +21,25 @@ class InvoiceDetailParty extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Card(
+      elevation: 1,
+      color: cs.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 560;
-            final sectionBg = cs.surfaceContainerHighest;
+            final sectionBg = cs.surface;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   l.invoiceParties,
-                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                  style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 8),
                 if (wide)
@@ -117,7 +123,7 @@ class _PartySection extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       ),
       padding: const EdgeInsets.all(10),
       child: Column(
@@ -125,7 +131,10 @@ class _PartySection extends StatelessWidget {
         children: [
           Text(
             title,
-            style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+            style: t.bodyMedium.copyWith(
+              fontWeight: FontWeight.w900,
+              color: cs.onSurface,
+            ),
           ),
           child,
         ],
@@ -268,11 +277,36 @@ class _PartyDetailsState extends State<_PartyDetails> {
               overflow: TextOverflow.ellipsis,
             ),
           if (hasAny(taxId)) ...[
-            const SizedBox(height: 8),
-            _CopyField(
-              label: l.billingTaxId,
-              value: taxId!.trim(),
-              icon: Icons.badge_outlined,
+            const SizedBox(height: 6),
+            Text(
+              '${l.billingTaxId}: ${taxId!.trim()}',
+              style: t.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          if (!_detailsExpanded && hasAny(emailValue)) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.email_outlined,
+                  size: 14,
+                  color: cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    emailValue!,
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ],
           if (hasDetails && !_detailsExpanded) ...[
@@ -282,7 +316,6 @@ class _PartyDetailsState extends State<_PartyDetails> {
                 Expanded(
                   child: Text(
                     [
-                      if (hasAny(emailValue)) emailValue!,
                       if (!hasAny(emailValue) && addressLines.isNotEmpty)
                         addressLines.first,
                     ].join(' · '),
@@ -305,9 +338,20 @@ class _PartyDetailsState extends State<_PartyDetails> {
           ],
           if (_detailsExpanded) ...[
             const SizedBox(height: 10),
+            if (hasAny(taxId)) ...[
+              _SectionHeader(label: l.billingTaxId),
+              const SizedBox(height: 8),
+              _KeyValueRow(
+                label: l.billingTaxId,
+                value: taxId!.trim(),
+                icon: Icons.badge_outlined,
+                copyValue: taxId,
+              ),
+            ],
             if (hasAny(emailValue) ||
                 hasAny(phoneValue) ||
                 hasAny(websiteValue)) ...[
+              if (hasAny(taxId)) const SizedBox(height: 10),
               _SectionHeader(label: l.contact),
               const SizedBox(height: 8),
               if (hasAny(emailValue))

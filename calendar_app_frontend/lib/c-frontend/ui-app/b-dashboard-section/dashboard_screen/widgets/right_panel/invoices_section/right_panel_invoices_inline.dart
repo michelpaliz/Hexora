@@ -95,6 +95,7 @@ class _InvoicesInlinePanelState extends State<InvoicesInlinePanel> {
               GroupClient(id: inv.clientId, name: '-', isActive: true),
         ),
         billingProfile: _profile,
+        group: widget.group,
       ),
     );
   }

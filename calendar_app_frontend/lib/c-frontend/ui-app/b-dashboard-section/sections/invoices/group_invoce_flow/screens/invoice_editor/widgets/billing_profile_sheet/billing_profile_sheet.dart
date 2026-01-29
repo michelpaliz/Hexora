@@ -274,9 +274,20 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
       bool sameNullable(String? a, String? b) =>
           normNullable(a) == normNullable(b);
 
+      String? normalizeWebsite(String? raw) {
+        final txt = (raw ?? '').trim();
+        if (txt.isEmpty) return null;
+        final uri = Uri.tryParse(txt);
+        if (uri != null && uri.hasScheme) return txt;
+        if (txt.contains('.')) return 'https://$txt';
+        return txt;
+      }
+
       final initial = widget.initial;
+      final initialWebsite = normalizeWebsite(initial?.website);
+      final updatedWebsite = normalizeWebsite(_website.text);
       final websiteOnlyChange = initial != null &&
-          !sameNullable(initial.website, _website.text) &&
+          initialWebsite != updatedWebsite &&
           _legalName.text.trim() == (initial.legalName) &&
           _taxId.text.trim() == (initial.taxId) &&
           sameNullable(initial.logoUrl, _logoUrl.text) &&
@@ -296,7 +307,7 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
       if (websiteOnlyChange) {
         final updated = await widget.api.updateWebsite(
           groupId: widget.groupId,
-          website: normNullable(_website.text) ?? '',
+          website: updatedWebsite ?? '',
         );
         if (!mounted) return;
         Navigator.of(context).pop<BillingProfile>(updated);
@@ -319,7 +330,7 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
         addressCountry:
             _country.text.trim().isEmpty ? null : _country.text.trim(),
         email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-        website: _website.text.trim().isEmpty ? null : _website.text.trim(),
+        website: updatedWebsite,
         iban: _iban.text.trim().isEmpty ? null : _iban.text.trim(),
         currency: _currency.text.trim().isEmpty ? 'EUR' : _currency.text.trim(),
         vatRate: vat,

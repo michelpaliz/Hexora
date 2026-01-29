@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
@@ -134,6 +135,12 @@ class RecurringInvoicesApi {
         if (j is List) {
           return j.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
         }
+        if (j is Map && j['series'] is List) {
+          return (j['series'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
         if (j is Map && j['items'] is List) {
           return (j['items'] as List)
               .whereType<Map>()
@@ -180,5 +187,32 @@ class RecurringInvoicesApi {
       method: 'POST',
       map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
+  }
+
+  Future<({int count, List<Invoice> invoices})> listGeneratedInvoices(
+    String seriesId,
+  ) async {
+    final uri = _u('/$seriesId/invoices');
+    final r = await http.get(uri, headers: await _headers());
+    return _decode(r, url: uri, method: 'GET', map: (j) {
+      if (j is Map) {
+        final rawList = j['invoices'];
+        final invoices = rawList is List
+            ? rawList
+                .whereType<Map<String, dynamic>>()
+                .map(Invoice.fromJson)
+                .toList()
+            : <Invoice>[];
+        final rawCount = j['count'];
+        final count = rawCount is num ? rawCount.toInt() : invoices.length;
+        return (count: count, invoices: invoices);
+      }
+      if (j is List) {
+        final invoices =
+            j.whereType<Map<String, dynamic>>().map(Invoice.fromJson).toList();
+        return (count: invoices.length, invoices: invoices);
+      }
+      return (count: 0, invoices: <Invoice>[]);
+    });
   }
 }

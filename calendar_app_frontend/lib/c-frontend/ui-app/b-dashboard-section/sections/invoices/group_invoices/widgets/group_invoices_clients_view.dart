@@ -4,7 +4,6 @@ import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/clients_view/client_detail_panel.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/clients_view/clients_list_panel.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/client_classification_store.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/client_classification_manager_dialog.dart';
 
 class GroupInvoicesClientsView extends StatefulWidget {
   final String groupId;
@@ -190,8 +189,6 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                     propertyFilter: _propertyFilter,
                     entityOptions: entityOptions,
                     propertyOptions: propertyOptions,
-                    savedEntityTypes: _savedEntityTypes,
-                    savedPropertyKinds: _savedPropertyKinds,
                     onClearFilters: _clearFilters,
                     onToggleEntityFilter: (v) => setState(() {
                       _entityFilter = _entityFilter == v ? null : v;
@@ -203,15 +200,6 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                         setState(() => _entityFilter = null),
                     onClearPropertyFilter: () =>
                         setState(() => _propertyFilter = null),
-                    onManageClassificationOptions: () async {
-                      await showDialog<void>(
-                        context: context,
-                        builder: (_) => ClientClassificationManagerDialog(
-                          groupId: widget.groupId,
-                        ),
-                      );
-                      await _reloadOptions();
-                    },
                     onSelectClient: widget.onSelectClient,
                   ),
                 ),

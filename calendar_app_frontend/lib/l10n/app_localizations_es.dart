@@ -3066,6 +3066,130 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceLinesTitle => 'Líneas de factura';
 
   @override
+  String get invoiceBlocksTitle => 'Bloques de factura';
+
+  @override
+  String get invoiceBlocksModeBlocks => 'Bloques';
+
+  @override
+  String get invoiceBlocksModeLines => 'Líneas';
+
+  @override
+  String get invoiceAddBlock => 'Agregar bloque';
+
+  @override
+  String get invoiceBlocksInfoTooltip =>
+      'Los bloques permiten mezclar partidas con encabezados, notas y listas. Solo los ítems facturables afectan los totales.';
+
+  @override
+  String get invoiceBlocksEmptyMessage =>
+      'Crea tu factura por bloques (Fecha, Sección, Ítems...)';
+
+  @override
+  String get invoiceBlocksQuickItem => 'Ítem';
+
+  @override
+  String get invoiceBlocksQuickDate => 'Fecha';
+
+  @override
+  String get invoiceHeaderCompactCta => 'Compactar cabecera';
+
+  @override
+  String get invoiceHeaderExpandCta => 'Expandir cabecera';
+
+  @override
+  String get invoiceBlockAdvancedShowCta => 'Avanzado';
+
+  @override
+  String get invoiceBlockAdvancedHideCta => 'Ocultar avanzado';
+
+  @override
+  String get invoiceAddBlockMore => 'Más...';
+
+  @override
+  String get invoiceAddBlockRecommended => 'Recomendado';
+
+  @override
+  String get invoiceAddBlockFooterInsert =>
+      'Se añadirá debajo del bloque actual';
+
+  @override
+  String get invoiceAddBlockFooterOutsideWrapper =>
+      'Se añadirá fuera del bloque agrupado';
+
+  @override
+  String get invoiceWrapperAddInsideLabel => 'Añadir dentro';
+
+  @override
+  String get invoiceBlockDateAutoFormatCta => 'Usar formato automático';
+
+  @override
+  String get invoiceBlockTypeLabel => 'Tipo de bloque';
+
+  @override
+  String get invoiceBlockTypeItem => 'Ítem';
+
+  @override
+  String get invoiceBlockTypeDate => 'Fecha';
+
+  @override
+  String get invoiceBlockTypeSection => 'Sección';
+
+  @override
+  String get invoiceBlockTypeSubsection => 'Subsección';
+
+  @override
+  String get invoiceBlockTypeDivider => 'Divisor';
+
+  @override
+  String get invoiceBlockTypeNote => 'Nota';
+
+  @override
+  String get invoiceBlockTypeChecklist => 'Lista';
+
+  @override
+  String get invoiceBlockSkuLabel => 'SKU';
+
+  @override
+  String get invoiceBlockUnitLabel => 'Unidad';
+
+  @override
+  String get invoiceBlockLevelLabel => 'Nivel';
+
+  @override
+  String get invoiceBlockBillableLabel => 'Ítem facturable';
+
+  @override
+  String get invoiceBlockTitleLabelDate => 'Título de fecha';
+
+  @override
+  String get invoiceBlockTitleLabelSection => 'Título de sección';
+
+  @override
+  String get invoiceBlockTitleLabelSubsection => 'Título de subsección';
+
+  @override
+  String get invoiceBlockNoteLabel => 'Nota';
+
+  @override
+  String get invoiceBlockChecklistItemLabel => 'Elemento de lista';
+
+  @override
+  String get invoiceBlockAddChecklistItem => 'Agregar elemento';
+
+  @override
+  String get invoiceBlockMoveUp => 'Subir';
+
+  @override
+  String get invoiceBlockMoveDown => 'Bajar';
+
+  @override
+  String get invoiceValidationNonNegative => 'Debe ser 0 o mayor';
+
+  @override
+  String get invoiceValidationTaxRate => 'El IVA debe estar entre 0 y 100';
+
+  @override
   String get invoiceLinesPlaceholderTitle => 'Líneas de factura pronto';
 
   @override
@@ -3083,6 +3207,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get change => 'Cambiar';
+
+  @override
+  String get stepLabel => 'Paso';
+
+  @override
+  String get ofLabel => 'de';
 
   @override
   String get fieldIsRequired => 'Este campo es obligatorio';
@@ -3122,6 +3252,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invoiceTotalLabel => 'Total';
+
+  @override
+  String get invoiceTotalsTitle => 'Totales';
 
   @override
   String get invoiceEditorTitle => 'Editor de facturas';
@@ -3172,7 +3305,52 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoicePdfCta => 'PDF';
 
   @override
+  String get invoicePdfDownloadCta => 'Descargar PDF';
+
+  @override
+  String get invoiceOpenCta => 'Abrir factura';
+
+  @override
+  String get invoiceBillingNameTitle => 'Cliente (destinatario)';
+
+  @override
+  String get invoiceBillingNameEditCta =>
+      'Editar datos de facturación del cliente';
+
+  @override
+  String get invoiceBillingNameCurrentLabel => 'Nombre de facturación actual';
+
+  @override
+  String get invoiceBillingNameNewLabel => 'Nombre de facturación';
+
+  @override
+  String get invoiceBillingNameReasonLabel => 'Motivo (opcional)';
+
+  @override
+  String get invoiceBillingNameNewRequired =>
+      'El nombre de facturación es obligatorio';
+
+  @override
+  String get invoiceBillingNameUpdateSuccess =>
+      'Datos de facturación del cliente actualizados';
+
+  @override
+  String get invoiceChangeHistoryTitle => 'Cambios';
+
+  @override
+  String get invoiceChangeHistoryEmpty => 'Todavía no hay cambios.';
+
+  @override
+  String get reasonLabel => 'Motivo';
+
+  @override
+  String get updatedByLabel => 'Actualizado por';
+
+  @override
   String get invoicePreviewCta => 'Vista previa (PDF)';
+
+  @override
+  String get invoiceSendCta => 'Enviar factura';
 
   @override
   String get invoiceStepsTitle => 'Pasos';
@@ -3314,6 +3492,19 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo guardar el borrador. Inténtalo de nuevo.';
 
   @override
+  String get invoiceDraftRemoveTitle => '¿Eliminar borrador?';
+
+  @override
+  String get invoiceDraftRemoveMessage => 'Esto eliminará el borrador actual.';
+
+  @override
+  String get invoiceDraftRemovedSnack => 'Borrador eliminado';
+
+  @override
+  String get invoiceDraftRemoveFailedSnack =>
+      'No se pudo eliminar el borrador. Inténtalo de nuevo.';
+
+  @override
   String invoiceIssueSuccessSnack(Object invoiceNumber) {
     return 'Factura emitida: $invoiceNumber';
   }
@@ -3325,6 +3516,156 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get invoicePdfPreviewFailedSnack =>
       'No se pudo generar la vista previa del PDF. Inténtalo de nuevo.';
+
+  @override
+  String get invoiceSortByNumberLabel => 'Ordenar por numero';
+
+  @override
+  String get invoiceSortByNumberRecent => 'Mas recientes';
+
+  @override
+  String get invoiceSortByNumberAsc => 'Numero (ascendente)';
+
+  @override
+  String get invoiceSortByNumberDesc => 'Numero (descendente)';
+
+  @override
+  String get invoiceStatusDraft => 'Borrador';
+
+  @override
+  String get invoiceStatusSent => 'Enviada';
+
+  @override
+  String get invoiceStatusPaid => 'Pagada';
+
+  @override
+  String get invoiceStatusOverdue => 'Vencida';
+
+  @override
+  String get invoiceStatusCancelled => 'Cancelada';
+
+  @override
+  String get invoiceStatusUnknown => 'Desconocida';
+
+  @override
+  String get invoiceRecurringLabel => 'Recurrente';
+
+  @override
+  String get invoiceEmailSettingsChecking =>
+      'Comprobando configuración de email...';
+
+  @override
+  String get invoiceEmailSettingsUnavailable =>
+      'Configuración de email no disponible';
+
+  @override
+  String get invoiceEmailSettingsConfigured =>
+      'El envío de emails está configurado ✅';
+
+  @override
+  String get invoiceEmailSettingsNeedsSetup =>
+      'El envío de emails necesita configuración ⚠️';
+
+  @override
+  String get invoiceEmailConfigureCta => 'Configurar email';
+
+  @override
+  String get invoiceEmailCopyLinkCta => 'Copiar enlace de la factura';
+
+  @override
+  String get invoiceEmailNoSentYet => 'Aún no se ha enviado ningún email';
+
+  @override
+  String get invoiceEmailHistoryShowCta => 'Ver historial';
+
+  @override
+  String get invoiceEmailHistoryHideCta => 'Ocultar historial';
+
+  @override
+  String get invoiceEmailNoHistory => 'Todavía no hay historial de emails.';
+
+  @override
+  String get invoiceEmailResentSnack => 'Email de factura reenviado';
+
+  @override
+  String get invoiceEmailDetailsTitle => 'Detalles del email';
+
+  @override
+  String get invoiceEmailStatusNotSent => 'No enviada';
+
+  @override
+  String get invoiceEmailLogToLabel => 'Para';
+
+  @override
+  String get invoiceEmailLogCcLabel => 'CC';
+
+  @override
+  String get invoiceEmailViewDetailsCta => 'Ver detalles';
+
+  @override
+  String get invoiceEmailResendCta => 'Reenviar';
+
+  @override
+  String get invoiceEmailResendingLabel => 'Reenviando...';
+
+  @override
+  String invoiceEmailSubjectTemplate(Object invoiceNumber) {
+    return 'Factura $invoiceNumber';
+  }
+
+  @override
+  String invoiceEmailMessageTemplate(Object clientName, Object invoiceNumber) {
+    return 'Hola $clientName,\n\nAdjuntamos tu factura $invoiceNumber.\n\nGracias,';
+  }
+
+  @override
+  String get invoiceEmailSheetTitle => 'Enviar factura';
+
+  @override
+  String get invoiceEmailSheetSubtitle =>
+      'Redacta y previsualiza el email de la factura.';
+
+  @override
+  String get invoiceEmailAttachPdfLabel => 'Adjuntar PDF';
+
+  @override
+  String get invoiceEmailSendLinkLabel => 'Enviar enlace';
+
+  @override
+  String get invoiceEmailTabEdit => 'Editar';
+
+  @override
+  String get invoiceEmailTabPreview => 'Vista previa';
+
+  @override
+  String get invoiceEmailToLabel => 'Para';
+
+  @override
+  String get invoiceEmailCcLabel => 'CC (opcional)';
+
+  @override
+  String get invoiceEmailSubjectLabel => 'Asunto';
+
+  @override
+  String get invoiceEmailMessageLabel => 'Mensaje';
+
+  @override
+  String get invoiceEmailNoPreview =>
+      'Aún no hay vista previa. Pulsa actualizar para generar.';
+
+  @override
+  String get invoiceEmailPreviewRefreshCta => 'Actualizar vista previa';
+
+  @override
+  String get invoiceEmailSendCta => 'Enviar';
+
+  @override
+  String get invoiceEmailSendingLabel => 'Enviando...';
+
+  @override
+  String invoiceEmailSentAtLabel(Object timestamp) {
+    return 'Enviada $timestamp';
+  }
 
   @override
   String get invoiceLogoTitle => 'Logo de factura';
@@ -3464,6 +3805,27 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get clientClassificationSectionTitle => 'Clasificación';
+
+  @override
+  String get clientClassificationAddTitle => 'Agregar clasificación';
+
+  @override
+  String get clientClassificationTypeLabel => 'Tipo';
+
+  @override
+  String get clientClassificationNameLabel => 'Nombre';
+
+  @override
+  String get clientClassificationSelectHint =>
+      'Selecciona una clasificación para ver asignaciones';
+
+  @override
+  String clientClassificationAssignedCount(int count) {
+    return 'Clientes asignados ($count)';
+  }
+
+  @override
+  String get clientClassificationNoClients => 'Aún no hay clientes asignados.';
 
   @override
   String get clientClassificationExpandTooltip => 'Expandir';
@@ -4736,4 +5098,633 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get vatSummaryProvidersEmpty => 'Sin proveedores para este trimestre.';
+
+  @override
+  String get recurringInvoicesTitle => 'Facturas recurrentes';
+
+  @override
+  String get recurringInvoicesSubtitle => 'Crea y automatiza la facturación.';
+
+  @override
+  String get recurringInvoicesRefreshCta => 'Actualizar';
+
+  @override
+  String get recurringInvoicesCreateCta => 'Crear recurrencia';
+
+  @override
+  String get recurringInvoicesStatusFilterLabel => 'Estado';
+
+  @override
+  String get recurringInvoicesStatusAll => 'Todos';
+
+  @override
+  String get recurringInvoicesStatusActive => 'Activas';
+
+  @override
+  String get recurringInvoicesStatusPaused => 'Pausadas';
+
+  @override
+  String get recurringInvoicesStatusCancelled => 'Canceladas';
+
+  @override
+  String get recurringInvoicesStatusCompleted => 'Completadas';
+
+  @override
+  String get recurringInvoicesClientFilterLabel => 'Cliente';
+
+  @override
+  String get recurringInvoicesDueSoon => 'Vencen pronto';
+
+  @override
+  String get recurringInvoicesEmpty => 'No hay recurrencias todavía.';
+
+  @override
+  String get recurringInvoicesNextRunLabel => 'Próxima';
+
+  @override
+  String get recurringInvoicesPreviewCta => 'Ver próximas facturas';
+
+  @override
+  String get recurringInvoicesPauseCta => 'Pausar';
+
+  @override
+  String get recurringInvoicesResumeCta => 'Reanudar';
+
+  @override
+  String get recurringInvoicesCancelCta => 'Cancelar recurrencia';
+
+  @override
+  String get recurringInvoicesRunNowCta => 'Ejecutar ahora';
+
+  @override
+  String get recurringInvoicesNoRunsSnack =>
+      'No había facturas pendientes para generar.';
+
+  @override
+  String recurringInvoicesRunCreatedSnack(Object count) {
+    return 'Facturas generadas: $count';
+  }
+
+  @override
+  String get recurringInvoicesCreateSuccess => 'Recurrencia creada';
+
+  @override
+  String get recurringInvoicesCreateFailed =>
+      'No se pudo crear la recurrencia. Inténtalo de nuevo.';
+
+  @override
+  String get recurringInvoicesChangesNote =>
+      'Los cambios solo afectarán a facturas futuras ya que las generadas son un snapshot.';
+
+  @override
+  String get recurringInvoicesRuleTab => 'Regla';
+
+  @override
+  String get recurringInvoicesTemplateTab => 'Plantilla';
+
+  @override
+  String get recurringInvoicesGeneratedTab => 'Generadas';
+
+  @override
+  String get recurringInvoicesSeriesInvoicesTitle => 'Facturas de esta serie';
+
+  @override
+  String get recurringInvoicesSeriesInvoicesCta => 'Ver facturas generadas';
+
+  @override
+  String get recurringInvoicesSeriesInvoicesHint =>
+      'Cargar todas las facturas generadas por esta recurrencia.';
+
+  @override
+  String get recurringInvoicesSeriesInvoicesEmpty =>
+      'Todavía no hay facturas generadas.';
+
+  @override
+  String get recurringInvoicesActivityTab => 'Actividad';
+
+  @override
+  String get recurringInvoicesSaveRuleCta => 'Guardar regla';
+
+  @override
+  String get recurringInvoicesSavingRule => 'Guardando...';
+
+  @override
+  String get recurringInvoicesSaveTemplateCta => 'Guardar plantilla';
+
+  @override
+  String get recurringInvoicesSavingTemplate => 'Guardando...';
+
+  @override
+  String get recurringInvoicesGeneratedHint =>
+      'Las facturas generadas aparecerán en Borradores.';
+
+  @override
+  String get recurringInvoicesActivityHint =>
+      'Actividad disponible próximamente.';
+
+  @override
+  String get recurringInvoicesCreateTitle => 'Crear recurrencia';
+
+  @override
+  String get recurringInvoicesStepClient => 'Cliente';
+
+  @override
+  String get recurringInvoicesStepTemplate => 'Plantilla';
+
+  @override
+  String get recurringInvoicesStepSchedule => 'Programación';
+
+  @override
+  String get recurringInvoicesStepPreview => 'Vista previa';
+
+  @override
+  String get recurringInvoicesNameLabel => 'Nombre';
+
+  @override
+  String get recurringInvoicesNameRequired => 'Nombre requerido';
+
+  @override
+  String get recurringInvoicesFrequencyLabel => 'Frecuencia';
+
+  @override
+  String get recurringInvoicesIntervalLabel => 'Intervalo';
+
+  @override
+  String get recurringInvoicesStartLabel => 'Inicio';
+
+  @override
+  String get recurringInvoicesTimeLabel => 'Hora';
+
+  @override
+  String recurringInvoicesLocalTimeHelper(Object timezone) {
+    return 'Se programa según tu hora local ($timezone). Guardamos en UTC automáticamente.';
+  }
+
+  @override
+  String recurringInvoicesLocalTimeSummary(
+      Object local, Object timezone, Object utc) {
+    return 'Hora seleccionada: $local ($timezone) · Se guardará: $utc UTC';
+  }
+
+  @override
+  String get recurringInvoicesEndLabel => 'Finalización';
+
+  @override
+  String get recurringInvoicesEndNever => 'Nunca';
+
+  @override
+  String get recurringInvoicesEndDate => 'Hasta fecha';
+
+  @override
+  String get recurringInvoicesEndCount => 'Número de veces';
+
+  @override
+  String get recurringInvoicesEndDateSelect => 'Seleccionar fecha';
+
+  @override
+  String recurringInvoicesEndDateLabel(Object date) {
+    return 'Hasta: $date';
+  }
+
+  @override
+  String get recurringInvoicesCountLabel => 'Número de facturas';
+
+  @override
+  String get recurringInvoicesBillDayLabel => 'Día de facturación (1-31)';
+
+  @override
+  String get recurringInvoicesBillDayHelper =>
+      'Si el mes no tiene ese día, se usará el último día del mes.';
+
+  @override
+  String get recurringInvoicesWeekDayLabel => 'Día de semana (0-6)';
+
+  @override
+  String get recurringInvoicesWeekDayHelper => '0=domingo, 6=sábado.';
+
+  @override
+  String get recurringInvoicesTimezoneLabel => 'Zona horaria';
+
+  @override
+  String get recurringInvoicesExceptionsLabel => 'Excepciones';
+
+  @override
+  String get recurringInvoicesAddExceptionCta => 'Añadir fecha';
+
+  @override
+  String get recurringInvoicesNoExceptions => 'Sin excepciones.';
+
+  @override
+  String get recurringInvoicesPreviewEmpty =>
+      'No hay fechas calculadas todavía.';
+
+  @override
+  String get recurringInvoicesPreviewTitle => 'Próximas facturas';
+
+  @override
+  String get recurringInvoicesPreviewDialogEmpty => 'No hay fechas calculadas.';
+
+  @override
+  String get recurringInvoicesContinueCta => 'Continuar';
+
+  @override
+  String get recurringInvoicesBackCta => 'Atrás';
+
+  @override
+  String get recurringFrequencyDaily => 'Diaria';
+
+  @override
+  String get recurringFrequencyWeekly => 'Semanal';
+
+  @override
+  String get recurringFrequencyMonthly => 'Mensual';
+
+  @override
+  String get recurringFrequencyYearly => 'Anual';
+
+  @override
+  String recurringEveryDays(Object count) {
+    return 'Cada $count días';
+  }
+
+  @override
+  String recurringEveryWeeks(Object count) {
+    return 'Cada $count semanas';
+  }
+
+  @override
+  String recurringEveryMonths(Object count) {
+    return 'Cada $count meses';
+  }
+
+  @override
+  String recurringEveryYears(Object count) {
+    return 'Cada $count años';
+  }
+
+  @override
+  String recurringBillDaySummary(Object day) {
+    return 'día $day';
+  }
+
+  @override
+  String recurringStartFromLabel(Object date) {
+    return 'desde $date';
+  }
+
+  @override
+  String get recurringRuleEmpty => 'Sin programación';
+
+  @override
+  String get recurringInvoicesTimezoneSearchHint => 'Buscar zona horaria';
+
+  @override
+  String get recurringInvoicesTimezoneUseCta => 'Usar';
+
+  @override
+  String get mailDetailTitle => 'Mensaje';
+
+  @override
+  String get mailDetailFromLabel => 'De';
+
+  @override
+  String get mailDetailToLabel => 'Para';
+
+  @override
+  String get mailDetailDateLabel => 'Fecha';
+
+  @override
+  String get mailDetailBodyLabel => 'Mensaje';
+
+  @override
+  String get mailDetailAttachmentsLabel => 'Adjuntos';
+
+  @override
+  String get mailDetailUnknownSender => 'Remitente desconocido';
+
+  @override
+  String get mailDetailNoSubject => '(sin asunto)';
+
+  @override
+  String get mailDetailNotFound => 'Mensaje no encontrado.';
+
+  @override
+  String get mailDetailMarkRead => 'Marcar como leído';
+
+  @override
+  String get mailDetailMarkUnread => 'Marcar como no leído';
+
+  @override
+  String get mailDetailArchive => 'Archivar';
+
+  @override
+  String get mailDetailTrash => 'Papelera';
+
+  @override
+  String get mailDetailSpam => 'Spam';
+
+  @override
+  String get mailDetailMarkedRead => 'Marcado como leído.';
+
+  @override
+  String get mailDetailMarkedUnread => 'Marcado como no leído.';
+
+  @override
+  String get mailDetailArchived => 'Archivado.';
+
+  @override
+  String get mailDetailTrashed => 'Movido a la papelera.';
+
+  @override
+  String get mailDetailSpammed => 'Reportado como spam.';
+
+  @override
+  String mailDetailActionFailed(Object error) {
+    return 'Acción fallida: $error';
+  }
+
+  @override
+  String mailDetailDownloadFailed(Object error) {
+    return 'Descarga fallida: $error';
+  }
+
+  @override
+  String get mailDetailDownloadUnsupported =>
+      'Las descargas solo están disponibles en la web por ahora.';
+
+  @override
+  String get mailDetailDownloadTooltip => 'Descargar';
+
+  @override
+  String get mailDetailAttachmentFallback => 'Adjunto';
+
+  @override
+  String get mailInboxTitle => 'Bandeja de entrada';
+
+  @override
+  String get mailSearchHint => 'Buscar correo';
+
+  @override
+  String get mailSearchClear => 'Borrar búsqueda';
+
+  @override
+  String get mailSearchMinChars =>
+      'La búsqueda debe tener al menos 2 caracteres.';
+
+  @override
+  String get mailSearchUnreadOnly => 'Solo no leídos';
+
+  @override
+  String get mailSearchDateRange => 'Rango de fechas';
+
+  @override
+  String get mailSearchClearDates => 'Limpiar fechas';
+
+  @override
+  String get mailSearchNoResults => 'No se encontraron mensajes.';
+
+  @override
+  String get mailThreadsTitle => 'Hilos';
+
+  @override
+  String get mailThreadsEmpty => 'No se encontraron hilos.';
+
+  @override
+  String get mailThreadDetailTitle => 'Hilo';
+
+  @override
+  String get mailThreadParticipantsLabel => 'Participantes';
+
+  @override
+  String get mailThreadMessageCountLabel => 'Mensajes';
+
+  @override
+  String get mailThreadUnreadCountLabel => 'No leídos';
+
+  @override
+  String get mailThreadNoMessages => 'No hay mensajes en este hilo.';
+
+  @override
+  String get mailThreadNotFound => 'Hilo no encontrado.';
+
+  @override
+  String get mailThreadOpenMessage => 'Abrir mensaje';
+
+  @override
+  String get mailThreadOpenThread => 'Abrir hilo';
+
+  @override
+  String get mailConsoleTitle => 'Correo';
+
+  @override
+  String get mailConsoleFoldersTitle => 'Carpetas';
+
+  @override
+  String get mailConsoleSearchPlaceholder => 'Buscar hilos (próximamente)';
+
+  @override
+  String get mailConsoleSelectThread =>
+      'Selecciona un hilo para ver los mensajes.';
+
+  @override
+  String get mailConsoleLoadError => 'No se pudo cargar el buzón. Reintenta.';
+
+  @override
+  String get mailConsoleReplyPlaceholder => 'Escribe una respuesta…';
+
+  @override
+  String get mailConsoleReplySend => 'Responder';
+
+  @override
+  String get mailConsoleReplySending => 'Enviando…';
+
+  @override
+  String get mailConsoleReplySent => 'Respuesta enviada.';
+
+  @override
+  String get mailConsoleClientPanelTitle => 'Cliente y facturas';
+
+  @override
+  String get mailConsoleClientNotFound =>
+      'No se encontró un cliente para este hilo.';
+
+  @override
+  String get mailConsoleClientEmailMissing => 'Falta el correo del cliente.';
+
+  @override
+  String get mailConsoleOpenInvoicesTitle => 'Facturas abiertas';
+
+  @override
+  String get mailConsoleInvoicesEmpty => 'No hay facturas abiertas.';
+
+  @override
+  String get mailConsoleInvoiceActionsTitle => 'Acciones de factura';
+
+  @override
+  String get mailConsoleResendInvoice => 'Reenviar factura';
+
+  @override
+  String get mailConsoleSendPaymentLink => 'Enviar enlace de pago';
+
+  @override
+  String get mailConsoleMarkPaid => 'Marcar como pagada';
+
+  @override
+  String get mailConsoleInvoiceUnknown => 'Factura';
+
+  @override
+  String get mailConsoleInvoiceResent => 'Factura reenviada.';
+
+  @override
+  String get mailConsolePaymentLinkSent => 'Enlace de pago enviado.';
+
+  @override
+  String get mailConsoleMarkedPaid => 'Factura marcada como pagada.';
+
+  @override
+  String mailConsoleActionFailed(Object error) {
+    return 'Acción fallida: $error';
+  }
+
+  @override
+  String mailConsoleInvoiceSubject(Object number) {
+    return 'Factura $number';
+  }
+
+  @override
+  String mailConsoleInvoiceBody(Object number) {
+    return 'Consulta la factura $number.';
+  }
+
+  @override
+  String get mailComposeTitle => 'Redactar';
+
+  @override
+  String get mailComposeToLabel => 'Para';
+
+  @override
+  String get mailComposeToHint => 'Introduce correos de destinatarios';
+
+  @override
+  String get mailComposeCcLabel => 'Cc';
+
+  @override
+  String get mailComposeCcHint => 'Añade correos en copia';
+
+  @override
+  String get mailComposeBccLabel => 'Cco';
+
+  @override
+  String get mailComposeBccHint => 'Añade correos en copia oculta';
+
+  @override
+  String get mailComposeSubjectLabel => 'Asunto';
+
+  @override
+  String get mailComposeSubjectHint => 'Asunto';
+
+  @override
+  String get mailComposeBodyLabel => 'Cuerpo';
+
+  @override
+  String get mailComposeHtmlToggle => 'HTML';
+
+  @override
+  String get mailComposeHtmlHint => 'Pega contenido HTML';
+
+  @override
+  String get mailComposeTextHint => 'Escribe tu mensaje';
+
+  @override
+  String get mailComposeAttachmentsLabel => 'Adjuntos';
+
+  @override
+  String get mailComposeAttachmentsEmpty => 'Aún no hay adjuntos.';
+
+  @override
+  String get mailComposeAddAttachment => 'Añadir adjunto';
+
+  @override
+  String get mailComposeStorageKeyLabel => 'Clave de almacenamiento';
+
+  @override
+  String get mailComposeStorageKeyHint => 'ej. uploads/abc.pdf';
+
+  @override
+  String get mailComposeFilenameLabel => 'Nombre de archivo (opcional)';
+
+  @override
+  String get mailComposeFilenameHint => 'factura.pdf';
+
+  @override
+  String get mailComposeContentTypeLabel => 'Tipo de contenido (opcional)';
+
+  @override
+  String get mailComposeContentTypeHint => 'application/pdf';
+
+  @override
+  String get mailComposeSizeLabel => 'Tamaño (opcional)';
+
+  @override
+  String get mailComposeSizeHint => 'Bytes';
+
+  @override
+  String get mailComposeCancel => 'Cancelar';
+
+  @override
+  String get mailComposeStorageKeyRequired =>
+      'La clave de almacenamiento es obligatoria.';
+
+  @override
+  String get mailComposeInvoiceOptions => 'Opciones de factura';
+
+  @override
+  String get mailComposeInvoiceIdsLabel => 'IDs de factura';
+
+  @override
+  String get mailComposeInvoiceIdsHint => 'IDs separados por comas';
+
+  @override
+  String get mailComposeAttachInvoicePdf => 'Adjuntar PDF de factura';
+
+  @override
+  String get mailComposeIncludeInvoiceLinks => 'Incluir enlaces de factura';
+
+  @override
+  String get mailComposeUploadAttachment => 'Subir archivo';
+
+  @override
+  String get mailComposeUploading => 'Subiendo…';
+
+  @override
+  String get mailComposeFileReadError =>
+      'No se pudo leer el archivo seleccionado.';
+
+  @override
+  String mailComposeUploadFailed(Object error) {
+    return 'Error al subir: $error';
+  }
+
+  @override
+  String get mailComposeSend => 'Enviar';
+
+  @override
+  String get mailComposeSending => 'Enviando…';
+
+  @override
+  String get mailComposeSentToast => 'Enviado';
+
+  @override
+  String get mailComposeToRequired => 'Agrega al menos un destinatario.';
+
+  @override
+  String get mailComposeSubjectRequired => 'El asunto es obligatorio.';
+
+  @override
+  String get mailComposeBodyRequired => 'El cuerpo del mensaje es obligatorio.';
+
+  @override
+  String mailComposeSendFailed(Object error) {
+    return 'Error al enviar: $error';
+  }
 }

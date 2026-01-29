@@ -2,11 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_controller.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_app_bar.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_form.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 
 class InvoiceEditorScreen extends StatefulWidget {
   final Group group;
@@ -35,6 +37,7 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
   bool _changed = false;
   String? _lastSavedInvoiceId;
   String? _lastSavedInvoiceStatus;
+  bool _headerCompact = false;
 
   @override
   void initState() {
@@ -87,22 +90,19 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
       builder: (context, _) {
         final l = AppLocalizations.of(context)!;
         final hasClient = _c.clientId != null;
-        final hasLines = _c.lines.any((line) =>
-            line.description.text.trim().isNotEmpty &&
-            (line.unitPrice ?? 0) > 0);
+        final hasLines = _c.hasBillableEntries;
         final invoiceDate = _c.invoiceDate.value;
         final dueDate = _c.dueDate.value;
         final datesComplete = invoiceDate != null;
         final invalidDates =
             invoiceDate != null && dueDate != null && dueDate.isBefore(invoiceDate);
-        final hasBlockingDrafts = _c.pendingDraftsCount > 0;
         final hasSavedDraft = _c.savedInvoice != null;
         final step1Complete =
             hasClient && datesComplete && hasLines && !invalidDates;
-        final canSaveDraft = !_c.saving && !hasBlockingDrafts;
-        final canPreview = step1Complete && !hasBlockingDrafts && hasSavedDraft;
+        final canSaveDraft = !_c.saving;
+        final canPreview = step1Complete && hasSavedDraft;
         final canIssue =
-            !_c.issuing && step1Complete && !hasBlockingDrafts && _c.previewedPdf;
+            !_c.issuing && step1Complete && _c.previewedPdf;
         final reinforceIssue = canIssue && _c.previewedPdf;
 
         final step1Missing = <String>[
@@ -112,18 +112,14 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
           if (!hasLines) l.invoicePreviewNeedsLines,
         ];
         final previewReason = !canPreview
-            ? (hasBlockingDrafts
-                ? null
-                : (step1Missing.isNotEmpty
-                    ? step1Missing.first
-                    : (hasSavedDraft ? '' : l.invoicePreviewNeedsDraft)))
+            ? (step1Missing.isNotEmpty
+                ? step1Missing.first
+                : (hasSavedDraft ? '' : l.invoicePreviewNeedsDraft))
             : null;
         final issueReason = !canIssue
             ? (!_c.previewedPdf
                 ? l.invoiceIssueNeedsPreview
-                : (hasBlockingDrafts
-                    ? null
-                    : (step1Missing.isNotEmpty ? step1Missing.first : '')))
+                : (step1Missing.isNotEmpty ? step1Missing.first : ''))
             : null;
 
         final step1State =
@@ -247,34 +243,54 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
                 onPickDueDate: () => _c.pickDate(context, _c.dueDate),
               );
 
+              final draft = _c.savedInvoice?.status == 'draft'
+                  ? _c.savedInvoice
+                  : null;
+              final pendingDrafts = _c.pendingDrafts
+                  .where((inv) => inv.status == 'draft')
+                  .where((inv) => draft == null || inv.id != draft.id)
+                  .toList();
+              final hasBlockingDrafts = pendingDrafts.isNotEmpty;
+              final draftBanner = draft == null
+                  ? null
+                  : _DraftBanner(
+                      draft: draft,
+                      previewing: _c.previewedPdf,
+                      deleting: _c.deletingDraft,
+                      onPreview: () => _c.previewPdf(context),
+                      onDelete: () => _c.deleteDraft(context),
+                    );
+
+              final stepChipsRow = Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  stepChip(
+                    label: l.invoiceStepCreateShort,
+                    state: step1State,
+                    onTap: step1Missing.isNotEmpty ? showStep1Missing : null,
+                    tooltip: step1Missing.isNotEmpty
+                        ? step1Missing.map((e) => '• $e').join('\n')
+                        : null,
+                  ),
+                  _StepDivider(color: cs.outlineVariant.withValues(alpha: 0.5)),
+                  stepChip(
+                    label: l.invoiceStepPreviewShort,
+                    state: step2State,
+                  ),
+                  _StepDivider(color: cs.outlineVariant.withValues(alpha: 0.5)),
+                  stepChip(
+                    label: l.invoiceStepIssueShort,
+                    state: step3State,
+                  ),
+                ],
+              );
+
               final stepsHeader = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      stepChip(
-                        label: l.invoiceStepCreateShort,
-                        state: step1State,
-                        onTap: step1Missing.isNotEmpty ? showStep1Missing : null,
-                        tooltip: step1Missing.isNotEmpty
-                            ? step1Missing.map((e) => '• $e').join('\n')
-                            : null,
-                      ),
-                      _StepDivider(color: cs.outlineVariant.withValues(alpha: 0.5)),
-                      stepChip(
-                        label: l.invoiceStepPreviewShort,
-                        state: step2State,
-                      ),
-                      _StepDivider(color: cs.outlineVariant.withValues(alpha: 0.5)),
-                      stepChip(
-                        label: l.invoiceStepIssueShort,
-                        state: step3State,
-                      ),
-                    ],
-                  ),
+                  stepChipsRow,
                   const SizedBox(height: 10),
                   LayoutBuilder(
                     builder: (context, actionConstraints) {
@@ -424,6 +440,23 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
                 ],
               );
 
+              final selectedClientName = _c.clientId == null
+                  ? l.invoiceSelectClientLabel
+                  : widget.clients
+                      .firstWhere(
+                        (c) => c.id == _c.clientId,
+                        orElse: () => GroupClient(
+                          id: _c.clientId!,
+                          name: l.invoiceSelectClientLabel,
+                          isActive: true,
+                        ),
+                      )
+                      .name;
+
+              final currency = _c.currency.text.trim().isEmpty
+                  ? 'EUR'
+                  : _c.currency.text.trim();
+
               final headerBar = Container(
                 decoration: BoxDecoration(
                   color: cs.surface,
@@ -437,6 +470,35 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
                     final dividerColor =
                         cs.outlineVariant.withValues(alpha: 0.35);
 
+                    final headerToggle = Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 6, top: 4),
+                        child: IconButton(
+                          tooltip: _headerCompact
+                              ? l.invoiceHeaderExpandCta
+                              : l.invoiceHeaderCompactCta,
+                          icon: Icon(
+                            _headerCompact
+                                ? Icons.unfold_more
+                                : Icons.unfold_less,
+                          ),
+                          onPressed: () => setState(
+                            () => _headerCompact = !_headerCompact,
+                          ),
+                        ),
+                      ),
+                    );
+
+                    final headerContent = _headerCompact
+                        ? _HeaderCompactSummary(
+                            clientName: selectedClientName,
+                            currency: currency,
+                            invoiceDate: invoiceDate,
+                            dueDate: dueDate,
+                          )
+                        : headerLeft;
+
                     final contextBand = Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -445,50 +507,104 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
                           top: Radius.circular(16),
                         ),
                       ),
-                      child: headerLeft,
-                    );
-
-                    final actionBand = Container(
-                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          stepsHeader,
-                          if (hasBlockingDrafts) ...[
-                            const SizedBox(height: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: cs.errorContainer,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.warning_amber_rounded,
-                                      size: 18, color: cs.onErrorContainer),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      l.invoiceWarningPendingDrafts,
-                                      style: t.bodySmall.copyWith(
-                                        color: cs.onErrorContainer,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                          hasBlockingDrafts
+                              ? AbsorbPointer(
+                                  child: Opacity(
+                                    opacity: 0.6,
+                                    child: headerContent,
                                   ),
-                                ],
-                              ),
+                                )
+                              : headerContent,
+                          if (draftBanner != null) ...[
+                            const SizedBox(height: 12),
+                            draftBanner,
+                          ],
+                          if (pendingDrafts.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            _PendingDraftsList(
+                              drafts: pendingDrafts,
+                              clients: widget.clients,
+                              deleting: _c.deletingDraft,
+                              onPreview: (draft) =>
+                                  _c.previewDraft(context, draft),
+                              onDelete: (draft) =>
+                                  _c.deleteDraftById(context, draft),
                             ),
                           ],
                         ],
                       ),
                     );
 
+                    final actionContent = _headerCompact
+                        ? _CompactStepsPanel(
+                            stepChips: stepChipsRow,
+                            onSave: canSaveDraft
+                                ? () => _c.handleSaveDraft(context)
+                                : null,
+                            onPreview:
+                                canPreview ? () => _c.previewPdf(context) : null,
+                            onIssue: canIssue ? () => _c.issue(context) : null,
+                            saving: _c.saving,
+                            issuing: _c.issuing,
+                            saveTooltip: hasBlockingDrafts
+                                ? l.invoiceWarningPendingDrafts
+                                : l.invoiceSaveDraftCta,
+                            previewTooltip:
+                                canPreview ? l.invoicePreviewCta : previewReason,
+                            issueTooltip:
+                                canIssue ? l.invoiceIssueCta : issueReason,
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              stepsHeader,
+                              if (hasBlockingDrafts) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: cs.errorContainer,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded,
+                                          size: 18, color: cs.onErrorContainer),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          l.invoiceWarningPendingDrafts,
+                                          style: t.bodySmall.copyWith(
+                                            color: cs.onErrorContainer,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+
+                    final actionBand = Container(
+                      padding: const EdgeInsets.all(16),
+                      child: hasBlockingDrafts
+                          ? AbsorbPointer(
+                              child: Opacity(opacity: 0.6, child: actionContent),
+                            )
+                          : actionContent,
+                    );
+
                     if (headerWide) {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          headerToggle,
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -509,6 +625,7 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        headerToggle,
                         contextBand,
                         Divider(height: 1, color: dividerColor),
                         actionBand,
@@ -518,20 +635,14 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
                 ),
               );
 
-              final linesSection = InvoiceLinesSection(
+              final linesSection = InvoiceContentSection(
+                useBlocks: _c.useBlocks,
+                onModeChanged: _c.setUseBlocks,
+                blocks: _c.blocks,
                 lines: _c.lines,
-                onLinesChanged: _c.notifyUi,
+                onChanged: _c.notifyUi,
                 total: _c.total,
               );
-
-              final gatedHeaderBar = hasBlockingDrafts
-                  ? AbsorbPointer(
-                      child: Opacity(
-                        opacity: 0.6,
-                        child: headerBar,
-                      ),
-                    )
-                  : headerBar;
 
               final gatedLinesSection = hasBlockingDrafts
                   ? AbsorbPointer(
@@ -548,7 +659,7 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      gatedHeaderBar,
+                      headerBar,
                       const SizedBox(height: 16),
                       Expanded(
                         child: SingleChildScrollView(child: gatedLinesSection),
@@ -589,6 +700,321 @@ class _StepDivider extends StatelessWidget {
         width: 12,
         thickness: 1,
         color: color,
+      ),
+    );
+  }
+}
+
+class _HeaderCompactSummary extends StatelessWidget {
+  final String clientName;
+  final String currency;
+  final DateTime? invoiceDate;
+  final DateTime? dueDate;
+
+  const _HeaderCompactSummary({
+    required this.clientName,
+    required this.currency,
+    required this.invoiceDate,
+    required this.dueDate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
+    final dateFmt = DateFormat.yMMMd();
+    final inv = invoiceDate == null ? '-' : dateFmt.format(invoiceDate!);
+    final due = dueDate == null ? '-' : dateFmt.format(dueDate!);
+
+    Widget currencyPill() {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: cs.primaryContainer,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          currency.toUpperCase(),
+          style: t.bodySmall.copyWith(
+            color: cs.onPrimaryContainer,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.6,
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                clientName,
+                style: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${l.invoiceDateLabel}: $inv • ${l.invoiceDueDateLabel}: $due',
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        currencyPill(),
+      ],
+    );
+  }
+}
+
+class _CompactStepsPanel extends StatelessWidget {
+  final Widget stepChips;
+  final VoidCallback? onSave;
+  final VoidCallback? onPreview;
+  final VoidCallback? onIssue;
+  final bool saving;
+  final bool issuing;
+  final String? saveTooltip;
+  final String? previewTooltip;
+  final String? issueTooltip;
+
+  const _CompactStepsPanel({
+    required this.stepChips,
+    required this.onSave,
+    required this.onPreview,
+    required this.onIssue,
+    required this.saving,
+    required this.issuing,
+    this.saveTooltip,
+    this.previewTooltip,
+    this.issueTooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
+
+    Widget actionIcon({
+      required String? tooltip,
+      required VoidCallback? onPressed,
+      required Widget icon,
+    }) {
+      final button = IconButton(
+        onPressed: onPressed,
+        icon: icon,
+        color: onPressed == null ? cs.onSurfaceVariant : cs.primary,
+      );
+      if (tooltip == null || tooltip.isEmpty) return button;
+      return Tooltip(message: tooltip, child: button);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        stepChips,
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            actionIcon(
+              tooltip: saveTooltip ?? l.invoiceSaveDraftCta,
+              onPressed: onSave,
+              icon: saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+            ),
+            actionIcon(
+              tooltip: previewTooltip ?? l.invoicePreviewCta,
+              onPressed: onPreview,
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+            ),
+            actionIcon(
+              tooltip: issueTooltip ?? l.invoiceIssueCta,
+              onPressed: onIssue,
+              icon: issuing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_circle_outline),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DraftBanner extends StatelessWidget {
+  final Invoice draft;
+  final bool previewing;
+  final bool deleting;
+  final VoidCallback onPreview;
+  final VoidCallback onDelete;
+
+  const _DraftBanner({
+    required this.draft,
+    required this.previewing,
+    required this.deleting,
+    required this.onPreview,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
+    final number = draft.invoiceNumber.trim().isEmpty
+        ? l.statusDraft
+        : '${l.statusDraft} • ${draft.invoiceNumber}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.edit_note_outlined, color: cs.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              number,
+              style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+          IconButton(
+            tooltip: l.invoicePreviewCta,
+            onPressed: previewing ? null : onPreview,
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+          ),
+          IconButton(
+            tooltip: l.remove,
+            onPressed: deleting ? null : onDelete,
+            icon: Icon(Icons.delete_outline, color: cs.error),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingDraftsList extends StatelessWidget {
+  final List<Invoice> drafts;
+  final List<GroupClient> clients;
+  final bool deleting;
+  final ValueChanged<Invoice> onPreview;
+  final ValueChanged<Invoice> onDelete;
+
+  const _PendingDraftsList({
+    required this.drafts,
+    required this.clients,
+    required this.deleting,
+    required this.onPreview,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
+    final dateFmt = DateFormat.yMMMd();
+
+    String clientName(String id) {
+      return clients
+          .firstWhere(
+            (c) => c.id == id,
+            orElse: () => GroupClient(id: id, name: l.unknownClient, isActive: true),
+          )
+          .name;
+    }
+
+    String draftSubtitle(Invoice inv) {
+      final date = inv.registeredAt ?? inv.issueDate;
+      if (date == null) return clientName(inv.clientId);
+      return '${clientName(inv.clientId)} • ${dateFmt.format(date)}';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l.invoicePendingDraftsLabel,
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final inv in drafts) ...[
+            Row(
+              children: [
+                Icon(Icons.edit_note_outlined, size: 18, color: cs.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        inv.invoiceNumber.trim().isEmpty
+                            ? l.statusDraft
+                            : inv.invoiceNumber,
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        draftSubtitle(inv),
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: l.invoicePreviewCta,
+                  onPressed: () => onPreview(inv),
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                ),
+                IconButton(
+                  tooltip: l.remove,
+                  onPressed: deleting ? null : () => onDelete(inv),
+                  icon: Icon(Icons.delete_outline, color: cs.error),
+                ),
+              ],
+            ),
+            if (inv != drafts.last)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: Divider(height: 1),
+              ),
+          ],
+        ],
       ),
     );
   }

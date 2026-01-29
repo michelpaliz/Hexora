@@ -316,9 +316,9 @@ class _LineRowState extends State<_LineRow> {
                 textInputAction: TextInputAction.next,
                 style: t.bodySmall,
                 decoration: widget.fieldDec(hint: l.lineQuantity),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  ],
                 onChanged: (_) => widget.onChanged(),
                 onFieldSubmitted: (_) => _focusNext(_unitFocus),
               ),
@@ -336,9 +336,9 @@ class _LineRowState extends State<_LineRow> {
                 style: t.bodySmall,
                 decoration: widget.fieldDec(hint: l.lineUnitPrice),
                 autovalidateMode: AutovalidateMode.onUserInteraction,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  ],
                 onChanged: (_) => widget.onChanged(),
                 onFieldSubmitted: (_) => _focusNext(_vatFocus),
                 validator: priceValidator,
@@ -357,9 +357,9 @@ class _LineRowState extends State<_LineRow> {
                 style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                 decoration:
                     widget.fieldDec(hint: '${l.taxRateShort}%', suffixText: '%'),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  ],
                 onChanged: (_) => widget.onChanged(),
                 onFieldSubmitted: (_) => _handleVatSubmit(),
               ),
