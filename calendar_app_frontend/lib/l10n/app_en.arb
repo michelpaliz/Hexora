@@ -2645,6 +2645,11 @@
   "mailThreadOpenThread": "Open thread",
   "mailConsoleTitle": "Mail",
   "mailConsoleFoldersTitle": "Folders",
+  "mailFolderInbox": "Inbox",
+  "mailFolderSent": "Sent",
+  "mailFolderArchive": "Archive",
+  "mailFolderTrash": "Trash",
+  "mailFolderSpam": "Spam",
   "mailConsoleSearchPlaceholder": "Search threads (coming soon)",
   "mailConsoleSelectThread": "Select a thread to view messages.",
   "mailConsoleLoadError": "Couldn't load mailbox. Retry.",
@@ -2652,6 +2657,24 @@
   "mailConsoleReplySend": "Reply",
   "mailConsoleReplySending": "Sending…",
   "mailConsoleReplySent": "Reply sent.",
+  "mailConversationReplyTo": "Reply to {name}…",
+  "@mailConversationReplyTo": {
+    "description": "Reply placeholder with recipient name.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "mailConversationPreviousMessage": "Previous message ({count})",
+  "@mailConversationPreviousMessage": {
+    "description": "Collapsed quoted message label.",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "mailConversationSignature": "Signature",
+  "mailConversationReply": "Reply",
+  "mailConversationReplyAll": "Reply all",
+  "mailConversationForward": "Forward",
   "mailConsoleClientPanelTitle": "Client & invoices",
   "mailConsoleClientNotFound": "No client found for this thread.",
   "mailConsoleClientEmailMissing": "Client email is missing.",
@@ -2689,11 +2712,14 @@
   "mailComposeToHint": "Enter recipient emails",
   "mailComposeCcLabel": "Cc",
   "mailComposeCcHint": "Add cc emails",
+  "mailComposeAddCc": "Add Cc",
   "mailComposeBccLabel": "Bcc",
   "mailComposeBccHint": "Add bcc emails",
+  "mailComposeAddBcc": "Add Bcc",
   "mailComposeSubjectLabel": "Subject",
   "mailComposeSubjectHint": "Subject",
   "mailComposeBodyLabel": "Body",
+  "mailComposeFormat": "Format",
   "mailComposeHtmlToggle": "HTML",
   "mailComposeHtmlHint": "Paste HTML content",
   "mailComposeTextHint": "Write your message",

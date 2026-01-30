@@ -2614,6 +2614,11 @@
   "mailThreadOpenThread": "Abrir hilo",
   "mailConsoleTitle": "Correo",
   "mailConsoleFoldersTitle": "Carpetas",
+  "mailFolderInbox": "Bandeja de entrada",
+  "mailFolderSent": "Enviados",
+  "mailFolderArchive": "Archivados",
+  "mailFolderTrash": "Papelera",
+  "mailFolderSpam": "Spam",
   "mailConsoleSearchPlaceholder": "Buscar hilos (próximamente)",
   "mailConsoleSelectThread": "Selecciona un hilo para ver los mensajes.",
   "mailConsoleLoadError": "No se pudo cargar el buzón. Reintenta.",
@@ -2621,6 +2626,24 @@
   "mailConsoleReplySend": "Responder",
   "mailConsoleReplySending": "Enviando…",
   "mailConsoleReplySent": "Respuesta enviada.",
+  "mailConversationReplyTo": "Responder a {name}…",
+  "@mailConversationReplyTo": {
+    "description": "Placeholder de respuesta con nombre del destinatario.",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "mailConversationPreviousMessage": "Mensaje anterior ({count})",
+  "@mailConversationPreviousMessage": {
+    "description": "Etiqueta para mensaje citado colapsado.",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "mailConversationSignature": "Firma",
+  "mailConversationReply": "Responder",
+  "mailConversationReplyAll": "Responder a todos",
+  "mailConversationForward": "Reenviar",
   "mailConsoleClientPanelTitle": "Cliente y facturas",
   "mailConsoleClientNotFound": "No se encontró un cliente para este hilo.",
   "mailConsoleClientEmailMissing": "Falta el correo del cliente.",
@@ -2658,11 +2681,14 @@
   "mailComposeToHint": "Introduce correos de destinatarios",
   "mailComposeCcLabel": "Cc",
   "mailComposeCcHint": "Añade correos en copia",
+  "mailComposeAddCc": "Añadir Cc",
   "mailComposeBccLabel": "Cco",
   "mailComposeBccHint": "Añade correos en copia oculta",
+  "mailComposeAddBcc": "Añadir Cco",
   "mailComposeSubjectLabel": "Asunto",
   "mailComposeSubjectHint": "Asunto",
   "mailComposeBodyLabel": "Cuerpo",
+  "mailComposeFormat": "Formato",
   "mailComposeHtmlToggle": "HTML",
   "mailComposeHtmlHint": "Pega contenido HTML",
   "mailComposeTextHint": "Escribe tu mensaje",

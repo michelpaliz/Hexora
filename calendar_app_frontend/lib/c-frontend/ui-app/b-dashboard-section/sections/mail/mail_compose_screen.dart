@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/blobUploader/blobServer.dart';
 import 'package:hexora/b-backend/mail/domain/mail_domain.dart';
@@ -11,8 +13,21 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
+part 'compose/mail_compose_utils.dart';
+part 'compose/mail_compose_view.dart';
+part 'compose/mail_compose_widgets.dart';
+
 class MailComposeScreen extends StatefulWidget {
-  const MailComposeScreen({super.key});
+  const MailComposeScreen({
+    super.key,
+    this.embedded = false,
+    this.onSent,
+    this.onClose,
+  });
+
+  final bool embedded;
+  final VoidCallback? onSent;
+  final VoidCallback? onClose;
 
   @override
   State<MailComposeScreen> createState() => _MailComposeScreenState();
@@ -23,14 +38,24 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   final _ccCtrl = TextEditingController();
   final _bccCtrl = TextEditingController();
   final _subjectCtrl = TextEditingController();
-  final _bodyCtrl = TextEditingController();
   final _invoiceIdsCtrl = TextEditingController();
+  final _bodyFocus = FocusNode();
+  final _bodyScroll = ScrollController();
+  late final quill.QuillController _quillController =
+      quill.QuillController.basic();
 
-  bool _useHtml = false;
+  final List<String> _toList = [];
+  final List<String> _ccList = [];
+  final List<String> _bccList = [];
+
   bool _attachInvoicePdf = false;
   bool _includeInvoiceLinks = false;
   bool _sending = false;
   bool _uploadingAttachment = false;
+  bool _showCc = false;
+  bool _showBcc = false;
+  bool _attachmentsExpanded = false;
+  bool _invoiceExpanded = false;
 
   final List<MailOutgoingAttachment> _attachments = [];
 
@@ -40,179 +65,15 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     _ccCtrl.dispose();
     _bccCtrl.dispose();
     _subjectCtrl.dispose();
-    _bodyCtrl.dispose();
     _invoiceIdsCtrl.dispose();
+    _bodyFocus.dispose();
+    _bodyScroll.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l.mailComposeTitle),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _LabeledField(
-            label: l.mailComposeToLabel,
-            controller: _toCtrl,
-            hint: l.mailComposeToHint,
-          ),
-          const SizedBox(height: 12),
-          _LabeledField(
-            label: l.mailComposeCcLabel,
-            controller: _ccCtrl,
-            hint: l.mailComposeCcHint,
-          ),
-          const SizedBox(height: 12),
-          _LabeledField(
-            label: l.mailComposeBccLabel,
-            controller: _bccCtrl,
-            hint: l.mailComposeBccHint,
-          ),
-          const SizedBox(height: 12),
-          _LabeledField(
-            label: l.mailComposeSubjectLabel,
-            controller: _subjectCtrl,
-            hint: l.mailComposeSubjectHint,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l.mailComposeBodyLabel,
-                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-              Text(
-                l.mailComposeHtmlToggle,
-                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-              ),
-              Switch(
-                value: _useHtml,
-                onChanged: _sending
-                    ? null
-                    : (value) => setState(() => _useHtml = value),
-              ),
-            ],
-          ),
-          TextField(
-            controller: _bodyCtrl,
-            maxLines: 8,
-            decoration: InputDecoration(
-              hintText: _useHtml
-                  ? l.mailComposeHtmlHint
-                  : l.mailComposeTextHint,
-              filled: true,
-              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: cs.outlineVariant),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: cs.outlineVariant),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _SectionHeader(title: l.mailComposeAttachmentsLabel),
-          const SizedBox(height: 8),
-          if (_attachments.isEmpty)
-            Text(
-              l.mailComposeAttachmentsEmpty,
-              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            )
-          else
-            ..._attachments.asMap().entries.map(
-              (entry) {
-                final index = entry.key;
-                final attachment = entry.value;
-                return _AttachmentRow(
-                  attachment: attachment,
-                  onRemove: () => setState(() => _attachments.removeAt(index)),
-                );
-              },
-            ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: _sending || _uploadingAttachment
-                      ? null
-                      : _pickAndUploadAttachment,
-                  icon: _uploadingAttachment
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.cloud_upload_outlined, size: 18),
-                  label: Text(_uploadingAttachment
-                      ? l.mailComposeUploading
-                      : l.mailComposeUploadAttachment),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _sending ? null : _addAttachment,
-                  icon: const Icon(Icons.attach_file, size: 18),
-                  label: Text(l.mailComposeAddAttachment),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _SectionHeader(title: l.mailComposeInvoiceOptions),
-          const SizedBox(height: 8),
-          _LabeledField(
-            label: l.mailComposeInvoiceIdsLabel,
-            controller: _invoiceIdsCtrl,
-            hint: l.mailComposeInvoiceIdsHint,
-          ),
-          const SizedBox(height: 8),
-          SwitchListTile.adaptive(
-            value: _attachInvoicePdf,
-            title: Text(l.mailComposeAttachInvoicePdf),
-            onChanged: _sending
-                ? null
-                : (value) => setState(() => _attachInvoicePdf = value),
-            contentPadding: EdgeInsets.zero,
-          ),
-          SwitchListTile.adaptive(
-            value: _includeInvoiceLinks,
-            title: Text(l.mailComposeIncludeInvoiceLinks),
-            onChanged: _sending
-                ? null
-                : (value) => setState(() => _includeInvoiceLinks = value),
-            contentPadding: EdgeInsets.zero,
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _sending ? null : _send,
-              icon: _sending
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send_rounded),
-              label: Text(_sending ? l.mailComposeSending : l.mailComposeSend),
-            ),
-          ),
-        ],
-      ),
-    );
+    return _MailComposeView(state: this);
   }
 
   Future<void> _addAttachment() async {
@@ -298,7 +159,10 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     );
 
     if (result != null) {
-      setState(() => _attachments.add(result));
+      setState(() {
+        _attachments.add(result);
+        _attachmentsExpanded = true;
+      });
     }
   }
 
@@ -348,6 +212,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
             size: file.size,
           ),
         );
+        _attachmentsExpanded = true;
       });
     } catch (e) {
       _showError(l.mailComposeUploadFailed(e.toString()));
@@ -358,16 +223,17 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
 
   Future<void> _send() async {
     final l = AppLocalizations.of(context)!;
-    final to = _splitEmails(_toCtrl.text);
+    _flushRecipientInputs();
+    final to = _toList;
     if (to.isEmpty) {
       _showError(l.mailComposeToRequired);
       return;
     }
 
-    final cc = _splitEmails(_ccCtrl.text);
-    final bcc = _splitEmails(_bccCtrl.text);
+    final cc = _ccList;
+    final bcc = _bccList;
     final subject = _subjectCtrl.text.trim();
-    final body = _bodyCtrl.text.trim();
+    final body = _quillController.document.toPlainText().trim();
     if (subject.isEmpty) {
       _showError(l.mailComposeSubjectRequired);
       return;
@@ -377,7 +243,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       return;
     }
 
-    final invoiceIds = _splitValues(_invoiceIdsCtrl.text);
+    final invoiceIds = _splitValues(_normalizeInvoiceIds(_invoiceIdsCtrl.text));
 
     setState(() => _sending = true);
     try {
@@ -386,8 +252,8 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         cc: cc,
         bcc: bcc,
         subject: subject,
-        textBody: _useHtml ? null : body,
-        htmlBody: _useHtml ? body : null,
+        textBody: body,
+        htmlBody: _quillToHtml(_quillController.document),
         attachments: _attachments,
         invoiceIds: invoiceIds,
         attachInvoicePdf: invoiceIds.isEmpty ? null : _attachInvoicePdf,
@@ -398,12 +264,43 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.mailComposeSentToast)),
       );
-      Navigator.of(context).maybePop();
+      _resetForm();
+      if (widget.embedded) {
+        widget.onSent?.call();
+      } else {
+        Navigator.of(context).maybePop();
+      }
     } catch (e) {
       _showError(l.mailComposeSendFailed(e.toString()));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  void _resetForm() {
+    _toCtrl.clear();
+    _ccCtrl.clear();
+    _bccCtrl.clear();
+    _subjectCtrl.clear();
+    _quillController.replaceText(
+      0,
+      _quillController.document.length,
+      '',
+      const TextSelection.collapsed(offset: 0),
+    );
+    _invoiceIdsCtrl.clear();
+    setState(() {
+      _attachInvoicePdf = false;
+      _includeInvoiceLinks = false;
+      _showCc = false;
+      _showBcc = false;
+      _attachmentsExpanded = false;
+      _invoiceExpanded = false;
+      _toList.clear();
+      _ccList.clear();
+      _bccList.clear();
+      _attachments.clear();
+    });
   }
 
   void _showError(String message) {
@@ -412,8 +309,6 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     );
   }
 
-  List<String> _splitEmails(String raw) => _splitValues(raw);
-
   List<String> _splitValues(String raw) {
     return raw
         .split(RegExp(r'[;,\n]'))
@@ -421,124 +316,133 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         .where((e) => e.isNotEmpty)
         .toList();
   }
-}
 
-class _LabeledField extends StatelessWidget {
-  const _LabeledField({
-    required this.label,
-    required this.controller,
-    required this.hint,
-  });
+  void _flushRecipientInputs() {
+    _consumeAddresses(_toCtrl, _toList);
+    _consumeAddresses(_ccCtrl, _ccList);
+    _consumeAddresses(_bccCtrl, _bccList);
+  }
 
-  final String label;
-  final TextEditingController controller;
-  final String hint;
+  void _consumeAddresses(TextEditingController controller, List<String> list) {
+    final text = controller.text.trim();
+    if (text.isEmpty) return;
+    final parts = text.split(RegExp(r'[;,\s]'));
+    final added = <String>[];
+    for (final raw in parts) {
+      final value = raw.trim();
+      if (value.isEmpty) continue;
+      if (_isValidEmail(value) && !list.contains(value)) {
+        added.add(value);
+      }
+    }
+    if (added.isNotEmpty) {
+      list.addAll(added);
+      controller.clear();
+    }
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+  bool _isValidEmail(String value) {
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
+  }
+
+  String _normalizeInvoiceIds(String raw) {
+    return raw.replaceAll(RegExp(r'[\s;]+'), ',');
+  }
+
+  Future<void> _promptLink() async {
+    final l = AppLocalizations.of(context)!;
+    final selection = _quillController.selection;
+    final selectedText = selection.isCollapsed
+        ? ''
+        : _quillController.document
+            .getPlainText(selection.start, selection.end - selection.start)
+            .trim();
+    final labelCtrl = TextEditingController(text: selectedText);
+    final urlCtrl = TextEditingController(text: 'https://');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l.mailComposeAddAttachment),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: labelCtrl,
+              decoration: InputDecoration(
+                labelText: l.mailComposeSubjectLabel,
+                hintText: l.mailComposeSubjectHint,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: urlCtrl,
+              decoration: const InputDecoration(
+                labelText: 'URL',
+                hintText: 'https://example.com',
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: hint,
-            filled: true,
-            fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: cs.outlineVariant),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: cs.outlineVariant),
-            ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l.mailComposeCancel),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    return Text(
-      title,
-      style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-    );
-  }
-}
-
-class _AttachmentRow extends StatelessWidget {
-  const _AttachmentRow({
-    required this.attachment,
-    required this.onRemove,
-  });
-
-  final MailOutgoingAttachment attachment;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final name = attachment.filename?.trim().isNotEmpty == true
-        ? attachment.filename!.trim()
-        : attachment.storageKey ?? '-';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-      child: ListTile(
-        leading: const Icon(Icons.attach_file),
-        title: Text(name, style: t.bodySmall),
-        subtitle: Text(
-          attachment.storageKey ?? '-',
-          style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          onPressed: onRemove,
-        ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l.mailComposeAddAttachment),
+          ),
+        ],
       ),
     );
-  }
-}
 
-String _inferMimeType(PlatformFile file) {
-  final ext = file.extension?.toLowerCase();
-  switch (ext) {
-    case 'pdf':
-      return 'application/pdf';
-    case 'png':
-      return 'image/png';
-    case 'jpg':
-    case 'jpeg':
-      return 'image/jpeg';
-    case 'gif':
-      return 'image/gif';
-    case 'txt':
-      return 'text/plain';
-    case 'html':
-    case 'htm':
-      return 'text/html';
-    case 'csv':
-      return 'text/csv';
-    case 'json':
-      return 'application/json';
-    default:
-      return 'application/octet-stream';
+    if (confirmed != true) return;
+    final url = urlCtrl.text.trim();
+    if (url.isEmpty) return;
+    final label = labelCtrl.text.trim().isEmpty ? url : labelCtrl.text.trim();
+
+    final index = selection.start;
+    final length = selection.end - selection.start;
+    _quillController.replaceText(
+      index,
+      length,
+      label,
+      TextSelection.collapsed(offset: index + label.length),
+    );
+    _quillController.formatSelection(quill.LinkAttribute(url));
+  }
+
+  Future<void> _showAttachmentActions() async {
+    final l = AppLocalizations.of(context)!;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.cloud_upload_outlined),
+                title: Text(l.mailComposeUploadAttachment),
+                onTap: () => Navigator.of(context).pop('upload'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.link_outlined),
+                title: Text(l.mailComposeAddAttachment),
+                onTap: () => Navigator.of(context).pop('manual'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted || choice == null) return;
+    if (choice == 'upload') {
+      await _pickAndUploadAttachment();
+    } else {
+      await _addAttachment();
+    }
   }
 }

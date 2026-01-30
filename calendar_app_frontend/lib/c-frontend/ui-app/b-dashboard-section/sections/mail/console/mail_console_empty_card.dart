@@ -48,7 +48,13 @@ class _EmptyCard extends StatelessWidget {
                 ],
                 if (actionLabel != null && onAction != null) ...[
                   const SizedBox(height: 10),
-                  TextButton(onPressed: onAction, child: Text(actionLabel!)),
+                  TextButton(
+                    onPressed: onAction,
+                    child: Text(
+                      actionLabel!,
+                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ],
               ],
             ),

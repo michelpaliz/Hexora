@@ -5465,6 +5465,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailConsoleFoldersTitle => 'Folders';
 
   @override
+  String get mailFolderInbox => 'Inbox';
+
+  @override
+  String get mailFolderSent => 'Sent';
+
+  @override
+  String get mailFolderArchive => 'Archive';
+
+  @override
+  String get mailFolderTrash => 'Trash';
+
+  @override
+  String get mailFolderSpam => 'Spam';
+
+  @override
   String get mailConsoleSearchPlaceholder => 'Search threads (coming soon)';
 
   @override
@@ -5484,6 +5499,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mailConsoleReplySent => 'Reply sent.';
+
+  @override
+  String mailConversationReplyTo(Object name) {
+    return 'Reply to $name…';
+  }
+
+  @override
+  String mailConversationPreviousMessage(Object count) {
+    return 'Previous message ($count)';
+  }
+
+  @override
+  String get mailConversationSignature => 'Signature';
+
+  @override
+  String get mailConversationReply => 'Reply';
+
+  @override
+  String get mailConversationReplyAll => 'Reply all';
+
+  @override
+  String get mailConversationForward => 'Forward';
 
   @override
   String get mailConsoleClientPanelTitle => 'Client & invoices';
@@ -5555,10 +5592,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailComposeCcHint => 'Add cc emails';
 
   @override
+  String get mailComposeAddCc => 'Add Cc';
+
+  @override
   String get mailComposeBccLabel => 'Bcc';
 
   @override
   String get mailComposeBccHint => 'Add bcc emails';
+
+  @override
+  String get mailComposeAddBcc => 'Add Bcc';
 
   @override
   String get mailComposeSubjectLabel => 'Subject';
@@ -5568,6 +5611,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mailComposeBodyLabel => 'Body';
+
+  @override
+  String get mailComposeFormat => 'Format';
 
   @override
   String get mailComposeHtmlToggle => 'HTML';

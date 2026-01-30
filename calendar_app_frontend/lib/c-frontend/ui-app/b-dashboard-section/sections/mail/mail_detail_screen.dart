@@ -83,8 +83,14 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
           final subject = message.subject.trim().isEmpty
               ? l.mailDetailNoSubject
               : message.subject.trim();
-          final fromLabel = message.fromAddress.isEmpty
-              ? l.mailDetailUnknownSender
+          final fromName =
+              message.from?.name?.trim().isNotEmpty == true
+                  ? message.from!.name!.trim()
+                  : (message.fromAddress.isEmpty
+                      ? l.mailDetailUnknownSender
+                      : message.fromAddress);
+          final fromEmail = message.from?.address.trim().isNotEmpty == true
+              ? message.from!.address.trim()
               : message.fromAddress;
           final toLabel = message.to.isEmpty
               ? '-'
@@ -98,106 +104,91 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
           final body = hasHtml ? htmlBody : (textBody ?? '');
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Card(
-                  margin: EdgeInsets.zero,
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          subject,
-                          style:
-                              t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 12),
-                        _MetadataRow(
-                          label: l.mailDetailFromLabel,
-                          value: fromLabel,
-                        ),
-                        const SizedBox(height: 6),
-                        _MetadataRow(
-                          label: l.mailDetailToLabel,
-                          value: toLabel,
-                        ),
-                        const SizedBox(height: 6),
-                        _MetadataRow(
-                          label: l.mailDetailDateLabel,
-                          value: dateLabel,
-                        ),
-                        const SizedBox(height: 16),
-                        _ActionBar(
-                          unread: message.unread,
-                          busy: _busyAction,
-                          markReadLabel: l.mailDetailMarkRead,
-                          markUnreadLabel: l.mailDetailMarkUnread,
-                          archiveLabel: l.mailDetailArchive,
-                          trashLabel: l.mailDetailTrash,
-                          spamLabel: l.mailDetailSpam,
-                          onMarkRead: () => _runAction(
-                            () =>
-                                context.read<MailDomain>().markRead(message.id),
-                            success: l.mailDetailMarkedRead,
-                          ),
-                          onMarkUnread: () => _runAction(
-                            () => context
-                                .read<MailDomain>()
-                                .markUnread(message.id),
-                            success: l.mailDetailMarkedUnread,
-                          ),
-                          onArchive: () => _runAction(
-                            () =>
-                                context.read<MailDomain>().archive(message.id),
-                            success: l.mailDetailArchived,
-                          ),
-                          onTrash: () => _runAction(
-                            () => context.read<MailDomain>().trash(message.id),
-                            success: l.mailDetailTrashed,
-                          ),
-                          onSpam: () => _runAction(
-                            () => context.read<MailDomain>().spam(message.id),
-                            success: l.mailDetailSpammed,
-                          ),
-                        ),
-                      ],
+                Container(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom:
+                          BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                if (body.isNotEmpty) ...[
-                  Text(
-                    l.mailDetailBodyLabel,
-                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
-                  hasHtml
-                      ? Html(
-                          data: body,
-                          style: {
-                            'body': Style(
-                              margin: Margins.zero,
-                              padding: HtmlPaddings.zero,
-                              color: cs.onSurface,
-                              fontSize: FontSize(t.bodySmall.fontSize ?? 14),
-                              fontFamily: t.bodySmall.fontFamily,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              subject,
+                              style: t.bodyLarge
+                                  .copyWith(fontWeight: FontWeight.w800),
                             ),
-                            'p': Style(margin: Margins.only(bottom: 10)),
-                          },
-                        )
-                      : SelectableText(
-                          body,
-                          style: t.bodySmall.copyWith(color: cs.onSurface),
+                            const SizedBox(height: 10),
+                            Text(
+                              fromName,
+                              style: t.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              fromEmail,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${l.mailDetailToLabel}: $toLabel',
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
-                  const SizedBox(height: 20),
-                ],
+                      ),
+                      Text(
+                        dateLabel,
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (body.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: DefaultTextStyle(
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurface,
+                        height: 1.6,
+                      ),
+                      child: hasHtml
+                          ? Html(
+                              data: body,
+                              style: {
+                                'body': Style(
+                                  margin: Margins.zero,
+                                  padding: HtmlPaddings.zero,
+                                  color: cs.onSurface,
+                                  fontSize:
+                                      FontSize(t.bodySmall.fontSize ?? 14),
+                                  fontFamily: t.bodySmall.fontFamily,
+                                ),
+                                'p': Style(margin: Margins.only(bottom: 12)),
+                              },
+                            )
+                          : SelectableText(body),
+                    ),
+                  ),
+                const SizedBox(height: 20),
                 if (message.attachments.isNotEmpty) ...[
                   Text(
                     l.mailDetailAttachmentsLabel,
@@ -215,39 +206,34 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
                 ],
+                Divider(color: cs.outlineVariant.withValues(alpha: 0.4)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    FilledButton(
+                      onPressed: () {},
+                      child: Text(l.mailConversationReply),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {},
+                      child: Text(l.mailConversationReplyAll),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {},
+                      child: Text(l.mailConversationForward),
+                    ),
+                  ],
+                ),
               ],
             ),
           );
         },
       ),
     );
-  }
-
-  Future<void> _runAction(
-    Future<void> Function() action, {
-    required String success,
-  }) async {
-    if (_busyAction) return;
-    setState(() => _busyAction = true);
-    try {
-      await action();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(success)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(AppLocalizations.of(context)!
-                .mailDetailActionFailed(e.toString()))),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _busyAction = false);
-      }
-    }
   }
 
   Future<void> _downloadAttachment(
@@ -294,97 +280,6 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
         setState(() => _busyAction = false);
       }
     }
-  }
-}
-
-class _MetadataRow extends StatelessWidget {
-  const _MetadataRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 64,
-          child: Text(
-            label,
-            style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionBar extends StatelessWidget {
-  const _ActionBar({
-    required this.unread,
-    required this.busy,
-    required this.markReadLabel,
-    required this.markUnreadLabel,
-    required this.archiveLabel,
-    required this.trashLabel,
-    required this.spamLabel,
-    required this.onMarkRead,
-    required this.onMarkUnread,
-    required this.onArchive,
-    required this.onTrash,
-    required this.onSpam,
-  });
-
-  final bool unread;
-  final bool busy;
-  final String markReadLabel;
-  final String markUnreadLabel;
-  final String archiveLabel;
-  final String trashLabel;
-  final String spamLabel;
-  final VoidCallback onMarkRead;
-  final VoidCallback onMarkUnread;
-  final VoidCallback onArchive;
-  final VoidCallback onTrash;
-  final VoidCallback onSpam;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        FilledButton.tonalIcon(
-          onPressed: busy ? null : (unread ? onMarkRead : onMarkUnread),
-          icon: Icon(unread ? Icons.mark_email_read : Icons.mark_email_unread),
-          label: Text(unread ? markReadLabel : markUnreadLabel),
-        ),
-        OutlinedButton.icon(
-          onPressed: busy ? null : onArchive,
-          icon: const Icon(Icons.archive_outlined),
-          label: Text(archiveLabel),
-        ),
-        OutlinedButton.icon(
-          onPressed: busy ? null : onTrash,
-          icon: const Icon(Icons.delete_outline),
-          label: Text(trashLabel),
-        ),
-        OutlinedButton.icon(
-          onPressed: busy ? null : onSpam,
-          icon: const Icon(Icons.report_outlined),
-          label: Text(spamLabel),
-        ),
-      ],
-    );
   }
 }
 

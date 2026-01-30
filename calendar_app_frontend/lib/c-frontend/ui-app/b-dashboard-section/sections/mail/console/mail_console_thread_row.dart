@@ -19,40 +19,35 @@ class _ThreadRow extends StatelessWidget {
     final subject = thread.subject.trim().isEmpty
         ? l.mailDetailNoSubject
         : thread.subject.trim();
-    final participants = _shortParticipants(thread.participants);
-    final sender =
-        participants.isEmpty ? l.mailDetailUnknownSender : participants;
+    final sender = _friendlySender(thread.participants, l);
     final snippet = thread.snippet?.trim();
     final preview = (snippet == null || snippet.isEmpty) ? '-' : snippet;
     final dateLabel = _formatRelativeDate(thread.latestDate);
+    final unread = thread.unreadCount > 0;
+
+    final isUnread = thread.unreadCount > 0;
+    final isSelected = selected;
+    final background = isSelected
+        ? cs.primaryContainer.withValues(alpha: 0.08)
+        : isUnread
+            ? cs.primaryContainer.withValues(alpha: 0.04)
+            : cs.surface;
+    final hover = cs.onSurface.withValues(alpha: 0.04);
 
     return Stack(
       children: [
         Material(
-          color: selected
-              ? cs.primaryContainer.withValues(alpha: 0.4)
-              : cs.surfaceContainerHighest.withValues(alpha: 0.6),
+          color: background,
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
-            hoverColor: cs.primaryContainer.withValues(alpha: 0.2),
+            hoverColor: hover,
             borderRadius: BorderRadius.circular(12),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (thread.unreadCount > 0)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(top: 6),
-                      decoration: BoxDecoration(
-                        color: cs.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  if (thread.unreadCount > 0) const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,7 +55,8 @@ class _ThreadRow extends StatelessWidget {
                         Text(
                           sender,
                           style: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w700,
+                            fontWeight:
+                                isUnread ? FontWeight.w700 : FontWeight.w600,
                             color: cs.onSurface,
                           ),
                           maxLines: 1,
@@ -70,7 +66,8 @@ class _ThreadRow extends StatelessWidget {
                         Text(
                           subject,
                           style: t.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w800,
+                            fontWeight:
+                                isUnread ? FontWeight.w800 : FontWeight.w700,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -92,10 +89,15 @@ class _ThreadRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        dateLabel,
+                        'Última actividad · $dateLabel',
                         style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                       ),
                       const SizedBox(height: 6),
+                      Text(
+                        '${thread.messageCount} ${l.mailThreadMessageCountLabel.toLowerCase()}',
+                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 4),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -106,19 +108,14 @@ class _ThreadRow extends StatelessWidget {
                               color: cs.onSurfaceVariant,
                             ),
                           if (thread.hasAttachments) const SizedBox(width: 6),
-                          if (thread.unreadCount > 0)
+                          if (thread.messageCount > 1)
                             _CountBadge(
-                              label: '${thread.unreadCount}',
+                              label: '${thread.messageCount}',
+                              filled: isUnread,
                               color: cs.primary,
                               textColor: cs.onPrimary,
+                              borderColor: cs.outlineVariant,
                             ),
-                          if (thread.unreadCount > 0) const SizedBox(width: 6),
-                          _CountBadge(
-                            label: '${thread.messageCount}',
-                            color: cs.surfaceContainerHighest,
-                            textColor: cs.onSurfaceVariant,
-                            border: BorderSide(color: cs.outlineVariant),
-                          ),
                         ],
                       ),
                     ],
@@ -128,7 +125,7 @@ class _ThreadRow extends StatelessWidget {
             ),
           ),
         ),
-        if (selected)
+        if (isSelected)
           Positioned(
             left: 0,
             top: 8,
@@ -149,30 +146,35 @@ class _ThreadRow extends StatelessWidget {
 class _CountBadge extends StatelessWidget {
   const _CountBadge({
     required this.label,
+    required this.filled,
     required this.color,
     required this.textColor,
-    this.border,
+    required this.borderColor,
   });
 
   final String label;
+  final bool filled;
   final Color color;
   final Color textColor;
-  final BorderSide? border;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color,
+        color: filled ? color : Colors.transparent,
         borderRadius: BorderRadius.circular(999),
-        border: border == null ? null : Border.fromBorderSide(border!),
+        border: Border.all(color: filled ? color : borderColor),
       ),
       child: Text(
         label,
         style: AppTypography.of(context)
             .bodySmall
-            .copyWith(color: textColor, fontWeight: FontWeight.w700),
+            .copyWith(
+              color: filled ? textColor : borderColor,
+              fontWeight: FontWeight.w700,
+            ),
       ),
     );
   }

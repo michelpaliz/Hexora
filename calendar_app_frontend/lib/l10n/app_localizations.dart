@@ -9899,6 +9899,36 @@ abstract class AppLocalizations {
   /// **'Folders'**
   String get mailConsoleFoldersTitle;
 
+  /// No description provided for @mailFolderInbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get mailFolderInbox;
+
+  /// No description provided for @mailFolderSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get mailFolderSent;
+
+  /// No description provided for @mailFolderArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get mailFolderArchive;
+
+  /// No description provided for @mailFolderTrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Trash'**
+  String get mailFolderTrash;
+
+  /// No description provided for @mailFolderSpam.
+  ///
+  /// In en, this message translates to:
+  /// **'Spam'**
+  String get mailFolderSpam;
+
   /// No description provided for @mailConsoleSearchPlaceholder.
   ///
   /// In en, this message translates to:
@@ -9940,6 +9970,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reply sent.'**
   String get mailConsoleReplySent;
+
+  /// Reply placeholder with recipient name.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to {name}…'**
+  String mailConversationReplyTo(Object name);
+
+  /// Collapsed quoted message label.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous message ({count})'**
+  String mailConversationPreviousMessage(Object count);
+
+  /// No description provided for @mailConversationSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature'**
+  String get mailConversationSignature;
+
+  /// No description provided for @mailConversationReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get mailConversationReply;
+
+  /// No description provided for @mailConversationReplyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply all'**
+  String get mailConversationReplyAll;
+
+  /// No description provided for @mailConversationForward.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward'**
+  String get mailConversationForward;
 
   /// No description provided for @mailConsoleClientPanelTitle.
   ///
@@ -10067,6 +10133,12 @@ abstract class AppLocalizations {
   /// **'Add cc emails'**
   String get mailComposeCcHint;
 
+  /// No description provided for @mailComposeAddCc.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Cc'**
+  String get mailComposeAddCc;
+
   /// No description provided for @mailComposeBccLabel.
   ///
   /// In en, this message translates to:
@@ -10078,6 +10150,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add bcc emails'**
   String get mailComposeBccHint;
+
+  /// No description provided for @mailComposeAddBcc.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Bcc'**
+  String get mailComposeAddBcc;
 
   /// No description provided for @mailComposeSubjectLabel.
   ///
@@ -10096,6 +10174,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Body'**
   String get mailComposeBodyLabel;
+
+  /// No description provided for @mailComposeFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get mailComposeFormat;
 
   /// No description provided for @mailComposeHtmlToggle.
   ///

@@ -5520,6 +5520,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailConsoleFoldersTitle => 'Carpetas';
 
   @override
+  String get mailFolderInbox => 'Bandeja de entrada';
+
+  @override
+  String get mailFolderSent => 'Enviados';
+
+  @override
+  String get mailFolderArchive => 'Archivados';
+
+  @override
+  String get mailFolderTrash => 'Papelera';
+
+  @override
+  String get mailFolderSpam => 'Spam';
+
+  @override
   String get mailConsoleSearchPlaceholder => 'Buscar hilos (próximamente)';
 
   @override
@@ -5540,6 +5555,28 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailConsoleReplySent => 'Respuesta enviada.';
+
+  @override
+  String mailConversationReplyTo(Object name) {
+    return 'Responder a $name…';
+  }
+
+  @override
+  String mailConversationPreviousMessage(Object count) {
+    return 'Mensaje anterior ($count)';
+  }
+
+  @override
+  String get mailConversationSignature => 'Firma';
+
+  @override
+  String get mailConversationReply => 'Responder';
+
+  @override
+  String get mailConversationReplyAll => 'Responder a todos';
+
+  @override
+  String get mailConversationForward => 'Reenviar';
 
   @override
   String get mailConsoleClientPanelTitle => 'Cliente y facturas';
@@ -5612,10 +5649,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailComposeCcHint => 'Añade correos en copia';
 
   @override
+  String get mailComposeAddCc => 'Añadir Cc';
+
+  @override
   String get mailComposeBccLabel => 'Cco';
 
   @override
   String get mailComposeBccHint => 'Añade correos en copia oculta';
+
+  @override
+  String get mailComposeAddBcc => 'Añadir Cco';
 
   @override
   String get mailComposeSubjectLabel => 'Asunto';
@@ -5625,6 +5668,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailComposeBodyLabel => 'Cuerpo';
+
+  @override
+  String get mailComposeFormat => 'Formato';
 
   @override
   String get mailComposeHtmlToggle => 'HTML';
