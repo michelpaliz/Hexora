@@ -106,11 +106,8 @@ class InvoiceHeaderFields extends StatelessWidget {
                       width: 120,
                       child: TextFormField(
                         controller: currencyController,
-                        readOnly: true,
-                        enableInteractiveSelection: false,
                         decoration: InputDecoration(
                           labelText: l.currencyLabel,
-                          suffixIcon: const Icon(Icons.lock_outline),
                         ),
                       ),
                     ),
@@ -138,15 +135,12 @@ class InvoiceHeaderFields extends StatelessWidget {
                       const SizedBox(width: 10),
                       SizedBox(
                         width: 120,
-                        child: TextFormField(
-                          controller: currencyController,
-                          readOnly: true,
-                          enableInteractiveSelection: false,
-                          decoration: InputDecoration(
-                            labelText: l.currencyLabel,
-                            suffixIcon: const Icon(Icons.lock_outline),
-                          ),
+                      child: TextFormField(
+                        controller: currencyController,
+                        decoration: InputDecoration(
+                          labelText: l.currencyLabel,
                         ),
+                      ),
                       ),
                     ],
                   ),

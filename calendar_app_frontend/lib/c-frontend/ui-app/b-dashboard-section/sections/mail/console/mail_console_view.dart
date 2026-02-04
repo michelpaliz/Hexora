@@ -90,6 +90,7 @@ class _MailConsoleView extends StatelessWidget {
                     state._folder = folder;
                     state._selectedThreadKey = null;
                     state._showCompose = false;
+                    state._showFooterManager = false;
                   });
                   state._syncRoute();
                   state._loadThreads(refresh: true);
@@ -98,6 +99,13 @@ class _MailConsoleView extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
+            const SizedBox(height: 8),
+            _SideActionTile(
+              icon: Icons.description_outlined,
+              label: l.mailFooterCreateCta,
+              compact: state._leftCollapsed,
+              onTap: state._openFooterManager,
+            ),
           ],
         ),
       );
@@ -197,7 +205,9 @@ class _MailConsoleView extends StatelessWidget {
                 onSent: () =>
                     state.setState(() => state._showCompose = false),
               )
-            : state._selectedThreadKey == null
+            : state._showFooterManager
+                ? _FooterManagerPanel(state: state)
+                : state._selectedThreadKey == null
                 ? Center(child: Text(l.mailConsoleSelectThread))
                 : (selectedThread == null)
                     ? (threadState?.error != null)
@@ -233,16 +243,18 @@ class _MailConsoleView extends StatelessWidget {
       children: [
         leftColumn(),
         Expanded(
-          child: Row(
-            children: [
-              middleColumn(),
-              Container(
-                width: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.5),
-              ),
-              rightColumn(),
-            ],
-          ),
+          child: state._showFooterManager
+              ? _FooterManagerPanel(state: state)
+              : Row(
+                  children: [
+                    middleColumn(),
+                    Container(
+                      width: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                    rightColumn(),
+                  ],
+                ),
         ),
       ],
     );

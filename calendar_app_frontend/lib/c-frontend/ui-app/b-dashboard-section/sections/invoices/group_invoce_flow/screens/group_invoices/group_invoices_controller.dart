@@ -6,6 +6,7 @@ import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/invoicing/billing_profile_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
+import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/invoice_editor_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/billing_profile_sheet/billing_profile_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
@@ -21,6 +22,7 @@ class GroupInvoicesController extends ChangeNotifier {
   final _invoicesApi = InvoicesApi();
   final _billingApi = BillingProfileApi();
   final _clientsApi = ClientsApi();
+  final _linesApi = InvoiceLinesApi();
 
   GroupInvoicesState _s = const GroupInvoicesState();
   GroupInvoicesState get state => _s;
@@ -119,6 +121,49 @@ class GroupInvoicesController extends ChangeNotifier {
 
     if (context.mounted) {
       await loadAll();
+    }
+  }
+
+  Future<void> openEditDraft(BuildContext context, Invoice draft) async {
+    if (_s.clients.isEmpty) return;
+    if (draft.id.trim().isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Draft is missing an id')),
+      );
+      return;
+    }
+    try {
+      var full = await _invoicesApi.getById(draft.id);
+      if (full.lines.isEmpty && full.blocks.isEmpty) {
+        final lines = await _linesApi.list(draft.id);
+        if (lines.isNotEmpty) {
+          full = full.copyWith(lines: lines);
+        }
+      }
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => InvoiceEditorScreen(
+            group: group,
+            clients: _s.clients,
+            initialClientId: draft.clientId,
+            initialInvoice: full,
+          ),
+        ),
+      );
+      if (context.mounted) {
+        await loadAll();
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not open draft: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
+      );
     }
   }
 

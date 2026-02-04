@@ -60,11 +60,13 @@ class _SideActionTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.compact,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool compact;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -75,23 +77,37 @@ class _SideActionTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Tooltip(
           message: label,
-          child: Icon(icon, size: 18, color: cs.onSurfaceVariant),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(icon, size: 18, color: cs.onSurfaceVariant),
+            ),
+          ),
         ),
       );
     }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: cs.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: cs.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

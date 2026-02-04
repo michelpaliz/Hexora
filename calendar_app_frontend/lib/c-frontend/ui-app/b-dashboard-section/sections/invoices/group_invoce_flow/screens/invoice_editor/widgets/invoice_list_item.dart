@@ -15,6 +15,7 @@ class InvoiceListItem extends StatefulWidget {
   final GroupClient client;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
   final bool selected;
 
   const InvoiceListItem({
@@ -23,6 +24,7 @@ class InvoiceListItem extends StatefulWidget {
     required this.client,
     this.onTap,
     this.onDelete,
+    this.onEdit,
     this.selected = false,
   });
 
@@ -41,6 +43,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   num? _total;
   bool _breakdownExpanded = false;
   bool _downloadingPdf = false;
+  bool _suppressTap = false;
 
   @override
   void initState() {
@@ -129,7 +132,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   }
 
   String _fileNameFromHeaders(Map<String, String> headers) {
-    final raw = headers['content-disposition'] ?? headers['Content-Disposition'];
+    final raw =
+        headers['content-disposition'] ?? headers['Content-Disposition'];
     if (raw != null && raw.isNotEmpty) {
       final utf8Match =
           RegExp(r"filename\\*=UTF-8''([^;]+)", caseSensitive: false)
@@ -138,8 +142,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         final name = Uri.decodeComponent(utf8Match.group(1)!);
         if (name.trim().isNotEmpty) return name;
       }
-      final match =
-          RegExp(r'filename="?([^";]+)"?', caseSensitive: false).firstMatch(raw);
+      final match = RegExp(r'filename="?([^";]+)"?', caseSensitive: false)
+          .firstMatch(raw);
       if (match != null) {
         final name = match.group(1);
         if (name != null && name.trim().isNotEmpty) return name.trim();
@@ -199,9 +203,10 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         _total == null ? (_loadingMeta ? '…' : dash) : money.format(_total);
     final hasBreakdown = _subtotal != null || _taxTotal != null;
     final selected = widget.selected;
-    final cardColor = selected
-        ? cs.primaryContainer.withValues(alpha: 0.45)
-        : cs.surface;
+    final isDraft = (invoice.status ?? '').toLowerCase().contains('draft') ||
+        (invoice.status ?? '').trim().isEmpty;
+    final cardColor =
+        selected ? cs.primaryContainer.withValues(alpha: 0.45) : cs.surface;
     final borderColor = selected
         ? cs.primary.withValues(alpha: 0.7)
         : cs.outlineVariant.withValues(alpha: 0.4);
@@ -220,7 +225,15 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: widget.onTap,
+        onTap: widget.onTap == null
+            ? null
+            : () {
+                if (_suppressTap) {
+                  _suppressTap = false;
+                  return;
+                }
+                widget.onTap!();
+              },
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Row(
@@ -267,7 +280,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        if (invoice.recurringSeriesId?.trim().isNotEmpty == true)
+                        if (invoice.recurringSeriesId?.trim().isNotEmpty ==
+                            true)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -372,6 +386,16 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                             color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                         ),
+                      if (isDraft && widget.onEdit != null)
+                        IconButton(
+                          tooltip: l.edit,
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.edit_outlined),
+                          onPressed: () {
+                            _suppressTap = true;
+                            widget.onEdit!();
+                          },
+                        ),
                       _downloadingPdf
                           ? const SizedBox(
                               width: 28,
@@ -382,7 +406,10 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                               tooltip: l.download,
                               visualDensity: VisualDensity.compact,
                               icon: const Icon(Icons.download_outlined),
-                              onPressed: _downloadPdf,
+                              onPressed: () {
+                                _suppressTap = true;
+                                _downloadPdf();
+                              },
                             ),
                       if (widget.onDelete != null)
                         IconButton(
@@ -390,7 +417,10 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                           visualDensity: VisualDensity.compact,
                           icon: const Icon(Icons.delete_outline),
                           color: cs.error.withValues(alpha: 0.8),
-                          onPressed: widget.onDelete,
+                          onPressed: () {
+                            _suppressTap = true;
+                            widget.onDelete!();
+                          },
                         )
                       else
                         Icon(
@@ -419,9 +449,8 @@ class _StatusPill extends StatelessWidget {
     final t = AppTypography.of(context);
     final normalized = status.toLowerCase();
     final bool issued = normalized.contains('issue');
-    final Color bg = issued
-        ? cs.secondaryContainer
-        : cs.surface.withValues(alpha: 0.5);
+    final Color bg =
+        issued ? cs.secondaryContainer : cs.surface.withValues(alpha: 0.5);
     final Color fg = issued ? cs.onSecondaryContainer : cs.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

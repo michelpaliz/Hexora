@@ -3000,6 +3000,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get billingProfileSaved => 'Perfil de facturación guardado';
 
   @override
+  String get billingLogoUploadTitle => 'Subir logo de la empresa';
+
+  @override
+  String get billingLogoUploadBody =>
+      'Selecciona un logo PNG o JPG (máx. 5 MB). Este logo aparecerá en facturas y pies de email.';
+
+  @override
+  String get billingLogoUploadSelectFile => 'Seleccionar archivo';
+
+  @override
+  String get billingLogoUploadCta => 'Subir';
+
+  @override
+  String get billingLogoUploadSuccess => 'Logo subido correctamente.';
+
+  @override
+  String get billingLogoUploadError =>
+      'La subida falló. Intenta con un PNG/JPG más pequeño.';
+
+  @override
   String get createInvoiceCta => 'Crear factura';
 
   @override
@@ -5643,6 +5663,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailComposeToHint => 'Introduce correos de destinatarios';
 
   @override
+  String get mailComposeToHelper => 'Añade al menos un destinatario';
+
+  @override
   String get mailComposeCcLabel => 'Cc';
 
   @override
@@ -5667,6 +5690,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailComposeSubjectHint => 'Asunto';
 
   @override
+  String get mailComposeSubjectHelper =>
+      'El asunto ayuda a identificar la conversación';
+
+  @override
   String get mailComposeBodyLabel => 'Cuerpo';
 
   @override
@@ -5680,6 +5707,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailComposeTextHint => 'Escribe tu mensaje';
+
+  @override
+  String get mailComposeBodyHelper => 'Escribe un mensaje para enviar';
 
   @override
   String get mailComposeAttachmentsLabel => 'Adjuntos';
@@ -5723,6 +5753,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailComposeInvoiceOptions => 'Opciones de factura';
+
+  @override
+  String get mailComposeInvoiceOptionsHelper =>
+      'Estas opciones se usan solo al enviar facturas';
+
+  @override
+  String get mailComposeApplyFooterLabel => 'Aplicar pie por defecto';
+
+  @override
+  String get mailComposeApplyFooterHelper =>
+      'Añade el pie por defecto a este correo.';
 
   @override
   String get mailComposeInvoiceIdsLabel => 'IDs de factura';
@@ -5772,5 +5813,102 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String mailComposeSendFailed(Object error) {
     return 'Error al enviar: $error';
+  }
+
+  @override
+  String get mailFooterTitle => 'Crear pie de correo';
+
+  @override
+  String get mailFooterBody =>
+      'Crea un pie que aparecerá en los correos salientes. El logo de la empresa se añadirá automáticamente.';
+
+  @override
+  String get mailFooterNameLabel => 'Nombre del pie';
+
+  @override
+  String get mailFooterNameHint => 'Pie por defecto';
+
+  @override
+  String get mailFooterTextLabel => 'Texto del pie (texto plano)';
+
+  @override
+  String get mailFooterTextHint => 'Escribe el texto del pie';
+
+  @override
+  String get mailFooterHtmlLabel => 'HTML del pie (avanzado)';
+
+  @override
+  String get mailFooterHtmlHint => '<div>...</div>';
+
+  @override
+  String get mailFooterDefaultLabel => 'Establecer como predeterminado';
+
+  @override
+  String get mailFooterHelperTextOnly =>
+      'Si solo completas el texto plano, lo usaremos en correos de texto y HTML.';
+
+  @override
+  String get mailFooterHelperHtmlOverrides =>
+      'Si proporcionas HTML, se usará en los correos HTML.';
+
+  @override
+  String get mailFooterSaveCta => 'Guardar pie';
+
+  @override
+  String get mailFooterCancel => 'Cancelar';
+
+  @override
+  String get mailFooterCreateCta => 'Crear pie';
+
+  @override
+  String get mailFooterNameRequired => 'El nombre del pie es obligatorio.';
+
+  @override
+  String get mailFooterSaved => 'Pie guardado.';
+
+  @override
+  String get mailFooterCurrentTitle => 'Pie actual';
+
+  @override
+  String get mailFooterSystemDefault =>
+      'Se está usando el pie predeterminado del sistema.';
+
+  @override
+  String get mailFooterUnnamed => 'Pie sin nombre';
+
+  @override
+  String get mailFooterHtmlPreview => 'HTML proporcionado';
+
+  @override
+  String get mailFooterDefaultBadge => 'Predeterminado';
+
+  @override
+  String get mailFooterCreateTitle => 'Opciones del pie';
+
+  @override
+  String get mailFooterFormTitle => 'Crear pie';
+
+  @override
+  String get mailFooterUseSystemDefault => 'Usar el pie del sistema';
+
+  @override
+  String get mailFooterPreviewBody =>
+      'Previsualiza cómo se verá tu pie en los correos enviados.';
+
+  @override
+  String get mailFooterPreviewCta => 'Previsualizar pie';
+
+  @override
+  String get mailFooterPreviewSystemCta => 'Previsualizar pie del sistema';
+
+  @override
+  String get mailFooterUseThis => 'Usar este pie';
+
+  @override
+  String get mailFooterEdit => 'Editar';
+
+  @override
+  String mailFooterSaveFailed(Object error) {
+    return 'No se pudo guardar el pie: $error';
   }
 }

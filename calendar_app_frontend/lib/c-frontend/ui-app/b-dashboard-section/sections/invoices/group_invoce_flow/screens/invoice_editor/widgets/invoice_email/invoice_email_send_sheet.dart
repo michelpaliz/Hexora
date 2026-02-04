@@ -103,7 +103,8 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
       'invoiceId': widget.invoice.id,
       'groupId': widget.invoice.groupId,
       'to': _toController.text.trim(),
-      'cc': _ccController.text.trim().isEmpty ? null : _ccController.text.trim(),
+      'cc':
+          _ccController.text.trim().isEmpty ? null : _ccController.text.trim(),
       'subject': _subjectController.text.trim(),
       'text': text,
       'html': html,
@@ -335,76 +336,142 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                      AnimatedBuilder(
+                        animation: _quillController,
+                        builder: (context, _) {
+                          final canUndo = _quillController.hasUndo;
+                          final canRedo = _quillController.hasRedo;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  l.invoiceEmailMessageLabel,
-                                  style: t.bodyMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      l.invoiceEmailMessageLabel,
+                                      style: t.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: canUndo
+                                        ? () => _quillController.undo()
+                                        : null,
+                                    icon: const Icon(Icons.undo_rounded),
+                                    color: cs.onSurface,
+                                    tooltip: 'Undo',
+                                  ),
+                                  IconButton(
+                                    onPressed: canRedo
+                                        ? () => _quillController.redo()
+                                        : null,
+                                    icon: const Icon(Icons.redo_rounded),
+                                    color: cs.onSurface,
+                                    tooltip: 'Redo',
+                                  ),
+                                  IconButton(
+                                    onPressed: () {
+                                      final isBold = _quillController
+                                          .getSelectionStyle()
+                                          .attributes
+                                          .containsKey(
+                                              quill.Attribute.bold.key);
+                                      _quillController.formatSelection(
+                                        isBold
+                                            ? quill.Attribute.clone(
+                                                quill.Attribute.bold,
+                                                null,
+                                              )
+                                            : quill.Attribute.bold,
+                                      );
+                                    },
+                                    icon: const Icon(Icons.format_bold_rounded),
+                                    color: cs.onSurface,
+                                    tooltip: 'Bold',
+                                  ),
+                                  IconButton(
+                                    onPressed: () {
+                                      final isItalic = _quillController
+                                          .getSelectionStyle()
+                                          .attributes
+                                          .containsKey(
+                                              quill.Attribute.italic.key);
+                                      _quillController.formatSelection(
+                                        isItalic
+                                            ? quill.Attribute.clone(
+                                                quill.Attribute.italic,
+                                                null,
+                                              )
+                                            : quill.Attribute.italic,
+                                      );
+                                    },
+                                    icon:
+                                        const Icon(Icons.format_italic_rounded),
+                                    color: cs.onSurface,
+                                    tooltip: 'Italic',
+                                  ),
+                                  IconButton(
+                                    onPressed: _promptLink,
+                                    icon: const Icon(Icons.link_rounded),
+                                    color: cs.onSurface,
+                                    tooltip: 'Link',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: cs.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: cs.outlineVariant),
+                                ),
+                                constraints:
+                                    const BoxConstraints(minHeight: 160),
+                                child: DefaultTextStyle(
+                                  style: t.bodySmall.copyWith(
+                                    color: cs.onSurface,
+                                    height: 1.55,
+                                  ),
+                                  child: Builder(
+                                    builder: (context) {
+                                      _quillController.readOnly = _sending;
+                                      return quill.QuillEditor(
+                                        controller: _quillController,
+                                        scrollController: _bodyScroll,
+                                        focusNode: _bodyFocus,
+                                        config: quill.QuillEditorConfig(
+                                          padding: EdgeInsets.zero,
+                                          autoFocus: false,
+                                          expands: false,
+                                          customStyles: quill.DefaultStyles(
+                                            placeHolder:
+                                                quill.DefaultTextBlockStyle(
+                                              t.bodySmall.copyWith(
+                                                color: cs.onSurfaceVariant,
+                                              ),
+                                              const quill.HorizontalSpacing(
+                                                0,
+                                                0,
+                                              ),
+                                              quill.VerticalSpacing.zero,
+                                              quill.VerticalSpacing.zero,
+                                              null,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
-                              IconButton(
-                                onPressed: () => _quillController
-                                    .formatSelection(quill.Attribute.bold),
-                                icon: const Icon(Icons.format_bold_rounded),
-                                color: cs.onSurface,
-                                tooltip: 'Bold',
-                              ),
-                              IconButton(
-                                onPressed: () => _quillController
-                                    .formatSelection(quill.Attribute.italic),
-                                icon: const Icon(Icons.format_italic_rounded),
-                                color: cs.onSurface,
-                                tooltip: 'Italic',
-                              ),
-                              IconButton(
-                                onPressed: _promptLink,
-                                icon: const Icon(Icons.link_rounded),
-                                color: cs.onSurface,
-                                tooltip: 'Link',
-                              ),
                             ],
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: cs.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: cs.outlineVariant),
-                            ),
-                            constraints: const BoxConstraints(minHeight: 160),
-                            child: DefaultTextStyle(
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurface,
-                                height: 1.55,
-                              ),
-                              child: Builder(
-                                builder: (context) {
-                                  _quillController.readOnly = _sending;
-                                  return quill.QuillEditor(
-                                    controller: _quillController,
-                                    scrollController: _bodyScroll,
-                                    focusNode: _bodyFocus,
-                                    config: const quill.QuillEditorConfig(
-                                      padding: EdgeInsets.zero,
-                                      autoFocus: false,
-                                      expands: false,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -431,7 +498,8 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
                               )
                             : SingleChildScrollView(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
                                     HtmlWidget(previewHtml),
                                     if (attachmentName != null)

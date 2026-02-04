@@ -8,6 +8,7 @@ import 'package:hexora/a-models/receipt/receipt.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/invoicing/billing_profile_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
+import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
 import 'package:hexora/b-backend/receipts/receipts_api.dart';
 import 'package:hexora/b-backend/vat/vat_summary_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/invoice_editor_screen.dart';
@@ -56,6 +57,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   final _clientsApi = ClientsApi();
   final _receiptsApi = ReceiptsApi();
   final _vatApi = VatSummaryApi();
+  final _linesApi = InvoiceLinesApi();
 
   List<Invoice> _invoices = [];
   List<Invoice> _drafts = [];
@@ -69,6 +71,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   String? _recurringSeriesToOpen;
   String _menuBeforeInvoiceEditor = 'clients';
   String? _invoiceEditorClientId;
+  Invoice? _invoiceEditorInvoice;
 
   bool _loading = true;
   String? _error;
@@ -82,6 +85,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   bool _menuCollapsed = false;
   InvoiceNumberSort? _invoiceNumberSort;
   bool? _sortingInvoices;
+  bool _openingDraft = false;
 
   InvoiceNumberSort get _effectiveInvoiceNumberSort =>
       _invoiceNumberSort ?? InvoiceNumberSort.recent;
@@ -202,6 +206,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       setState(() {
         _menuBeforeInvoiceEditor = _selectedMenu;
         _invoiceEditorClientId = _selectedClient?.id;
+        _invoiceEditorInvoice = null;
         _selectedMenu = 'invoice_editor';
       });
       return;
@@ -222,8 +227,54 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     setState(() {
       _selectedMenu = _menuBeforeInvoiceEditor;
       _invoiceEditorClientId = null;
+      _invoiceEditorInvoice = null;
     });
     if (changed) _loadAll();
+  }
+
+  Future<void> _openEditDraft(Invoice draft) async {
+    if (_openingDraft) return;
+    _openingDraft = true;
+    try {
+      if (draft.id.trim().isEmpty) return;
+      var full = await _invoicesApi.getById(draft.id);
+      if (full.lines.isEmpty && full.blocks.isEmpty) {
+        final lines = await _linesApi.list(draft.id);
+        if (lines.isNotEmpty) {
+          full = full.copyWith(lines: lines);
+        }
+      }
+      if (!mounted) return;
+
+    if (widget.embedded && kIsWeb) {
+      if (_selectedMenu == 'invoice_editor') return;
+      Future<void>.delayed(const Duration(milliseconds: 10), () {
+        if (!mounted) return;
+        setState(() {
+          _menuBeforeInvoiceEditor = _selectedMenu;
+          _invoiceEditorClientId = full.clientId;
+          _invoiceEditorInvoice = full;
+          _selectedMenu = 'invoice_editor';
+        });
+      });
+      return;
+    }
+
+    await Future<void>.delayed(Duration.zero);
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => InvoiceEditorScreen(
+          group: widget.group,
+          clients: _clients,
+          initialClientId: full.clientId,
+          initialInvoice: full,
+        ),
+      ),
+    );
+    if (mounted && changed == true) _loadAll();
+    } finally {
+      _openingDraft = false;
+    }
   }
 
   Future<void> _openCreateReceipt() async {

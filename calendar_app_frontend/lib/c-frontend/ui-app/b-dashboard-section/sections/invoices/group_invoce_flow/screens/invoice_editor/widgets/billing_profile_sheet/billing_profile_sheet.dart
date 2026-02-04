@@ -1,15 +1,10 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
-import 'package:hexora/b-backend/blobUploader/blobServer.dart';
-import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/invoicing/billing_profile_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/billing_profile_sheet/billing_profile_sheet_form.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:image_picker/image_picker.dart';
 
 class BillingProfileSheet extends StatefulWidget {
   final BillingProfile? initial;
@@ -170,89 +165,110 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
       return;
     }
 
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final picked = await showDialog<PlatformFile>(
+      context: context,
+      builder: (context) {
+        PlatformFile? selected;
+        String? error;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickFile() async {
+              final result = await FilePicker.platform.pickFiles(
+                allowMultiple: false,
+                withData: true,
+                type: FileType.custom,
+                allowedExtensions: ['png', 'jpg', 'jpeg'],
+              );
+              final file = result?.files.single;
+              if (file == null) return;
+              final tooLarge = file.size > 5 * 1024 * 1024;
+              setDialogState(() {
+                if (tooLarge) {
+                  error = l.billingLogoUploadError;
+                  selected = null;
+                } else {
+                  error = null;
+                  selected = file;
+                }
+              });
+            }
+
+            return AlertDialog(
+              title: Text(l.billingLogoUploadTitle),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.billingLogoUploadBody),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: pickFile,
+                    icon: const Icon(Icons.upload_file_outlined),
+                    label: Text(l.billingLogoUploadSelectFile),
+                  ),
+                  if (selected != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        selected!.name,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error!,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l.cancel),
+                ),
+                FilledButton(
+                  onPressed: selected == null
+                      ? null
+                      : () => Navigator.of(context).pop(selected),
+                  child: Text(l.billingLogoUploadCta),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
     if (picked == null) return;
+    if (picked.bytes == null || picked.bytes!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.billingLogoUploadError)),
+      );
+      return;
+    }
 
     setState(() => _logoBusy = true);
     try {
-      final bytes = kIsWeb ? await picked.readAsBytes() : null;
-      final result = await uploadImageToAzure(
-        scope: 'groups',
-        resourceId: widget.groupId,
-        file: kIsWeb ? null : File(picked.path),
-        bytes: bytes,
-        accessToken: token,
-      );
-      if (!mounted) return;
-
-      _logoUrl.text = result.photoUrl;
-      final updated = await widget.api.updateLogo(
+      final updated = await widget.api.uploadLogo(
         groupId: widget.groupId,
-        logoUrl: result.photoUrl,
+        filename: picked.name,
+        bytes: picked.bytes!,
       );
       if (!mounted) return;
-
-      _logoUrl.text = updated.logoUrl ?? result.photoUrl;
+      _logoUrl.text = updated.logoUrl ?? '';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.invoiceLogoUpdated)),
+        SnackBar(content: Text(l.billingLogoUploadSuccess)),
       );
     } catch (e, st) {
       if (!mounted) return;
-      final reason = e.toString().replaceFirst('Exception: ', '');
-      final blobError = e is BlobUploadException ? e : null;
       debugPrint('[BillingProfileSheet] logo upload failed groupId='
           '${widget.groupId} error=$e\n$st');
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.failedWithReason(reason)),
-          action: SnackBarAction(
-            label: l.details,
-            onPressed: () {
-              if (!mounted) return;
-              showDialog<void>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: Text(l.details),
-                  content: SelectableText(
-                    [
-                      'groupId: ${widget.groupId}',
-                      'baseUrl: ${ApiConstants.baseUrl}',
-                      'cdnBaseUrl: ${ApiConstants.cdnBaseUrl}',
-                      'hasToken: ${token.isNotEmpty}',
-                      'tokenLength: ${token.length}',
-                      'pickedPath: ${picked.path}',
-                      if (blobError != null) ...[
-                        'stage: ${blobError.stage}',
-                        'request: ${blobError.method} ${blobError.url}',
-                        if (blobError.statusCode != null)
-                          'statusCode: ${blobError.statusCode}',
-                        if (blobError.responseHeaders != null)
-                          'responseHeaders: ${blobError.responseHeaders}',
-                        if (blobError.responseBody != null)
-                          'responseBody: ${blobError.responseBody}',
-                        if (blobError.innerError != null)
-                          'innerError: ${blobError.innerError}',
-                      ],
-                      'error: ${e.toString()}',
-                      'stackTrace:\n$st',
-                      if (kDebugMode)
-                        'hint: If this fails at "get-upload-sas", check backend /blob/.../upload-sas route, auth, and group permissions.',
-                    ].join('\n'),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(
-                        MaterialLocalizations.of(context).closeButtonLabel,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
+        SnackBar(content: Text(l.billingLogoUploadError)),
       );
     } finally {
       if (mounted) setState(() => _logoBusy = false);

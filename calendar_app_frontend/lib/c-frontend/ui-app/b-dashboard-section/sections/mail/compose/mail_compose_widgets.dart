@@ -72,6 +72,7 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final inputStyle = t.bodySmall.copyWith(color: cs.onSurface);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
@@ -85,7 +86,7 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
         children: [
           ...widget.values.map(
             (email) => InputChip(
-              label: Text(email, style: t.bodySmall),
+              label: Text(email, style: inputStyle),
               onDeleted: widget.enabled
                   ? () {
                       final next = [...widget.values]..remove(email);
@@ -106,8 +107,10 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
                 decoration: InputDecoration(
                   isDense: true,
                   hintText: widget.values.isEmpty ? widget.hint : null,
+                  hintStyle: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                   border: InputBorder.none,
                 ),
+                style: inputStyle,
               ),
             ),
           ),
@@ -145,6 +148,7 @@ class _CollapsedPanel extends StatelessWidget {
               child: InkWell(
                 onTap: onToggle,
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       expanded
@@ -154,15 +158,28 @@ class _CollapsedPanel extends StatelessWidget {
                       color: cs.onSurfaceVariant,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      title,
-                      style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            if (trailing != null) trailing!,
+            if (trailing != null)
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: trailing!,
+                  ),
+                ),
+              ),
           ],
         ),
         AnimatedCrossFade(

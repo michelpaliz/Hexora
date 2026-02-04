@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/mail/mail_attachment.dart';
@@ -27,10 +28,11 @@ import 'package:provider/provider.dart';
 part 'console/mail_console_conversation_pane.dart';
 part 'console/mail_console_empty_card.dart';
 part 'console/mail_console_left_rail.dart';
-part 'console/mail_console_view.dart';
 part 'console/mail_console_thread_row.dart';
 part 'console/mail_console_thread_toolbar.dart';
 part 'console/mail_console_utils.dart';
+part 'console/mail_console_view.dart';
+part 'console/mail_console_footer_manager.dart';
 
 class MailConsoleScreen extends StatefulWidget {
   const MailConsoleScreen({
@@ -69,6 +71,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
 
   bool _leftCollapsed = false;
   bool _showCompose = false;
+  bool _showFooterManager = false;
 
   bool _loadingClient = false;
   String? _clientError;
@@ -84,6 +87,19 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   Timer? _threadDebounce;
 
   final EmailApi _emailApi = EmailApi();
+
+  final TextEditingController _footerNameCtrl = TextEditingController();
+  final TextEditingController _footerTextCtrl = TextEditingController();
+  final TextEditingController _footerHtmlCtrl = TextEditingController();
+  bool _footerDefault = true;
+  bool _footerFormExpanded = true;
+  String? _footerPreviewName;
+  String? _footerPreviewText;
+  String? _footerPreviewHtml;
+  bool _footerPreviewDefault = false;
+  bool _footerPreviewLoading = false;
+  String? _footerPreviewError;
+  DateTime? _footerPreviewedAt;
 
   @override
   void initState() {
@@ -105,6 +121,9 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     _threadScroll.dispose();
     _replyCtrl.dispose();
     _threadDebounce?.cancel();
+    _footerNameCtrl.dispose();
+    _footerTextCtrl.dispose();
+    _footerHtmlCtrl.dispose();
     super.dispose();
   }
 
@@ -130,6 +149,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
 
   Future<void> _selectThread(String threadKey) async {
     setState(() {
+      _showFooterManager = false;
       _showCompose = false;
       _selectedThreadKey = threadKey;
       _client = null;
@@ -457,6 +477,147 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _openFooterManager() {
+    setState(() {
+      _showFooterManager = true;
+      _showCompose = false;
+      _selectedThreadKey = null;
+    });
+    _syncRoute();
+  }
+
+  Uri _footersUri() {
+    final base = ApiConstants.baseUrl.endsWith('/api')
+        ? ApiConstants.baseUrl
+        : '${ApiConstants.baseUrl}/api';
+    return Uri.parse('$base/mail/footers');
+  }
+
+  Uri _footersPreviewUri() {
+    final base = ApiConstants.baseUrl.endsWith('/api')
+        ? ApiConstants.baseUrl
+        : '${ApiConstants.baseUrl}/api';
+    return Uri.parse('$base/mail/footers/preview');
+  }
+
+  Future<void> _previewFooter({bool useSystemDefault = false}) async {
+    final l = AppLocalizations.of(context)!;
+    final groupId = _currentGroupId();
+    if (groupId == null || groupId.isEmpty) {
+      _toast(l.notAuthenticatedOrUserMissing);
+      return;
+    }
+    final token = await context.read<AuthService>().getToken();
+    if (!mounted) return;
+    if (token == null || token.isEmpty) {
+      _toast(l.notAuthenticatedOrUserMissing);
+      return;
+    }
+
+    setState(() {
+      _footerPreviewLoading = true;
+      _footerPreviewError = null;
+      _footerPreviewHtml = null;
+      _footerPreviewName = useSystemDefault ? null : _footerNameCtrl.text.trim();
+      _footerPreviewText = useSystemDefault ? null : _footerTextCtrl.text.trim();
+      _footerPreviewDefault = useSystemDefault;
+      _footerPreviewedAt = null;
+    });
+
+    try {
+      final body = jsonEncode({
+        'groupId': groupId,
+        if (useSystemDefault) 'useSystemDefault': true,
+        if (!useSystemDefault)
+          'text': _footerTextCtrl.text.trim().isEmpty
+              ? null
+              : _footerTextCtrl.text.trim(),
+        if (!useSystemDefault)
+          'html': _footerHtmlCtrl.text.trim().isEmpty
+              ? null
+              : _footerHtmlCtrl.text.trim(),
+      });
+      final r = await _http().post(
+        _footersPreviewUri(),
+        headers: _authHeaders(token),
+        body: body,
+      );
+      debugPrint(
+          '[MailFooterPreview] status=${r.statusCode} body=${r.body}');
+      if (r.statusCode < 200 || r.statusCode >= 300) {
+        throw Exception(r.body.isNotEmpty ? r.body : r.reasonPhrase);
+      }
+      final decoded = jsonDecode(r.body);
+      String? previewHtml;
+      if (decoded is Map) {
+        previewHtml = decoded['previewHtml']?.toString();
+        previewHtml ??= decoded['html']?.toString();
+      } else if (decoded is String) {
+        previewHtml = decoded;
+      }
+      if (previewHtml != null && previewHtml.isNotEmpty) {
+        setState(() {
+          _footerPreviewHtml = previewHtml;
+          _footerPreviewedAt = DateTime.now();
+        });
+      }
+    } catch (e) {
+      setState(() => _footerPreviewError = e.toString());
+    } finally {
+      if (mounted) setState(() => _footerPreviewLoading = false);
+    }
+  }
+
+  Future<void> _createFooter() async {
+    final l = AppLocalizations.of(context)!;
+    final groupId = _currentGroupId();
+    if (groupId == null || groupId.isEmpty) {
+      _toast(l.notAuthenticatedOrUserMissing);
+      return;
+    }
+    if (_footerNameCtrl.text.trim().isEmpty) {
+      _toast(l.mailFooterNameRequired);
+      return;
+    }
+    final token = await context.read<AuthService>().getToken();
+    if (!mounted) return;
+    if (token == null || token.isEmpty) {
+      _toast(l.notAuthenticatedOrUserMissing);
+      return;
+    }
+
+    try {
+      final body = jsonEncode({
+        'groupId': groupId,
+        'name': _footerNameCtrl.text.trim(),
+        'text': _footerTextCtrl.text.trim().isEmpty
+            ? null
+            : _footerTextCtrl.text.trim(),
+        'html': _footerHtmlCtrl.text.trim().isEmpty
+            ? null
+            : _footerHtmlCtrl.text.trim(),
+        'isDefault': _footerDefault,
+      });
+      final r = await _http().post(
+        _footersUri(),
+        headers: _authHeaders(token),
+        body: body,
+      );
+      if (r.statusCode < 200 || r.statusCode >= 300) {
+        throw Exception(r.body.isNotEmpty ? r.body : r.reasonPhrase);
+      }
+      setState(() {
+        _footerPreviewName = _footerNameCtrl.text.trim();
+        _footerPreviewText = _footerTextCtrl.text.trim();
+        _footerPreviewHtml = _footerHtmlCtrl.text.trim();
+        _footerPreviewDefault = _footerDefault;
+      });
+      _toast(l.mailFooterSaved);
+    } catch (e) {
+      _toast(l.mailFooterSaveFailed(e.toString()));
+    }
   }
 
   void _syncRoute() {

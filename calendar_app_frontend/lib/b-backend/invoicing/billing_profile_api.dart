@@ -15,6 +15,13 @@ class BillingProfileApi {
 
   Uri _u([String path = '']) => Uri.parse('$_base$path');
 
+  Uri _logoUploadUri(String groupId) {
+    final base = ApiConstants.baseUrl.endsWith('/api')
+        ? ApiConstants.baseUrl
+        : '${ApiConstants.baseUrl}/api';
+    return Uri.parse('$base/billing-profile/group/$groupId/logo/upload');
+  }
+
   T _decode<T>(http.Response r, T Function(dynamic) map) {
     final ok = r.statusCode >= 200 && r.statusCode < 300;
     dynamic body;
@@ -68,6 +75,27 @@ class BillingProfileApi {
       body: jsonEncode({'logoUrl': logoUrl}),
     );
     return _decode<BillingProfile>(r, (j) {
+      if (j is Map<String, dynamic>) return BillingProfile.fromJson(j);
+      throw Exception('Unexpected billing profile payload');
+    });
+  }
+
+  Future<BillingProfile> uploadLogo({
+    required String groupId,
+    required String filename,
+    required List<int> bytes,
+  }) async {
+    final token = await TokenService.loadToken();
+    final r = http.MultipartRequest('POST', _logoUploadUri(groupId));
+    r.headers['Authorization'] = 'Bearer $token';
+    r.files.add(http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: filename,
+    ));
+    final streamed = await r.send();
+    final response = await http.Response.fromStream(streamed);
+    return _decode<BillingProfile>(response, (j) {
       if (j is Map<String, dynamic>) return BillingProfile.fromJson(j);
       throw Exception('Unexpected billing profile payload');
     });

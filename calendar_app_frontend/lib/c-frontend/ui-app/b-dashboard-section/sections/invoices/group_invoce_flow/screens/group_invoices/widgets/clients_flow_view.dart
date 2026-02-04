@@ -9,6 +9,7 @@ typedef InvoiceTileBuilder = Widget Function({
   required Invoice invoice,
   required GroupClient client,
   VoidCallback? onDelete,
+  VoidCallback? onEdit,
   required VoidCallback onTap,
 });
 
@@ -30,6 +31,7 @@ class ClientsFlowView extends StatelessWidget {
 
   final ValueChanged<Invoice> onOpenInvoiceDetail;
   final ValueChanged<Invoice> onDeleteInvoice;
+  final ValueChanged<Invoice> onEditDraft;
 
   final ClientBillingViewBuilder clientBillingViewBuilder;
   final InvoiceTileBuilder invoiceTileBuilder;
@@ -47,6 +49,7 @@ class ClientsFlowView extends StatelessWidget {
     required this.onCreateInvoice,
     required this.onOpenInvoiceDetail,
     required this.onDeleteInvoice,
+    required this.onEditDraft,
     required this.clientBillingViewBuilder,
     required this.invoiceTileBuilder,
   });
@@ -233,11 +236,23 @@ class ClientsFlowView extends StatelessWidget {
                                                         : l.invoicesListTitle),
                                                 subtitle: Text(
                                                     '${selectedClient!.name} • ${inv.status ?? 'draft'}'),
-                                                trailing: IconButton(
-                                                  icon: const Icon(
-                                                      Icons.delete_outline),
-                                                  onPressed: () =>
-                                                      onDeleteInvoice(inv),
+                                                trailing: Wrap(
+                                                  spacing: 4,
+                                                  children: [
+                                                    IconButton(
+                                                      tooltip: l.edit,
+                                                      icon: const Icon(
+                                                          Icons.edit_outlined),
+                                                      onPressed: () =>
+                                                          onEditDraft(inv),
+                                                    ),
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                          Icons.delete_outline),
+                                                      onPressed: () =>
+                                                          onDeleteInvoice(inv),
+                                                    ),
+                                                  ],
                                                 ),
                                                 onTap: () =>
                                                     onOpenInvoiceDetail(inv),

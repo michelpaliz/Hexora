@@ -19,8 +19,9 @@ class _InvoiceEditorView extends StatelessWidget {
         final invoiceDate = state._c.invoiceDate.value;
         final dueDate = state._c.dueDate.value;
         final datesComplete = invoiceDate != null;
-        final invalidDates =
-            invoiceDate != null && dueDate != null && dueDate.isBefore(invoiceDate);
+        final invalidDates = invoiceDate != null &&
+            dueDate != null &&
+            dueDate.isBefore(invoiceDate);
         final hasSavedDraft = state._c.savedInvoice != null;
         final step1Complete =
             hasClient && datesComplete && hasLines && !invalidDates;
@@ -84,7 +85,8 @@ class _InvoiceEditorView extends StatelessWidget {
             decoration: BoxDecoration(
               color: bg,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -168,14 +170,22 @@ class _InvoiceEditorView extends StatelessWidget {
                     state._c.pickDate(context, state._c.dueDate),
               );
 
-              final draft = state._c.savedInvoice?.status == 'draft'
-                  ? state._c.savedInvoice
-                  : null;
+              final saved = state._c.savedInvoice;
+              final savedStatus = (saved?.status ?? '').toLowerCase();
+              final isSavedDraft = saved != null &&
+                  (savedStatus.isEmpty || savedStatus.contains('draft'));
+              final draft = isSavedDraft ? saved : null;
+              final editingDraftId = state._c.editingDraftId;
               final pendingDrafts = state._c.pendingDrafts
-                  .where((inv) => inv.status == 'draft')
+                  .where((inv) =>
+                      (inv.status ?? '').toLowerCase().contains('draft') ||
+                      (inv.status ?? '').trim().isEmpty)
                   .where((inv) => draft == null || inv.id != draft.id)
+                  .where((inv) =>
+                      editingDraftId == null || inv.id != editingDraftId)
                   .toList();
-              final hasBlockingDrafts = pendingDrafts.isNotEmpty;
+              final hasBlockingDrafts =
+                  pendingDrafts.isNotEmpty && !state._c.editingDraft;
               final draftBanner = draft == null
                   ? null
                   : _DraftBanner(
@@ -233,7 +243,8 @@ class _InvoiceEditorView extends StatelessWidget {
                             if (helper != null && helper.isNotEmpty) ...[
                               const SizedBox(height: 4),
                               ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 280),
+                                constraints:
+                                    const BoxConstraints(maxWidth: 280),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -287,18 +298,22 @@ class _InvoiceEditorView extends StatelessWidget {
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.save_outlined),
                         label: Text(
-                          state._c.saving ? l.savingLabel : l.invoiceSaveDraftCta,
+                          state._c.saving
+                              ? l.savingLabel
+                              : l.invoiceSaveDraftCta,
                         ),
                       );
 
                       final previewColumn = actionColumn(
                         button: OutlinedButton.icon(
-                          onPressed:
-                              canPreview ? () => state._c.previewPdf(context) : null,
+                          onPressed: canPreview
+                              ? () => state._c.previewPdf(context)
+                              : null,
                           icon: const Icon(Icons.picture_as_pdf_outlined),
                           label: Text(l.invoicePreviewCta),
                         ),
@@ -308,7 +323,8 @@ class _InvoiceEditorView extends StatelessWidget {
 
                       final issueColumn = actionColumn(
                         button: FilledButton.icon(
-                          onPressed: canIssue ? () => state._c.issue(context) : null,
+                          onPressed:
+                              canIssue ? () => state._c.issue(context) : null,
                           style: reinforceIssue
                               ? FilledButton.styleFrom(
                                   elevation: 3,
@@ -385,8 +401,8 @@ class _InvoiceEditorView extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: cs.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border:
-                      Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+                  border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.4)),
                 ),
                 child: LayoutBuilder(
                   builder: (context, headerConstraints) {
@@ -454,6 +470,10 @@ class _InvoiceEditorView extends StatelessWidget {
                               deleting: state._c.deletingDraft,
                               onPreview: (draft) =>
                                   state._c.previewDraft(context, draft),
+                              onDownload: (draft) =>
+                                  state._c.downloadDraftPdf(context, draft),
+                              onEdit: (draft) =>
+                                  state._c.editDraftFromList(context, draft),
                               onDelete: (draft) =>
                                   state._c.deleteDraftById(context, draft),
                             ),
@@ -468,8 +488,9 @@ class _InvoiceEditorView extends StatelessWidget {
                             onSave: canSaveDraft
                                 ? () => state._c.handleSaveDraft(context)
                                 : null,
-                            onPreview:
-                                canPreview ? () => state._c.previewPdf(context) : null,
+                            onPreview: canPreview
+                                ? () => state._c.previewPdf(context)
+                                : null,
                             onIssue:
                                 canIssue ? () => state._c.issue(context) : null,
                             saving: state._c.saving,
@@ -477,8 +498,9 @@ class _InvoiceEditorView extends StatelessWidget {
                             saveTooltip: hasBlockingDrafts
                                 ? l.invoiceWarningPendingDrafts
                                 : l.invoiceSaveDraftCta,
-                            previewTooltip:
-                                canPreview ? l.invoicePreviewCta : previewReason,
+                            previewTooltip: canPreview
+                                ? l.invoicePreviewCta
+                                : previewReason,
                             issueTooltip:
                                 canIssue ? l.invoiceIssueCta : issueReason,
                           )
@@ -520,7 +542,8 @@ class _InvoiceEditorView extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                       child: hasBlockingDrafts
                           ? AbsorbPointer(
-                              child: Opacity(opacity: 0.6, child: actionContent),
+                              child:
+                                  Opacity(opacity: 0.6, child: actionContent),
                             )
                           : actionContent,
                     );
@@ -536,8 +559,7 @@ class _InvoiceEditorView extends StatelessWidget {
                               Expanded(child: contextBand),
                               Container(
                                 width: 1,
-                                margin:
-                                    const EdgeInsets.symmetric(vertical: 8),
+                                margin: const EdgeInsets.symmetric(vertical: 8),
                                 color: dividerColor,
                               ),
                               Expanded(child: actionBand),
@@ -607,340 +629,6 @@ class _InvoiceEditorView extends StatelessWidget {
           child: content,
         );
       },
-    );
-  }
-}
-
-enum _StepState { complete, current, locked }
-
-class _StepDivider extends StatelessWidget {
-  final Color color;
-  const _StepDivider({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 16,
-      child: VerticalDivider(
-        width: 12,
-        thickness: 1,
-        color: color,
-      ),
-    );
-  }
-}
-
-class _HeaderCompactSummary extends StatelessWidget {
-  final String clientName;
-  final String currency;
-  final DateTime? invoiceDate;
-  final DateTime? dueDate;
-
-  const _HeaderCompactSummary({
-    required this.clientName,
-    required this.currency,
-    required this.invoiceDate,
-    required this.dueDate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
-    final dateFmt = DateFormat.yMMMd();
-    final inv = invoiceDate == null ? '-' : dateFmt.format(invoiceDate!);
-    final due = dueDate == null ? '-' : dateFmt.format(dueDate!);
-
-    Widget currencyPill() {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: cs.primaryContainer,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          currency.toUpperCase(),
-          style: t.bodySmall.copyWith(
-            color: cs.onPrimaryContainer,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.6,
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                clientName,
-                style: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${l.invoiceDateLabel}: $inv • ${l.invoiceDueDateLabel}: $due',
-                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        currencyPill(),
-      ],
-    );
-  }
-}
-
-class _CompactStepsPanel extends StatelessWidget {
-  final Widget stepChips;
-  final VoidCallback? onSave;
-  final VoidCallback? onPreview;
-  final VoidCallback? onIssue;
-  final bool saving;
-  final bool issuing;
-  final String? saveTooltip;
-  final String? previewTooltip;
-  final String? issueTooltip;
-
-  const _CompactStepsPanel({
-    required this.stepChips,
-    required this.onSave,
-    required this.onPreview,
-    required this.onIssue,
-    required this.saving,
-    required this.issuing,
-    this.saveTooltip,
-    this.previewTooltip,
-    this.issueTooltip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
-
-    Widget actionIcon({
-      required String? tooltip,
-      required VoidCallback? onPressed,
-      required Widget icon,
-    }) {
-      final button = IconButton(
-        onPressed: onPressed,
-        icon: icon,
-        color: onPressed == null ? cs.onSurfaceVariant : cs.primary,
-      );
-      if (tooltip == null || tooltip.isEmpty) return button;
-      return Tooltip(message: tooltip, child: button);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        stepChips,
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            actionIcon(
-              tooltip: saveTooltip ?? l.invoiceSaveDraftCta,
-              onPressed: onSave,
-              icon: saving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-            ),
-            actionIcon(
-              tooltip: previewTooltip ?? l.invoicePreviewCta,
-              onPressed: onPreview,
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-            ),
-            actionIcon(
-              tooltip: issueTooltip ?? l.invoiceIssueCta,
-              onPressed: onIssue,
-              icon: issuing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check_circle_outline),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _DraftBanner extends StatelessWidget {
-  final Invoice draft;
-  final bool previewing;
-  final bool deleting;
-  final VoidCallback onPreview;
-  final VoidCallback onDelete;
-
-  const _DraftBanner({
-    required this.draft,
-    required this.previewing,
-    required this.deleting,
-    required this.onPreview,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
-    final number = draft.invoiceNumber.trim().isEmpty
-        ? l.statusDraft
-        : '${l.statusDraft} • ${draft.invoiceNumber}';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.edit_note_outlined, color: cs.primary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              number,
-              style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ),
-          IconButton(
-            tooltip: l.invoicePreviewCta,
-            onPressed: previewing ? null : onPreview,
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-          ),
-          IconButton(
-            tooltip: l.remove,
-            onPressed: deleting ? null : onDelete,
-            icon: Icon(Icons.delete_outline, color: cs.error),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PendingDraftsList extends StatelessWidget {
-  final List<Invoice> drafts;
-  final List<GroupClient> clients;
-  final bool deleting;
-  final ValueChanged<Invoice> onPreview;
-  final ValueChanged<Invoice> onDelete;
-
-  const _PendingDraftsList({
-    required this.drafts,
-    required this.clients,
-    required this.deleting,
-    required this.onPreview,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
-    final dateFmt = DateFormat.yMMMd();
-
-    String clientName(String id) {
-      return clients
-          .firstWhere(
-            (c) => c.id == id,
-            orElse: () => GroupClient(id: id, name: l.unknownClient, isActive: true),
-          )
-          .name;
-    }
-
-    String draftSubtitle(Invoice inv) {
-      final date = inv.registeredAt ?? inv.issueDate;
-      if (date == null) return clientName(inv.clientId);
-      return '${clientName(inv.clientId)} • ${dateFmt.format(date)}';
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l.invoicePendingDraftsLabel,
-            style: t.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          for (final inv in drafts) ...[
-            Row(
-              children: [
-                Icon(Icons.edit_note_outlined, size: 18, color: cs.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        inv.invoiceNumber.trim().isEmpty
-                            ? l.statusDraft
-                            : inv.invoiceNumber,
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Text(
-                        draftSubtitle(inv),
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: l.invoicePreviewCta,
-                  onPressed: () => onPreview(inv),
-                  icon: const Icon(Icons.picture_as_pdf_outlined),
-                ),
-                IconButton(
-                  tooltip: l.remove,
-                  onPressed: deleting ? null : () => onDelete(inv),
-                  icon: Icon(Icons.delete_outline, color: cs.error),
-                ),
-              ],
-            ),
-            if (inv != drafts.last)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 6),
-                child: Divider(height: 1),
-              ),
-          ],
-        ],
-      ),
     );
   }
 }

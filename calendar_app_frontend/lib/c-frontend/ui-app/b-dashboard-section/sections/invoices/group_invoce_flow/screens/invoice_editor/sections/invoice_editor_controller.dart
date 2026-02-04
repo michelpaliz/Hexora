@@ -12,6 +12,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/l10n/app_localizations.dart';
@@ -20,13 +21,17 @@ class InvoiceEditorController extends ChangeNotifier {
   final Group group;
   final List<GroupClient> clients;
   final String? initialClientId;
+  final Invoice? initialInvoice;
 
   InvoiceEditorController({
     required this.group,
     required this.clients,
     this.initialClientId,
+    this.initialInvoice,
   }) {
-    if (clients.isNotEmpty) {
+    if (initialInvoice != null) {
+      _applyInitialInvoice(initialInvoice!);
+    } else if (clients.isNotEmpty) {
       final existing = clients
           .firstWhere(
             (c) => c.id == initialClientId,
@@ -35,6 +40,7 @@ class InvoiceEditorController extends ChangeNotifier {
           .id;
       _clientId = existing;
     }
+    digits.addListener(_handleDigitsChanged);
     _refreshClientStats();
   }
 
@@ -65,6 +71,10 @@ class InvoiceEditorController extends ChangeNotifier {
   int _issuedThisMonthCount = 0;
   int _pendingDraftsCount = 0;
   bool _loadingClientStats = false;
+  bool _invoiceNumberTouched = false;
+  bool _settingInvoiceNumber = false;
+  String? _editingDraftId;
+  bool _editingDraftMode = false;
 
   // --- apis ---
   final _invoicesApi = InvoicesApi();
@@ -82,6 +92,8 @@ class InvoiceEditorController extends ChangeNotifier {
   bool get loadingClientStats => _loadingClientStats;
   bool get useBlocks => _useBlocks;
   bool get deletingDraft => _deletingDraft;
+  String? get editingDraftId => _editingDraftId;
+  bool get editingDraft => _editingDraftMode;
 
   String get invoiceNumber => InvoiceEditorFormatters.invoiceNumber(
         digitsText: digits.text,
@@ -158,6 +170,7 @@ class InvoiceEditorController extends ChangeNotifier {
     dueDate.dispose();
     currency.dispose();
     notes.dispose();
+    digits.removeListener(_handleDigitsChanged);
     digits.dispose();
     pdfUrl.dispose();
     for (final l in lines) {
@@ -167,6 +180,110 @@ class InvoiceEditorController extends ChangeNotifier {
       b.dispose();
     }
     super.dispose();
+  }
+
+  void _handleDigitsChanged() {
+    if (_settingInvoiceNumber) return;
+    _invoiceNumberTouched = true;
+  }
+
+  void _applyInitialInvoice(Invoice invoice) {
+    _savedInvoice = invoice;
+    _editingDraftId = invoice.id.trim().isEmpty ? null : invoice.id.trim();
+    _editingDraftMode = _editingDraftId != null;
+    _clientId = invoice.clientId.isNotEmpty ? invoice.clientId : _clientId;
+    if (invoice.currency != null && invoice.currency!.trim().isNotEmpty) {
+      currency.text = invoice.currency!.trim();
+    }
+    if (invoice.notes != null) {
+      notes.text = invoice.notes!.trim();
+    }
+    if (invoice.pdfUrl != null) {
+      pdfUrl.text = invoice.pdfUrl!.trim();
+    }
+    invoiceDate.value =
+        invoice.issueDate ?? invoice.registeredAt ?? invoiceDate.value;
+
+    final number = invoice.invoiceNumber.trim();
+    final match = RegExp(r'^(\\d{1,})').firstMatch(number);
+    if (match != null) {
+      _settingInvoiceNumber = true;
+      digits.text = match.group(1)!.padLeft(3, '0');
+      _settingInvoiceNumber = false;
+      _invoiceNumberTouched = true;
+    }
+
+    _useBlocks = invoice.blocks.isNotEmpty;
+    _resetDraftLines();
+    _resetDraftBlocks();
+    if (_useBlocks) {
+      final drafts =
+          invoice.blocks.map(_draftFromBlock).whereType<InvoiceBlockDraft>();
+      blocks.addAll(drafts);
+      if (blocks.isEmpty) {
+        blocks.add(InvoiceBlockDraft.item());
+      }
+    } else {
+      final sorted = [...invoice.lines]
+        ..sort((a, b) => a.position.compareTo(b.position));
+      for (final line in sorted) {
+        lines.add(_draftFromLine(line));
+      }
+      if (lines.isEmpty) {
+        lines.add(LineDraft(position: 1));
+      }
+    }
+  }
+
+  void _resetDraftLines() {
+    for (final l in lines) {
+      l.dispose();
+    }
+    lines.clear();
+  }
+
+  void _resetDraftBlocks() {
+    for (final b in blocks) {
+      b.dispose();
+    }
+    blocks.clear();
+  }
+
+  LineDraft _draftFromLine(InvoiceLine line) {
+    final draft = LineDraft(position: line.position);
+    draft.description.text = line.description;
+    draft.quantityCtrl.text = line.quantity.toString();
+    draft.unitPriceCtrl.text = line.unitPrice.toString();
+    draft.taxRateCtrl.text = line.taxRate.toString();
+    return draft;
+  }
+
+  InvoiceBlockDraft _draftFromBlock(InvoiceBlock block) {
+    final draft = InvoiceBlockDraft(
+      type: block.type,
+      sku: block.sku,
+      description: block.description,
+      qty: block.qty?.toString(),
+      unit: block.unit,
+      unitPrice: block.unitPrice?.toString(),
+      taxRate: block.taxRate?.toString(),
+      level: block.level?.toString(),
+      isBillable: block.isBillable ?? true,
+      title: block.title,
+      dateValue: block.value,
+      text: block.text,
+      checklistItems: block.items
+          ?.map((item) => InvoiceChecklistItemDraft(
+                initialText: item.text,
+                checked: item.checked,
+              ))
+          .toList(),
+    );
+    if (draft.type == InvoiceBlockType.checklist &&
+        draft.checklistItems.isEmpty) {
+      draft.checklistItems.add(InvoiceChecklistItemDraft());
+    }
+    return draft;
   }
 
   // --- actions ---
@@ -196,6 +313,7 @@ class InvoiceEditorController extends ChangeNotifier {
 
       _pendingDraftsCount = drafts.length;
       _pendingDrafts = drafts;
+      _maybeAutofillInvoiceDigits([...issued, ...drafts]);
 
       if (_clientId == null) {
         _issuedThisMonthCount = 0;
@@ -213,6 +331,21 @@ class InvoiceEditorController extends ChangeNotifier {
       _loadingClientStats = false;
       notifyListeners();
     }
+  }
+
+  void _maybeAutofillInvoiceDigits(List<Invoice> invoices) {
+    if (_invoiceNumberTouched || _savedInvoice != null) return;
+    final raw = digits.text.trim();
+    if (raw.isNotEmpty && raw != '001') return;
+
+    final suggestion = InvoiceEditorFormatters.nextInvoiceDigits(
+      invoiceNumbers: invoices.map((inv) => inv.invoiceNumber),
+      now: DateTime.now(),
+    );
+    if (raw == suggestion) return;
+    _settingInvoiceNumber = true;
+    digits.text = suggestion;
+    _settingInvoiceNumber = false;
   }
 
   Future<Invoice> saveDraft(BuildContext context) async {
@@ -236,6 +369,24 @@ class InvoiceEditorController extends ChangeNotifier {
     _saving = true;
     notifyListeners();
     try {
+      if (_editingDraftId != null && _editingDraftId!.trim().isNotEmpty) {
+        final blocksPayload =
+            _useBlocks ? _sanitizeBlocks(blocks) : _blocksFromLines(lines);
+        final payload = _buildDraftUpdatePayload(blocksPayload);
+        final updated =
+            await _invoicesApi.updateDraft(_editingDraftId!, payload);
+        _savedInvoice = updated.copyWith(
+          blocks: blocksPayload,
+          lines: _useBlocks ? const [] : lines.map((d) => d.toLine()).toList(),
+        );
+        _pendingDrafts = [
+          _savedInvoice!,
+          ..._pendingDrafts.where((inv) => inv.id != _savedInvoice!.id),
+        ];
+        _pendingDraftsCount = _pendingDrafts.length;
+        notifyListeners();
+        return _savedInvoice!;
+      }
       final sanitizedBlocks =
           _useBlocks ? _sanitizeBlocks(blocks) : const <InvoiceBlock>[];
       final invoice = Invoice(
@@ -273,6 +424,7 @@ class InvoiceEditorController extends ChangeNotifier {
       }
       if (_savedInvoice?.status == 'draft') {
         final savedDraft = _savedInvoice!;
+        _editingDraftId = savedDraft.id.trim().isEmpty ? null : savedDraft.id;
         _pendingDrafts = [
           savedDraft,
           ..._pendingDrafts.where((inv) => inv.id != savedDraft.id),
@@ -331,15 +483,70 @@ class InvoiceEditorController extends ChangeNotifier {
     }).toList();
   }
 
+  Map<String, dynamic> _buildDraftUpdatePayload(List<InvoiceBlock> blocks) {
+    return {
+      if (_clientId != null) 'clientId': _clientId,
+      if (invoiceDate.value != null)
+        'issueDate': invoiceDate.value!.toUtc().toIso8601String(),
+      if (notes.text.trim().isNotEmpty) 'notes': notes.text.trim(),
+      if (currency.text.trim().isNotEmpty) 'currency': currency.text.trim(),
+      'blocks': blocks.map((b) => b.toJson()).toList(),
+    };
+  }
+
+  List<InvoiceBlock> _blocksFromLines(List<LineDraft> draftLines) {
+    final blocks = <InvoiceBlock>[];
+    for (final line in draftLines) {
+      final desc = line.description.text.trim();
+      if (desc.isEmpty) continue;
+      blocks.add(InvoiceBlock(
+        type: InvoiceBlockType.item,
+        description: desc,
+        qty: line.quantity ?? 1,
+        unitPrice: line.unitPrice ?? 0,
+        taxRate: line.taxRate ?? 21,
+        isBillable: true,
+      ));
+    }
+    return blocks;
+  }
+
   Future<void> handleSaveDraft(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
     try {
+      final editing =
+          _editingDraftId != null && _editingDraftId!.trim().isNotEmpty;
+      if (editing) {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Update Draft Invoice'),
+            content: const Text(
+              'Edit draft details and line items before issuing the invoice.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(l.saveDraft),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
+      }
+
       final inv = await saveDraft(context);
       if (!context.mounted) return;
 
-      final msg = inv.invoiceNumber.isNotEmpty
-          ? l.invoiceDraftSavedSnack(inv.invoiceNumber)
-          : l.invoiceDraftSavedSnackNoNumber;
+      final msg = editing
+          ? 'Draft updated successfully.'
+          : (inv.invoiceNumber.isNotEmpty
+              ? l.invoiceDraftSavedSnack(inv.invoiceNumber)
+              : l.invoiceDraftSavedSnackNoNumber);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       debugPrint('[InvoicePreview] $e');
@@ -646,6 +853,92 @@ class InvoiceEditorController extends ChangeNotifier {
     } finally {
       _deletingDraft = false;
       notifyListeners();
+    }
+  }
+
+  Future<Invoice> loadDraftForEdit(Invoice draft) async {
+    if (draft.id.trim().isEmpty) {
+      throw Exception('Draft is missing an id');
+    }
+    var full = await _invoicesApi.getById(draft.id);
+    if (full.lines.isEmpty && full.blocks.isEmpty) {
+      final lines = await _linesApi.list(draft.id);
+      if (lines.isNotEmpty) {
+        full = full.copyWith(lines: lines);
+      }
+    }
+    return full;
+  }
+
+  Future<void> editDraftFromList(BuildContext context, Invoice draft) async {
+    try {
+      final draftId = draft.id.trim();
+      if (draftId.isNotEmpty) {
+        _editingDraftId = draftId;
+        _savedInvoice = draft;
+        _editingDraftMode = true;
+        notifyListeners();
+      }
+      final full = await loadDraftForEdit(draft);
+      _applyInitialInvoice(full);
+      _previewedPdf = false;
+      notifyListeners();
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _safeErrorMessage(context, e, fallback: 'Could not open draft'),
+          ),
+        ),
+      );
+    }
+  }
+
+  String _fileNameFromHeaders(Map<String, String> headers, Invoice invoice) {
+    final raw = headers['content-disposition'] ?? headers['Content-Disposition'];
+    if (raw != null && raw.isNotEmpty) {
+      final utf8Match =
+          RegExp(r"filename\\*=UTF-8''([^;]+)", caseSensitive: false)
+              .firstMatch(raw);
+      if (utf8Match != null) {
+        final name = Uri.decodeComponent(utf8Match.group(1)!);
+        if (name.trim().isNotEmpty) return name;
+      }
+      final match =
+          RegExp(r'filename="?([^";]+)"?', caseSensitive: false).firstMatch(raw);
+      if (match != null) {
+        final name = match.group(1);
+        if (name != null && name.trim().isNotEmpty) return name.trim();
+      }
+    }
+    final number = invoice.invoiceNumber.trim();
+    if (number.isEmpty) return 'BORRADOR.pdf';
+    return 'invoice-$number.pdf';
+  }
+
+  Future<void> downloadDraftPdf(BuildContext context, Invoice draft) async {
+    try {
+      final r = await _invoicesApi.downloadPdf(draft.id);
+      final fileName = _fileNameFromHeaders(r.headers, draft);
+      await launchFileDownload(
+        r.bodyBytes,
+        fileName: fileName,
+        mimeType: 'application/pdf',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _safeErrorMessage(
+              context,
+              e,
+              fallback: 'Could not download PDF',
+            ),
+          ),
+        ),
+      );
     }
   }
 }

@@ -17,6 +17,9 @@ class _MailComposeView extends StatelessWidget {
     final inputDecoration = InputDecoration(
       filled: true,
       fillColor: cs.surface,
+      labelStyle: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+      hintStyle: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+      helperStyle: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: cs.outlineVariant),
@@ -32,7 +35,7 @@ class _MailComposeView extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
 
-    final content = Padding(
+    final content = SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,21 +76,41 @@ class _MailComposeView extends StatelessWidget {
             hint: l.mailComposeToHint,
             enabled: !state._sending,
             decoration: inputDecoration,
-            onChanged: (next) => state.setState(() => state._toList
+            onChanged: (next) => state.update(() => state._toList
               ..clear()
               ..addAll(next)),
           ),
+          if (state._toList.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                l.mailComposeToHelper,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
           const SizedBox(height: 6),
           Row(
             children: [
               if (!state._showCc)
                 TextButton(
-                  onPressed: () => state.setState(() => state._showCc = true),
+                  onPressed: () => state.update(() => state._showCc = true),
+                  style: TextButton.styleFrom(
+                    foregroundColor: cs.onSurfaceVariant,
+                    textStyle:
+                        t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
                   child: Text(l.mailComposeAddCc),
                 ),
               if (!state._showBcc)
                 TextButton(
-                  onPressed: () => state.setState(() => state._showBcc = true),
+                  onPressed: () => state.update(() => state._showBcc = true),
+                  style: TextButton.styleFrom(
+                    foregroundColor: cs.onSurfaceVariant,
+                    textStyle:
+                        t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
                   child: Text(l.mailComposeAddBcc),
                 ),
             ],
@@ -122,9 +145,10 @@ class _MailComposeView extends StatelessWidget {
                               hint: l.mailComposeCcHint,
                               enabled: !state._sending,
                               decoration: inputDecoration,
-                              onChanged: (next) => state.setState(() => state._ccList
-                                ..clear()
-                                ..addAll(next)),
+                              onChanged: (next) =>
+                                  state.update(() => state._ccList
+                                    ..clear()
+                                    ..addAll(next)),
                             ),
                           ],
                         );
@@ -148,9 +172,10 @@ class _MailComposeView extends StatelessWidget {
                               hint: l.mailComposeBccHint,
                               enabled: !state._sending,
                               decoration: inputDecoration,
-                              onChanged: (next) => state.setState(() => state._bccList
-                                ..clear()
-                                ..addAll(next)),
+                              onChanged: (next) =>
+                                  state.update(() => state._bccList
+                                    ..clear()
+                                    ..addAll(next)),
                             ),
                           ],
                         );
@@ -188,92 +213,187 @@ class _MailComposeView extends StatelessWidget {
             controller: state._subjectCtrl,
             enabled: !state._sending,
             maxLines: 1,
+            style: t.bodySmall.copyWith(color: cs.onSurface),
             decoration: inputDecoration.copyWith(
               labelText: l.mailComposeSubjectLabel,
               hintText: l.mailComposeSubjectHint,
+              helperText: l.mailComposeSubjectHelper,
             ),
-            onChanged: (_) => state.setState(() {}),
+            onChanged: (_) => state.update(() {}),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l.mailComposeBodyLabel,
-                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-              IconButton(
-                onPressed: () => state._quillController
-                    .formatSelection(quill.Attribute.bold),
-                icon: const Icon(Icons.format_bold_rounded),
-                color: cs.onSurface,
-                tooltip: 'Bold',
-              ),
-              IconButton(
-                onPressed: () => state._quillController
-                    .formatSelection(quill.Attribute.italic),
-                icon: const Icon(Icons.format_italic_rounded),
-                color: cs.onSurface,
-                tooltip: 'Italic',
-              ),
-              IconButton(
-                onPressed: state._promptLink,
-                icon: const Icon(Icons.link_rounded),
-                color: cs.onSurface,
-                tooltip: 'Link',
-              ),
-              const SizedBox(width: 6),
-              Text(
-                l.mailComposeFormat,
-                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-              ),
-            ],
+          AnimatedBuilder(
+            animation:
+                Listenable.merge([state._quillController, state._bodyFocus]),
+            builder: (context, _) {
+              final canUndo = state._quillController.hasUndo;
+              final canRedo = state._quillController.hasRedo;
+              final showTools = state._bodyFocus.hasFocus;
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l.mailComposeBodyLabel,
+                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 150),
+                    opacity: showTools ? 1 : 0.6,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: canUndo
+                              ? () {
+                                  state._quillController.undo();
+                                }
+                              : null,
+                          icon: const Icon(Icons.undo_rounded),
+                          color: cs.onSurface,
+                          tooltip: 'Undo',
+                        ),
+                        IconButton(
+                          onPressed: canRedo
+                              ? () {
+                                  state._quillController.redo();
+                                }
+                              : null,
+                          icon: const Icon(Icons.redo_rounded),
+                          color: cs.onSurface,
+                          tooltip: 'Redo',
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            final isBold = state._quillController
+                                .getSelectionStyle()
+                                .attributes
+                                .containsKey(quill.Attribute.bold.key);
+                            state._quillController.formatSelection(
+                              isBold
+                                  ? quill.Attribute.clone(
+                                      quill.Attribute.bold, null)
+                                  : quill.Attribute.bold,
+                            );
+                          },
+                          icon: const Icon(Icons.format_bold_rounded),
+                          color: cs.onSurface,
+                          tooltip: 'Bold',
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            final isItalic = state._quillController
+                                .getSelectionStyle()
+                                .attributes
+                                .containsKey(quill.Attribute.italic.key);
+                            state._quillController.formatSelection(
+                              isItalic
+                                  ? quill.Attribute.clone(
+                                      quill.Attribute.italic,
+                                      null,
+                                    )
+                                  : quill.Attribute.italic,
+                            );
+                          },
+                          icon: const Icon(Icons.format_italic_rounded),
+                          color: cs.onSurface,
+                          tooltip: 'Italic',
+                        ),
+                        IconButton(
+                          onPressed: state._promptLink,
+                          icon: const Icon(Icons.link_rounded),
+                          color: cs.onSurface,
+                          tooltip: 'Link',
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          l.mailComposeFormat,
+                          style:
+                              t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 8),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: inputDecoration.fillColor ?? cs.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.outlineVariant),
-              ),
-              child: DefaultTextStyle(
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurface,
-                  height: 1.55,
+          AnimatedBuilder(
+            animation: state._bodyFocus,
+            builder: (context, _) {
+              final focused = state._bodyFocus.hasFocus;
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: inputDecoration.fillColor ?? cs.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: focused ? cs.primary : cs.outlineVariant,
+                    width: focused ? 1.4 : 1,
+                  ),
                 ),
-                child: Builder(
-                  builder: (context) {
-                    state._quillController.readOnly = state._sending;
-                    return quill.QuillEditor(
-                      controller: state._quillController,
-                      scrollController: state._bodyScroll,
-                      focusNode: state._bodyFocus,
-                      config: quill.QuillEditorConfig(
-                        padding: EdgeInsets.zero,
-                        autoFocus: false,
-                        expands: true,
-                        placeholder: l.mailComposeTextHint,
-                      ),
-                    );
-                  },
+                constraints: const BoxConstraints(minHeight: 200),
+                child: DefaultTextStyle(
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurface,
+                    height: 1.55,
+                  ),
+                  child: Builder(
+                    builder: (context) {
+                      state._quillController.readOnly = state._sending;
+                      return quill.QuillEditor(
+                        controller: state._quillController,
+                        scrollController: state._bodyScroll,
+                        focusNode: state._bodyFocus,
+                        config: quill.QuillEditorConfig(
+                          padding: EdgeInsets.zero,
+                          autoFocus: false,
+                          expands: false,
+                          placeholder: l.mailComposeTextHint,
+                          customStyles: quill.DefaultStyles(
+                            placeHolder: quill.DefaultTextBlockStyle(
+                              t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                              const quill.HorizontalSpacing(0, 0),
+                              quill.VerticalSpacing.zero,
+                              quill.VerticalSpacing.zero,
+                              null,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
+              );
+            },
+          ),
+          if (state._quillController.document.toPlainText().trim().isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                l.mailComposeBodyHelper,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
               ),
             ),
-          ),
           const SizedBox(height: 12),
           _CollapsedPanel(
-            title: l.mailComposeAttachmentsLabel,
+            title: state._attachments.isEmpty
+                ? l.mailComposeAttachmentsLabel
+                : '${l.mailComposeAttachmentsLabel} (${state._attachments.length})',
             expanded: state._attachmentsExpanded,
-            onToggle: () => state.setState(
+            onToggle: () => state.update(
               () => state._attachmentsExpanded = !state._attachmentsExpanded,
             ),
             trailing: TextButton.icon(
               onPressed: state._sending || state._uploadingAttachment
                   ? null
                   : state._showAttachmentActions,
+              style: TextButton.styleFrom(
+                foregroundColor: cs.onSurfaceVariant,
+                textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+              ),
               icon: state._uploadingAttachment
                   ? const SizedBox(
                       width: 16,
@@ -301,8 +421,8 @@ class _MailComposeView extends StatelessWidget {
                           attachment.filename ?? attachment.storageKey ?? '-';
                       return InputChip(
                         label: Text(label, style: t.bodySmall),
-                        onDeleted: () =>
-                            state.setState(() => state._attachments.removeAt(index)),
+                        onDeleted: () => state
+                            .update(() => state._attachments.removeAt(index)),
                       );
                     }).toList(),
                   ),
@@ -311,14 +431,20 @@ class _MailComposeView extends StatelessWidget {
           _CollapsedPanel(
             title: l.mailComposeInvoiceOptions,
             expanded: state._invoiceExpanded,
-            onToggle: () =>
-                state.setState(() => state._invoiceExpanded = !state._invoiceExpanded),
+            onToggle: () => state
+                .update(() => state._invoiceExpanded = !state._invoiceExpanded),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  l.mailComposeInvoiceOptionsHelper,
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 8),
                 TextFormField(
                   controller: state._invoiceIdsCtrl,
                   enabled: !state._sending,
+                  style: t.bodySmall.copyWith(color: cs.onSurface),
                   decoration: inputDecoration.copyWith(
                     labelText: l.mailComposeInvoiceIdsLabel,
                     hintText: l.mailComposeInvoiceIdsHint,
@@ -332,20 +458,46 @@ class _MailComposeView extends StatelessWidget {
                 const SizedBox(height: 8),
                 SwitchListTile.adaptive(
                   value: state._attachInvoicePdf,
-                  title: Text(l.mailComposeAttachInvoicePdf),
+                  title: Text(
+                    l.mailComposeAttachInvoicePdf,
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                  ),
                   secondary: const Icon(Icons.picture_as_pdf_outlined),
                   onChanged: state._sending
                       ? null
-                      : (value) => state.setState(() => state._attachInvoicePdf = value),
+                      : (value) =>
+                          state.update(() => state._attachInvoicePdf = value),
                   contentPadding: EdgeInsets.zero,
                 ),
                 SwitchListTile.adaptive(
                   value: state._includeInvoiceLinks,
-                  title: Text(l.mailComposeIncludeInvoiceLinks),
+                  title: Text(
+                    l.mailComposeIncludeInvoiceLinks,
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                  ),
                   secondary: const Icon(Icons.link_outlined),
                   onChanged: state._sending
                       ? null
-                      : (value) => state.setState(() => state._includeInvoiceLinks = value),
+                      : (value) => state
+                          .update(() => state._includeInvoiceLinks = value),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 4),
+                SwitchListTile.adaptive(
+                  value: state._applyDefaultFooter,
+                  title: Text(
+                    l.mailComposeApplyFooterLabel,
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    l.mailComposeApplyFooterHelper,
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  secondary: const Icon(Icons.notes_outlined),
+                  onChanged: state._sending
+                      ? null
+                      : (value) =>
+                          state.update(() => state._applyDefaultFooter = value),
                   contentPadding: EdgeInsets.zero,
                 ),
               ],

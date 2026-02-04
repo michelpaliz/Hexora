@@ -2972,6 +2972,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billingProfileSaved => 'Billing profile saved';
 
   @override
+  String get billingLogoUploadTitle => 'Upload Company Logo';
+
+  @override
+  String get billingLogoUploadBody =>
+      'Select a PNG or JPG logo (max 5MB). This logo will appear in invoices and email footers.';
+
+  @override
+  String get billingLogoUploadSelectFile => 'Select file';
+
+  @override
+  String get billingLogoUploadCta => 'Upload';
+
+  @override
+  String get billingLogoUploadSuccess => 'Logo uploaded successfully.';
+
+  @override
+  String get billingLogoUploadError =>
+      'Upload failed. Please try a smaller PNG/JPG.';
+
+  @override
   String get createInvoiceCta => 'Create invoice';
 
   @override
@@ -5586,6 +5606,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailComposeToHint => 'Enter recipient emails';
 
   @override
+  String get mailComposeToHelper => 'Add at least one recipient';
+
+  @override
   String get mailComposeCcLabel => 'Cc';
 
   @override
@@ -5610,6 +5633,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailComposeSubjectHint => 'Subject';
 
   @override
+  String get mailComposeSubjectHelper =>
+      'A subject helps identify the conversation';
+
+  @override
   String get mailComposeBodyLabel => 'Body';
 
   @override
@@ -5623,6 +5650,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mailComposeTextHint => 'Write your message';
+
+  @override
+  String get mailComposeBodyHelper => 'Write a message to send';
 
   @override
   String get mailComposeAttachmentsLabel => 'Attachments';
@@ -5665,6 +5695,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mailComposeInvoiceOptions => 'Invoice options';
+
+  @override
+  String get mailComposeInvoiceOptionsHelper =>
+      'These options are used only when sending invoices';
+
+  @override
+  String get mailComposeApplyFooterLabel => 'Apply default footer';
+
+  @override
+  String get mailComposeApplyFooterHelper =>
+      'Adds your default footer to this email.';
 
   @override
   String get mailComposeInvoiceIdsLabel => 'Invoice IDs';
@@ -5713,5 +5754,101 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String mailComposeSendFailed(Object error) {
     return 'Failed to send: $error';
+  }
+
+  @override
+  String get mailFooterTitle => 'Create Email Footer';
+
+  @override
+  String get mailFooterBody =>
+      'Build a footer that appears on outgoing emails. The company logo will be added automatically.';
+
+  @override
+  String get mailFooterNameLabel => 'Footer name';
+
+  @override
+  String get mailFooterNameHint => 'Default Footer';
+
+  @override
+  String get mailFooterTextLabel => 'Footer text (plain text)';
+
+  @override
+  String get mailFooterTextHint => 'Enter footer text';
+
+  @override
+  String get mailFooterHtmlLabel => 'Footer HTML (advanced)';
+
+  @override
+  String get mailFooterHtmlHint => '<div>...</div>';
+
+  @override
+  String get mailFooterDefaultLabel => 'Set as default';
+
+  @override
+  String get mailFooterHelperTextOnly =>
+      'If you only fill plain text, we’ll render it in both text + HTML emails.';
+
+  @override
+  String get mailFooterHelperHtmlOverrides =>
+      'If you provide HTML, that will be used in HTML emails.';
+
+  @override
+  String get mailFooterSaveCta => 'Save Footer';
+
+  @override
+  String get mailFooterCancel => 'Cancel';
+
+  @override
+  String get mailFooterCreateCta => 'Create footer';
+
+  @override
+  String get mailFooterNameRequired => 'Footer name is required.';
+
+  @override
+  String get mailFooterSaved => 'Footer saved.';
+
+  @override
+  String get mailFooterCurrentTitle => 'Current footer';
+
+  @override
+  String get mailFooterSystemDefault => 'Using the system default footer.';
+
+  @override
+  String get mailFooterUnnamed => 'Untitled footer';
+
+  @override
+  String get mailFooterHtmlPreview => 'HTML provided';
+
+  @override
+  String get mailFooterDefaultBadge => 'Default';
+
+  @override
+  String get mailFooterCreateTitle => 'Footer options';
+
+  @override
+  String get mailFooterFormTitle => 'Create footer';
+
+  @override
+  String get mailFooterUseSystemDefault => 'Use system default';
+
+  @override
+  String get mailFooterPreviewBody =>
+      'Preview how your footer will look in outgoing emails.';
+
+  @override
+  String get mailFooterPreviewCta => 'Preview footer';
+
+  @override
+  String get mailFooterPreviewSystemCta => 'Preview system footer';
+
+  @override
+  String get mailFooterUseThis => 'Use This Footer';
+
+  @override
+  String get mailFooterEdit => 'Edit';
+
+  @override
+  String mailFooterSaveFailed(Object error) {
+    return 'Failed to save footer: $error';
   }
 }

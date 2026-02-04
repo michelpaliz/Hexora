@@ -50,6 +50,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
 
   bool _attachInvoicePdf = false;
   bool _includeInvoiceLinks = false;
+  bool _applyDefaultFooter = true;
   bool _sending = false;
   bool _uploadingAttachment = false;
   bool _showCc = false;
@@ -58,6 +59,11 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   bool _invoiceExpanded = false;
 
   final List<MailOutgoingAttachment> _attachments = [];
+
+  void update(VoidCallback fn) {
+    if (!mounted) return;
+    setState(fn);
+  }
 
   @override
   void dispose() {
@@ -247,18 +253,19 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
 
     setState(() => _sending = true);
     try {
-      final request = MailSendRequest(
-        to: to,
-        cc: cc,
-        bcc: bcc,
-        subject: subject,
-        textBody: body,
-        htmlBody: _quillToHtml(_quillController.document),
-        attachments: _attachments,
-        invoiceIds: invoiceIds,
-        attachInvoicePdf: invoiceIds.isEmpty ? null : _attachInvoicePdf,
-        includeInvoiceLinks: invoiceIds.isEmpty ? null : _includeInvoiceLinks,
-      );
+    final request = MailSendRequest(
+      to: to,
+      cc: cc,
+      bcc: bcc,
+      subject: subject,
+      textBody: body,
+      htmlBody: _quillToHtml(_quillController.document),
+      attachments: _attachments,
+      invoiceIds: invoiceIds,
+      attachInvoicePdf: invoiceIds.isEmpty ? null : _attachInvoicePdf,
+      includeInvoiceLinks: invoiceIds.isEmpty ? null : _includeInvoiceLinks,
+      applyDefaultFooter: _applyDefaultFooter,
+    );
       await context.read<MailDomain>().sendMessage(request);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -292,6 +299,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     setState(() {
       _attachInvoicePdf = false;
       _includeInvoiceLinks = false;
+      _applyDefaultFooter = true;
       _showCc = false;
       _showBcc = false;
       _attachmentsExpanded = false;

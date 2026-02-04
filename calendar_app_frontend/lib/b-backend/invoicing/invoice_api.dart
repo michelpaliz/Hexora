@@ -288,6 +288,19 @@ class InvoicesApi {
     });
   }
 
+  Future<Invoice> updateDraft(String id, Map<String, dynamic> payload) async {
+    final uri = _u('/$id/draft');
+    final r = await http.patch(
+      uri,
+      headers: await _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decode<Invoice>(r, (j) {
+      if (j is Map<String, dynamic>) return Invoice.fromJson(j);
+      throw Exception('Unexpected invoice payload');
+    });
+  }
+
   /// DELETE /invoices/:id  (useful for drafts cleanup, if supported by backend)
   Future<void> delete(String id) async {
     final uri = _u('/$id');

@@ -146,6 +146,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                           ),
                           onDeleteInvoice: (inv) =>
                               _c.deleteInvoice(context, inv),
+                          onEditDraft: (inv) =>
+                              _c.openEditDraft(context, inv),
                           clientBillingViewBuilder: (client) =>
                               ClientBillingView(
                             client: client,
@@ -157,12 +159,14 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                               {required Invoice invoice,
                               required GroupClient client,
                               VoidCallback? onDelete,
+                              VoidCallback? onEdit,
                               required VoidCallback onTap}) {
                             return InvoiceListItem(
                               invoice: invoice,
                               client: client,
                               onTap: onTap,
                               onDelete: onDelete,
+                              onEdit: onEdit,
                             );
                           },
                         )
@@ -176,6 +180,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                           onSelectInvoice: _c.selectInvoice,
                           onDeleteDraft: (inv) =>
                               _c.deleteInvoice(context, inv),
+                          onEditDraft: (inv) =>
+                              _c.openEditDraft(context, inv),
                           detailBuilder: (inv) => InvoiceDetailSheet(
                             key: ValueKey(inv.id),
                             invoice: inv,
@@ -186,12 +192,14 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                           ),
                           invoiceItemBuilder: (inv, client,
                               {VoidCallback? onDelete,
+                              VoidCallback? onEdit,
                               required VoidCallback onTap}) {
                             return InvoiceListItem(
                               invoice: inv,
                               client: client,
                               onTap: onTap,
                               onDelete: onDelete,
+                              onEdit: onEdit,
                             );
                           },
                         ),

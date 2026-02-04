@@ -35,6 +35,7 @@ class MailSendRequest {
   final List<String> invoiceIds;
   final bool? attachInvoicePdf;
   final bool? includeInvoiceLinks;
+  final bool? applyDefaultFooter;
 
   const MailSendRequest({
     required this.to,
@@ -47,6 +48,7 @@ class MailSendRequest {
     this.invoiceIds = const [],
     this.attachInvoicePdf,
     this.includeInvoiceLinks,
+    this.applyDefaultFooter,
   });
 
   Map<String, dynamic> toJson() {
@@ -63,6 +65,8 @@ class MailSendRequest {
       if (attachInvoicePdf != null) 'attachInvoicePdf': attachInvoicePdf,
       if (includeInvoiceLinks != null)
         'includeInvoiceLinks': includeInvoiceLinks,
+      if (applyDefaultFooter != null)
+        'applyDefaultFooter': applyDefaultFooter,
     };
   }
 }

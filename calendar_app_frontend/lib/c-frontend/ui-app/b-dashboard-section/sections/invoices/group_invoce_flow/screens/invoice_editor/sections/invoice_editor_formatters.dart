@@ -5,6 +5,28 @@ import 'package:intl/intl.dart';
 class InvoiceEditorFormatters {
   static String yearSuffix(DateTime now) => DateFormat('yy').format(now);
 
+  static String nextInvoiceDigits({
+    required Iterable<String> invoiceNumbers,
+    required DateTime now,
+  }) {
+    final suffix = yearSuffix(now);
+    final pattern = RegExp(r'(\d+)-' + suffix + r'$');
+    var max = 0;
+    var found = false;
+    for (final raw in invoiceNumbers) {
+      final match = pattern.firstMatch(raw.trim());
+      if (match == null) continue;
+      final value = int.tryParse(match.group(1) ?? '');
+      if (value == null) continue;
+      if (value > max) {
+        max = value;
+        found = true;
+      }
+    }
+    final next = found ? max + 1 : 1;
+    return next.toString().padLeft(3, '0');
+  }
+
   static String invoiceNumber({
     required String digitsText,
     required DateTime now,

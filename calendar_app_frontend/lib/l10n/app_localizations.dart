@@ -5350,6 +5350,42 @@ abstract class AppLocalizations {
   /// **'Billing profile saved'**
   String get billingProfileSaved;
 
+  /// No description provided for @billingLogoUploadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Company Logo'**
+  String get billingLogoUploadTitle;
+
+  /// No description provided for @billingLogoUploadBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a PNG or JPG logo (max 5MB). This logo will appear in invoices and email footers.'**
+  String get billingLogoUploadBody;
+
+  /// No description provided for @billingLogoUploadSelectFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Select file'**
+  String get billingLogoUploadSelectFile;
+
+  /// No description provided for @billingLogoUploadCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get billingLogoUploadCta;
+
+  /// No description provided for @billingLogoUploadSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Logo uploaded successfully.'**
+  String get billingLogoUploadSuccess;
+
+  /// No description provided for @billingLogoUploadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload failed. Please try a smaller PNG/JPG.'**
+  String get billingLogoUploadError;
+
   /// No description provided for @createInvoiceCta.
   ///
   /// In en, this message translates to:
@@ -10121,6 +10157,12 @@ abstract class AppLocalizations {
   /// **'Enter recipient emails'**
   String get mailComposeToHint;
 
+  /// No description provided for @mailComposeToHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one recipient'**
+  String get mailComposeToHelper;
+
   /// No description provided for @mailComposeCcLabel.
   ///
   /// In en, this message translates to:
@@ -10169,6 +10211,12 @@ abstract class AppLocalizations {
   /// **'Subject'**
   String get mailComposeSubjectHint;
 
+  /// No description provided for @mailComposeSubjectHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'A subject helps identify the conversation'**
+  String get mailComposeSubjectHelper;
+
   /// No description provided for @mailComposeBodyLabel.
   ///
   /// In en, this message translates to:
@@ -10198,6 +10246,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Write your message'**
   String get mailComposeTextHint;
+
+  /// No description provided for @mailComposeBodyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a message to send'**
+  String get mailComposeBodyHelper;
 
   /// No description provided for @mailComposeAttachmentsLabel.
   ///
@@ -10282,6 +10336,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invoice options'**
   String get mailComposeInvoiceOptions;
+
+  /// No description provided for @mailComposeInvoiceOptionsHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'These options are used only when sending invoices'**
+  String get mailComposeInvoiceOptionsHelper;
+
+  /// No description provided for @mailComposeApplyFooterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply default footer'**
+  String get mailComposeApplyFooterLabel;
+
+  /// No description provided for @mailComposeApplyFooterHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds your default footer to this email.'**
+  String get mailComposeApplyFooterHelper;
 
   /// No description provided for @mailComposeInvoiceIdsLabel.
   ///
@@ -10372,6 +10444,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to send: {error}'**
   String mailComposeSendFailed(Object error);
+
+  /// No description provided for @mailFooterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Email Footer'**
+  String get mailFooterTitle;
+
+  /// No description provided for @mailFooterBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Build a footer that appears on outgoing emails. The company logo will be added automatically.'**
+  String get mailFooterBody;
+
+  /// No description provided for @mailFooterNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Footer name'**
+  String get mailFooterNameLabel;
+
+  /// No description provided for @mailFooterNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Footer'**
+  String get mailFooterNameHint;
+
+  /// No description provided for @mailFooterTextLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Footer text (plain text)'**
+  String get mailFooterTextLabel;
+
+  /// No description provided for @mailFooterTextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter footer text'**
+  String get mailFooterTextHint;
+
+  /// No description provided for @mailFooterHtmlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Footer HTML (advanced)'**
+  String get mailFooterHtmlLabel;
+
+  /// No description provided for @mailFooterHtmlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'<div>...</div>'**
+  String get mailFooterHtmlHint;
+
+  /// No description provided for @mailFooterDefaultLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as default'**
+  String get mailFooterDefaultLabel;
+
+  /// No description provided for @mailFooterHelperTextOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'If you only fill plain text, we’ll render it in both text + HTML emails.'**
+  String get mailFooterHelperTextOnly;
+
+  /// No description provided for @mailFooterHelperHtmlOverrides.
+  ///
+  /// In en, this message translates to:
+  /// **'If you provide HTML, that will be used in HTML emails.'**
+  String get mailFooterHelperHtmlOverrides;
+
+  /// No description provided for @mailFooterSaveCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Footer'**
+  String get mailFooterSaveCta;
+
+  /// No description provided for @mailFooterCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mailFooterCancel;
+
+  /// No description provided for @mailFooterCreateCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Create footer'**
+  String get mailFooterCreateCta;
+
+  /// No description provided for @mailFooterNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Footer name is required.'**
+  String get mailFooterNameRequired;
+
+  /// No description provided for @mailFooterSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Footer saved.'**
+  String get mailFooterSaved;
+
+  /// No description provided for @mailFooterCurrentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Current footer'**
+  String get mailFooterCurrentTitle;
+
+  /// No description provided for @mailFooterSystemDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Using the system default footer.'**
+  String get mailFooterSystemDefault;
+
+  /// No description provided for @mailFooterUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled footer'**
+  String get mailFooterUnnamed;
+
+  /// No description provided for @mailFooterHtmlPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'HTML provided'**
+  String get mailFooterHtmlPreview;
+
+  /// No description provided for @mailFooterDefaultBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get mailFooterDefaultBadge;
+
+  /// No description provided for @mailFooterCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Footer options'**
+  String get mailFooterCreateTitle;
+
+  /// No description provided for @mailFooterFormTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create footer'**
+  String get mailFooterFormTitle;
+
+  /// No description provided for @mailFooterUseSystemDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Use system default'**
+  String get mailFooterUseSystemDefault;
+
+  /// No description provided for @mailFooterPreviewBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview how your footer will look in outgoing emails.'**
+  String get mailFooterPreviewBody;
+
+  /// No description provided for @mailFooterPreviewCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview footer'**
+  String get mailFooterPreviewCta;
+
+  /// No description provided for @mailFooterPreviewSystemCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview system footer'**
+  String get mailFooterPreviewSystemCta;
+
+  /// No description provided for @mailFooterUseThis.
+  ///
+  /// In en, this message translates to:
+  /// **'Use This Footer'**
+  String get mailFooterUseThis;
+
+  /// No description provided for @mailFooterEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get mailFooterEdit;
+
+  /// Shown when saving a footer fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save footer: {error}'**
+  String mailFooterSaveFailed(Object error);
 }
 
 class _AppLocalizationsDelegate

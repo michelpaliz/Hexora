@@ -5,6 +5,7 @@ import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/invoice/invoice_line.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_formatters.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -38,6 +39,8 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
   DateTime? _registeredAt;
   String _status = 'draft';
   bool _saving = false;
+  bool _digitsTouched = false;
+  bool _settingDigits = false;
   final List<LineDraft> _lines = [];
 
   String get _yearSuffix => DateFormat('yy').format(DateTime.now());
@@ -49,11 +52,14 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
     if (widget.clients.isNotEmpty) {
       _clientId = widget.selectedClientId ?? widget.clients.first.id;
     }
+    _digits.addListener(_handleDigitsChanged);
     _lines.add(LineDraft(position: 1));
+    _prefillNextInvoiceNumber();
   }
 
   @override
   void dispose() {
+    _digits.removeListener(_handleDigitsChanged);
     _digits.dispose();
     _pdfUrl.dispose();
     _notes.dispose();
@@ -61,6 +67,42 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
       l.dispose();
     }
     super.dispose();
+  }
+
+  void _handleDigitsChanged() {
+    if (_settingDigits) return;
+    _digitsTouched = true;
+  }
+
+  Future<void> _prefillNextInvoiceNumber() async {
+    if (_digitsTouched) return;
+    try {
+      final issued = await widget.api.listByGroup(
+        widget.groupId,
+        status: 'issued',
+      );
+      final drafts = await widget.api.listByGroup(
+        widget.groupId,
+        status: 'draft',
+      );
+      if (_digitsTouched || !mounted) return;
+      final raw = _digits.text.trim();
+      if (raw.isNotEmpty && raw != '001') return;
+      final suggestion = InvoiceEditorFormatters.nextInvoiceDigits(
+        invoiceNumbers: [
+          ...issued.map((inv) => inv.invoiceNumber),
+          ...drafts.map((inv) => inv.invoiceNumber),
+        ],
+        now: DateTime.now(),
+      );
+      if (raw == suggestion) return;
+      _settingDigits = true;
+      _digits.text = suggestion;
+      _settingDigits = false;
+      if (mounted) setState(() {});
+    } catch (_) {
+      // Best-effort: keep the default if lookup fails.
+    }
   }
 
   Future<void> _pickRegisteredAt() async {

@@ -11,11 +11,16 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
 part 'invoice_editor_view.dart';
+part 'view_sections/draft_banner.dart';
+part 'view_sections/header_compact_summary.dart';
+part 'view_sections/pending_drafts_list.dart';
+part 'view_sections/step_widgets.dart';
 
 class InvoiceEditorScreen extends StatefulWidget {
   final Group group;
   final List<GroupClient> clients;
   final String? initialClientId;
+  final Invoice? initialInvoice;
   final bool embedded;
   final ValueChanged<bool>? onClose;
   final VoidCallback? onDataChanged;
@@ -25,6 +30,7 @@ class InvoiceEditorScreen extends StatefulWidget {
     required this.group,
     required this.clients,
     this.initialClientId,
+    this.initialInvoice,
     this.embedded = false,
     this.onClose,
     this.onDataChanged,
@@ -48,6 +54,7 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
       group: widget.group,
       clients: widget.clients,
       initialClientId: widget.initialClientId,
+      initialInvoice: widget.initialInvoice,
     );
     _c.addListener(_handleControllerChange);
   }

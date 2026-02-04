@@ -32,6 +32,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
   final sf.CalendarController _controller = sf.CalendarController();
   sf.CalendarView _selectedView = sf.CalendarView.month;
   DateTime? _selectedDate;
+  bool _syncScheduled = false;
 
   sf.CalendarView _mapModeToSf(String mode) {
     switch (mode) {
@@ -55,6 +56,16 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     // Initialize controller’s view to current mode
     _selectedView = _mapModeToSf(widget.state.currentViewMode);
     _controller.view = _selectedView;
+  }
+
+  void _scheduleSync(VoidCallback action) {
+    if (_syncScheduled) return;
+    _syncScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncScheduled = false;
+      action();
+    });
   }
 
   // calendar_surface.dart (add near other fields)
@@ -91,8 +102,10 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
         final effectiveMode = widget.forcedViewMode ?? mode;
         final view = _mapModeToSf(effectiveMode);
         if (_controller.view != view) {
-          _controller.view = view;
           _selectedView = view;
+          _scheduleSync(() {
+            _controller.view = view;
+          });
         }
 
         // 2) Listen to anchor date (jump/scroll target)
@@ -100,9 +113,11 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
           valueListenable: widget.state.anchorDate,
           builder: (_, anchor, __) {
             if (anchor != _controller.displayDate) {
-              _controller.displayDate = anchor;
-              _controller.selectedDate = anchor;
               _selectedDate = anchor;
+              _scheduleSync(() {
+                _controller.displayDate = anchor;
+                _controller.selectedDate = anchor;
+              });
             }
 
             // 3) Listen to data source (events)
@@ -136,11 +151,12 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                 onViewChanged: (_) =>
                                     _selectedView = _controller.view!,
                                 onSelectionChanged: (d) {
-                                  if (d.date != null) {
-                                    _selectedDate = d.date!;
+                                  if (d.date == null) return;
+                                  _selectedDate = d.date!;
+                                  _scheduleSync(() {
                                     _controller.selectedDate = _selectedDate;
                                     widget.state.jumpTo(_selectedDate!);
-                                  }
+                                  });
                                 },
                                 // ✅ Keep Month custom tiles (old behavior)
                                 monthCellBuilder: (context, d) =>

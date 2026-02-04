@@ -11,6 +11,11 @@ class _GroupInvoicesView extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final isWide = MediaQuery.of(context).size.width >= 980;
+    final showInlineEditor =
+        state._selectedMenu == 'invoice_editor' && state.widget.embedded && kIsWeb;
+    final menu = state._selectedMenu == 'invoice_editor'
+        ? state._menuBeforeInvoiceEditor
+        : state._selectedMenu;
 
     Widget body;
     if (state._loading) {
@@ -93,18 +98,11 @@ class _GroupInvoicesView extends StatelessWidget {
                   state.setState(() => state._menuCollapsed = !state._menuCollapsed),
             ),
             Expanded(
-              child: state._selectedMenu == 'invoice_editor'
-                  ? InvoiceEditorScreen(
-                      group: state.widget.group,
-                      clients: state._clients,
-                      initialClientId: state._invoiceEditorClientId,
-                      embedded: true,
-                      onDataChanged: state._loadAll,
-                      onClose: (changed) =>
-                          state._closeInlineInvoiceEditor(changed: changed),
-                    )
-                  : state._selectedMenu == 'clients' ||
-                          state._selectedMenu == 'clients_flow'
+                  child: showInlineEditor
+                      ? Stack(
+                          children: [
+                            Positioned.fill(
+                              child: menu == 'clients' || menu == 'clients_flow'
                       ? GroupInvoicesClientsView(
                           groupId: state.widget.group.id,
                           clients: state._clients,
@@ -187,7 +185,7 @@ class _GroupInvoicesView extends StatelessWidget {
                                                           .widget.group.id,
                                                       clients: state._clients,
                                                     )
-                                                  : state._selectedMenu ==
+                                                  : menu ==
                                                           'invoices_drafts'
                                                       ? GroupInvoicesInvoicesView(
                                                           drafts: state._drafts,
@@ -207,6 +205,8 @@ class _GroupInvoicesView extends StatelessWidget {
                                                                       inv),
                                                           onDeleteInvoice:
                                                               state._deleteInvoice,
+                                                          onEditDraft:
+                                                              state._openEditDraft,
                                                           onCreateInvoice:
                                                               state._openCreateInvoice,
                                                           onRefresh:
@@ -229,7 +229,7 @@ class _GroupInvoicesView extends StatelessWidget {
                                                                 'recurring';
                                                           }),
                                                         )
-                                                      : state._selectedMenu ==
+                                                      : menu ==
                                                               'emails'
                                                           ? GroupInvoicesEmailsView(
                                                               group:
@@ -239,7 +239,7 @@ class _GroupInvoicesView extends StatelessWidget {
                                                               clients:
                                                                   state._clients,
                                                             )
-                                                          : state._selectedMenu ==
+                                                          : menu ==
                                                                   'invoices_issued'
                                                               ? GroupInvoicesInvoicesView(
                                                                   drafts:
@@ -260,6 +260,8 @@ class _GroupInvoicesView extends StatelessWidget {
                                                                               inv),
                                                                   onDeleteInvoice:
                                                                       state._deleteInvoice,
+                                                                  onEditDraft:
+                                                                      state._openEditDraft,
                                                                   onCreateInvoice:
                                                                       state._openCreateInvoice,
                                                                   onRefresh:
@@ -301,6 +303,8 @@ class _GroupInvoicesView extends StatelessWidget {
                                                                               inv),
                                                                   onDeleteInvoice:
                                                                       state._deleteInvoice,
+                                                                  onEditDraft:
+                                                                      state._openEditDraft,
                                                                   onCreateInvoice:
                                                                       state._openCreateInvoice,
                                                                   onRefresh:
@@ -321,6 +325,244 @@ class _GroupInvoicesView extends StatelessWidget {
                                                                         'recurring';
                                                                   }),
                                                                 ),
+                            ),
+                            Positioned.fill(
+                              child: InvoiceEditorScreen(
+                                group: state.widget.group,
+                                clients: state._clients,
+                                initialClientId: state._invoiceEditorClientId,
+                                initialInvoice: state._invoiceEditorInvoice,
+                                embedded: true,
+                                onDataChanged: state._loadAll,
+                                onClose: (changed) => state
+                                    ._closeInlineInvoiceEditor(changed: changed),
+                              ),
+                            ),
+                          ],
+                        )
+                      : (menu == 'clients' || menu == 'clients_flow'
+                          ? GroupInvoicesClientsView(
+                              groupId: state.widget.group.id,
+                              clients: state._clients,
+                              selectedClient: state._selectedClient,
+                              issuedInvoices: visibleInvoices,
+                              draftInvoices: draftInvoices,
+                              onSelectClient: (c) =>
+                                  state.setState(() => state._selectedClient = c),
+                              onCreateInvoice: state._openCreateInvoice,
+                              onCreateReceipt: state._openCreateReceipt,
+                              onEditSelectedClient: () {
+                                if (state._selectedClient != null) {
+                                  state._openEditClient(state._selectedClient!);
+                                }
+                              },
+                              onOpenInvoiceDetail: state._openInvoiceDetail,
+                              onDeleteInvoice: state._deleteInvoice,
+                              onUpdateClientClassification:
+                                  state._updateClientClassification,
+                            )
+                          : state._selectedMenu == 'receipts'
+                              ? GroupReceiptsView(
+                                  drafts: state._receiptDrafts,
+                                  receipts: state._receipts,
+                                  clients: state._clients,
+                                  billingProfile: state._billingProfile,
+                                  selectedReceipt: state._selectedReceipt,
+                                  onSelectReceipt: (r) => state.setState(
+                                      () => state._selectedReceipt = r),
+                                  onCreateReceipt: state._openCreateReceipt,
+                                  onEditReceipt: state._openEditReceipt,
+                                  onIssueReceipt: state._issueReceipt,
+                                  onDeleteReceipt: state._deleteReceipt,
+                                  onPreviewPdf: state._previewReceiptPdf,
+                                  onDownloadPdf: state._downloadReceiptPdf,
+                                )
+                              : state._selectedMenu == 'expenses_upload'
+                                  ? ExpenseUploadScreen(
+                                      embedded: true,
+                                      onUploaded: state._loadAll,
+                                      initialTabIndex: 1,
+                                      groupId: state.widget.group.id,
+                                      groupName: state.widget.group.name,
+                                    )
+                                  : state._selectedMenu == 'expenses_list'
+                                      ? ExpenseUploadScreen(
+                                          embedded: true,
+                                          onUploaded: state._loadAll,
+                                          initialTabIndex: 0,
+                                          groupId: state.widget.group.id,
+                                          groupName: state.widget.group.name,
+                                        )
+                                      : state._selectedMenu == 'providers'
+                                          ? ExpenseUploadScreen(
+                                              embedded: true,
+                                              providersOnly: true,
+                                              groupId: state.widget.group.id,
+                                              groupName: state.widget.group.name,
+                                            )
+                                          : state._selectedMenu == 'vat'
+                                              ? VatSummaryView(
+                                                  api: state._vatApi,
+                                                  groupId: state.widget.group.id,
+                                                )
+                                              : state._selectedMenu == 'recurring'
+                                                  ? RecurringInvoicesScreen(
+                                                      group: state.widget.group,
+                                                      embedded: true,
+                                                      initialSeriesId:
+                                                          state._recurringSeriesToOpen,
+                                                      onSeriesOpened: () => state
+                                                          .setState(() =>
+                                                              state._recurringSeriesToOpen =
+                                                                  null),
+                                                    )
+                                                  : state._selectedMenu ==
+                                                          'client_classifications'
+                                                      ? ClientClassificationsView(
+                                                          groupId: state
+                                                              .widget.group.id,
+                                                          clients: state._clients,
+                                                        )
+                                                      : menu ==
+                                                              'invoices_drafts'
+                                                          ? GroupInvoicesInvoicesView(
+                                                              drafts: state._drafts,
+                                                              invoices:
+                                                                  state._invoices,
+                                                              clients:
+                                                                  state._clients,
+                                                              billingProfile:
+                                                                  state._billingProfile,
+                                                              group:
+                                                                  state.widget.group,
+                                                              selectedInvoice:
+                                                                  state._selectedInvoice,
+                                                              onSelectInvoice: (inv) =>
+                                                                  state.setState(() =>
+                                                                      state._selectedInvoice =
+                                                                          inv),
+                                                              onDeleteInvoice:
+                                                                  state._deleteInvoice,
+                                                              onEditDraft:
+                                                                  state._openEditDraft,
+                                                              onCreateInvoice:
+                                                                  state._openCreateInvoice,
+                                                              onRefresh:
+                                                                  state._loadAll,
+                                                              numberSort: state
+                                                                  ._effectiveInvoiceNumberSort,
+                                                              onNumberSortChanged:
+                                                                  state
+                                                                      ._handleInvoiceSortChanged,
+                                                              sortLoading: state
+                                                                  ._effectiveSortingInvoices,
+                                                              initialTabIndex: 0,
+                                                              onOpenRecurringSeries:
+                                                                  (seriesId) =>
+                                                                      state.setState(
+                                                                          () {
+                                                                state._recurringSeriesToOpen =
+                                                                    seriesId;
+                                                                state._selectedMenu =
+                                                                    'recurring';
+                                                              }),
+                                                            )
+                                                          : menu ==
+                                                                  'emails'
+                                                              ? GroupInvoicesEmailsView(
+                                                                  group:
+                                                                      state.widget.group,
+                                                                  selectedInvoice:
+                                                                      state._selectedInvoice,
+                                                                  clients:
+                                                                      state._clients,
+                                                                )
+                                                              : menu ==
+                                                                      'invoices_issued'
+                                                                  ? GroupInvoicesInvoicesView(
+                                                                      drafts:
+                                                                          state._drafts,
+                                                                      invoices:
+                                                                          state._invoices,
+                                                                      clients:
+                                                                          state._clients,
+                                                                      billingProfile:
+                                                                          state._billingProfile,
+                                                                      group: state
+                                                                          .widget.group,
+                                                                      selectedInvoice:
+                                                                          state._selectedInvoice,
+                                                                      onSelectInvoice: (inv) =>
+                                                                          state.setState(() =>
+                                                                              state._selectedInvoice =
+                                                                                  inv),
+                                                                      onDeleteInvoice:
+                                                                          state._deleteInvoice,
+                                                                      onEditDraft:
+                                                                          state._openEditDraft,
+                                                                      onCreateInvoice:
+                                                                          state._openCreateInvoice,
+                                                                      onRefresh:
+                                                                          state._loadAll,
+                                                                      numberSort:
+                                                                          state._effectiveInvoiceNumberSort,
+                                                                      onNumberSortChanged:
+                                                                          state._handleInvoiceSortChanged,
+                                                                      sortLoading:
+                                                                          state._effectiveSortingInvoices,
+                                                                      initialTabIndex:
+                                                                          1,
+                                                                      onOpenRecurringSeries:
+                                                                          (seriesId) =>
+                                                                              state.setState(
+                                                                                  () {
+                                                                        state._recurringSeriesToOpen =
+                                                                            seriesId;
+                                                                        state._selectedMenu =
+                                                                            'recurring';
+                                                                      }),
+                                                                    )
+                                                                  : GroupInvoicesInvoicesView(
+                                                                      drafts:
+                                                                          state._drafts,
+                                                                      invoices:
+                                                                          state._invoices,
+                                                                      clients:
+                                                                          state._clients,
+                                                                      billingProfile:
+                                                                          state._billingProfile,
+                                                                      group: state
+                                                                          .widget.group,
+                                                                      selectedInvoice:
+                                                                          state._selectedInvoice,
+                                                                      onSelectInvoice: (inv) =>
+                                                                          state.setState(() =>
+                                                                              state._selectedInvoice =
+                                                                                  inv),
+                                                                      onDeleteInvoice:
+                                                                          state._deleteInvoice,
+                                                                      onEditDraft:
+                                                                          state._openEditDraft,
+                                                                      onCreateInvoice:
+                                                                          state._openCreateInvoice,
+                                                                      onRefresh:
+                                                                          state._loadAll,
+                                                                      numberSort:
+                                                                          state._effectiveInvoiceNumberSort,
+                                                                      onNumberSortChanged:
+                                                                          state._handleInvoiceSortChanged,
+                                                                      sortLoading:
+                                                                          state._effectiveSortingInvoices,
+                                                                      onOpenRecurringSeries:
+                                                                          (seriesId) =>
+                                                                              state.setState(
+                                                                                  () {
+                                                                        state._recurringSeriesToOpen =
+                                                                            seriesId;
+                                                                        state._selectedMenu =
+                                                                            'recurring';
+                                                                      }),
+                                                                    )),
             ),
           ],
         ),
@@ -328,21 +570,21 @@ class _GroupInvoicesView extends StatelessWidget {
     }
 
     final fabIsReceipts = state._selectedMenu == 'receipts';
-    final hideFab = state._selectedMenu == 'invoices' ||
-        state._selectedMenu == 'invoices_drafts' ||
-        state._selectedMenu == 'invoices_issued' ||
+    final hideFab = menu == 'invoices' ||
+        menu == 'invoices_drafts' ||
+        menu == 'invoices_issued' ||
         state._selectedMenu == 'invoice_editor' ||
-        state._selectedMenu == 'clients' ||
-        state._selectedMenu == 'clients_flow' ||
-        state._selectedMenu == 'receipts' ||
-        state._selectedMenu == 'emails' ||
-        state._selectedMenu == 'client_classifications' ||
-        state._selectedMenu == 'expenses' ||
-        state._selectedMenu == 'expenses_upload' ||
-        state._selectedMenu == 'expenses_list' ||
-        state._selectedMenu == 'providers' ||
-        state._selectedMenu == 'vat' ||
-        state._selectedMenu == 'recurring';
+        menu == 'clients' ||
+        menu == 'clients_flow' ||
+        menu == 'receipts' ||
+        menu == 'emails' ||
+        menu == 'client_classifications' ||
+        menu == 'expenses' ||
+        menu == 'expenses_upload' ||
+        menu == 'expenses_list' ||
+        menu == 'providers' ||
+        menu == 'vat' ||
+        menu == 'recurring';
 
     if (state.widget.embedded && kIsWeb) {
       return Stack(

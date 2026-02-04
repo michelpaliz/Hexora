@@ -8,6 +8,7 @@ typedef InvoiceItemBuilder = Widget Function(
   Invoice inv,
   GroupClient client, {
   VoidCallback? onDelete,
+  VoidCallback? onEdit,
   required VoidCallback onTap,
 });
 
@@ -23,6 +24,7 @@ class InvoicesView extends StatelessWidget {
 
   final ValueChanged<Invoice> onSelectInvoice;
   final ValueChanged<Invoice> onDeleteDraft;
+  final ValueChanged<Invoice> onEditDraft;
 
   final Widget Function(Invoice inv) detailBuilder;
   final InvoiceItemBuilder invoiceItemBuilder;
@@ -37,6 +39,7 @@ class InvoicesView extends StatelessWidget {
     required this.selectedInvoice,
     required this.onSelectInvoice,
     required this.onDeleteDraft,
+    required this.onEditDraft,
     required this.detailBuilder,
     required this.invoiceItemBuilder,
   });
@@ -92,6 +95,7 @@ class InvoicesView extends StatelessWidget {
                                 client,
                                 onTap: () => onSelectInvoice(inv),
                                 onDelete: () => onDeleteDraft(inv),
+                                onEdit: () => onEditDraft(inv),
                               );
                             },
                           ),

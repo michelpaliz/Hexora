@@ -23,6 +23,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
   final Invoice? selectedInvoice;
   final ValueChanged<Invoice> onSelectInvoice;
   final ValueChanged<Invoice> onDeleteInvoice;
+  final ValueChanged<Invoice> onEditDraft;
   final VoidCallback onCreateInvoice;
   final VoidCallback onRefresh;
   final InvoiceNumberSort numberSort;
@@ -41,6 +42,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
     required this.selectedInvoice,
     required this.onSelectInvoice,
     required this.onDeleteInvoice,
+    required this.onEditDraft,
     required this.onCreateInvoice,
     required this.onRefresh,
     required this.numberSort,
@@ -179,6 +181,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                             clients: widget.clients,
                             onTap: widget.onSelectInvoice,
                             onDelete: widget.onDeleteInvoice,
+                            onEdit: widget.onEditDraft,
                             numberSort: widget.numberSort,
                             onNumberSortChanged: widget.onNumberSortChanged,
                             sortLoading: widget.sortLoading,
@@ -192,6 +195,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                             clients: widget.clients,
                             onTap: widget.onSelectInvoice,
                             onDelete: null,
+                            onEdit: null,
                             numberSort: widget.numberSort,
                             onNumberSortChanged: widget.onNumberSortChanged,
                             sortLoading: widget.sortLoading,
@@ -250,6 +254,7 @@ class _InvoicesTabList extends StatefulWidget {
   final List<GroupClient> clients;
   final ValueChanged<Invoice> onTap;
   final ValueChanged<Invoice>? onDelete;
+  final ValueChanged<Invoice>? onEdit;
   final InvoiceNumberSort numberSort;
   final ValueChanged<InvoiceNumberSort> onNumberSortChanged;
   final bool sortLoading;
@@ -263,6 +268,7 @@ class _InvoicesTabList extends StatefulWidget {
     required this.clients,
     required this.onTap,
     required this.onDelete,
+    required this.onEdit,
     required this.numberSort,
     required this.onNumberSortChanged,
     required this.sortLoading,
@@ -445,6 +451,9 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
                         onDelete: widget.onDelete == null
                             ? null
                             : () => widget.onDelete!(inv),
+                        onEdit: widget.onEdit == null
+                            ? null
+                            : () => widget.onEdit!(inv),
                       );
                     },
                   ),
