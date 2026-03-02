@@ -1,7 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/invoicing/billing_profile_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/billing_profile_sheet/billing_profile_sheet_form.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -155,15 +154,7 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
 
   Future<void> _pickLogo() async {
     final l = AppLocalizations.of(context)!;
-    final token = await TokenService.loadToken();
     if (!mounted) return;
-
-    if (token == null || token.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.notAuthenticatedOrUserMissing)),
-      );
-      return;
-    }
 
     final picked = await showDialog<PlatformFile>(
       context: context,
@@ -243,6 +234,7 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
       },
     );
     if (picked == null) return;
+    if (!mounted) return;
     if (picked.bytes == null || picked.bytes!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.billingLogoUploadError)),

@@ -3,7 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/weather/day_summary.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/utils/color_manager.dart';
+import 'package:hexora/c-frontend/utils/weather/weather_summary_localizer.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 Widget buildMonthCell({
@@ -16,6 +18,7 @@ Widget buildMonthCell({
   final scheme = Theme.of(context).colorScheme;
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final typo = AppTypography.of(context);
+  final l = AppLocalizations.of(context)!;
 
   // --- date helpers ---
   final date =
@@ -197,10 +200,13 @@ Widget buildMonthCell({
               Positioned(
                 top: 3,
                 right: 3,
-                child: Text(
-                  weatherSummary.emoji,
-                  style: typo.titleLarge.copyWith(
-                    fontSize: weatherFontSize,
+                child: Tooltip(
+                  message: localizeWeatherSummary(l, weatherSummary.summary),
+                  child: Text(
+                    weatherSummary.emoji,
+                    style: typo.titleLarge.copyWith(
+                      fontSize: weatherFontSize,
+                    ),
                   ),
                 ),
               ),

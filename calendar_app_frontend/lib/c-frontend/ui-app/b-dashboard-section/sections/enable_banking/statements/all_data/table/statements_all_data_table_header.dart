@@ -13,6 +13,10 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     required this.allVisibleSelected,
     required this.onToggleAll,
     required this.tableTheme,
+    required this.onAmountFilterTap,
+    required this.amountFilterActive,
+    required this.onInvoiceSortTap,
+    required this.invoiceSortMode,
   });
 
   final AppLocalizations label;
@@ -20,6 +24,10 @@ class StatementsAllDataTableHeader extends StatelessWidget {
   final bool allVisibleSelected;
   final ValueChanged<bool> onToggleAll;
   final StatementsTableTheme tableTheme;
+  final VoidCallback onAmountFilterTap;
+  final bool amountFilterActive;
+  final VoidCallback onInvoiceSortTap;
+  final int invoiceSortMode; // 0=none, 1=asc, 2=desc
 
   @override
   Widget build(BuildContext context) {
@@ -27,26 +35,24 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width > 1400;
     final balanceMaxWidth =
         isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
-    final balanceClientGap =
-        isWide ? 40.0 : StatementsAllDataTableLayout.balanceClientGap;
 
-    final headerStyle = typography.bodyMedium.copyWith(
-      fontWeight: FontWeight.w800,
+    final headerStyle = typography.bodySmall.copyWith(
+      fontWeight: FontWeight.w700,
       color: tableTheme.headerText,
-      letterSpacing: 0.8,
+      letterSpacing: 0.5,
     );
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        vertical: 20,
+        vertical: 10,
         horizontal: StatementsAllDataTableLayout.horizontalPadding,
       ),
       decoration: BoxDecoration(
         color: tableTheme.headerBg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -55,7 +61,6 @@ class StatementsAllDataTableHeader extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: StatementsAllDataTableLayout.leadingSpacer),
-
           SizedBox(
             width: StatementsAllDataTableLayout.checkWidth,
             child: Checkbox(
@@ -63,28 +68,22 @@ class StatementsAllDataTableHeader extends StatelessWidget {
               onChanged: (checked) => onToggleAll(checked == true),
             ),
           ),
-
-          // Batch column (non-compact only)
           if (!isCompact) ...[
             _fixedCell(
               label.statementsHeaderBatch,
               StatementsAllDataTableLayout.batchWidth,
               headerStyle,
+              align: TextAlign.center,
               tooltip: label.statementsColumnBatchTooltip,
             ),
             const SizedBox(width: StatementsAllDataTableLayout.columnGap),
           ],
-
-          // Date column (fixed)
           _fixedCell(
             label.statementsHeaderDate,
             StatementsAllDataTableLayout.dateWidth,
             headerStyle,
           ),
-
           const SizedBox(width: StatementsAllDataTableLayout.columnGap),
-
-          // Description column (capped)
           if (isCompact)
             Expanded(
               flex: 4,
@@ -108,18 +107,45 @@ class StatementsAllDataTableHeader extends StatelessWidget {
                 maxLines: 1,
               ),
             ),
-
           const SizedBox(width: StatementsAllDataTableLayout.columnGap),
-
-          // Amount (fixed, right aligned)
-          _fixedCell(
-            label.statementsHeaderAmount,
-            StatementsAllDataTableLayout.amountWidth,
-            headerStyle,
-            align: TextAlign.right,
+          SizedBox(
+            width: StatementsAllDataTableLayout.amountWidth,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label.statementsHeaderAmount,
+                    style: headerStyle,
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Tooltip(
+                  message: amountFilterActive
+                      ? '${label.statementsHeaderAmount}: filtro activo'
+                      : '${label.statementsHeaderAmount}: filtrar',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: onAmountFilterTap,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        amountFilterActive
+                            ? Icons.filter_alt
+                            : Icons.filter_alt_outlined,
+                        size: 16,
+                        color: amountFilterActive
+                            ? tableTheme.amountPositive
+                            : tableTheme.headerText.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-
-          // ✅ Balance (flexible + constrained, right aligned)
           if (!isCompact) ...[
             const SizedBox(width: StatementsAllDataTableLayout.columnGap),
             SizedBox(
@@ -136,40 +162,62 @@ class StatementsAllDataTableHeader extends StatelessWidget {
               ),
             ),
           ],
-
-          SizedBox(width: balanceClientGap),
-
-          // ✅ Client (EXPANDED to fill remaining right space)
-          Expanded(
-            flex: 3,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                minWidth: StatementsAllDataTableLayout.clientMinWidth,
-              ),
-              child: Align(
-                alignment: Alignment.center,
-                child: Text(
-                  label.statementsHeaderClient,
-                  textAlign: TextAlign.right,
-                  style: headerStyle,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
+          if (!isCompact) ...[
+            const SizedBox(
+                width: StatementsAllDataTableLayout.balanceClientGap),
+            Expanded(
+              child: Text(
+                '${label.statementsHeaderClient} / Proveedor',
+                style: headerStyle,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
-          ),
-
+          ],
           const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
-
-          _fixedCell(
-            label.documentTypeInvoice,
-            StatementsAllDataTableLayout.invoiceWidth,
-            headerStyle,
-            align: TextAlign.center,
+          SizedBox(
+            width: StatementsAllDataTableLayout.invoiceWidth,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label.documentTypeInvoice,
+                    style: headerStyle,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Tooltip(
+                  message: invoiceSortMode == 1
+                      ? '${label.documentTypeInvoice}: asc'
+                      : invoiceSortMode == 2
+                          ? '${label.documentTypeInvoice}: desc'
+                          : '${label.documentTypeInvoice}: sin ordenar',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: onInvoiceSortTap,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        invoiceSortMode == 1
+                            ? Icons.arrow_upward
+                            : invoiceSortMode == 2
+                                ? Icons.arrow_downward
+                                : Icons.unfold_more,
+                        size: 16,
+                        color: invoiceSortMode == 0
+                            ? tableTheme.headerText.withValues(alpha: 0.85)
+                            : tableTheme.amountPositive,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-
           const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
-
           _fixedCell(
             label.statementsHeaderActions,
             StatementsAllDataTableLayout.actionsWidth,

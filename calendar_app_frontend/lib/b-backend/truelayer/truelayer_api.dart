@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -41,16 +41,9 @@ class TrueLayerApi {
   Uri _u([String path = '', Map<String, String>? query]) =>
       Uri.parse('$_base$path').replace(queryParameters: query);
 
-  Future<Map<String, String>> _headers() async {
-    final token = await TokenService.loadToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('Not authenticated (missing access token)');
-    }
-    return {
-      'Content-Type': 'application/json; charset=UTF-8',
-      'Authorization': 'Bearer $token',
-    };
-  }
+  Map<String, String> _headers() => {
+        'Content-Type': 'application/json; charset=UTF-8',
+      };
 
   T _decode<T>(
     http.Response r, {
@@ -93,7 +86,7 @@ class TrueLayerApi {
 
   Future<Map<String, dynamic>> connect() async {
     final uri = _u('/connect');
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -104,7 +97,7 @@ class TrueLayerApi {
 
   Future<Map<String, dynamic>> accounts() async {
     final uri = _u('/accounts');
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -126,7 +119,7 @@ class TrueLayerApi {
       'from': from,
       'to': to,
     });
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,

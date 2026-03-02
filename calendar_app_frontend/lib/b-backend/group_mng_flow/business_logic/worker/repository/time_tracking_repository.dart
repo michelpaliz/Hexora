@@ -9,7 +9,11 @@ abstract class ITimeTrackingRepository {
   Future<void> enable(String groupId, String token);
   Future<void> disable(String groupId, String token);
 
-  Future<List<Worker>> getWorkers(String groupId, String token);
+  Future<List<Worker>> getWorkers(
+    String groupId,
+    String token, {
+    WorkerStatus? status,
+  });
   Future<Worker> addWorker(String groupId, Worker worker, String token);
 
   Future<List<TimeEntry>> getTimeEntries(
@@ -86,8 +90,12 @@ class TimeTrackingRepository implements ITimeTrackingRepository {
       _api.disable(groupId, token);
 
   @override
-  Future<List<Worker>> getWorkers(String groupId, String token) =>
-      _api.listWorkers(groupId, token);
+  Future<List<Worker>> getWorkers(
+    String groupId,
+    String token, {
+    WorkerStatus? status,
+  }) =>
+      _api.listWorkers(groupId, token, status: status);
 
   @override
   Future<Worker> addWorker(String groupId, Worker worker, String token) =>

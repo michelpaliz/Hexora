@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_models.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_ops/form_helpers.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -173,15 +174,15 @@ class _ExpenseLineCardState extends State<_ExpenseLineCard> {
               children: [
                 _LinePill(
                   label: l.expenseUploadLinesSubtotalLabel,
-                  value: widget.line.subtotal.toStringAsFixed(2),
+                  value: ExpenseFormHelpers.formatAmount(widget.line.subtotal),
                 ),
                 _LinePill(
                   label: l.expenseUploadLinesTaxLabel,
-                  value: widget.line.taxAmount.toStringAsFixed(2),
+                  value: ExpenseFormHelpers.formatAmount(widget.line.taxAmount),
                 ),
                 _LinePill(
                   label: l.expenseUploadLinesTotalLabel,
-                  value: widget.line.total.toStringAsFixed(2),
+                  value: ExpenseFormHelpers.formatAmount(widget.line.total),
                 ),
               ],
             ),

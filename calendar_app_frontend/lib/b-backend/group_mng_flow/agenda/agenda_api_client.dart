@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
 import 'package:hexora/a-models/group_model/event/model/event.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/group_mng_flow/agenda/query_knobs/client_rollup.dart';
 import 'package:hexora/b-backend/group_mng_flow/agenda/query_knobs/work_summary.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -21,14 +21,9 @@ class AgendaApiClient {
 
   AgendaApiClient({http.Client? client}) : _client = client ?? http.Client();
 
-  Future<Map<String, String>> _authHeaders() async {
-    final token = await TokenService.loadToken();
-    if (token == null) throw Exception("Authentication token not found");
-    return {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json; charset=UTF-8',
-    };
-  }
+  Map<String, String> _authHeaders() => {
+        'Content-Type': 'application/json; charset=UTF-8',
+      };
 
   Uri _u(String path, Map<String, Object?> qp) {
     final q = <String, String>{};
@@ -93,7 +88,11 @@ class AgendaApiClient {
       'minutesSource': minutesSource,
     });
 
-    final res = await _client.get(uri, headers: await _authHeaders());
+    final res = await AuthenticatedHttpClient.get(
+      uri,
+      headers: _authHeaders(),
+      client: _client,
+    );
     return _decode<List<Event>>(res, (j) {
       final items =
           (j is Map && j['items'] is List) ? j['items'] as List : const [];
@@ -130,7 +129,11 @@ class AgendaApiClient {
       if (tz != null && tz.isNotEmpty) 'tz': tz,
     });
 
-    final res = await _client.get(uri, headers: await _authHeaders());
+    final res = await AuthenticatedHttpClient.get(
+      uri,
+      headers: _authHeaders(),
+      client: _client,
+    );
     return _decode<WorkSummary>(
         res, (j) => WorkSummary.fromJson(j as Map<String, dynamic>));
   }
@@ -164,7 +167,11 @@ class AgendaApiClient {
       if (tz != null && tz.isNotEmpty) 'tz': tz,
     });
 
-    final res = await _client.get(uri, headers: await _authHeaders());
+    final res = await AuthenticatedHttpClient.get(
+      uri,
+      headers: _authHeaders(),
+      client: _client,
+    );
     return _decode<List<ClientRollup>>(res, (j) {
       final items =
           (j is Map && j['items'] is List) ? j['items'] as List : const [];
@@ -203,7 +210,11 @@ class AgendaApiClient {
       if (tz != null && tz.isNotEmpty) 'tz': tz,
     });
 
-    final res = await _client.get(uri, headers: await _authHeaders());
+    final res = await AuthenticatedHttpClient.get(
+      uri,
+      headers: _authHeaders(),
+      client: _client,
+    );
     return _decode<List<ServiceRollup>>(res, (j) {
       final items =
           (j is Map && j['items'] is List) ? j['items'] as List : const [];

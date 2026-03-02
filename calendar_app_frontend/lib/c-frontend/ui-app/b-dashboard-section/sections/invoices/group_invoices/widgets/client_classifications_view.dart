@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/client_classification_store.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/client_classification_manager_dialog.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -27,20 +26,11 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
   String? _error;
   String? _selectedValue;
   bool _selectedIsEntity = true;
-  bool _addBusy = false;
-  String? _addError;
-  final TextEditingController _addController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadOptions();
-  }
-
-  @override
-  void dispose() {
-    _addController.dispose();
-    super.dispose();
   }
 
   @override
@@ -80,39 +70,6 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
     }
   }
 
-  Future<void> _openManager() async {
-    await showDialog<void>(
-      context: context,
-      builder: (_) => ClientClassificationManagerDialog(
-        groupId: widget.groupId,
-      ),
-    );
-    await _loadOptions();
-  }
-
-  Future<void> _addClassification() async {
-    final raw = _addController.text.trim();
-    if (raw.isEmpty) return;
-    setState(() {
-      _addBusy = true;
-      _addError = null;
-    });
-    try {
-      await ClientClassificationStore.merge(
-        groupId: widget.groupId,
-        entityType: _selectedIsEntity ? raw : null,
-        propertyKind: _selectedIsEntity ? null : raw,
-      );
-      _addController.clear();
-      await _loadOptions();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _addError = e.toString());
-    } finally {
-      if (mounted) setState(() => _addBusy = false);
-    }
-  }
-
   List<GroupClient> _assignedClients() {
     if (_selectedValue == null || _selectedValue!.isEmpty) return const [];
     return widget.clients.where((c) {
@@ -127,26 +84,6 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final assigned = _assignedClients();
-    final inputBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
-    );
-
-    InputDecoration fieldDecoration({required String label, IconData? icon}) {
-      return InputDecoration(
-        labelText: label,
-        labelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
-        prefixIcon: icon == null ? null : Icon(icon),
-        isDense: true,
-        filled: true,
-        fillColor: cs.surface,
-        border: inputBorder,
-        enabledBorder: inputBorder,
-        focusedBorder: inputBorder.copyWith(
-          borderSide: BorderSide(color: cs.primary, width: 1.5),
-        ),
-      );
-    }
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -155,6 +92,8 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
           Expanded(
             flex: 2,
             child: Card(
+              color: Colors.transparent,
+              elevation: 0,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -170,10 +109,6 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                             style: t.bodyMedium
                                 .copyWith(fontWeight: FontWeight.w800),
                           ),
-                        ),
-                        TextButton(
-                          onPressed: _openManager,
-                          child: Text(l.clientClassificationManageCta),
                         ),
                       ],
                     ),
@@ -256,122 +191,30 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
           Expanded(
             flex: 3,
             child: Card(
+              color: Colors.transparent,
+              elevation: 0,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      l.clientClassificationAddTitle,
-                      style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 8),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final narrow = constraints.maxWidth < 720;
-                        final dropdown = DropdownButtonFormField<bool>(
-                          value: _selectedIsEntity,
-                          items: [
-                            DropdownMenuItem(
-                              value: true,
-                              child: Text(
-                                l.clientEntityTypeLabel,
-                                style: t.bodyMedium,
-                              ),
-                            ),
-                            DropdownMenuItem(
-                              value: false,
-                              child: Text(
-                                l.clientPropertyKindLabel,
-                                style: t.bodyMedium,
-                              ),
-                            ),
-                          ],
-                          onChanged: (v) {
-                            if (v == null) return;
-                            setState(() => _selectedIsEntity = v);
-                          },
-                          decoration: fieldDecoration(
-                            label: l.clientClassificationTypeLabel,
-                            icon: Icons.tune_outlined,
-                          ),
-                        );
-                        final nameField = TextField(
-                          controller: _addController,
-                          style: t.bodyMedium,
-                          decoration: fieldDecoration(
-                            label: l.clientClassificationNameLabel,
-                            icon: Icons.text_fields_outlined,
-                          ).copyWith(
-                            hintText: l.clientAddOptionHint,
-                            hintStyle: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        );
-                        final addButton = FilledButton.icon(
-                          onPressed: _addBusy ? null : _addClassification,
-                          icon: _addBusy
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.add),
-                          label: Text(l.add, style: t.bodyMedium),
-                        );
-                        if (narrow) {
-                          return Column(
-                            children: [
-                              dropdown,
-                              const SizedBox(height: 10),
-                              nameField,
-                              const SizedBox(height: 10),
-                              SizedBox(
-                                height: 48,
-                                width: double.infinity,
-                                child: addButton,
-                              ),
-                            ],
-                          );
-                        }
-                        return Row(
-                          children: [
-                            SizedBox(width: 200, child: dropdown),
-                            const SizedBox(width: 10),
-                            Expanded(child: nameField),
-                            const SizedBox(width: 10),
-                            SizedBox(height: 48, child: addButton),
-                          ],
-                        );
-                      },
-                    ),
-                    if (_addError != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        _addError!,
-                        style: t.bodySmall.copyWith(color: cs.error),
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    Text(
                       _selectedValue == null
                           ? l.clientClassificationSelectHint
                           : l.clientClassificationAssignedCount(
                               assigned.length,
                             ),
-                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                      style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     if (_selectedValue != null)
                       Expanded(
                         child: assigned.isEmpty
                             ? Text(
                                 l.clientClassificationNoClients,
-                                style: t.bodySmall
-                                    .copyWith(color: cs.onSurfaceVariant),
+                                style: t.bodySmall.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
                               )
                             : ListView.separated(
                                 itemCount: assigned.length,

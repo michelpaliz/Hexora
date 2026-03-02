@@ -52,7 +52,7 @@ class ClientContactForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.name,
-            style: typo.bodyMedium,
+            style: typo.bodySmall.copyWith(fontSize: 13),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
@@ -71,14 +71,14 @@ class ClientContactForm extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Focus(
           onFocusChange: (hasFocus) {
             if (!hasFocus) onFieldBlur('phone');
           },
           child: TextFormField(
             controller: c.phone,
-            style: typo.bodyMedium,
+            style: typo.bodySmall.copyWith(fontSize: 13),
             keyboardType: TextInputType.phone,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
@@ -92,14 +92,14 @@ class ClientContactForm extends StatelessWidget {
             onChanged: (_) => onFieldChanged(),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Focus(
           onFocusChange: (hasFocus) {
             if (!hasFocus) onFieldBlur('email');
           },
           child: TextFormField(
             controller: c.email,
-            style: typo.bodyMedium,
+            style: typo.bodySmall.copyWith(fontSize: 13),
             keyboardType: TextInputType.emailAddress,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
@@ -118,7 +118,7 @@ class ClientContactForm extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
@@ -127,11 +127,17 @@ class ClientContactForm extends StatelessWidget {
                 style: typo.bodySmall.copyWith(
                   color: cs.onSurfaceVariant,
                   fontWeight: FontWeight.w800,
+                  fontSize: 11,
                 ),
               ),
             ),
             TextButton(
               onPressed: onManageClassification,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                textStyle: const TextStyle(fontSize: 11),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              ),
               child: Text(l.clientClassificationManageCta),
             ),
           ],
@@ -149,7 +155,7 @@ class ClientContactForm extends StatelessWidget {
                     color: cs.onSurfaceVariant.withOpacity(0.65),
                   ),
                 ),
-                style: typo.bodyMedium.copyWith(color: cs.onSurface),
+                style: typo.bodySmall.copyWith(fontSize: 12, color: cs.onSurface),
                 items: [
                   ...entityOptions.map(
                     (e) => DropdownMenuItem(value: e, child: Text(e)),
@@ -169,7 +175,7 @@ class ClientContactForm extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: DropdownButtonFormField<String>(
                 value: c.propertyKind.text.trim().isEmpty
@@ -181,7 +187,7 @@ class ClientContactForm extends StatelessWidget {
                     color: cs.onSurfaceVariant.withOpacity(0.65),
                   ),
                 ),
-                style: typo.bodyMedium.copyWith(color: cs.onSurface),
+                style: typo.bodySmall.copyWith(fontSize: 12, color: cs.onSurface),
                 items: [
                   ...propertyOptions.map(
                     (e) => DropdownMenuItem(value: e, child: Text(e)),

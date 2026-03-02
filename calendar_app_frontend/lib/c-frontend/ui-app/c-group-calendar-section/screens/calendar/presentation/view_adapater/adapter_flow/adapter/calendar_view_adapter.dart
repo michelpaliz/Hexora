@@ -84,6 +84,7 @@ class CalendarViewAdapter implements SupportsViewMode {
     double? height,
     double? width,
     String? forcedViewMode,
+    ValueChanged<DateTime>? onTimeSlotTap,
   }) {
     return SizedBox(
       height: height,
@@ -92,6 +93,7 @@ class CalendarViewAdapter implements SupportsViewMode {
         state: _state,
         apptBridge: _bridge,
         forcedViewMode: forcedViewMode,
+        onTimeSlotTap: onTimeSlotTap,
       ),
     );
   }

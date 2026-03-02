@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -37,13 +37,9 @@ class ProvidersApi {
   Uri _u([String path = '', Map<String, String>? query]) =>
       Uri.parse('$_base$path').replace(queryParameters: query);
 
-  Future<Map<String, String>> _headers({bool json = true}) async {
-    final token = await TokenService.loadToken();
-    return <String, String>{
-      if (json) 'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
+  Map<String, String> _headers({bool json = true}) => <String, String>{
+        if (json) 'Content-Type': 'application/json',
+      };
 
   T _decode<T>(
     http.Response r, {
@@ -90,7 +86,7 @@ class ProvidersApi {
           ? <String, String>{'groupId': groupId.trim()}
           : null,
     );
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     if (kDebugMode) {
       debugPrint(
         '[ProvidersApi] GET $uri -> ${r.statusCode} ${r.body}',
@@ -141,9 +137,9 @@ class ProvidersApi {
       if (groupId != null && groupId.trim().isNotEmpty)
         'groupId': groupId.trim(),
     };
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       uri,
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(body),
     );
     return _decode<Map<String, dynamic>>(
@@ -172,9 +168,9 @@ class ProvidersApi {
       if (address != null) 'address': address,
       if (notes != null) 'notes': notes,
     };
-    final r = await http.put(
+    final r = await AuthenticatedHttpClient.put(
       uri,
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(body),
     );
     return _decode<Map<String, dynamic>>(
@@ -187,12 +183,12 @@ class ProvidersApi {
 
   Future<void> delete(String id) async {
     final uri = _u('/$id');
-    final r = await http.delete(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.delete(uri, headers: _headers());
     _decode<void>(
       r,
       url: uri,
       method: 'DELETE',
-      map: (_) => null,
+      map: (_) {},
     );
   }
 }

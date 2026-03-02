@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -37,15 +37,11 @@ class StatementsApi {
   Uri _u([String path = '', Map<String, String>? query]) =>
       Uri.parse('$_base$path').replace(queryParameters: query);
 
-  Future<Map<String, String>> _headers({bool json = true}) async {
-    final token = await TokenService.loadToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('Not authenticated (missing access token)');
-    }
-    return {
-      if (json) 'Content-Type': 'application/json; charset=UTF-8',
-      'Authorization': 'Bearer $token',
-    };
+  Future<Map<String, String>> _headers({bool json = true}) {
+    return AuthenticatedHttpClient.authorizedHeaders(
+      includeJsonContentType: json,
+      extra: json ? const {'Content-Type': 'application/json; charset=UTF-8'} : null,
+    );
   }
 
   T _decode<T>(
@@ -112,7 +108,7 @@ class StatementsApi {
 
   Future<List<Map<String, dynamic>>> listImports() async {
     final uri = _u();
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<List<Map<String, dynamic>>>(
       r,
       url: uri,
@@ -134,18 +130,18 @@ class StatementsApi {
 
   Future<void> deleteBatch(String batchId) async {
     final uri = _u('/$batchId');
-    final r = await http.delete(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.delete(uri, headers: await _headers());
     _decode<void>(
       r,
       url: uri,
       method: 'DELETE',
-      map: (_) => null,
+      map: (_) {},
     );
   }
 
   Future<Map<String, dynamic>> reprocessBatch(String batchId) async {
     final uri = _u('/$batchId/reprocess');
-    final r = await http.post(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.post(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -162,7 +158,7 @@ class StatementsApi {
       if (order != null && order.isNotEmpty) 'order': order,
     };
     final uri = _u('/$batchId/entries', query.isEmpty ? null : query);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<List<Map<String, dynamic>>>(
       r,
       url: uri,
@@ -200,7 +196,7 @@ class StatementsApi {
       if (order != null && order.isNotEmpty) 'order': order,
     };
     final uri = _u('/$batchId/entries', query);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -231,7 +227,7 @@ class StatementsApi {
       if (dateTo != null && dateTo.isNotEmpty) 'date_to': dateTo,
     };
     final uri = _u('/$batchId/summary', query);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -256,7 +252,7 @@ class StatementsApi {
       if (dateTo != null && dateTo.isNotEmpty) 'date_to': dateTo,
     };
     final uri = _u('/$batchId/summary', query);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -291,7 +287,7 @@ class StatementsApi {
       if (threshold != null) 'threshold': threshold.toString(),
     };
     final uri = _u('/$batchId/status', query);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -308,7 +304,7 @@ class StatementsApi {
       if (threshold != null) 'threshold': threshold.toString(),
     };
     final uri = _u('/$batchId/notify-stale', query);
-    final r = await http.post(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.post(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -321,7 +317,7 @@ class StatementsApi {
     required String batchId,
   }) async {
     final uri = _u('/$batchId/reminder-settings');
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -340,7 +336,7 @@ class StatementsApi {
       'enabled': enabled,
       if (thresholdDays != null) 'thresholdDays': thresholdDays,
     };
-    final r = await http.put(
+    final r = await AuthenticatedHttpClient.put(
       uri,
       headers: await _headers(),
       body: jsonEncode(body),
@@ -355,7 +351,7 @@ class StatementsApi {
 
   Future<List<Map<String, dynamic>>> suggestClients(String entryId) async {
     final uri = _u('/entries/$entryId/suggest-clients');
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<List<Map<String, dynamic>>>(
       r,
       url: uri,
@@ -369,9 +365,36 @@ class StatementsApi {
     );
   }
 
+  Future<Map<String, dynamic>> suggestInvoices(
+    String entryId, {
+    String? type,
+    double? tolerance,
+    int? limit,
+    String? groupId,
+  }) async {
+    final query = <String, String>{
+      if (type != null && type.isNotEmpty) 'type': type,
+      if (tolerance != null) 'tolerance': tolerance.toString(),
+      if (limit != null) 'limit': limit.toString(),
+      if (groupId != null && groupId.isNotEmpty) 'groupId': groupId,
+    };
+    final uri = _u(
+      '/entries/$entryId/suggest-invoices',
+      query.isEmpty ? null : query,
+    );
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
   Future<void> linkEntryClient({required String entryId, String? clientId}) async {
     final uri = _u('/entries/$entryId/client');
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       uri,
       headers: await _headers(),
       body: jsonEncode({'clientId': clientId}),
@@ -380,37 +403,60 @@ class StatementsApi {
       r,
       url: uri,
       method: 'POST',
-      map: (_) => null,
+      map: (_) {},
     );
   }
 
-  Future<void> linkEntryInvoice({required String entryId, String? invoiceId}) async {
+  Future<Map<String, dynamic>> linkEntryInvoice({
+    required String entryId,
+    String? invoiceId,
+    List<String>? invoiceIds,
+  }) async {
     final uri = _u('/entries/$entryId/invoice');
-    final r = await http.post(
+    final payload = <String, dynamic>{};
+    if (invoiceIds != null) {
+      payload['invoiceIds'] = invoiceIds;
+    } else {
+      payload['invoiceId'] = invoiceId;
+    }
+    final r = await AuthenticatedHttpClient.post(
       uri,
       headers: await _headers(),
-      body: jsonEncode({'invoiceId': invoiceId}),
+      body: jsonEncode(payload),
     );
-    _decode<void>(
+    return _decode<Map<String, dynamic>>(
       r,
       url: uri,
       method: 'POST',
-      map: (_) => null,
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 
-  Future<void> linkEntryInvoiceExpense({required String entryId, String? invoiceId}) async {
+  Future<Map<String, dynamic>> linkEntryInvoiceExpense({
+    required String entryId,
+    String? invoiceId,
+    List<String>? invoiceIds,
+  }) async {
     final uri = _u('/entries/$entryId/invoice/expense');
-    final r = await http.post(
+    final payload = <String, dynamic>{};
+    if (invoiceIds != null) {
+      payload['invoiceIds'] = invoiceIds;
+    } else {
+      payload['invoiceId'] = invoiceId;
+    }
+    final r = await AuthenticatedHttpClient.post(
       uri,
       headers: await _headers(),
-      body: jsonEncode({'invoiceId': invoiceId}),
+      body: jsonEncode(payload),
     );
-    _decode<void>(
+    return _decode<Map<String, dynamic>>(
       r,
       url: uri,
       method: 'POST',
-      map: (_) => null,
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 }
+

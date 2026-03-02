@@ -6,11 +6,16 @@ import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_controller.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_app_bar.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_form.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_form/invoice_content_section.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/client_search_select.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/wizard_steps_header.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
 part 'invoice_editor_view.dart';
+part 'view_sections/invoice_editor_header_section.dart';
 part 'view_sections/draft_banner.dart';
 part 'view_sections/header_compact_summary.dart';
 part 'view_sections/pending_drafts_list.dart';
@@ -40,12 +45,14 @@ class InvoiceEditorScreen extends StatefulWidget {
   State<InvoiceEditorScreen> createState() => _InvoiceEditorScreenState();
 }
 
-class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
+class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
+    with SingleTickerProviderStateMixin {
   late final InvoiceEditorController _c;
   bool _changed = false;
   String? _lastSavedInvoiceId;
   String? _lastSavedInvoiceStatus;
   bool _headerCompact = false;
+  late final TabController _tabController;
 
   @override
   void initState() {
@@ -57,10 +64,18 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
       initialInvoice: widget.initialInvoice,
     );
     _c.addListener(_handleControllerChange);
+    _tabController = TabController(
+      length: 6,
+      vsync: this,
+      initialIndex: _c.currentStepIndex.clamp(0, 5),
+    );
+    _tabController.addListener(_handleTabChange);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
+    _tabController.dispose();
     _c.removeListener(_handleControllerChange);
     _c.dispose();
     super.dispose();
@@ -87,6 +102,16 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
       return;
     }
     Navigator.of(context).pop(_changed);
+  }
+
+  void _handleTabChange() {
+    _c.setCurrentStepIndex(_tabController.index);
+    if (_tabController.index == 4 &&
+        _c.canPreviewDraft &&
+        !_c.previewedPdf &&
+        mounted) {
+      _c.previewPdf(context);
+    }
   }
 
   @override

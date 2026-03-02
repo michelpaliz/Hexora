@@ -3,6 +3,23 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
 class LocationService {
+  Future<List<Placemark>> _placemarkFromCoordinatesSafe(
+    double latitude,
+    double longitude,
+  ) async {
+    if (kIsWeb) {
+      // The geocoding web implementation can throw internal null-check errors.
+      // Keep location flow stable and skip reverse geocoding on web for now.
+      return const <Placemark>[];
+    }
+    try {
+      return await placemarkFromCoordinates(latitude, longitude);
+    } catch (e) {
+      debugPrint('[LocationService] Reverse geocoding failed: $e');
+      return const <Placemark>[];
+    }
+  }
+
   Future<bool> _ensurePermission() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -35,7 +52,7 @@ class LocationService {
       debugPrint(
           '[LocationService] Position lat=${position.latitude}, lon=${position.longitude}');
 
-      final placemarks = await placemarkFromCoordinates(
+      final placemarks = await _placemarkFromCoordinatesSafe(
         position.latitude,
         position.longitude,
       );
@@ -51,9 +68,8 @@ class LocationService {
       final label = parts.join(', ');
       debugPrint('[LocationService] Resolved city: "$label"');
       return label.isEmpty ? null : label;
-    } catch (e, st) {
+    } catch (e) {
       debugPrint('[LocationService] Error resolving city: $e');
-      debugPrint('$st');
       return null;
     }
   }

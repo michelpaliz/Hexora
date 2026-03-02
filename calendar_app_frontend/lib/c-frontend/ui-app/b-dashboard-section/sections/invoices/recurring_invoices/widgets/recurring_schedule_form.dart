@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +14,10 @@ class RecurringScheduleForm extends StatelessWidget {
   final TextEditingController billDayCtrl;
   final TextEditingController weekDayCtrl;
   final TextEditingController timezoneCtrl;
+  final String invoiceDateMode;
+  final TextEditingController invoiceDateDayCtrl;
+  final TextEditingController invoiceDateOffsetDaysCtrl;
+  final String invoiceDateClampPolicy;
   final String timezoneLabel;
   final List<DateTime> exceptions;
   final ValueChanged<String> onFreqChanged;
@@ -24,6 +29,11 @@ class RecurringScheduleForm extends StatelessWidget {
   final VoidCallback onAddException;
   final ValueChanged<DateTime> onRemoveException;
   final VoidCallback onPickStartTime;
+  final ValueChanged<String> onInvoiceDateModeChanged;
+  final ValueChanged<String> onInvoiceDateClampPolicyChanged;
+  final String? errorText;
+  final bool startReadOnly;
+  final bool allowExecutionTimeEditWhenStartReadOnly;
 
   const RecurringScheduleForm({
     super.key,
@@ -36,6 +46,10 @@ class RecurringScheduleForm extends StatelessWidget {
     required this.billDayCtrl,
     required this.weekDayCtrl,
     required this.timezoneCtrl,
+    required this.invoiceDateMode,
+    required this.invoiceDateDayCtrl,
+    required this.invoiceDateOffsetDaysCtrl,
+    required this.invoiceDateClampPolicy,
     required this.timezoneLabel,
     required this.exceptions,
     required this.onFreqChanged,
@@ -47,6 +61,11 @@ class RecurringScheduleForm extends StatelessWidget {
     required this.onAddException,
     required this.onRemoveException,
     required this.onPickStartTime,
+    required this.onInvoiceDateModeChanged,
+    required this.onInvoiceDateClampPolicyChanged,
+    this.errorText,
+    this.startReadOnly = false,
+    this.allowExecutionTimeEditWhenStartReadOnly = false,
   });
 
   @override
@@ -54,25 +73,27 @@ class RecurringScheduleForm extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
+    final isEs = l.localeName.toLowerCase().startsWith('es');
 
     final fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.65)),
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.55)),
     );
     final fieldFill = cs.surface;
-    final inputTextStyle = t.bodyLarge.copyWith(color: cs.onSurface);
+    final inputTextStyle = t.bodySmall.copyWith(color: cs.onSurface, fontSize: 13);
     final labelStyle = t.bodySmall.copyWith(
       fontWeight: FontWeight.w700,
       color: cs.onSurfaceVariant,
+      fontSize: 11,
     );
-    final hintStyle = t.bodySmall.copyWith(color: cs.onSurfaceVariant);
+    final hintStyle = t.bodySmall.copyWith(color: cs.onSurfaceVariant, fontSize: 11);
     final buttonStyle = OutlinedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       foregroundColor: cs.onSurface,
       backgroundColor: fieldFill,
-      side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      textStyle: t.bodyLarge,
+      side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      textStyle: t.bodySmall.copyWith(fontSize: 13),
     );
     final dropdownTheme = Theme.of(context).copyWith(
       canvasColor: cs.surface,
@@ -81,8 +102,8 @@ class RecurringScheduleForm extends StatelessWidget {
         textStyle: t.bodyMedium.copyWith(color: cs.onSurface),
       ),
     );
-    const fieldSpacing = 10.0;
-    const tightSpacing = 6.0;
+    const fieldSpacing = 8.0;
+    const tightSpacing = 4.0;
 
     InputDecoration fieldDecoration({
       required String label,
@@ -97,9 +118,9 @@ class RecurringScheduleForm extends StatelessWidget {
         prefixIcon: icon == null ? null : Icon(icon),
         prefixIconColor: cs.primary,
         prefixIconConstraints:
-            const BoxConstraints(minWidth: 46, minHeight: 46),
+            const BoxConstraints(minWidth: 36, minHeight: 36),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         filled: true,
         fillColor: fieldFill,
         border: fieldBorder,
@@ -112,7 +133,12 @@ class RecurringScheduleForm extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 720;
+        final wide = constraints.maxWidth >= 460;
+        final normalizedFreq = normalizeFrequencyFromApi(freq);
+        final isMonthly = normalizedFreq == recurringFreqMonthly ||
+            normalizedFreq == recurringFreqBimensual ||
+            normalizedFreq == recurringFreqTrimestral;
+        final isWeekly = normalizedFreq == recurringFreqWeekly;
         final endDateTime = endDate == null
             ? null
             : DateTime(
@@ -145,6 +171,281 @@ class RecurringScheduleForm extends StatelessWidget {
           );
         }
 
+        final endTypeField = Theme(
+          data: dropdownTheme,
+          child: DropdownButtonFormField<String>(
+            value: endType,
+            style: inputTextStyle,
+            dropdownColor: cs.surface,
+            decoration: fieldDecoration(
+              label: l.recurringInvoicesEndLabel,
+              icon: Icons.flag_outlined,
+            ),
+            items: [
+              DropdownMenuItem(
+                value: 'never',
+                child: Text(
+                  l.recurringInvoicesEndNever,
+                  style: t.bodyMedium.copyWith(color: cs.onSurface),
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'date',
+                child: Text(
+                  l.recurringInvoicesEndDate,
+                  style: t.bodyMedium.copyWith(color: cs.onSurface),
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'count',
+                child: Text(
+                  l.recurringInvoicesEndCount,
+                  style: t.bodyMedium.copyWith(color: cs.onSurface),
+                ),
+              ),
+            ],
+            onChanged: (v) => onEndTypeChanged(v ?? 'never'),
+          ),
+        );
+
+        Widget endCompanionField() {
+          if (endType == 'date') {
+            return OutlinedButton.icon(
+              onPressed: onPickEnd,
+              style: buttonStyle,
+              icon: const Icon(Icons.event_busy_outlined),
+              label: Text(endDateLabel, style: inputTextStyle),
+            );
+          }
+          if (endType == 'count') {
+            return TextFormField(
+              controller: countCtrl,
+              keyboardType: TextInputType.number,
+              style: inputTextStyle,
+              decoration: fieldDecoration(
+                label: l.recurringInvoicesCountLabel,
+                icon: Icons.numbers_outlined,
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }
+
+        Widget executionTimeField() {
+          return OutlinedButton.icon(
+            onPressed: startReadOnly && !allowExecutionTimeEditWhenStartReadOnly
+                ? null
+                : onPickStartTime,
+            style: buttonStyle,
+            icon: const Icon(Icons.access_time_outlined),
+            label: Text(
+              '${isEs ? 'Hora de ejecucion' : 'Execution time'}: ${TimeOfDay.fromDateTime(startDate).format(context)}',
+              style: inputTextStyle,
+            ),
+          );
+        }
+
+        Widget executionDayField() {
+          if (isMonthly) {
+            return TextFormField(
+              controller: billDayCtrl,
+              keyboardType: TextInputType.number,
+              style: inputTextStyle,
+              decoration: fieldDecoration(
+                label:
+                    isEs ? 'Dia de ejecucion (1-31)' : 'Execution day (1-31)',
+                icon: Icons.calendar_today_outlined,
+              ),
+            );
+          }
+          return TextFormField(
+            controller: weekDayCtrl,
+            keyboardType: TextInputType.number,
+            style: inputTextStyle,
+            decoration: fieldDecoration(
+              label: l.recurringInvoicesWeekDayLabel,
+              icon: Icons.event_note_outlined,
+            ),
+          );
+        }
+
+        final timezoneField = TextFormField(
+          controller: timezoneCtrl,
+          style: inputTextStyle,
+          decoration: fieldDecoration(
+            label: l.recurringInvoicesTimezoneLabel,
+            icon: Icons.public,
+            hint: timezoneLabel,
+          ).copyWith(suffixIcon: const Icon(Icons.expand_more_rounded)),
+          onChanged: onTimezoneChanged,
+          readOnly: true,
+          onTap: onPickTimezone,
+        );
+        final Widget invoiceModeCompanion = invoiceDateMode == 'offset_days'
+            ? TextFormField(
+                controller: invoiceDateOffsetDaysCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: true,
+                ),
+                style: inputTextStyle,
+                decoration: fieldDecoration(
+                  label: isEs
+                      ? 'Desfase de dias (-365..365)'
+                      : 'Day offset (-365..365)',
+                  icon: Icons.exposure_plus_1_outlined,
+                ),
+              )
+            : const SizedBox.shrink();
+        final String? scheduleInfoTooltip = isMonthly
+            ? '${l.recurringInvoicesBillDayHelper}\n${isEs ? 'Este dia controla cuando se ejecuta la recurrencia.' : 'This day controls when recurring execution happens.'}'
+            : isWeekly
+                ? l.recurringInvoicesWeekDayHelper
+                : null;
+        Widget invoiceModeSelector() {
+          final executionDayTooltip = isEs
+              ? 'Misma fecha de ejecucion.\nLa factura usa el mismo dia en que se ejecuta la recurrencia.\nEjemplo: ejecuta 24 -> factura 24.'
+              : 'Same as execution date.\nInvoice date matches recurrence execution day.\nExample: runs on 24 -> invoice dated 24.';
+          final fixedDayTooltip = isEs
+              ? 'Dia fijo del mes.\nLa factura siempre usa un dia concreto (1-31).\nEjemplo: ejecuta 24 -> factura 28.'
+              : 'Fixed day of month.\nInvoice always uses a specific day (1-31).\nExample: runs on 24 -> invoice dated 28.';
+          final offsetDaysTooltip = isEs
+              ? 'Dias respecto a ejecucion.\nLa fecha factura se calcula con desfase (+/- dias).\nEjemplo: +4 y ejecuta 24 -> factura 28.'
+              : 'Offset from execution date.\nInvoice date is calculated with +/- day offset.\nExample: +4 and run on 24 -> invoice dated 28.';
+          final String selectedModeText;
+          if (invoiceDateMode == 'fixed_day') {
+            selectedModeText =
+                isEs ? 'Dia fijo del mes' : 'Fixed day of month';
+          } else if (invoiceDateMode == 'offset_days') {
+            selectedModeText = isEs
+                ? 'Dias respecto a ejecucion'
+                : 'Offset from execution date';
+          } else {
+            selectedModeText = isEs
+                ? 'Misma fecha de ejecucion'
+                : 'Same as execution date';
+          }
+          ({String executionDay, String issueDay}) previewValues() {
+            final executionDay = billDayCtrl.text.trim().isEmpty
+                ? '--'
+                : billDayCtrl.text.trim();
+            final issueDay = invoiceDateMode == 'fixed_day'
+                ? (invoiceDateDayCtrl.text.trim().isEmpty
+                    ? '--'
+                    : invoiceDateDayCtrl.text.trim())
+                : invoiceDateMode == 'offset_days'
+                    ? '${invoiceDateOffsetDaysCtrl.text.trim().isEmpty ? '0' : invoiceDateOffsetDaysCtrl.text.trim()}d'
+                    : executionDay;
+            return (executionDay: executionDay, issueDay: issueDay);
+          }
+
+          Widget modeItem({
+            required String value,
+            required IconData icon,
+            required String tooltip,
+          }) {
+            final selected = invoiceDateMode == value;
+            return Tooltip(
+              message: tooltip,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => onInvoiceDateModeChanged(value),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? cs.primaryContainer
+                        : cs.surfaceContainerHighest.withValues(alpha: 0.28),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: selected ? cs.primary : cs.outlineVariant,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: selected ? cs.onPrimaryContainer : cs.onSurface,
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  modeItem(
+                    value: 'execution_day',
+                    icon: Icons.calendar_today_outlined,
+                    tooltip: executionDayTooltip,
+                  ),
+                  const SizedBox(width: 8),
+                  modeItem(
+                    value: 'fixed_day',
+                    icon: Icons.event_available_outlined,
+                    tooltip: fixedDayTooltip,
+                  ),
+                  const SizedBox(width: 8),
+                  modeItem(
+                    value: 'offset_days',
+                    icon: Icons.timeline_outlined,
+                    tooltip: offsetDaysTooltip,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              AnimatedBuilder(
+                animation: Listenable.merge([
+                  billDayCtrl,
+                  invoiceDateDayCtrl,
+                  invoiceDateOffsetDaysCtrl,
+                ]),
+                builder: (_, __) {
+                  final p = previewValues();
+                  return RichText(
+                    text: TextSpan(
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                      ),
+                      children: [
+                        TextSpan(
+                          text: '$selectedModeText · ',
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        TextSpan(text: isEs ? 'Ejecucion ' : 'Execution '),
+                        TextSpan(
+                          text: p.executionDay,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const TextSpan(text: ' · '),
+                        TextSpan(
+                          text: isEs ? 'Fecha factura ' : 'Invoice date ',
+                        ),
+                        TextSpan(
+                          text: p.issueDay,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          );
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -152,44 +453,27 @@ class RecurringScheduleForm extends StatelessWidget {
               Theme(
                 data: dropdownTheme,
                 child: DropdownButtonFormField<String>(
-                  value: freq,
+                  value: normalizedFreq,
                   style: inputTextStyle,
                   dropdownColor: cs.surface,
                   decoration: fieldDecoration(
                     label: l.recurringInvoicesFrequencyLabel,
                     icon: Icons.repeat_outlined,
                   ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'daily',
-                      child: Text(
-                        l.recurringFrequencyDaily,
-                        style: t.bodyMedium.copyWith(color: cs.onSurface),
-                      ),
-                    ),
-                    DropdownMenuItem(
-                      value: 'weekly',
-                      child: Text(
-                        l.recurringFrequencyWeekly,
-                        style: t.bodyMedium.copyWith(color: cs.onSurface),
-                      ),
-                    ),
-                    DropdownMenuItem(
-                      value: 'monthly',
-                      child: Text(
-                        l.recurringFrequencyMonthly,
-                        style: t.bodyMedium.copyWith(color: cs.onSurface),
-                      ),
-                    ),
-                    DropdownMenuItem(
-                      value: 'yearly',
-                      child: Text(
-                        l.recurringFrequencyYearly,
-                        style: t.bodyMedium.copyWith(color: cs.onSurface),
-                      ),
-                    ),
-                  ],
-                  onChanged: (v) => onFreqChanged(v ?? 'monthly'),
+                  items: recurringFrequencyDropdownOrder
+                      .map(
+                        (f) => DropdownMenuItem(
+                          value: f,
+                          child: Text(
+                            recurringFrequencyLabel(l, f),
+                            style: t.bodyMedium.copyWith(color: cs.onSurface),
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (v) => onFreqChanged(
+                    canonicalFrequencyForApi(v ?? recurringFreqMonthly),
+                  ),
                 ),
               ),
               TextFormField(
@@ -203,211 +487,96 @@ class RecurringScheduleForm extends StatelessWidget {
               ),
             ),
             const SizedBox(height: fieldSpacing),
-            twoCol(
-              OutlinedButton.icon(
-                onPressed: onPickStart,
-                style: buttonStyle,
-                icon: const Icon(Icons.event_outlined),
-                label: Text(
-                  '${l.recurringInvoicesStartLabel}: ${DateFormat.yMMMd(l.localeName).add_Hm().format(startDate)}',
-                  style: inputTextStyle,
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: onPickStartTime,
-                style: buttonStyle,
-                icon: const Icon(Icons.access_time_outlined),
-                label: Text(
-                  '${l.recurringInvoicesTimeLabel}: ${TimeOfDay.fromDateTime(startDate).format(context)}',
-                  style: inputTextStyle,
-                ),
-              ),
-            ),
-            const SizedBox(height: fieldSpacing),
-            if (endType == 'date')
+            if (isMonthly || isWeekly) ...[
+              twoCol(executionDayField(), executionTimeField()),
+              const SizedBox(height: fieldSpacing),
+            ],
+            if (!startReadOnly)
               twoCol(
-                Theme(
-                  data: dropdownTheme,
-                  child: DropdownButtonFormField<String>(
-                    value: endType,
-                    style: inputTextStyle,
-                    dropdownColor: cs.surface,
-                    decoration: fieldDecoration(
-                      label: l.recurringInvoicesEndLabel,
-                      icon: Icons.flag_outlined,
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'never',
-                        child: Text(
-                          l.recurringInvoicesEndNever,
-                          style: t.bodyMedium.copyWith(color: cs.onSurface),
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: 'date',
-                        child: Text(
-                          l.recurringInvoicesEndDate,
-                          style: t.bodyMedium.copyWith(color: cs.onSurface),
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: 'count',
-                        child: Text(
-                          l.recurringInvoicesEndCount,
-                          style: t.bodyMedium.copyWith(color: cs.onSurface),
-                        ),
-                      ),
-                    ],
-                    onChanged: (v) => onEndTypeChanged(v ?? 'never'),
-                  ),
-                ),
                 OutlinedButton.icon(
-                  onPressed: onPickEnd,
+                  onPressed: onPickStart,
                   style: buttonStyle,
-                  icon: const Icon(Icons.event_busy_outlined),
-                  label: Text(endDateLabel, style: inputTextStyle),
-                ),
-              )
-            else if (endType == 'count')
-              twoCol(
-                Theme(
-                  data: dropdownTheme,
-                  child: DropdownButtonFormField<String>(
-                    value: endType,
+                  icon: const Icon(Icons.event_outlined),
+                  label: Text(
+                    '${l.recurringInvoicesStartLabel}: ${DateFormat.yMMMd(l.localeName).add_Hm().format(startDate)}',
                     style: inputTextStyle,
-                    dropdownColor: cs.surface,
-                    decoration: fieldDecoration(
-                      label: l.recurringInvoicesEndLabel,
-                      icon: Icons.flag_outlined,
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'never',
-                        child: Text(
-                          l.recurringInvoicesEndNever,
-                          style: t.bodyMedium.copyWith(color: cs.onSurface),
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: 'date',
-                        child: Text(
-                          l.recurringInvoicesEndDate,
-                          style: t.bodyMedium.copyWith(color: cs.onSurface),
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: 'count',
-                        child: Text(
-                          l.recurringInvoicesEndCount,
-                          style: t.bodyMedium.copyWith(color: cs.onSurface),
-                        ),
-                      ),
-                    ],
-                    onChanged: (v) => onEndTypeChanged(v ?? 'never'),
                   ),
                 ),
+                (isMonthly || isWeekly)
+                    ? const SizedBox.shrink()
+                    : executionTimeField(),
+              ),
+            const SizedBox(height: fieldSpacing),
+            twoCol(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  endTypeField,
+                  if (endType != 'never') ...[
+                    const SizedBox(height: tightSpacing),
+                    endCompanionField(),
+                  ],
+                ],
+              ),
+              timezoneField,
+            ),
+            if (scheduleInfoTooltip != null) const SizedBox(height: tightSpacing),
+            const SizedBox(height: fieldSpacing),
+            twoCol(
+              invoiceModeSelector(),
+              invoiceModeCompanion,
+            ),
+            if (invoiceDateMode == 'fixed_day') ...[
+              const SizedBox(height: fieldSpacing),
+              twoCol(
                 TextFormField(
-                  controller: countCtrl,
+                  controller: invoiceDateDayCtrl,
                   keyboardType: TextInputType.number,
                   style: inputTextStyle,
                   decoration: fieldDecoration(
-                    label: l.recurringInvoicesCountLabel,
-                    icon: Icons.numbers_outlined,
+                    label: isEs ? 'Dia de emision (1-31)' : 'Issue day (1-31)',
+                    icon: Icons.calendar_month_outlined,
                   ),
                 ),
-              )
-            else
-              Theme(
-                data: dropdownTheme,
-                child: DropdownButtonFormField<String>(
-                  value: endType,
-                  style: inputTextStyle,
-                  dropdownColor: cs.surface,
-                  decoration: fieldDecoration(
-                    label: l.recurringInvoicesEndLabel,
-                    icon: Icons.flag_outlined,
+                Theme(
+                  data: dropdownTheme,
+                  child: DropdownButtonFormField<String>(
+                    value: invoiceDateClampPolicy,
+                    style: inputTextStyle,
+                    dropdownColor: cs.surface,
+                    decoration: fieldDecoration(
+                      label:
+                          isEs ? 'Si el dia no existe' : 'If day does not exist',
+                      icon: Icons.rule_outlined,
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'end_of_month',
+                        child: Text(
+                          isEs
+                              ? 'Usar ultimo dia del mes'
+                              : 'Use last day of month',
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'error',
+                        child: Text(isEs ? 'Mostrar error' : 'Return error'),
+                      ),
+                    ],
+                    onChanged: (v) => onInvoiceDateClampPolicyChanged(
+                      v ?? 'end_of_month',
+                    ),
                   ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'never',
-                      child: Text(
-                        l.recurringInvoicesEndNever,
-                        style: t.bodyMedium.copyWith(color: cs.onSurface),
-                      ),
-                    ),
-                    DropdownMenuItem(
-                      value: 'date',
-                      child: Text(
-                        l.recurringInvoicesEndDate,
-                        style: t.bodyMedium.copyWith(color: cs.onSurface),
-                      ),
-                    ),
-                    DropdownMenuItem(
-                      value: 'count',
-                      child: Text(
-                        l.recurringInvoicesEndCount,
-                        style: t.bodyMedium.copyWith(color: cs.onSurface),
-                      ),
-                    ),
-                  ],
-                  onChanged: (v) => onEndTypeChanged(v ?? 'never'),
                 ),
-              ),
-            if (freq == 'monthly') ...[
-              const SizedBox(height: fieldSpacing),
-              TextFormField(
-                controller: billDayCtrl,
-                keyboardType: TextInputType.number,
-                style: inputTextStyle,
-                decoration: fieldDecoration(
-                  label: l.recurringInvoicesBillDayLabel,
-                  icon: Icons.calendar_today_outlined,
-                ),
-              ),
-              const SizedBox(height: tightSpacing),
-              Text(
-                l.recurringInvoicesBillDayHelper,
-                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
-            if (freq == 'weekly') ...[
-              const SizedBox(height: fieldSpacing),
-              TextFormField(
-                controller: weekDayCtrl,
-                keyboardType: TextInputType.number,
-                style: inputTextStyle,
-                decoration: fieldDecoration(
-                  label: l.recurringInvoicesWeekDayLabel,
-                  icon: Icons.event_note_outlined,
-                ),
-              ),
-              const SizedBox(height: tightSpacing),
-              Text(
-                l.recurringInvoicesWeekDayHelper,
-                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-              ),
-            ],
-            const SizedBox(height: fieldSpacing),
-            TextFormField(
-              controller: timezoneCtrl,
-              style: inputTextStyle,
-              decoration: fieldDecoration(
-                label: l.recurringInvoicesTimezoneLabel,
-                icon: Icons.public,
-                hint: timezoneLabel,
-              ).copyWith(suffixIcon: const Icon(Icons.expand_more_rounded)),
-              onChanged: onTimezoneChanged,
-              readOnly: true,
-              onTap: onPickTimezone,
-            ),
             const SizedBox(height: fieldSpacing),
             Row(
               children: [
                 Expanded(
                   child: Text(
                     l.recurringInvoicesExceptionsLabel,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 13),
                   ),
                 ),
                 TextButton.icon(
@@ -452,9 +621,20 @@ class RecurringScheduleForm extends StatelessWidget {
                     )
                     .toList(),
               ),
+            if ((errorText ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: fieldSpacing),
+              Text(
+                errorText!,
+                style: t.bodySmall.copyWith(
+                  color: cs.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ],
         );
       },
     );
   }
 }
+

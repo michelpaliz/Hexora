@@ -158,7 +158,7 @@ class RoleInfoScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 🔧 Fixed overflow here
+                  // ðŸ”§ Fixed overflow here
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

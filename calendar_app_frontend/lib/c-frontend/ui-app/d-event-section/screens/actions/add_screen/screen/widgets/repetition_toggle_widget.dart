@@ -115,7 +115,7 @@ class _ToggleButton extends StatelessWidget {
                       ),
                     ],
             ),
-            // 🧩 No-overflow core: scale down icon+text if needed
+            // ðŸ§© No-overflow core: scale down icon+text if needed
             child: Center(
               child: FittedBox(
                 fit: BoxFit.scaleDown,

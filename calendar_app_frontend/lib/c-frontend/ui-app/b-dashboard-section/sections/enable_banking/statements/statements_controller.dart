@@ -1,6 +1,31 @@
 import 'package:flutter/foundation.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/statements/statements_api.dart';
+import 'dart:convert';
+
+class LinkInvoiceOutcome {
+  final bool success;
+  final bool alreadyLinked;
+  final int? linkedEntriesCount;
+  final String? linkedEntryId;
+  final bool hasRepetitiveInvoiceLink;
+  final int invoiceLinkedRowsCount;
+  final int invoiceLinkedOtherRowsCount;
+  final int? statusCode;
+  final String? errorMessage;
+
+  const LinkInvoiceOutcome({
+    required this.success,
+    this.alreadyLinked = false,
+    this.linkedEntriesCount,
+    this.linkedEntryId,
+    this.hasRepetitiveInvoiceLink = false,
+    this.invoiceLinkedRowsCount = 0,
+    this.invoiceLinkedOtherRowsCount = 0,
+    this.statusCode,
+    this.errorMessage,
+  });
+}
 
 class StatementsController extends ChangeNotifier {
   StatementsController({
@@ -43,6 +68,11 @@ class StatementsController extends ChangeNotifier {
   final Map<String, bool> loadingSuggestions = {};
   final Map<String, String?> suggestionsError = {};
   final Map<String, List<Map<String, dynamic>>> suggestions = {};
+
+  // Invoice suggestions
+  final Map<String, bool> loadingInvoiceSuggestions = {};
+  final Map<String, String?> invoiceSuggestionsError = {};
+  final Map<String, List<Map<String, dynamic>>> invoiceSuggestions = {};
 
   final Map<String, bool> linkingClient = {};
   final Map<String, String?> linkClientError = {};
@@ -179,7 +209,7 @@ class StatementsController extends ChangeNotifier {
       );
       entries = (r['entries'] as List? ?? const [])
           .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
+          .map((e) => _normalizeEntry(Map<String, dynamic>.from(e)))
           .toList();
       entriesTotal = (r['total'] is int) ? r['total'] as int : entries.length;
       if (kDebugMode) {
@@ -337,16 +367,60 @@ class StatementsController extends ChangeNotifier {
     }
   }
 
+  Future<List<Map<String, dynamic>>> suggestInvoices(
+    String entryId, {
+    String? type,
+    double tolerance = 0.01,
+    int limit = 10,
+  }) async {
+    loadingInvoiceSuggestions[entryId] = true;
+    invoiceSuggestionsError[entryId] = null;
+    _notify();
+    try {
+      final r = await _api.suggestInvoices(
+        entryId,
+        type: type,
+        tolerance: tolerance,
+        limit: limit,
+        groupId: groupId,
+      );
+      final list = (r['suggestions'] as List? ?? const [])
+          .whereType<Map>()
+          .map((e) => _normalizeInvoiceSuggestion(Map<String, dynamic>.from(e)))
+          .toList();
+      invoiceSuggestions[entryId] = list;
+      return list;
+    } catch (e) {
+      invoiceSuggestionsError[entryId] = e.toString();
+      return const [];
+    } finally {
+      loadingInvoiceSuggestions[entryId] = false;
+      _notify();
+    }
+  }
+
   Future<void> linkClient({required String entryId, String? clientId}) async {
     linkingClient[entryId] = true;
     linkClientError[entryId] = null;
     _notify();
     try {
       await _api.linkEntryClient(entryId: entryId, clientId: clientId);
+      // Resolve client name for local display
+      String? resolvedName;
+      if (clientId != null) {
+        final match = clients.firstWhere(
+          (c) =>
+              c['id']?.toString() == clientId ||
+              c['_id']?.toString() == clientId,
+          orElse: () => const <String, dynamic>{},
+        );
+        resolvedName = match['name']?.toString();
+      }
       final idx = entries.indexWhere((e) => (e['_id'] ?? e['id'])?.toString() == entryId);
       if (idx >= 0) {
         final updated = Map<String, dynamic>.from(entries[idx]);
         updated['clientId'] = clientId;
+        if (resolvedName != null) updated['clientName'] = resolvedName;
         entries = List<Map<String, dynamic>>.from(entries)..[idx] = updated;
       }
       final allIdx =
@@ -354,6 +428,7 @@ class StatementsController extends ChangeNotifier {
       if (allIdx >= 0) {
         final updated = Map<String, dynamic>.from(allEntries[allIdx]);
         updated['clientId'] = clientId;
+        if (resolvedName != null) updated['clientName'] = resolvedName;
         allEntries = List<Map<String, dynamic>>.from(allEntries)..[allIdx] = updated;
       }
     } catch (e) {
@@ -364,36 +439,199 @@ class StatementsController extends ChangeNotifier {
     }
   }
 
-  Future<void> linkInvoice({
+  Future<LinkInvoiceOutcome> linkInvoice({
     required String entryId,
     String? invoiceId,
+    List<String>? invoiceIds,
+    String? invoiceDisplayNumber,
     required bool expenseOnly,
   }) async {
     linkingInvoice[entryId] = true;
     linkInvoiceError[entryId] = null;
     _notify();
     try {
-      if (expenseOnly) {
-        await _api.linkEntryInvoiceExpense(entryId: entryId, invoiceId: invoiceId);
-      } else {
-        await _api.linkEntryInvoice(entryId: entryId, invoiceId: invoiceId);
+      final normalizedInvoiceIds = (invoiceIds ?? const <String>[])
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList(growable: false);
+      final requestInvoiceIds = normalizedInvoiceIds.isNotEmpty
+          ? normalizedInvoiceIds
+          : (invoiceId != null && invoiceId.trim().isNotEmpty)
+              ? <String>[invoiceId.trim()]
+              : <String>[];
+      final response = expenseOnly
+          ? await _api.linkEntryInvoiceExpense(
+              entryId: entryId,
+              invoiceId: invoiceId,
+              invoiceIds: requestInvoiceIds.isNotEmpty ? requestInvoiceIds : null,
+            )
+          : await _api.linkEntryInvoice(
+              entryId: entryId,
+              invoiceId: invoiceId,
+              invoiceIds: requestInvoiceIds.isNotEmpty ? requestInvoiceIds : null,
+            );
+
+      final alreadyLinked =
+          response['invoiceAlreadyLinked'] == true ||
+              response['invoice_already_linked'] == true;
+      final linkedEntriesCount =
+          (response['invoiceLinkedEntriesCount'] ??
+                  response['invoice_linked_entries_count'])
+              is num
+              ? ((response['invoiceLinkedEntriesCount'] ??
+                          response['invoice_linked_entries_count']) as num)
+                      .toInt()
+              : null;
+      final linkedEntryId = (response['linkedEntryId'] ??
+              response['linked_entry_id'])
+          ?.toString();
+      Map<String, dynamic>? normalizedEntry;
+      final payloadEntry = response['entry'];
+      if (payloadEntry is Map) {
+        normalizedEntry = _normalizeEntry(
+          Map<String, dynamic>.from(payloadEntry),
+        );
       }
-      final idx =
-          entries.indexWhere((e) => (e['_id'] ?? e['id'])?.toString() == entryId);
-      if (idx >= 0) {
-        final updated = Map<String, dynamic>.from(entries[idx]);
-        updated['invoiceId'] = invoiceId;
-        entries = List<Map<String, dynamic>>.from(entries)..[idx] = updated;
+
+      final topLevelInvoiceNumber =
+          (response['invoiceNumber'] ?? response['invoice_number'])
+              ?.toString()
+              .trim();
+      List<String> extractStringList(dynamic raw) {
+        if (raw is List) {
+          return raw
+              .map((e) => e?.toString().trim() ?? '')
+              .where((e) => e.isNotEmpty)
+              .toList(growable: false);
+        }
+        return const <String>[];
       }
-      final allIdx =
-          allEntries.indexWhere((e) => (e['_id'] ?? e['id'])?.toString() == entryId);
-      if (allIdx >= 0) {
-        final updated = Map<String, dynamic>.from(allEntries[allIdx]);
-        updated['invoiceId'] = invoiceId;
-        allEntries = List<Map<String, dynamic>>.from(allEntries)..[allIdx] = updated;
+      final topLevelInvoiceIds = extractStringList(response['invoiceIds']);
+      final topLevelInvoiceNumbers = extractStringList(response['invoiceNumbers']);
+
+      final effectiveDisplayNumber = (normalizedEntry?['invoiceNumber']
+                      ?.toString()
+                      .trim()
+                      .isNotEmpty ==
+                  true)
+          ? normalizedEntry!['invoiceNumber'].toString().trim()
+          : (topLevelInvoiceNumber != null && topLevelInvoiceNumber.isNotEmpty)
+              ? topLevelInvoiceNumber
+              : (invoiceDisplayNumber != null &&
+                      invoiceDisplayNumber.trim().isNotEmpty)
+                    ? invoiceDisplayNumber.trim()
+                    : null;
+      final effectiveInvoiceIds = (() {
+        final fromEntry = extractStringList(normalizedEntry?['invoiceIds']);
+        if (fromEntry.isNotEmpty) return fromEntry;
+        if (topLevelInvoiceIds.isNotEmpty) return topLevelInvoiceIds;
+        if (requestInvoiceIds.isNotEmpty) return requestInvoiceIds;
+        final legacy = (invoiceId ?? '').trim();
+        return legacy.isEmpty ? const <String>[] : <String>[legacy];
+      })();
+      final effectiveInvoiceNumbers = (() {
+        final fromEntry = extractStringList(normalizedEntry?['invoiceNumbers']);
+        if (fromEntry.isNotEmpty) return fromEntry;
+        if (topLevelInvoiceNumbers.isNotEmpty) return topLevelInvoiceNumbers;
+        if (effectiveDisplayNumber != null && effectiveDisplayNumber.isNotEmpty) {
+          return <String>[effectiveDisplayNumber];
+        }
+        return const <String>[];
+      })();
+      final hasRepetitiveInvoiceLink =
+          (normalizedEntry?['hasRepetitiveInvoiceLink'] == true) ||
+              (response['hasRepetitiveInvoiceLink'] == true) ||
+              (response['has_repetitive_invoice_link'] == true);
+      final invoiceLinkedRowsCount = (normalizedEntry?['invoiceLinkedRowsCount']
+                  is num)
+              ? (normalizedEntry!['invoiceLinkedRowsCount'] as num).toInt()
+              : ((response['invoiceLinkedRowsCount'] ??
+                              response['invoice_linked_rows_count'])
+                          is num)
+                  ? ((response['invoiceLinkedRowsCount'] ??
+                          response['invoice_linked_rows_count']) as num)
+                      .toInt()
+                  : 0;
+      final invoiceLinkedOtherRowsCount =
+          (normalizedEntry?['invoiceLinkedOtherRowsCount'] is num)
+              ? (normalizedEntry!['invoiceLinkedOtherRowsCount'] as num).toInt()
+              : ((response['invoiceLinkedOtherRowsCount'] ??
+                              response['invoice_linked_other_rows_count'])
+                          is num)
+                  ? ((response['invoiceLinkedOtherRowsCount'] ??
+                          response['invoice_linked_other_rows_count']) as num)
+                      .toInt()
+                  : 0;
+
+      void applyLocalUpdate(List<Map<String, dynamic>> source,
+          void Function(List<Map<String, dynamic>>) assign) {
+        final idx = source
+            .indexWhere((e) => (e['_id'] ?? e['id'])?.toString() == entryId);
+        if (idx < 0) return;
+        final current = Map<String, dynamic>.from(source[idx]);
+        final updated = normalizedEntry != null
+            ? (Map<String, dynamic>.from(current)..addAll(normalizedEntry))
+            : current;
+        final primaryId =
+            effectiveInvoiceIds.isNotEmpty ? effectiveInvoiceIds.first : null;
+        final primaryNumber = effectiveInvoiceNumbers.isNotEmpty
+            ? effectiveInvoiceNumbers.first
+            : (effectiveDisplayNumber?.trim().isNotEmpty == true
+                ? effectiveDisplayNumber!.trim()
+                : null);
+        updated['invoiceId'] = primaryId;
+        updated['invoice_id'] = primaryId;
+        updated['invoiceIds'] = effectiveInvoiceIds;
+        if (primaryNumber != null && primaryNumber.isNotEmpty) {
+          updated['invoiceNumber'] = primaryNumber;
+          updated['invoice_number'] = primaryNumber;
+        }
+        updated['invoiceNumbers'] = effectiveInvoiceNumbers;
+        final next = List<Map<String, dynamic>>.from(source)..[idx] = updated;
+        assign(next);
       }
+
+      applyLocalUpdate(entries, (next) => entries = next);
+      applyLocalUpdate(allEntries, (next) => allEntries = next);
+
+      return LinkInvoiceOutcome(
+        success: true,
+        alreadyLinked: alreadyLinked,
+        linkedEntriesCount: linkedEntriesCount,
+        linkedEntryId: linkedEntryId,
+        hasRepetitiveInvoiceLink: hasRepetitiveInvoiceLink,
+        invoiceLinkedRowsCount: invoiceLinkedRowsCount,
+        invoiceLinkedOtherRowsCount: invoiceLinkedOtherRowsCount,
+      );
     } catch (e) {
       linkInvoiceError[entryId] = e.toString();
+      if (e is StatementsApiException) {
+        String message = e.message;
+        if (e.statusCode == 404 &&
+            (e.responseBody?.trim().isNotEmpty ?? false)) {
+          try {
+            final decoded = jsonDecode(e.responseBody!);
+            if (decoded is Map && decoded['missingInvoiceIds'] is List) {
+              final ids = (decoded['missingInvoiceIds'] as List)
+                  .map((v) => v?.toString().trim() ?? '')
+                  .where((v) => v.isNotEmpty)
+                  .toList(growable: false);
+              if (ids.isNotEmpty) {
+                message = '${e.message} (${ids.join(', ')})';
+              }
+            }
+          } catch (_) {}
+        }
+        return LinkInvoiceOutcome(
+          success: false,
+          statusCode: e.statusCode,
+          errorMessage: message,
+        );
+      }
+      return LinkInvoiceOutcome(
+        success: false,
+        errorMessage: e.toString(),
+      );
     } finally {
       linkingInvoice[entryId] = false;
       _notify();
@@ -473,7 +711,7 @@ class StatementsController extends ChangeNotifier {
           );
           final entries = (r['entries'] as List? ?? const [])
               .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
+              .map((e) => _normalizeEntry(Map<String, dynamic>.from(e)))
               .toList();
           if (kDebugMode) {
             final firstDate = _entryDateText(entries.isNotEmpty ? entries.first : null);
@@ -515,6 +753,103 @@ class StatementsController extends ChangeNotifier {
     if (raw == null) return '-';
     final text = raw.toString().trim();
     return text.isEmpty ? '-' : text;
+  }
+
+  Map<String, dynamic> _normalizeEntry(Map<String, dynamic> entry) {
+    final normalized = Map<String, dynamic>.from(entry);
+    List<String> toStringList(dynamic raw) {
+      if (raw is List) {
+        return raw
+            .map((e) => e?.toString().trim() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList(growable: false);
+      }
+      return const <String>[];
+    }
+    final invoiceIds = toStringList(normalized['invoiceIds']);
+    final invoiceNumbers = toStringList(normalized['invoiceNumbers']);
+    final legacyId = (normalized['invoiceId'] ?? normalized['invoice_id'])
+        ?.toString()
+        .trim();
+    final invoiceNumber =
+        (normalized['invoiceNumber'] ?? normalized['invoice_number'])
+            ?.toString()
+            .trim();
+    if (invoiceIds.isNotEmpty) {
+      normalized['invoiceIds'] = invoiceIds;
+      normalized['invoiceId'] = invoiceIds.first;
+      normalized['invoice_id'] = invoiceIds.first;
+    } else if (legacyId != null && legacyId.isNotEmpty) {
+      normalized['invoiceId'] = legacyId;
+      normalized['invoice_id'] = legacyId;
+      normalized['invoiceIds'] = <String>[legacyId];
+    } else {
+      normalized['invoiceIds'] = const <String>[];
+    }
+    if (invoiceNumbers.isNotEmpty) {
+      normalized['invoiceNumbers'] = invoiceNumbers;
+      normalized['invoiceNumber'] = invoiceNumbers.first;
+      normalized['invoice_number'] = invoiceNumbers.first;
+    } else if (invoiceNumber != null && invoiceNumber.isNotEmpty) {
+      normalized['invoiceNumber'] = invoiceNumber;
+      normalized['invoice_number'] = invoiceNumber;
+      normalized['invoiceNumbers'] = <String>[invoiceNumber];
+    } else {
+      normalized['invoiceNumbers'] = const <String>[];
+    }
+    if (invoiceNumber != null && invoiceNumber.isNotEmpty) {
+      normalized['invoiceNumber'] = invoiceNumber;
+      normalized['invoice_number'] = invoiceNumber;
+    }
+    final hasRepetitive = normalized['hasRepetitiveInvoiceLink'] == true ||
+        normalized['has_repetitive_invoice_link'] == true;
+    final linkedRowsCount = (normalized['invoiceLinkedRowsCount'] is num)
+        ? (normalized['invoiceLinkedRowsCount'] as num).toInt()
+        : (normalized['invoice_linked_rows_count'] is num)
+            ? (normalized['invoice_linked_rows_count'] as num).toInt()
+            : 0;
+    final linkedOtherRowsCount =
+        (normalized['invoiceLinkedOtherRowsCount'] is num)
+            ? (normalized['invoiceLinkedOtherRowsCount'] as num).toInt()
+            : (normalized['invoice_linked_other_rows_count'] is num)
+                ? (normalized['invoice_linked_other_rows_count'] as num).toInt()
+                : 0;
+    normalized['hasRepetitiveInvoiceLink'] = hasRepetitive;
+    normalized['has_repetitive_invoice_link'] = hasRepetitive;
+    normalized['invoiceLinkedRowsCount'] = linkedRowsCount;
+    normalized['invoice_linked_rows_count'] = linkedRowsCount;
+    normalized['invoiceLinkedOtherRowsCount'] = linkedOtherRowsCount;
+    normalized['invoice_linked_other_rows_count'] = linkedOtherRowsCount;
+    return normalized;
+  }
+
+  Map<String, dynamic> _normalizeInvoiceSuggestion(Map<String, dynamic> s) {
+    final normalized = Map<String, dynamic>.from(s);
+    final alreadyLinked =
+        normalized['alreadyLinked'] == true ||
+            normalized['isAlreadyLinked'] == true;
+    final linkedEntriesCount =
+        (normalized['linkedEntriesCount'] is num)
+            ? (normalized['linkedEntriesCount'] as num).toInt()
+            : (normalized['linked_entries_count'] is num)
+                ? (normalized['linked_entries_count'] as num).toInt()
+                : 0;
+    normalized['alreadyLinked'] = alreadyLinked;
+    normalized['isAlreadyLinked'] = alreadyLinked;
+    normalized['linkedEntriesCount'] = linkedEntriesCount;
+    normalized['linkedEntryId'] =
+        (normalized['linkedEntryId'] ?? normalized['linked_entry_id'])
+            ?.toString();
+    normalized['linkedEntryDate'] =
+        (normalized['linkedEntryDate'] ?? normalized['linked_entry_date'])
+            ?.toString();
+    normalized['linkedEntryAmount'] =
+        normalized['linkedEntryAmount'] ?? normalized['linked_entry_amount'];
+    normalized['linkedEntryDescription'] =
+        (normalized['linkedEntryDescription'] ??
+                normalized['linked_entry_description'])
+            ?.toString();
+    return normalized;
   }
 
   Future<void> deleteBatch(String batchId) async {

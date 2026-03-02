@@ -29,6 +29,7 @@ class _CompactStepsPanel extends StatelessWidget {
   final String? saveTooltip;
   final String? previewTooltip;
   final String? issueTooltip;
+  final Widget? trailing;
 
   const _CompactStepsPanel({
     required this.stepChips,
@@ -40,6 +41,7 @@ class _CompactStepsPanel extends StatelessWidget {
     this.saveTooltip,
     this.previewTooltip,
     this.issueTooltip,
+    this.trailing,
   });
 
   @override
@@ -65,38 +67,10 @@ class _CompactStepsPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         stepChips,
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            actionIcon(
-              tooltip: saveTooltip ?? l.invoiceSaveDraftCta,
-              onPressed: onSave,
-              icon: saving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-            ),
-            actionIcon(
-              tooltip: previewTooltip ?? l.invoicePreviewCta,
-              onPressed: onPreview,
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-            ),
-            actionIcon(
-              tooltip: issueTooltip ?? l.invoiceIssueCta,
-              onPressed: onIssue,
-              icon: issuing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check_circle_outline),
-            ),
-          ],
-        ),
+        if (trailing != null) ...[
+          const SizedBox(height: 6),
+          trailing!,
+        ],
       ],
     );
   }

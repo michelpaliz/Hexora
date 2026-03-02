@@ -18,58 +18,27 @@ class _MailConsoleView extends StatelessWidget {
     final selectedThread = threadState?.thread;
 
     Widget leftColumn() {
-      final railWidth = state._leftCollapsed ? 68.0 : 240.0;
-      return Container(
+      const railWidth = 214.0;
+      const collapsed = false;
+      return SizedBox(
         width: railWidth,
-        padding: const EdgeInsets.fromLTRB(14, 16, 12, 12),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-          border: Border(
-            right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: state._leftCollapsed
-                      ? const SizedBox.shrink()
-                      : Text(
-                          l.mailConsoleTitle,
-                          style:
-                              t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                ),
-                IconButton(
-                  tooltip: state._leftCollapsed ? 'Expand' : 'Collapse',
-                  icon: Icon(
-                    state._leftCollapsed
-                        ? Icons.chevron_right_rounded
-                        : Icons.chevron_left_rounded,
-                  ),
-                  onPressed: () => state.setState(
-                    () => state._leftCollapsed = !state._leftCollapsed,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (state._leftCollapsed)
-              IconButton(
-                tooltip: l.mailComposeTitle,
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: state._openCompose,
-              )
-            else
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 8, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l.mailConsoleTitle,
+                style:
+                    t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
               FilledButton.icon(
                 onPressed: state._openCompose,
                 icon: const Icon(Icons.edit_outlined),
                 label: Text(l.mailComposeTitle),
               ),
-            const SizedBox(height: 18),
-            if (!state._leftCollapsed)
+              const SizedBox(height: 12),
               Text(
                 l.mailConsoleFoldersTitle,
                 style: t.bodySmall.copyWith(
@@ -77,36 +46,45 @@ class _MailConsoleView extends StatelessWidget {
                   color: cs.onSurfaceVariant,
                 ),
               ),
-            const SizedBox(height: 8),
-            ...MailFolder.values.map(
-              (folder) => _FolderNavTile(
-                label: _folderLabel(folder, l),
-                icon: _folderIcon(folder),
-                selected: state._folder == folder,
-                compact: state._leftCollapsed,
-                onTap: () {
-                  if (state._folder == folder) return;
-                  state.setState(() {
-                    state._folder = folder;
-                    state._selectedThreadKey = null;
-                    state._showCompose = false;
-                    state._showFooterManager = false;
-                  });
-                  state._syncRoute();
-                  state._loadThreads(refresh: true);
-                },
+              const SizedBox(height: 8),
+              ...MailFolder.values.map(
+                (folder) => _FolderNavTile(
+                  label: _folderLabel(folder, l),
+                  icon: _folderIcon(folder),
+                  selected: state._folder == folder,
+                  compact: collapsed,
+                  onTap: () {
+                    if (state._folder == folder) return;
+                    state.update(() {
+                      state._folder = folder;
+                      state._selectedThreadKey = null;
+                      state._showCompose = false;
+                      state._showFooterManager = false;
+                      state._showTemplateManager = false;
+                    });
+                    state._syncRoute();
+                    state._loadThreads(refresh: true);
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
-            const SizedBox(height: 8),
-            _SideActionTile(
-              icon: Icons.description_outlined,
-              label: l.mailFooterCreateCta,
-              compact: state._leftCollapsed,
-              onTap: state._openFooterManager,
-            ),
-          ],
+              const SizedBox(height: 12),
+              Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
+              const SizedBox(height: 8),
+              _SideActionTile(
+                icon: Icons.description_outlined,
+                label: l.mailFooterCreateCta,
+                compact: collapsed,
+                onTap: state._openFooterManager,
+              ),
+              const SizedBox(height: 8),
+              _SideActionTile(
+                icon: Icons.view_list_outlined,
+                label: 'Templates',
+                compact: collapsed,
+                onTap: state._openTemplateManager,
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -141,9 +119,12 @@ class _MailConsoleView extends StatelessWidget {
 
       return ListView.separated(
         controller: state._threadScroll,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         itemCount: itemCount,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          color: cs.outlineVariant.withValues(alpha: 0.2),
+        ),
         itemBuilder: (context, index) {
           if (index >= threads.length) {
             return const Padding(
@@ -194,48 +175,52 @@ class _MailConsoleView extends StatelessWidget {
       );
     }
 
+    Widget rightPaneContent() {
+      return state._showCompose
+          ? MailComposeScreen(
+              embedded: true,
+              onClose: () => state.update(() => state._showCompose = false),
+              onSent: () => state.update(() => state._showCompose = false),
+            )
+          : state._showFooterManager
+              ? _FooterManagerPanel(state: state)
+              : state._showTemplateManager
+                  ? _TemplatesManagerPanel(state: state)
+                  : state._selectedThreadKey == null
+                      ? Center(child: Text(l.mailConsoleSelectThread))
+                      : (selectedThread == null)
+                          ? (threadState?.error != null)
+                              ? Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(l.mailConsoleLoadError),
+                                      const SizedBox(height: 8),
+                                      TextButton(
+                                        onPressed: () => context
+                                            .read<MailDomain>()
+                                            .loadThreadDetail(
+                                                state._selectedThreadKey!),
+                                        child: Text(l.tryAgain),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : const Center(child: CircularProgressIndicator())
+                          : _ConversationPane(
+                              thread: selectedThread,
+                              onReply: state._sendReply,
+                              replyController: state._replyCtrl,
+                              sendingReply: state._sendingReply,
+                              onDownloadAttachment: (attachment) =>
+                                  state._downloadAttachment(attachment, domain),
+                            );
+    }
+
     Widget rightColumn() {
       return Expanded(
         flex: 3,
-        child: state._showCompose
-            ? MailComposeScreen(
-                embedded: true,
-                onClose: () =>
-                    state.setState(() => state._showCompose = false),
-                onSent: () =>
-                    state.setState(() => state._showCompose = false),
-              )
-            : state._showFooterManager
-                ? _FooterManagerPanel(state: state)
-                : state._selectedThreadKey == null
-                ? Center(child: Text(l.mailConsoleSelectThread))
-                : (selectedThread == null)
-                    ? (threadState?.error != null)
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(l.mailConsoleLoadError),
-                                const SizedBox(height: 8),
-                                TextButton(
-                                  onPressed: () => context
-                                      .read<MailDomain>()
-                                      .loadThreadDetail(
-                                          state._selectedThreadKey!),
-                                  child: Text(l.tryAgain),
-                                ),
-                              ],
-                            ),
-                          )
-                        : const Center(child: CircularProgressIndicator())
-                    : _ConversationPane(
-                        thread: selectedThread,
-                        onReply: state._sendReply,
-                        replyController: state._replyCtrl,
-                        sendingReply: state._sendingReply,
-                        onDownloadAttachment: (attachment) =>
-                            state._downloadAttachment(attachment, domain),
-                      ),
+        child: rightPaneContent(),
       );
     }
 
@@ -243,17 +228,41 @@ class _MailConsoleView extends StatelessWidget {
       children: [
         leftColumn(),
         Expanded(
-          child: state._showFooterManager
-              ? _FooterManagerPanel(state: state)
-              : Row(
-                  children: [
-                    middleColumn(),
-                    Container(
-                      width: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
+          child: state._showFooterManager ||
+                  state._showTemplateManager ||
+                  state._showCompose
+              ? FolderSectionCard(
+                  label: state._showCompose
+                      ? l.mailComposeTitle
+                      : state._showFooterManager
+                          ? l.mailFooterCreateCta
+                          : 'Templates',
+                  leftTabOffset: 0,
+                  child: rightPaneContent(),
+                )
+              : FolderSectionCard(
+                  label:
+                      '${l.mailConsoleTitle} · ${_folderLabel(state._folder, l)}',
+                  leftTabOffset: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 15),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        middleColumn(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: VerticalDivider(
+                            width: 1,
+                            thickness: 1,
+                            color: cs.outlineVariant.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        rightColumn(),
+                      ],
                     ),
-                    rightColumn(),
-                  ],
+                  ),
                 ),
         ),
       ],

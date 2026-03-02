@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
 import 'package:hexora/a-models/receipt/receipt_line.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
-class ReceiptDetailCard extends StatelessWidget {
+class ReceiptDetailCard extends StatefulWidget {
   final Receipt receipt;
   final GroupClient client;
   final BillingProfile? billingProfile;
@@ -17,6 +19,8 @@ class ReceiptDetailCard extends StatelessWidget {
   final VoidCallback onDownloadPdf;
   final VoidCallback onIssue;
   final VoidCallback onDeleteDraft;
+  final VoidCallback onImportJson;
+  final Future<Uint8List?> Function() onLoadInlinePdf;
 
   const ReceiptDetailCard({
     super.key,
@@ -28,7 +32,53 @@ class ReceiptDetailCard extends StatelessWidget {
     required this.onDownloadPdf,
     required this.onIssue,
     required this.onDeleteDraft,
+    required this.onImportJson,
+    required this.onLoadInlinePdf,
   });
+
+  @override
+  State<ReceiptDetailCard> createState() => _ReceiptDetailCardState();
+}
+
+class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
+  bool _loadingPreview = false;
+  Uint8List? _previewBytes;
+  String? _previewError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInlinePreview();
+  }
+
+  @override
+  void didUpdateWidget(covariant ReceiptDetailCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.receipt.id != widget.receipt.id) {
+      _previewBytes = null;
+      _previewError = null;
+      _loadInlinePreview();
+    }
+  }
+
+  Future<void> _loadInlinePreview() async {
+    if (_loadingPreview) return;
+    setState(() {
+      _loadingPreview = true;
+      _previewError = null;
+    });
+    try {
+      final bytes = await widget.onLoadInlinePdf();
+      if (!mounted) return;
+      setState(() => _previewBytes = bytes);
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '').trim();
+      setState(() => _previewError = msg);
+    } finally {
+      if (mounted) setState(() => _loadingPreview = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,115 +86,188 @@ class ReceiptDetailCard extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    final status = (receipt.status ?? 'draft').toLowerCase();
+    final status = (widget.receipt.status ?? 'draft').toLowerCase();
     final issued = status.contains('issue');
     final isDraft = status.contains('draft') || status.isEmpty;
+    final statusLabel = issued ? l.statusIssued : l.statusDraft;
 
-    final number = (receipt.receiptNumber?.trim().isNotEmpty == true)
-        ? receipt.receiptNumber!.trim()
+    final number = (widget.receipt.receiptNumber?.trim().isNotEmpty == true)
+        ? widget.receipt.receiptNumber!.trim()
         : l.receiptDraftNumberPlaceholder;
 
     final fmt = DateFormat.yMMMd(l.localeName);
-    final issueLabel = receipt.issueDate == null
+    final issueLabel = widget.receipt.issueDate == null
         ? '-'
-        : fmt.format(receipt.issueDate!.toLocal());
+        : fmt.format(widget.receipt.issueDate!.toLocal());
 
-    final totalsTotal = receipt.total ??
-        receipt.lines.fold<num>(
+    final totalsTotal = widget.receipt.total ??
+        widget.receipt.lines.fold<num>(
           0,
           (sum, line) =>
               sum + ((line.total ?? (line.quantity * line.unitPrice))),
         );
-    final totalsSubtotal = receipt.subtotal ?? totalsTotal;
+    final totalsSubtotal = widget.receipt.subtotal ?? totalsTotal;
 
     return Card(
+      color: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    number,
-                    style: t.titleLarge.copyWith(fontWeight: FontWeight.w900),
-                  ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.35),
                 ),
-                _StatusChip(status: status),
-              ],
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          number,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.titleLarge.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ),
+                      _StatusChip(
+                        issued: issued,
+                        label: statusLabel,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 6,
+                    children: [
+                      _HeaderMetaChip(
+                        icon: Icons.person_outline,
+                        text: widget.client.name,
+                      ),
+                      _HeaderMetaChip(
+                        icon: Icons.event_outlined,
+                        text: issueLabel,
+                      ),
+                      _HeaderMetaChip(
+                        icon: Icons.format_list_numbered,
+                        text:
+                            '${l.receiptLinesTitle}: ${widget.receipt.lines.length}',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _InfoBox(
-                    title: l.invoiceFromLabel,
-                    value: (receipt.issuerSnapshot?.legalName ??
-                                billingProfile?.legalName ??
-                                '')
-                            .trim()
-                            .isEmpty
-                        ? l.billingProfileEmpty
-                        : (receipt.issuerSnapshot?.legalName ??
-                                billingProfile?.legalName ??
-                                '')
-                            .trim(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _InfoBox(
-                    title: l.invoiceBillToLabel,
-                    value: client.name,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _InfoBox(
-                    title: l.receiptIssueDateLabel,
-                    value: issueLabel,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _InfoBox(
-                    title: l.receiptLinesTitle,
-                    value: '${receipt.lines.length}',
-                  ),
-                ),
-              ],
-            ),
-            if ((receipt.notes ?? '').trim().isNotEmpty) ...[
+            if ((widget.receipt.notes ?? '').trim().isNotEmpty) ...[
               const SizedBox(height: 12),
-              _InfoBox(title: l.invoiceNotesLabel, value: receipt.notes!.trim()),
+              _InfoBox(
+                  title: l.invoiceNotesLabel,
+                  value: widget.receipt.notes!.trim()),
             ],
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l.receiptLinesTitle,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+            const SizedBox(height: 12),
+            if (_loadingPreview)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 ),
-                FilledButton.tonalIcon(
-                  onPressed: onPreviewPdf,
-                  icon: const Icon(Icons.picture_as_pdf_outlined),
-                  label: Text(l.preview),
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                  ),
+              )
+            else if (_previewBytes != null)
+              PdfInlinePreview(
+                bytes: _previewBytes!,
+                height: 340,
+              )
+            else if ((_previewError ?? '').trim().isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: cs.error.withValues(alpha: 0.45)),
                 ),
-              ],
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf_outlined, color: cs.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _previewError!,
+                        style: TextStyle(color: cs.error),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l.tryAgain,
+                      onPressed: _loadInlinePreview,
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 20,
+                    color: cs.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l.receiptLinesTitle,
+                      style: t.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: widget.onPreviewPdf,
+                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                    label: Text(l.preview),
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
-            _LinesTable(lines: receipt.lines),
+            _LinesTable(lines: widget.receipt.lines),
             const SizedBox(height: 12),
             const Divider(height: 1),
             const SizedBox(height: 12),
@@ -152,49 +275,149 @@ class ReceiptDetailCard extends StatelessWidget {
               subtotal: totalsSubtotal,
               total: totalsTotal,
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                if (isDraft) ...[
-                  OutlinedButton.icon(
-                    onPressed: onEdit,
-                    icon: const Icon(Icons.edit_outlined),
-                    label: Text(l.edit),
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  FilledButton.icon(
-                    onPressed: onIssue,
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: Text(l.receiptIssueCta),
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: l.delete,
-                    onPressed: onDeleteDraft,
-                    icon: const Icon(Icons.delete_outline),
-                    color: cs.onSurfaceVariant,
-                  ),
-                ] else ...[
-                  FilledButton.tonalIcon(
-                    onPressed: onDownloadPdf,
-                    icon: const Icon(Icons.download_outlined),
-                    label: Text(l.download),
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                  const Spacer(),
-                  _SmallHint(
-                    text: issued ? l.receiptLockedHint : l.receiptLockedHint,
-                  ),
-                ],
-              ],
+            const SizedBox(height: 20),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compactActions = constraints.maxWidth < 560;
+                if (isDraft && compactActions) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: widget.onEdit,
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            label: Text(l.edit),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                            ),
+                          ),
+                          FilledButton.icon(
+                            onPressed: widget.onIssue,
+                            icon: const Icon(Icons.check_circle_outline,
+                                size: 18),
+                            label: Text(l.receiptIssueCta),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: widget.onImportJson,
+                            icon: const Icon(Icons.data_object_outlined,
+                                size: 18),
+                            label: const Text('Import JSON'),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          tooltip: l.delete,
+                          onPressed: widget.onDeleteDraft,
+                          icon: const Icon(Icons.delete_outline, size: 22),
+                          color: cs.error.withValues(alpha: 0.8),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    if (isDraft) ...[
+                      OutlinedButton.icon(
+                        onPressed: widget.onEdit,
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: Text(l.edit),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: widget.onIssue,
+                        icon: const Icon(Icons.check_circle_outline, size: 18),
+                        label: Text(l.receiptIssueCta),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: widget.onImportJson,
+                        icon: const Icon(Icons.data_object_outlined, size: 18),
+                        label: const Text('Import JSON'),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 1,
+                        height: 24,
+                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                        color: cs.outlineVariant.withValues(alpha: 0.3),
+                      ),
+                      IconButton(
+                        tooltip: l.delete,
+                        onPressed: widget.onDeleteDraft,
+                        icon: const Icon(Icons.delete_outline, size: 22),
+                        color: cs.error.withValues(alpha: 0.8),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ] else ...[
+                      FilledButton.tonalIcon(
+                        onPressed: widget.onDownloadPdf,
+                        icon: const Icon(Icons.download_outlined, size: 18),
+                        label: Text(l.download),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      _SmallHint(
+                        text:
+                            issued ? l.receiptLockedHint : l.receiptLockedHint,
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -222,29 +445,83 @@ class _SmallHint extends StatelessWidget {
 }
 
 class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
+  final bool issued;
+  final String label;
+  const _StatusChip({
+    required this.issued,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final normalized = status.toLowerCase();
-    final issued = normalized.contains('issue');
 
-    final bg = issued ? cs.secondaryContainer : cs.surfaceContainerHighest;
+    final bg = issued
+        ? cs.secondaryContainer
+        : cs.surfaceContainerHighest.withValues(alpha: 0.4);
     final fg = issued ? cs.onSecondaryContainer : cs.onSurfaceVariant;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: issued ? 0.25 : 0.3),
+          width: 1,
+        ),
       ),
       child: Text(
-        normalized.isEmpty ? 'draft' : normalized,
-        style: t.bodySmall.copyWith(color: fg, fontWeight: FontWeight.w800),
+        label,
+        style: t.bodyMedium.copyWith(
+          color: fg,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderMetaChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _HeaderMetaChip({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: cs.onSurfaceVariant),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodySmall.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -262,11 +539,14 @@ class _InfoBox extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.25),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,13 +555,17 @@ class _InfoBox extends StatelessWidget {
             title,
             style: t.bodySmall.copyWith(
               color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             value.trim().isEmpty ? '-' : value.trim(),
-            style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+            style: t.bodyMedium.copyWith(
+              fontWeight: FontWeight.w800,
+              color: cs.onSurface,
+            ),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
@@ -318,22 +602,44 @@ class _LinesTable extends StatelessWidget {
 
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(flex: 3, child: Text(l.lineDescription, style: headerStyle)),
-            Expanded(child: Text(l.lineQuantity, style: headerStyle, textAlign: TextAlign.right)),
-            Expanded(child: Text(l.lineUnitPrice, style: headerStyle, textAlign: TextAlign.right)),
-            Expanded(child: Text(l.receiptLineTotalLabel, style: headerStyle, textAlign: TextAlign.right)),
-          ],
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                  flex: 3, child: Text(l.lineDescription, style: headerStyle)),
+              Expanded(
+                  child: Text(l.lineQuantity,
+                      style: headerStyle, textAlign: TextAlign.right)),
+              Expanded(
+                  child: Text(l.lineUnitPrice,
+                      style: headerStyle, textAlign: TextAlign.right)),
+              Expanded(
+                  child: Text(l.receiptLineTotalLabel,
+                      style: headerStyle, textAlign: TextAlign.right)),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         ...lines.map((line) {
           final desc = line.description.trim();
           final qty = line.quantity;
           final unit = line.unitPrice;
           final total = line.total ?? (qty * unit);
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.2),
+              ),
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -342,20 +648,29 @@ class _LinesTable extends StatelessWidget {
                     desc.isEmpty ? '—' : desc,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                    style: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: cs.onSurface,
+                    ),
                   ),
                 ),
                 Expanded(
                   child: Text(
                     NumberFormat.compact().format(qty),
-                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
                     textAlign: TextAlign.right,
                   ),
                 ),
                 Expanded(
                   child: Text(
                     NumberFormat.compactCurrency(name: '').format(unit),
-                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
                     textAlign: TextAlign.right,
                   ),
                 ),
@@ -364,7 +679,7 @@ class _LinesTable extends StatelessWidget {
                     NumberFormat.compactCurrency(name: '').format(total),
                     style: t.bodySmall.copyWith(
                       color: cs.onSurface,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                     ),
                     textAlign: TextAlign.right,
                   ),

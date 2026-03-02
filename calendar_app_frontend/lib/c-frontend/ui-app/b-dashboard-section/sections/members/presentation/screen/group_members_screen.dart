@@ -103,7 +103,7 @@ class GroupMembersScreen extends StatelessWidget {
                 children: [
                   if (vm.isLoading) const LinearProgressIndicator(minHeight: 2),
 
-                  // 🔹 Shared information header (sits above TabBarView)
+                  // ðŸ”¹ Shared information header (sits above TabBarView)
                   InfoHeader(
                     title: l.membersTitle,
                     subtitle: l.membersHelperText,

@@ -1,9 +1,9 @@
 import 'dart:convert';
 
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/exception.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/notification/utils/result.dart';
-import 'package:http/http.dart' as http;
 
 import '../../a-models/notification_model/notification_user.dart'; // Update this import based on your file structure
 
@@ -11,7 +11,7 @@ class NotificationApiClient {
   final String baseUrl = '${ApiConstants.baseUrl}/notifications';
 
   Future<List<NotificationUser>> getAllNotifications() async {
-    final response = await http.get(Uri.parse('$baseUrl/'));
+    final response = await AuthenticatedHttpClient.get(Uri.parse('$baseUrl/'));
     if (response.statusCode == 200) {
       final List<dynamic> jsonData = jsonDecode(response.body);
       return jsonData
@@ -25,12 +25,12 @@ class NotificationApiClient {
   Future<List<NotificationUser>> getNotificationsForUser(
       String username) async {
     final url = Uri.parse('$baseUrl/user/$username');
-    print('📡 GET: $url');
+    print('ðŸ“¡ GET: $url');
 
-    final response = await http.get(url);
+    final response = await AuthenticatedHttpClient.get(url);
 
-    print('📬 Status: ${response.statusCode}');
-    print('📦 Body: ${response.body}');
+    print('ðŸ“¬ Status: ${response.statusCode}');
+    print('ðŸ“¦ Body: ${response.body}');
 
     if (response.statusCode == 200) {
       final body = response.body;
@@ -53,7 +53,7 @@ class NotificationApiClient {
   Future<List<NotificationUser>> getNotificationsForGroup(
       String groupId) async {
     final url = Uri.parse('$baseUrl/group/$groupId');
-    final response = await http.get(url);
+    final response = await AuthenticatedHttpClient.get(url);
 
     if (response.statusCode == 200) {
       final List<dynamic> jsonData = jsonDecode(response.body);
@@ -71,7 +71,7 @@ class NotificationApiClient {
     NotificationUser notification,
   ) async {
     try {
-      final response = await http.post(
+      final response = await AuthenticatedHttpClient.post(
         Uri.parse('$baseUrl/'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
@@ -108,9 +108,9 @@ class NotificationApiClient {
   }
 
   Future<GetNotifResult> getNotificationById(String id) async {
-    final res = await http.get(Uri.parse('$baseUrl/$id'));
-    print('🐛 status=${res.statusCode}');
-    print('📦 body=${res.body}');
+    final res = await AuthenticatedHttpClient.get(Uri.parse('$baseUrl/$id'));
+    print('ðŸ› status=${res.statusCode}');
+    print('ðŸ“¦ body=${res.body}');
 
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body);
@@ -126,7 +126,7 @@ class NotificationApiClient {
   Future<NotificationUser> updateNotification(
     NotificationUser notification,
   ) async {
-    final response = await http.put(
+    final response = await AuthenticatedHttpClient.put(
       Uri.parse('$baseUrl/${notification.id}'), // Use notification's id
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
@@ -147,7 +147,7 @@ class NotificationApiClient {
   /// DELETE /notifications  -> removes all notifications for the authenticated user
   Future<void> deleteAllMine() async {
     final url = Uri.parse(baseUrl); // no trailing slash needed
-    final response = await http.delete(url);
+    final response = await AuthenticatedHttpClient.delete(url);
 
     // Backend returns 200 or 204; accept both.
     if (response.statusCode != 200 && response.statusCode != 204) {
@@ -157,7 +157,8 @@ class NotificationApiClient {
   }
 
   Future<bool> deleteNotification(String id) async {
-    final response = await http.delete(Uri.parse('$baseUrl/$id'));
+    final response =
+        await AuthenticatedHttpClient.delete(Uri.parse('$baseUrl/$id'));
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Failed to delete notification');
     }

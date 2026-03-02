@@ -53,130 +53,162 @@ class StatementsHistoryEntries extends StatelessWidget {
             .ceil()
             .clamp(1, 9999);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.table_chart_outlined),
-                const SizedBox(width: 8),
-                Text(l.statementsBatchEntries, style: t.titleLarge),
-                const Spacer(),
-                if (controller.selectedBatchId != null)
-                  Text(
-                    l.statementsBatchChip(controller.selectedBatchId!),
-                    style: t.bodySmall,
+    final inputPadding = const EdgeInsets.symmetric(horizontal: 8, vertical: 6);
+    final inputStyle = t.bodySmall;
+
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.table_chart_outlined, size: 16, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                l.statementsBatchEntries,
+                style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const Spacer(),
+              if (controller.selectedBatchId != null)
+                Text(
+                  l.statementsBatchChip(controller.selectedBatchId!),
+                  style: t.caption.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 10,
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SizedBox(
-                  width: 120,
-                  child: TextField(
-                    controller: yearController,
-                    decoration: InputDecoration(
-                      labelText: l.statementsFilterYear,
-                      hintText: '2025',
-                      isDense: true,
-                      border: const OutlineInputBorder(),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 100,
+                child: TextField(
+                  controller: yearController,
+                  style: inputStyle,
+                  decoration: InputDecoration(
+                    labelText: l.statementsFilterYear,
+                    hintText: '2025',
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    contentPadding: inputPadding,
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  controller: fromController,
+                  style: inputStyle,
+                  decoration: InputDecoration(
+                    labelText: l.statementsFilterFrom,
+                    hintText: 'YYYY-MM-DD',
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    contentPadding: inputPadding,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  controller: toController,
+                  style: inputStyle,
+                  decoration: InputDecoration(
+                    labelText: l.statementsFilterTo,
+                    hintText: 'YYYY-MM-DD',
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    contentPadding: inputPadding,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 100,
+                child: DropdownButtonFormField<int>(
+                  initialValue: controller.entriesSize,
+                  style: inputStyle,
+                  decoration: InputDecoration(
+                    labelText: l.statementsPageSize,
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    contentPadding: inputPadding,
+                  ),
+                  items: sizeOptions
+                      .map(
+                        (v) => DropdownMenuItem(
+                          value: v,
+                          child: Text(v.toString()),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    if (v == null || controller.selectedBatchId == null) return;
+                    controller.fetchBatchEntries(controller.selectedBatchId!, page: 1, size: v);
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 110,
+                child: DropdownButtonFormField<String>(
+                  initialValue: controller.entriesOrder,
+                  style: inputStyle,
+                  decoration: InputDecoration(
+                    labelText: 'Orden',
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    contentPadding: inputPadding,
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'source',
+                      child: Text('Origen'),
                     ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                SizedBox(
-                  width: 140,
-                  child: TextField(
-                    controller: fromController,
-                    decoration: InputDecoration(
-                      labelText: l.statementsFilterFrom,
-                      hintText: 'YYYY-MM-DD',
-                      isDense: true,
-                      border: const OutlineInputBorder(),
+                    DropdownMenuItem(
+                      value: 'date',
+                      child: Text('Fecha'),
                     ),
-                  ),
+                  ],
+                  onChanged: (v) {
+                    if (v == null || controller.selectedBatchId == null) return;
+                    controller.fetchBatchEntries(
+                      controller.selectedBatchId!,
+                      page: 1,
+                      order: v,
+                    );
+                  },
                 ),
-                SizedBox(
-                  width: 140,
-                  child: TextField(
-                    controller: toController,
-                    decoration: InputDecoration(
-                      labelText: l.statementsFilterTo,
-                      hintText: 'YYYY-MM-DD',
-                      isDense: true,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
+              ),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  textStyle: const TextStyle(fontSize: 11),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                SizedBox(
-                  width: 120,
-                  child: DropdownButtonFormField<int>(
-                    initialValue: controller.entriesSize,
-                    decoration: InputDecoration(
-                      labelText: l.statementsPageSize,
-                      isDense: true,
-                      border: const OutlineInputBorder(),
-                    ),
-                    items: sizeOptions
-                        .map(
-                          (v) => DropdownMenuItem(
-                            value: v,
-                            child: Text(v.toString()),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) {
-                      if (v == null || controller.selectedBatchId == null) return;
-                      controller.fetchBatchEntries(controller.selectedBatchId!, page: 1, size: v);
-                    },
-                  ),
+                onPressed: controller.selectedBatchId == null ? null : onApplyFilters,
+                child: Text(l.statementsApplyFilters),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  textStyle: const TextStyle(fontSize: 11),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                SizedBox(
-                  width: 140,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: controller.entriesOrder,
-                    decoration: const InputDecoration(
-                      labelText: 'Orden',
-                      isDense: true,
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'source',
-                        child: Text('Origen'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'date',
-                        child: Text('Fecha'),
-                      ),
-                    ],
-                    onChanged: (v) {
-                      if (v == null || controller.selectedBatchId == null) return;
-                      controller.fetchBatchEntries(
-                        controller.selectedBatchId!,
-                        page: 1,
-                        order: v,
-                      );
-                    },
-                  ),
-                ),
-                FilledButton.tonal(
-                  onPressed: controller.selectedBatchId == null ? null : onApplyFilters,
-                  child: Text(l.statementsApplyFilters),
-                ),
-                TextButton(
-                  onPressed: controller.selectedBatchId == null ? null : onClearFilters,
-                  child: Text(l.statementsClearFilters),
-                ),
-              ],
-            ),
+                onPressed: controller.selectedBatchId == null ? null : onClearFilters,
+                child: Text(l.statementsClearFilters),
+              ),
+            ],
+          ),
             const SizedBox(height: 8),
             Card(
               color: cs.surfaceContainerHighest.withOpacity(0.4),
@@ -530,7 +562,6 @@ class StatementsHistoryEntries extends StatelessWidget {
               ),
           ],
         ),
-      ),
-    );
+      );
   }
 }

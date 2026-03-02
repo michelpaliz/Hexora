@@ -1,4 +1,4 @@
-// Microsoft Visual C++ generated resource script.
+﻿// Microsoft Visual C++ generated resource script.
 //
 #pragma code_page(65001)
 #include "resource.h"
@@ -93,7 +93,7 @@ BEGIN
             VALUE "FileDescription", "hexora" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "hexora" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.fastezcode All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 com.hexora All rights reserved." "\0"
             VALUE "OriginalFilename", "hexora.exe" "\0"
             VALUE "ProductName", "hexora" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
@@ -119,3 +119,4 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
+

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:hexora/a-models/invoice/invoice.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -29,12 +29,32 @@ class InvoicesApiException implements Exception {
 class InvoicesApi {
   final String _base = '${ApiConstants.baseUrl}/invoices';
 
-  Future<Map<String, String>> _headers() async => {
+  Map<String, String> _headers() => {
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer ${await TokenService.loadToken()}',
       };
 
   Uri _u([String path = '']) => Uri.parse('$_base$path');
+
+  Uri buildMarkSentUri(String invoiceId) => _u('/$invoiceId/mark-sent');
+  Uri buildMarkUnsentUri(String invoiceId) => _u('/$invoiceId/mark-unsent');
+
+  Uri buildListByGroupUri(
+    String groupId, {
+    String? status,
+    String? seriesId,
+    String? sortBy,
+    String? sortDir,
+  }) {
+    final query = <String, String>{
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (seriesId != null && seriesId.isNotEmpty) 'seriesId': seriesId,
+      if (sortBy != null && sortBy.isNotEmpty) 'sortBy': sortBy,
+      if (sortDir != null && sortDir.isNotEmpty) 'sortDir': sortDir,
+    };
+    return query.isEmpty
+        ? _u('/group/$groupId')
+        : _u('/group/$groupId?${Uri(queryParameters: query).query}');
+  }
 
   T _decode<T>(http.Response r, T Function(dynamic) map) {
     final ok = r.statusCode >= 200 && r.statusCode < 300;
@@ -115,9 +135,9 @@ class InvoicesApi {
   }
 
   Future<Invoice> create(Invoice invoice) async {
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       _u(),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(invoice.toCreatePayload()),
     );
     return _decode<Invoice>(r, (j) {
@@ -133,62 +153,34 @@ class InvoicesApi {
     String? sortBy,
     String? sortDir,
   }) async {
-    final query = <String, String>{
-      if (status != null && status.isNotEmpty) 'status': status,
-      if (seriesId != null && seriesId.isNotEmpty) 'seriesId': seriesId,
-      if (sortBy != null && sortBy.isNotEmpty) 'sortBy': sortBy,
-      if (sortDir != null && sortDir.isNotEmpty) 'sortDir': sortDir,
-    };
-    final uri = query.isEmpty
-        ? _u('/group/$groupId')
-        : _u('/group/$groupId?${Uri(queryParameters: query).query}');
-    final r = await http.get(uri, headers: await _headers());
+    final uri = buildListByGroupUri(
+      groupId,
+      status: status,
+      seriesId: seriesId,
+      sortBy: sortBy,
+      sortDir: sortDir,
+    );
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decode<List<Invoice>>(r, (j) {
       if (j is! List) throw Exception('Unexpected invoices payload');
-      final items =
-          j.whereType<Map<String, dynamic>>().map(Invoice.fromJson).toList();
-
-      int? numberValue(Invoice inv) {
-        final raw = inv.invoiceNumber.trim();
-        if (raw.isEmpty) return null;
-        final matches = RegExp(r'\d+').allMatches(raw).toList();
-        if (matches.isEmpty) return null;
-        return int.tryParse(matches.last.group(0) ?? '');
-      }
-
-      int compareNumbers(Invoice a, Invoice b) {
-        final an = numberValue(a);
-        final bn = numberValue(b);
-        if (an == null && bn == null) return 0;
-        if (an == null) return 1;
-        if (bn == null) return -1;
-        return an.compareTo(bn);
-      }
-
-      int compareDates(Invoice a, Invoice b) {
-        final aDate = a.registeredAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bDate = b.registeredAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return bDate.compareTo(aDate);
-      }
-
-      if ((sortBy ?? '').toLowerCase() == 'number') {
-        final asc = (sortDir ?? '').toLowerCase() == 'asc';
-        items.sort((a, b) => asc ? compareNumbers(a, b) : compareNumbers(b, a));
-      } else {
-        items.sort(compareDates);
-      }
-      return items;
+      return j
+          .whereType<Map<String, dynamic>>()
+          .map(Invoice.fromJson)
+          .toList(growable: false);
     });
   }
 
   Future<Invoice> getById(String id) async {
-    final r = await http.get(_u('/$id'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
     return _decode<Invoice>(r, (j) => Invoice.fromJson(j));
   }
 
   /// POST /invoices/:id/issue  -> locks invoice, assigns number/issueDate/status
   Future<Invoice> issue(String id) async {
-    final r = await http.post(_u('/$id/issue'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.post(
+      _u('/$id/issue'),
+      headers: _headers(),
+    );
     return _decode<Invoice>(r, (j) {
       if (j is Map<String, dynamic>) return Invoice.fromJson(j);
       throw Exception('Unexpected invoice payload');
@@ -197,9 +189,9 @@ class InvoicesApi {
 
   /// GET /invoices/:id/pdf/preview  (inline PDF for drafts/issued)
   Future<http.Response> previewPdf(String id) async {
-    final r = await http.get(
+    final r = await AuthenticatedHttpClient.get(
       _u('/$id/pdf/preview'),
-      headers: await _headers(),
+      headers: _headers(),
     );
     if (r.statusCode >= 200 && r.statusCode < 300) return r;
     final body = r.body.trim();
@@ -210,9 +202,9 @@ class InvoicesApi {
 
   /// GET /invoices/:id/pdf  (attachment PDF for issued)
   Future<http.Response> downloadPdf(String id) async {
-    final r = await http.get(
+    final r = await AuthenticatedHttpClient.get(
       _u('/$id/pdf'),
-      headers: await _headers(),
+      headers: _headers(),
     );
     if (r.statusCode >= 200 && r.statusCode < 300) return r;
     throw Exception(
@@ -223,9 +215,9 @@ class InvoicesApi {
   Future<http.Response> downloadAllPdfsZip(String groupId) async {
     final uri = Uri.parse('$_base/pdf/all')
         .replace(queryParameters: {'groupId': groupId});
-    final headers = await _headers();
+    final headers = _headers();
     headers['Accept'] = 'application/zip';
-    final r = await http.get(uri, headers: headers);
+    final r = await AuthenticatedHttpClient.get(uri, headers: headers);
     if (r.statusCode >= 200 && r.statusCode < 300) return r;
     String msg = r.reasonPhrase ?? 'Failed to download ZIP';
     if (r.body.isNotEmpty) {
@@ -277,9 +269,9 @@ class InvoicesApi {
     if (payload.isEmpty) {
       throw Exception('No billing fields provided');
     }
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       uri,
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(payload),
     );
     return _decode<Invoice>(r, (j) {
@@ -290,10 +282,42 @@ class InvoicesApi {
 
   Future<Invoice> updateDraft(String id, Map<String, dynamic> payload) async {
     final uri = _u('/$id/draft');
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       uri,
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(payload),
+    );
+    return _decode<Invoice>(r, (j) {
+      if (j is Map<String, dynamic>) return Invoice.fromJson(j);
+      throw Exception('Unexpected invoice payload');
+    });
+  }
+
+  Future<Invoice> markInvoiceSent(
+    String id, {
+    String? channel,
+    DateTime? sentAt,
+  }) async {
+    final payload = <String, dynamic>{
+      if (channel != null && channel.trim().isNotEmpty) 'channel': channel,
+      if (sentAt != null) 'sentAt': sentAt.toUtc().toIso8601String(),
+    };
+    final r = await AuthenticatedHttpClient.post(
+      buildMarkSentUri(id),
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decode<Invoice>(r, (j) {
+      if (j is Map<String, dynamic>) return Invoice.fromJson(j);
+      throw Exception('Unexpected invoice payload');
+    });
+  }
+
+  Future<Invoice> markInvoiceUnsent(String id) async {
+    final r = await AuthenticatedHttpClient.post(
+      buildMarkUnsentUri(id),
+      headers: _headers(),
+      body: jsonEncode(const <String, dynamic>{}),
     );
     return _decode<Invoice>(r, (j) {
       if (j is Map<String, dynamic>) return Invoice.fromJson(j);
@@ -304,7 +328,7 @@ class InvoicesApi {
   /// DELETE /invoices/:id  (useful for drafts cleanup, if supported by backend)
   Future<void> delete(String id) async {
     final uri = _u('/$id');
-    final r = await http.delete(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.delete(uri, headers: _headers());
     if (r.statusCode >= 200 && r.statusCode < 300) return;
     String msg = r.reasonPhrase ?? 'Failed to delete invoice';
     if (r.body.isNotEmpty) {

@@ -68,7 +68,7 @@ LegacyRecurrenceRule legacyRuleFromMap(Map<String, dynamic> map) {
         ?.map((d) => CustomDayOfWeek.fromString(d.toString()))
         .toList();
 
-    // 👇 handle either "id" or "_id"
+    // ðŸ‘‡ handle either "id" or "_id"
     final ruleId = map['id'] ?? map['_id'];
 
     return LegacyRecurrenceRule(

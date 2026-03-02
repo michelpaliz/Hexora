@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'history/statements_history_entries.dart';
 import 'history/statements_history_list.dart';
 import 'statements_controller.dart';
+import '../widgets/folder_section_card.dart';
 
 class StatementsHistoryTab extends StatefulWidget {
   const StatementsHistoryTab({super.key});
@@ -21,6 +22,7 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
   final TextEditingController _toController = TextEditingController();
   final List<int> _sizeOptions = const [50, 100, 200];
   final Set<String> _expandedTech = <String>{};
+  bool _showEntriesScreen = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -90,18 +92,27 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
     );
   }
 
+  void _openEntriesScreen() {
+    if (!mounted) return;
+    setState(() => _showEntriesScreen = true);
+  }
+
+  void _closeEntriesScreen() {
+    if (!mounted) return;
+    setState(() => _showEntriesScreen = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final s = context.watch<StatementsController>();
+    final l = AppLocalizations.of(context)!;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 1200;
-        final listWidth = (constraints.maxWidth * 0.42).clamp(380.0, 520.0);
-        if (!wide) {
+        if (!_showEntriesScreen) {
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(10),
             children: [
               StatementsHistoryList(
                 controller: s,
@@ -116,18 +127,8 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
                   });
                 },
                 onCopy: (value) => _copy(context, value),
-                showHeader: true,
-              ),
-              const SizedBox(height: 16),
-              StatementsHistoryEntries(
-                controller: s,
-                yearController: _yearController,
-                fromController: _fromController,
-                toController: _toController,
-                sizeOptions: _sizeOptions,
-                onApplyFilters: () => _applyFilters(s),
-                onClearFilters: () => _clearFilters(s),
-                parseYear: _parseYear,
+                showHeader: false,
+                onOpenEntries: _openEntriesScreen,
               ),
               const SizedBox(height: 80),
             ],
@@ -135,43 +136,33 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
         }
 
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(10),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: listWidth.toDouble(),
-                  child: StatementsHistoryList(
-                    controller: s,
-                    expandedTech: _expandedTech,
-                    onToggleTech: (id) {
-                      setState(() {
-                        if (_expandedTech.contains(id)) {
-                          _expandedTech.remove(id);
-                        } else {
-                          _expandedTech.add(id);
-                        }
-                      });
-                    },
-                    onCopy: (value) => _copy(context, value),
-                    showHeader: true,
-                  ),
+            const SizedBox(height: 10),
+            FolderSectionCard(
+              label: l.statementsBatchEntries,
+              leftTabOffset: 0,
+              leadingAction: IconButton(
+                tooltip: l.close,
+                onPressed: _closeEntriesScreen,
+                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: StatementsHistoryEntries(
+                  controller: s,
+                  yearController: _yearController,
+                  fromController: _fromController,
+                  toController: _toController,
+                  sizeOptions: _sizeOptions,
+                  onApplyFilters: () => _applyFilters(s),
+                  onClearFilters: () => _clearFilters(s),
+                  parseYear: _parseYear,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: StatementsHistoryEntries(
-                    controller: s,
-                    yearController: _yearController,
-                    fromController: _fromController,
-                    toController: _toController,
-                    sizeOptions: _sizeOptions,
-                    onApplyFilters: () => _applyFilters(s),
-                    onClearFilters: () => _clearFilters(s),
-                    parseYear: _parseYear,
-                  ),
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 80),
           ],

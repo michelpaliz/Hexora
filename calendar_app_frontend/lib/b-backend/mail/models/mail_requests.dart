@@ -25,6 +25,7 @@ class MailOutgoingAttachment {
 }
 
 class MailSendRequest {
+  final String? groupId;
   final List<String> to;
   final List<String> cc;
   final List<String> bcc;
@@ -33,11 +34,16 @@ class MailSendRequest {
   final String? htmlBody;
   final List<MailOutgoingAttachment> attachments;
   final List<String> invoiceIds;
+  final List<String> presupuestoIds;
+  final List<String> receiptIds;
   final bool? attachInvoicePdf;
+  final bool? attachPresupuestoPdf;
+  final bool? attachReceiptPdf;
   final bool? includeInvoiceLinks;
   final bool? applyDefaultFooter;
 
   const MailSendRequest({
+    this.groupId,
     required this.to,
     this.cc = const [],
     this.bcc = const [],
@@ -46,13 +52,18 @@ class MailSendRequest {
     this.htmlBody,
     this.attachments = const [],
     this.invoiceIds = const [],
+    this.presupuestoIds = const [],
+    this.receiptIds = const [],
     this.attachInvoicePdf,
+    this.attachPresupuestoPdf,
+    this.attachReceiptPdf,
     this.includeInvoiceLinks,
     this.applyDefaultFooter,
   });
 
   Map<String, dynamic> toJson() {
     return {
+      if (groupId != null && groupId!.isNotEmpty) 'groupId': groupId,
       'to': to,
       if (cc.isNotEmpty) 'cc': cc,
       if (bcc.isNotEmpty) 'bcc': bcc,
@@ -62,11 +73,15 @@ class MailSendRequest {
       if (attachments.isNotEmpty)
         'attachments': attachments.map((e) => e.toJson()).toList(),
       if (invoiceIds.isNotEmpty) 'invoiceIds': invoiceIds,
+      if (presupuestoIds.isNotEmpty) 'presupuestoIds': presupuestoIds,
+      if (receiptIds.isNotEmpty) 'receiptIds': receiptIds,
       if (attachInvoicePdf != null) 'attachInvoicePdf': attachInvoicePdf,
+      if (attachPresupuestoPdf != null)
+        'attachPresupuestoPdf': attachPresupuestoPdf,
+      if (attachReceiptPdf != null) 'attachReceiptPdf': attachReceiptPdf,
       if (includeInvoiceLinks != null)
         'includeInvoiceLinks': includeInvoiceLinks,
-      if (applyDefaultFooter != null)
-        'applyDefaultFooter': applyDefaultFooter,
+      if (applyDefaultFooter != null) 'applyDefaultFooter': applyDefaultFooter,
     };
   }
 }

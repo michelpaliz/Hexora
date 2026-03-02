@@ -13,16 +13,9 @@ Color getBackgroundColor(BuildContext context) =>
         : Colors.white;
 
 BoxDecoration buildContainerDecoration(Color backgroundColor) => BoxDecoration(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(10),
       color: backgroundColor,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          blurRadius: 10,
-          spreadRadius: 2,
-          offset: Offset(0, 4),
-        ),
-      ],
+      boxShadow: const [],
     );
 
 CalendarHeaderStyle buildHeaderStyle(double fontSize, Color textColor) =>
@@ -30,7 +23,7 @@ CalendarHeaderStyle buildHeaderStyle(double fontSize, Color textColor) =>
       textAlign: TextAlign.center,
       backgroundColor: Colors.transparent,
       textStyle: GoogleFonts.poppins(
-        fontSize: fontSize * 1.2,
+        fontSize: fontSize,
         fontWeight: FontWeight.w600,
         color: textColor,
       ),
@@ -39,7 +32,7 @@ CalendarHeaderStyle buildHeaderStyle(double fontSize, Color textColor) =>
 ViewHeaderStyle buildViewHeaderStyle(
         double fontSize, Color textColor, bool isDarkMode) =>
     ViewHeaderStyle(
-      backgroundColor: isDarkMode ? Colors.grey[850] : Colors.grey[100],
+      backgroundColor: Colors.transparent,
       dateTextStyle: GoogleFonts.poppins(fontSize: fontSize, color: textColor),
       dayTextStyle: GoogleFonts.poppins(
         fontSize: fontSize,
@@ -55,9 +48,9 @@ double responsiveMonthHeaderHeight(BuildContext context) {
   final portrait = MediaQuery.of(context).orientation == Orientation.portrait;
 
   // Scale with width; clamp to sane bounds; add a small tablet bump.
-  final base = size.width * (portrait ? 0.26 : 0.20);
-  final tabletBump = shortest >= 600 ? 24.0 : 0.0;
-  return base.clamp(140.0, 240.0) + tabletBump;
+  final base = size.width * (portrait ? 0.18 : 0.12);
+  final tabletBump = shortest >= 600 ? 8.0 : 0.0;
+  return base.clamp(80.0, 140.0) + tabletBump;
 }
 
 ScheduleViewSettings buildScheduleSettings(
@@ -66,7 +59,7 @@ ScheduleViewSettings buildScheduleSettings(
   double? monthHeaderHeight, // <-- new, optional
 }) =>
     ScheduleViewSettings(
-      appointmentItemHeight: 80,
+      appointmentItemHeight: 60,
       monthHeaderSettings: MonthHeaderSettings(
         monthFormat: 'MMMM yyyy',
         height: monthHeaderHeight ?? 60, // <-- use responsive value when passed
@@ -83,7 +76,7 @@ ScheduleViewSettings buildScheduleSettings(
 
 MonthViewSettings buildMonthSettings() => MonthViewSettings(
       showAgenda: true,
-      agendaItemHeight: 60,
+      agendaItemHeight: 48,
       dayFormat: 'EEE',
       appointmentDisplayMode: MonthAppointmentDisplayMode.none,
       appointmentDisplayCount: 4,

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:hexora/a-models/receipt/receipt.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -29,9 +29,8 @@ class ReceiptsApiException implements Exception {
 class ReceiptsApi {
   final String _base = '${ApiConstants.baseUrl}/receipts';
 
-  Future<Map<String, String>> _headers() async => {
+  Map<String, String> _headers() => {
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer ${await TokenService.loadToken()}',
       };
 
   Uri _u([String path = '']) => Uri.parse('$_base$path');
@@ -69,9 +68,9 @@ class ReceiptsApi {
   }
 
   Future<Receipt> create(Receipt receipt) async {
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       _u(),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(receipt.toCreatePayload()),
     );
     return _decode<Receipt>(r, (j) {
@@ -87,7 +86,7 @@ class ReceiptsApi {
     final params = <String, String>{'groupId': groupId};
     if (status != null && status.trim().isNotEmpty) params['status'] = status;
     final uri = _u().replace(queryParameters: params);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decode<List<Receipt>>(r, (j) {
       if (j is! List) throw Exception('Unexpected receipts payload');
       final items =
@@ -102,14 +101,14 @@ class ReceiptsApi {
   }
 
   Future<Receipt> getById(String id) async {
-    final r = await http.get(_u('/$id'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
     return _decode<Receipt>(r, (j) => Receipt.fromJson(j));
   }
 
   Future<Receipt> update(String id, Map<String, dynamic> payload) async {
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       _u('/$id'),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(payload),
     );
     return _decode<Receipt>(r, (j) {
@@ -120,7 +119,7 @@ class ReceiptsApi {
 
   Future<void> delete(String id) async {
     final uri = _u('/$id');
-    final r = await http.delete(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.delete(uri, headers: _headers());
     if (r.statusCode >= 200 && r.statusCode < 300) return;
 
     String msg = r.reasonPhrase ?? 'Failed to delete receipt';
@@ -155,7 +154,10 @@ class ReceiptsApi {
   }
 
   Future<Receipt> issue(String id) async {
-    final r = await http.post(_u('/$id/issue'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.post(
+      _u('/$id/issue'),
+      headers: _headers(),
+    );
     return _decode<Receipt>(r, (j) {
       if (j is Map<String, dynamic>) return Receipt.fromJson(j);
       throw Exception('Unexpected receipt payload');
@@ -163,17 +165,85 @@ class ReceiptsApi {
   }
 
   Future<http.Response> previewPdf(String id) async {
-    final r = await http.get(_u('/$id/pdf/preview'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(
+      _u('/$id/pdf/preview'),
+      headers: _headers(),
+    );
     if (r.statusCode >= 200 && r.statusCode < 300) return r;
-    throw Exception('Failed to preview PDF (${r.statusCode}): ${r.reasonPhrase}');
+    throw Exception(
+        'Failed to preview PDF (${r.statusCode}): ${r.reasonPhrase}');
   }
 
   Future<http.Response> downloadPdf(String id) async {
-    final r = await http.get(_u('/$id/pdf'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(
+      _u('/$id/pdf'),
+      headers: _headers(),
+    );
     if (r.statusCode >= 200 && r.statusCode < 300) return r;
     throw Exception(
       'Failed to download PDF (${r.statusCode}): ${r.reasonPhrase}',
     );
   }
-}
 
+  Future<Map<String, dynamic>> getImportJsonPromptTemplate(String id) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/$id/import-json/prompt-template'),
+      headers: _headers(),
+    );
+    return _decode<Map<String, dynamic>>(r, (j) {
+      if (j is Map<String, dynamic>) return j;
+      throw Exception('Unexpected receipt prompt-template payload');
+    });
+  }
+
+  Future<Map<String, dynamic>> importJson(
+    String id,
+    dynamic payload,
+  ) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u('/$id/import-json'),
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decode<Map<String, dynamic>>(r, (j) {
+      if (j is Map<String, dynamic>) return j;
+      throw Exception('Unexpected receipt import payload');
+    });
+  }
+
+  Future<Map<String, dynamic>> extractImageOpenAi({
+    required String id,
+    required List<int> bytes,
+    required String fileName,
+    String fieldName = 'image',
+  }) async {
+    final headers = await AuthenticatedHttpClient.authorizedHeaders(
+      includeJsonContentType: false,
+    );
+    final auth = headers['Authorization'] ?? '';
+    if (auth.trim().isEmpty) {
+      throw ReceiptsApiException(
+        statusCode: 401,
+        message: 'Not authenticated',
+        url: _u('/$id/extract-image'),
+        method: 'POST',
+        responseBody: null,
+        responseHeaders: null,
+      );
+    }
+
+    final req = http.MultipartRequest('POST', _u('/$id/extract-image'));
+    req.headers['Authorization'] = auth;
+    req.fields['method'] = 'openai';
+    req.files.add(
+      http.MultipartFile.fromBytes(fieldName, bytes, filename: fileName),
+    );
+
+    final streamed = await req.send();
+    final response = await http.Response.fromStream(streamed);
+    return _decode<Map<String, dynamic>>(response, (j) {
+      if (j is Map<String, dynamic>) return j;
+      throw Exception('Unexpected receipt extract payload');
+    });
+  }
+}

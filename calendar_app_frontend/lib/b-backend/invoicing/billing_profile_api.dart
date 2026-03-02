@@ -1,16 +1,15 @@
 import 'dart:convert';
 
 import 'package:hexora/a-models/invoice/billing_profile.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
 class BillingProfileApi {
   final String _base = '${ApiConstants.baseUrl}/billing-profiles';
 
-  Future<Map<String, String>> _headers() async => {
+  Map<String, String> _headers() => {
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer ${await TokenService.loadToken()}',
       };
 
   Uri _u([String path = '']) => Uri.parse('$_base$path');
@@ -47,16 +46,19 @@ class BillingProfileApi {
   }
 
   Future<BillingProfile> upsert(BillingProfile profile) async {
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       _u(),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(profile.toPayload()),
     );
     return _decode<BillingProfile>(r, (j) => BillingProfile.fromJson(j));
   }
 
   Future<BillingProfile?> getByGroup(String groupId) async {
-    final r = await http.get(_u('/group/$groupId'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(
+      _u('/group/$groupId'),
+      headers: _headers(),
+    );
     if (r.statusCode == 404) return null;
     return _decode<BillingProfile?>(r, (j) {
       if (j == null) return null;
@@ -69,9 +71,9 @@ class BillingProfileApi {
     required String groupId,
     required String logoUrl,
   }) async {
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       _u('/group/$groupId/logo'),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode({'logoUrl': logoUrl}),
     );
     return _decode<BillingProfile>(r, (j) {
@@ -85,9 +87,12 @@ class BillingProfileApi {
     required String filename,
     required List<int> bytes,
   }) async {
-    final token = await TokenService.loadToken();
     final r = http.MultipartRequest('POST', _logoUploadUri(groupId));
-    r.headers['Authorization'] = 'Bearer $token';
+    r.headers.addAll(
+      await AuthenticatedHttpClient.authorizedHeaders(
+        includeJsonContentType: false,
+      ),
+    );
     r.files.add(http.MultipartFile.fromBytes(
       'file',
       bytes,
@@ -105,9 +110,9 @@ class BillingProfileApi {
     required String groupId,
     required String website,
   }) async {
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       _u('/group/$groupId/website'),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode({'website': website}),
     );
     return _decode<BillingProfile>(r, (j) {

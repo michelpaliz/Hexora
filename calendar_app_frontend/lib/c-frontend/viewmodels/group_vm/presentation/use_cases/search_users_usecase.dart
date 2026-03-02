@@ -18,7 +18,7 @@ class SearchUsersUseCase {
     final q = query.trim();
     if (q.isEmpty) return [];
 
-    final token = auth.lastToken;
+    final token = await auth.getToken();
     final uri = Uri.parse(
       '$baseUrl/users/search?q=${Uri.encodeQueryComponent(q)}&limit=$limit',
     );

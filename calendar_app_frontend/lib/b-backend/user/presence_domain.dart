@@ -42,7 +42,7 @@ class PresenceDomain extends ChangeNotifier {
 
   /// Simpler update method with no role
   void updatePresenceList(List<dynamic> data) {
-    debugPrint("📥 updatePresenceList called with: ${data.length} users");
+    debugPrint("ðŸ“¥ updatePresenceList called with: ${data.length} users");
     _onlineUsers.clear();
 
     for (final user in data) {
@@ -61,7 +61,7 @@ class PresenceDomain extends ChangeNotifier {
       debugPrint("✅ Online user added: $id (${user['userName']})");
     }
 
-    debugPrint("🧠 Final online user IDs: ${_onlineUsers.keys.toList()}");
+    debugPrint("ðŸ§  Final online user IDs: ${_onlineUsers.keys.toList()}");
     notifyListeners();
   }
 
@@ -69,7 +69,7 @@ class PresenceDomain extends ChangeNotifier {
     for (final user in users) {
       final id = user.id.toString().trim();
       _knownUsers[id] = user;
-      debugPrint("🧠 Cached known user: $id (${user.userName})");
+      debugPrint("ðŸ§  Cached known user: $id (${user.userName})");
     }
     notifyListeners();
   }

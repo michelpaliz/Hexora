@@ -10,12 +10,20 @@ class _GroupInvoicesView extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
+    if (isMobile) return _InvoicesMobileView(state: state);
     final isWide = MediaQuery.of(context).size.width >= 980;
-    final showInlineEditor =
-        state._selectedMenu == 'invoice_editor' && state.widget.embedded && kIsWeb;
+    final showInlineEditor = state._selectedMenu == 'invoice_editor' &&
+        state.widget.embedded &&
+        kIsWeb;
+    final showInlineReceiptEditor = state._selectedMenu == 'receipt_editor' &&
+        state.widget.embedded &&
+        kIsWeb;
     final menu = state._selectedMenu == 'invoice_editor'
         ? state._menuBeforeInvoiceEditor
-        : state._selectedMenu;
+        : state._selectedMenu == 'receipt_editor'
+            ? state._menuBeforeReceiptEditor
+            : state._selectedMenu;
 
     Widget body;
     if (state._loading) {
@@ -33,539 +41,291 @@ class _GroupInvoicesView extends StatelessWidget {
           : state._drafts
               .where((inv) => inv.clientId == state._selectedClient!.id)
               .toList();
-      body = RefreshIndicator(
-        onRefresh: state._loadAll,
-        child: Row(
-          children: [
-            GroupInvoicesSideMenu(
-              group: state.widget.group,
-              billingProfile: state._billingProfile,
-              busyProfile: state._busyProfile,
-              businessExpanded: state._businessExpanded,
-              facturacionExpanded: state._facturacionExpanded,
-              gastosExpanded: state._gastosExpanded,
-              impuestosExpanded: state._impuestosExpanded,
-              informesExpanded: state._informesExpanded,
-              issuedCount: state._invoices.length,
-              draftsCount: state._drafts.length,
-              receiptsCount:
-                  state._receipts.length + state._receiptDrafts.length,
-              onCreateInvoice: state._openCreateInvoice,
-              onCreateReceipt: state._openCreateReceipt,
-              onEditBillingProfile: state._openBillingProfile,
-              onToggleBusinessExpanded: state._toggleBusinessExpanded,
-              onToggleFacturacionExpanded: () => state.setState(() {
-                final next = !state._facturacionExpanded;
-                if (!isWide && next) {
-                  state._gastosExpanded = false;
-                  state._impuestosExpanded = false;
-                  state._informesExpanded = false;
-                }
-                state._facturacionExpanded = next;
-              }),
-              onToggleGastosExpanded: () => state.setState(() {
-                final next = !state._gastosExpanded;
-                if (!isWide && next) {
-                  state._facturacionExpanded = false;
-                  state._impuestosExpanded = false;
-                  state._informesExpanded = false;
-                }
-                state._gastosExpanded = next;
-              }),
-              onToggleImpuestosExpanded: () => state.setState(() {
-                final next = !state._impuestosExpanded;
-                if (!isWide && next) {
-                  state._facturacionExpanded = false;
-                  state._gastosExpanded = false;
-                  state._informesExpanded = false;
-                }
-                state._impuestosExpanded = next;
-              }),
-              onToggleInformesExpanded: () => state.setState(() {
-                final next = !state._informesExpanded;
-                if (!isWide && next) {
-                  state._facturacionExpanded = false;
-                  state._gastosExpanded = false;
-                  state._impuestosExpanded = false;
-                }
-                state._informesExpanded = next;
-              }),
-              selectedMenu: state._selectedMenu,
-              onMenuChanged: (m) =>
-                  state.setState(() => state._selectedMenu = m),
-              collapsed: state._menuCollapsed,
-              onToggleCollapse: () =>
-                  state.setState(() => state._menuCollapsed = !state._menuCollapsed),
-            ),
-            Expanded(
-                  child: showInlineEditor
-                      ? Stack(
-                          children: [
-                            Positioned.fill(
-                              child: menu == 'clients' || menu == 'clients_flow'
-                      ? GroupInvoicesClientsView(
-                          groupId: state.widget.group.id,
-                          clients: state._clients,
-                          selectedClient: state._selectedClient,
-                          issuedInvoices: visibleInvoices,
-                          draftInvoices: draftInvoices,
-                          onSelectClient: (c) =>
-                              state.setState(() => state._selectedClient = c),
-                          onCreateInvoice: state._openCreateInvoice,
-                          onCreateReceipt: state._openCreateReceipt,
-                          onEditSelectedClient: () {
-                            if (state._selectedClient != null) {
-                              state._openEditClient(state._selectedClient!);
-                            }
-                          },
-                          onOpenInvoiceDetail: state._openInvoiceDetail,
-                          onDeleteInvoice: state._deleteInvoice,
-                          onUpdateClientClassification:
-                              state._updateClientClassification,
+      final folderTitle = showInlineReceiptEditor
+          ? l.receiptEditorTitle(l.receiptDraftNumberPlaceholder)
+          : switch (menu) {
+              'invoice_editor' => l.invoiceEditorTitle,
+              'billing_profile' => l.billingProfileTitle,
+              'invoices_drafts' => l.groupInvoicesDraftInvoicesTitle,
+              'invoices_issued' => l.invoicesListTitle,
+              'budgets_list' => l.budgetsMenuList,
+              'budgets_new' => l.budgetsMenuNew,
+              'clients' => 'Clientes',
+              'clients_flow' => l.groupInvoicesClientsFlowCta,
+              'receipts' => 'Recibos',
+              'emails' => 'Correo electrónico',
+              'expenses_upload' => 'Gastos',
+              'expenses_list' => 'Gastos',
+              'providers' => 'Proveedores',
+              'vat' => 'Impuestos',
+              'recurring' => 'Recurrentes',
+              'recurring_receipts' => 'Recibos recurrentes',
+              'client_classifications' => l.clientClassificationTitle,
+              _ => l.invoicesTitle(state.widget.group.name),
+            };
+      final showInvoiceActions = menu == 'invoices' ||
+          menu == 'invoices_issued' ||
+          menu == 'invoices_drafts';
+      final invoiceActions = showInvoiceActions
+          ? <Widget>[
+              Tooltip(
+                message: l.createInvoiceCta,
+                child: FilledButton(
+                  onPressed: state._openCreateInvoice,
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(40, 36),
+                  ),
+                  child: const Icon(Icons.add_rounded, size: 18),
+                ),
+              ),
+              Tooltip(
+                message: '${l.download} PDFs',
+                child: OutlinedButton(
+                  onPressed: state._downloadingAllPdfs
+                      ? null
+                      : state._downloadAllInvoicesPdfs,
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(40, 36),
+                  ),
+                  child: state._downloadingAllPdfs
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : state._selectedMenu == 'receipts'
-                          ? GroupReceiptsView(
-                              drafts: state._receiptDrafts,
-                              receipts: state._receipts,
-                              clients: state._clients,
-                              billingProfile: state._billingProfile,
-                              selectedReceipt: state._selectedReceipt,
-                              onSelectReceipt: (r) => state.setState(
-                                  () => state._selectedReceipt = r),
-                              onCreateReceipt: state._openCreateReceipt,
-                              onEditReceipt: state._openEditReceipt,
-                              onIssueReceipt: state._issueReceipt,
-                              onDeleteReceipt: state._deleteReceipt,
-                              onPreviewPdf: state._previewReceiptPdf,
-                              onDownloadPdf: state._downloadReceiptPdf,
-                            )
-                          : state._selectedMenu == 'expenses_upload'
-                              ? ExpenseUploadScreen(
-                                  embedded: true,
-                                  onUploaded: state._loadAll,
-                                  initialTabIndex: 1,
-                                  groupId: state.widget.group.id,
-                                  groupName: state.widget.group.name,
-                                )
-                              : state._selectedMenu == 'expenses_list'
-                                  ? ExpenseUploadScreen(
-                                      embedded: true,
-                                      onUploaded: state._loadAll,
-                                      initialTabIndex: 0,
-                                      groupId: state.widget.group.id,
-                                      groupName: state.widget.group.name,
-                                    )
-                                  : state._selectedMenu == 'providers'
-                                      ? ExpenseUploadScreen(
-                                          embedded: true,
-                                          providersOnly: true,
-                                          groupId: state.widget.group.id,
-                                          groupName: state.widget.group.name,
-                                        )
-                                      : state._selectedMenu == 'vat'
-                                          ? VatSummaryView(
-                                              api: state._vatApi,
-                                              groupId: state.widget.group.id,
-                                            )
-                                          : state._selectedMenu == 'recurring'
-                                              ? RecurringInvoicesScreen(
-                                                  group: state.widget.group,
-                                                  embedded: true,
-                                                  initialSeriesId:
-                                                      state._recurringSeriesToOpen,
-                                                  onSeriesOpened: () => state
-                                                      .setState(() =>
-                                                          state._recurringSeriesToOpen =
-                                                              null),
-                                                )
-                                              : state._selectedMenu ==
-                                                      'client_classifications'
-                                                  ? ClientClassificationsView(
-                                                      groupId: state
-                                                          .widget.group.id,
-                                                      clients: state._clients,
-                                                    )
-                                                  : menu ==
-                                                          'invoices_drafts'
-                                                      ? GroupInvoicesInvoicesView(
-                                                          drafts: state._drafts,
-                                                          invoices:
-                                                              state._invoices,
-                                                          clients:
-                                                              state._clients,
-                                                          billingProfile:
-                                                              state._billingProfile,
-                                                          group:
-                                                              state.widget.group,
-                                                          selectedInvoice:
-                                                              state._selectedInvoice,
-                                                          onSelectInvoice: (inv) =>
-                                                              state.setState(() =>
-                                                                  state._selectedInvoice =
-                                                                      inv),
-                                                          onDeleteInvoice:
-                                                              state._deleteInvoice,
-                                                          onEditDraft:
-                                                              state._openEditDraft,
-                                                          onCreateInvoice:
-                                                              state._openCreateInvoice,
-                                                          onRefresh:
-                                                              state._loadAll,
-                                                          numberSort: state
-                                                              ._effectiveInvoiceNumberSort,
-                                                          onNumberSortChanged:
-                                                              state
-                                                                  ._handleInvoiceSortChanged,
-                                                          sortLoading: state
-                                                              ._effectiveSortingInvoices,
-                                                          initialTabIndex: 0,
-                                                          onOpenRecurringSeries:
-                                                              (seriesId) =>
-                                                                  state.setState(
-                                                                      () {
-                                                            state._recurringSeriesToOpen =
-                                                                seriesId;
-                                                            state._selectedMenu =
-                                                                'recurring';
-                                                          }),
-                                                        )
-                                                      : menu ==
-                                                              'emails'
-                                                          ? GroupInvoicesEmailsView(
-                                                              group:
-                                                                  state.widget.group,
-                                                              selectedInvoice:
-                                                                  state._selectedInvoice,
-                                                              clients:
-                                                                  state._clients,
-                                                            )
-                                                          : menu ==
-                                                                  'invoices_issued'
-                                                              ? GroupInvoicesInvoicesView(
-                                                                  drafts:
-                                                                      state._drafts,
-                                                                  invoices:
-                                                                      state._invoices,
-                                                                  clients:
-                                                                      state._clients,
-                                                                  billingProfile:
-                                                                      state._billingProfile,
-                                                                  group: state
-                                                                      .widget.group,
-                                                                  selectedInvoice:
-                                                                      state._selectedInvoice,
-                                                                  onSelectInvoice: (inv) =>
-                                                                      state.setState(() =>
-                                                                          state._selectedInvoice =
-                                                                              inv),
-                                                                  onDeleteInvoice:
-                                                                      state._deleteInvoice,
-                                                                  onEditDraft:
-                                                                      state._openEditDraft,
-                                                                  onCreateInvoice:
-                                                                      state._openCreateInvoice,
-                                                                  onRefresh:
-                                                                      state._loadAll,
-                                                                  numberSort:
-                                                                      state._effectiveInvoiceNumberSort,
-                                                                  onNumberSortChanged:
-                                                                      state._handleInvoiceSortChanged,
-                                                                  sortLoading:
-                                                                      state._effectiveSortingInvoices,
-                                                                  initialTabIndex:
-                                                                      1,
-                                                                  onOpenRecurringSeries:
-                                                                      (seriesId) =>
-                                                                          state.setState(
-                                                                              () {
-                                                                    state._recurringSeriesToOpen =
-                                                                        seriesId;
-                                                                    state._selectedMenu =
-                                                                        'recurring';
-                                                                  }),
-                                                                )
-                                                              : GroupInvoicesInvoicesView(
-                                                                  drafts:
-                                                                      state._drafts,
-                                                                  invoices:
-                                                                      state._invoices,
-                                                                  clients:
-                                                                      state._clients,
-                                                                  billingProfile:
-                                                                      state._billingProfile,
-                                                                  group: state
-                                                                      .widget.group,
-                                                                  selectedInvoice:
-                                                                      state._selectedInvoice,
-                                                                  onSelectInvoice: (inv) =>
-                                                                      state.setState(() =>
-                                                                          state._selectedInvoice =
-                                                                              inv),
-                                                                  onDeleteInvoice:
-                                                                      state._deleteInvoice,
-                                                                  onEditDraft:
-                                                                      state._openEditDraft,
-                                                                  onCreateInvoice:
-                                                                      state._openCreateInvoice,
-                                                                  onRefresh:
-                                                                      state._loadAll,
-                                                                  numberSort:
-                                                                      state._effectiveInvoiceNumberSort,
-                                                                  onNumberSortChanged:
-                                                                      state._handleInvoiceSortChanged,
-                                                                  sortLoading:
-                                                                      state._effectiveSortingInvoices,
-                                                                  onOpenRecurringSeries:
-                                                                      (seriesId) =>
-                                                                          state.setState(
-                                                                              () {
-                                                                    state._recurringSeriesToOpen =
-                                                                        seriesId;
-                                                                    state._selectedMenu =
-                                                                        'recurring';
-                                                                  }),
-                                                                ),
-                            ),
-                            Positioned.fill(
-                              child: InvoiceEditorScreen(
-                                group: state.widget.group,
-                                clients: state._clients,
-                                initialClientId: state._invoiceEditorClientId,
-                                initialInvoice: state._invoiceEditorInvoice,
-                                embedded: true,
-                                onDataChanged: state._loadAll,
-                                onClose: (changed) => state
-                                    ._closeInlineInvoiceEditor(changed: changed),
-                              ),
-                            ),
-                          ],
+                      : const Icon(Icons.download_outlined, size: 18),
+                ),
+              ),
+              Tooltip(
+                message: l.refreshAction,
+                child: OutlinedButton(
+                  onPressed: state._refreshInvoiceListsOnly,
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(40, 36),
+                  ),
+                  child: const Icon(Icons.refresh, size: 18),
+                ),
+              ),
+            ]
+          : null;
+      final recurringActions =
+          menu == 'recurring' && state._recurringActions != null
+              ? <Widget>[
+                  Tooltip(
+                    message: l.recurringInvoicesRefreshCta,
+                    child: OutlinedButton(
+                      onPressed: state._recurringActions!.onRefresh,
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(40, 36),
+                      ),
+                      child: const Icon(Icons.refresh, size: 18),
+                    ),
+                  ),
+                  Tooltip(
+                    message: l.recurringInvoicesCreateCta,
+                    child: FilledButton(
+                      onPressed: state._recurringActions!.canManage
+                          ? state._recurringActions!.onCreate
+                          : null,
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(40, 36),
+                      ),
+                      child: const Icon(Icons.add_rounded, size: 18),
+                    ),
+                  ),
+                ]
+              : null;
+      final recurringReceiptsActions = menu == 'recurring_receipts' &&
+              state._recurringReceiptsActions != null
+          ? <Widget>[
+              Tooltip(
+                message: l.recurringInvoicesRefreshCta,
+                child: OutlinedButton(
+                  onPressed: state._recurringReceiptsActions!.onRefresh,
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(40, 36),
+                  ),
+                  child: const Icon(Icons.refresh, size: 18),
+                ),
+              ),
+              Tooltip(
+                message: 'Crear recurrencia de recibo',
+                child: FilledButton(
+                  onPressed: state._recurringReceiptsActions!.canManage
+                      ? state._recurringReceiptsActions!.onCreate
+                      : null,
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(40, 36),
+                  ),
+                  child: const Icon(Icons.add_rounded, size: 18),
+                ),
+              ),
+            ]
+          : null;
+      final expenseListActions = menu == 'expenses_list'
+          ? <Widget>[
+              Tooltip(
+                message: l.refreshAction,
+                child: OutlinedButton(
+                  onPressed: state._refreshExpensesListOnly,
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(40, 36),
+                  ),
+                  child: const Icon(Icons.refresh, size: 18),
+                ),
+              ),
+            ]
+          : null;
+      final clientsActions = menu == 'clients' || menu == 'clients_flow'
+          ? <Widget>[
+              Tooltip(
+                message: l.addClient,
+                child: FilledButton(
+                  onPressed: state._openCreateClient,
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(40, 36),
+                  ),
+                  child: const Icon(Icons.person_add_outlined, size: 18),
+                ),
+              ),
+            ]
+          : null;
+      final classificationActions = menu == 'client_classifications'
+          ? <Widget>[
+              Tooltip(
+                message: l.clientClassificationAddTitle,
+                child: FilledButton(
+                  onPressed: state._openClientClassificationManager,
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(40, 36),
+                  ),
+                  child: const Icon(Icons.add_rounded, size: 18),
+                ),
+              ),
+            ]
+          : null;
+      final folderActions = classificationActions ??
+          expenseListActions ??
+          clientsActions ??
+          recurringReceiptsActions ??
+          recurringActions ??
+          invoiceActions;
+
+      final content = _GroupInvoicesContent(
+        state: state,
+        menu: menu,
+        showInlineEditor: showInlineEditor,
+        visibleInvoices: visibleInvoices,
+        draftInvoices: draftInvoices,
+      );
+      body = LayoutBuilder(
+        builder: (context, constraints) {
+          final viewport = MediaQuery.sizeOf(context);
+          final width = constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : viewport.width;
+          final height = constraints.hasBoundedHeight
+              ? constraints.maxHeight
+              : viewport.height;
+          return SizedBox(
+            width: width,
+            height: height,
+            child: Row(
+              children: [
+                GroupInvoicesSideMenu(
+                  group: state.widget.group,
+                  billingProfile: state._billingProfile,
+                  busyProfile: state._busyProfile,
+                  businessExpanded: state._businessExpanded,
+                  facturacionExpanded: state._facturacionExpanded,
+                  gastosExpanded: state._gastosExpanded,
+                  impuestosExpanded: state._impuestosExpanded,
+                  informesExpanded: state._informesExpanded,
+                  issuedCount: state._invoices.length,
+                  draftsCount: state._drafts.length,
+                  receiptsCount:
+                      state._receipts.length + state._receiptDrafts.length,
+                  onCreateInvoice: state._openCreateInvoice,
+                  onCreateReceipt: state._openCreateReceipt,
+                  onEditBillingProfile: state._openBillingProfile,
+                  onToggleBusinessExpanded: state._toggleBusinessExpanded,
+                  onToggleFacturacionExpanded: () => state.setState(() {
+                    final next = !state._facturacionExpanded;
+                    if (!isWide && next) {
+                      state._gastosExpanded = false;
+                      state._impuestosExpanded = false;
+                      state._informesExpanded = false;
+                    }
+                    state._facturacionExpanded = next;
+                  }),
+                  onToggleGastosExpanded: () => state.setState(() {
+                    final next = !state._gastosExpanded;
+                    if (!isWide && next) {
+                      state._facturacionExpanded = false;
+                      state._impuestosExpanded = false;
+                      state._informesExpanded = false;
+                    }
+                    state._gastosExpanded = next;
+                  }),
+                  onToggleImpuestosExpanded: () => state.setState(() {
+                    final next = !state._impuestosExpanded;
+                    if (!isWide && next) {
+                      state._facturacionExpanded = false;
+                      state._gastosExpanded = false;
+                      state._informesExpanded = false;
+                    }
+                    state._impuestosExpanded = next;
+                  }),
+                  onToggleInformesExpanded: () => state.setState(() {
+                    final next = !state._informesExpanded;
+                    if (!isWide && next) {
+                      state._facturacionExpanded = false;
+                      state._gastosExpanded = false;
+                      state._impuestosExpanded = false;
+                    }
+                    state._informesExpanded = next;
+                  }),
+                  selectedMenu: state._selectedMenu,
+                  onMenuChanged: (m) =>
+                      state.setState(() => state._selectedMenu = m),
+                  collapsed: false,
+                  compactMode: false,
+                  onToggleCollapse: () {},
+                ),
+                Expanded(
+                  child: (kIsWeb && state._selectedMenu != 'receipt_editor')
+                      ? FolderPanel(
+                          title: folderTitle,
+                          showTab: true,
+                          actions: folderActions,
+                          child: content,
                         )
-                      : (menu == 'clients' || menu == 'clients_flow'
-                          ? GroupInvoicesClientsView(
-                              groupId: state.widget.group.id,
-                              clients: state._clients,
-                              selectedClient: state._selectedClient,
-                              issuedInvoices: visibleInvoices,
-                              draftInvoices: draftInvoices,
-                              onSelectClient: (c) =>
-                                  state.setState(() => state._selectedClient = c),
-                              onCreateInvoice: state._openCreateInvoice,
-                              onCreateReceipt: state._openCreateReceipt,
-                              onEditSelectedClient: () {
-                                if (state._selectedClient != null) {
-                                  state._openEditClient(state._selectedClient!);
-                                }
-                              },
-                              onOpenInvoiceDetail: state._openInvoiceDetail,
-                              onDeleteInvoice: state._deleteInvoice,
-                              onUpdateClientClassification:
-                                  state._updateClientClassification,
-                            )
-                          : state._selectedMenu == 'receipts'
-                              ? GroupReceiptsView(
-                                  drafts: state._receiptDrafts,
-                                  receipts: state._receipts,
-                                  clients: state._clients,
-                                  billingProfile: state._billingProfile,
-                                  selectedReceipt: state._selectedReceipt,
-                                  onSelectReceipt: (r) => state.setState(
-                                      () => state._selectedReceipt = r),
-                                  onCreateReceipt: state._openCreateReceipt,
-                                  onEditReceipt: state._openEditReceipt,
-                                  onIssueReceipt: state._issueReceipt,
-                                  onDeleteReceipt: state._deleteReceipt,
-                                  onPreviewPdf: state._previewReceiptPdf,
-                                  onDownloadPdf: state._downloadReceiptPdf,
-                                )
-                              : state._selectedMenu == 'expenses_upload'
-                                  ? ExpenseUploadScreen(
-                                      embedded: true,
-                                      onUploaded: state._loadAll,
-                                      initialTabIndex: 1,
-                                      groupId: state.widget.group.id,
-                                      groupName: state.widget.group.name,
-                                    )
-                                  : state._selectedMenu == 'expenses_list'
-                                      ? ExpenseUploadScreen(
-                                          embedded: true,
-                                          onUploaded: state._loadAll,
-                                          initialTabIndex: 0,
-                                          groupId: state.widget.group.id,
-                                          groupName: state.widget.group.name,
-                                        )
-                                      : state._selectedMenu == 'providers'
-                                          ? ExpenseUploadScreen(
-                                              embedded: true,
-                                              providersOnly: true,
-                                              groupId: state.widget.group.id,
-                                              groupName: state.widget.group.name,
-                                            )
-                                          : state._selectedMenu == 'vat'
-                                              ? VatSummaryView(
-                                                  api: state._vatApi,
-                                                  groupId: state.widget.group.id,
-                                                )
-                                              : state._selectedMenu == 'recurring'
-                                                  ? RecurringInvoicesScreen(
-                                                      group: state.widget.group,
-                                                      embedded: true,
-                                                      initialSeriesId:
-                                                          state._recurringSeriesToOpen,
-                                                      onSeriesOpened: () => state
-                                                          .setState(() =>
-                                                              state._recurringSeriesToOpen =
-                                                                  null),
-                                                    )
-                                                  : state._selectedMenu ==
-                                                          'client_classifications'
-                                                      ? ClientClassificationsView(
-                                                          groupId: state
-                                                              .widget.group.id,
-                                                          clients: state._clients,
-                                                        )
-                                                      : menu ==
-                                                              'invoices_drafts'
-                                                          ? GroupInvoicesInvoicesView(
-                                                              drafts: state._drafts,
-                                                              invoices:
-                                                                  state._invoices,
-                                                              clients:
-                                                                  state._clients,
-                                                              billingProfile:
-                                                                  state._billingProfile,
-                                                              group:
-                                                                  state.widget.group,
-                                                              selectedInvoice:
-                                                                  state._selectedInvoice,
-                                                              onSelectInvoice: (inv) =>
-                                                                  state.setState(() =>
-                                                                      state._selectedInvoice =
-                                                                          inv),
-                                                              onDeleteInvoice:
-                                                                  state._deleteInvoice,
-                                                              onEditDraft:
-                                                                  state._openEditDraft,
-                                                              onCreateInvoice:
-                                                                  state._openCreateInvoice,
-                                                              onRefresh:
-                                                                  state._loadAll,
-                                                              numberSort: state
-                                                                  ._effectiveInvoiceNumberSort,
-                                                              onNumberSortChanged:
-                                                                  state
-                                                                      ._handleInvoiceSortChanged,
-                                                              sortLoading: state
-                                                                  ._effectiveSortingInvoices,
-                                                              initialTabIndex: 0,
-                                                              onOpenRecurringSeries:
-                                                                  (seriesId) =>
-                                                                      state.setState(
-                                                                          () {
-                                                                state._recurringSeriesToOpen =
-                                                                    seriesId;
-                                                                state._selectedMenu =
-                                                                    'recurring';
-                                                              }),
-                                                            )
-                                                          : menu ==
-                                                                  'emails'
-                                                              ? GroupInvoicesEmailsView(
-                                                                  group:
-                                                                      state.widget.group,
-                                                                  selectedInvoice:
-                                                                      state._selectedInvoice,
-                                                                  clients:
-                                                                      state._clients,
-                                                                )
-                                                              : menu ==
-                                                                      'invoices_issued'
-                                                                  ? GroupInvoicesInvoicesView(
-                                                                      drafts:
-                                                                          state._drafts,
-                                                                      invoices:
-                                                                          state._invoices,
-                                                                      clients:
-                                                                          state._clients,
-                                                                      billingProfile:
-                                                                          state._billingProfile,
-                                                                      group: state
-                                                                          .widget.group,
-                                                                      selectedInvoice:
-                                                                          state._selectedInvoice,
-                                                                      onSelectInvoice: (inv) =>
-                                                                          state.setState(() =>
-                                                                              state._selectedInvoice =
-                                                                                  inv),
-                                                                      onDeleteInvoice:
-                                                                          state._deleteInvoice,
-                                                                      onEditDraft:
-                                                                          state._openEditDraft,
-                                                                      onCreateInvoice:
-                                                                          state._openCreateInvoice,
-                                                                      onRefresh:
-                                                                          state._loadAll,
-                                                                      numberSort:
-                                                                          state._effectiveInvoiceNumberSort,
-                                                                      onNumberSortChanged:
-                                                                          state._handleInvoiceSortChanged,
-                                                                      sortLoading:
-                                                                          state._effectiveSortingInvoices,
-                                                                      initialTabIndex:
-                                                                          1,
-                                                                      onOpenRecurringSeries:
-                                                                          (seriesId) =>
-                                                                              state.setState(
-                                                                                  () {
-                                                                        state._recurringSeriesToOpen =
-                                                                            seriesId;
-                                                                        state._selectedMenu =
-                                                                            'recurring';
-                                                                      }),
-                                                                    )
-                                                                  : GroupInvoicesInvoicesView(
-                                                                      drafts:
-                                                                          state._drafts,
-                                                                      invoices:
-                                                                          state._invoices,
-                                                                      clients:
-                                                                          state._clients,
-                                                                      billingProfile:
-                                                                          state._billingProfile,
-                                                                      group: state
-                                                                          .widget.group,
-                                                                      selectedInvoice:
-                                                                          state._selectedInvoice,
-                                                                      onSelectInvoice: (inv) =>
-                                                                          state.setState(() =>
-                                                                              state._selectedInvoice =
-                                                                                  inv),
-                                                                      onDeleteInvoice:
-                                                                          state._deleteInvoice,
-                                                                      onEditDraft:
-                                                                          state._openEditDraft,
-                                                                      onCreateInvoice:
-                                                                          state._openCreateInvoice,
-                                                                      onRefresh:
-                                                                          state._loadAll,
-                                                                      numberSort:
-                                                                          state._effectiveInvoiceNumberSort,
-                                                                      onNumberSortChanged:
-                                                                          state._handleInvoiceSortChanged,
-                                                                      sortLoading:
-                                                                          state._effectiveSortingInvoices,
-                                                                      onOpenRecurringSeries:
-                                                                          (seriesId) =>
-                                                                              state.setState(
-                                                                                  () {
-                                                                        state._recurringSeriesToOpen =
-                                                                            seriesId;
-                                                                        state._selectedMenu =
-                                                                            'recurring';
-                                                                      }),
-                                                                    )),
+                      : content,
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       );
     }
 
@@ -574,6 +334,8 @@ class _GroupInvoicesView extends StatelessWidget {
         menu == 'invoices_drafts' ||
         menu == 'invoices_issued' ||
         state._selectedMenu == 'invoice_editor' ||
+        state._selectedMenu == 'receipt_editor' ||
+        state._selectedMenu == 'billing_profile' ||
         menu == 'clients' ||
         menu == 'clients_flow' ||
         menu == 'receipts' ||
@@ -584,13 +346,19 @@ class _GroupInvoicesView extends StatelessWidget {
         menu == 'expenses_list' ||
         menu == 'providers' ||
         menu == 'vat' ||
+        menu == 'budgets_list' ||
+        menu == 'budgets_new' ||
+        menu == 'recurring_receipts' ||
         menu == 'recurring';
 
     if (state.widget.embedded && kIsWeb) {
-      return Stack(
-        children: [
-          Positioned.fill(child: body),
-          if (!hideFab)
+      if (hideFab) {
+        return SizedBox.expand(child: body);
+      }
+      return SizedBox.expand(
+        child: Stack(
+          children: [
+            Positioned.fill(child: body),
             Positioned(
               right: 20,
               bottom: 20,
@@ -604,7 +372,8 @@ class _GroupInvoicesView extends StatelessWidget {
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       );
     }
 
@@ -617,7 +386,7 @@ class _GroupInvoicesView extends StatelessWidget {
         backgroundColor: cs.surface,
         iconTheme: IconThemeData(color: cs.onSurface),
       ),
-      body: body,
+      body: SizedBox.expand(child: body),
       floatingActionButton: hideFab
           ? null
           : FloatingActionButton.extended(

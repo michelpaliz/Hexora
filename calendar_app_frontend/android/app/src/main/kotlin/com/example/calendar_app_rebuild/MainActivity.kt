@@ -1,5 +1,6 @@
-package com.fastezcode.hexora
+﻿package com.hexora.hexora
 
 import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity : FlutterActivity()
+

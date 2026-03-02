@@ -5,7 +5,7 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 late IO.Socket notificationSocket;
 
 void initializeNotificationSocket(String userId) {
-  final socketUrl = ApiConstants.baseUrl.replaceFirst('/api', '');
+  final socketUrl = ApiConstants.socketBaseUrl;
 
   notificationSocket = IO.io(socketUrl, <String, dynamic>{
     'transports': ['websocket'],
@@ -20,14 +20,14 @@ void initializeNotificationSocket(String userId) {
   });
 
   notificationSocket.on('event:reminder', (data) {
-    print('📩 Reminder received: $data');
+    print('ðŸ“© Reminder received: $data');
 
     final parsedDate = DateTime.parse(data['startDate']).toLocal();
     final notificationId = data['eventId'].hashCode;
     final title = data['title'];
     final body = 'Reminder: ${data['title']} is starting soon.';
 
-    print('🔔 Scheduling reminder notification with values:');
+    print('ðŸ”” Scheduling reminder notification with values:');
     print('   - ID: $notificationId');
     print('   - Title: $title');
     print('   - Body: $body');
@@ -42,14 +42,14 @@ void initializeNotificationSocket(String userId) {
   });
 
   notificationSocket.on('event:started', (data) {
-    print('🚀 Event started: $data');
+    print('ðŸš€ Event started: $data');
 
     final now = DateTime.now();
     final notificationId = data['eventId'].hashCode + 1000;
     final title = data['title'];
     final body = '${data['title']} has just started.';
 
-    print('📢 Scheduling start notification with values:');
+    print('ðŸ“¢ Scheduling start notification with values:');
     print('   - ID: $notificationId');
     print('   - Title: $title');
     print('   - Body: $body');

@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 
 class LineDraft {
   int position;
+  String? id;
+  String? evidenceBlobName;
   final TextEditingController description = TextEditingController();
   final TextEditingController quantityCtrl = TextEditingController(text: '1');
   final TextEditingController unitPriceCtrl = TextEditingController();
@@ -14,7 +16,11 @@ class LineDraft {
   final FocusNode quantityFocus = FocusNode();
   final FocusNode unitPriceFocus = FocusNode();
 
-  LineDraft({required this.position});
+  LineDraft({
+    required this.position,
+    this.id,
+    this.evidenceBlobName,
+  });
 
   String _norm(String v) => v.trim().replaceAll(',', '.');
 
@@ -52,6 +58,7 @@ class InvoiceLinesEditor extends StatefulWidget {
   final VoidCallback onChanged;
   final bool compactable;
   final bool initiallyCollapsed;
+  final bool showTax;
 
   const InvoiceLinesEditor({
     super.key,
@@ -59,6 +66,7 @@ class InvoiceLinesEditor extends StatefulWidget {
     required this.onChanged,
     this.compactable = false,
     this.initiallyCollapsed = false,
+    this.showTax = true,
   });
 
   @override
@@ -168,206 +176,210 @@ class _InvoiceLinesEditorState extends State<InvoiceLinesEditor> {
           final unit = line.unitPrice ?? 0;
           final vat = line.taxRate ?? 21;
           final subtotal = qty * unit;
-          final total = subtotal + (subtotal * (vat / 100));
-          return Card(
+          final total =
+              widget.showTax ? subtotal + (subtotal * (vat / 100)) : subtotal;
+          return Container(
             margin: const EdgeInsets.only(top: 8),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        '#${line.position}',
-                        style: t.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: cs.primary,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '#${line.position}',
+                      style: t.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        currencyFormatter.format(total),
+                        style: t.bodySmall.copyWith(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          currencyFormatter.format(total),
-                          style: t.bodySmall.copyWith(
-                            color: cs.onPrimaryContainer,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (widget.compactable)
-                        IconButton(
-                          tooltip: isCollapsed
-                              ? MaterialLocalizations.of(context)
-                                  .collapsedIconTapHint
-                              : MaterialLocalizations.of(context)
-                                  .expandedIconTapHint,
-                          onPressed: () {
-                            setState(() {
-                              _collapsedLines[line.position] = !isCollapsed;
-                            });
-                          },
-                          icon: Icon(
-                            isCollapsed
-                                ? Icons.keyboard_arrow_down
-                                : Icons.keyboard_arrow_up,
-                          ),
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (widget.compactable)
                       IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        color: cs.error,
-                        tooltip: l.remove,
+                        tooltip: isCollapsed
+                            ? MaterialLocalizations.of(context)
+                                .collapsedIconTapHint
+                            : MaterialLocalizations.of(context)
+                                .expandedIconTapHint,
                         onPressed: () {
-                          widget.lines.removeAt(idx);
-                          _collapsedLines.remove(line.position);
-                          for (int i = 0; i < widget.lines.length; i++) {
-                            widget.lines[i].position = i + 1;
-                          }
-                          widget.onChanged();
-                          setState(() {});
+                          setState(() {
+                            _collapsedLines[line.position] = !isCollapsed;
+                          });
                         },
+                        icon: Icon(
+                          isCollapsed
+                              ? Icons.keyboard_arrow_down
+                              : Icons.keyboard_arrow_up,
+                        ),
                       ),
-                    ],
-                  ),
-                  if (!isCollapsed) ...[
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final wide = constraints.maxWidth >= 760;
-                        final compactWidth = wide ? 130.0 : double.infinity;
-
-                        final descriptionField = TextFormField(
-                          controller: line.description,
-                          style: t.bodyMedium,
-                          decoration: InputDecoration(
-                            labelText: l.lineDescription,
-                            labelStyle: labelStyle,
-                            enabledBorder: inputBorder,
-                            focusedBorder: inputBorder.copyWith(
-                              borderSide:
-                                  BorderSide(color: cs.primary, width: 1.5),
-                            ),
-                          ),
-                          onChanged: (_) => widget.onChanged(),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? l.fieldIsRequired
-                              : null,
-                        );
-
-                        final quantityField = TextFormField(
-                          controller: line.quantityCtrl,
-                          focusNode: line.quantityFocus,
-                          style: t.bodyMedium,
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
-                          decoration: InputDecoration(
-                            labelText: l.lineQuantity,
-                            labelStyle: labelStyle,
-                            enabledBorder: inputBorder,
-                            focusedBorder: inputBorder.copyWith(
-                              borderSide:
-                                  BorderSide(color: cs.primary, width: 1.5),
-                            ),
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9.,]')),
-                          ],
-                          onChanged: (_) => widget.onChanged(),
-                        );
-
-                        final unitPriceField = TextFormField(
-                          controller: line.unitPriceCtrl,
-                          focusNode: line.unitPriceFocus,
-                          style: t.bodyMedium,
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
-                          decoration: InputDecoration(
-                            labelText: l.lineUnitPrice,
-                            labelStyle: priceLabelStyle,
-                            filled: true,
-                            fillColor: priceFill,
-                            suffixText: currencySymbol,
-                            enabledBorder: inputBorder,
-                            focusedBorder: inputBorder.copyWith(
-                              borderSide:
-                                  BorderSide(color: cs.primary, width: 1.5),
-                            ),
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9.,]')),
-                          ],
-                          onChanged: (_) => widget.onChanged(),
-                        );
-
-                        final taxField = TextFormField(
-                          controller: line.taxRateCtrl,
-                          style: t.bodyMedium,
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
-                          decoration: InputDecoration(
-                            labelText: l.lineTaxRate,
-                            labelStyle: labelStyle,
-                            suffixText: '%',
-                            enabledBorder: inputBorder,
-                            focusedBorder: inputBorder.copyWith(
-                              borderSide:
-                                  BorderSide(color: cs.primary, width: 1.5),
-                            ),
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9.,]')),
-                          ],
-                          onChanged: (_) => widget.onChanged(),
-                        );
-
-                        if (!wide) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              descriptionField,
-                              const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  Expanded(child: quantityField),
-                                  const SizedBox(width: 10),
-                                  Expanded(child: unitPriceField),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              taxField,
-                            ],
-                          );
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      color: cs.error,
+                      tooltip: l.remove,
+                      onPressed: () {
+                        widget.lines.removeAt(idx);
+                        _collapsedLines.remove(line.position);
+                        for (int i = 0; i < widget.lines.length; i++) {
+                          widget.lines[i].position = i + 1;
                         }
-
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 3, child: descriptionField),
-                            const SizedBox(width: 12),
-                            SizedBox(width: compactWidth, child: quantityField),
-                            const SizedBox(width: 12),
-                            SizedBox(
-                                width: compactWidth, child: unitPriceField),
-                            const SizedBox(width: 12),
-                            SizedBox(width: compactWidth, child: taxField),
-                          ],
-                        );
+                        widget.onChanged();
+                        setState(() {});
                       },
                     ),
                   ],
+                ),
+                if (!isCollapsed) ...[
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final wide = constraints.maxWidth >= 760;
+                      final compactWidth = wide ? 130.0 : double.infinity;
+
+                      final descriptionField = TextFormField(
+                        controller: line.description,
+                        style: t.bodyMedium,
+                        decoration: InputDecoration(
+                          labelText: l.lineDescription,
+                          labelStyle: labelStyle,
+                          enabledBorder: inputBorder,
+                          focusedBorder: inputBorder.copyWith(
+                            borderSide:
+                                BorderSide(color: cs.primary, width: 1.5),
+                          ),
+                        ),
+                        onChanged: (_) => widget.onChanged(),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? l.fieldIsRequired
+                            : null,
+                      );
+
+                      final quantityField = TextFormField(
+                        controller: line.quantityCtrl,
+                        focusNode: line.quantityFocus,
+                        style: t.bodyMedium,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: l.lineQuantity,
+                          labelStyle: labelStyle,
+                          enabledBorder: inputBorder,
+                          focusedBorder: inputBorder.copyWith(
+                            borderSide:
+                                BorderSide(color: cs.primary, width: 1.5),
+                          ),
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                        ],
+                        onChanged: (_) => widget.onChanged(),
+                      );
+
+                      final unitPriceField = TextFormField(
+                        controller: line.unitPriceCtrl,
+                        focusNode: line.unitPriceFocus,
+                        style: t.bodyMedium,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: l.lineUnitPrice,
+                          labelStyle: priceLabelStyle,
+                          filled: true,
+                          fillColor: priceFill,
+                          suffixText: currencySymbol,
+                          enabledBorder: inputBorder,
+                          focusedBorder: inputBorder.copyWith(
+                            borderSide:
+                                BorderSide(color: cs.primary, width: 1.5),
+                          ),
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                        ],
+                        onChanged: (_) => widget.onChanged(),
+                      );
+
+                      final taxField = TextFormField(
+                        controller: line.taxRateCtrl,
+                        style: t.bodyMedium,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: l.lineTaxRate,
+                          labelStyle: labelStyle,
+                          suffixText: '%',
+                          enabledBorder: inputBorder,
+                          focusedBorder: inputBorder.copyWith(
+                            borderSide:
+                                BorderSide(color: cs.primary, width: 1.5),
+                          ),
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                        ],
+                        onChanged: (_) => widget.onChanged(),
+                      );
+
+                      if (!wide) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            descriptionField,
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(child: quantityField),
+                                const SizedBox(width: 10),
+                                Expanded(child: unitPriceField),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            if (widget.showTax) taxField,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 3, child: descriptionField),
+                          const SizedBox(width: 12),
+                          SizedBox(width: compactWidth, child: quantityField),
+                          const SizedBox(width: 12),
+                          SizedBox(width: compactWidth, child: unitPriceField),
+                          if (widget.showTax) ...[
+                            const SizedBox(width: 12),
+                            SizedBox(width: compactWidth, child: taxField),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
                 ],
-              ),
+              ],
             ),
           );
         }),

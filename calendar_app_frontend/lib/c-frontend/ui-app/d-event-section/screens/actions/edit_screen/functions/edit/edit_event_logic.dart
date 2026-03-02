@@ -62,7 +62,7 @@ abstract class EditEventLogic<T extends StatefulWidget>
     // setAvailableClients(fetchedClients.map((c)=>ClientLite(id:c.id,name:c.name)).toList());
     // setAvailableServices(fetchedServices.map((s)=>ServiceLite(id:s.id,name:s.name)).toList());
 
-    // 🔧 Preselect client & service from the event being edited
+    // ðŸ”§ Preselect client & service from the event being edited
     setClientId?.call(event.clientId);
     setPrimaryServiceId?.call(event.primaryServiceId);
 
@@ -120,7 +120,7 @@ abstract class EditEventLogic<T extends StatefulWidget>
       // keep other custom fields if your model has them
       type: _event.type,
 
-      // 🔧 use current UI selections instead of stale _event values
+      // ðŸ”§ use current UI selections instead of stale _event values
       clientId: clientId,
       primaryServiceId: primaryServiceId,
 

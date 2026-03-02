@@ -25,12 +25,12 @@ class _FolderNavTile extends StatelessWidget {
         color: selected
             ? cs.primaryContainer.withValues(alpha: 0.35)
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               children: [
                 Icon(icon, size: 18, color: cs.onSurfaceVariant),

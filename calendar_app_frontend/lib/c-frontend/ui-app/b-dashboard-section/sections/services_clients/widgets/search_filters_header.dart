@@ -27,7 +27,7 @@ class SearchFiltersHeader extends StatefulWidget {
     this.onClearFilters,
     this.padding = const EdgeInsets.fromLTRB(12, 0, 12, 10),
     this.showClearAction = true,
-    this.autoExpandWhenActive = true,
+    this.autoExpandWhenActive = false,
   });
 
   @override
@@ -61,7 +61,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
     final badgeCount = widget.activeFilterCount;
     final badgeText = badgeCount > 9 ? '9+' : '$badgeCount';
     final fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
     );
 
@@ -70,6 +70,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
@@ -80,15 +81,17 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                     prefixIcon: const Icon(Icons.search),
                     hintText: widget.searchHint,
                     filled: true,
-                    fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.7),
+                    fillColor:
+                        cs.surfaceContainerHighest.withValues(alpha: 0.7),
                     border: fieldBorder,
                     enabledBorder: fieldBorder,
                     focusedBorder: fieldBorder.copyWith(
                       borderSide: BorderSide(color: cs.primary, width: 1.4),
                     ),
+                    isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
+                      horizontal: 10,
+                      vertical: 8,
                     ),
                     suffixIcon: widget.searchController.text.trim().isEmpty
                         ? null
@@ -102,7 +105,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                             icon: const Icon(Icons.close),
                           ),
                   ),
-                  style: t.bodyMedium,
+                  style: t.bodySmall.copyWith(fontSize: 13),
                 ),
               ),
               if (hasFilters) const SizedBox(width: 8),
@@ -142,11 +145,11 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
+                      horizontal: 10,
+                      vertical: 8,
                     ),
-                    textStyle:
-                        t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                    textStyle: t.bodySmall
+                        .copyWith(fontWeight: FontWeight.w700, fontSize: 11),
                     foregroundColor: widget.hasActiveFilters
                         ? cs.onPrimaryContainer
                         : cs.onSurface,
@@ -159,7 +162,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                           : cs.outlineVariant.withValues(alpha: 0.7),
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                 ),
@@ -201,7 +204,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                           decoration: BoxDecoration(
                             color: cs.surfaceContainerHighest
                                 .withValues(alpha: 0.55),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: widget.filtersContent!,
                         ),

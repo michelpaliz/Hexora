@@ -36,12 +36,14 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
   String? _previewError;
   Map<String, dynamic>? _previewPayload;
   bool _sending = false;
+  bool _isReadyToSend = false;
   String? _sendMessage;
   String? _sendError;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('[SendInvoiceSheet] opened for invoice=${widget.invoice.id}');
     final fallbackEmail = widget.client.billing?.email ?? widget.client.email;
     _toController = TextEditingController(text: fallbackEmail ?? '');
     _ccController = TextEditingController();
@@ -53,9 +55,9 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
         _loadPreview();
       }
     });
-    _toController.addListener(_clearPreview);
+    _toController.addListener(_onComposeChanged);
     _ccController.addListener(_clearPreview);
-    _subjectController.addListener(_clearPreview);
+    _subjectController.addListener(_onComposeChanged);
     _quillController.addListener(_clearPreview);
   }
 
@@ -73,7 +75,27 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
     _quillController.document
       ..delete(0, _quillController.document.length)
       ..insert(0, seed);
+    _refreshReadyToSend();
     _templatesSeeded = true;
+  }
+
+  void _onComposeChanged() {
+    _clearPreview();
+    _refreshReadyToSend();
+  }
+
+  bool _hasAtLeastOneRecipient(String raw) {
+    return raw
+        .split(RegExp(r'[,;\s]+'))
+        .map((value) => value.trim())
+        .any((value) => value.isNotEmpty);
+  }
+
+  void _refreshReadyToSend() {
+    final nextValue = _hasAtLeastOneRecipient(_toController.text) &&
+        _subjectController.text.trim().isNotEmpty;
+    if (nextValue == _isReadyToSend) return;
+    setState(() => _isReadyToSend = nextValue);
   }
 
   void _clearPreview() {
@@ -82,6 +104,31 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
       _previewPayload = null;
       _previewError = null;
     });
+  }
+
+  String _cssHex(Color color) {
+    final r = color.r.round().toRadixString(16).padLeft(2, '0');
+    final g = color.g.round().toRadixString(16).padLeft(2, '0');
+    final b = color.b.round().toRadixString(16).padLeft(2, '0');
+    return '#$r$g$b';
+  }
+
+  String _themeAwarePreviewHtml({
+    required String html,
+    required Color textColor,
+    required Color linkColor,
+  }) {
+    final textHex = _cssHex(textColor);
+    final linkHex = _cssHex(linkColor);
+    return '''
+<style>
+  body, p, div, span, li, td, th, blockquote, h1, h2, h3, h4, h5, h6 {
+    color: $textHex !important;
+  }
+  a { color: $linkHex !important; }
+</style>
+$html
+''';
   }
 
   @override
@@ -108,8 +155,10 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
       'subject': _subjectController.text.trim(),
       'text': text,
       'html': html,
+      'attachInvoicePdf': true,
       'attachPdf': _attachPdf,
       'pdfLink': _attachPdf ? '' : widget.pdfLink,
+      'applyDefaultFooter': true,
     };
   }
 
@@ -240,8 +289,6 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final isReady = _toController.text.trim().isNotEmpty &&
-        _subjectController.text.trim().isNotEmpty;
     final previewHtml = _previewPayload?['html']?.toString() ?? '';
     final attachment = _previewAttachment();
     final attachmentName = (attachment?['name'] ??
@@ -501,7 +548,13 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    HtmlWidget(previewHtml),
+                                    HtmlWidget(
+                                      _themeAwarePreviewHtml(
+                                        html: previewHtml,
+                                        textColor: cs.onSurface,
+                                        linkColor: cs.primary,
+                                      ),
+                                    ),
                                     if (attachmentName != null)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 12),
@@ -572,7 +625,7 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
-                onPressed: (!_sending && isReady) ? _send : null,
+                onPressed: (!_sending && _isReadyToSend) ? _send : null,
                 icon: _sending
                     ? SizedBox(
                         width: 14,

@@ -27,7 +27,7 @@ final List<SingleChildWidget> coreProviders = [
   // Global app state
   ChangeNotifierProvider(create: (_) => NotificationDomain()),
 
-  // 🔐 Token store (single source of truth)
+  // ðŸ” Token store (single source of truth)
   Provider<TokenStore>(create: (_) => SecureTokenStore()),
 
   // User stack (token from injected store, not static)
@@ -60,7 +60,7 @@ final List<SingleChildWidget> coreProviders = [
       notificationDomain: ctx.read<NotificationDomain>(),
     ),
   ),
-  // 👉 New: UserAgendaDomain (no dependencies on UserDomain)
+  // ðŸ‘‰ New: UserAgendaDomain (no dependencies on UserDomain)
   Provider<UserAgendaDomain>(
     create: (_) => UserAgendaDomain(),
   ),

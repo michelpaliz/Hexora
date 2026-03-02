@@ -129,7 +129,7 @@ final List<SingleChildWidget> featureProviders = [
         group: current,
         repository: eventRepo,
         groupDomain: groupDomain,
-        resolver: resolver, // 👈 NEW
+        resolver: resolver, // ðŸ‘ˆ NEW
       );
 
       edm.onExternalEventUpdate = previous?.onExternalEventUpdate ??

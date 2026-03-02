@@ -106,58 +106,70 @@ class ScheduleCardView extends StatelessWidget {
             buildLeadingIcon(cardColor, event, size: 40),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Compact date line with icon
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        event.allDay ? Icons.event : Icons.schedule,
-                        size: 14,
-                        color: textColor.withOpacity(0.6),
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          dateLine,
-                          style: typo.caption.copyWith(
-                            color: textColor.withOpacity(0.75),
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isTight = constraints.maxHeight <= 38;
+                  final title = clientOnlyTitle(event.title);
+
+                  if (isTight) {
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '$dateLine · $title',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: typo.caption.copyWith(
+                          color: textColor.withOpacity(0.86),
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
                         ),
                       ),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            event.allDay ? Icons.event : Icons.schedule,
+                            size: 14,
+                            color: textColor.withOpacity(0.6),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              dateLine,
+                              style: typo.caption.copyWith(
+                                color: textColor.withOpacity(0.75),
+                                fontWeight: FontWeight.w600,
+                                height: 1.15,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        title,
+                        style: typo.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          decoration:
+                              event.isDone ? TextDecoration.lineThrough : null,
+                          color: textColor,
+                          height: 1.15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  // Title shows only the client name (after the dash)
-                  Text(
-                    clientOnlyTitle(event.title),
-                    style: typo.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w800,
-                      decoration:
-                          event.isDone ? TextDecoration.lineThrough : null,
-                      color: textColor,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  // if (event.description?.isNotEmpty ?? false)
-                  //   Padding(
-                  //     padding: const EdgeInsets.only(top: 2),
-                  //     child: Text(
-                  //       event.description!,
-                  //       maxLines: 1,
-                  //       overflow: TextOverflow.ellipsis,
-                  //       style: typo.bodySmall.copyWith(
-                  //         color: textColor.withOpacity(0.7),
-                  //       ),
-                  //     ),
-                  //   ),
-                ],
+                  );
+                },
               ),
             ),
             IconButton(

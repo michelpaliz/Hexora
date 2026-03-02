@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // 🩵 Surfaces & backgrounds
+  // ðŸ©µ Surfaces & backgrounds
   static const Color background = Color(0xFFF9FAFB); // light neutral
   static const Color surface = Color(0xFFFFFFFF); // pure white
 
-  // 🔷 Primary (Blue)
+  // ðŸ”· Primary (Blue)
   static const Color primary = Color(0xFF1E88E5); // calmer blue
   static const Color primaryLight = Color(0xFF64B5F6);
   static const Color primaryDark = Color(0xFF1565C0);
   static const Color dashboardTopBar =
       Color(0xFF2B3850); // muted blue-gray for cards/top bars
 
-  // 🟠 Secondary (Amber / Warm accent)
+  // ðŸŸ  Secondary (Amber / Warm accent)
   static const Color secondary = Color(0xFFFFB74D);
   static const Color secondaryLight = Color(0xFFFFD180);
   static const Color secondaryDark = Color(0xFFF57C00);
@@ -29,18 +29,18 @@ class AppColors {
 }
 
 class AppDarkColors {
-  // 🌙 Backgrounds
+  // ðŸŒ™ Backgrounds
   static const Color background = Color(0xFF0F141A);
   static const Color surface = Color(0xFF1E1E24);
 
-  // 🔷 Primary (Cool blue base)
+  // ðŸ”· Primary (Cool blue base)
   static const Color primary = Color(0xFF64B5F6);
   static const Color primaryLight = Color(0xFF90CAF9);
   static const Color primaryDark = Color(0xFF1976D2);
   static const Color dashboardTopBar =
       Color(0xFF172235); // slightly lighter than background for depth
 
-  // 🟠 Secondary (Warm amber accent)
+  // ðŸŸ  Secondary (Warm amber accent)
   static const Color secondary = Color(0xFFFFB74D);
   static const Color secondaryLight = Color(0xFFFFCC80);
 

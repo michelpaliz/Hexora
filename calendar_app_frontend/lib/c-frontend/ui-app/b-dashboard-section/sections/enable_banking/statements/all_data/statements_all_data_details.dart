@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
+import '../statements_controller.dart';
 import '../statements_formatters.dart';
 import '../statements_shared.dart';
 
@@ -13,17 +14,17 @@ class StatementsAllDataDetails {
     BuildContext context,
     AppLocalizations l,
     Map<String, dynamic> entry,
+    StatementsController controller,
   ) async {
-    final batchId = (entry['_batchId'] ??
-            entry['_id'] ??
-            entry['id'] ??
-            entry['batchId'])
-        ?.toString()
-        .trim();
+    final batchId =
+        (entry['_batchId'] ?? entry['_id'] ?? entry['id'] ?? entry['batchId'])
+            ?.toString()
+            .trim();
     final date = StatementsShared.entryText(entry, ['date']);
     final valueDate = StatementsShared.entryText(entry, ['valueDate']);
     final desc = StatementsShared.entryText(entry, ['description']);
     final details = StatementsShared.entryText(entry, ['details']);
+    final clientLabel = StatementsShared.clientLabel(l, controller, entry);
     String _rawIndex(Map<String, dynamic> entry, int index) {
       final raw = entry['raw'];
       if (raw is List && raw.length > index) {
@@ -43,8 +44,11 @@ class StatementsAllDataDetails {
         : StatementsShared.entryText(entry, ['balance']);
     final amountValue = StatementsFormatters.parseAmount(amount);
     final amountIsNegative = (amountValue ?? 0) < 0;
-    final amountChipLabel =
-        amountValue == null || amountValue == 0 ? null : amountIsNegative ? 'Gasto' : 'Ingreso';
+    final amountChipLabel = amountValue == null || amountValue == 0
+        ? null
+        : amountIsNegative
+            ? 'Gasto'
+            : 'Ingreso';
     final rawJson = const JsonEncoder.withIndent('  ').convert(entry);
     await showGeneralDialog<void>(
       context: context,
@@ -59,7 +63,8 @@ class StatementsAllDataDetails {
 
         String formatEuro(String raw) {
           if (raw.trim().isEmpty) return '-';
-          final formatted = StatementsFormatters.formatAmount(dialogContext, raw);
+          final formatted =
+              StatementsFormatters.formatAmount(dialogContext, raw);
           if (formatted.isEmpty) return '-';
           return '$formatted €';
         }
@@ -89,6 +94,10 @@ class StatementsAllDataDetails {
           _DetailItem(
             label: l.statementsHeaderDetails,
             value: details.isEmpty ? '-' : details,
+          ),
+          _DetailItem(
+            label: l.statementsHeaderClient,
+            value: clientLabel,
           ),
           _DetailItem(
             label: l.statementsHeaderAmount,
@@ -180,8 +189,8 @@ class StatementsAllDataDetails {
                                   child: const Text('Copiar JSON'),
                                 ),
                                 OutlinedButton(
-                                  onPressed: () => copyValue(
-                                      entry['_id']?.toString() ?? ''),
+                                  onPressed: () =>
+                                      copyValue(entry['_id']?.toString() ?? ''),
                                   child: const Text('Copiar _id'),
                                 ),
                                 OutlinedButton(
@@ -190,10 +199,11 @@ class StatementsAllDataDetails {
                                   child: const Text('Copiar signature'),
                                 ),
                                 OutlinedButton(
-                                  onPressed: () => copyValue(entry['merchantNormalized']
-                                          ?.toString() ??
-                                      ''),
-                                  child: const Text('Copiar merchantNormalized'),
+                                  onPressed: () => copyValue(
+                                      entry['merchantNormalized']?.toString() ??
+                                          ''),
+                                  child:
+                                      const Text('Copiar merchantNormalized'),
                                 ),
                               ],
                             ),

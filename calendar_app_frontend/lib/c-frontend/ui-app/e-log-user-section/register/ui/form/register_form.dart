@@ -96,7 +96,7 @@ class _RegisterFormState extends State<RegisterForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 👋 Welcome Section
+          // ðŸ‘‹ Welcome Section
           Text(
             l10n.welcomeTitle,
             style: t.displayMedium.copyWith(color: cs.primary),

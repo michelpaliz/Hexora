@@ -11,10 +11,10 @@ class DownloadAppView extends StatelessWidget {
 
   // Both files hosted on your own webserver:
   static const _androidStoreUrl =
-      'https://fastezcode.com/downloads/android/hexora-android-latest.apk';
+      'https://hexora.dev/downloads/android/hexora-android-latest.apk';
 
   static const _iosStoreUrl =
-      'https://fastezcode.com/downloads/ios/hexora-ios-latest.ipa';
+      'https://hexora.dev/downloads/ios/hexora-ios-latest.ipa';
 
   Future<void> _openStore(BuildContext context, String url) async {
     final l10n = AppLocalizations.of(context)!;

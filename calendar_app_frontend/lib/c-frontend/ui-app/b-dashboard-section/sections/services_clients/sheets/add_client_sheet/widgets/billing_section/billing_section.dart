@@ -43,20 +43,23 @@ class _BillingSectionState extends State<BillingSection> {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
       ),
       child: ExpansionTile(
         initiallyExpanded: initiallyExpanded,
         onExpansionChanged: (v) => setState(() => c.billingExpanded = v),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        leading: const Icon(Icons.receipt_long_outlined),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        leading: const Icon(Icons.receipt_long_outlined, size: 20),
         title: Row(
           children: [
             Expanded(
               child: Text(
                 l.billingDetails,
-                style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                style: typo.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
               ),
             ),
             _BillingStatusChip(
@@ -67,16 +70,19 @@ class _BillingSectionState extends State<BillingSection> {
         ),
         subtitle: Text(
           l.billingDetailsSubtitle,
-          style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+          style: typo.bodySmall.copyWith(
+            color: cs.onSurfaceVariant,
+            fontSize: 11,
+          ),
         ),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+        childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
         children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           BillingDocumentType(
             value: c.billingDocType,
             onChanged: (v) => setState(() => c.billingDocType = v),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           BillingLegalAndTax(
             c: c,
             requireBilling: requireBilling,
@@ -84,7 +90,7 @@ class _BillingSectionState extends State<BillingSection> {
             onFieldChanged: widget.onFieldChanged,
             onFieldBlur: widget.onFieldBlur,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           BillingAddressForm(
             c: c,
             requireBilling: requireBilling,
@@ -92,7 +98,7 @@ class _BillingSectionState extends State<BillingSection> {
             onFieldChanged: widget.onFieldChanged,
             onFieldBlur: widget.onFieldBlur,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           BillingContactForm(
             c: c,
             requireBilling: requireBilling,
@@ -124,7 +130,7 @@ class _BillingStatusChip extends StatelessWidget {
     final complete = completed >= total && total > 0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: complete ? cs.secondaryContainer : cs.errorContainer,
         borderRadius: BorderRadius.circular(999),
@@ -134,6 +140,7 @@ class _BillingStatusChip extends StatelessWidget {
         l.billingProgressLabel(completed, total),
         style: typo.bodySmall.copyWith(
           fontWeight: FontWeight.w700,
+          fontSize: 10,
           color: complete ? cs.onSecondaryContainer : cs.onErrorContainer,
         ),
       ),

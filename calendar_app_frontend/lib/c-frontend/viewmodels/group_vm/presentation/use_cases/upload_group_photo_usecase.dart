@@ -21,7 +21,7 @@ class UploadGroupPhotoUseCase {
   /// [file] is the file to be uploaded.
 
   Future<void> call({required String groupId, required XFile file}) async {
-    final token = auth.lastToken;
+    final token = await auth.getToken();
     if (token == null) throw StateError('Not authenticated');
     await groupDomain.groupRepository.uploadAndCommitGroupPhoto(
       groupId: groupId,

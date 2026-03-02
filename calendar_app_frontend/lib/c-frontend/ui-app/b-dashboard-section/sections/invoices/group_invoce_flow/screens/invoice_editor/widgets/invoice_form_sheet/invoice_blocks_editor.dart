@@ -81,13 +81,34 @@ class InvoiceBlockDraft {
   int? get level => int.tryParse(levelCtrl.text.trim());
 
   bool get isItem => type == InvoiceBlockType.item;
+  bool get isSection => type == InvoiceBlockType.section;
+  bool get isChecklist => type == InvoiceBlockType.checklist;
   bool get isBillableItem => isItem && isBillable;
+  bool get isBillableSection => isSection && isBillable;
+  bool get isBillableChecklist => isChecklist && isBillable;
+  bool get isBillableLine => (isItem || isSection || isChecklist) && isBillable;
 
   bool get hasBillableContent {
-    if (!isBillableItem) return false;
-    return description.text.trim().isNotEmpty &&
-        (unitPrice ?? 0) > 0 &&
-        (qty ?? 0) >= 0;
+    if (isBillableItem) {
+      return description.text.trim().isNotEmpty &&
+          (unitPrice ?? 0) > 0 &&
+          (qty ?? 0) >= 0;
+    }
+    if (isBillableSection) {
+      return title.text.trim().isNotEmpty &&
+          (unitPrice ?? 0) > 0 &&
+          (qty ?? 0) >= 0;
+    }
+    if (isBillableChecklist) {
+      final titleText = title.text.trim();
+      final firstItem = checklistItems.isNotEmpty
+          ? checklistItems.first.text.text.trim()
+          : '';
+      return (titleText.isNotEmpty || firstItem.isNotEmpty) &&
+          (unitPrice ?? 0) > 0 &&
+          (qty ?? 0) >= 0;
+    }
+    return false;
   }
 
   InvoiceBlock toBlock() {
@@ -106,7 +127,7 @@ class InvoiceBlockDraft {
       unitPrice: parsedUnitPrice,
       taxRate: parsedTaxRate,
       level: parsedLevel,
-      isBillable: isItem ? isBillable : null,
+      isBillable: isBillableLine ? isBillable : null,
       title: clean(title.text),
       text: clean(text.text),
       items: checklistItems.isEmpty

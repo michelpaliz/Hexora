@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/contextual_fab.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/horizontal_drawer_nav/horizontal_drawer_nav.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 
 class MainScaffold extends StatelessWidget {
   /// Keep `title` for back-compat; use `titleWidget` to show custom header (avatar + name).
@@ -38,8 +37,7 @@ class MainScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? AppDarkColors.background : AppColors.background;
+    final bg = Theme.of(context).canvasColor;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Scaffold(
@@ -74,18 +72,14 @@ class MainScaffold extends StatelessWidget {
               ),
               notchMargin: 10,
               elevation: 8,
-              color: (Theme.of(context).brightness == Brightness.dark
-                      ? AppDarkColors.background
-                      : AppColors.background)
-                  .withOpacity(0.96),
+              color: bg.withValues(alpha: 0.96),
               child: const HorizontalDrawerNav(centerGapWidth: 96),
             )
           : null,
       floatingActionButtonLocation: showBottomNavAndFab
           ? FloatingActionButtonLocation.centerDocked
           : null,
-      floatingActionButton:
-          showBottomNavAndFab ? const ContextualFab() : null,
+      floatingActionButton: showBottomNavAndFab ? const ContextualFab() : null,
     );
   }
 }

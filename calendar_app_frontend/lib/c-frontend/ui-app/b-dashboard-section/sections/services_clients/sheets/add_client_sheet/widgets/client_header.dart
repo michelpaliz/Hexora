@@ -16,24 +16,25 @@ class ClientHeader extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             color: cs.primary.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             isEdit ? Icons.edit_note_rounded : Icons.person_add_alt_1_rounded,
+            size: 18,
             color: cs.primary,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             isEdit ? l.editClient : l.createClient,
-            style: typo.bodyMedium.copyWith(
+            style: typo.bodySmall.copyWith(
               fontWeight: FontWeight.w800,
-              letterSpacing: .2,
+              fontSize: 13,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

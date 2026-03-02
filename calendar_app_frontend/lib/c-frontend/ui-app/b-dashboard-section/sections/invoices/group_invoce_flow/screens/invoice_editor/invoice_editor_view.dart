@@ -48,83 +48,6 @@ class _InvoiceEditorView extends StatelessWidget {
                 : (step1Missing.isNotEmpty ? step1Missing.first : ''))
             : null;
 
-        final step1State =
-            step1Complete ? _StepState.complete : _StepState.current;
-        final step2State = state._c.previewedPdf
-            ? _StepState.complete
-            : (canPreview ? _StepState.current : _StepState.locked);
-        final step3State = canIssue ? _StepState.current : _StepState.locked;
-
-        Widget stepChip({
-          required String label,
-          required _StepState stateValue,
-          VoidCallback? onTap,
-          String? tooltip,
-        }) {
-          final compact = stateValue == _StepState.complete;
-          final bg = stateValue == _StepState.complete
-              ? cs.tertiaryContainer
-              : stateValue == _StepState.current
-                  ? cs.primaryContainer
-                  : cs.surfaceContainerHighest;
-          final fg = stateValue == _StepState.complete
-              ? cs.onTertiaryContainer
-              : stateValue == _StepState.current
-                  ? cs.onPrimaryContainer
-                  : cs.onSurfaceVariant;
-          final icon = stateValue == _StepState.complete
-              ? Icons.check_circle
-              : stateValue == _StepState.current
-                  ? Icons.circle
-                  : Icons.lock_outline;
-          final effectiveTooltip = compact ? label : tooltip;
-          final chip = Container(
-            padding: compact
-                ? const EdgeInsets.all(6)
-                : const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(999),
-              border:
-                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 14,
-                  color: fg,
-                ),
-                if (!compact) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: t.bodySmall.copyWith(
-                      color: fg,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          );
-
-          final tappable = onTap != null
-              ? InkWell(
-                  onTap: onTap,
-                  borderRadius: BorderRadius.circular(20),
-                  focusColor: cs.primary.withValues(alpha: 0.12),
-                  hoverColor: cs.primary.withValues(alpha: 0.08),
-                  child: chip,
-                )
-              : chip;
-          if (effectiveTooltip == null || effectiveTooltip.isEmpty) {
-            return tappable;
-          }
-          return Tooltip(message: effectiveTooltip, child: tappable);
-        }
-
         void showStep1Missing() {
           if (step1Missing.isEmpty) return;
           showDialog<void>(
@@ -143,7 +66,7 @@ class _InvoiceEditorView extends StatelessWidget {
         }
 
         final content = Scaffold(
-          backgroundColor: cs.surfaceContainerLowest,
+          backgroundColor: cs.surface,
           appBar: kIsWeb
               ? null
               : InvoiceEditorAppBar(
@@ -157,18 +80,7 @@ class _InvoiceEditorView extends StatelessWidget {
                 ),
           body: LayoutBuilder(
             builder: (context, constraints) {
-              final headerLeft = InvoiceHeaderFields(
-                clients: state.widget.clients,
-                clientId: state._c.clientId,
-                onClientChanged: state._c.setClientId,
-                currencyController: state._c.currency,
-                invoiceDate: state._c.invoiceDate,
-                dueDate: state._c.dueDate,
-                onPickInvoiceDate: () =>
-                    state._c.pickDate(context, state._c.invoiceDate),
-                onPickDueDate: () =>
-                    state._c.pickDate(context, state._c.dueDate),
-              );
+              const headerLeft = SizedBox.shrink();
 
               final saved = state._c.savedInvoice;
               final savedStatus = (saved?.status ?? '').toLowerCase();
@@ -184,9 +96,7 @@ class _InvoiceEditorView extends StatelessWidget {
                   .where((inv) =>
                       editingDraftId == null || inv.id != editingDraftId)
                   .toList();
-              final hasBlockingDrafts =
-                  pendingDrafts.isNotEmpty && !state._c.editingDraft;
-              final draftBanner = draft == null
+              final draftBannerInline = draft == null
                   ? null
                   : _DraftBanner(
                       draft: draft,
@@ -194,191 +104,9 @@ class _InvoiceEditorView extends StatelessWidget {
                       deleting: state._c.deletingDraft,
                       onPreview: () => state._c.previewPdf(context),
                       onDelete: () => state._c.deleteDraft(context),
+                      showActions: false,
+                      compact: true,
                     );
-
-              final stepChipsRow = Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  stepChip(
-                    label: l.invoiceStepCreateShort,
-                    stateValue: step1State,
-                    onTap: step1Missing.isNotEmpty ? showStep1Missing : null,
-                    tooltip: step1Missing.isNotEmpty
-                        ? step1Missing.map((e) => '• $e').join('\n')
-                        : null,
-                  ),
-                  _StepDivider(color: cs.outlineVariant.withValues(alpha: 0.5)),
-                  stepChip(
-                    label: l.invoiceStepPreviewShort,
-                    stateValue: step2State,
-                  ),
-                  _StepDivider(color: cs.outlineVariant.withValues(alpha: 0.5)),
-                  stepChip(
-                    label: l.invoiceStepIssueShort,
-                    stateValue: step3State,
-                  ),
-                ],
-              );
-
-              final stepsHeader = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  stepChipsRow,
-                  const SizedBox(height: 10),
-                  LayoutBuilder(
-                    builder: (context, actionConstraints) {
-                      final actionWide = actionConstraints.maxWidth >= 820;
-
-                      Widget actionColumn({
-                        required Widget button,
-                        String? helper,
-                        String? helperBadge,
-                      }) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            button,
-                            if (helper != null && helper.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 280),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (helperBadge != null &&
-                                        helperBadge.isNotEmpty) ...[
-                                      Container(
-                                        width: 18,
-                                        height: 18,
-                                        decoration: BoxDecoration(
-                                          color: cs.surfaceContainerHighest,
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                          border: Border.all(
-                                            color: cs.outlineVariant
-                                                .withValues(alpha: 0.5),
-                                          ),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          helperBadge,
-                                          style: t.bodySmall.copyWith(
-                                            color: cs.onSurfaceVariant,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                    ],
-                                    Expanded(
-                                      child: Text(
-                                        helper,
-                                        style: t.bodySmall.copyWith(
-                                          color: cs.onSurfaceVariant,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ],
-                        );
-                      }
-
-                      final saveButton = OutlinedButton.icon(
-                        onPressed: canSaveDraft
-                            ? () => state._c.handleSaveDraft(context)
-                            : null,
-                        icon: state._c.saving
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.save_outlined),
-                        label: Text(
-                          state._c.saving
-                              ? l.savingLabel
-                              : l.invoiceSaveDraftCta,
-                        ),
-                      );
-
-                      final previewColumn = actionColumn(
-                        button: OutlinedButton.icon(
-                          onPressed: canPreview
-                              ? () => state._c.previewPdf(context)
-                              : null,
-                          icon: const Icon(Icons.picture_as_pdf_outlined),
-                          label: Text(l.invoicePreviewCta),
-                        ),
-                        helper: previewReason,
-                        helperBadge: '2',
-                      );
-
-                      final issueColumn = actionColumn(
-                        button: FilledButton.icon(
-                          onPressed:
-                              canIssue ? () => state._c.issue(context) : null,
-                          style: reinforceIssue
-                              ? FilledButton.styleFrom(
-                                  elevation: 3,
-                                  shadowColor:
-                                      cs.primary.withValues(alpha: 0.35),
-                                )
-                              : null,
-                          icon: state._c.issuing
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.check_circle_outline),
-                          label: Text(
-                            state._c.issuing
-                                ? l.invoiceIssuingLabel
-                                : l.invoiceIssueCta,
-                          ),
-                        ),
-                        helper: issueReason,
-                        helperBadge: '3',
-                      );
-
-                      if (actionWide) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: actionColumn(button: saveButton),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(child: previewColumn),
-                            const SizedBox(width: 16),
-                            Expanded(child: issueColumn),
-                          ],
-                        );
-                      }
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          actionColumn(button: saveButton),
-                          const SizedBox(height: 10),
-                          previewColumn,
-                          const SizedBox(height: 10),
-                          issueColumn,
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              );
 
               final selectedClientName = state._c.clientId == null
                   ? l.invoiceSelectClientLabel
@@ -396,190 +124,37 @@ class _InvoiceEditorView extends StatelessWidget {
               final currency = state._c.currency.text.trim().isEmpty
                   ? 'EUR'
                   : state._c.currency.text.trim();
+              final euroFmt = NumberFormat.currency(
+                locale: l.localeName,
+                symbol: 'EUR ',
+              );
+              final rawSubtotal = state._c.rawSubtotal;
+              final discountAmount = state._c.effectiveDiscountAmount;
+              final baseAfterDiscount = state._c.subtotalAfterDiscount;
+              final taxAfterDiscount = state._c.taxAfterDiscount;
+              final showDiscountRows = discountAmount > 0;
 
-              final headerBar = Container(
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: cs.outlineVariant.withValues(alpha: 0.4)),
-                ),
-                child: LayoutBuilder(
-                  builder: (context, headerConstraints) {
-                    final headerWide = headerConstraints.maxWidth >= 980;
-                    final dividerColor =
-                        cs.outlineVariant.withValues(alpha: 0.35);
-
-                    final headerToggle = Align(
-                      alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 6, top: 4),
-                        child: IconButton(
-                          tooltip: state._headerCompact
-                              ? l.invoiceHeaderExpandCta
-                              : l.invoiceHeaderCompactCta,
-                          icon: Icon(
-                            state._headerCompact
-                                ? Icons.unfold_more
-                                : Icons.unfold_less,
-                          ),
-                          onPressed: () => state.setState(
-                            () => state._headerCompact = !state._headerCompact,
-                          ),
-                        ),
-                      ),
-                    );
-
-                    final headerContent = state._headerCompact
-                        ? _HeaderCompactSummary(
-                            clientName: selectedClientName,
-                            currency: currency,
-                            invoiceDate: invoiceDate,
-                            dueDate: dueDate,
-                          )
-                        : headerLeft;
-
-                    final contextBand = Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerLowest,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          hasBlockingDrafts
-                              ? AbsorbPointer(
-                                  child: Opacity(
-                                    opacity: 0.6,
-                                    child: headerContent,
-                                  ),
-                                )
-                              : headerContent,
-                          if (draftBanner != null) ...[
-                            const SizedBox(height: 12),
-                            draftBanner,
-                          ],
-                          if (pendingDrafts.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-                            _PendingDraftsList(
-                              drafts: pendingDrafts,
-                              clients: state.widget.clients,
-                              deleting: state._c.deletingDraft,
-                              onPreview: (draft) =>
-                                  state._c.previewDraft(context, draft),
-                              onDownload: (draft) =>
-                                  state._c.downloadDraftPdf(context, draft),
-                              onEdit: (draft) =>
-                                  state._c.editDraftFromList(context, draft),
-                              onDelete: (draft) =>
-                                  state._c.deleteDraftById(context, draft),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-
-                    final actionContent = state._headerCompact
-                        ? _CompactStepsPanel(
-                            stepChips: stepChipsRow,
-                            onSave: canSaveDraft
-                                ? () => state._c.handleSaveDraft(context)
-                                : null,
-                            onPreview: canPreview
-                                ? () => state._c.previewPdf(context)
-                                : null,
-                            onIssue:
-                                canIssue ? () => state._c.issue(context) : null,
-                            saving: state._c.saving,
-                            issuing: state._c.issuing,
-                            saveTooltip: hasBlockingDrafts
-                                ? l.invoiceWarningPendingDrafts
-                                : l.invoiceSaveDraftCta,
-                            previewTooltip: canPreview
-                                ? l.invoicePreviewCta
-                                : previewReason,
-                            issueTooltip:
-                                canIssue ? l.invoiceIssueCta : issueReason,
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              stepsHeader,
-                              if (hasBlockingDrafts) ...[
-                                const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: cs.errorContainer,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.warning_amber_rounded,
-                                          size: 18, color: cs.onErrorContainer),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          l.invoiceWarningPendingDrafts,
-                                          style: t.bodySmall.copyWith(
-                                            color: cs.onErrorContainer,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          );
-
-                    final actionBand = Container(
-                      padding: const EdgeInsets.all(16),
-                      child: hasBlockingDrafts
-                          ? AbsorbPointer(
-                              child:
-                                  Opacity(opacity: 0.6, child: actionContent),
-                            )
-                          : actionContent,
-                    );
-
-                    if (headerWide) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          headerToggle,
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: contextBand),
-                              Container(
-                                width: 1,
-                                margin: const EdgeInsets.symmetric(vertical: 8),
-                                color: dividerColor,
-                              ),
-                              Expanded(child: actionBand),
-                            ],
-                          ),
-                        ],
-                      );
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        headerToggle,
-                        contextBand,
-                        Divider(height: 1, color: dividerColor),
-                        actionBand,
-                      ],
-                    );
-                  },
-                ),
+              final headerBar = _InvoiceEditorHeaderSection(
+                state: state,
+                l: l,
+                t: t,
+                cs: cs,
+                headerLeft: headerLeft,
+                stepsHeader: const SizedBox.shrink(),
+                stepChipsRow: const SizedBox.shrink(),
+                draftBanner: null,
+                pendingDrafts: pendingDrafts,
+                hasBlockingDrafts: false,
+                selectedClientName: selectedClientName,
+                currency: currency,
+                invoiceDate: invoiceDate,
+                dueDate: dueDate,
+                canSaveDraft: canSaveDraft,
+                canPreview: canPreview,
+                canIssue: canIssue,
+                reinforceIssue: reinforceIssue,
+                previewReason: previewReason,
+                issueReason: issueReason,
               );
 
               final linesSection = InvoiceContentSection(
@@ -589,27 +164,806 @@ class _InvoiceEditorView extends StatelessWidget {
                 lines: state._c.lines,
                 onChanged: state._c.notifyUi,
                 total: state._c.total,
+                controller: state._c,
+                ocrState: state._c.ocrState,
+                onPickImageForLineExtraction: () =>
+                    state._c.extractLinesFromImage(context),
+                onApplyExtractedLines: state._c.applyExtractedLinesToDraft,
+                onClearExtractedLines: state._c.clearExtractedLines,
               );
 
-              final gatedLinesSection = hasBlockingDrafts
-                  ? AbsorbPointer(
-                      child: Opacity(
-                        opacity: 0.6,
-                        child: linesSection,
+              final gatedLinesSection = linesSection;
+
+              final saveDraftButton = FilledButton.tonalIcon(
+                onPressed: canSaveDraft && state._c.confirmSaveDraft
+                    ? () => state._c.handleSaveDraft(context)
+                    : null,
+                icon: state._c.saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined),
+                label: Text(
+                  state._c.saving ? l.savingLabel : l.invoiceSaveDraftCta,
+                ),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              );
+
+              final totalsCard = Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l.invoiceTotalsTitle,
+                        style: t.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    )
-                  : linesSection;
+                    ),
+                    Text(
+                      euroFmt.format(state._c.total),
+                      style: t.titleLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+
+              List<Map<String, Object>> buildSummaryRows() {
+                final rows = <Map<String, Object>>[];
+                if (state._c.useBlocks) {
+                  for (final block in state._c.blocks) {
+                    if (!block.isBillableLine) continue;
+                    final desc = block.isSection || block.isChecklist
+                        ? block.title.text.trim()
+                        : block.description.text.trim();
+                    if (desc.isEmpty) continue;
+                    final qty = block.qty ?? 0;
+                    final price = block.unitPrice ?? 0;
+                    final tax = block.taxRate ?? 0;
+                    final total = qty * price * (1 + (tax / 100));
+                    rows.add({
+                      'desc': desc,
+                      'qty': qty,
+                      'price': price,
+                      'tax': tax,
+                      'total': total,
+                    });
+                  }
+                } else {
+                  for (final line in state._c.lines) {
+                    final desc = line.description.text.trim();
+                    if (desc.isEmpty) continue;
+                    final qty = line.quantity ?? 0;
+                    final price = line.unitPrice ?? 0;
+                    final tax = line.taxRate ?? 0;
+                    final total = qty * price * (1 + (tax / 100));
+                    rows.add({
+                      'desc': desc,
+                      'qty': qty,
+                      'price': price,
+                      'tax': tax,
+                      'total': total,
+                    });
+                  }
+                }
+                return rows;
+              }
+
+              final summaryRows = buildSummaryRows();
+
+              Widget discountEditorCard() {
+                String? validateAmount(String? raw) {
+                  if (state._c.useDiscountPercent) return null;
+                  final text = (raw ?? '').trim();
+                  if (text.isEmpty) return null;
+                  final parsed = num.tryParse(text.replaceAll(',', '.'));
+                  if (parsed == null) return 'Importe inválido';
+                  if (parsed < 0) return 'Debe ser mayor o igual a 0';
+                  return null;
+                }
+
+                String? validatePercent(String? raw) {
+                  if (!state._c.useDiscountPercent) return null;
+                  final text = (raw ?? '').trim();
+                  if (text.isEmpty) return null;
+                  final parsed = num.tryParse(text.replaceAll(',', '.'));
+                  if (parsed == null) return 'Porcentaje inválido';
+                  if (parsed < 0 || parsed > 100) {
+                    return 'Debe estar entre 0 y 100';
+                  }
+                  return null;
+                }
+
+                final readOnly = state._c.discountReadOnly;
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Descuento',
+                        style: t.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Importe fijo (€)'),
+                            selected: !state._c.useDiscountPercent,
+                            onSelected: readOnly
+                                ? null
+                                : (_) => state._c.setDiscountModePercent(false),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Porcentaje (%)'),
+                            selected: state._c.useDiscountPercent,
+                            onSelected: readOnly
+                                ? null
+                                : (_) => state._c.setDiscountModePercent(true),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: state._c.discountAmountCtrl,
+                              enabled: !readOnly && !state._c.useDiscountPercent,
+                              autovalidateMode:
+                                  AutovalidateMode.onUserInteraction,
+                              keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true,
+                              ),
+                              validator: validateAmount,
+                              decoration: const InputDecoration(
+                                labelText: 'Importe fijo (€)',
+                                hintText: '0.00',
+                              ),
+                              onChanged: state._c.setDiscountAmountText,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextFormField(
+                              controller: state._c.discountPercentCtrl,
+                              enabled: !readOnly && state._c.useDiscountPercent,
+                              autovalidateMode:
+                                  AutovalidateMode.onUserInteraction,
+                              keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true,
+                              ),
+                              validator: validatePercent,
+                              decoration: const InputDecoration(
+                                labelText: 'Porcentaje (%)',
+                                hintText: '0.00',
+                              ),
+                              onChanged: state._c.setDiscountPercentText,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'El descuento se aplica antes de IVA.',
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              Widget totalsSummary() {
+                if (summaryRows.isEmpty) {
+                  return Text(
+                    l.invoicePreviewNeedsLines,
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  );
+                }
+                final currencyFmt = NumberFormat.currency(
+                  locale: l.localeName,
+                  symbol: 'EUR ',
+                );
+                Widget totalsBreakdownRow(String label, String value) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            value,
+                            textAlign: TextAlign.right,
+                            style: t.bodySmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 5,
+                            child: Text(
+                              l.descriptionLabel,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              l.lineQuantity,
+                              textAlign: TextAlign.right,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              l.lineUnitPrice,
+                              textAlign: TextAlign.right,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              l.lineTaxRate,
+                              textAlign: TextAlign.right,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              l.invoiceTotalLabel,
+                              textAlign: TextAlign.right,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Divider(height: 1, color: cs.outlineVariant),
+                      const SizedBox(height: 8),
+                      ...summaryRows.map((row) {
+                        final rawDesc = (row['desc'] ?? '').toString();
+                        final descParts = rawDesc
+                            .split('\n')
+                            .map((e) => e.trim())
+                            .where((e) => e.isNotEmpty)
+                            .toList();
+                        final descTitle =
+                            descParts.isEmpty ? rawDesc : descParts.first;
+                        final descList = descParts.length > 1
+                            ? descParts.sublist(1)
+                            : const <String>[];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      descTitle,
+                                      style: t.bodySmall.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (descList.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      ...descList.map(
+                                        (line) => Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 2),
+                                          child: Text(
+                                            line,
+                                            style: t.bodySmall.copyWith(
+                                              color: cs.onSurfaceVariant
+                                                  .withValues(
+                                                alpha: 0.85,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  (row['qty'] ?? 0).toString(),
+                                  textAlign: TextAlign.right,
+                                  style: t.bodySmall,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  currencyFmt.format(row['price'] ?? 0).trim(),
+                                  textAlign: TextAlign.right,
+                                  style: t.bodySmall,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  (row['tax'] ?? 0).toString(),
+                                  textAlign: TextAlign.right,
+                                  style: t.bodySmall,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  currencyFmt.format(row['total'] ?? 0).trim(),
+                                  textAlign: TextAlign.right,
+                                  style: t.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 10),
+                      Divider(height: 1, color: cs.outlineVariant),
+                      const SizedBox(height: 10),
+                      totalsBreakdownRow(
+                        'Total parcial',
+                        currencyFmt.format(rawSubtotal).trim(),
+                      ),
+                      if (showDiscountRows)
+                        totalsBreakdownRow(
+                          'Descuento',
+                          '-${currencyFmt.format(discountAmount).trim()}',
+                        ),
+                      if (showDiscountRows)
+                        totalsBreakdownRow(
+                          'Base imponible',
+                          currencyFmt.format(baseAfterDiscount).trim(),
+                        ),
+                      totalsBreakdownRow(
+                        'IVA',
+                        currencyFmt.format(taxAfterDiscount).trim(),
+                      ),
+                      totalsBreakdownRow(
+                        l.invoiceTotalLabel,
+                        currencyFmt.format(state._c.total).trim(),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final previewBytes = state._c.previewPdfBytes;
+              final previewPanel = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (canPreview) ...[
+                        if (state._c.previewing || previewBytes == null)
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else
+                          IconButton(
+                            tooltip: l.refreshAction,
+                            onPressed: state._c.previewing
+                                ? null
+                                : () => state._c.previewPdf(context),
+                            icon: const Icon(Icons.refresh),
+                          ),
+                      ],
+                    ],
+                  ),
+                  if (!canPreview && previewReason != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          previewReason,
+                          textAlign: TextAlign.center,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (previewBytes != null) ...[
+                    const SizedBox(height: 12),
+                    PdfInlinePreview(bytes: previewBytes, height: 520),
+                  ],
+                ],
+              );
+
+              Widget summaryRow(String label, String value) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          value,
+                          textAlign: TextAlign.right,
+                          style: t.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final issuePanel = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l.invoiceSummaryTitle,
+                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        summaryRow(
+                          l.invoiceCustomerTitle,
+                          selectedClientName,
+                        ),
+                        summaryRow(
+                          l.invoiceNumberLabel,
+                          state._c.previewInvoiceNumber,
+                        ),
+                        summaryRow(
+                          l.invoiceDateLabel,
+                          invoiceDate == null
+                              ? '-'
+                              : DateFormat.yMMMd(l.localeName)
+                                  .format(invoiceDate),
+                        ),
+                        summaryRow(
+                          l.invoiceDueDateLabel,
+                          dueDate == null
+                              ? '-'
+                              : DateFormat.yMMMd(l.localeName).format(dueDate),
+                        ),
+                        summaryRow(
+                          l.currencyLabel,
+                          currency,
+                        ),
+                        summaryRow(
+                          l.invoiceTotalLabel,
+                          euroFmt.format(state._c.total).trim(),
+                        ),
+                        if (showDiscountRows)
+                          summaryRow(
+                            'Descuento',
+                            '-${euroFmt.format(discountAmount).trim()}',
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  totalsSummary(),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: canIssue ? () => state._c.issue(context) : null,
+                    style: reinforceIssue
+                        ? FilledButton.styleFrom(
+                            elevation: 3,
+                            shadowColor: cs.primary.withValues(alpha: 0.35),
+                          )
+                        : null,
+                    icon: state._c.issuing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check_circle_outline),
+                    label: Text(
+                      state._c.issuing
+                          ? l.invoiceIssuingLabel
+                          : l.invoiceIssueCta,
+                    ),
+                  ),
+                  if (!canIssue && issueReason != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      issueReason,
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              );
+
+              final tabs = [
+                l.invoiceCustomerTitle,
+                l.invoiceDatesTitle,
+                l.invoiceLinesTitle,
+                l.invoiceTotalsTitle,
+                l.invoiceStepPreviewShort,
+                l.invoiceStepIssueShort,
+              ];
 
               return Form(
                 key: state._c.formKey,
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(5),
                   child: Column(
                     children: [
                       headerBar,
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 2),
+                      AnimatedBuilder(
+                        animation: state._tabController,
+                        builder: (context, _) {
+                          final current = state._tabController.index;
+                          final steps = List<Step>.generate(
+                            tabs.length,
+                            (index) => Step(
+                              title: Text(tabs[index]),
+                              content: const SizedBox.shrink(),
+                              state: current > index
+                                  ? StepState.complete
+                                  : StepState.indexed,
+                              isActive: current >= index,
+                            ),
+                          );
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: WizardStepsHeader(
+                                  steps: steps,
+                                  currentStep: current,
+                                  isWide:
+                                      MediaQuery.of(context).size.width >= 900,
+                                  onStepTapped: (i) {
+                                    state._c.setCurrentStepIndex(i);
+                                    state._tabController.animateTo(i);
+                                  },
+                                ),
+                              ),
+                              if (draftBannerInline != null) ...[
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 200,
+                                  child: draftBannerInline,
+                                ),
+                              ],
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: cs.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: cs.outlineVariant
+                                        .withValues(alpha: 0.4),
+                                  ),
+                                ),
+                                child: Text(
+                                  selectedClientName,
+                                  style: t.bodySmall.copyWith(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 2),
                       Expanded(
-                        child: SingleChildScrollView(child: gatedLinesSection),
+                        child: TabBarView(
+                          controller: state._tabController,
+                          children: [
+                            SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  ClientSearchSelect(
+                                    clients: state.widget.clients,
+                                    selectedClientId: state._c.clientId,
+                                    onClientChanged: state._c.setClientId,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SingleChildScrollView(
+                              child: InvoiceHeaderFields(
+                                clients: state.widget.clients,
+                                clientId: state._c.clientId,
+                                onClientChanged: state._c.setClientId,
+                                currencyController: state._c.currency,
+                                invoiceDate: state._c.invoiceDate,
+                                dueDate: state._c.dueDate,
+                                onPickInvoiceDate: () => state._c
+                                    .pickDate(context, state._c.invoiceDate),
+                                onPickDueDate: () => state._c
+                                    .pickDate(context, state._c.dueDate),
+                                showDates: true,
+                                showClient: false,
+                                showCurrency: false,
+                              ),
+                            ),
+                            SingleChildScrollView(
+                              child: gatedLinesSection,
+                            ),
+                            SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  discountEditorCard(),
+                                  const SizedBox(height: 12),
+                                  totalsCard,
+                                  const SizedBox(height: 12),
+                                  totalsSummary(),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: cs.surface,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: cs.outlineVariant
+                                            .withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Checkbox(
+                                              value: state._c.confirmSaveDraft,
+                                              onChanged: (v) => state._c
+                                                  .setConfirmSaveDraft(
+                                                      v ?? false),
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                l.invoicePreviewNeedsDraft,
+                                                style: t.bodySmall.copyWith(
+                                                  color: cs.onSurfaceVariant,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: saveDraftButton,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SingleChildScrollView(child: previewPanel),
+                            SingleChildScrollView(child: issuePanel),
+                          ],
+                        ),
                       ),
                     ],
                   ),

@@ -42,6 +42,7 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
 
   Stream<User?> get authStateStream => _authStateController.stream;
 
+  @Deprecated('Use getToken() to avoid stale in-memory token reads.')
   String? get lastToken => _authToken;
 
   @override
@@ -64,9 +65,11 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
     if (errorMessage.contains('username') && errorMessage.contains('already')) {
       throw UsernameAlreadyUseAuthException();
     } else if (errorMessage.contains('username') &&
-        (errorMessage.contains('required') || errorMessage.contains('missing'))) {
+        (errorMessage.contains('required') ||
+            errorMessage.contains('missing'))) {
       throw Exception('Username is required');
-    } else if (errorMessage.contains('email') && errorMessage.contains('already')) {
+    } else if (errorMessage.contains('email') &&
+        errorMessage.contains('already')) {
       throw EmailAlreadyUseAuthException();
     } else if (errorMessage.contains('weak') ||
         errorMessage.contains('password')) {
@@ -75,7 +78,8 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
         errorMessage.contains('email')) {
       throw InvalidEmailAuthException();
     }
-    throw Exception(res['message']?.toString() ?? GenericAuthException().toString());
+    throw Exception(
+        res['message']?.toString() ?? GenericAuthException().toString());
   }
 
   // LOGIN
@@ -236,8 +240,8 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
         await _authApi.resendVerification(email: email.trim().toLowerCase());
     final status = res['_status'] as int? ?? 200;
     if (status != 200) {
-      final msg = res['message']?.toString() ??
-          'Unable to resend verification email.';
+      final msg =
+          res['message']?.toString() ?? 'Unable to resend verification email.';
       throw Exception(msg);
     }
   }

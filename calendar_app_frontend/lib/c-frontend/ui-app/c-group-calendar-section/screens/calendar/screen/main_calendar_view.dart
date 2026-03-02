@@ -9,6 +9,7 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/services_section/right_panel_insights_inline.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/coordinator/calendar_screen_coordinator.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_side_menu.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_tabs.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_topbar.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/refresh_button.dart';
@@ -17,7 +18,10 @@ import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calend
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/presence_status_strip.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
+import 'package:hexora/c-frontend/ui-app/d-event-section/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/agenda_screen.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
+import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -53,7 +57,15 @@ class MainCalendarView extends StatefulWidget {
   State<MainCalendarView> createState() => _MainCalendarViewState();
 }
 
-enum _SidePanelView { upcoming, completed, insights, addEvent, editEvent }
+enum _SidePanelView {
+  upcoming,
+  completed,
+  insights,
+  addEvent,
+  viewEvent,
+  editEvent,
+  miniCalendar
+}
 
 class _MainCalendarViewState extends State<MainCalendarView> {
   late final CalendarScreenCoordinator _c;
@@ -66,6 +78,13 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   final ValueNotifier<bool> _leftCollapsedNotifier = ValueNotifier(false);
   bool _canAddEvents = false;
   Event? _editingEvent;
+  Event? _viewingEvent;
+  bool _viewsExpanded = true;
+  bool _eventsExpanded = true;
+  bool _insightsExpanded = false;
+  String _selectedSideMenu = 'week';
+  DateTime? _pendingAddEventStart;
+  DateTime? _pendingAddEventEnd;
 
   @override
   void initState() {
@@ -108,10 +127,20 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   Future<void> _openAddEvent(Group group) async {
     bool? added;
 
+    final isWideNow = MediaQuery.of(context).size.width >= 1000;
+    if (isWideNow) {
+      final now = DateTime.now();
+      setState(() {
+        _panelView = _SidePanelView.addEvent;
+        _pendingAddEventStart = now;
+        _pendingAddEventEnd = now.add(const Duration(hours: 1));
+      });
+      return;
+    }
+
     if (widget.embedded && kIsWeb) {
       setState(() {
         _panelView = _SidePanelView.addEvent;
-        _rightCollapsed = false;
       });
       return;
     }
@@ -151,9 +180,28 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     }
 
     if (added == true) {
-      await _c.loadData(initialGroup: group);
-      if (mounted) setState(() {});
+      await _refreshCalendarOnly();
     }
+  }
+
+  Future<void> _refreshCalendarOnly() async {
+    if (!mounted) return;
+    await context.read<EventDomain>().manualRefresh(context, silent: true);
+  }
+
+  void _openAddEventForSlot(DateTime slot) {
+    final start = DateTime(
+      slot.year,
+      slot.month,
+      slot.day,
+      slot.hour,
+      slot.minute,
+    );
+    setState(() {
+      _panelView = _SidePanelView.addEvent;
+      _pendingAddEventStart = start;
+      _pendingAddEventEnd = start.add(const Duration(hours: 1));
+    });
   }
 
   void _onUserFilterChanged(String? userId) {
@@ -175,11 +223,44 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     _leftCollapsedNotifier.value = _leftCollapsed;
   }
 
+  void _onSideMenuChanged(String menu) {
+    setState(() => _selectedSideMenu = menu);
+    // Handle menu changes - switch views or navigate
+    switch (menu) {
+      case 'week':
+      case 'day':
+      case 'agenda':
+        // These view modes are handled by the main calendar
+        break;
+      case 'month':
+        // Month is still a calendar view in the main area.
+        break;
+      case 'upcoming':
+        _setPanelView(_SidePanelView.upcoming);
+        break;
+      case 'completed':
+        _setPanelView(_SidePanelView.completed);
+        break;
+      case 'insights':
+        _setPanelView(_SidePanelView.insights);
+        break;
+      case 'mini_calendar':
+        _setPanelView(_SidePanelView.miniCalendar);
+        break;
+    }
+  }
+
+  void _openViewEventInline(Event event) {
+    setState(() {
+      _viewingEvent = event;
+      _panelView = _SidePanelView.viewEvent;
+    });
+  }
+
   void _openEditEventInline(Event event) {
     setState(() {
       _editingEvent = event;
       _panelView = _SidePanelView.editEvent;
-      _rightCollapsed = false;
     });
   }
 
@@ -203,7 +284,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
   void _syncInlineEditHandler() {
     _c.setInlineEditHandler(
-      widget.embedded && kIsWeb ? _openEditEventInline : null,
+      widget.embedded && kIsWeb ? _openViewEventInline : null,
     );
   }
 
@@ -301,66 +382,110 @@ class _MainCalendarViewState extends State<MainCalendarView> {
           );
         }
 
-        Widget calendarContent({required bool showActions}) {
-          final calendarUI = _c.calendarUI;
-          final midTabs = [
-            Tab(text: loc.tabWeek),
-            Tab(text: loc.tabDay),
-            Tab(text: loc.tabAgenda),
+        List<Widget> calendarHeaderActions() {
+          final connectedUsers = _c.buildPresenceFor(currentGroup);
+          final actions = <Widget>[
+            Tooltip(
+              message: 'All',
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () => _onUserFilterChanged(null),
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: cs.secondaryContainer.withValues(alpha: 0.9),
+                    border: Border.all(
+                      color: _selectedUserFilter == null
+                          ? cs.secondary
+                          : cs.outlineVariant.withValues(alpha: 0.6),
+                      width: 1.8,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.all_inclusive,
+                    size: 16,
+                    color: cs.onSecondaryContainer,
+                  ),
+                ),
+              ),
+            ),
           ];
-          return DefaultTabController(
-            initialIndex: 0,
-            length: midTabs.length,
-            child: Column(
-              children: [
+
+          for (final user in connectedUsers) {
+            final isSelected = _selectedUserFilter == user.userId;
+            actions.add(
+              Tooltip(
+                message: user.userName,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: () => _onUserFilterChanged(user.userId),
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    padding: const EdgeInsets.all(1.6),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected
+                            ? cs.primary
+                            : cs.outlineVariant.withValues(alpha: 0.55),
+                        width: 1.8,
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      radius: 12,
+                      backgroundColor: cs.surfaceContainerHighest,
+                      backgroundImage: AvatarUtils.profileImageProvider(
+                        user.photoUrl,
+                        assetFallback: 'assets/images/default_profile.png',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+          return actions;
+        }
+
+        Widget calendarContent({
+          required bool showActions,
+          bool showPresenceStrip = true,
+        }) {
+          final calendarUI = _c.calendarUI;
+
+          // Determine the view mode based on side menu selection
+          String viewMode = 'week'; // default
+          if (_selectedSideMenu == 'day' ||
+              _selectedSideMenu == 'week' ||
+              _selectedSideMenu == 'agenda') {
+            viewMode = _selectedSideMenu;
+          }
+
+          return Column(
+            children: [
+              if (showPresenceStrip) ...[
                 PresenceStatusStrip(
                   group: currentGroup,
                   controller: _c,
                   selectedUserId: _selectedUserFilter,
                   onUserSelected: _onUserFilterChanged,
                 ),
-                const SizedBox(height: 10),
-                TabBar(
-                  tabs: midTabs,
-                  isScrollable: false,
-                  labelStyle:
-                      typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                  unselectedLabelStyle: typo.bodySmall,
-                  labelColor: cs.primary,
-                  unselectedLabelColor: cs.onSurfaceVariant,
-                  indicator: const UnderlineTabIndicator(
-                    borderSide: BorderSide(width: 3),
-                  ),
-                  indicatorColor: cs.primary,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: Colors.transparent,
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      calendarUI?.buildCalendar(
-                            context,
-                            forcedViewMode: 'week',
-                          ) ??
-                          const SizedBox(),
-                      calendarUI?.buildCalendar(
-                            context,
-                            forcedViewMode: 'day',
-                          ) ??
-                          const SizedBox(),
-                      calendarUI?.buildCalendar(
-                            context,
-                            forcedViewMode: 'agenda',
-                          ) ??
-                          const SizedBox(),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (showActions) actionButtons(vertical: false),
+                const SizedBox(height: 6),
               ],
-            ),
+              Expanded(
+                child: calendarUI?.buildCalendar(
+                      context,
+                      forcedViewMode: viewMode,
+                      onTimeSlotTap: _openAddEventForSlot,
+                    ) ??
+                    const SizedBox(),
+              ),
+              const SizedBox(height: 4),
+              if (showActions) actionButtons(vertical: false),
+            ],
           );
         }
 
@@ -375,18 +500,20 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 onUserSelected: _onUserFilterChanged,
                 showAllOption: false,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Expanded(
                 child: TabBarView(
                   children: [
                     calendarUI?.buildCalendar(
                           context,
                           forcedViewMode: 'day',
+                          onTimeSlotTap: _openAddEventForSlot,
                         ) ??
                         const SizedBox(),
                     calendarUI?.buildCalendar(
                           context,
                           forcedViewMode: 'week',
+                          onTimeSlotTap: _openAddEventForSlot,
                         ) ??
                         const SizedBox(),
                     calendarUI?.buildCalendar(
@@ -402,234 +529,192 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               actionButtons(vertical: false),
             ],
           );
         }
 
         Widget calendarSidebar() {
-          final calendarUI = _c.calendarUI;
-          if (_leftCollapsed) {
-            return const Card(
-              elevation: 2,
-              clipBehavior: Clip.antiAlias,
-              child: SizedBox.shrink(),
-            );
-          }
-          return Card(
-            elevation: 2,
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: calendarUI?.buildCalendar(
-                            context,
-                            forcedViewMode: 'month',
-                          ) ??
-                          Center(
-                            child: Text(
-                              loc.noGroupAvailable,
-                              style: typo.bodyMedium
-                                  .copyWith(color: cs.onSurfaceVariant),
-                            ),
+          return CalendarSideMenu(
+            group: currentGroup,
+            collapsed: false,
+            showCollapseToggle: false,
+            onToggleCollapse: () {},
+            viewsExpanded: _viewsExpanded,
+            eventsExpanded: _eventsExpanded,
+            insightsExpanded: _insightsExpanded,
+            onToggleViewsExpanded: () =>
+                setState(() => _viewsExpanded = !_viewsExpanded),
+            onToggleEventsExpanded: () =>
+                setState(() => _eventsExpanded = !_eventsExpanded),
+            onToggleInsightsExpanded: () =>
+                setState(() => _insightsExpanded = !_insightsExpanded),
+            selectedMenu: _selectedSideMenu,
+            onMenuChanged: _onSideMenuChanged,
+            onAddEvent: canAddEvents ? () => _openAddEvent(currentGroup) : null,
+            canAddEvents: canAddEvents,
+            upcomingCount: 0, // TODO: Get actual count from events
+            completedCount: 0, // TODO: Get actual count from completed events
+          );
+        }
+
+        Widget miniCalendarPanel() {
+          return SizedBox(
+            width: 360,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Card(
+                elevation: 0,
+                color: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                  child: _c.calendarUI?.buildCalendar(
+                        context,
+                        forcedViewMode: 'month',
+                      ) ??
+                      Center(
+                        child: Text(
+                          loc.noGroupAvailable,
+                          style: typo.bodyMedium.copyWith(
+                            color: cs.onSurfaceVariant,
                           ),
-                    ),
-                  ),
-                ],
+                        ),
+                      ),
+                ),
               ),
             ),
           );
         }
 
-        Widget eventsSidebar() {
-          final selectedColor = cs.primary;
-          final selectedBg = cs.primary.withOpacity(0.12);
-          final iconRail = Container(
-            width: 56,
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withOpacity(0.35),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.outlineVariant.withOpacity(0.4)),
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 6),
-                IconButton(
-                  tooltip: loc.sectionUpcoming,
-                  icon: Icon(
-                    Icons.upcoming_rounded,
-                    color: _panelView == _SidePanelView.upcoming
-                        ? selectedColor
-                        : cs.onSurfaceVariant,
-                  ),
-                  style: IconButton.styleFrom(
-                    backgroundColor: _panelView == _SidePanelView.upcoming
-                        ? selectedBg
-                        : Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () => _setPanelView(_SidePanelView.upcoming),
-                ),
-                IconButton(
-                  tooltip: loc.completedEventsSectionTitle,
-                  icon: Icon(
-                    Icons.task_alt_rounded,
-                    color: _panelView == _SidePanelView.completed
-                        ? selectedColor
-                        : cs.onSurfaceVariant,
-                  ),
-                  style: IconButton.styleFrom(
-                    backgroundColor: _panelView == _SidePanelView.completed
-                        ? selectedBg
-                        : Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () => _setPanelView(_SidePanelView.completed),
-                ),
-                IconButton(
-                  tooltip: loc.insightsTitle,
-                  icon: Icon(
-                    Icons.insights_rounded,
-                    color: _panelView == _SidePanelView.insights
-                        ? selectedColor
-                        : cs.onSurfaceVariant,
-                  ),
-                  style: IconButton.styleFrom(
-                    backgroundColor: _panelView == _SidePanelView.insights
-                        ? selectedBg
-                        : Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () => _setPanelView(_SidePanelView.insights),
-                ),
-                if (canAddEvents)
-                  IconButton(
-                    tooltip: loc.addEvent,
-                    icon: Icon(
-                      Icons.add_circle_outline,
-                      color: _panelView == _SidePanelView.addEvent
-                          ? selectedColor
-                          : cs.onSurfaceVariant,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: _panelView == _SidePanelView.addEvent
-                          ? selectedBg
-                          : Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () => _setPanelView(_SidePanelView.addEvent),
-                  ),
-                const SizedBox(height: 8),
-                Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withOpacity(0.4),
-                ),
-                IconButton(
-                  tooltip: _rightCollapsed ? 'Expand' : 'Collapse',
-                  icon: Icon(
-                    _rightCollapsed
-                        ? Icons.chevron_left_rounded
-                        : Icons.chevron_right_rounded,
-                  ),
-                  onPressed: _toggleRightPanel,
-                ),
-              ],
-            ),
-          );
-
-          return SizedBox(
-            width: _rightCollapsed ? 56 : 420,
-            child: Row(
-              children: [
-                iconRail,
-                if (!_rightCollapsed) ...[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: switch (_panelView) {
-                        _SidePanelView.upcoming => AgendaScreen(
-                            groupId: currentGroup.id,
-                            showBottomNav: false,
-                          ),
-                        _SidePanelView.completed => GroupUndoneEventsScreen(
-                            group: currentGroup,
-                            user: currentUser,
-                            role: currentRole,
-                            embedded: true,
-                          ),
-                        _SidePanelView.insights =>
-                          InsightsInlinePanel(group: currentGroup),
-                        _SidePanelView.addEvent => Navigator(
-                            onPopPage: (route, result) {
-                              if (!route.didPop(result)) return false;
-                              if (mounted) {
-                                setState(
-                                  () => _panelView = _SidePanelView.upcoming,
-                                );
-                              }
-                              return true;
-                            },
-                            pages: [
-                              MaterialPage(
-                                child: AddEventScreen(group: currentGroup),
-                              ),
-                            ],
-                          ),
-                        _SidePanelView.editEvent => _editingEvent == null
-                            ? Center(
-                                child: Text(
-                                  loc.noEventsFoundForDate,
-                                  style: typo.bodySmall.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
-                              )
-                            : Navigator(
-                                onPopPage: (route, result) {
-                                  if (!route.didPop(result)) return false;
-                                  if (mounted) {
-                                    setState(
-                                      () =>
-                                          _panelView = _SidePanelView.upcoming,
-                                    );
-                                  }
-                                  return true;
-                                },
-                                pages: [
-                                  MaterialPage(
-                                    child: Provider<EventDomain>.value(
-                                      value: context.read<EventDomain>(),
-                                      child: EditEventScreen(
-                                        event: _editingEvent!,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      },
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          );
+        String calendarRightPanelTitle() {
+          switch (_panelView) {
+            case _SidePanelView.addEvent:
+              return loc.addEvent;
+            case _SidePanelView.viewEvent:
+              return loc.details;
+            case _SidePanelView.editEvent:
+              return loc.edit;
+            default:
+              return loc.calendarTitle;
+          }
         }
+
+        Widget calendarRightPanelContent() {
+          switch (_panelView) {
+            case _SidePanelView.addEvent:
+              return AddEventScreen(
+                group: currentGroup,
+                embedded: true,
+                initialStartDate: _pendingAddEventStart,
+                initialEndDate: _pendingAddEventEnd,
+                onCreated: () async {
+                  await _refreshCalendarOnly();
+                },
+              );
+            case _SidePanelView.viewEvent:
+              if (_viewingEvent == null) {
+                return Center(
+                  child: Text(
+                    loc.noEventsFoundForDate,
+                    style: typo.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                );
+              }
+              return EventDetailScreen(
+                event: _viewingEvent!,
+                onEdit: () => _openEditEventInline(_viewingEvent!),
+              );
+            case _SidePanelView.editEvent:
+              if (_editingEvent == null) {
+                return Center(
+                  child: Text(
+                    loc.noEventsFoundForDate,
+                    style: typo.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                );
+              }
+              return Provider<EventDomain>.value(
+                value: context.read<EventDomain>(),
+                child: EditEventScreen(
+                  event: _editingEvent!,
+                  embedded: true,
+                ),
+              );
+            default:
+              return Center(
+                child: Text(
+                  loc.noEventsFoundForDate,
+                  style: typo.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              );
+          }
+        }
+
+        String sectionTitle() {
+          switch (_selectedSideMenu) {
+            case 'week':
+              return loc.tabWeek;
+            case 'day':
+              return loc.tabDay;
+            case 'agenda':
+              return loc.tabAgenda;
+            case 'month':
+              return loc.tabMonth;
+            case 'upcoming':
+              return loc.sectionUpcoming;
+            case 'completed':
+              return loc.completedEventsSectionTitle;
+            case 'insights':
+              return loc.insightsTitle;
+            case 'mini_calendar':
+              return 'Mini Calendar';
+            default:
+              return loc.calendarTitle;
+          }
+        }
+
+        Widget sectionContent() {
+          switch (_selectedSideMenu) {
+            case 'upcoming':
+              return AgendaScreen(
+                groupId: currentGroup.id,
+                showBottomNav: false,
+              );
+            case 'completed':
+              return GroupUndoneEventsScreen(
+                group: currentGroup,
+                user: currentUser,
+                role: currentRole,
+                embedded: true,
+              );
+            case 'insights':
+              return InsightsInlinePanel(group: currentGroup);
+            case 'mini_calendar':
+              return miniCalendarPanel();
+            default:
+              return Center(
+                child: Text(
+                  loc.noEventsFoundForDate,
+                  style: typo.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              );
+          }
+        }
+
+        final isCalendarSection = _selectedSideMenu == 'week' ||
+            _selectedSideMenu == 'day' ||
+            _selectedSideMenu == 'agenda' ||
+            _selectedSideMenu == 'month';
 
         final showCalendarTopBar = !(widget.embedded && kIsWeb);
         final scaffold = Scaffold(
@@ -650,12 +735,11 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                             child: canAddEvents
                                 ? Container(
                                     decoration: BoxDecoration(
-                                      color: cs.surfaceContainerHighest
-                                          .withOpacity(0.6),
+                                      color: Colors.transparent,
                                       borderRadius: BorderRadius.circular(999),
                                       border: Border.all(
-                                        color:
-                                            cs.outlineVariant.withOpacity(0.6),
+                                        color: cs.outlineVariant
+                                            .withValues(alpha: 0.6),
                                       ),
                                     ),
                                     child: Row(
@@ -678,25 +762,26 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                           width: 1,
                                           height: 24,
                                           color: cs.outlineVariant
-                                              .withOpacity(0.6),
+                                              .withValues(alpha: 0.6),
                                         ),
                                         TextButton.icon(
                                           onPressed: () =>
                                               _openAddEvent(currentGroup),
                                           icon: const Icon(Icons.add_rounded,
-                                              size: 18),
+                                              size: 16),
                                           label: Text(
                                             loc.addEvent,
                                             style: typo.bodySmall.copyWith(
                                               fontWeight: FontWeight.w700,
+                                              fontSize: 12,
                                             ),
                                           ),
                                           style: TextButton.styleFrom(
                                             foregroundColor: cs.onPrimary,
                                             backgroundColor: cs.primary,
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 10,
+                                              horizontal: 10,
+                                              vertical: 6,
                                             ),
                                             shape: const StadiumBorder(),
                                           ),
@@ -719,46 +804,60 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                           ),
                         ]
                       : null,
-                  onToggleLeftPanel: isWide ? _toggleLeftPanel : null,
-                  leftPanelCollapsed: _leftCollapsed,
+                  onToggleLeftPanel: null,
+                  leftPanelCollapsed: false,
                   showWeatherToggle: true,
                   weatherIconsEnabled: _weatherIconsEnabled,
                   onWeatherToggle: _toggleWeatherIcons,
                 )
               : null,
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: Theme.of(context).canvasColor,
           body: SafeArea(
             child: isWide
-                ? Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1500),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: _leftCollapsed ? 56 : 420,
-                              child: Align(
-                                alignment: Alignment.topLeft,
-                                child: calendarSidebar(),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: calendarContent(
-                                showActions: false,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            eventsSidebar(),
-                          ],
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        calendarSidebar(),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: isCalendarSection
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: FolderPanel(
+                                        title: sectionTitle(),
+                                        showTab: true,
+                                        actions: calendarHeaderActions(),
+                                        child: calendarContent(
+                                          showActions: false,
+                                          showPresenceStrip: false,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    SizedBox(
+                                      width: 360,
+                                      child: FolderPanel(
+                                        title: calendarRightPanelTitle(),
+                                        showTab: true,
+                                        child: calendarRightPanelContent(),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : FolderPanel(
+                                  title: sectionTitle(),
+                                  showTab: true,
+                                  child: sectionContent(),
+                                ),
                         ),
-                      ),
+                      ],
                     ),
                   )
                 : Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                    padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
                     child: compactCalendarContent(),
                   ),
           ),

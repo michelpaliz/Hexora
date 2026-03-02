@@ -38,7 +38,7 @@ class SocketManager {
       return;
     }
 
-    final socketUrl = ApiConstants.baseUrl.replaceFirst('/api', '');
+    final socketUrl = ApiConstants.socketBaseUrl;
 
     // ✅ UPDATED: enable reconnection with sane defaults
     _socket = IO.io(socketUrl, <String, dynamic>{
@@ -89,7 +89,7 @@ class SocketManager {
       }
     });
 
-    _socket!.onDisconnect((_) => print("🔌 Socket disconnected"));
+    _socket!.onDisconnect((_) => print("ðŸ”Œ Socket disconnected"));
     _socket!.onError((err) => print("❌ Socket error: $err"));
     _socket!.onConnectError((err) => print("❌ Socket connect error: $err"));
     _socket!.onReconnect((_) => print("🔁 Socket reconnected")); // ✅ NEW
@@ -148,7 +148,7 @@ class SocketManager {
       "groupId": groupId,
       "photoUrl": photoUrl,
     });
-    print("📡 Emitted user:join for $userName ($userId)");
+    print("ðŸ“¡ Emitted user:join for $userName ($userId)");
   }
 
   // ✅ NEW: simple hook for callers that need to wait for connectivity

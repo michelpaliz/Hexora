@@ -167,10 +167,10 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
 
     return Column(
       children: [
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: Row(
               children: [
                 Expanded(

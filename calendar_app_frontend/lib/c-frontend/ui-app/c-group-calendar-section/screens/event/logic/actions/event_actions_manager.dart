@@ -59,7 +59,7 @@ class EventActionManager {
                 // Update domain state (and broadcast to listeners/streams)
                 await groupDomain.updateGroup(refreshedGroup, userDomain);
 
-                // 🔁 Refresh calendar events
+                // ðŸ” Refresh calendar events
                 await eventDomain.manualRefresh(context);
               }
             },

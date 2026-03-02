@@ -5,7 +5,7 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 Widget buildScheduleMonthHeader(
   BuildContext context,
   ScheduleViewMonthHeaderDetails details, [
-  double height = 160,
+  double height = 120,
 ]) {
   final l = AppLocalizations.of(context)!;
 
@@ -46,12 +46,12 @@ Widget buildScheduleMonthHeader(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
     ),
     alignment: Alignment.bottomLeft,
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     child: Text(
       monthLabel,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 24,
+        fontSize: 18,
         fontWeight: FontWeight.bold,
       ),
     ),

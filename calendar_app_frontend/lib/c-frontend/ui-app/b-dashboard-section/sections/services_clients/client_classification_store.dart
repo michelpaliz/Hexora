@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -19,10 +19,12 @@ class ClientClassificationStore {
   static String _base(String groupId) =>
       '${ApiConstants.baseUrl}/groups/$groupId/client-classification-options';
 
-  static Future<Map<String, String>> _headers() async => {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer ${await TokenService.loadToken()}',
-      };
+  static Future<Map<String, String>> _headers() {
+    return AuthenticatedHttpClient.authorizedHeaders(
+      includeJsonContentType: true,
+      extra: const {'Content-Type': 'application/json; charset=UTF-8'},
+    );
+  }
 
   static String? normalize(String? value) {
     final v = (value ?? '').trim().toLowerCase();
@@ -71,8 +73,10 @@ class ClientClassificationStore {
   }
 
   static Future<ClientClassificationOptions> getOptions(String groupId) async {
-    final r =
-        await http.get(Uri.parse(_base(groupId)), headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(
+      Uri.parse(_base(groupId)),
+      headers: await _headers(),
+    );
     if (r.statusCode == 404) {
       // Avoid hard-crashing the UI if the endpoint is missing on the backend.
       if (kDebugMode) {
@@ -99,7 +103,7 @@ class ClientClassificationStore {
       'propertyKinds':
           propertyKinds.map((e) => normalize(e)).whereType<String>().toList(),
     };
-    final r = await http.put(
+    final r = await AuthenticatedHttpClient.put(
       Uri.parse(_base(groupId)),
       headers: await _headers(),
       body: jsonEncode(payload),
@@ -120,7 +124,7 @@ class ClientClassificationStore {
     if (e != null) payload['entityType'] = e;
     if (p != null) payload['propertyKind'] = p;
 
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       Uri.parse(_base(groupId)),
       headers: await _headers(),
       body: jsonEncode(payload),
@@ -141,7 +145,7 @@ class ClientClassificationStore {
     if (e != null) payload['entityType'] = e;
     if (p != null) payload['propertyKind'] = p;
 
-    final r = await http.delete(
+    final r = await AuthenticatedHttpClient.delete(
       Uri.parse(_base(groupId)),
       headers: await _headers(),
       body: jsonEncode(payload),
@@ -152,7 +156,7 @@ class ClientClassificationStore {
   }
 
   static Future<ClientClassificationOptions> rebuild(String groupId) async {
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       Uri.parse('${_base(groupId)}/rebuild'),
       headers: await _headers(),
     );

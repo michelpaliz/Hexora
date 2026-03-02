@@ -355,11 +355,125 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     }
   }
 
+  Widget _buildMobileLayout(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final propertyKindOptions = _clients
+        .map((c) => (c.propertyKind ?? '').trim())
+        .where((v) => v.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    final tabBar = TabBar(
+      controller: _tab,
+      dividerColor: Colors.transparent,
+      splashFactory: NoSplash.splashFactory,
+      overlayColor:
+          WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
+      indicatorSize: TabBarIndicatorSize.tab,
+      indicator: BoxDecoration(
+        color: cs.primaryContainer,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
+      labelColor: cs.onPrimaryContainer,
+      unselectedLabelColor: cs.onSurfaceVariant,
+      labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
+      unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+      tabs: [
+        Tab(
+          height: 36,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.person_outline, size: 15),
+            const SizedBox(width: 5),
+            Text(l.tabClients),
+          ]),
+        ),
+        Tab(
+          height: 36,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.design_services_outlined, size: 15),
+            const SizedBox(width: 5),
+            Text(l.tabServices),
+          ]),
+        ),
+      ],
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: Navigator.of(context).canPop(),
+        title: Text(
+          l.screenServicesClientsTitle,
+          style: t.titleLarge.copyWith(fontWeight: FontWeight.w600),
+        ),
+        iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
+        backgroundColor: cs.surface,
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          Material(
+            color: cs.surface,
+            child: tabBar,
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                ClientsTab(
+                  items: _clients,
+                  loading: _loadingClients,
+                  error: _errClients,
+                  onRefresh: _loadClients,
+                  showInlineCTA: true,
+                  onAddTap: _openAddClientSheet,
+                  showInactive: _showInactiveClients,
+                  onToggleInactive: (v) =>
+                      setState(() => _showInactiveClients = v),
+                  propertyKindFilter: _propertyKindFilter,
+                  propertyKindOptions: propertyKindOptions,
+                  onPropertyKindChanged: (v) =>
+                      setState(() => _propertyKindFilter = v),
+                  onDelete: _confirmDeleteClient,
+                  onEdit: _openEditClientSheet,
+                ),
+                ServicesTab(
+                  items: _services,
+                  loading: _loadingServices,
+                  error: _errServices,
+                  onRefresh: _loadServices,
+                  showInlineCTA: true,
+                  onDelete: _confirmDeleteService,
+                  onAddTap: _openAddServiceSheet,
+                  onEdit: _openEditServiceSheet,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: AnimatedBuilder(
+        animation: _tab,
+        builder: (_, __) => FloatingActionButton.extended(
+          onPressed:
+              _tab.index == 0 ? _openAddClientSheet : _openAddServiceSheet,
+          icon: const Icon(Icons.add),
+          label: Text(_tab.index == 0 ? l.addClient : l.addService),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
+    if (isMobile) return _buildMobileLayout(context);
     final useSidePanel = _useSidePanel(context);
 
     final Color primary = cs.primary;

@@ -48,7 +48,7 @@ class InvoiceEditorFormatters {
 
   static num totalBlocks(List<InvoiceBlockDraft> blocks) {
     return blocks.fold<num>(0, (sum, block) {
-      if (!block.isBillableItem) return sum;
+      if (!block.isBillableLine) return sum;
       final qty = block.qty ?? 1;
       final price = block.unitPrice ?? 0;
       final taxRate = block.taxRate ?? 21;

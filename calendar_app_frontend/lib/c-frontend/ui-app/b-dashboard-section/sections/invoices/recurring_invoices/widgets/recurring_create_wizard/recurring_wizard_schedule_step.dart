@@ -13,6 +13,10 @@ class RecurringWizardScheduleStep extends StatelessWidget {
   final TextEditingController billDayCtrl;
   final TextEditingController weekDayCtrl;
   final TextEditingController timezoneCtrl;
+  final String invoiceDateMode;
+  final TextEditingController invoiceDateDayCtrl;
+  final TextEditingController invoiceDateOffsetDaysCtrl;
+  final String invoiceDateClampPolicy;
   final String timezoneLabel;
   final List<DateTime> exceptions;
   final ValueChanged<String> onFreqChanged;
@@ -24,6 +28,9 @@ class RecurringWizardScheduleStep extends StatelessWidget {
   final VoidCallback onPickTimezone;
   final VoidCallback onAddException;
   final ValueChanged<DateTime> onRemoveException;
+  final ValueChanged<String> onInvoiceDateModeChanged;
+  final ValueChanged<String> onInvoiceDateClampPolicyChanged;
+  final String? errorText;
 
   const RecurringWizardScheduleStep({
     super.key,
@@ -36,6 +43,10 @@ class RecurringWizardScheduleStep extends StatelessWidget {
     required this.billDayCtrl,
     required this.weekDayCtrl,
     required this.timezoneCtrl,
+    required this.invoiceDateMode,
+    required this.invoiceDateDayCtrl,
+    required this.invoiceDateOffsetDaysCtrl,
+    required this.invoiceDateClampPolicy,
     required this.timezoneLabel,
     required this.exceptions,
     required this.onFreqChanged,
@@ -47,6 +58,9 @@ class RecurringWizardScheduleStep extends StatelessWidget {
     required this.onPickTimezone,
     required this.onAddException,
     required this.onRemoveException,
+    required this.onInvoiceDateModeChanged,
+    required this.onInvoiceDateClampPolicyChanged,
+    this.errorText,
   });
 
   @override
@@ -65,6 +79,10 @@ class RecurringWizardScheduleStep extends StatelessWidget {
         billDayCtrl: billDayCtrl,
         weekDayCtrl: weekDayCtrl,
         timezoneCtrl: timezoneCtrl,
+        invoiceDateMode: invoiceDateMode,
+        invoiceDateDayCtrl: invoiceDateDayCtrl,
+        invoiceDateOffsetDaysCtrl: invoiceDateOffsetDaysCtrl,
+        invoiceDateClampPolicy: invoiceDateClampPolicy,
         timezoneLabel: timezoneLabel,
         exceptions: exceptions,
         onFreqChanged: onFreqChanged,
@@ -76,6 +94,9 @@ class RecurringWizardScheduleStep extends StatelessWidget {
         onPickTimezone: onPickTimezone,
         onAddException: onAddException,
         onRemoveException: onRemoveException,
+        onInvoiceDateModeChanged: onInvoiceDateModeChanged,
+        onInvoiceDateClampPolicyChanged: onInvoiceDateClampPolicyChanged,
+        errorText: errorText,
       ),
     );
   }

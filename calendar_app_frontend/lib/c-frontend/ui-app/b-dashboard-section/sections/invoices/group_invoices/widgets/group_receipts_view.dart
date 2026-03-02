@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
@@ -22,6 +23,8 @@ class GroupReceiptsView extends StatelessWidget {
   final ValueChanged<Receipt> onDeleteReceipt;
   final ValueChanged<Receipt> onPreviewPdf;
   final ValueChanged<Receipt> onDownloadPdf;
+  final ValueChanged<Receipt> onImportJson;
+  final Future<Uint8List?> Function(Receipt) onLoadInlinePdf;
 
   const GroupReceiptsView({
     super.key,
@@ -37,6 +40,8 @@ class GroupReceiptsView extends StatelessWidget {
     required this.onDeleteReceipt,
     required this.onPreviewPdf,
     required this.onDownloadPdf,
+    required this.onImportJson,
+    required this.onLoadInlinePdf,
   });
 
   @override
@@ -54,6 +59,13 @@ class GroupReceiptsView extends StatelessWidget {
             child: DefaultTabController(
               length: 2,
               child: Card(
+                color: Colors.transparent,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.35)),
+                ),
                 child: Column(
                   children: [
                     Padding(
@@ -85,7 +97,9 @@ class GroupReceiptsView extends StatelessWidget {
                         dividerColor: Colors.transparent,
                         tabs: [
                           Tab(text: l.groupReceiptsTabDrafts(drafts.length)),
-                          Tab(text: l.groupReceiptsTabReceipts(receipts.length)),
+                          Tab(
+                              text:
+                                  l.groupReceiptsTabReceipts(receipts.length)),
                         ],
                       ),
                     ),
@@ -112,6 +126,8 @@ class GroupReceiptsView extends StatelessWidget {
                                 receipt: r,
                                 client: client,
                                 onTap: () => onSelectReceipt(r),
+                                onDownload: () => onDownloadPdf(r),
+                                onIssue: () => onIssueReceipt(r),
                                 onDelete: () => onDeleteReceipt(r),
                               );
                             },
@@ -135,6 +151,7 @@ class GroupReceiptsView extends StatelessWidget {
                                 receipt: r,
                                 client: client,
                                 onTap: () => onSelectReceipt(r),
+                                onDownload: () => onDownloadPdf(r),
                               );
                             },
                           ),
@@ -151,6 +168,14 @@ class GroupReceiptsView extends StatelessWidget {
             flex: 3,
             child: selectedReceipt == null
                 ? Card(
+                    color: Colors.transparent,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.35),
+                      ),
+                    ),
                     child: Center(
                       child: Text(
                         l.groupReceiptsSelectReceiptHint,
@@ -176,6 +201,8 @@ class GroupReceiptsView extends StatelessWidget {
                     onDownloadPdf: () => onDownloadPdf(selectedReceipt!),
                     onIssue: () => onIssueReceipt(selectedReceipt!),
                     onDeleteDraft: () => onDeleteReceipt(selectedReceipt!),
+                    onImportJson: () => onImportJson(selectedReceipt!),
+                    onLoadInlinePdf: () => onLoadInlinePdf(selectedReceipt!),
                   ),
           ),
         ],
@@ -183,4 +210,3 @@ class GroupReceiptsView extends StatelessWidget {
     );
   }
 }
-

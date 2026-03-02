@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_ref.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/common/empty_hint.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
@@ -11,7 +12,6 @@ import 'package:hexora/f-themes/app_colors/palette/tools_colors/card_surface.dar
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 
 class MembersList extends StatelessWidget {
   final List<MemberRef> accepted;
@@ -47,6 +47,8 @@ class MembersList extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final typo = AppTypography.of(context);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomSpacingForFab = bottomInset + 96;
 
     final nothing = accepted.isEmpty && pending.isEmpty && notAccepted.isEmpty;
     if (nothing) {
@@ -125,23 +127,28 @@ class MembersList extends StatelessWidget {
       ];
     }
 
-    final listView = ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      children: [
-        ...buildSection(l.roleAdmin, adminMembers,
-            color: cs.secondary, sectionType: 'admins'),
-        ...buildSection(l.roleCoAdmin, coAdminMembers,
-            color: cs.tertiary, sectionType: 'coadmins'),
-        ...buildSection(acceptedLabel, regularMembers,
-            color: cs.primary, sectionType: 'members'),
-        ...buildSection(pendingLabel, pending, color: cs.onSurfaceVariant),
-        ...buildSection(notAcceptedLabel, notAccepted,
-            color: cs.onSurfaceVariant),
-        const SizedBox(height: 12),
-      ],
+    final contentChildren = [
+      ...buildSection(l.roleAdmin, adminMembers,
+          color: cs.secondary, sectionType: 'admins'),
+      ...buildSection(l.roleCoAdmin, coAdminMembers,
+          color: cs.tertiary, sectionType: 'coadmins'),
+      ...buildSection(acceptedLabel, regularMembers,
+          color: cs.primary, sectionType: 'members'),
+      ...buildSection(pendingLabel, pending, color: cs.onSurfaceVariant),
+      ...buildSection(notAcceptedLabel, notAccepted,
+          color: cs.onSurfaceVariant),
+      const SizedBox(height: 12),
+    ];
+
+    final contentWidget = SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(8, 0, 8, bottomSpacingForFab),
+      child: Column(
+        children: contentChildren,
+      ),
     );
 
-    // 🔸 Neutral panel background option
+    // ðŸ”¸ Neutral panel background option
     if (useGradientBackground) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       final panelColor = isDark
@@ -158,7 +165,7 @@ class MembersList extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          child: listView,
+          child: contentWidget,
         ),
       );
     }
@@ -174,10 +181,10 @@ class MembersList extends StatelessWidget {
         keyBlur: 14,
         keyYOffset: 10,
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: listView,
+        child: contentWidget,
       );
     }
 
-    return listView;
+    return contentWidget;
   }
 }

@@ -5,13 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/blobUploader/blobServer.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/c-frontend/utils/user_avatar.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -35,14 +35,10 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
 
   /// Fetch a read SAS URL for a given blob name (used only when avatarsArePublic == false)
   Future<String?> _fetchReadSas(String blobName) async {
-    final auth = context.read<AuthProvider>();
-    final accessToken = auth.lastToken;
-    if (accessToken == null) return null;
-
-    final resp = await http.get(
+    final resp = await AuthenticatedHttpClient.get(
       Uri.parse(
-          '${ApiConstants.baseUrl}/blob/read-sas?blobName=${Uri.encodeComponent(blobName)}'),
-      headers: {'Authorization': 'Bearer $accessToken'},
+        '${ApiConstants.baseUrl}/blob/read-sas?blobName=${Uri.encodeComponent(blobName)}',
+      ),
     );
 
     if (resp.statusCode != 200) {
@@ -66,7 +62,7 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
 
     try {
       final auth = context.read<AuthProvider>();
-      final accessToken = auth.lastToken;
+      final accessToken = await auth.getToken();
       if (accessToken == null || _currentUser == null) return;
 
       // 1) Upload to Azure (shared helper handles SAS + PUT + public/read URL)
@@ -79,12 +75,9 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
       );
 
       // 2) Commit on backend
-      final commitResp = await http.patch(
+      final commitResp = await AuthenticatedHttpClient.patch(
         Uri.parse('${ApiConstants.baseUrl}/users/me/photo'),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
+        headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({'blobName': result.blobName}),
       );
 

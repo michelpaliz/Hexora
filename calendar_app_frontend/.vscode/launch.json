@@ -43,25 +43,14 @@
             "flutterMode": "release"
         },
         {
-            "name": "calendar_app_frontend (web dev, LAN API)",
+            "name": "calendar_app_frontend (web dev, hexora API)",
             "request": "launch",
             "type": "dart",
             "deviceId": "chrome",
             "args": [
                 "--web-port=34367",
                 "--web-hostname=localhost",
-                "--dart-define=BASE_URL=http://192.168.1.16:3000/api"
-            ]
-        },
-        {
-            "name": "calendar_app_frontend (web dev, Remote API)",
-            "request": "launch",
-            "type": "dart",
-            "deviceId": "chrome",
-            "args": [
-                "--web-port=34367",
-                "--web-hostname=localhost",
-                "--dart-define=BASE_URL=https://fastezcode.com/api"
+                "--dart-define=API_BASE_URL=https://hexora.dev/api"
             ]
         }
     ]

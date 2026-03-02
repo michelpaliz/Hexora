@@ -119,7 +119,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
     final pad = MediaQuery.of(context).viewInsets.bottom + 16;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, pad),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, pad),
       child: Form(
         key: c.formKey,
         child: SingleChildScrollView(
@@ -127,9 +127,9 @@ class _AddClientSheetState extends State<AddClientSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ClientHeader(isEdit: c.isEdit),
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
               BillingDivider(),
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
               ClientContactForm(
                 c: c,
                 entityTypeOptions: _entityTypeOptions,
@@ -140,19 +140,19 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 onFieldChanged: () => setState(() {}),
                 onFieldBlur: (key) => setState(() => c.markTouched(key)),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               BillingSection(
                 c: c,
                 showValidation: _showValidation,
                 onFieldChanged: () => setState(() {}),
                 onFieldBlur: (key) => setState(() => c.markTouched(key)),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               ActiveSwitch(
                 value: c.active,
                 onChanged: (v) => setState(() => c.active = v),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               SaveButton(
                 saving: c.saving,
                 isEdit: c.isEdit,

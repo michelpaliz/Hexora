@@ -23,102 +23,111 @@ class _ThreadRow extends StatelessWidget {
     final snippet = thread.snippet?.trim();
     final preview = (snippet == null || snippet.isEmpty) ? '-' : snippet;
     final dateLabel = _formatRelativeDate(thread.latestDate);
-    final unread = thread.unreadCount > 0;
 
     final isUnread = thread.unreadCount > 0;
     final isSelected = selected;
     final background = isSelected
-        ? cs.primaryContainer.withValues(alpha: 0.08)
+        ? cs.primaryContainer.withValues(alpha: 0.10)
         : isUnread
             ? cs.primaryContainer.withValues(alpha: 0.04)
-            : cs.surface;
-    final hover = cs.onSurface.withValues(alpha: 0.04);
+            : Colors.transparent;
 
     return Stack(
       children: [
         Material(
           color: background,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           child: InkWell(
-            hoverColor: hover,
-            borderRadius: BorderRadius.circular(12),
+            hoverColor: cs.onSurface.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(8),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
+                  // Row 1: sender + date + badges
+                  Row(
+                    children: [
+                      if (isUnread)
+                        Container(
+                          width: 7,
+                          height: 7,
+                          margin: const EdgeInsets.only(right: 6),
+                          decoration: BoxDecoration(
+                            color: cs.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      Expanded(
+                        child: Text(
                           sender,
                           style: t.bodySmall.copyWith(
                             fontWeight:
-                                isUnread ? FontWeight.w700 : FontWeight.w600,
+                                isUnread ? FontWeight.w700 : FontWeight.w500,
                             color: cs.onSurface,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subject,
-                          style: t.bodyMedium.copyWith(
-                            fontWeight:
-                                isUnread ? FontWeight.w800 : FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          preview,
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Última actividad · $dateLabel',
-                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(width: 8),
                       Text(
-                        '${thread.messageCount} ${l.mailThreadMessageCountLabel.toLowerCase()}',
-                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (thread.hasAttachments)
-                            Icon(
-                              Icons.attach_file,
-                              size: 16,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          if (thread.hasAttachments) const SizedBox(width: 6),
-                          if (thread.messageCount > 1)
-                            _CountBadge(
-                              label: '${thread.messageCount}',
-                              filled: isUnread,
-                              color: cs.primary,
-                              textColor: cs.onPrimary,
-                              borderColor: cs.outlineVariant,
-                            ),
-                        ],
+                        dateLabel,
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 2),
+                  // Row 2: subject + message count + attachment
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          subject,
+                          style: t.bodySmall.copyWith(
+                            fontWeight:
+                                isUnread ? FontWeight.w800 : FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      if (thread.hasAttachments)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Icon(
+                            Icons.attach_file,
+                            size: 14,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      if (thread.messageCount > 1)
+                        Text(
+                          '${thread.messageCount}',
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontSize: 11,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 1),
+                  // Row 3: snippet
+                  Text(
+                    preview,
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -128,10 +137,10 @@ class _ThreadRow extends StatelessWidget {
         if (isSelected)
           Positioned(
             left: 0,
-            top: 8,
-            bottom: 8,
+            top: 6,
+            bottom: 6,
             child: Container(
-              width: 4,
+              width: 3,
               decoration: BoxDecoration(
                 color: cs.primary,
                 borderRadius: BorderRadius.circular(999),
@@ -143,39 +152,3 @@ class _ThreadRow extends StatelessWidget {
   }
 }
 
-class _CountBadge extends StatelessWidget {
-  const _CountBadge({
-    required this.label,
-    required this.filled,
-    required this.color,
-    required this.textColor,
-    required this.borderColor,
-  });
-
-  final String label;
-  final bool filled;
-  final Color color;
-  final Color textColor;
-  final Color borderColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: filled ? color : Colors.transparent,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: filled ? color : borderColor),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.of(context)
-            .bodySmall
-            .copyWith(
-              color: filled ? textColor : borderColor,
-              fontWeight: FontWeight.w700,
-            ),
-      ),
-    );
-  }
-}

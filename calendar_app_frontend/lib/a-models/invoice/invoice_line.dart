@@ -9,6 +9,7 @@ class InvoiceLine {
   final num? lineSubtotal;
   final num? lineTax;
   final num? lineTotal;
+  final String? evidenceBlobName;
 
   const InvoiceLine({
     this.id,
@@ -21,6 +22,7 @@ class InvoiceLine {
     this.lineSubtotal,
     this.lineTax,
     this.lineTotal,
+    this.evidenceBlobName,
   });
 
   InvoiceLine copyWith({
@@ -34,6 +36,7 @@ class InvoiceLine {
     num? lineSubtotal,
     num? lineTax,
     num? lineTotal,
+    String? evidenceBlobName,
   }) {
     return InvoiceLine(
       id: id ?? this.id,
@@ -46,6 +49,7 @@ class InvoiceLine {
       lineSubtotal: lineSubtotal ?? this.lineSubtotal,
       lineTax: lineTax ?? this.lineTax,
       lineTotal: lineTotal ?? this.lineTotal,
+      evidenceBlobName: evidenceBlobName ?? this.evidenceBlobName,
     );
   }
 
@@ -62,6 +66,8 @@ class InvoiceLine {
           json['lineSubtotal'] is num ? json['lineSubtotal'] as num : null,
       lineTax: json['lineTax'] is num ? json['lineTax'] as num : null,
       lineTotal: json['lineTotal'] is num ? json['lineTotal'] as num : null,
+      evidenceBlobName:
+          (json['evidenceBlobName'] ?? json['evidence_blob_name'])?.toString(),
     );
   }
 
@@ -76,5 +82,6 @@ class InvoiceLine {
         if (lineSubtotal != null) 'lineSubtotal': lineSubtotal,
         if (lineTax != null) 'lineTax': lineTax,
         if (lineTotal != null) 'lineTotal': lineTotal,
+        if (evidenceBlobName != null) 'evidenceBlobName': evidenceBlobName,
       };
 }

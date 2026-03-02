@@ -70,7 +70,7 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
       iconTheme: IconThemeData(color: cs.onSurface),
       title: Text(
         title,
-        style: typo.bodyLarge.copyWith(
+        style: typo.bodyMedium.copyWith(
           fontWeight: FontWeight.w800,
           letterSpacing: .2,
           color: cs.onSurface,
@@ -84,13 +84,13 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
               isScrollable: false,
               tabs: tabs,
               onTap: onTabChanged,
-              labelStyle: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-              unselectedLabelStyle: typo.bodySmall,
+              labelStyle: typo.bodySmall.copyWith(fontWeight: FontWeight.w700),
+              unselectedLabelStyle: typo.bodySmall.copyWith(fontSize: 11),
               labelColor: cs.primary, // selected label color
               unselectedLabelColor: cs.onSurfaceVariant,
               indicator: const UnderlineTabIndicator(
                 // classic underline
-                borderSide: BorderSide(width: 3),
+                borderSide: BorderSide(width: 2),
               ),
               indicatorColor: cs.primary,
               indicatorSize: TabBarIndicatorSize.tab,

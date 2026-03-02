@@ -25,20 +25,24 @@ class SaveButton extends StatelessWidget {
       child: FilledButton.icon(
         icon: saving
             ? const SizedBox(
-                width: 18,
-                height: 18,
+                width: 14,
+                height: 14,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Icon(Icons.save_outlined),
+            : const Icon(Icons.save_outlined, size: 16),
         label: Text(
           saving ? l.saving : (isEdit ? l.saveChanges : l.saveClient),
           style: typo.bodySmall.copyWith(
             color: cs.onPrimary,
             fontWeight: FontWeight.w700,
-            letterSpacing: .2,
+            fontSize: 12,
           ),
         ),
         onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          visualDensity: VisualDensity.compact,
+        ),
       ),
     );
   }

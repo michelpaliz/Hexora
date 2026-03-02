@@ -1,9 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class ExpensesApiException implements Exception {
   final int statusCode;
@@ -37,12 +38,96 @@ class ExpensesApi {
   Uri _u([String path = '', Map<String, String>? query]) =>
       Uri.parse('$_base$path').replace(queryParameters: query);
 
-  Future<Map<String, String>> _headers({bool json = true}) async {
-    final token = await TokenService.loadToken();
-    return <String, String>{
-      if (json) 'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
+  MediaType _mediaTypeForFileName(String? fileName) {
+    final lower = (fileName ?? '').toLowerCase().trim();
+    if (lower.endsWith('.pdf')) {
+      return MediaType('application', 'pdf');
+    }
+    if (lower.endsWith('.png')) {
+      return MediaType('image', 'png');
+    }
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return MediaType('image', 'jpeg');
+    }
+    if (lower.endsWith('.webp')) {
+      return MediaType('image', 'webp');
+    }
+    if (lower.endsWith('.json')) {
+      return MediaType('application', 'json');
+    }
+    return MediaType('application', 'octet-stream');
+  }
+
+  static const List<String> _batchFileFieldCandidates = <String>[
+    'files',
+    'documents',
+    'invoiceFiles',
+  ];
+
+  bool _shouldRetryBatchWithAlternateField(ExpensesApiException e) {
+    final lowerMsg = e.message.toLowerCase();
+    final lowerBody = (e.responseBody ?? '').toLowerCase();
+    final joined = '$lowerMsg\n$lowerBody';
+    return joined.contains('failed to extract one or more files') ||
+        joined.contains('unsupported mime type') ||
+        joined.contains("application/octet-stream") ||
+        joined.contains('no files') ||
+        joined.contains('file is required') ||
+        joined.contains('missing file');
+  }
+
+  Future<Map<String, dynamic>> _sendBatchMultipartRequest({
+    required String endpoint,
+    required List<Uint8List> documentFilesBytes,
+    required List<String> documentFileNames,
+    required String fileFieldName,
+    String? groupId,
+    Map<String, dynamic>? payload,
+  }) async {
+    final uri = _u(endpoint);
+    final req = http.MultipartRequest('POST', uri);
+    req.headers.addAll(await _headers(json: false));
+    if (payload != null) {
+      req.fields['json'] = jsonEncode(payload);
+    }
+    final trimmedGroupId = groupId?.trim() ?? '';
+    if (trimmedGroupId.isNotEmpty) {
+      req.fields['groupId'] = trimmedGroupId;
+    }
+
+    for (var i = 0; i < documentFilesBytes.length; i++) {
+      final bytes = documentFilesBytes[i];
+      final name = documentFileNames[i].trim().isEmpty
+          ? 'document-$i'
+          : documentFileNames[i].trim();
+      req.files.add(
+        http.MultipartFile.fromBytes(
+          fileFieldName,
+          bytes,
+          filename: name,
+          contentType: _mediaTypeForFileName(name),
+        ),
+      );
+    }
+
+    final streamed = await req.send();
+    final r = await http.Response.fromStream(streamed);
+    final out = _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+    out['_statusCode'] = r.statusCode;
+    return out;
+  }
+
+  Future<Map<String, String>> _headers({bool json = true}) {
+    return AuthenticatedHttpClient.authorizedHeaders(
+      includeJsonContentType: json,
+      extra: json ? const {'Content-Type': 'application/json'} : null,
+    );
   }
 
   T _decode<T>(
@@ -64,6 +149,9 @@ class ExpensesApi {
     if (ok) return map(body);
 
     String msg = r.reasonPhrase ?? 'Request failed';
+    if (r.statusCode == 413) {
+      msg = 'Payload too large for server upload limits.';
+    }
     if (body is Map && body['message'] != null) {
       msg = body['message'].toString();
     } else if (body is Map && body['error'] != null) {
@@ -109,6 +197,7 @@ class ExpensesApi {
         'file',
         bytes,
         filename: filename,
+        contentType: _mediaTypeForFileName(filename),
       ),
     );
     req.fields['vendorName'] = vendorName;
@@ -189,7 +278,7 @@ class ExpensesApi {
       params['clientId'] = clientId.trim();
     }
     final uri = _u('', params);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<List<Map<String, dynamic>>>(
       r,
       url: uri,
@@ -202,10 +291,8 @@ class ExpensesApi {
               .toList();
         }
         if (j is Map) {
-          final items = j['items'] ??
-              j['data'] ??
-              j['results'] ??
-              j['expenses'];
+          final items =
+              j['items'] ?? j['data'] ?? j['results'] ?? j['expenses'];
           if (items is List) {
             return items
                 .whereType<Map>()
@@ -223,7 +310,7 @@ class ExpensesApi {
     required Map<String, dynamic> payload,
   }) async {
     final uri = _u('/$id');
-    final r = await http.put(
+    final r = await AuthenticatedHttpClient.put(
       uri,
       headers: await _headers(),
       body: jsonEncode(payload),
@@ -232,18 +319,20 @@ class ExpensesApi {
       r,
       url: uri,
       method: 'PUT',
-      map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 
   Future<void> deleteExpense(String id) async {
     final uri = _u('/$id');
-    final r = await http.delete(uri, headers: await _headers());
+    final r =
+        await AuthenticatedHttpClient.delete(uri, headers: await _headers());
     _decode<void>(
       r,
       url: uri,
       method: 'DELETE',
-      map: (_) => null,
+      map: (_) {},
     );
   }
 
@@ -252,7 +341,7 @@ class ExpensesApi {
     required String entryId,
   }) async {
     final uri = _u('/link');
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       uri,
       headers: await _headers(),
       body: jsonEncode({
@@ -264,13 +353,177 @@ class ExpensesApi {
       r,
       url: uri,
       method: 'POST',
-      map: (_) => null,
+      map: (_) {},
     );
+  }
+
+  Future<Map<String, dynamic>> getImportJsonPromptTemplate() async {
+    final uri = _u('/import-json/prompt-template');
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> importJson({
+    required Map<String, dynamic> payload,
+    Uint8List? invoiceFileBytes,
+    String? invoiceFileName,
+    Uint8List? jsonFileBytes,
+    String? jsonFileName,
+  }) async {
+    final uri = _u('/import-json');
+    final hasMultipart =
+        (invoiceFileBytes != null && invoiceFileBytes.isNotEmpty) ||
+            (jsonFileBytes != null && jsonFileBytes.isNotEmpty);
+
+    if (!hasMultipart) {
+      final r = await AuthenticatedHttpClient.post(
+        uri,
+        headers: await _headers(),
+        body: jsonEncode(payload),
+      );
+      final out = _decode<Map<String, dynamic>>(
+        r,
+        url: uri,
+        method: 'POST',
+        map: (j) =>
+            (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      );
+      out['_statusCode'] = r.statusCode;
+      return out;
+    }
+
+    final req = http.MultipartRequest('POST', uri);
+    req.headers.addAll(await _headers(json: false));
+    req.fields['json'] = jsonEncode(payload);
+
+    if (jsonFileBytes != null && jsonFileBytes.isNotEmpty) {
+      req.files.add(
+        http.MultipartFile.fromBytes(
+          'jsonFile',
+          jsonFileBytes,
+          filename: (jsonFileName == null || jsonFileName.trim().isEmpty)
+              ? 'expense-import.json'
+              : jsonFileName.trim(),
+          contentType: MediaType('application', 'json'),
+        ),
+      );
+    }
+
+    if (invoiceFileBytes != null && invoiceFileBytes.isNotEmpty) {
+      final invoiceName =
+          (invoiceFileName == null || invoiceFileName.trim().isEmpty)
+              ? 'invoice-file'
+              : invoiceFileName.trim();
+      req.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          invoiceFileBytes,
+          filename: invoiceName,
+          contentType: _mediaTypeForFileName(invoiceName),
+        ),
+      );
+    }
+
+    final streamed = await req.send();
+    final r = await http.Response.fromStream(streamed);
+    final out = _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+    out['_statusCode'] = r.statusCode;
+    return out;
+  }
+
+  Future<Map<String, dynamic>> importJsonBatch({
+    required Map<String, dynamic> payload,
+    required List<Uint8List> documentFilesBytes,
+    required List<String> documentFileNames,
+    String? groupId,
+  }) async {
+    if (documentFilesBytes.isEmpty ||
+        documentFilesBytes.length != documentFileNames.length) {
+      throw ArgumentError(
+        'documentFilesBytes/documentFileNames must be non-empty and have same length',
+      );
+    }
+
+    ExpensesApiException? lastException;
+    for (final field in _batchFileFieldCandidates) {
+      try {
+        return await _sendBatchMultipartRequest(
+          endpoint: '/import-json-batch',
+          documentFilesBytes: documentFilesBytes,
+          documentFileNames: documentFileNames,
+          fileFieldName: field,
+          groupId: groupId,
+          payload: payload,
+        );
+      } on ExpensesApiException catch (e) {
+        lastException = e;
+        if (!_shouldRetryBatchWithAlternateField(e) ||
+            field == _batchFileFieldCandidates.last) {
+          rethrow;
+        }
+        if (kDebugMode) {
+          debugPrint(
+            'Retrying import-json-batch with alternate file field after failure on "$field".',
+          );
+        }
+      }
+    }
+    throw lastException!;
+  }
+
+  Future<Map<String, dynamic>> generateBatchJsonWithAi({
+    required List<Uint8List> documentFilesBytes,
+    required List<String> documentFileNames,
+    String? groupId,
+  }) async {
+    if (documentFilesBytes.isEmpty ||
+        documentFilesBytes.length != documentFileNames.length) {
+      throw ArgumentError(
+        'documentFilesBytes/documentFileNames must be non-empty and have same length',
+      );
+    }
+
+    ExpensesApiException? lastException;
+    for (final field in _batchFileFieldCandidates) {
+      try {
+        return await _sendBatchMultipartRequest(
+          endpoint: '/import-json-batch/generate-with-ai',
+          documentFilesBytes: documentFilesBytes,
+          documentFileNames: documentFileNames,
+          fileFieldName: field,
+          groupId: groupId,
+        );
+      } on ExpensesApiException catch (e) {
+        lastException = e;
+        if (!_shouldRetryBatchWithAlternateField(e) ||
+            field == _batchFileFieldCandidates.last) {
+          rethrow;
+        }
+        if (kDebugMode) {
+          debugPrint(
+            'Retrying generate-with-ai with alternate file field after failure on "$field".',
+          );
+        }
+      }
+    }
+    throw lastException!;
   }
 
   Future<Map<String, dynamic>> fetchExpense(String id) async {
     final uri = _u('/$id');
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -282,7 +535,7 @@ class ExpensesApi {
 
   Future<Map<String, dynamic>> fetchExpenseFile(String id) async {
     final uri = _u('/$id/file');
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -308,7 +561,7 @@ class ExpensesApi {
       params['to'] = to.trim();
     }
     final uri = _u('/summary', params.isEmpty ? null : params);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
     return _decode<List<Map<String, dynamic>>>(
       r,
       url: uri,

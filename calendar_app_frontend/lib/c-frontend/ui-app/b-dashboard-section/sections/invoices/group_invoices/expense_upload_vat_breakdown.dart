@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/money_format_utils.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -55,6 +56,8 @@ class _VatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final formattedBase = formatMoneyEu(base, fallback: base);
+    final formattedTax = formatMoneyEu(tax, fallback: tax);
     return Row(
       children: [
         Expanded(
@@ -64,12 +67,12 @@ class _VatRow extends StatelessWidget {
           ),
         ),
         Text(
-          '${l.expenseUploadVatBaseLabel} $base',
+          '${l.expenseUploadVatBaseLabel} $formattedBase',
           style: t.bodySmall,
         ),
         const SizedBox(width: 12),
         Text(
-          '${l.expenseUploadVatTaxLabel} $tax',
+          '${l.expenseUploadVatTaxLabel} $formattedTax',
           style: t.bodySmall,
         ),
       ],

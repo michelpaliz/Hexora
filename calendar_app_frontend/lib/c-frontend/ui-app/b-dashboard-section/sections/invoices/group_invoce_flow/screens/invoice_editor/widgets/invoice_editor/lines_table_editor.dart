@@ -8,18 +8,29 @@ import 'package:intl/intl.dart';
 class LinesTableEditor extends StatefulWidget {
   final List<LineDraft> lines;
   final VoidCallback onChanged;
+  final bool Function(LineDraft line)? canAttachEvidence;
+  final String? Function(LineDraft line)? evidenceBlobNameOf;
+  final Future<void> Function(LineDraft line)? onAttachEvidence;
+  final Future<void> Function(LineDraft line)? onOpenEvidence;
+  final Future<void> Function(LineDraft line)? onDeleteEvidence;
 
   static const double _gap = 10;
   static const double _qtyWidth = 110;
   static const double _unitWidth = 150;
   static const double _vatWidth = 120;
   static const double _totalWidth = 150;
+  static const double _evidenceActionsWidth = 132;
   static const double _deleteWidth = 40;
 
   const LinesTableEditor({
     super.key,
     required this.lines,
     required this.onChanged,
+    this.canAttachEvidence,
+    this.evidenceBlobNameOf,
+    this.onAttachEvidence,
+    this.onOpenEvidence,
+    this.onDeleteEvidence,
   });
 
   @override
@@ -101,22 +112,40 @@ class _LinesTableEditorState extends State<LinesTableEditor> {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _LineRow(
+                    key: ObjectKey(line),
                     index: i,
                     line: line,
                     fieldDec: fieldDec,
                     onChanged: widget.onChanged,
                     onDelete: () {
-                      widget.lines.removeAt(i);
+                      final removed = widget.lines.remove(line);
+                      if (!removed) return;
                       for (int p = 0; p < widget.lines.length; p++) {
                         widget.lines[p].position = p + 1;
                       }
                       widget.onChanged();
+                      if (mounted) setState(() {});
                     },
                     onAddLine: () {
                       final nextPos = widget.lines.length + 1;
                       widget.lines.add(LineDraft(position: nextPos));
                       widget.onChanged();
+                      if (mounted) setState(() {});
                     },
+                    canAttachEvidence: widget.canAttachEvidence?.call(line) ??
+                        false,
+                    hasEvidence:
+                        (widget.evidenceBlobNameOf?.call(line)?.trim() ?? '')
+                            .isNotEmpty,
+                    onAttachEvidence: widget.onAttachEvidence == null
+                        ? null
+                        : () => widget.onAttachEvidence!(line),
+                    onOpenEvidence: widget.onOpenEvidence == null
+                        ? null
+                        : () => widget.onOpenEvidence!(line),
+                    onDeleteEvidence: widget.onDeleteEvidence == null
+                        ? null
+                        : () => widget.onDeleteEvidence!(line),
                     autoFocus: shouldAutofocus,
                     isLast: isLast,
                   ),
@@ -182,6 +211,8 @@ class _HeaderRow extends StatelessWidget {
           width: LinesTableEditor._totalWidth,
           child: Text(l.invoiceTotalLabel, style: style, textAlign: TextAlign.right),
         ),
+        const SizedBox(width: 8),
+        const SizedBox(width: LinesTableEditor._evidenceActionsWidth),
         const SizedBox(width: 4),
         const SizedBox(width: LinesTableEditor._deleteWidth),
       ],
@@ -197,16 +228,27 @@ class _LineRow extends StatefulWidget {
   final VoidCallback onChanged;
   final VoidCallback onDelete;
   final VoidCallback onAddLine;
+  final bool canAttachEvidence;
+  final bool hasEvidence;
+  final Future<void> Function()? onAttachEvidence;
+  final Future<void> Function()? onOpenEvidence;
+  final Future<void> Function()? onDeleteEvidence;
   final bool autoFocus;
   final bool isLast;
 
   const _LineRow({
+    super.key,
     required this.index,
     required this.line,
     required this.fieldDec,
     required this.onChanged,
     required this.onDelete,
     required this.onAddLine,
+    required this.canAttachEvidence,
+    required this.hasEvidence,
+    required this.onAttachEvidence,
+    required this.onOpenEvidence,
+    required this.onDeleteEvidence,
     required this.autoFocus,
     required this.isLast,
   });
@@ -220,7 +262,6 @@ class _LineRowState extends State<_LineRow> {
   final _qtyFocus = FocusNode();
   final _unitFocus = FocusNode();
   final _vatFocus = FocusNode();
-  bool _hovered = false;
 
   @override
   void dispose() {
@@ -240,7 +281,10 @@ class _LineRowState extends State<_LineRow> {
     if (widget.isLast) {
       widget.onAddLine();
     }
-    Future.microtask(() => FocusScope.of(context).nextFocus());
+    Future.microtask(() {
+      if (!mounted) return;
+      FocusScope.of(context).nextFocus();
+    });
   }
 
   @override
@@ -262,21 +306,14 @@ class _LineRowState extends State<_LineRow> {
       return null;
     }
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        decoration: BoxDecoration(
-          color: _hovered
-              ? cs.surfaceContainerHighest.withValues(alpha: 0.35)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             Expanded(
               flex: 3,
               child: Focus(
@@ -386,22 +423,65 @@ class _LineRowState extends State<_LineRow> {
             ),
             const SizedBox(width: 4),
             SizedBox(
+              width: LinesTableEditor._evidenceActionsWidth,
+              height: 48,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    tooltip: l.invoiceLineEvidenceAttach,
+                    onPressed: widget.onAttachEvidence == null
+                        ? null
+                        : () => widget.onAttachEvidence!.call(),
+                    icon: const Icon(Icons.attach_file_rounded, size: 18),
+                    color: widget.canAttachEvidence
+                        ? null
+                        : cs.onSurfaceVariant.withValues(alpha: 0.65),
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints.tightFor(width: 36, height: 36),
+                    splashRadius: 18,
+                  ),
+                  IconButton(
+                    tooltip: l.invoiceLineEvidenceOpen,
+                    onPressed: widget.hasEvidence && widget.onOpenEvidence != null
+                        ? () => widget.onOpenEvidence!.call()
+                        : null,
+                    icon: const Icon(Icons.visibility_outlined, size: 18),
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints.tightFor(width: 36, height: 36),
+                    splashRadius: 18,
+                  ),
+                  IconButton(
+                    tooltip: l.invoiceLineEvidenceDelete,
+                    onPressed:
+                        widget.hasEvidence && widget.onDeleteEvidence != null
+                            ? () => widget.onDeleteEvidence!.call()
+                            : null,
+                    icon: const Icon(Icons.link_off_outlined, size: 18),
+                    color: cs.tertiary,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints.tightFor(width: 36, height: 36),
+                    splashRadius: 18,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+            SizedBox(
               width: LinesTableEditor._deleteWidth,
               height: 48,
-              child: AnimatedOpacity(
-                opacity: _hovered ? 1 : 0,
-                duration: const Duration(milliseconds: 150),
-                child: IconButton(
-                  tooltip: l.remove,
-                  onPressed: _hovered ? widget.onDelete : null,
-                  icon: const Icon(Icons.delete_outline),
-                  color: cs.error,
-                ),
+              child: IconButton(
+                tooltip: l.remove,
+                onPressed: widget.onDelete,
+                icon: const Icon(Icons.delete_outline),
+                color: cs.error,
               ),
             ),
           ],
         ),
-      ),
     );
   }
 }

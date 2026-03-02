@@ -15,7 +15,7 @@ import 'package:hexora/c-frontend/ui-app/f-notification-section/event_notificati
 class EventDomain {
   final Group _group;
   final IEventRepository _repo;
-  final GroupEventResolver _resolver; // 👈 resolver with cache
+  final GroupEventResolver _resolver; // ðŸ‘ˆ resolver with cache
 
   String get groupId => _group.id;
 
@@ -198,11 +198,11 @@ class EventDomain {
     try {
       await _repo.refreshGroup(_group.id);
 
-      // 🔧 force fresh base events
+      // ðŸ”§ force fresh base events
       _resolver.clearGroup(_group.id);
       _scheduleRecompute(notifyExternal: false);
     } catch (e, st) {
-      devtools.log('💥 [EventDomain] manualRefresh error: $e\n$st');
+      devtools.log('ðŸ’¥ [EventDomain] manualRefresh error: $e\n$st');
     } finally {
       if (!silent) _setLoading(false);
       _isRefreshing = false;

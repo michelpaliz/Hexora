@@ -8,7 +8,7 @@ OutlineInputBorder buildInputBorder(
 }) {
   final cs = Theme.of(context).colorScheme;
   return OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(8),
     borderSide:
         BorderSide(color: color ?? cs.outlineVariant.withOpacity(0.5), width: width),
   );
@@ -28,30 +28,38 @@ InputDecoration buildInputDecoration(
   final typo = AppTypography.of(context);
 
   return InputDecoration(
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
     labelText: isRequired ? '$label *' : label,
     floatingLabelBehavior: FloatingLabelBehavior.always,
     labelStyle: typo.bodySmall.copyWith(
       color: cs.onSurfaceVariant,
       fontWeight: FontWeight.w600,
+      fontSize: 11,
     ),
     floatingLabelStyle: typo.bodySmall.copyWith(
       color: cs.primary,
       fontWeight: FontWeight.w700,
+      fontSize: 11,
     ),
     hintText: hintText,
     hintStyle: typo.bodySmall.copyWith(
       color: cs.onSurfaceVariant.withOpacity(0.6),
       fontWeight: FontWeight.w500,
+      fontSize: 12,
     ),
     helperText: helperText,
     helperStyle: typo.bodySmall.copyWith(
       color: cs.onSurfaceVariant.withOpacity(0.85),
       fontWeight: FontWeight.w500,
+      fontSize: 10,
     ),
     prefixIcon: prefixIcon,
+    prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     suffixIcon: showCheck
-        ? Icon(Icons.check_circle_rounded, color: cs.secondary)
+        ? Icon(Icons.check_circle_rounded, size: 18, color: cs.secondary)
         : null,
+    suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     filled: true,
     fillColor: isFilled ? cs.primary.withOpacity(0.06) : cs.surface,
     enabledBorder: buildInputBorder(context),

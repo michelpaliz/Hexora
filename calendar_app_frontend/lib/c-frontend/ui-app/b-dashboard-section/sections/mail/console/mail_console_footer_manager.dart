@@ -98,7 +98,7 @@ class _FooterManagerPanel extends StatelessWidget {
                             color: cs.outlineVariant.withValues(alpha: 0.6),
                           ),
                         ),
-                        constraints: const BoxConstraints(maxHeight: 220),
+                        constraints: const BoxConstraints(maxHeight: 320),
                         child: SingleChildScrollView(
                           child: HtmlWidget(previewHtml),
                         ),
@@ -119,6 +119,7 @@ class _FooterManagerPanel extends StatelessWidget {
                             color: cs.outlineVariant.withValues(alpha: 0.6),
                           ),
                         ),
+                        constraints: const BoxConstraints(maxHeight: 320),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -152,20 +153,20 @@ class _FooterManagerPanel extends StatelessWidget {
                     const SizedBox(height: 12),
                     Divider(color: cs.outlineVariant.withValues(alpha: 0.6)),
                     const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
                       children: [
                         FilledButton(
                           onPressed: state._createFooter,
                           child: Text(l.mailFooterUseThis),
                         ),
-                        const SizedBox(width: 10),
                         TextButton(
                           onPressed: () => state.setState(
                             () => state._footerFormExpanded = true,
                           ),
                           child: Text(l.mailFooterEdit),
                         ),
-                        const Spacer(),
                         TextButton.icon(
                           onPressed: () =>
                               state._previewFooter(useSystemDefault: true),
@@ -215,18 +216,18 @@ class _FooterManagerPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   FilledButton.tonal(
                     onPressed: state._previewFooter,
                     child: Text(l.mailFooterPreviewCta),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton(
                     onPressed: state._createFooter,
                     child: Text(l.mailFooterSaveCta),
                   ),
-                  const SizedBox(width: 8),
                   OutlinedButton(
                     onPressed: () => state.setState(() {
                       state._footerNameCtrl.clear();
@@ -249,9 +250,9 @@ class _FooterManagerPanel extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: previewCard()),
+          Expanded(flex: 3, child: previewCard()),
           const SizedBox(width: 16),
-          Expanded(child: formPanel()),
+          Expanded(flex: 2, child: formPanel()),
         ],
       ),
     );

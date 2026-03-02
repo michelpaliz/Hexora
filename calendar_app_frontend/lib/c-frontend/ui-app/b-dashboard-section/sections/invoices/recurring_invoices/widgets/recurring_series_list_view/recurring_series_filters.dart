@@ -52,7 +52,7 @@ class RecurringSeriesFilters extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
       ),

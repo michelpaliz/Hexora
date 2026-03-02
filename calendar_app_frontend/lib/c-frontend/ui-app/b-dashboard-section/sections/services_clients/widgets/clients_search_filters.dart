@@ -70,7 +70,7 @@ class ClientsSearchFilters extends StatelessWidget {
     this.onClearProperty,
     this.additionalFilters,
     this.extraActiveFilterCount = 0,
-    this.autoExpandWhenActive = true,
+    this.autoExpandWhenActive = false,
   });
 
   @override
@@ -173,7 +173,7 @@ class ClientsSearchFilters extends StatelessWidget {
           ],
         ),
       );
-      filters.add(const SizedBox(height: 8));
+      filters.add(const SizedBox(height: 6));
     }
     if (hasInactiveToggle) {
       filters.add(
@@ -188,7 +188,7 @@ class ClientsSearchFilters extends StatelessWidget {
       );
     }
     if (hasEntityFilters) {
-      if (filters.isNotEmpty) filters.add(const SizedBox(height: 10));
+      if (filters.isNotEmpty) filters.add(const SizedBox(height: 6));
       filters.add(
         FilterChipRow(
           label: entityLabel!,
@@ -200,7 +200,7 @@ class ClientsSearchFilters extends StatelessWidget {
       );
     }
     if (hasPropertyFilters) {
-      if (filters.isNotEmpty) filters.add(const SizedBox(height: 10));
+      if (filters.isNotEmpty) filters.add(const SizedBox(height: 6));
       filters.add(
         FilterChipRow(
           label: propertyLabel!,
@@ -212,7 +212,7 @@ class ClientsSearchFilters extends StatelessWidget {
       );
     }
     if (additionalFilters != null) {
-      if (filters.isNotEmpty) filters.add(const SizedBox(height: 10));
+      if (filters.isNotEmpty) filters.add(const SizedBox(height: 6));
       filters.add(additionalFilters!);
     }
 
@@ -268,7 +268,7 @@ class _CountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
@@ -278,6 +278,7 @@ class _CountPill extends StatelessWidget {
         style: textStyle.copyWith(
           color: foreground,
           fontWeight: FontWeight.w700,
+          fontSize: 11,
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
+import '../../widgets/folder_section_card.dart';
 import '../statements_formatters.dart';
 import 'statements_analytics_controller.dart';
 import 'statements_analytics_widgets.dart';
@@ -426,7 +427,9 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
       }
 
       final averageRows = buildAverageRows();
-      return Card(
+      return FolderSectionCard(
+        label: l.statementsAnalyticsTrends,
+        leftTabOffset: 0,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -453,8 +456,12 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                       width: 240,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest.withOpacity(0.35),
+                        color:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,7 +524,9 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
     }
 
     Widget buildTopMerchants() {
-      return Card(
+      return FolderSectionCard(
+        label: l.statementsAnalyticsTopMerchants,
+        leftTabOffset: 0,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: DefaultTabController(
@@ -613,8 +622,11 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.5),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -676,8 +688,11 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.5),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -712,7 +727,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             const SizedBox(height: 8),
             LayoutBuilder(
               builder: (context, constraints) {
-                final spacing = 12.0;
+                const spacing = 12.0;
                 return Wrap(
                   spacing: spacing,
                   runSpacing: spacing,
@@ -761,7 +776,9 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         );
       }
 
-      return Card(
+      return FolderSectionCard(
+        label: l.statementsAnalyticsCompareTitle,
+        leftTabOffset: 0,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -835,8 +852,9 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                   decoration: BoxDecoration(
                     color: cs.surface,
                     border: Border(
-                      bottom:
-                          BorderSide(color: cs.outlineVariant.withOpacity(0.6)),
+                      bottom: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -966,16 +984,22 @@ class AnalyticsSkeleton extends StatelessWidget {
         Container(
           height: 220,
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.5),
+            ),
           ),
         ),
         const SizedBox(height: 12),
         Container(
           height: 260,
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.5),
+            ),
           ),
         ),
       ],

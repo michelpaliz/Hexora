@@ -54,8 +54,17 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
   }
 
   @override
-  Future<List<Worker>> listWorkers(String groupId, String token) async {
-    final uri = Uri.parse('$_root${_ttPath(groupId)}/workers');
+  Future<List<Worker>> listWorkers(
+    String groupId,
+    String token, {
+    WorkerStatus? status,
+  }) async {
+    final qp = <String, String>{};
+    if (status != null) {
+      qp['status'] = status == WorkerStatus.archived ? 'archived' : 'active';
+    }
+    final uri = Uri.parse('$_root${_ttPath(groupId)}/workers')
+        .replace(queryParameters: qp.isEmpty ? null : qp);
     final res = await _client.get(uri, headers: _headers(token, json: false));
 
     if (res.statusCode == 200) {
@@ -200,7 +209,7 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
     final res = await _client.put(
       uri,
       headers: _headers(token),
-      body: jsonEncode(worker.toCreateJson()), // reuse create JSON
+      body: jsonEncode(worker.toUpdateJson()),
     );
 
     if (res.statusCode != 200) {

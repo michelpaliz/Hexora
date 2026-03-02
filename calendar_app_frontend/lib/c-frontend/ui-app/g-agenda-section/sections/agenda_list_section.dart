@@ -18,15 +18,18 @@ class AgendaListSection extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 24),
-              Icon(Icons.event_busy_rounded, size: 48, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.event_busy_rounded,
+                  size: 48, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 12),
               Text(loc?.noItems ?? 'Nothing upcoming in this view',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
               Text(
-                loc?.noUpcomingHint ?? 'Try another filter, category, or extend the range.',
+                loc?.noUpcomingHint ??
+                    'Try another filter, category, or extend the range.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),

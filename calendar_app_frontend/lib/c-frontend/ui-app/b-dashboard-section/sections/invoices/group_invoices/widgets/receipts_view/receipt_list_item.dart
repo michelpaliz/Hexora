@@ -10,14 +10,18 @@ class ReceiptListItem extends StatelessWidget {
   final Receipt receipt;
   final GroupClient client;
   final VoidCallback? onTap;
+  final VoidCallback? onIssue;
   final VoidCallback? onDelete;
+  final VoidCallback? onDownload;
 
   const ReceiptListItem({
     super.key,
     required this.receipt,
     required this.client,
     this.onTap,
+    this.onIssue,
     this.onDelete,
+    this.onDownload,
   });
 
   @override
@@ -37,7 +41,7 @@ class ReceiptListItem extends StatelessWidget {
           (sum, line) =>
               sum + ((line.total ?? (line.quantity * line.unitPrice))),
         );
-    final money = NumberFormat.currency(locale: l.localeName, symbol: '€');
+    final money = NumberFormat.currency(locale: l.localeName, symbol: 'EUR');
     final totalLabel = money.format(total);
 
     final number = (receipt.receiptNumber?.trim().isNotEmpty == true)
@@ -61,7 +65,7 @@ class ReceiptListItem extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               CircleAvatar(
                 radius: 16,
@@ -90,6 +94,9 @@ class ReceiptListItem extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        _StatusPill(status: receipt.status ?? 'draft'),
+                        const SizedBox(width: 10),
                         Text(
                           totalLabel,
                           style: t.bodyLarge.copyWith(
@@ -99,8 +106,6 @@ class ReceiptListItem extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    _StatusPill(status: receipt.status ?? 'draft'),
                     const SizedBox(height: 4),
                     Text(
                       [
@@ -119,22 +124,47 @@ class ReceiptListItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Column(
+              Row(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  if (onDownload != null)
+                    _ActionIconButton(
+                      icon: Icons.download_outlined,
+                      tooltip: l.download,
+                      color: cs.onSurfaceVariant,
+                      onPressed: onDownload!,
+                    ),
+                  if (onIssue != null)
+                    _ActionIconButton(
+                      icon: Icons.publish_outlined,
+                      tooltip: l.receiptIssueCta,
+                      color: cs.tertiary,
+                      onPressed: onIssue!,
+                    ),
+                  if ((onIssue != null || onDownload != null) &&
+                      onDelete != null)
+                    Container(
+                      width: 1,
+                      height: 20,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      color: cs.outlineVariant.withValues(alpha: 0.3),
+                    ),
                   if (onDelete != null)
-                    IconButton(
+                    _ActionIconButton(
+                      icon: Icons.delete_outline,
                       tooltip: l.delete,
-                      visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.delete_outline),
-                      color: cs.error.withValues(alpha: 0.8),
-                      onPressed: onDelete,
-                    )
-                  else
-                    Icon(
-                      Icons.chevron_right,
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                      color: cs.error,
+                      onPressed: onDelete!,
+                    ),
+                  if (onIssue == null && onDelete == null && onDownload == null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 16,
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
                     ),
                 ],
               ),
@@ -154,12 +184,15 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    final l = AppLocalizations.of(context)!;
     final normalized = status.toLowerCase();
     final bool issued = normalized.contains('issue');
-    final Color bg = issued
-        ? cs.secondaryContainer
-        : cs.surface.withValues(alpha: 0.5);
+    final bool draft = normalized.contains('draft') || normalized.isEmpty;
+    final Color bg =
+        issued ? cs.secondaryContainer : cs.surface.withValues(alpha: 0.5);
     final Color fg = issued ? cs.onSecondaryContainer : cs.onSurfaceVariant;
+    final label =
+        issued ? l.statusIssued : (draft ? l.statusDraft : normalized);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -170,13 +203,41 @@ class _StatusPill extends StatelessWidget {
         ),
       ),
       child: Text(
-        normalized.isEmpty ? 'draft' : normalized,
+        label,
         style: t.bodySmall.copyWith(
           color: fg,
           fontWeight: FontWeight.w600,
           letterSpacing: .1,
         ),
       ),
+    );
+  }
+}
+
+class _ActionIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _ActionIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      padding: const EdgeInsets.all(4),
+      splashRadius: 18,
+      icon: Icon(icon, size: 20),
+      color: color.withValues(alpha: 0.8),
+      onPressed: onPressed,
     );
   }
 }

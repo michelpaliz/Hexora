@@ -15,11 +15,24 @@ import 'package:provider/provider.dart';
 
 enum _RecurringView { list, create, detail }
 
+class RecurringInvoicesActions {
+  final VoidCallback onRefresh;
+  final VoidCallback onCreate;
+  final bool canManage;
+
+  const RecurringInvoicesActions({
+    required this.onRefresh,
+    required this.onCreate,
+    required this.canManage,
+  });
+}
+
 class RecurringInvoicesScreen extends StatefulWidget {
   final Group group;
   final bool embedded;
   final String? initialSeriesId;
   final VoidCallback? onSeriesOpened;
+  final ValueChanged<RecurringInvoicesActions?>? onActionsReady;
 
   const RecurringInvoicesScreen({
     super.key,
@@ -27,6 +40,7 @@ class RecurringInvoicesScreen extends StatefulWidget {
     this.embedded = false,
     this.initialSeriesId,
     this.onSeriesOpened,
+    this.onActionsReady,
   });
 
   @override
@@ -49,6 +63,35 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
   String _statusFilter = 'active';
   String? _clientFilter;
   bool _dueSoonOnly = false;
+  String? _lastActionsKey;
+
+  @override
+  void dispose() {
+    widget.onActionsReady?.call(null);
+    super.dispose();
+  }
+
+  void _emitActions(bool canManage) {
+    if (widget.onActionsReady == null) return;
+    final showParentActions = _view == _RecurringView.list;
+    final key = '${showParentActions ? 1 : 0}-${canManage ? 1 : 0}';
+    if (_lastActionsKey == key) return;
+    _lastActionsKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!showParentActions) {
+        widget.onActionsReady?.call(null);
+        return;
+      }
+      widget.onActionsReady?.call(
+        RecurringInvoicesActions(
+          onRefresh: _refreshSeries,
+          onCreate: _openCreate,
+          canManage: canManage,
+        ),
+      );
+    });
+  }
 
   @override
   void initState() {
@@ -108,7 +151,10 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
 
   void _openCreate() => setState(() => _view = _RecurringView.create);
 
-  void _backToList() => setState(() => _view = _RecurringView.list);
+  void _backToList() => setState(() {
+        _view = _RecurringView.list;
+        _selectedSeries = null;
+      });
 
   List<Map<String, dynamic>> _filteredSeries() {
     return _series.where((s) {
@@ -138,7 +184,7 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
       final items = await _api.list(groupId: widget.group.id);
       if (!mounted) return;
       setState(() => _series = items);
-      if (_selectedSeries != null) {
+      if (_view == _RecurringView.detail && _selectedSeries != null) {
         final id = seriesId(_selectedSeries ?? const <String, dynamic>{});
         _openSeriesById(id);
       }
@@ -158,6 +204,7 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
         role == 'owner' ||
         role == 'admin' ||
         role == 'co-admin';
+    _emitActions(canManage);
 
     Widget body;
     if (_loading) {
@@ -180,6 +227,7 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
       );
     } else if (_view == _RecurringView.detail && _selectedSeries != null) {
       body = RecurringDetailView(
+        key: ValueKey('recurring-detail-${seriesId(_selectedSeries!)}'),
         api: _api,
         series: _selectedSeries!,
         group: widget.group,
@@ -193,6 +241,7 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
         series: _filteredSeries(),
         clients: _clients,
         canManage: canManage,
+        showHeader: !widget.embedded,
         statusFilter: _statusFilter,
         clientFilter: _clientFilter,
         dueSoonOnly: _dueSoonOnly,

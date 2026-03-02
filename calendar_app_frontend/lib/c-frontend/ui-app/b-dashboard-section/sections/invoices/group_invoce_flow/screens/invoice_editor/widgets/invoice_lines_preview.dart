@@ -52,7 +52,7 @@ class InvoiceLinesPreview extends StatelessWidget {
           ),
           if (i < lines.length - 1)
             Divider(
-              height: 20,
+              height: 14,
               color: cs.outlineVariant.withValues(alpha: 0.35),
             ),
         ],
@@ -93,7 +93,7 @@ class _LineRow extends StatelessWidget {
                 line.description,
                 style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 '${l.lineQuantity}: ${intFormat.format(qty)} × ${money.format(unit)}',
                 style: t.bodySmall.copyWith(
@@ -112,7 +112,7 @@ class _LineRow extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Text(
           money.format(subtotal),
           style: t.bodyMedium.copyWith(

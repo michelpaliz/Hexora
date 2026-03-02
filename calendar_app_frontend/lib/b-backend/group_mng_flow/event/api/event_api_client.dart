@@ -3,6 +3,7 @@ import 'dart:developer' as devtools show log;
 
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/api/i_event_api_client.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/string_utils.dart';
@@ -22,7 +23,6 @@ class EventApiClient implements IEventApiClient {
   final String baseUrl = '${ApiConstants.baseUrl}/events';
 
   Map<String, String> _authHeaders(String token) => {
-        'Authorization': 'Bearer $token',
         'Content-Type': 'application/json; charset=UTF-8',
       };
 
@@ -45,16 +45,17 @@ class EventApiClient implements IEventApiClient {
       final headers = _authHeaders(token);
       final body = jsonEncode(readyEvent.toBackendJson());
 
-      debugPrint('🌐 POST /events body: $body');
+      debugPrint('ðŸŒ POST /events body: $body');
 
-      devtools.log("📤 Sending event to $baseUrl");
-      devtools.log("🧾 Headers: $headers");
-      devtools.log("📝 Event body: $body");
+      devtools.log("ðŸ“¤ Sending event to $baseUrl");
+      devtools.log("ðŸ§¾ Headers: $headers");
+      devtools.log("ðŸ“ Event body: $body");
 
-      final res = await _client.post(
+      final res = await AuthenticatedHttpClient.post(
         Uri.parse(baseUrl),
         headers: headers,
         body: body,
+        client: _client,
       );
 
       if (res.statusCode == 201) {
@@ -75,13 +76,17 @@ class EventApiClient implements IEventApiClient {
     final url = '$baseUrl/${baseId(eventId)}';
     final headers = _authHeaders(token);
 
-    debugPrint("📡 GET $url");
-    debugPrint("🔐 Headers: $headers");
+    debugPrint("ðŸ“¡ GET $url");
+    debugPrint("ðŸ” Headers: $headers");
 
-    final res = await _client.get(Uri.parse(url), headers: headers);
+    final res = await AuthenticatedHttpClient.get(
+      Uri.parse(url),
+      headers: headers,
+      client: _client,
+    );
 
-    debugPrint("📥 Status Code: ${res.statusCode}");
-    debugPrint("📥 Response Body: ${res.body}");
+    debugPrint("ðŸ“¥ Status Code: ${res.statusCode}");
+    debugPrint("ðŸ“¥ Response Body: ${res.body}");
 
     if (res.statusCode == 200) {
       return Event.fromJson(jsonDecode(res.body));
@@ -98,15 +103,16 @@ class EventApiClient implements IEventApiClient {
     final headers = _authHeaders(token);
     final payload = jsonEncode(ready.toBackendJson());
 
-    final res = await _client.put(
+    final res = await AuthenticatedHttpClient.put(
       Uri.parse('$baseUrl/${baseId(ready.id)}'),
       headers: headers,
       body: payload,
+      client: _client,
     );
 
     if (res.statusCode != 200) {
-      debugPrint('🔴 Update failed: ${res.statusCode}');
-      debugPrint('📦 Payload sent: $payload');
+      debugPrint('ðŸ”´ Update failed: ${res.statusCode}');
+      debugPrint('ðŸ“¦ Payload sent: $payload');
       throw Exception('Failed to update event: ${res.body}');
     }
 
@@ -120,12 +126,16 @@ class EventApiClient implements IEventApiClient {
 
     debugPrint('🌐 [API] DELETE → $url');
     final headers = _authHeaders(token);
-    debugPrint('🔐 [API] Headers: $headers');
+    debugPrint('ðŸ” [API] Headers: $headers');
 
-    final res = await _client.delete(Uri.parse(url), headers: headers);
+    final res = await AuthenticatedHttpClient.delete(
+      Uri.parse(url),
+      headers: headers,
+      client: _client,
+    );
 
-    debugPrint('📥 [API] Response Status: ${res.statusCode}');
-    debugPrint('📥 [API] Response Body: ${res.body}');
+    debugPrint('ðŸ“¥ [API] Response Status: ${res.statusCode}');
+    debugPrint('ðŸ“¥ [API] Response Body: ${res.body}');
 
     if (res.statusCode != 200) {
       debugPrint('❌ [API] Delete failed');
@@ -141,13 +151,14 @@ class EventApiClient implements IEventApiClient {
     required bool isDone,
     required String token,
   }) async {
-    final res = await _client.put(
+    final res = await AuthenticatedHttpClient.put(
       Uri.parse('$baseUrl/${baseId(eventId)}'),
       headers: _authHeaders(token),
       body: jsonEncode({
         'isDone': isDone,
         'completedAt': isDone ? DateTime.now().toUtc().toIso8601String() : null,
       }),
+      client: _client,
     );
 
     if (res.statusCode == 200) {
@@ -159,9 +170,10 @@ class EventApiClient implements IEventApiClient {
 
   @override
   Future<List<Event>> getEventsByGroupId(String groupId, String token) async {
-    final res = await _client.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/group/$groupId'),
       headers: _authHeaders(token),
+      client: _client,
     );
 
     if (res.statusCode == 200) {

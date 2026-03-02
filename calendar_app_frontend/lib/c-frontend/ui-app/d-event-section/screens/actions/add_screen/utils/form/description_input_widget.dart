@@ -23,17 +23,41 @@ class DescriptionInputWidget extends StatelessWidget {
       minLines: 2,
       maxLines: 4,
       textInputAction: TextInputAction.newline,
-      style: typo.bodyMedium, // input text
+      style: typo.bodyMedium.copyWith(
+        color: cs.onSurface,
+        fontWeight: FontWeight.w600,
+      ),
       decoration: InputDecoration(
         labelText: l.descriptionLabel,
-        labelStyle: typo.bodySmall,
-        hintText: l.descriptionLabel, // or a dedicated hint if you add one
-        hintStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-        counterStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-        // filled: true,
-        // fillColor: cs.surfaceVariant.withOpacity(.25),
+        labelStyle: typo.bodySmall.copyWith(
+          color: cs.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+        hintText: l.descriptionLabel,
+        hintStyle: typo.bodyMedium.copyWith(
+          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+          fontWeight: FontWeight.w500,
+        ),
+        counterStyle: typo.bodySmall.copyWith(
+          color: cs.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
+        ),
+        filled: true,
+        fillColor: Colors.transparent,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: cs.outlineVariant, width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: cs.outlineVariant, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: cs.primary, width: 2),
+        ),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       maxLength: maxLength,
     );

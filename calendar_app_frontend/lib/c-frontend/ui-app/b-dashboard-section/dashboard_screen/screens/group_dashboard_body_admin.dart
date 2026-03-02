@@ -213,9 +213,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             color: tileBg,
             child: ListTile(
               leading: const Icon(Icons.account_balance_outlined),
-              title: Text('Enable Banking', style: tileTitle),
-              subtitle:
-                  Text('PSD2 consent, accounts, transactions', style: tileSub),
+              title: Text(l.statementsNavTitle, style: tileTitle),
+              subtitle: Text(l.bankProvidersTabTitle, style: tileSub),
               onTap: () => Navigator.pushNamed(
                 context,
                 AppRoutes.enableBanking,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/controller/add_user_controller.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
@@ -15,7 +16,6 @@ import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dar
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
 
 class ReviewAndAddUsersScreen extends StatefulWidget {
   const ReviewAndAddUsersScreen({super.key});
@@ -59,7 +59,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
         wire,
         available: availableRoles,
       );
-    }); 
+    });
 
     await port.seedMembers(membersById: membersById, roles: roles);
     if (mounted) setState(() => _seeded = true);

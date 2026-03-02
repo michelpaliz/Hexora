@@ -150,10 +150,24 @@ class _StatementsTabState extends State<StatementsTab>
       final enabled =
           auth.currentUser?.autoStatementImportEnabled ?? false;
       return Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: SwitchListTile.adaptive(
-          title: Text(l.autoStatementImportTitle),
-          subtitle: Text(l.autoStatementImportHelper),
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          title: Text(
+            l.autoStatementImportTitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          subtitle: Text(
+            l.autoStatementImportHelper,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
           value: enabled,
           onChanged: _autoStatementImportLoading
               ? null
@@ -167,17 +181,17 @@ class _StatementsTabState extends State<StatementsTab>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(10),
             onTap: _pickStatementFile,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withOpacity(0.35),
-                borderRadius: BorderRadius.circular(16),
+                color: cs.surfaceContainerHighest.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: _fileError != null ? cs.error : cs.outlineVariant,
-                  width: 1.4,
+                  width: 1,
                 ),
               ),
               child: Column(
@@ -185,31 +199,39 @@ class _StatementsTabState extends State<StatementsTab>
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.cloud_upload_outlined, size: 28),
-                      const SizedBox(width: 12),
+                      Icon(Icons.cloud_upload_outlined, size: 20, color: cs.onSurfaceVariant),
+                      const SizedBox(width: 8),
                       Text(
                         l.statementsDragDropTitle,
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    l.statementsDragDropHint,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
                   const SizedBox(height: 6),
                   Text(
-                    l.statementsFormatsHint,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    l.statementsDragDropHint,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 4),
+                  Text(
+                    l.statementsFormatsHint,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
+                  ),
+                  const SizedBox(height: 10),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: FilledButton.icon(
-                      icon: const Icon(Icons.attach_file),
+                      icon: const Icon(Icons.attach_file, size: 16),
                       onPressed: _pickStatementFile,
                       label: Text(l.statementsChooseFile),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -217,7 +239,7 @@ class _StatementsTabState extends State<StatementsTab>
             ),
           ),
           if (_statementFileName != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Icon(
@@ -251,7 +273,7 @@ class _StatementsTabState extends State<StatementsTab>
               Text(_fileError!, style: TextStyle(color: cs.error)),
             ],
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           AnimatedOpacity(
             duration: const Duration(milliseconds: 200),
             opacity: canUpload ? 1 : 0.6,
@@ -474,8 +496,10 @@ class _StatementsTabState extends State<StatementsTab>
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          )),
+          const SizedBox(height: 6),
           if (step == 1) ...[
             Text(l.statementsUploadDescription,
                 style: Theme.of(context).textTheme.bodySmall),
@@ -537,8 +561,8 @@ class _StatementsTabState extends State<StatementsTab>
         children: [
           Expanded(
             child: Wrap(
-              spacing: 12,
-              runSpacing: 8,
+              spacing: 8,
+              runSpacing: 6,
               children: [
                 _StepRailItem(
                   index: 1,
@@ -591,47 +615,48 @@ class _StatementsTabState extends State<StatementsTab>
 
         if (isMobile) {
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(10),
             children: [
               buildAutoImportCard(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               if (freshnessBatchId != null) ...[
                 StatementsFreshnessBanner(
                   controller: s,
                   batchId: freshnessBatchId,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
               ],
               buildStepRail(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  color: cs.surfaceContainerHighest.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: buildLeftPanel(_activeStep),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               buildRightPanel(_activeStep),
             ],
           );
         }
 
+        final canvasBg = Theme.of(context).canvasColor;
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(10),
           children: [
             buildAutoImportCard(),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             if (freshnessBatchId != null) ...[
               StatementsFreshnessBanner(
                 controller: s,
                 batchId: freshnessBatchId,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
             ],
             buildStepRail(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               child: Row(
@@ -640,37 +665,40 @@ class _StatementsTabState extends State<StatementsTab>
                   if (!leftCollapsed)
                     SizedBox(
                       width: constraints.maxWidth * (isTablet ? 0.3 : 0.28),
-                      child: Card(
-                        color: cs.surfaceContainerHighest.withOpacity(0.18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: canvasBg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.3),
+                          ),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 250),
-                            child: KeyedSubtree(
-                              key: ValueKey(_activeStep),
-                              child: buildLeftPanel(_activeStep),
-                            ),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          child: KeyedSubtree(
+                            key: ValueKey(_activeStep),
+                            child: buildLeftPanel(_activeStep),
                           ),
                         ),
                       ),
                     ),
-                  if (!leftCollapsed) const SizedBox(width: 16),
+                  if (!leftCollapsed) const SizedBox(width: 10),
                   Expanded(
-                    child: Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            buildRightPanel(_activeStep),
-                          ],
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: canvasBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.3),
                         ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          buildRightPanel(_activeStep),
+                        ],
                       ),
                     ),
                   ),
@@ -710,30 +738,30 @@ class _StepRailItem extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             _StepBadge(index: index, status: status),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Text(
               label,
               style: Theme.of(context)
                   .textTheme
-                  .labelLarge
+                  .bodySmall
                   ?.copyWith(color: fg, fontWeight: FontWeight.w700),
             ),
             if (isCompleted) ...[
-              const SizedBox(width: 6),
-              Icon(Icons.check_circle, size: 16, color: cs.primary),
+              const SizedBox(width: 4),
+              Icon(Icons.check_circle, size: 14, color: cs.primary),
             ],
           ],
         ),
@@ -761,8 +789,8 @@ class _StepBadge extends StatelessWidget {
         : (isActive ? cs.onPrimaryContainer : cs.onSurfaceVariant);
 
     return Container(
-      width: 28,
-      height: 28,
+      width: 22,
+      height: 22,
       decoration: BoxDecoration(
         color: bg,
         shape: BoxShape.circle,
@@ -770,12 +798,13 @@ class _StepBadge extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: isCompleted
-          ? Icon(Icons.check, size: 16, color: fg)
+          ? Icon(Icons.check, size: 13, color: fg)
           : Text(
               index.toString(),
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: fg,
                     fontWeight: FontWeight.w700,
+                    fontSize: 11,
                   ),
             ),
     );

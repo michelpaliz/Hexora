@@ -24,6 +24,7 @@ class RecurringSeriesListView extends StatefulWidget {
   final ValueChanged<Map<String, dynamic>>? onPauseSeries;
   final ValueChanged<Map<String, dynamic>>? onResumeSeries;
   final ValueChanged<Map<String, dynamic>>? onCancelSeries;
+  final bool showHeader;
 
   const RecurringSeriesListView({
     super.key,
@@ -43,6 +44,7 @@ class RecurringSeriesListView extends StatefulWidget {
     required this.onPauseSeries,
     required this.onResumeSeries,
     required this.onCancelSeries,
+    this.showHeader = true,
   });
 
   @override
@@ -75,6 +77,8 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
     Map<String, String> clientNamesById,
     AppLocalizations l,
   ) {
+    String asText(dynamic value) => (value ?? '').toString();
+
     final q = _searchCtrl.text.trim().toLowerCase();
     if (q.isEmpty) return true;
     final rule = series['rule'];
@@ -86,13 +90,13 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
             '')
         .toString();
     final haystack = <String>[
-      series['name'] ?? '',
+      asText(series['name']),
       clientName,
-      series['status'] ?? '',
-      series['frequency'] ?? series['freq'] ?? '',
-      series['interval'] ?? '',
-      series['billDay'] ?? '',
-      series['timezone'] ?? '',
+      asText(series['status']),
+      asText(series['frequency'] ?? series['freq']),
+      asText(series['interval']),
+      asText(series['billDay']),
+      asText(series['timezone']),
       schedule,
     ].join(' ').toLowerCase();
     return haystack.contains(q);
@@ -183,20 +187,22 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
     }).toList(growable: false);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          RecurringSeriesListHeader(
-            title: l.recurringInvoicesTitle,
-            subtitle: l.recurringInvoicesSubtitle,
-            onRefresh: widget.onRefresh,
-            onCreate: widget.onCreate,
-            canManage: widget.canManage,
-            refreshLabel: l.recurringInvoicesRefreshCta,
-            createLabel: l.recurringInvoicesCreateCta,
-          ),
-          const SizedBox(height: 10),
+          if (widget.showHeader) ...[
+            RecurringSeriesListHeader(
+              title: l.recurringInvoicesTitle,
+              subtitle: l.recurringInvoicesSubtitle,
+              onRefresh: widget.onRefresh,
+              onCreate: widget.onCreate,
+              canManage: widget.canManage,
+              refreshLabel: l.recurringInvoicesRefreshCta,
+              createLabel: l.recurringInvoicesCreateCta,
+            ),
+            const SizedBox(height: 8),
+          ],
           RecurringSeriesFilters(
             searchController: _searchCtrl,
             onSearchChanged: () => setState(() {}),
@@ -229,7 +235,7 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
               setState(() => _showInactiveClients = false);
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Expanded(
             child: visibleSeries.isEmpty
                 ? Center(
@@ -240,7 +246,7 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
                   )
                 : ListView.separated(
                     itemCount: visibleSeries.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (_, __) => const SizedBox(height: 6),
                     itemBuilder: (_, i) => RecurringSeriesCard(
                       series: visibleSeries[i],
                       clientNamesById: clientNamesById,

@@ -25,10 +25,14 @@ class GreetingCard extends StatefulWidget {
 }
 
 class _GreetingCardState extends State<GreetingCard> {
+  static const String _defaultWeatherLocation = 'Denia';
   final WeatherService _weatherService = WeatherService();
   final LocationService _locationService = LocationService();
 
   WeatherSnapshot? _snapshot;
+  List<WeatherForecastDayView> _forecastDays = const [];
+  bool _forecastLoading = false;
+  String? _forecastError;
   String? _resolvedLocation;
 
   @override
@@ -65,10 +69,13 @@ class _GreetingCardState extends State<GreetingCard> {
 
     if (gpsCity == null) {
       debugPrint(
-          '[GreetingCard] Could not determine location from GPS. Using fallback data.');
+          '[GreetingCard] Could not determine location from GPS. Using default weather location.');
+      _resolvedLocation = _defaultWeatherLocation;
+      await _fetchWeather(_defaultWeatherLocation);
       setState(() {
-        _resolvedLocation = null;
-        _snapshot = null;
+        if (_snapshot == null) {
+          _resolvedLocation = _defaultWeatherLocation;
+        }
       });
       return;
     }
@@ -82,15 +89,24 @@ class _GreetingCardState extends State<GreetingCard> {
     debugPrint(
         '[GreetingCard] _fetchWeather for userId=${widget.user.id}, using location="$location"');
 
+    setState(() {
+      _forecastLoading = true;
+      _forecastError = null;
+    });
+
     try {
-      final result =
-          await _weatherService.fetchDailySummary(location: location);
+      final bundle = await _weatherService.fetchWeatherBundle(
+        location: location,
+        days: 3,
+      );
 
       if (!mounted) return;
 
-      debugPrint('[GreetingCard] Weather fetch success. Snapshot: $result');
+      debugPrint('[GreetingCard] Weather fetch success. Snapshot: ${bundle.today}');
       setState(() {
-        _snapshot = result;
+        _snapshot = bundle.today;
+        _forecastDays = bundle.forecast;
+        _forecastLoading = false;
       });
     } catch (e, st) {
       debugPrint('[GreetingCard] Weather fetch failed: $e');
@@ -100,8 +116,17 @@ class _GreetingCardState extends State<GreetingCard> {
 
       setState(() {
         _snapshot = null;
+        _forecastDays = const [];
+        _forecastLoading = false;
+        _forecastError = 'Unable to load forecast.';
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _weatherService.dispose();
+    super.dispose();
   }
 
   @override
@@ -129,6 +154,9 @@ class _GreetingCardState extends State<GreetingCard> {
       tempMax: tempMax,
       tempMin: tempMin,
       location: (location == null || location.isEmpty) ? null : location,
+      forecastDays: _forecastDays,
+      isForecastLoading: _forecastLoading,
+      forecastError: _forecastError,
     );
   }
 }

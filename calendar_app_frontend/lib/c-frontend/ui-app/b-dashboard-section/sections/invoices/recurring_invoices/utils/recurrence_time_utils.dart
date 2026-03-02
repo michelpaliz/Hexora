@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -134,12 +135,19 @@ String utcDateString(
 ]) =>
     DateFormat('yyyy-MM-dd').format(utcDateTime(date, time, timezone));
 
+/// Returns local time string (NOT UTC) to preserve clock time across DST changes.
+/// For recurring schedules, we want "19:00" to always mean "19:00 local time"
+/// regardless of whether DST is active or not.
 String utcTimeString(
   DateTime date,
   TimeOfDay time, [
   String? timezone,
-]) =>
-    DateFormat('HH:mm').format(utcDateTime(date, time, timezone));
+]) {
+  // Return local time instead of UTC to preserve clock time across DST
+  final h = time.hour.toString().padLeft(2, '0');
+  final m = time.minute.toString().padLeft(2, '0');
+  return '$h:$m';
+}
 
 DateTime utcToZoned(DateTime utc, String? timezone) {
   final location = tryGetLocation(timezone);
@@ -151,8 +159,10 @@ DateTime utcToZoned(DateTime utc, String? timezone) {
 
 String ruleSummary(Map? rule, AppLocalizations l) {
   if (rule == null) return l.recurringRuleEmpty;
-  final freq = (rule['freq'] ?? rule['frequency'] ?? 'monthly').toString();
-  final interval = (rule['interval'] ?? 1).toString();
+  final freq = normalizeFrequencyFromApi(
+    (rule['freq'] ?? rule['frequency'] ?? recurringFreqMonthly).toString(),
+  );
+  final intervalValue = int.tryParse((rule['interval'] ?? 1).toString()) ?? 1;
   final start = parseDate(rule['startDate']);
   final timeOfDay = rule['timeOfDay']?.toString();
   DateTime? localStart;
@@ -161,14 +171,27 @@ String ruleSummary(Map? rule, AppLocalizations l) {
     final hour = int.tryParse(parts[0]);
     final minute = int.tryParse(parts.length > 1 ? parts[1] : '0');
     if (hour != null && minute != null) {
-      final utcStart = DateTime.utc(
-        start.year,
-        start.month,
-        start.day,
-        hour,
-        minute,
-      );
-      localStart = utcToZoned(utcStart, rule['timezone']?.toString());
+      // Interpret timeOfDay as LOCAL time in the specified timezone
+      // (not UTC) to preserve clock time across DST changes
+      final location = tryGetLocation(rule['timezone']?.toString());
+      if (location != null) {
+        localStart = tz.TZDateTime(
+          location,
+          start.year,
+          start.month,
+          start.day,
+          hour,
+          minute,
+        );
+      } else {
+        localStart = DateTime(
+          start.year,
+          start.month,
+          start.day,
+          hour,
+          minute,
+        );
+      }
     }
   }
   final startLabel = (localStart ?? start) == null
@@ -180,37 +203,19 @@ String ruleSummary(Map? rule, AppLocalizations l) {
     timeLabel =
         ' · ${DateFormat.Hm().format(localStart)} (${timezoneLabelFrom(rule['timezone']?.toString())})';
   }
-  String base;
-  switch (freq) {
-    case 'daily':
-      base = interval == '1'
-          ? l.recurringFrequencyDaily
-          : l.recurringEveryDays(interval);
-      break;
-    case 'weekly':
-      base = interval == '1'
-          ? l.recurringFrequencyWeekly
-          : l.recurringEveryWeeks(interval);
-      if (billDay != null) {
-        base = '$base · ${l.recurringBillDaySummary(billDay.toString())}';
-      }
-      break;
-    case 'yearly':
-      base = interval == '1'
-          ? l.recurringFrequencyYearly
-          : l.recurringEveryYears(interval);
-      break;
-    default:
-      base = interval == '1'
-          ? l.recurringFrequencyMonthly
-          : l.recurringEveryMonths(interval);
-      if (billDay != null) {
-        base = '$base · ${l.recurringBillDaySummary(billDay.toString())}';
-      }
+  String base = recurringFrequencySummary(
+    l,
+    rawFrequency: freq,
+    interval: intervalValue,
+  );
+  final monthlyLike = freq == recurringFreqMonthly ||
+      freq == recurringFreqBimensual ||
+      freq == recurringFreqTrimestral;
+  if (billDay != null && (monthlyLike || freq == recurringFreqWeekly)) {
+    base = '$base · ${l.recurringBillDaySummary(billDay.toString())}';
   }
   return '$base$startLabel$timeLabel';
 }
-
 Future<String?> showTimezonePicker({
   required BuildContext context,
   required String initial,
@@ -279,3 +284,4 @@ Future<String?> showTimezonePicker({
     },
   );
 }
+

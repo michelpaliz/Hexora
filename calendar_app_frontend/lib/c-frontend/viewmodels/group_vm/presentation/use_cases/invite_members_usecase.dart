@@ -14,7 +14,7 @@ class InviteMembersUseCase {
     required User owner,
     required Map<String, GroupRole> roles,
   }) async {
-    final token = auth.lastToken;
+    final token = await auth.getToken();
     if (token == null) throw StateError('Not authenticated');
 
     for (final u in members) {

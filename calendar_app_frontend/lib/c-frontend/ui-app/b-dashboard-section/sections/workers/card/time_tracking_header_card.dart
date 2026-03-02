@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
-import 'package:hexora/l10n/app_localizations.dart';
 
 class TimeTrackingHeaderCard extends StatelessWidget {
   final String groupName;
@@ -19,6 +16,9 @@ class TimeTrackingHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return const SizedBox.shrink();
+
+    /*
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
@@ -80,5 +80,6 @@ class TimeTrackingHeaderCard extends StatelessWidget {
         ),
       ),
     );
+    */
   }
 }

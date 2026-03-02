@@ -11,7 +11,7 @@ class UserExpandableCard extends StatefulWidget {
   final ValueChanged<List<User>> onSelectedUsersChanged;
   final List<User>? initiallySelected;
 
-  /// 👇 New: exclude the event owner
+  /// ðŸ‘‡ New: exclude the event owner
   final String? excludeUserId;
 
   const UserExpandableCard({
@@ -62,7 +62,7 @@ class _UserExpandableCardState extends State<UserExpandableCard> {
         selectedUsers.where((u) => u.id != widget.excludeUserId).toList();
     setState(() {
       _selectedUsers = cleaned;
-      _isExpanded = false; // 👈 collapse after selection
+      _isExpanded = false; // ðŸ‘ˆ collapse after selection
     });
     widget.onSelectedUsersChanged(cleaned);
   }
@@ -116,7 +116,7 @@ class _UserExpandableCardState extends State<UserExpandableCard> {
                         padding: const EdgeInsets.all(8.0),
                         child: DialogButtonWidget(
                           selectedUsers: _selectedUsers,
-                          usersAvailable: _filteredUsers, // 👈 filtered
+                          usersAvailable: _filteredUsers, // ðŸ‘ˆ filtered
                           onUsersSelected: _onUsersSelected,
                         ),
                       ),

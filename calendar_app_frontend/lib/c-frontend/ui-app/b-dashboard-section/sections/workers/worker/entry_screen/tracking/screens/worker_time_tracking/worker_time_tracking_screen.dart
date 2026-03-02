@@ -18,6 +18,7 @@ class WorkerTimeTrackingScreen extends StatelessWidget {
   final Worker worker;
   final int? initialYear;
   final int? initialMonth;
+  final bool embedded;
 
   const WorkerTimeTrackingScreen({
     super.key,
@@ -25,6 +26,7 @@ class WorkerTimeTrackingScreen extends StatelessWidget {
     required this.worker,
     this.initialYear,
     this.initialMonth,
+    this.embedded = false,
   });
 
   @override
@@ -41,13 +43,14 @@ class WorkerTimeTrackingScreen extends StatelessWidget {
         initialYear: initialYear,
         initialMonth: initialMonth,
       )..load(),
-      child: const _WorkerTimeTrackingView(),
+      child: _WorkerTimeTrackingView(embedded: embedded),
     );
   }
 }
 
 class _WorkerTimeTrackingView extends StatefulWidget {
-  const _WorkerTimeTrackingView();
+  final bool embedded;
+  const _WorkerTimeTrackingView({required this.embedded});
 
   @override
   State<_WorkerTimeTrackingView> createState() =>
@@ -148,6 +151,45 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                           ],
                         ),
                       );
+        if (widget.embedded) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: WorkerAppBarTitle(
+                        group: c.group,
+                        worker: c.worker,
+                        year: c.year,
+                        month: c.month,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l.toggleEmptyDays,
+                      onPressed: () =>
+                          setState(() => _showMissingDays = !_showMissingDays),
+                      icon: Icon(
+                        _showMissingDays
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l.exportExcel,
+                      onPressed: () => _exportExcel(context),
+                      icon: const Icon(Icons.download),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(child: content),
+            ],
+          );
+        }
+
         return Scaffold(
           appBar: AppBar(
             title: WorkerAppBarTitle(

@@ -103,7 +103,7 @@ class InvoiceDetailLines extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: cs.surface,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: cs.outlineVariant.withValues(alpha: 0.4),
               ),
@@ -112,11 +112,11 @@ class InvoiceDetailLines extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(8),
                   child: InvoiceLinesPreview(lines: lines),
                 ),
                 Container(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
                     border: Border(
@@ -125,7 +125,7 @@ class InvoiceDetailLines extends StatelessWidget {
                       ),
                     ),
                     borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(14),
+                      bottom: Radius.circular(10),
                     ),
                   ),
                   child: Column(
@@ -135,7 +135,7 @@ class InvoiceDetailLines extends StatelessWidget {
                         label: l.invoiceSubtotalLabel,
                         value: money.format(subtotal),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       totalsRow(
                         label: l.invoiceTaxLabel,
                         value: money.format(taxTotal),

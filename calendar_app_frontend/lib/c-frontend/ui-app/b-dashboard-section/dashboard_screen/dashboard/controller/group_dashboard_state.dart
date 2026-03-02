@@ -10,7 +10,6 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/sc
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -133,28 +132,8 @@ class GroupDashboardState extends ChangeNotifier {
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final topBarColor =
-        isDark ? AppDarkColors.dashboardTopBar : AppColors.dashboardTopBar;
-    final onTopBar = isDark ? AppDarkColors.textPrimary : AppColors.white;
-
-    final menuItems = [
-      (l.goToCalendar, Icons.calendar_month_rounded, Sections.calendar),
-      (
-        l.servicesClientsTitle,
-        Icons.design_services_outlined,
-        Sections.services
-      ),
-      if (canSeeAdmin)
-        (l.invoicesNavLabel, Icons.receipt_long_outlined, Sections.invoices),
-      if (canSeeAdmin) ('Emails', Icons.email_outlined, Sections.emails),
-      if (canSeeAdmin)
-        ('Enable Banking', Icons.account_balance_outlined, 'enableBanking'),
-      (l.insightsTitle, Icons.insights_outlined, Sections.insights),
-      (l.timeTrackingTitle, Icons.access_time_rounded, Sections.workers),
-      if (canSeeAdmin) (l.groupSettingsTitle, Icons.tune_rounded, Sections.settings),
-    ];
+    final topBarColor = backdrop;
+    final onTopBar = theme.colorScheme.onSurface;
 
     return AppBar(
       backgroundColor: topBarColor,
@@ -199,115 +178,7 @@ class GroupDashboardState extends ChangeNotifier {
             onPressed: () => openSection(Sections.settings),
           ),
       ],
-      bottom: isWide
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(55),
-              child: Container(
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Colors.black.withOpacity(0.2),
-                    ),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.14),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    InkWell(
-                      borderRadius: BorderRadius.circular(24),
-                      onTap: canSeeAdmin
-                          ? () => openSection(Sections.settings)
-                          : null,
-                      child: Padding(
-                        padding: const EdgeInsets.all(2),
-                        child: CircleAvatar(
-                          radius: 20,
-                          backgroundImage:
-                              group.photoUrl?.trim().isNotEmpty == true
-                                  ? NetworkImage(group.photoUrl!.trim())
-                                  : null,
-                          backgroundColor: onTopBar.withOpacity(0.2),
-                          child: group.photoUrl?.trim().isNotEmpty == true
-                              ? null
-                              : Icon(
-                                  Icons.business_rounded,
-                                  color: onTopBar,
-                                  size: 20,
-                                ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: menuItems
-                              .map(
-                                (item) => _DashboardTopMenuItem(
-                                  label: item.$1,
-                                  icon: item.$2,
-                                  selected: activeSection == item.$3,
-                                  onTap: () => openSection(item.$3),
-                                  color: onTopBar,
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                    ),
-                    if (activeSection == Sections.calendar &&
-                        calendarActions != null) ...[
-                      const SizedBox(width: 8),
-                      ValueListenableBuilder<bool>(
-                        valueListenable: calendarActions!.leftPanelCollapsed,
-                        builder: (_, collapsed, __) {
-                          return IconButton(
-                            tooltip: collapsed
-                                ? 'Expand left panel'
-                                : 'Collapse left panel',
-                            icon: Icon(
-                              collapsed
-                                  ? Icons.chevron_right_rounded
-                                  : Icons.chevron_left_rounded,
-                              color: onTopBar,
-                            ),
-                            onPressed: calendarActions!.onToggleLeftPanel,
-                          );
-                        },
-                      ),
-                      if (calendarActions!.canAddEvents) ...[
-                        const SizedBox(width: 4),
-                        FilledButton.icon(
-                          onPressed: calendarActions!.onAddEvent,
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          label: Text(
-                            l.addEvent,
-                            style: t.bodySmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: onTopBar,
-                            ),
-                          ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: onTopBar.withOpacity(0.2),
-                            foregroundColor: onTopBar,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ],
-                ),
-              ),
-            )
-          : null,
+      bottom: null,
     );
   }
 
@@ -334,56 +205,3 @@ class GroupDashboardState extends ChangeNotifier {
   }
 }
 
-class _DashboardTopMenuItem extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-  final Color color;
-
-  const _DashboardTopMenuItem({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final bg = selected ? color.withOpacity(0.18) : Colors.transparent;
-    final fg = selected ? color : color.withOpacity(0.85);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Tooltip(
-        message: label,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 16, color: fg),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: t.bodySmall.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

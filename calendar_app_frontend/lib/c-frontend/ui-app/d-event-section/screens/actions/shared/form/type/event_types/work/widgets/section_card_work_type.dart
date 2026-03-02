@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class SectionCard extends StatelessWidget {
   final String title;
@@ -17,36 +16,17 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
-
     return Card(
       elevation: 0,
-      color: cs.surface, // background like a card
+      color: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
-        side: BorderSide(color: cs.outlineVariant, width: 1),
+        side: BorderSide.none,
       ),
       child: Padding(
-        padding: padding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title line
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              // child: Text(
-              //   title,
-              //   style: typo.bodySmall.copyWith(
-              //     fontWeight: FontWeight.w700,
-              //     color: cs.onSurfaceVariant,
-              //     letterSpacing: .2,
-              //   ),
-              // ),
-            ),
-            child,
-          ],
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: child,
       ),
     );
   }

@@ -102,8 +102,7 @@ class ReceiptLinesEditor extends StatelessWidget {
                         onChanged: (_) => onChanged(),
                         decoration: InputDecoration(
                           hintText: l.lineDescription,
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest,
+                          filled: false,
                           border: const OutlineInputBorder(),
                           isDense: true,
                         ),
@@ -120,8 +119,7 @@ class ReceiptLinesEditor extends StatelessWidget {
                         onChanged: (_) => onChanged(),
                         decoration: InputDecoration(
                           hintText: '1',
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest,
+                          filled: false,
                           border: const OutlineInputBorder(),
                           isDense: true,
                         ),
@@ -139,8 +137,7 @@ class ReceiptLinesEditor extends StatelessWidget {
                         onChanged: (_) => onChanged(),
                         decoration: InputDecoration(
                           hintText: '0.00',
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest,
+                          filled: false,
                           border: const OutlineInputBorder(),
                           isDense: true,
                         ),
@@ -151,8 +148,7 @@ class ReceiptLinesEditor extends StatelessWidget {
                       width: colTotal,
                       child: InputDecorator(
                         decoration: InputDecoration(
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest,
+                          filled: false,
                           border: const OutlineInputBorder(),
                           isDense: true,
                         ),

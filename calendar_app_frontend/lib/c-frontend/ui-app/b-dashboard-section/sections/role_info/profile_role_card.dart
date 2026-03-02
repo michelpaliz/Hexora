@@ -14,7 +14,7 @@ class ProfileRoleCard extends StatelessWidget {
     required this.user,
     required this.role,
     required this.fetchReadSas,
-    required this.onTap, // 👈 make it tappable
+    required this.onTap, // ðŸ‘ˆ make it tappable
   });
 
   final User user;

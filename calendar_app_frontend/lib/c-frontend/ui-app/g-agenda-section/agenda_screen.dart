@@ -88,7 +88,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     try {
       setState(() => _loading = true);
 
-      // 🔄 use UserAgendaDomain here instead of UserDomain
+      // ðŸ”„ use UserAgendaDomain here instead of UserDomain
       final agenda = context.read<UserAgendaDomain>();
 
       final List<Event> events = await agenda.fetchAgendaUpcoming(

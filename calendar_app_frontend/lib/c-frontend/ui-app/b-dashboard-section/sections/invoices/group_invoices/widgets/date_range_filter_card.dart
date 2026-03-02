@@ -11,6 +11,7 @@ class DateRangeFilterCard extends StatelessWidget {
   final DateTime? fromDate;
   final DateTime? toDate;
   final bool showLabel;
+  final List<Widget>? labelActions;
   final VoidCallback onToggleExpanded;
   final VoidCallback onClear;
   final VoidCallback onPickFrom;
@@ -24,6 +25,7 @@ class DateRangeFilterCard extends StatelessWidget {
     required this.fromDate,
     required this.toDate,
     this.showLabel = true,
+    this.labelActions,
     required this.onToggleExpanded,
     required this.onClear,
     required this.onPickFrom,
@@ -45,9 +47,9 @@ class DateRangeFilterCard extends StatelessWidget {
         : DateFormat.yMMMd(l.localeName).format(toDate!);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
       decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.6),
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         border: Border(
           bottom: BorderSide(
@@ -64,12 +66,20 @@ class DateRangeFilterCard extends StatelessWidget {
               const SizedBox(width: 8),
               if (showLabel)
                 Expanded(
-                  child: Text(
-                    l.date,
-                    style: t.bodySmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurfaceVariant,
-                    ),
+                  child: Wrap(
+                    spacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        l.date,
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      if (labelActions != null && labelActions!.isNotEmpty)
+                        ...labelActions!,
+                    ],
                   ),
                 )
               else
@@ -150,7 +160,7 @@ class _QuickRangeSegmented extends StatelessWidget {
       return GestureDetector(
         onTap: () => onSelected(value),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
           decoration: BoxDecoration(
             color: active
                 ? cs.primaryContainer
@@ -223,7 +233,7 @@ class _ConnectedDateRange extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.4),
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
       ),

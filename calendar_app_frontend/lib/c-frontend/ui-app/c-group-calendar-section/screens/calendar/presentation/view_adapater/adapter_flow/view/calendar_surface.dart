@@ -16,12 +16,14 @@ class CalendarSurface extends StatefulWidget {
   final CalendarState state;
   final AppointmentBuilderBridge apptBridge;
   final String? forcedViewMode;
+  final ValueChanged<DateTime>? onTimeSlotTap;
 
   const CalendarSurface({
     super.key,
     required this.state,
     required this.apptBridge,
     this.forcedViewMode,
+    this.onTimeSlotTap,
   });
 
   @override
@@ -75,23 +77,23 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     final portrait = MediaQuery.of(context).orientation == Orientation.portrait;
 
     // Base height scales with width; clamp to tighter bounds for web/inline.
-    final base = size.width * (portrait ? 0.18 : 0.15);
+    final base = size.width * (portrait ? 0.14 : 0.10);
 
     // Slightly larger on tablets/desktop
-    final tabletBump = shortest >= 600 ? 12.0 : 0.0;
+    final tabletBump = shortest >= 600 ? 8.0 : 0.0;
 
-    // Clamp between 110–190 so headers don’t dominate the card
-    return base.clamp(110.0, 190.0) + tabletBump;
+    // Clamp between 80–140 so headers don't dominate the card
+    return base.clamp(80.0, 140.0) + tabletBump;
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textColor = getTextColor(context);
-    final backgroundColor = getBackgroundColor(context).withOpacity(0.8);
+    final backgroundColor = Theme.of(context).canvasColor;
     // Keep headers legible but compact on web/inline layouts
     final fontSize =
-        (MediaQuery.of(context).size.width * 0.018).clamp(13.0, 18.0);
+        (MediaQuery.of(context).size.width * 0.014).clamp(11.0, 14.0);
     // inside build(BuildContext context) just after you compute fontSize, etc.
     final double monthHeaderHeight = _responsiveMonthHeaderHeight(context);
 
@@ -137,6 +139,12 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                             final weatherMap = showWeatherIcons
                                 ? _resolveForecast(forecast)
                                 : const <DateTime, DaySummary>{};
+                            final isTimeGridView = _selectedView == sf.CalendarView.day ||
+                                _selectedView == sf.CalendarView.week ||
+                                _selectedView == sf.CalendarView.workWeek;
+                            final calendarHeaderHeight = isTimeGridView ? 42.0 : 36.0;
+                            final calendarViewHeaderHeight =
+                                isTimeGridView ? 56.0 : 40.0;
 
                             return Container(
                               decoration:
@@ -146,8 +154,8 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                 controller: _controller,
                                 dataSource: ds,
                                 view: _selectedView,
-                                headerHeight: 44,
-                                viewHeaderHeight: 55,
+                                headerHeight: calendarHeaderHeight,
+                                viewHeaderHeight: calendarViewHeaderHeight,
                                 onViewChanged: (_) =>
                                     _selectedView = _controller.view!,
                                 onSelectionChanged: (d) {
@@ -157,6 +165,18 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                     _controller.selectedDate = _selectedDate;
                                     widget.state.jumpTo(_selectedDate!);
                                   });
+                                },
+                                onTap: (details) {
+                                  final tapped = details.date;
+                                  if (tapped == null) return;
+                                  final target = details.targetElement;
+                                  if (target != sf.CalendarElement.calendarCell) return;
+                                  if (_selectedView != sf.CalendarView.week &&
+                                      _selectedView != sf.CalendarView.day &&
+                                      _selectedView != sf.CalendarView.workWeek) {
+                                    return;
+                                  }
+                                  widget.onTimeSlotTap?.call(tapped);
                                 },
                                 // ✅ Keep Month custom tiles (old behavior)
                                 monthCellBuilder: (context, d) =>
@@ -180,7 +200,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                     monthFormat: 'MMMM yyyy',
                                     textAlign: TextAlign.left,
                                   ),
-                                  appointmentItemHeight: 80,
+                                  appointmentItemHeight: 60,
                                 ),
 
                                 appointmentBuilder: (context, details) =>

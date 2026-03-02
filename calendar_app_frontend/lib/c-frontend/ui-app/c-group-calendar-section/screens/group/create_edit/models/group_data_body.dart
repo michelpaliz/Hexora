@@ -79,7 +79,7 @@ class GroupDataBody extends StatelessWidget {
               children: [
                 GroupImage(
                   imageUrl:
-                      initialImageUrl, // 👈 show existing group photo if any
+                      initialImageUrl, // ðŸ‘ˆ show existing group photo if any
                   onPicked: onPicked,
                 ),
               ],

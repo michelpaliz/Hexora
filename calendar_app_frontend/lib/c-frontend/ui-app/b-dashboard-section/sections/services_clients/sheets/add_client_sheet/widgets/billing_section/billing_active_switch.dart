@@ -20,15 +20,23 @@ class ActiveSwitch extends StatelessWidget {
 
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
+      dense: true,
+      visualDensity: VisualDensity.compact,
       value: value,
       onChanged: onChanged,
       title: Text(
         l.active,
-        style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+        style: typo.bodySmall.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
       ),
       subtitle: Text(
         value ? l.clientWillBeActive : l.clientWillBeInactive,
-        style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+        style: typo.bodySmall.copyWith(
+          color: cs.onSurfaceVariant,
+          fontSize: 11,
+        ),
       ),
     );
   }

@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/blobUploader/blobServer.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
-import 'package:http/http.dart' as http;
 
 /// Returned by commit methods (final URL + blob key saved in DB)
 class CommittedPhoto {
@@ -14,12 +13,22 @@ class CommittedPhoto {
 }
 
 class BlobRepository {
-  Future<String?> _token() => TokenService.loadToken();
+  Future<String> _accessToken() async {
+    final headers = await AuthenticatedHttpClient.authorizedHeaders(
+      includeJsonContentType: false,
+    );
+    final auth = headers['Authorization'] ?? '';
+    if (!auth.startsWith('Bearer ')) {
+      throw Exception('Not authenticated');
+    }
+    final token = auth.substring('Bearer '.length).trim();
+    if (token.isEmpty) throw Exception('Not authenticated');
+    return token;
+  }
 
   /// Uploads to Azure (via SAS) and commits to /users/me/photo.
   Future<CommittedPhoto> uploadUserAvatar({required File file}) async {
-    final token = await _token();
-    if (token == null) throw Exception('Not authenticated');
+    final token = await _accessToken();
 
     // 1) upload to Azure
     final up = await uploadImageToAzure(
@@ -29,10 +38,9 @@ class BlobRepository {
     );
 
     // 2) commit blobName to backend
-    final resp = await http.patch(
+    final resp = await AuthenticatedHttpClient.patch(
       Uri.parse('${ApiConstants.baseUrl}/users/me/photo'),
       headers: {
-        'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
       body: jsonEncode({'blobName': up.blobName}),
@@ -53,8 +61,7 @@ class BlobRepository {
     required String groupId,
     required File file,
   }) async {
-    final token = await _token();
-    if (token == null) throw Exception('Not authenticated');
+    final token = await _accessToken();
 
     // 1) upload to Azure
     final up = await uploadImageToAzure(
@@ -65,10 +72,9 @@ class BlobRepository {
     );
 
     // 2) commit blobName to backend
-    final resp = await http.patch(
+    final resp = await AuthenticatedHttpClient.patch(
       Uri.parse('${ApiConstants.baseUrl}/groups/$groupId/photo'),
       headers: {
-        'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
       body: jsonEncode({'blobName': up.blobName}),

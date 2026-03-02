@@ -1,8 +1,9 @@
 // add_event_screen.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/recurrenceRule/recurrence_rule/legacy_recurrence_rule.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/group_mng_flow/category/category_api_client.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
@@ -20,12 +21,21 @@ import '../../../../../../../b-backend/notification/domain/notification_domain.d
 import '../add_recurrence_rule/add_event_dialogs.dart';
 import '../function/logic/add_event_logic.dart';
 
-enum _FormKind { simple, workVisit }
-
 class AddEventScreen extends StatefulWidget {
   final Group group;
+  final bool embedded;
+  final VoidCallback? onCreated;
+  final DateTime? initialStartDate;
+  final DateTime? initialEndDate;
 
-  const AddEventScreen({Key? key, required this.group}) : super(key: key);
+  const AddEventScreen({
+    Key? key,
+    required this.group,
+    this.embedded = false,
+    this.onCreated,
+    this.initialStartDate,
+    this.initialEndDate,
+  }) : super(key: key);
 
   @override
   State<AddEventScreen> createState() => _AddEventScreenState();
@@ -36,9 +46,6 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
     implements EventDialogs {
   bool _initialized = false;
   bool _isLoading = true;
-
-  // NEW: which form kind is active
-  _FormKind _kind = _FormKind.simple;
 
   @override
   void didChangeDependencies() {
@@ -58,6 +65,11 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
   Future<void> _initializeLogic() async {
     try {
       await initializeLogic(widget.group, context);
+      final initialStart = widget.initialStartDate;
+      if (initialStart != null) {
+        setStartDate(initialStart);
+        setEndDate(widget.initialEndDate ?? initialStart.add(const Duration(hours: 1)));
+      }
 
       // keep reactive title validity update
       titleController.addListener(() {
@@ -99,86 +111,80 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
-    final backdrop = Color.alphaBlend(
-      cs.primary.withOpacity(
-        theme.brightness == Brightness.dark ? 0.14 : 0.06,
-      ),
-      cs.surfaceContainerHighest,
-    );
+    final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final isEmbeddedWeb = widget.embedded && kIsWeb;
 
     // single source of truth for CategoryApi
     final categoryApi = CategoryApi(
       baseUrl: ApiConstants.baseUrl,
-      headersProvider: () async {
-        final auth = context.read<AuthProvider>();
-        final token = await auth.getToken();
-        return {
-          if (token != null && token.isNotEmpty)
-            'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        };
-      },
+      headersProvider: () => AuthenticatedHttpClient.authorizedHeaders(
+        includeJsonContentType: true,
+      ),
     );
 
-    final isWorkVisit = _kind == _FormKind.workVisit;
+    // Always use work visit form (client/service pickers enabled)
+    const isWorkVisit = true;
+
+    final body = _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isWide ? 980 : 650),
+              child: SingleChildScrollView(
+                padding: isEmbeddedWeb
+                    ? const EdgeInsets.fromLTRB(0, 4, 0, 4)
+                    : const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    EventFormRouter(
+                      logic: this,
+                      onSubmit: () async {
+                        final ok = await withLoadingDialog<bool>(
+                          context,
+                          () => addEvent(context),
+                          message: l.createEventMessage,
+                        );
+                        if (!context.mounted) return;
+                        if (ok == true) {
+                          widget.onCreated?.call();
+                          if (!widget.embedded) {
+                            Navigator.pop(context, true);
+                          }
+                        } else {
+                          showErrorDialog(context);
+                        }
+                      },
+                      ownerUserId: context.read<UserDomain>().user!.id,
+                      isEditing: false,
+                      categoryApi: categoryApi,
+                      dialogs: this,
+                      enableClientServicePickers: isWorkVisit,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
+    if (isEmbeddedWeb) {
+      return ColoredBox(color: Colors.transparent, child: body);
+    }
 
     return Scaffold(
-      backgroundColor: backdrop,
+      backgroundColor: Theme.of(context).canvasColor,
       appBar: AppBar(
-        // title: Text(
-        //   l.event,
-        //   style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-        // ),
-        // backgroundColor: cs.surface,
-        // elevation: 0.5,
-        // iconTheme: IconThemeData(color: cs.onSurface),
         title: Text(
           l.addEvent,
-
-          // use Typo bodySmall as requested, bolded for prominence
           style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
         iconTheme: IconThemeData(color: cs.onSurface),
         backgroundColor: ThemeColors.cardBg(context),
         elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- The actual form ---
-                  EventFormRouter(
-                    logic: this,
-                    onSubmit: () async {
-                      final ok = await withLoadingDialog<bool>(
-                        context,
-                        () => addEvent(context),
-                        message: l.createEventMessage,
-                      );
-                      if (ok == true && context.mounted) {
-                        Navigator.pop(context, true);
-                      } else {
-                        showErrorDialog(context);
-                      }
-                    },
-                    ownerUserId: context.read<UserDomain>().user!.id,
-                    isEditing: false,
-                    categoryApi: categoryApi,
-                    dialogs: this,
-
-                    // NEW: tell the form to show client/services pickers for Work Visit
-                    enableClientServicePickers: isWorkVisit,
-                    // (If EventFormRouter doesn’t yet accept this prop, add it there and toggle fields accordingly.)
-                  ),
-                ],
-              ),
-            ),
+      body: body,
     );
   }
 

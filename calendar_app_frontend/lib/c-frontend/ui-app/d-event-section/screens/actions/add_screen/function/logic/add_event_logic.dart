@@ -128,7 +128,7 @@ abstract class AddEventLogic<T extends StatefulWidget>
 
     try {
       await userDomain!.updateUser(user);
-      devtools.log("👤 [addEvent] User updated");
+      devtools.log("ðŸ‘¤ [addEvent] User updated");
 
       // Fetch updated group via repository
       fetchedUpdatedGroup =
@@ -141,10 +141,10 @@ abstract class AddEventLogic<T extends StatefulWidget>
       groupDomain!.currentGroup = fetchedUpdatedGroup!;
       _group = fetchedUpdatedGroup!;
       devtools.log(
-          "🧹 [addEvent] GROUP FETCHED: ${fetchedUpdatedGroup!.name} (${fetchedUpdatedGroup!.id})");
+          "ðŸ§¹ [addEvent] GROUP FETCHED: ${fetchedUpdatedGroup!.name} (${fetchedUpdatedGroup!.id})");
 
       clearFormFields();
-      devtools.log("🧹 Form cleared");
+      devtools.log("ðŸ§¹ Form cleared");
     } finally {
       _postAddRefreshing = false; // ✅ always release
     }
@@ -154,7 +154,7 @@ abstract class AddEventLogic<T extends StatefulWidget>
   @override
   Future<bool> addEvent(BuildContext context) async {
     _ensureDeps(context);
-    devtools.log("🚀 [addEvent] called");
+    devtools.log("ðŸš€ [addEvent] called");
 
     final hasClient = (clientId != null && clientId!.isNotEmpty);
     final hasPrimaryService =
@@ -261,7 +261,7 @@ abstract class AddEventLogic<T extends StatefulWidget>
     );
 
     try {
-      devtools.log('📤 [addEvent] toBackendJson: ${newEvent.toBackendJson()}');
+      devtools.log('ðŸ“¤ [addEvent] toBackendJson: ${newEvent.toBackendJson()}');
 
       final created = await _eventDomain.createEvent(context, newEvent);
 
@@ -271,13 +271,13 @@ abstract class AddEventLogic<T extends StatefulWidget>
       );
 
       await _postCreationActions(created);
-      devtools.log("🎉 [addEvent] Success");
+      devtools.log("ðŸŽ‰ [addEvent] Success");
       return true;
     } catch (e, stack) {
-      devtools.log('💥 [addEvent] Exception: $e\n$stack');
+      devtools.log('ðŸ’¥ [addEvent] Exception: $e\n$stack');
       return false;
     } finally {
-      devtools.log("🏁 [addEvent] Finished execution");
+      devtools.log("ðŸ [addEvent] Finished execution");
     }
   }
 

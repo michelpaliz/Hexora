@@ -17,155 +17,60 @@ class InvoiceDetailParty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    return Card(
-      elevation: 1,
-      color: cs.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 560;
-            final sectionBg = cs.surface;
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.invoiceParties,
-                  style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 8),
-                if (wide)
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: _PartySection(
-                            title: l.billingProfileTitle,
-                            backgroundColor: sectionBg,
-                            child: _PartyDetails(
-                              profile: issuer,
-                              emptyLabel: l.billingProfileEmpty,
-                              kind: _PartyKind.issuer,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _PartySection(
-                            title: l.invoiceClientSection,
-                            backgroundColor: sectionBg,
-                            child: _PartyDetails(
-                              profile: clientBilling,
-                              emptyLabel: l.billingDetails,
-                              kind: _PartyKind.client,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else ...[
-                  _PartySection(
-                    title: l.billingProfileTitle,
-                    backgroundColor: sectionBg,
-                    child: _PartyDetails(
-                      profile: issuer,
-                      emptyLabel: l.billingProfileEmpty,
-                      kind: _PartyKind.issuer,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  _PartySection(
-                    title: l.invoiceClientSection,
-                    backgroundColor: sectionBg,
-                    child: _PartyDetails(
-                      profile: clientBilling,
-                      emptyLabel: l.billingDetails,
-                      kind: _PartyKind.client,
-                    ),
-                  ),
-                ],
-              ],
-            );
-          },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _PartyRow(
+          icon: Icons.business_outlined,
+          title: l.billingProfileTitle,
+          profile: issuer,
+          emptyLabel: l.billingProfileEmpty,
+          kind: _PartyKind.issuer,
         ),
-      ),
-    );
-  }
-}
-
-class _PartySection extends StatelessWidget {
-  final String title;
-  final Color backgroundColor;
-  final Widget child;
-
-  const _PartySection({
-    required this.title,
-    required this.backgroundColor,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
-      ),
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: t.bodyMedium.copyWith(
-              fontWeight: FontWeight.w900,
-              color: cs.onSurface,
-            ),
-          ),
-          child,
-        ],
-      ),
+        Divider(
+          height: 1,
+          color: cs.outlineVariant.withValues(alpha: 0.3),
+        ),
+        _PartyRow(
+          icon: Icons.person_outline,
+          title: l.invoiceClientSection,
+          profile: clientBilling,
+          emptyLabel: l.billingDetails,
+          kind: _PartyKind.client,
+        ),
+      ],
     );
   }
 }
 
 enum _PartyKind { issuer, client }
 
-class _PartyDetails extends StatefulWidget {
+class _PartyRow extends StatefulWidget {
+  final IconData icon;
+  final String title;
   final Object? profile;
   final String emptyLabel;
   final _PartyKind kind;
 
-  const _PartyDetails({
+  const _PartyRow({
+    required this.icon,
+    required this.title,
     required this.profile,
     required this.emptyLabel,
     required this.kind,
   });
 
   @override
-  State<_PartyDetails> createState() => _PartyDetailsState();
+  State<_PartyRow> createState() => _PartyRowState();
 }
 
-class _PartyDetailsState extends State<_PartyDetails> {
-  bool _detailsExpanded = false;
+class _PartyRowState extends State<_PartyRow> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
@@ -211,29 +116,18 @@ class _PartyDetailsState extends State<_PartyDetails> {
 
     bool hasAny(String? v) => (v ?? '').trim().isNotEmpty;
     final hasData = [
-      legalName,
-      taxId,
-      email,
-      phone,
-      website,
-      iban,
-      addressStreet,
-      addressCity,
-      addressCountry,
+      legalName, taxId, email, phone, website, iban,
+      addressStreet, addressCity, addressCountry,
     ].any(hasAny);
 
-    if (!hasData) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Text(
-          widget.emptyLabel,
-          style: t.bodySmall.copyWith(
-            color: cs.onSurfaceVariant,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      );
-    }
+    // Summary line for collapsed state
+    final summaryParts = <String>[
+      if (hasAny(legalName)) legalName!.trim(),
+      if (hasAny(taxId)) taxId!.trim(),
+    ];
+    final summary = summaryParts.isNotEmpty
+        ? summaryParts.join(' · ')
+        : widget.emptyLabel;
 
     final addressLines = <String>[
       for (final v in [addressStreet, addressExtra])
@@ -246,248 +140,145 @@ class _PartyDetailsState extends State<_PartyDetails> {
       if (hasAny(addressCountry)) addressCountry!.trim(),
     ].where((e) => e.trim().isNotEmpty).toList();
 
-    final emailLabel =
-        widget.kind == _PartyKind.issuer ? l.billingEmailLabel : l.emailLabel;
-    final phoneLabel =
-        widget.kind == _PartyKind.issuer ? l.billingPhoneLabel : l.phoneLabel;
-
-    final emailValue = email?.trim();
-    final phoneValue = phone?.trim();
-    final websiteValue = website?.trim();
-
-    final hasDetails = hasAny(emailValue) ||
-        hasAny(phoneValue) ||
-        hasAny(websiteValue) ||
+    final hasDetails = hasAny(email) ||
+        hasAny(phone) ||
+        hasAny(website) ||
         addressLines.isNotEmpty ||
         (widget.kind == _PartyKind.issuer && hasAny(iban));
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (hasAny(legalName))
+    return InkWell(
+      onTap: hasDetails ? () => setState(() => _expanded = !_expanded) : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row: icon + title + summary + chevron
+            Row(
+              children: [
+                Icon(widget.icon, size: 16, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Text(
+                  widget.title,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                if (hasDetails)
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 200),
+                    turns: _expanded ? 0.5 : 0,
+                    child: Icon(
+                      Icons.expand_more,
+                      size: 16,
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            // Always show summary
             Text(
-              legalName!.trim(),
+              summary,
               style: t.bodyMedium.copyWith(
-                fontWeight: FontWeight.w900,
-                color: cs.onSurface,
+                fontWeight: hasData ? FontWeight.w800 : FontWeight.w600,
+                color: hasData ? cs.onSurface : cs.onSurfaceVariant,
+                fontStyle: hasData ? null : FontStyle.italic,
               ),
-              maxLines: 2,
+              maxLines: _expanded ? 3 : 1,
               overflow: TextOverflow.ellipsis,
             ),
-          if (hasAny(taxId)) ...[
-            const SizedBox(height: 6),
-            Text(
-              '${l.billingTaxId}: ${taxId!.trim()}',
-              style: t.bodySmall.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-          if (!_detailsExpanded && hasAny(emailValue)) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.email_outlined,
-                  size: 14,
-                  color: cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    emailValue!,
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (hasDetails && !_detailsExpanded) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    [
-                      if (!hasAny(emailValue) && addressLines.isNotEmpty)
-                        addressLines.first,
-                    ].join(' · '),
-                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                TextButton.icon(
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                  ),
-                  onPressed: () => setState(() => _detailsExpanded = true),
-                  icon: const Icon(Icons.expand_more, size: 18),
-                  label: Text(l.details),
-                ),
-              ],
-            ),
-          ],
-          if (_detailsExpanded) ...[
-            const SizedBox(height: 10),
-            if (hasAny(taxId)) ...[
-              _SectionHeader(label: l.billingTaxId),
-              const SizedBox(height: 8),
-              _KeyValueRow(
-                label: l.billingTaxId,
-                value: taxId!.trim(),
-                icon: Icons.badge_outlined,
-                copyValue: taxId,
+            if (hasAny(email) && !_expanded) ...[
+              const SizedBox(height: 2),
+              Text(
+                email!.trim(),
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
-            if (hasAny(emailValue) ||
-                hasAny(phoneValue) ||
-                hasAny(websiteValue)) ...[
-              if (hasAny(taxId)) const SizedBox(height: 10),
-              _SectionHeader(label: l.contact),
-              const SizedBox(height: 8),
-              if (hasAny(emailValue))
-                _KeyValueRow(
-                  label: emailLabel,
-                  value: emailValue!,
+            // Expanded details
+            if (_expanded && hasDetails) ...[
+              const SizedBox(height: 6),
+              if (hasAny(email))
+                _DetailRow(
                   icon: Icons.email_outlined,
-                  copyValue: emailValue,
+                  value: email!.trim(),
+                  copyValue: email,
                 ),
-              if (hasAny(phoneValue))
-                _KeyValueRow(
-                  label: phoneLabel,
-                  value: phoneValue!,
+              if (hasAny(phone))
+                _DetailRow(
                   icon: Icons.phone_outlined,
-                  copyValue: phoneValue,
+                  value: phone!.trim(),
+                  copyValue: phone,
                 ),
-              if (hasAny(websiteValue))
-                _KeyValueRow(
-                  label: l.billingWebsite,
-                  value: websiteValue!,
+              if (hasAny(website))
+                _DetailRow(
                   icon: Icons.language_outlined,
-                  copyValue: websiteValue,
+                  value: website!.trim(),
+                  copyValue: website,
+                ),
+              if (addressLines.isNotEmpty)
+                _DetailRow(
+                  icon: Icons.location_on_outlined,
+                  value: addressLines.join(', '),
+                ),
+              if (widget.kind == _PartyKind.issuer && hasAny(iban))
+                _DetailRow(
+                  icon: Icons.account_balance_outlined,
+                  value: iban!.trim(),
+                  copyValue: iban,
+                  mono: true,
                 ),
             ],
-            if (addressLines.isNotEmpty) ...[
-              if (hasAny(emailValue) ||
-                  hasAny(phoneValue) ||
-                  hasAny(websiteValue))
-                const SizedBox(height: 10),
-              _SectionHeader(label: l.billingAddress),
-              const SizedBox(height: 8),
-              SelectableText(
-                addressLines.join('\n'),
-                style: t.bodySmall.copyWith(color: cs.onSurface),
-              ),
-            ],
-            if (widget.kind == _PartyKind.issuer && hasAny(iban)) ...[
-              const SizedBox(height: 10),
-              _SectionHeader(label: l.billingIban),
-              const SizedBox(height: 8),
-              _CopyField(
-                label: l.billingIban,
-                value: iban!.trim(),
-                icon: Icons.account_balance_outlined,
-              ),
-            ],
-            const SizedBox(height: 2),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                ),
-                onPressed: () => setState(() => _detailsExpanded = false),
-                icon: const Icon(Icons.expand_less, size: 18),
-                label: Text(l.details),
-              ),
-            ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  const _SectionHeader({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    return Text(
-      label,
-      style: t.bodySmall.copyWith(
-        color: cs.onSurfaceVariant,
-        fontWeight: FontWeight.w900,
-      ),
-    );
-  }
-}
-
-class _KeyValueRow extends StatelessWidget {
-  final String label;
-  final String value;
+class _DetailRow extends StatelessWidget {
   final IconData icon;
+  final String value;
   final String? copyValue;
+  final bool mono;
 
-  const _KeyValueRow({
-    required this.label,
-    required this.value,
+  const _DetailRow({
     required this.icon,
+    required this.value,
     this.copyValue,
+    this.mono = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final copyLabel = MaterialLocalizations.of(context).copyButtonLabel;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: cs.onSurfaceVariant),
-          const SizedBox(width: 8),
+          Icon(icon, size: 14, color: cs.onSurfaceVariant),
+          const SizedBox(width: 6),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: t.bodySmall.copyWith(color: cs.onSurface),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+            child: Text(
+              value,
+              style: t.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontFamily: mono ? 'monospace' : null,
+                fontWeight: mono ? FontWeight.w700 : null,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           if (copyValue != null)
-            IconButton(
-              tooltip: copyLabel,
-              visualDensity: VisualDensity.compact,
-              onPressed: () async {
+            GestureDetector(
+              onTap: () async {
                 await Clipboard.setData(ClipboardData(text: copyValue!));
                 if (!context.mounted) return;
                 final l = AppLocalizations.of(context)!;
@@ -495,86 +286,12 @@ class _KeyValueRow extends StatelessWidget {
                   SnackBar(content: Text(l.copiedToClipboard)),
                 );
               },
-              icon: Icon(
+              child: Icon(
                 Icons.content_copy_outlined,
-                size: 18,
-                color: cs.onSurfaceVariant,
+                size: 14,
+                color: cs.onSurfaceVariant.withValues(alpha: 0.6),
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CopyField extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _CopyField({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final copyLabel = MaterialLocalizations.of(context).copyButtonLabel;
-
-    final codeStyle = t.bodySmall.copyWith(
-      color: cs.onSurface,
-      fontWeight: FontWeight.w800,
-      letterSpacing: 0.3,
-      fontFamily: 'monospace',
-    );
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: cs.onSurfaceVariant),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                SelectableText(value, style: codeStyle),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: copyLabel,
-            visualDensity: VisualDensity.compact,
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: value));
-              if (!context.mounted) return;
-              final l = AppLocalizations.of(context)!;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l.copiedToClipboard)),
-              );
-            },
-            icon: Icon(
-              Icons.content_copy_outlined,
-              size: 18,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
         ],
       ),
     );

@@ -21,7 +21,7 @@ Widget buildLegalText(BuildContext context) {
           recognizer: TapGestureRecognizer()
             ..onTap = () async {
               // TODO: implement navigation / url_launcher
-              // final uri = Uri.parse("https://fastezcodecom/terms");
+              // final uri = Uri.parse("https://hexora.dev/terms");
               // if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {}
             },
         ),
@@ -32,7 +32,7 @@ Widget buildLegalText(BuildContext context) {
           recognizer: TapGestureRecognizer()
             ..onTap = () async {
               // TODO: implement navigation / url_launcher
-              // final uri = Uri.parse("https://fastezcodecom/privacy");
+              // final uri = Uri.parse("https://hexora.dev/privacy");
               // if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {}
             },
         ),

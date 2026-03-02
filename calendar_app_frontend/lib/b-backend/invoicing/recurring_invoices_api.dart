@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -38,13 +38,9 @@ class RecurringInvoicesApi {
   Uri _u([String path = '', Map<String, String>? query]) =>
       Uri.parse('$_base$path').replace(queryParameters: query);
 
-  Future<Map<String, String>> _headers() async {
-    final token = await TokenService.loadToken();
-    return <String, String>{
-      'Content-Type': 'application/json; charset=UTF-8',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
+  Map<String, String> _headers() => const <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      };
 
   T _decode<T>(
     http.Response r, {
@@ -86,9 +82,9 @@ class RecurringInvoicesApi {
 
   Future<Map<String, dynamic>> create(Map<String, dynamic> payload) async {
     final uri = _u();
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       uri,
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(payload),
     );
     return _decode<Map<String, dynamic>>(
@@ -104,9 +100,9 @@ class RecurringInvoicesApi {
     Map<String, dynamic> payload,
   ) async {
     final uri = _u('/$id');
-    final r = await http.put(
+    final r = await AuthenticatedHttpClient.put(
       uri,
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(payload),
     );
     return _decode<Map<String, dynamic>>(
@@ -126,7 +122,7 @@ class RecurringInvoicesApi {
       if (status != null && status.isNotEmpty) 'status': status,
     };
     final uri = _u('', query.isEmpty ? null : query);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decode<List<Map<String, dynamic>>>(
       r,
       url: uri,
@@ -154,9 +150,9 @@ class RecurringInvoicesApi {
 
   Future<Map<String, dynamic>> preview(Map<String, dynamic> payload) async {
     final uri = _u('/preview');
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       uri,
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(payload),
     );
     return _decode<Map<String, dynamic>>(
@@ -169,7 +165,7 @@ class RecurringInvoicesApi {
 
   Future<Map<String, dynamic>> cancel(String id) async {
     final uri = _u('/$id/cancel');
-    final r = await http.post(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.post(uri, headers: _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -180,7 +176,7 @@ class RecurringInvoicesApi {
 
   Future<Map<String, dynamic>> run() async {
     final uri = _u('/run');
-    final r = await http.post(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.post(uri, headers: _headers());
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -193,7 +189,7 @@ class RecurringInvoicesApi {
     String seriesId,
   ) async {
     final uri = _u('/$seriesId/invoices');
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decode(r, url: uri, method: 'GET', map: (j) {
       if (j is Map) {
         final rawList = j['invoices'];

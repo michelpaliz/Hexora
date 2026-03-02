@@ -90,7 +90,7 @@ List<Widget> buildProfileDialogActions(
 
       actionSpacing,
 
-      // 🗑️ Remove Group Button (destructive)
+      // ðŸ—‘ï¸ Remove Group Button (destructive)
       TextButton(
         onPressed: () async {
           try {
@@ -179,7 +179,7 @@ List<Widget> buildProfileDialogActions(
     ];
   } else {
     return [
-      // 🚫 Permission Denied Info
+      // ðŸš« Permission Denied Info
       TextButton(
         onPressed: () => Navigator.pop(context),
         style: TextButton.styleFrom(
@@ -194,7 +194,7 @@ List<Widget> buildProfileDialogActions(
 
       actionSpacing,
 
-      // 🚪 Leave Group Button
+      // ðŸšª Leave Group Button
       TextButton(
         onPressed: () async {
           final confirm = await showConfirmationDialog(

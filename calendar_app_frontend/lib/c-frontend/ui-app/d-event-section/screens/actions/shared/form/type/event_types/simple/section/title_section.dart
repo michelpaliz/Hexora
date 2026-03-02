@@ -22,21 +22,41 @@ class TitleSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final typo = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
     return cardBuilder(
       title: title,
       child: TextField(
         controller: controller,
         textInputAction: TextInputAction.next,
-        style: typo.bodyMedium, // your main text style
+        style: typo.bodyMedium.copyWith(
+          color: cs.onSurface,
+          fontWeight: FontWeight.w600,
+        ),
         maxLength: maxLength,
         decoration: InputDecoration(
           hintText: hintText ?? '',
-          hintStyle: typo.bodySmall, // subtle hint
-          counterText: '', // hide default counter row
-          border: InputBorder.none, // card provides the chrome
-          isDense: true,
-          contentPadding: EdgeInsets.zero,
+          hintStyle: typo.bodyMedium.copyWith(
+            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w500,
+          ),
+          counterText: '',
+          filled: true,
+          fillColor: Colors.transparent,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: cs.outlineVariant, width: 1),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: cs.outlineVariant, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: cs.primary, width: 2),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       ),
     );

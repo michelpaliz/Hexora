@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:hexora/a-models/group_model/service/service.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
@@ -49,9 +49,8 @@ class PagedResult<T> {
 class ServiceApi {
   final String _base = '${ApiConstants.baseUrl}/services';
 
-  Future<Map<String, String>> _headers() async => {
+  Map<String, String> _headers() => {
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer ${await TokenService.loadToken()}',
       };
 
   Uri _u([String path = '', Map<String, Object?> q = const {}]) {
@@ -105,7 +104,7 @@ class ServiceApi {
     int? limit,
     int? skip,
   }) async {
-    final r = await http.get(
+    final r = await AuthenticatedHttpClient.get(
       _u('', {
         'groupId': groupId,
         if (active != null) 'active': active,
@@ -113,7 +112,7 @@ class ServiceApi {
         if (limit != null) 'limit': limit,
         if (skip != null) 'skip': skip,
       }),
-      headers: await _headers(),
+      headers: _headers(),
     );
 
     return _decode<List<Service>>(r, (j) {
@@ -141,7 +140,7 @@ class ServiceApi {
     int? limit,
     int? skip,
   }) async {
-    final r = await http.get(
+    final r = await AuthenticatedHttpClient.get(
       _u('', {
         'groupId': groupId,
         if (active != null) 'active': active,
@@ -149,7 +148,7 @@ class ServiceApi {
         if (limit != null) 'limit': limit,
         if (skip != null) 'skip': skip,
       }),
-      headers: await _headers(),
+      headers: _headers(),
     );
 
     return _decode<PagedResult<Service>>(r, (j) {
@@ -175,9 +174,9 @@ class ServiceApi {
 
   // POST /services
   Future<Service> create(Service service) async {
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       _u(),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(service.toJson()),
     );
     return _decode<Service>(
@@ -186,18 +185,19 @@ class ServiceApi {
 
   // GET /services/:id
   Future<Service> getById(String id) async {
-    final r = await http.get(_u('/$id'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
     return _decode<Service>(
         r, (j) => Service.fromJson(j as Map<String, dynamic>));
   }
 
   // PATCH /services/:id  (full update)
   Future<Service> update(Service service) async {
-    if (service.id.isEmpty)
+    if (service.id.isEmpty) {
       throw ApiException(HttpStatus.badRequest, 'Service.id is required');
-    final r = await http.patch(
+    }
+    final r = await AuthenticatedHttpClient.patch(
       _u('/${service.id}'),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(service.toJson()),
     );
     return _decode<Service>(
@@ -206,9 +206,9 @@ class ServiceApi {
 
   // PATCH /services/:id  (partial fields)
   Future<Service> updateFields(String id, Map<String, dynamic> fields) async {
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       _u('/$id'),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(fields),
     );
     return _decode<Service>(
@@ -217,9 +217,9 @@ class ServiceApi {
 
   // PATCH /services/:id/active  { isActive: true|false }
   Future<Service> setActive(String id, bool isActive) async {
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       _u('/$id/active'),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode({'isActive': isActive}),
     );
     return _decode<Service>(
@@ -228,9 +228,9 @@ class ServiceApi {
 
   // DELETE /services/:id
   Future<bool> delete(String id) async {
-    final r = await http.delete(_u('/$id'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.delete(_u('/$id'), headers: _headers());
     if (r.statusCode == 404) return false;
-    _decode<void>(r, (_) => null);
+    _decode<void>(r, (_) {});
     return true;
   }
 }

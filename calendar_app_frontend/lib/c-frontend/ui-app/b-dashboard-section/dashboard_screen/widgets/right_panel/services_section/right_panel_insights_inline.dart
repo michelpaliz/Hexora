@@ -164,6 +164,7 @@ class _InsightsInlinePanelState extends State<InsightsInlinePanel> {
         }
       }
 
+      if (!mounted) return;
       setState(() {
         _clientNames = clientNames;
         _serviceNames = serviceNames;
@@ -175,6 +176,7 @@ class _InsightsInlinePanelState extends State<InsightsInlinePanel> {
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _loading = false;

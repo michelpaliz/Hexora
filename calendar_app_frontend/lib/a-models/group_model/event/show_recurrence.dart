@@ -55,7 +55,7 @@ List<Event> expandRecurringEventForRange(
       debugPrint("⚠️ No expanded instances generated for: ${event.title}");
     } else {
       debugPrint(
-        "📅 Expanded '${event.title}' to ${expanded.length} occurrences "
+        "ðŸ“… Expanded '${event.title}' to ${expanded.length} occurrences "
         "from ${expanded.first.startDate} to ${expanded.last.endDate}",
       );
     }

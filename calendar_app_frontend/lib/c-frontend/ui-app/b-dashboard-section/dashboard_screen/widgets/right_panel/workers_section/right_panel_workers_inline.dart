@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
@@ -6,12 +7,16 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/card/time_tracking_header_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/loading_list.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_list_section.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/edit_worker/edit_worker_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
+
+import 'widgets/status_filter_chips.dart';
+import 'widgets/worker_monthly_overview_inline.dart';
+import 'widgets/workers_form_panel.dart';
 
 class WorkersInlinePanel extends StatefulWidget {
   final Group group;
@@ -21,7 +26,8 @@ class WorkersInlinePanel extends StatefulWidget {
   State<WorkersInlinePanel> createState() => _WorkersInlinePanelState();
 }
 
-class _WorkersInlinePanelState extends State<WorkersInlinePanel> {
+class _WorkersInlinePanelState extends State<WorkersInlinePanel>
+    with SingleTickerProviderStateMixin {
   late UserDomain _userDomain;
   late ITimeTrackingRepository _repo;
 
@@ -30,13 +36,27 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel> {
   bool _pluginDisabled = false;
   String? _error;
   List<Worker> _workers = const [];
+  Worker? _selectedWorker;
+  late final TabController _tabController;
+  WorkerStatusFilter _statusFilter = WorkerStatusFilter.all;
+  bool _showOverview = false;
 
   @override
   void initState() {
     super.initState();
     _userDomain = context.read<UserDomain>();
     _repo = context.read<ITimeTrackingRepository>();
+    _tabController = TabController(length: kIsWeb ? 3 : 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _load();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<String> _token() => _userDomain.getAuthToken();
@@ -49,7 +69,15 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel> {
     });
     try {
       final token = await _token();
-      final items = await _repo.getWorkers(widget.group.id, token);
+      final items = await _repo.getWorkers(
+        widget.group.id,
+        token,
+        status: _statusFilter == WorkerStatusFilter.all
+            ? null
+            : (_statusFilter == WorkerStatusFilter.inactive
+                ? WorkerStatus.archived
+                : WorkerStatus.active),
+      );
       if (!mounted) return;
       setState(() => _workers = items);
     } catch (e) {
@@ -111,24 +139,11 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel> {
   }
 
   Future<void> _addWorker() async {
-    final created = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => EditWorkerSheet(
-        group: widget.group,
-        repo: _repo,
-        getToken: _token,
-        worker: Worker.newExternal(groupId: widget.group.id),
-      ),
-    );
-    if (created == true) {
-      await _load();
-      if (mounted) {
-        final l = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(l.workerCreated)));
-      }
-    }
+    _tabController.animateTo(1);
+    setState(() {
+      _selectedWorker = null;
+      _showOverview = false;
+    });
   }
 
   Future<void> _addSharedHours() async {
@@ -148,33 +163,19 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel> {
   }
 
   Future<bool?> _openEditWorkerDialog(Worker w) async {
-    return showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => EditWorkerSheet(
-        group: widget.group,
-        repo: _repo,
-        getToken: _token,
-        worker: w,
-      ),
-    );
+    _tabController.animateTo(0);
+    setState(() {
+      _selectedWorker = w;
+      _showOverview = false;
+    });
+    return null;
   }
 
-  Widget _countChip(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        '${_workers.length} ${l.workersLabel.toLowerCase()}',
-        style:
-            AppTypography.of(context).bodySmall.copyWith(color: cs.onSurface),
-      ),
-    );
+  void _openOverviewInline(Worker w) {
+    setState(() {
+      _selectedWorker = w;
+      _showOverview = true;
+    });
   }
 
   @override
@@ -222,54 +223,139 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel> {
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          TimeTrackingHeaderCard(
-            groupName: widget.group.name,
-            onEnable: _enable,
-            onDisable: _disable,
-            busy: _toggling,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l.employeesHeader,
-                    style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 6),
-                  _countChip(context),
-                ],
-              ),
-              Row(
-                children: [
-                  if (_workers.isNotEmpty)
-                    FilledButton.tonal(
-                      onPressed: _toggling ? null : _addSharedHours,
-                      child: Text(l.addTimeEntryCta),
-                    ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _toggling ? null : _addWorker,
-                    child: Text(l.createWorkerCta),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: WorkerListSection(
-              workers: _workers,
-              onEdit: (w) async {
-                final updated = await _openEditWorkerDialog(w);
-                if (updated == true) _load();
-              },
-              onAddHours: _addHoursForWorker,
-              onOpenOverview: _openOverview,
+          if (_selectedWorker == null) ...[
+            TimeTrackingHeaderCard(
+              groupName: widget.group.name,
+              onEnable: _enable,
+              onDisable: _disable,
+              busy: _toggling,
             ),
+            const SizedBox(height: 16),
+          ],
+          const SizedBox(height: 4),
+          Expanded(
+            child: (_selectedWorker != null && _showOverview)
+                ? Column(
+                    children: [
+                      Expanded(
+                        child: WorkerMonthlyOverviewInline(
+                          group: widget.group,
+                          worker: _selectedWorker!,
+                          repo: _repo,
+                          getToken: _token,
+                          onBack: () {
+                            _tabController.animateTo(0);
+                            setState(() {
+                              _showOverview = false;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: FolderPanel(
+                          title: l.workersLabel,
+                          showTab: true,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: SingleChildScrollView(
+                                        child: WorkerListSection(
+                                          workers: _workers,
+                                          selectedWorkerId:
+                                              _selectedWorker?.id,
+                                          tapSelects: true,
+                                          onSelect: (w) =>
+                                              _openEditWorkerDialog(w),
+                                          onEdit: (w) =>
+                                              _openEditWorkerDialog(w),
+                                          onAddHours: _addHoursForWorker,
+                                          onOpenOverviewIcon: (w) =>
+                                              _openOverviewInline(w),
+                                          onOpenOverview: _openOverview,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            l.statusLabel,
+                                            style: AppTypography.of(context)
+                                                .bodySmall
+                                                .copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withOpacity(0.7),
+                                                ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          StatusFilterChips(
+                                            value: _statusFilter,
+                                            onChanged: (next) {
+                                              setState(() =>
+                                                  _statusFilter = next);
+                                              _load();
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 2,
+                                child: WorkersFormPanel(
+                                  group: widget.group,
+                                  repo: _repo,
+                                  getToken: _token,
+                                  selectedWorker: _selectedWorker,
+                                  onSaved: (created, savedWorker) async {
+                                    await _load();
+                                    if (!mounted) return;
+                                    final l = AppLocalizations.of(context)!;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          created
+                                              ? l.workerCreated
+                                              : l.workerUpdated,
+                                        ),
+                                      ),
+                                    );
+                                    if (created) {
+                                      _tabController.animateTo(0);
+                                    }
+                                    setState(
+                                        () => _selectedWorker = savedWorker);
+                                  },
+                                  tabController: _tabController,
+                                  enableAddHoursTab: kIsWeb,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -277,6 +363,14 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel> {
   }
 
   Future<void> _addHoursForWorker(Worker w) async {
+    if (kIsWeb) {
+      _tabController.animateTo(2);
+      setState(() {
+        _selectedWorker = w;
+        _showOverview = false;
+      });
+      return;
+    }
     final ordered = [w, ..._workers.where((x) => x.id != w.id)];
     final created = await showModalBottomSheet<bool>(
       context: context,

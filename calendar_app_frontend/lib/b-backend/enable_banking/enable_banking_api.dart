@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
@@ -133,7 +134,6 @@ class EnableBankingApi {
     }
     return {
       'Content-Type': 'application/json; charset=UTF-8',
-      'Authorization': 'Bearer $token',
     };
   }
 
@@ -200,7 +200,10 @@ class EnableBankingApi {
   Future<List<Map<String, dynamic>>> listBanks(
       {required String country}) async {
     final uri = _u('/aspsps', {'country': country});
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(
+      uri,
+      headers: await _headers(),
+    );
     return _decode<List<Map<String, dynamic>>>(
       r,
       url: uri,
@@ -266,7 +269,10 @@ class EnableBankingApi {
       query['aspsp_name'] = aspspName.trim();
     }
     final uri = _u('/connect', query);
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(
+      uri,
+      headers: await _headers(),
+    );
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -281,7 +287,10 @@ class EnableBankingApi {
   /// GET /enablebanking/accounts -> accounts list (post-consent)
   Future<List<Map<String, dynamic>>> listAccounts() async {
     final uri = _u('/accounts');
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(
+      uri,
+      headers: await _headers(),
+    );
     return _decode<List<Map<String, dynamic>>>(
       r,
       url: uri,
@@ -313,7 +322,10 @@ class EnableBankingApi {
       'date_from': ymd(dateFrom),
       'date_to': ymd(dateTo),
     });
-    final r = await http.get(uri, headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(
+      uri,
+      headers: await _headers(),
+    );
 
     return _decode<Map<String, dynamic>>(
       r,

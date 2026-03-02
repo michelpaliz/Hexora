@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/invoice/invoice_line.dart';
-import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -33,7 +31,6 @@ class InvoiceListItem extends StatefulWidget {
 }
 
 class _InvoiceListItemState extends State<InvoiceListItem> {
-  final _invoicesApi = InvoicesApi();
   final _linesApi = InvoiceLinesApi();
   bool _loadingMeta = false;
   String? _metaError;
@@ -42,7 +39,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   num? _taxTotal;
   num? _total;
   bool _breakdownExpanded = false;
-  bool _downloadingPdf = false;
   bool _suppressTap = false;
 
   @override
@@ -131,51 +127,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
   }
 
-  String _fileNameFromHeaders(Map<String, String> headers) {
-    final raw =
-        headers['content-disposition'] ?? headers['Content-Disposition'];
-    if (raw != null && raw.isNotEmpty) {
-      final utf8Match =
-          RegExp(r"filename\\*=UTF-8''([^;]+)", caseSensitive: false)
-              .firstMatch(raw);
-      if (utf8Match != null) {
-        final name = Uri.decodeComponent(utf8Match.group(1)!);
-        if (name.trim().isNotEmpty) return name;
-      }
-      final match = RegExp(r'filename="?([^";]+)"?', caseSensitive: false)
-          .firstMatch(raw);
-      if (match != null) {
-        final name = match.group(1);
-        if (name != null && name.trim().isNotEmpty) return name.trim();
-      }
-    }
-    final fallback = widget.invoice.invoiceNumber.trim().isNotEmpty
-        ? widget.invoice.invoiceNumber.trim()
-        : widget.invoice.id.trim();
-    return fallback.endsWith('.pdf') ? fallback : 'invoice-$fallback.pdf';
-  }
-
-  Future<void> _downloadPdf() async {
-    if (_downloadingPdf) return;
-    if (widget.invoice.id.trim().isEmpty) return;
-    setState(() => _downloadingPdf = true);
-    try {
-      final r = await _invoicesApi.downloadPdf(widget.invoice.id);
-      final fileName = _fileNameFromHeaders(r.headers);
-      await launchFileDownload(
-        r.bodyBytes,
-        fileName: fileName,
-        mimeType: 'application/pdf',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _downloadingPdf = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -183,11 +134,14 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final l = AppLocalizations.of(context)!;
     final invoice = widget.invoice;
     final client = widget.client;
-    final dateLabel = invoice.registeredAt != null
+    final registeredDateLabel = invoice.registeredAt != null
         ? DateFormat.yMMMd(l.localeName)
             .add_Hm()
             .format(invoice.registeredAt!.toLocal())
-        : l.invoiceRegisteredUnknown;
+        : null;
+    final occurrenceDateLabel = invoice.occurrenceDate != null
+        ? DateFormat.yMMMd(l.localeName).add_Hm().format(invoice.occurrenceDate!)
+        : null;
 
     final money = NumberFormat.currency(locale: l.localeName, symbol: '€');
     const dash = '—';
@@ -205,6 +159,18 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final selected = widget.selected;
     final isDraft = (invoice.status ?? '').toLowerCase().contains('draft') ||
         (invoice.status ?? '').trim().isEmpty;
+    final normalizedStatus = (invoice.status ?? '').toLowerCase();
+    final isIssued = normalizedStatus.contains('issue');
+    final isLinked = invoice.isLinkedResolved;
+    final linkedCount = invoice.linkedEntriesCountSafe;
+    final statusTooltip = normalizedStatus.isEmpty || isDraft
+        ? l.statusDraft
+        : (isIssued ? l.statusIssued : invoice.status ?? '');
+    final linkedTooltip = isLinked
+        ? (linkedCount > 0
+            ? l.statementsRepetitiveInvoiceTooltip(linkedCount)
+            : l.statementsInvoiceAlreadyLinkedBadge)
+        : l.statementsUnlinked;
     final cardColor =
         selected ? cs.primaryContainer.withValues(alpha: 0.45) : cs.surface;
     final borderColor = selected
@@ -216,7 +182,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       color: cardColor,
       shadowColor: ThemeColors.cardShadow(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         side: BorderSide(
           color: borderColor,
           width: selected ? 1.2 : 1,
@@ -224,7 +190,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         onTap: widget.onTap == null
             ? null
             : () {
@@ -235,20 +201,20 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 widget.onTap!();
               },
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                radius: 16,
+                radius: 14,
                 backgroundColor: cs.primary.withValues(alpha: 0.08),
                 child: Icon(
                   Icons.receipt_long_outlined,
                   color: cs.onSurfaceVariant,
-                  size: 16,
+                  size: 14,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -267,7 +233,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                           ),
                         ),
                         Text(
-                          totalLabel,
+                          invoice.invoiceNumber,
                           style: t.bodyLarge.copyWith(
                             fontWeight: FontWeight.w900,
                             color: cs.onSurface,
@@ -276,44 +242,18 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        if (invoice.recurringSeriesId?.trim().isNotEmpty ==
-                            true)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: cs.primaryContainer,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              '${l.createdByLabel} ${l.invoiceRecurringLabel.toLowerCase()}',
-                              style: t.bodySmall.copyWith(
-                                color: cs.onPrimaryContainer,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        _StatusPill(status: invoice.status ?? 'draft'),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
                     Text(
                       [
-                        invoice.invoiceNumber,
-                        dateLabel,
                         if (linesCountLabel != dash)
-                          '${l.invoiceLinesTitle}: $linesCountLabel',
-                        if (invoice.occurrenceDate != null)
-                          DateFormat.yMMMd(l.localeName)
-                              .add_Hm()
-                              .format(invoice.occurrenceDate!),
-                      ].where((e) => e.trim().isNotEmpty).join(' · '),
+                          '${l.invoiceLinesTitle}: $linesCountLabel'
+                          '${registeredDateLabel == null ? '' : ' � $registeredDateLabel'}',
+                        if (linesCountLabel == dash &&
+                            registeredDateLabel != null)
+                          registeredDateLabel,
+                        if (occurrenceDateLabel != null &&
+                            occurrenceDateLabel != registeredDateLabel)
+                          occurrenceDateLabel,
+                      ].where((e) => e.trim().isNotEmpty).join(' � '),
                       style: t.bodySmall.copyWith(
                         color: cs.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -323,18 +263,29 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                     ),
                     if (_breakdownExpanded && hasBreakdown) ...[
                       const SizedBox(height: 6),
-                      Text(
-                        '${l.invoiceSubtotalLabel}: $subtotalLabel',
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${l.invoiceTaxLabel}: $taxLabel',
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 6,
+                        children: [
+                          Text(
+                            '${l.invoiceSubtotalLabel}: $subtotalLabel',
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          Text(
+                            '${l.invoiceTaxLabel}: $taxLabel',
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          Text(
+                            '${l.invoiceTotalLabel}: $totalLabel',
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                     if (_metaError != null) ...[
@@ -364,69 +315,98 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Row(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      // ═══ METADATA GROUP ═══
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (invoice.recurringSeriesId?.trim().isNotEmpty == true)
+                              _MetaIcon(
+                                icon: Icons.repeat_rounded,
+                                tooltip:
+                                    '${l.createdByLabel} ${l.invoiceRecurringLabel.toLowerCase()}',
+                                color: cs.primary,
+                                size: 16,
+                              ),
+                            _MetaIcon(
+                              icon: isIssued
+                                  ? Icons.task_alt_outlined
+                                  : Icons.edit_note_outlined,
+                              tooltip: statusTooltip,
+                              color: isIssued
+                                  ? cs.tertiary
+                                  : cs.onSurfaceVariant.withValues(alpha: 0.6),
+                              size: 16,
+                            ),
+                            _MetaIcon(
+                              icon: isLinked
+                                  ? Icons.link_rounded
+                                  : Icons.link_off_rounded,
+                              tooltip: linkedTooltip,
+                              color: isLinked
+                                  ? cs.primary
+                                  : cs.onSurfaceVariant.withValues(alpha: 0.6),
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // ═══ ACTION BUTTONS GROUP ═══
                       if (hasBreakdown)
-                        IconButton(
+                        _ActionIconButton(
+                          icon: _breakdownExpanded
+                              ? Icons.expand_less
+                              : Icons.expand_more,
                           tooltip: l.details,
-                          visualDensity: VisualDensity.compact,
+                          color: cs.onSurfaceVariant,
                           onPressed: () => setState(() {
                             _breakdownExpanded = !_breakdownExpanded;
                           }),
-                          icon: Icon(
-                            _breakdownExpanded
-                                ? Icons.expand_less
-                                : Icons.expand_more,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                          ),
                         ),
                       if (isDraft && widget.onEdit != null)
-                        IconButton(
+                        _ActionIconButton(
+                          icon: Icons.edit_outlined,
                           tooltip: l.edit,
-                          visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.edit_outlined),
+                          color: cs.primary,
                           onPressed: () {
                             _suppressTap = true;
                             widget.onEdit!();
                           },
                         ),
-                      _downloadingPdf
-                          ? const SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : IconButton(
-                              tooltip: l.download,
-                              visualDensity: VisualDensity.compact,
-                              icon: const Icon(Icons.download_outlined),
-                              onPressed: () {
-                                _suppressTap = true;
-                                _downloadPdf();
-                              },
-                            ),
-                      if (widget.onDelete != null)
-                        IconButton(
+                      if (widget.onDelete != null) ...[
+                        Container(
+                          width: 1,
+                          height: 20,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          color: cs.outlineVariant.withValues(alpha: 0.3),
+                        ),
+                        _ActionIconButton(
+                          icon: Icons.delete_outline,
                           tooltip: l.delete,
-                          visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.delete_outline),
-                          color: cs.error.withValues(alpha: 0.8),
+                          color: cs.error,
                           onPressed: () {
                             _suppressTap = true;
                             widget.onDelete!();
                           },
-                        )
-                      else
-                        Icon(
-                          Icons.chevron_right,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                         ),
+                      ],
                     ],
                   ),
                 ],
@@ -439,36 +419,55 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  final String status;
-  const _StatusPill({required this.status});
+class _MetaIcon extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+  final double size;
+
+  const _MetaIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.color,
+    this.size = 16,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final normalized = status.toLowerCase();
-    final bool issued = normalized.contains('issue');
-    final Color bg =
-        issued ? cs.secondaryContainer : cs.surface.withValues(alpha: 0.5);
-    final Color fg = issued ? cs.onSecondaryContainer : cs.onSurfaceVariant;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: issued ? 0.2 : 0.25),
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: Tooltip(
+        message: tooltip,
+        child: Icon(icon, size: size, color: color),
       ),
-      child: Text(
-        normalized.isEmpty ? 'draft' : normalized,
-        style: t.bodySmall.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w600,
-          letterSpacing: .1,
-        ),
-      ),
+    );
+  }
+}
+
+class _ActionIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _ActionIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      padding: const EdgeInsets.all(4),
+      splashRadius: 18,
+      icon: Icon(icon, size: 20),
+      color: color.withValues(alpha: 0.8),
+      onPressed: onPressed,
     );
   }
 }

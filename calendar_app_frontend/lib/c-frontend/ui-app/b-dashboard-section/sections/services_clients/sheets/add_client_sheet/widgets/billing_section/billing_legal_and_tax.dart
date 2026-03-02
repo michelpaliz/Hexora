@@ -34,7 +34,7 @@ class BillingLegalAndTax extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingLegalName,
-            style: typo.bodyMedium,
+            style: typo.bodySmall.copyWith(fontSize: 13),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
@@ -60,14 +60,14 @@ class BillingLegalAndTax extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Focus(
           onFocusChange: (hasFocus) {
             if (!hasFocus) onFieldBlur('billingTaxId');
           },
           child: TextFormField(
             controller: c.billingTaxId,
-            style: typo.bodyMedium,
+            style: typo.bodySmall.copyWith(fontSize: 13),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,

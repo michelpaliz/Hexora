@@ -27,13 +27,13 @@ bool validateRecurrence({
 }) {
   if (recurrenceRule != null) {
     devtools.log(
-        "🔁 [addEvent] RecurrenceRule (raw): ${recurrenceRule.toString()}");
+        "ðŸ” [addEvent] RecurrenceRule (raw): ${recurrenceRule.toString()}");
 
     try {
       // final rrule = recurrenceRule.toRRuleString(selectedStartDate);
       final rrule = toRRuleStringUtils(recurrenceRule, selectedStartDate);
 
-      devtools.log("📅 [addEvent] RecurrenceRule (RRULE): $rrule");
+      devtools.log("ðŸ“… [addEvent] RecurrenceRule (RRULE): $rrule");
 
       if (recurrenceRule.recurrenceType.toString().contains('Weekly') &&
           (recurrenceRule.daysOfWeek?.isEmpty ?? true)) {

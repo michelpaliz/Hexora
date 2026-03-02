@@ -43,7 +43,7 @@ class GroupThumbnail extends StatelessWidget {
     if (url != null && url.isNotEmpty) {
       return Image.network(
         url,
-        key: ValueKey(url), // 👈 add this line
+        key: ValueKey(url), // ðŸ‘ˆ add this line
         fit: fit,
         headers: headers,
         gaplessPlayback: true,

@@ -13,7 +13,11 @@ abstract class ITimeTrackingApiClient {
 
   /// GET /groups/:groupId/time-tracking/workers
   /// Implementation should return [] if 404 (no workers / not provisioned yet).
-  Future<List<Worker>> listWorkers(String groupId, String token);
+  Future<List<Worker>> listWorkers(
+    String groupId,
+    String token, {
+    WorkerStatus? status,
+  });
 
   /// POST /groups/:groupId/time-tracking/workers
   Future<Worker> createWorker(String groupId, Worker worker, String token);

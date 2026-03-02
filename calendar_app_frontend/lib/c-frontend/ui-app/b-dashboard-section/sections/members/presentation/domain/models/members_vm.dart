@@ -14,7 +14,6 @@ class MembersVM extends ChangeNotifier {
     required this.groupDomain,
     required this.inviteRepo,
     required this.auth,
-    
   });
 
   final Group group;
@@ -30,6 +29,7 @@ class MembersVM extends ChangeNotifier {
 
   MembersCount? get counts => _counts;
   bool get isLoading => _loadingCounts || _loadingInvites;
+  List<Invitation> get invitations => _invitations;
 
   Future<void> refreshAll() async {
     await Future.wait([_loadCounts(), _loadInvites()]);
@@ -51,7 +51,7 @@ class MembersVM extends ChangeNotifier {
     _loadingInvites = true;
     notifyListeners();
     try {
-      final token = auth.lastToken;
+      final token = await auth.getToken();
       if (token == null) return;
       final res = await inviteRepo.listGroupInvitations(group.id, token: token);
       if (res is RepoSuccess<List<Invitation>>) _invitations = res.data;

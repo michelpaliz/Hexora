@@ -21,7 +21,7 @@ Future<void> syncReminderFor(BuildContext context, Event e) async {
     return;
   }
 
-  // 🕒 Better formatting using intl
+  // ðŸ•’ Better formatting using intl
   final formattedTime = DateFormat('yyyy-MM-dd HH:mm').format(e.startDate);
 
   final body = localizations.notificationEventReminderBodyWithTime(

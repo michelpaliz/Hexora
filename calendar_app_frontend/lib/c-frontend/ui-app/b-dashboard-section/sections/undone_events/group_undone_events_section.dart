@@ -128,7 +128,7 @@ class _GroupUndoneEventsSectionBody extends StatelessWidget {
             title: Text(
               loc.pendingEventsSectionTitle,
               style: theme.textTheme.titleMedium?.copyWith(
-                color: cs.primary, // 🔵 blue title (already good)
+                color: cs.primary, // ðŸ”µ blue title (already good)
                 fontWeight: FontWeight.w800,
               ),
             ),

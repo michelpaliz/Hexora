@@ -34,7 +34,7 @@ class BillingAddressForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingStreet,
-            style: typo.bodyMedium,
+            style: typo.bodySmall.copyWith(fontSize: 13),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
@@ -57,14 +57,14 @@ class BillingAddressForm extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Focus(
           onFocusChange: (hasFocus) {
             if (!hasFocus) onFieldBlur('billingExtra');
           },
           child: TextFormField(
             controller: c.billingExtra,
-            style: typo.bodyMedium,
+            style: typo.bodySmall.copyWith(fontSize: 13),
             decoration: buildInputDecoration(
               context,
               label: l.addressExtra,
@@ -74,7 +74,7 @@ class BillingAddressForm extends StatelessWidget {
             onChanged: (_) => onFieldChanged(),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
@@ -84,7 +84,7 @@ class BillingAddressForm extends StatelessWidget {
                 },
                 child: TextFormField(
                   controller: c.billingCity,
-                  style: typo.bodyMedium,
+                  style: typo.bodySmall.copyWith(fontSize: 13),
                   autovalidateMode: AutovalidateMode.onUserInteraction,
                   decoration: buildInputDecoration(
                     context,
@@ -111,7 +111,7 @@ class BillingAddressForm extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Focus(
                 onFocusChange: (hasFocus) {
@@ -119,7 +119,7 @@ class BillingAddressForm extends StatelessWidget {
                 },
                 child: TextFormField(
                   controller: c.billingProvince,
-                  style: typo.bodyMedium,
+                  style: typo.bodySmall.copyWith(fontSize: 13),
                   decoration: buildInputDecoration(
                     context,
                     label: l.addressProvince,
@@ -132,7 +132,7 @@ class BillingAddressForm extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
@@ -142,7 +142,7 @@ class BillingAddressForm extends StatelessWidget {
                 },
                 child: TextFormField(
                   controller: c.billingPostal,
-                  style: typo.bodyMedium,
+                  style: typo.bodySmall.copyWith(fontSize: 13),
                   autovalidateMode: AutovalidateMode.onUserInteraction,
                   decoration: buildInputDecoration(
                     context,
@@ -169,7 +169,7 @@ class BillingAddressForm extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Focus(
                 onFocusChange: (hasFocus) {
@@ -177,7 +177,7 @@ class BillingAddressForm extends StatelessWidget {
                 },
                 child: TextFormField(
                   controller: c.billingCountry,
-                  style: typo.bodyMedium,
+                  style: typo.bodySmall.copyWith(fontSize: 13),
                   autovalidateMode: AutovalidateMode.onUserInteraction,
                   decoration: buildInputDecoration(
                     context,

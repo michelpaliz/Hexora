@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/widgets/recurring_create_wizard/recurring_wizard_section_card.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -16,8 +17,15 @@ class RecurringWizardPreviewStep extends StatelessWidget {
   final String timezoneLabel;
   final List<DateTime> exceptions;
   final bool loadingPreview;
-  final List<String> previewDates;
+  final List<Map<String, String>> previewRows;
   final VoidCallback onLoadPreview;
+  final String issueDatePolicySummary;
+  final num partialSubtotal;
+  final num discountAmount;
+  final num taxableBase;
+  final num tax;
+  final num total;
+  final bool showTax;
 
   const RecurringWizardPreviewStep({
     super.key,
@@ -32,14 +40,22 @@ class RecurringWizardPreviewStep extends StatelessWidget {
     required this.timezoneLabel,
     required this.exceptions,
     required this.loadingPreview,
-    required this.previewDates,
+    required this.previewRows,
     required this.onLoadPreview,
+    required this.issueDatePolicySummary,
+    required this.partialSubtotal,
+    required this.discountAmount,
+    required this.taxableBase,
+    required this.tax,
+    required this.total,
+    this.showTax = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final money = NumberFormat.currency(locale: l.localeName, symbol: 'EUR');
 
     return RecurringWizardSectionCard(
       title: l.recurringInvoicesStepPreview,
@@ -55,13 +71,7 @@ class RecurringWizardPreviewStep extends StatelessWidget {
               children: [
                 RecurringWizardSummaryRow(
                   label: l.recurringInvoicesFrequencyLabel,
-                  value: switch (freq) {
-                    'daily' => l.recurringFrequencyDaily,
-                    'weekly' => l.recurringFrequencyWeekly,
-                    'monthly' => l.recurringFrequencyMonthly,
-                    'yearly' => l.recurringFrequencyYearly,
-                    _ => freq,
-                  },
+                  value: recurringFrequencyLabel(l, freq),
                 ),
                 RecurringWizardSummaryRow(
                   label: l.recurringInvoicesIntervalLabel,
@@ -86,14 +96,14 @@ class RecurringWizardPreviewStep extends StatelessWidget {
                               ? countCtrl.text.trim()
                               : l.recurringInvoicesEndNever,
                 ),
-                if (freq == 'monthly')
+                if (normalizeFrequencyFromApi(freq) == recurringFreqMonthly || normalizeFrequencyFromApi(freq) == recurringFreqBimensual || normalizeFrequencyFromApi(freq) == recurringFreqTrimestral)
                   RecurringWizardSummaryRow(
                     label: l.recurringInvoicesBillDayLabel,
                     value: billDayCtrl.text.trim().isEmpty
                         ? '-'
                         : billDayCtrl.text.trim(),
                   ),
-                if (freq == 'weekly')
+                if (normalizeFrequencyFromApi(freq) == recurringFreqWeekly)
                   RecurringWizardSummaryRow(
                     label: l.recurringInvoicesWeekDayLabel,
                     value: weekDayCtrl.text.trim().isEmpty
@@ -105,12 +115,60 @@ class RecurringWizardPreviewStep extends StatelessWidget {
                   value: timezoneLabel,
                 ),
                 RecurringWizardSummaryRow(
+                  label: 'Politica fecha factura',
+                  value: issueDatePolicySummary,
+                ),
+                RecurringWizardSummaryRow(
                   label: l.recurringInvoicesExceptionsLabel,
                   value: exceptions.isEmpty
                       ? l.recurringInvoicesNoExceptions
                       : '${exceptions.length}',
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          RecurringWizardSectionCard(
+            title: l.invoiceTotalsTitle,
+            icon: Icons.summarize_outlined,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (discountAmount > 0) ...[
+                  RecurringWizardSummaryRow(
+                    label: 'Total parcial',
+                    value: money.format(partialSubtotal),
+                  ),
+                  RecurringWizardSummaryRow(
+                    label: 'Descuento',
+                    value: '-${money.format(discountAmount)}',
+                  ),
+                  RecurringWizardSummaryRow(
+                    label: 'Base imponible',
+                    value: money.format(taxableBase),
+                  ),
+                ] else
+                  RecurringWizardSummaryRow(
+                    label: l.invoiceSubtotalLabel,
+                    value: money.format(taxableBase),
+                  ),
+                if (showTax)
+                  RecurringWizardSummaryRow(
+                    label: l.invoiceTaxLabel,
+                    value: money.format(tax),
+                  ),
+                RecurringWizardSummaryRow(
+                  label: l.invoiceTotalLabel,
+                  value: money.format(total),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Ejemplos: "Ejecuta el 24 y factura el 28" / "Dia 31 con ajuste fin de mes".',
+            style: t.bodySmall.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 12),
@@ -126,22 +184,43 @@ class RecurringWizardPreviewStep extends StatelessWidget {
             label: Text(l.recurringInvoicesPreviewCta),
           ),
           const SizedBox(height: 12),
-          if (previewDates.isNotEmpty)
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: previewDates
-                  .take(12)
-                  .map(
-                    (d) => Chip(
-                      label: Text(d, style: t.bodySmall),
-                      labelStyle: t.bodySmall,
-                    ),
-                  )
-                  .toList(),
+          if (previewRows.isNotEmpty)
+            Column(
+              children: previewRows.take(12).map((row) {
+                final exec = row['executionAt'] ?? '-';
+                final issue = row['issueDate'] ?? '-';
+                final err = (row['error'] ?? '').trim();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '$exec -> $issue',
+                          style: t.bodySmall,
+                        ),
+                      ),
+                      if (err.isNotEmpty)
+                        Expanded(
+                          child: Text(
+                            err,
+                            textAlign: TextAlign.right,
+                            style: t.bodySmall.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
         ],
       ),
     );
   }
 }
+
+

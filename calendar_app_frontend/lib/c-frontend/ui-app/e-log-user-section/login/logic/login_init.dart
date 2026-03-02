@@ -30,10 +30,10 @@ class LoginInitializer {
   Future<void> initializeUserAndServices(String email, String password) async {
     await authService.logIn(email: email, password: password);
     final rawUser = await authService.getCurrentUserModel();
-    debugPrint('🔍 Got user from authService: $rawUser');
+    debugPrint('ðŸ” Got user from authService: $rawUser');
 
     if (rawUser != null) {
-      // 🔧 Normalize photoUrl in public avatar mode
+      // ðŸ”§ Normalize photoUrl in public avatar mode
       final normalizedUser = ApiConstants.avatarsArePublic
           ? rawUser.copyWith(
               photoUrl: _normalizePublicAvatar(rawUser.photoUrl ?? ''))

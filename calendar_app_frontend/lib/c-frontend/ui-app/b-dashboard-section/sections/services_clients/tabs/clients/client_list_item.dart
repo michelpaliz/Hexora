@@ -26,106 +26,77 @@ class ClientListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
 
     return Card(
-      color: cs.surface,
+      color: Colors.transparent,
       elevation: 0,
       shadowColor: Colors.transparent,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: cs.outlineVariant.withOpacity(0.35), width: 1),
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha:0.3), width: 1),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Avatar / Icon
+              // Avatar
               CircleAvatar(
-                radius: 20,
-                backgroundColor: cs.primary.withOpacity(0.10),
-                child: Icon(Icons.person_outline, color: cs.primary),
+                radius: 14,
+                backgroundColor: cs.primary.withValues(alpha:0.10),
+                child: Icon(Icons.person_outline, size: 16, color: cs.primary),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
 
-              // Title + details
+              // Name + inline meta
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name
                     Text(
                       client.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: nameStyle,
+                      style: nameStyle.copyWith(fontSize: 13),
                     ),
-                    const SizedBox(height: 4),
-
-                    // Meta (phone/email)
                     _MetaRow(
                       phone: client.phone,
                       email: client.email,
-                      textStyle: metaStyle,
-                      iconColor: cs.onSurfaceVariant.withOpacity(0.9),
+                      billing: client.billing,
+                      textStyle: metaStyle.copyWith(fontSize: 11),
+                      iconColor: cs.onSurfaceVariant.withValues(alpha:0.9),
                     ),
-                    if (client.billing != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                          children: [
-                            Icon(Icons.receipt_long_outlined,
-                                size: 16, color: cs.onSurfaceVariant),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                client.billing!.legalName?.isNotEmpty == true
-                                    ? client.billing!.legalName!
-                                    : AppLocalizations.of(context)!
-                                        .billingDetails,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: metaStyle.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  fontStyle:
-                                      client.billing!.legalName?.isNotEmpty ==
-                                              true
-                                          ? null
-                                          : FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                   ],
                 ),
               ),
 
-              const SizedBox(width: 12),
+              const SizedBox(width: 6),
 
-              // Status + chevron
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _BillingChip(billing: client.billing),
-                  const SizedBox(width: 6),
-                  _StatusChip(active: client.isActive),
-                  const SizedBox(width: 6),
-                  if (onDelete != null)
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      color: cs.error,
-                      tooltip: AppLocalizations.of(context)!.remove,
-                      onPressed: onDelete,
-                    ),
-                  Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
-                ],
-              ),
+              // Chips + actions — hide billing chip on mobile to avoid overflow
+              if (!isMobile) ...[
+                _BillingChip(billing: client.billing),
+                const SizedBox(width: 4),
+              ],
+              _StatusChip(active: client.isActive),
+              if (onDelete != null) ...[
+                const SizedBox(width: 2),
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.delete_outline, size: 16, color: cs.error),
+                    tooltip: AppLocalizations.of(context)!.remove,
+                    onPressed: onDelete,
+                  ),
+                ),
+              ],
+              const SizedBox(width: 2),
+              Icon(Icons.chevron_right, size: 16, color: cs.onSurfaceVariant),
             ],
           ),
         ),
@@ -137,69 +108,77 @@ class ClientListItem extends StatelessWidget {
 class _MetaRow extends StatelessWidget {
   final String? phone;
   final String? email;
+  final ClientBilling? billing;
   final TextStyle textStyle;
   final Color iconColor;
 
   const _MetaRow({
     required this.phone,
     required this.email,
+    this.billing,
     required this.textStyle,
     required this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final rows = <Widget>[];
-
-    if ((phone ?? '').isNotEmpty) {
-      rows.add(Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.phone_rounded, size: 16, color: iconColor),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              phone!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textStyle,
-            ),
-          ),
-        ],
-      ));
-    }
+    final parts = <_MetaPart>[];
 
     if ((email ?? '').isNotEmpty) {
-      if (rows.isNotEmpty) rows.add(const SizedBox(height: 2));
-      rows.add(Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.alternate_email_rounded, size: 16, color: iconColor),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              email!,
+      parts.add(_MetaPart(Icons.alternate_email_rounded, email!));
+    }
+    if ((phone ?? '').isNotEmpty) {
+      parts.add(_MetaPart(Icons.phone_rounded, phone!));
+    }
+    final legalName = billing?.legalName;
+    if (legalName != null && legalName.isNotEmpty) {
+      parts.add(_MetaPart(Icons.receipt_long_outlined, legalName));
+    }
+
+    if (parts.isEmpty) {
+      return Text(
+        AppLocalizations.of(context)!.contact,
+        style: textStyle.copyWith(fontStyle: FontStyle.italic),
+      );
+    }
+
+    return Row(
+      children: [
+        for (int i = 0; i < parts.length; i++) ...[
+          if (i > 0) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text('·', style: textStyle.copyWith(color: iconColor)),
+            ),
+          ],
+          Icon(parts[i].icon, size: 12, color: iconColor),
+          const SizedBox(width: 3),
+          if (i == parts.length - 1)
+            Flexible(
+              child: Text(
+                parts[i].text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textStyle,
+              ),
+            )
+          else
+            Text(
+              parts[i].text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: textStyle,
             ),
-          ),
         ],
-      ));
-    }
-
-    if (rows.isEmpty) {
-      rows.add(Text(
-        AppLocalizations.of(context)!.contact,
-        style: textStyle.copyWith(fontStyle: FontStyle.italic),
-      ));
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: rows,
+      ],
     );
   }
+}
+
+class _MetaPart {
+  final IconData icon;
+  final String text;
+  const _MetaPart(this.icon, this.text);
 }
 
 class _BillingChip extends StatelessWidget {
@@ -220,37 +199,38 @@ class _BillingChip extends StatelessWidget {
         doc == 'receipt' ? l.documentTypeReceipt : l.documentTypeInvoice;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha:0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.receipt_long_outlined, size: 16, color: fg),
-          const SizedBox(width: 4),
+          Icon(Icons.receipt_long_outlined, size: 12, color: fg),
+          const SizedBox(width: 3),
           Text(
             isComplete ? l.billingComplete : l.billingMissing,
             style: t.bodySmall.copyWith(
               color: fg,
               fontWeight: FontWeight.w700,
-              letterSpacing: .2,
+              fontSize: 10,
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(
-              color: fg.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(8),
+              color: fg.withValues(alpha:0.12),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               docLabel,
-              style: t.caption.copyWith(
+              style: t.bodySmall.copyWith(
                 color: fg,
                 fontWeight: FontWeight.w700,
+                fontSize: 9,
               ),
             ),
           ),
@@ -275,20 +255,18 @@ class _StatusChip extends StatelessWidget {
     final Color fg = active ? cs.onSecondaryContainer : cs.onErrorContainer;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border:
-            Border.all(color: cs.outlineVariant.withOpacity(0.25), width: 1),
-        boxShadow: const [],
+        border: Border.all(color: cs.outlineVariant.withValues(alpha:0.25)),
       ),
       child: Text(
         active ? l.active : l.inactive,
         style: t.bodySmall.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
-          letterSpacing: .2,
+          fontSize: 10,
         ),
       ),
     );

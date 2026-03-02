@@ -19,17 +19,17 @@ class StatusBadge extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon ?? Icons.verified_outlined, size: 14, color: color),
-          const SizedBox(width: 4),
+          Icon(icon ?? Icons.verified_outlined, size: 12, color: color),
+          const SizedBox(width: 3),
           Flexible(
             child: Text(
               label,
@@ -38,6 +38,7 @@ class StatusBadge extends StatelessWidget {
               style: t.caption.copyWith(
                 color: cs.onSurface,
                 fontWeight: FontWeight.w600,
+                fontSize: 10,
               ),
             ),
           ),
@@ -75,22 +76,26 @@ class MetaItem extends StatelessWidget {
       ),
     );
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(icon, size: 16, color: cs.onSurfaceVariant),
-        const SizedBox(width: 8),
+        Icon(icon, size: 13, color: cs.onSurfaceVariant),
+        const SizedBox(width: 5),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
               Text(
                 label,
-                style: t.caption.copyWith(color: cs.onSurfaceVariant),
+                style: t.caption.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 10,
+                ),
               ),
-              const SizedBox(height: 2),
-              valueTooltip == null
-                  ? valueText
-                  : Tooltip(message: valueTooltip!, child: valueText),
+              const SizedBox(width: 4),
+              Expanded(
+                child: valueTooltip == null
+                    ? valueText
+                    : Tooltip(message: valueTooltip!, child: valueText),
+              ),
             ],
           ),
         ),
@@ -116,7 +121,7 @@ class TechLine extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 3),
       child: Row(
         children: [
           Expanded(
@@ -124,14 +129,19 @@ class TechLine extends StatelessWidget {
               '$label: $value',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              style: t.bodySmall.copyWith(
+                color: cs.onSurfaceVariant,
+                fontSize: 11,
+              ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           IconButton(
             tooltip: AppLocalizations.of(context)!.statementsCopy,
-            icon: const Icon(Icons.copy, size: 16),
+            icon: const Icon(Icons.copy, size: 13),
             onPressed: onCopy,
+            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+            padding: EdgeInsets.zero,
           ),
         ],
       ),

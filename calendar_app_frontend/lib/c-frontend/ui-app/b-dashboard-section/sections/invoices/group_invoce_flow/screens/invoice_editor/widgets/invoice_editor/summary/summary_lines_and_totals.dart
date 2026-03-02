@@ -8,16 +8,24 @@ import 'summary_layout.dart';
 
 class InvoiceSummaryLinesAndTotals extends StatefulWidget {
   final List<LineDraft> lines;
+  final num? partialSubtotal;
+  final num discountAmount;
+  final num? taxableBase;
   final num subtotal;
   final num tax;
   final num total;
+  final bool showTax;
 
   const InvoiceSummaryLinesAndTotals({
     super.key,
     required this.lines,
+    this.partialSubtotal,
+    this.discountAmount = 0,
+    this.taxableBase,
     required this.subtotal,
     required this.tax,
     required this.total,
+    this.showTax = true,
   });
 
   @override
@@ -49,6 +57,14 @@ class _InvoiceSummaryLinesAndTotalsState
     final priceAccent = cs.primary;
     final priceMuted = cs.primary.withValues(alpha: 0.75);
     final totalChipBg = cs.primaryContainer.withValues(alpha: 0.75);
+
+    final minTableWidth = widget.showTax
+        ? InvoiceSummaryLayout.minLinesTableWidth
+        : InvoiceSummaryLayout.minDescWidth +
+            InvoiceSummaryLayout.qtyWidth +
+            InvoiceSummaryLayout.unitWidth +
+            InvoiceSummaryLayout.totalWidth +
+            (InvoiceSummaryLayout.gap * 3);
 
     final linesTable = Column(
       children: [
@@ -83,15 +99,17 @@ class _InvoiceSummaryLinesAndTotalsState
               ),
             ),
             const SizedBox(width: InvoiceSummaryLayout.gap),
-            SizedBox(
-              width: InvoiceSummaryLayout.vatWidth,
-              child: Text(
-                '${l.taxRateShort}%',
-                style: linesHeaderStyle,
-                textAlign: TextAlign.right,
+            if (widget.showTax) ...[
+              SizedBox(
+                width: InvoiceSummaryLayout.vatWidth,
+                child: Text(
+                  '${l.taxRateShort}%',
+                  style: linesHeaderStyle,
+                  textAlign: TextAlign.right,
+                ),
               ),
-            ),
-            const SizedBox(width: InvoiceSummaryLayout.gap),
+              const SizedBox(width: InvoiceSummaryLayout.gap),
+            ],
             SizedBox(
               width: InvoiceSummaryLayout.totalWidth,
               child: Text(
@@ -117,11 +135,11 @@ class _InvoiceSummaryLinesAndTotalsState
             final unit = line.unitPrice ?? 0;
             final vat = line.taxRate ?? 21;
             final subtotal = qty * unit;
-            final tax = subtotal * (vat / 100);
+            final tax = widget.showTax ? subtotal * (vat / 100) : 0;
             final total = subtotal + tax;
-            final desc = line.description.text.trim().isEmpty
-                ? '—'
-                : line.description.text.trim();
+            final rawDesc = line.description.text.trim();
+            final desc = rawDesc.isEmpty ? '--' : rawDesc;
+            final descLines = desc.split('\n');
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -129,11 +147,32 @@ class _InvoiceSummaryLinesAndTotalsState
                 children: [
                   SizedBox(
                     width: InvoiceSummaryLayout.minDescWidth,
-                    child: Text(
-                      desc,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          descLines.first,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        if (descLines.length > 1) ...[
+                          const SizedBox(height: 4),
+                          for (final lineText in descLines.skip(1))
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Text(
+                                lineText,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: t.bodySmall.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ],
                     ),
                   ),
                   const SizedBox(width: InvoiceSummaryLayout.gap),
@@ -158,15 +197,17 @@ class _InvoiceSummaryLinesAndTotalsState
                     ),
                   ),
                   const SizedBox(width: InvoiceSummaryLayout.gap),
-                  SizedBox(
-                    width: InvoiceSummaryLayout.vatWidth,
-                    child: Text(
-                      '${vat.toString()}%',
-                      style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
-                      textAlign: TextAlign.right,
+                  if (widget.showTax) ...[
+                    SizedBox(
+                      width: InvoiceSummaryLayout.vatWidth,
+                      child: Text(
+                        '${vat.toString()}%',
+                        style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
+                        textAlign: TextAlign.right,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: InvoiceSummaryLayout.gap),
+                    const SizedBox(width: InvoiceSummaryLayout.gap),
+                  ],
                   SizedBox(
                     width: InvoiceSummaryLayout.totalWidth,
                     child: Text(
@@ -240,27 +281,37 @@ class _InvoiceSummaryLinesAndTotalsState
     final totals = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         children: [
           totalsRow(
-            label: l.invoiceSubtotalLabel,
-            value: currencyFormatter.format(widget.subtotal),
+            label: (widget.discountAmount > 0 && widget.partialSubtotal != null)
+                ? 'Total parcial'
+                : l.invoiceSubtotalLabel,
+            value: currencyFormatter.format(
+              (widget.discountAmount > 0 && widget.partialSubtotal != null)
+                  ? widget.partialSubtotal
+                  : widget.subtotal,
+            ),
           ),
-          totalsRow(
-            label: l.invoiceTaxLabel,
-            value: currencyFormatter.format(widget.tax),
-          ),
+          if (widget.discountAmount > 0)
+            totalsRow(
+              label: 'Descuento',
+              value: '-${currencyFormatter.format(widget.discountAmount)}',
+            ),
+          if (widget.discountAmount > 0)
+            totalsRow(
+              label: 'Base imponible',
+              value: currencyFormatter.format(widget.taxableBase ?? widget.subtotal),
+            ),
+          if (widget.showTax)
+            totalsRow(
+              label: l.invoiceTaxLabel,
+              value: currencyFormatter.format(widget.tax),
+            ),
           const SizedBox(height: 6),
           totalsRow(
             label: l.invoiceTotalLabel,
@@ -273,11 +324,10 @@ class _InvoiceSummaryLinesAndTotalsState
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final scrollable =
-            constraints.maxWidth < InvoiceSummaryLayout.minLinesTableWidth;
+        final scrollable = constraints.maxWidth < minTableWidth;
 
         final content = SizedBox(
-          width: InvoiceSummaryLayout.minLinesTableWidth,
+          width: minTableWidth,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -309,3 +359,5 @@ class _InvoiceSummaryLinesAndTotalsState
     );
   }
 }
+
+

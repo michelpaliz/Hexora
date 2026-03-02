@@ -6,15 +6,15 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../widgets/folder_header_action_button.dart';
+import '../../widgets/folder_section_card.dart';
 import '../statements_controller.dart';
 import '../statements_formatters.dart';
-import '../statements_freshness_banner.dart';
 import '../statements_shared.dart';
 import 'statements_all_data_bulk.dart';
 import 'statements_all_data_details.dart';
 import 'statements_all_data_filters.dart';
 import 'statements_all_data_skeleton.dart';
-import 'statements_all_data_summary.dart';
 import 'table/statements_all_data_table.dart';
 import 'table/statements_all_data_table_theme.dart';
 
@@ -32,10 +32,15 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   final TextEditingController _toController = TextEditingController();
   final List<int> _sizeOptions = const [50, 100, 200];
   final Set<String> _selectedIds = <String>{};
+  final Map<String, String> _noProcedeReasonsByEntryId = <String, String>{};
+  double? _amountMinFilter;
+  double? _amountMaxFilter;
+  String _amountTypeFilter = 'all'; // all | income | expense
   bool _didLoad = false;
   bool _filtersCollapsed = false;
   bool _isSoftDarkTable = false;
   bool _autoStatementImportLoading = false;
+  int _invoiceSortMode = 0; // 0=none, 1=asc, 2=desc
   static const _tableThemePrefKey = 'statements_table_soft_dark';
 
   @override
@@ -52,11 +57,15 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   @override
   void initState() {
     super.initState();
+    _yearController.text = DateTime.now().year.toString();
     _loadTableThemePref();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _didLoad) return;
       _didLoad = true;
       final s = context.read<StatementsController>();
+      if (s.clients.isEmpty && !s.loadingClients) {
+        s.loadClients();
+      }
       if (s.allEntries.isNotEmpty || s.loadingAllEntries) {
         return;
       }
@@ -115,6 +124,190 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     return null;
   }
 
+  double? _parseAmountInput(String raw) {
+    final normalized = raw.trim();
+    if (normalized.isEmpty) return null;
+    final direct = double.tryParse(normalized.replaceAll(',', '.'));
+    if (direct != null) return direct;
+    return StatementsFormatters.parseAmount(normalized)?.toDouble();
+  }
+
+  Future<void> _showAmountFilterDialog() async {
+    final minController = TextEditingController(
+      text: _amountMinFilter?.toStringAsFixed(2) ?? '',
+    );
+    final maxController = TextEditingController(
+      text: _amountMaxFilter?.toStringAsFixed(2) ?? '',
+    );
+    var localType = _amountTypeFilter;
+    String? error;
+
+    void normalizeExpenseInputs() {
+      if (localType != 'expense') return;
+      final minRaw = minController.text.trim();
+      final maxRaw = maxController.text.trim();
+      final minVal = _parseAmountInput(minRaw);
+      final maxVal = _parseAmountInput(maxRaw);
+      if (minVal != null && minVal > 0) {
+        minController.text = (-minVal).toStringAsFixed(2);
+      }
+      if (maxVal != null && maxVal > 0) {
+        maxController.text = (-maxVal).toStringAsFixed(2);
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final cs = Theme.of(dialogContext).colorScheme;
+        final l = AppLocalizations.of(dialogContext)!;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: cs.surface,
+              surfaceTintColor: Colors.transparent,
+              title: Text(l.statementsHeaderAmount),
+              content: SizedBox(
+                width: 360,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Todos'),
+                          selected: localType == 'all',
+                          backgroundColor: Colors.transparent,
+                          side: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.7),
+                          ),
+                          onSelected: (_) => setState(() => localType = 'all'),
+                        ),
+                        ChoiceChip(
+                          label: Text(l.statementsSummaryIncome),
+                          selected: localType == 'income',
+                          backgroundColor: Colors.transparent,
+                          side: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.7),
+                          ),
+                          onSelected: (_) =>
+                              setState(() => localType = 'income'),
+                        ),
+                        ChoiceChip(
+                          label: Text(l.statementsSummaryExpense),
+                          selected: localType == 'expense',
+                          backgroundColor: Colors.transparent,
+                          side: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.7),
+                          ),
+                          onSelected: (_) => setState(() {
+                            localType = 'expense';
+                            normalizeExpenseInputs();
+                          }),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: minController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Min',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: maxController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Max',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          error!,
+                          style: TextStyle(color: cs.error),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      minController.clear();
+                      maxController.clear();
+                      localType = 'all';
+                      error = null;
+                    });
+                  },
+                  child: const Text('Limpiar'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(l.close),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    normalizeExpenseInputs();
+                    var min = _parseAmountInput(minController.text);
+                    var max = _parseAmountInput(maxController.text);
+                    if (localType == 'expense') {
+                      if (min != null) min = -min.abs();
+                      if (max != null) max = -max.abs();
+                      if (min != null && max != null && min > max) {
+                        final tmp = min;
+                        min = max;
+                        max = tmp;
+                      }
+                    }
+                    final minInvalid =
+                        minController.text.trim().isNotEmpty && min == null;
+                    final maxInvalid =
+                        maxController.text.trim().isNotEmpty && max == null;
+                    if (minInvalid || maxInvalid) {
+                      setState(() => error = 'Importe invalido');
+                      return;
+                    }
+                    if (min != null && max != null && min > max) {
+                      setState(
+                          () => error = 'Min debe ser menor o igual a Max');
+                      return;
+                    }
+                    this.setState(() {
+                      _amountMinFilter = min;
+                      _amountMaxFilter = max;
+                      _amountTypeFilter = localType;
+                      _selectedIds.clear();
+                    });
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: const Text('Aplicar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _applyFilters(StatementsController s) async {
     await s.loadAllEntries(
       year: _parseYear(_yearController.text),
@@ -129,11 +322,14 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   }
 
   Future<void> _clearFilters(StatementsController s) async {
-    _yearController.clear();
+    _yearController.text = DateTime.now().year.toString();
     _fromController.clear();
     _toController.clear();
+    _amountMinFilter = null;
+    _amountMaxFilter = null;
+    _amountTypeFilter = 'all';
     await s.loadAllEntries(
-      year: null,
+      year: _parseYear(_yearController.text),
       dateFrom: null,
       dateTo: null,
       page: 1,
@@ -228,6 +424,31 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ),
       );
     }
+    if (_amountMinFilter != null ||
+        _amountMaxFilter != null ||
+        _amountTypeFilter != 'all') {
+      final minLabel =
+          _amountMinFilter == null ? '' : _amountMinFilter!.toStringAsFixed(2);
+      final maxLabel =
+          _amountMaxFilter == null ? '' : _amountMaxFilter!.toStringAsFixed(2);
+      final typeLabel = _amountTypeFilter == 'income'
+          ? l.statementsSummaryIncome
+          : (_amountTypeFilter == 'expense'
+              ? l.statementsSummaryExpense
+              : 'Todos');
+      chips.add(
+        InputChip(
+          label: Text(
+            '${l.statementsHeaderAmount} ($typeLabel): ${minLabel.isEmpty ? "-inf" : minLabel} - ${maxLabel.isEmpty ? "+inf" : maxLabel}',
+          ),
+          onDeleted: () => setState(() {
+            _amountMinFilter = null;
+            _amountMaxFilter = null;
+            _amountTypeFilter = 'all';
+          }),
+        ),
+      );
+    }
     if (chips.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -249,6 +470,23 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     if (s.allEntriesDateTo != null && s.allEntriesDateTo!.isNotEmpty) {
       parts.add('${l.statementsFilterTo}: ${s.allEntriesDateTo}');
     }
+    if (_amountMinFilter != null ||
+        _amountMaxFilter != null ||
+        _amountTypeFilter != 'all') {
+      final minLabel = _amountMinFilter == null
+          ? '-inf'
+          : _amountMinFilter!.toStringAsFixed(2);
+      final maxLabel = _amountMaxFilter == null
+          ? '+inf'
+          : _amountMaxFilter!.toStringAsFixed(2);
+      final typeLabel = _amountTypeFilter == 'income'
+          ? l.statementsSummaryIncome
+          : (_amountTypeFilter == 'expense'
+              ? l.statementsSummaryExpense
+              : 'Todos');
+      parts.add(
+          '${l.statementsHeaderAmount} ($typeLabel): $minLabel .. $maxLabel');
+    }
     if (parts.isEmpty) return l.statementsFiltersNone;
     return '${l.statementsFiltersActive}: ${parts.join(' · ')}';
   }
@@ -259,6 +497,93 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     if (s.imports.isEmpty) return null;
     final first = s.imports.first;
     return (first['batchId'] ?? first['_id'] ?? first['id'])?.toString();
+  }
+
+  int _compareInvoiceNumbers(
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
+    String pick(Map<String, dynamic> e) {
+      String? pickFirstFromList(dynamic raw) {
+        if (raw is List && raw.isNotEmpty) {
+          final first = raw.first?.toString().trim();
+          if (first != null && first.isNotEmpty) return first;
+        }
+        return null;
+      }
+
+      final inv =
+          (pickFirstFromList(e['invoiceNumbers']) ??
+                  (e['invoiceNumber'] ?? e['invoice_number'])?.toString())
+              ?.trim();
+      final exp = (e['expenseNumber'] ?? e['expense_number'])
+          ?.toString()
+          .trim();
+      if (inv != null && inv.isNotEmpty) return inv;
+      if (exp != null && exp.isNotEmpty) return exp;
+      return '';
+    }
+
+    final av = pick(a);
+    final bv = pick(b);
+    if (av.isEmpty && bv.isEmpty) return 0;
+    if (av.isEmpty) return 1;
+    if (bv.isEmpty) return -1;
+
+    final ad = RegExp(r'\d+')
+        .allMatches(av)
+        .map((m) => int.tryParse(m.group(0) ?? '0') ?? 0)
+        .toList();
+    final bd = RegExp(r'\d+')
+        .allMatches(bv)
+        .map((m) => int.tryParse(m.group(0) ?? '0') ?? 0)
+        .toList();
+    final n = ad.length < bd.length ? ad.length : bd.length;
+    for (var i = 0; i < n; i++) {
+      final c = ad[i].compareTo(bd[i]);
+      if (c != 0) return c;
+    }
+    if (ad.length != bd.length) return ad.length.compareTo(bd.length);
+    return av.toLowerCase().compareTo(bv.toLowerCase());
+  }
+
+  String _freshnessTooltip(
+    BuildContext context,
+    StatementsController s,
+    AppLocalizations l,
+    String? batchId,
+  ) {
+    final id = batchId;
+    if (id == null || id.isEmpty) return l.statementsFreshnessNoData;
+    final status = s.batchStatus[id];
+    final statusLoading = s.loadingStatus[id] == true;
+    final statusErr = s.statusError[id];
+
+    if (!statusLoading && status == null && statusErr == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        s.fetchBatchStatus(id);
+      });
+    }
+
+    if (statusLoading) return l.statementsFreshnessLoading;
+    if (statusErr != null && statusErr.trim().isNotEmpty) return statusErr;
+    if (status == null) return l.statementsFreshnessNoData;
+
+    final isStale = status['stale'] == true;
+    final lastDate = status['lastDate'];
+    final hasLastDate = lastDate != null && lastDate.toString().isNotEmpty;
+    final lastDateLabel =
+        hasLastDate ? StatementsFormatters.formatDate(context, lastDate) : '';
+    final daysSince = status['daysSince'];
+    final daysLabel = daysSince == null
+        ? ''
+        : StatementsFormatters.formatCount(context, daysSince);
+    return !hasLastDate
+        ? l.statementsFreshnessNoData
+        : isStale
+            ? l.statementsFreshnessStale(lastDateLabel, daysLabel)
+            : l.statementsFreshnessUpToDate(lastDateLabel);
   }
 
   Map<String, String> _computeSummary(
@@ -433,6 +758,96 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     );
   }
 
+  Future<void> _showNoProcedeDialog(Map<String, dynamic> entry) async {
+    final entryId = (entry['_id'] ?? entry['id'])?.toString() ?? '';
+    if (entryId.isEmpty) return;
+    final initial = _noProcedeReasonsByEntryId[entryId] ?? '';
+    final reasonController = TextEditingController(text: initial);
+    String? error;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final l = AppLocalizations.of(dialogContext)!;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('No procede'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Indica el motivo. Este estado es solo local (UI) por ahora.',
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: reasonController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Motivo',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        error!,
+                        style: TextStyle(
+                          color: Theme.of(dialogContext).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      reasonController.clear();
+                      error = null;
+                    });
+                  },
+                  child: const Text('Limpiar'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    this.setState(() {
+                      _noProcedeReasonsByEntryId.remove(entryId);
+                    });
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: const Text('Quitar marca'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(l.close),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final reason = reasonController.text.trim();
+                    if (reason.isEmpty) {
+                      setState(() => error = 'Escribe un motivo');
+                      return;
+                    }
+                    this.setState(() {
+                      _noProcedeReasonsByEntryId[entryId] = reason;
+                    });
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _loadTableThemePref() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -475,6 +890,21 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     }
   }
 
+  int _sizeIndexFor(int size) {
+    final direct = _sizeOptions.indexOf(size);
+    if (direct >= 0) return direct;
+    var best = 0;
+    var bestDiff = (size - _sizeOptions.first).abs();
+    for (var i = 1; i < _sizeOptions.length; i++) {
+      final diff = (size - _sizeOptions[i]).abs();
+      if (diff < bestDiff) {
+        best = i;
+        bestDiff = diff;
+      }
+    }
+    return best;
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -487,15 +917,40 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ? StatementsTableTheme.softDark(cs)
         : StatementsTableTheme.light(cs);
 
+    final amountFilteredEntries = s.allEntries.where((entry) {
+      if (_amountMinFilter == null &&
+          _amountMaxFilter == null &&
+          _amountTypeFilter == 'all') {
+        return true;
+      }
+      final parsed = StatementsFormatters.parseAmount(
+        StatementsShared.entryText(entry, ['amount']),
+      );
+      if (parsed == null) return false;
+      if (_amountTypeFilter == 'income' && parsed <= 0) return false;
+      if (_amountTypeFilter == 'expense' && parsed >= 0) return false;
+      if (_amountMinFilter != null && parsed < _amountMinFilter!) return false;
+      if (_amountMaxFilter != null && parsed > _amountMaxFilter!) return false;
+      return true;
+    }).toList(growable: false);
     final totalPages = s.allEntriesSize == 0
         ? 1
-        : (s.allEntries.length / s.allEntriesSize).ceil().clamp(1, 9999);
+        : (amountFilteredEntries.length / s.allEntriesSize)
+            .ceil()
+            .clamp(1, 9999);
     final start = (s.allEntriesPage - 1) * s.allEntriesSize;
-    final end = (start + s.allEntriesSize).clamp(0, s.allEntries.length);
-    final visibleEntries = (start >= 0 && start < s.allEntries.length)
-        ? s.allEntries.sublist(start, end)
+    final end =
+        (start + s.allEntriesSize).clamp(0, amountFilteredEntries.length);
+    final visibleEntries = (start >= 0 && start < amountFilteredEntries.length)
+        ? amountFilteredEntries.sublist(start, end)
         : const <Map<String, dynamic>>[];
     final sortedEntries = [...visibleEntries]..sort((a, b) {
+        if (_invoiceSortMode == 1) {
+          return _compareInvoiceNumbers(a, b);
+        }
+        if (_invoiceSortMode == 2) {
+          return -_compareInvoiceNumbers(a, b);
+        }
         final aDate = _entryDate(a);
         final bDate = _entryDate(b);
         if (aDate == null && bDate == null) return 0;
@@ -503,7 +958,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         if (bDate == null) return -1;
         return bDate.compareTo(aDate);
       });
-    final summary = _computeSummary(context, s.allEntries);
+    final summary = _computeSummary(context, amountFilteredEntries);
 
     if (s.allEntriesYear != null &&
         _yearController.text != s.allEntriesYear.toString()) {
@@ -519,67 +974,156 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     }
 
     final freshnessBatchId = _resolveFreshnessBatchId(s);
+    final freshnessText = _freshnessTooltip(context, s, l, freshnessBatchId);
+    final summaryText = [
+      l.statementsAllDataSummaryTitle,
+      '${l.statementsTotalAmount}: ${summary['totalAmount'] ?? ''}',
+      '${l.statementsTotalCount}: ${amountFilteredEntries.length}',
+      '${l.statementsLastBalance}: ${summary['lastBalance'] ?? ''}',
+      if ((summary['lastDate'] ?? '').isNotEmpty)
+        l.statementsLastBalanceDate(summary['lastDate']!),
+    ].join('\n');
+    final infoTooltipText = '$freshnessText\n\n$summaryText';
+    final freshnessStatus =
+        freshnessBatchId == null ? null : s.batchStatus[freshnessBatchId];
+    final freshnessIsStale = freshnessStatus?['stale'] == true;
     final autoImportEnabled =
         auth.currentUser?.autoStatementImportEnabled ?? false;
+    final sizeIndex = _sizeIndexFor(s.allEntriesSize);
+    final canDecSize = sizeIndex > 0;
+    final canIncSize = sizeIndex < _sizeOptions.length - 1;
+    final headerActions = <Widget>[
+      Tooltip(
+        message: infoTooltipText,
+        child: FolderHeaderActionButton(
+          onPressed: freshnessBatchId == null
+              ? null
+              : () => s.fetchBatchStatus(freshnessBatchId),
+          icon: Icon(
+            freshnessIsStale
+                ? Icons.warning_amber_outlined
+                : Icons.info_outline,
+            size: 18,
+            color: freshnessIsStale ? cs.error : null,
+          ),
+        ),
+      ),
+      Tooltip(
+        message: _isSoftDarkTable ? 'Tema claro' : 'Tema suave oscuro',
+        child: FolderHeaderActionButton(
+          onPressed: _toggleTableTheme,
+          icon: Icon(
+            _isSoftDarkTable
+                ? Icons.light_mode_outlined
+                : Icons.dark_mode_outlined,
+            size: 18,
+          ),
+        ),
+      ),
+      Tooltip(
+        message: autoImportEnabled
+            ? '${l.autoStatementImportTitle}: ON\n${l.autoStatementImportHelper}'
+            : '${l.autoStatementImportTitle}: OFF\n${l.autoStatementImportHelper}',
+        child: FolderHeaderActionButton(
+          onPressed: _autoStatementImportLoading
+              ? null
+              : () => _toggleAutoStatementImport(!autoImportEnabled),
+          selected: autoImportEnabled,
+          icon: _autoStatementImportLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(
+                  autoImportEnabled
+                      ? Icons.sync_lock_outlined
+                      : Icons.sync_disabled_outlined,
+                  size: 18,
+                ),
+        ),
+      ),
+      Tooltip(
+        message: _filtersCollapsed
+            ? l.statementsPanelExpand
+            : l.statementsPanelCollapse,
+        child: FolderHeaderActionButton(
+          onPressed: () =>
+              setState(() => _filtersCollapsed = !_filtersCollapsed),
+          icon: Icon(
+            _filtersCollapsed ? Icons.unfold_more : Icons.unfold_less,
+            size: 18,
+          ),
+        ),
+      ),
+      Tooltip(
+        message: l.refreshAction,
+        child: FolderHeaderActionButton(
+          onPressed: s.loadingAllEntries ? null : s.loadAllEntries,
+          icon: const Icon(Icons.refresh, size: 18),
+        ),
+      ),
+      Tooltip(
+        message: '${l.statementsPageSize}: ${s.allEntriesSize} (-)',
+        child: FolderHeaderActionButton(
+          onPressed: canDecSize
+              ? () =>
+                  s.loadAllEntries(size: _sizeOptions[sizeIndex - 1], page: 1)
+              : null,
+          icon: const Icon(Icons.remove_rounded, size: 18),
+        ),
+      ),
+      Tooltip(
+        message: '${l.statementsPageSize}: ${s.allEntriesSize} (+)',
+        child: FolderHeaderActionButton(
+          onPressed: canIncSize
+              ? () =>
+                  s.loadAllEntries(size: _sizeOptions[sizeIndex + 1], page: 1)
+              : null,
+          icon: const Icon(Icons.add_rounded, size: 18),
+        ),
+      ),
+      Tooltip(
+        message: l.statementsPageInfo(s.allEntriesPage, totalPages),
+        child: FolderHeaderActionButton(
+          onPressed: null,
+          icon: Text('${s.allEntriesPage}/$totalPages'),
+        ),
+      ),
+      Tooltip(
+        message: l.statementsPrevPage,
+        child: FolderHeaderActionButton(
+          onPressed: s.allEntriesPage > 1
+              ? () => s.loadAllEntries(page: s.allEntriesPage - 1)
+              : null,
+          icon: const Icon(Icons.chevron_left, size: 18),
+        ),
+      ),
+      Tooltip(
+        message: l.statementsNextPage,
+        child: FolderHeaderActionButton(
+          onPressed: s.allEntriesPage < totalPages
+              ? () => s.loadAllEntries(page: s.allEntriesPage + 1)
+              : null,
+          icon: const Icon(Icons.chevron_right, size: 18),
+        ),
+      ),
+    ];
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Card(
+        FolderSectionCard(
+          label: l.statementsAllDataTitle,
+          actions: headerActions,
+          leftTabOffset: 0,
+          rightTabOffset: 0,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.table_chart_outlined),
-                    const SizedBox(width: 8),
-                    Text(l.statementsAllDataTitle,
-                        style: typography.titleLarge),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: _filtersCollapsed
-                          ? l.statementsPanelExpand
-                          : l.statementsPanelCollapse,
-                      onPressed: () => setState(
-                          () => _filtersCollapsed = !_filtersCollapsed),
-                      icon: Icon(_filtersCollapsed
-                          ? Icons.unfold_more
-                          : Icons.unfold_less),
-                    ),
-                    IconButton(
-                      tooltip: l.refreshAction,
-                      onPressed: s.loadingAllEntries ? null : s.loadAllEntries,
-                      icon: const Icon(Icons.refresh),
-                    ),
-                  ],
-                ),
-                if (freshnessBatchId != null) ...[
-                  const SizedBox(height: 6),
-                  StatementsFreshnessBanner(
-                    controller: s,
-                    batchId: freshnessBatchId,
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Container(
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withOpacity(0.35),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: SwitchListTile.adaptive(
-                    title: Text(l.autoStatementImportTitle),
-                    subtitle: Text(l.autoStatementImportHelper),
-                    value: autoImportEnabled,
-                    onChanged: _autoStatementImportLoading
-                        ? null
-                        : (value) => _toggleAutoStatementImport(value),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(l.statementsAllDataSubtitle, style: typography.bodyMedium),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 AnimatedSize(
                   duration: const Duration(milliseconds: 260),
                   curve: Curves.easeInOutCubic,
@@ -620,15 +1164,15 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                               ),
                             ],
                           )
-                        : Row(
+                        : Padding(
                             key: const ValueKey('filters-expanded'),
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    StatementsAllDataFilters(
+                            padding: const EdgeInsets.fromLTRB(2, 4, 2, 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    return StatementsAllDataFilters(
                                       controller: s,
                                       yearController: _yearController,
                                       fromController: _fromController,
@@ -638,40 +1182,25 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                                       onPickFrom: () => _pickFromDate(s),
                                       onPickTo: () => _pickToDate(s),
                                       onPickRange: () => _pickRange(s),
+                                      includePresetsInline: true,
+                                      onPresetSelect: (from, to, year) =>
+                                          _applyPreset(
+                                        s,
+                                        from,
+                                        to,
+                                        year: year,
+                                      ),
                                       showTitle: false,
-                                    ),
-                                    StatementsAllDataPresets(
-                                      controller: s,
-                                      onSelect: (from, to, year) =>
-                                          _applyPreset(s, from, to, year: year),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _activeFiltersChips(l, s),
-                                  ],
+                                      compact: true,
+                                    );
+                                  },
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              StatementsAllDataPagination(
-                                controller: s,
-                                sizeOptions: _sizeOptions,
-                                totalPages: totalPages,
-                                onSizeChanged: (value) =>
-                                    s.loadAllEntries(size: value, page: 1),
-                                onPrev: () => s.loadAllEntries(
-                                    page: s.allEntriesPage - 1),
-                                onNext: () => s.loadAllEntries(
-                                    page: s.allEntriesPage + 1),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                _activeFiltersChips(l, s),
+                              ],
+                            ),
                           ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                StatementsAllDataSummary(
-                  totalAmount: summary['totalAmount'] ?? '',
-                  totalCount: s.allEntries.length,
-                  lastBalance: summary['lastBalance'] ?? '',
-                  lastBalanceDate: summary['lastDate'] ?? '',
                 ),
                 const SizedBox(height: 16),
                 StatementsAllDataBulkBar(
@@ -692,26 +1221,25 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: IconButton(
-                          tooltip: _isSoftDarkTable
-                              ? 'Tema claro'
-                              : 'Tema suave oscuro',
-                          onPressed: _toggleTableTheme,
-                          icon: Icon(
-                            _isSoftDarkTable
-                                ? Icons.light_mode_outlined
-                                : Icons.dark_mode_outlined,
-                            color: tableTheme.headerText,
-                          ),
-                        ),
-                      ),
                       StatementsAllDataTable(
                         entries: sortedEntries,
                         controller: s,
                         selectedIds: _selectedIds,
                         tableTheme: tableTheme,
+                        onMarkNoProcede: _showNoProcedeDialog,
+                        noProcedeReasonForEntry: (entry) {
+                          final id = (entry['_id'] ?? entry['id'])?.toString();
+                          if (id == null || id.isEmpty) return null;
+                          return _noProcedeReasonsByEntryId[id];
+                        },
+                        onAmountFilterTap: _showAmountFilterDialog,
+                        amountFilterActive: _amountMinFilter != null ||
+                            _amountMaxFilter != null ||
+                            _amountTypeFilter != 'all',
+                        onInvoiceSortTap: () => setState(() {
+                          _invoiceSortMode = (_invoiceSortMode + 1) % 3;
+                        }),
+                        invoiceSortMode: _invoiceSortMode,
                         onToggleAll: (checked) {
                           setState(() {
                             if (checked) {
@@ -741,9 +1269,9 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                           });
                         },
                         onShowDetails: (entry) =>
-                            StatementsAllDataDetails.show(context, l, entry),
+                            StatementsAllDataDetails.show(context, l, entry, s),
                         onSuggest: (entry) async {
-                          await StatementsShared.showSuggestionsDialog(
+                          await StatementsShared.showInvoiceSuggestionsDialog(
                               context, s, entry);
                         },
                         onLink: (entry) async {
@@ -751,6 +1279,13 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                               context, s, entry);
                         },
                         onLinkInvoice: (entry) async {
+                          final id =
+                              (entry['_id'] ?? entry['id'])?.toString() ?? '';
+                          if (id.isNotEmpty) {
+                            setState(() {
+                              _noProcedeReasonsByEntryId.remove(id);
+                            });
+                          }
                           final amountText =
                               StatementsShared.entryText(entry, ['amount']);
                           final amountValue =

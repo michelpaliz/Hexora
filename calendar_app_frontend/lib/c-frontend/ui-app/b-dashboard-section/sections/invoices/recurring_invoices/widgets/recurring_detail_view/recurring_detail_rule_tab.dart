@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_detail_section_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/widgets/recurring_schedule_form.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +16,10 @@ class RecurringDetailRuleTab extends StatelessWidget {
   final TextEditingController billDayCtrl;
   final TextEditingController weekDayCtrl;
   final TextEditingController timezoneCtrl;
+  final String invoiceDateMode;
+  final TextEditingController invoiceDateDayCtrl;
+  final TextEditingController invoiceDateOffsetDaysCtrl;
+  final String invoiceDateClampPolicy;
   final String timezoneLabel;
   final List<DateTime> exceptions;
   final ValueChanged<String> onFreqChanged;
@@ -26,9 +31,17 @@ class RecurringDetailRuleTab extends StatelessWidget {
   final VoidCallback onPickTimezone;
   final VoidCallback onAddException;
   final ValueChanged<DateTime> onRemoveException;
+  final ValueChanged<String> onInvoiceDateModeChanged;
+  final ValueChanged<String> onInvoiceDateClampPolicyChanged;
   final bool canManage;
   final bool saving;
   final VoidCallback onSave;
+  final String? errorText;
+  final String issueDatePolicySummary;
+  final String originalIssueDatePolicySummary;
+  final Map<String, dynamic> originalSeries;
+  final String clientName;
+  final bool startReadOnly;
 
   const RecurringDetailRuleTab({
     super.key,
@@ -41,6 +54,10 @@ class RecurringDetailRuleTab extends StatelessWidget {
     required this.billDayCtrl,
     required this.weekDayCtrl,
     required this.timezoneCtrl,
+    required this.invoiceDateMode,
+    required this.invoiceDateDayCtrl,
+    required this.invoiceDateOffsetDaysCtrl,
+    required this.invoiceDateClampPolicy,
     required this.timezoneLabel,
     required this.exceptions,
     required this.onFreqChanged,
@@ -52,94 +69,270 @@ class RecurringDetailRuleTab extends StatelessWidget {
     required this.onPickTimezone,
     required this.onAddException,
     required this.onRemoveException,
+    required this.onInvoiceDateModeChanged,
+    required this.onInvoiceDateClampPolicyChanged,
     required this.canManage,
     required this.saving,
     required this.onSave,
+    this.errorText,
+    required this.issueDatePolicySummary,
+    required this.originalIssueDatePolicySummary,
+    required this.originalSeries,
+    required this.clientName,
+    this.startReadOnly = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final beforeLabel = isEs ? 'Antes' : 'Before';
+    final nowLabel = isEs ? 'Ahora' : 'Now';
 
-    Widget summaryRow({required String label, required String value}) {
-      return RecurringDetailSummaryRow(label: label, value: value);
+    DateTime? parseMaybeDate(dynamic raw) {
+      if (raw is DateTime) return raw;
+      if (raw is String && raw.trim().isNotEmpty) return DateTime.tryParse(raw);
+      return null;
     }
 
-    Widget ruleSummaryCard() {
-      return RecurringDetailSectionCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    final originalRule = (originalSeries['rule'] as Map?) ?? const {};
+    dynamic originalField(String key) =>
+        originalRule[key] ?? originalSeries[key];
+
+    String freqLabel(String value) {
+      return recurringFrequencyLabel(l, value);
+    }
+
+    String currentEndValue() {
+      if (endType == 'never') return l.recurringInvoicesEndNever;
+      if (endType == 'date' && endDate != null) {
+        return DateFormat.yMMMd(l.localeName).format(endDate!);
+      }
+      if (endType == 'count' && countCtrl.text.trim().isNotEmpty) {
+        return countCtrl.text.trim();
+      }
+      return l.recurringInvoicesEndNever;
+    }
+
+    String originalEndValue() {
+      final originalEndDate = parseMaybeDate(originalField('endDate'));
+      final originalCount = originalField('count');
+      if (originalEndDate != null) {
+        return DateFormat.yMMMd(l.localeName).format(originalEndDate);
+      }
+      if (originalCount != null && originalCount.toString().trim().isNotEmpty) {
+        return originalCount.toString().trim();
+      }
+      return l.recurringInvoicesEndNever;
+    }
+
+    Widget compareRow({
+      required String label,
+      required String before,
+      required String now,
+    }) {
+      final changed = before.trim() != now.trim();
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.info_outline, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  l.details,
-                  style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
+            Expanded(
+              flex: 4,
+              child: Text(
+                label,
+                style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Expanded(
+              flex: 5,
+              child: Text(
+                before,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+            Expanded(
+              flex: 5,
+              child: Text(
+                now,
+                style: t.bodySmall.copyWith(
+                  color: changed ? cs.primary : cs.onSurfaceVariant,
+                  fontWeight: changed ? FontWeight.w700 : FontWeight.w500,
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            summaryRow(
-              label: l.recurringInvoicesFrequencyLabel,
-              value: switch (freq) {
-                'daily' => l.recurringFrequencyDaily,
-                'weekly' => l.recurringFrequencyWeekly,
-                'monthly' => l.recurringFrequencyMonthly,
-                'yearly' => l.recurringFrequencyYearly,
-                _ => freq,
-              },
-            ),
-            summaryRow(
-              label: l.recurringInvoicesIntervalLabel,
-              value: intervalCtrl.text.trim().isEmpty
-                  ? '1'
-                  : intervalCtrl.text.trim(),
-            ),
-            summaryRow(
-              label: l.recurringInvoicesStartLabel,
-              value: DateFormat.yMMMd(l.localeName).add_Hm().format(startDate),
-            ),
-            summaryRow(
-              label: l.recurringInvoicesEndLabel,
-              value: endType == 'never'
-                  ? l.recurringInvoicesEndNever
-                  : endType == 'date' && endDate != null
-                      ? DateFormat.yMMMd(l.localeName).format(endDate!)
-                      : endType == 'count' && countCtrl.text.trim().isNotEmpty
-                          ? countCtrl.text.trim()
-                          : l.recurringInvoicesEndNever,
-            ),
-            if (freq == 'monthly')
-              summaryRow(
-                label: l.recurringInvoicesBillDayLabel,
-                value: billDayCtrl.text.trim().isEmpty
-                    ? '-'
-                    : billDayCtrl.text.trim(),
               ),
-            if (freq == 'weekly')
-              summaryRow(
-                label: l.recurringInvoicesWeekDayLabel,
-                value: weekDayCtrl.text.trim().isEmpty
-                    ? '-'
-                    : weekDayCtrl.text.trim(),
-              ),
-            summaryRow(
-              label: l.recurringInvoicesTimezoneLabel,
-              value: timezoneLabel,
-            ),
-            summaryRow(
-              label: l.recurringInvoicesExceptionsLabel,
-              value: exceptions.isEmpty
-                  ? l.recurringInvoicesNoExceptions
-                  : '${exceptions.length}',
             ),
           ],
         ),
       );
     }
+
+    Widget detailsCard() {
+      final originalFreq =
+          normalizeFrequencyFromApi((originalField('freq') ?? originalField('frequency') ?? recurringFreqMonthly).toString())
+              .toString();
+      final originalInterval = (originalField('interval') ?? 1).toString();
+      final originalStartDate = parseMaybeDate(originalField('startDate'));
+      final originalStartLabel = originalStartDate == null
+          ? '-'
+          : DateFormat.yMMMd(l.localeName).add_Hm().format(originalStartDate);
+      final nowStartLabel =
+
+
+      
+          DateFormat.yMMMd(l.localeName).add_Hm().format(startDate);
+      final originalBillDay =
+          (originalField('billDay') ?? '').toString().trim();
+      final originalTimezone =
+          (originalField('timezone') ?? timezoneLabel).toString().trim();
+      final originalExceptions = originalField('exceptions');
+      final originalExceptionsLabel =
+          (originalExceptions is List && originalExceptions.isNotEmpty)
+              ? '${originalExceptions.length}'
+              : l.recurringInvoicesNoExceptions;
+      final nowExceptionsLabel = exceptions.isEmpty
+          ? l.recurringInvoicesNoExceptions
+          : '${exceptions.length}';
+
+      return RecurringDetailSectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 8),
+            RecurringDetailSummaryRow(
+              label: isEs ? 'Cliente' : 'Client',
+              value: clientName.trim().isEmpty ? '-' : clientName.trim(),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Spacer(flex: 4),
+                Expanded(
+                  flex: 5,
+                  child: Text(
+                    beforeLabel,
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 5,
+                  child: Text(
+                    nowLabel,
+                    style: t.bodySmall.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            compareRow(
+              label: l.recurringInvoicesFrequencyLabel,
+              before: freqLabel(originalFreq),
+              now: freqLabel(freq),
+            ),
+            compareRow(
+              label: l.recurringInvoicesIntervalLabel,
+              before: originalInterval,
+              now: intervalCtrl.text.trim().isEmpty
+                  ? '1'
+                  : intervalCtrl.text.trim(),
+            ),
+            compareRow(
+              label: l.recurringInvoicesStartLabel,
+              before: originalStartLabel,
+              now: nowStartLabel,
+            ),
+            compareRow(
+              label: l.recurringInvoicesEndLabel,
+              before: originalEndValue(),
+              now: currentEndValue(),
+            ),
+            if (normalizeFrequencyFromApi(freq) == recurringFreqMonthly || normalizeFrequencyFromApi(freq) == recurringFreqBimensual || normalizeFrequencyFromApi(freq) == recurringFreqTrimestral)
+              compareRow(
+                label: isEs ? 'Dia de ejecucion (1-31)' : 'Execution day (1-31)',
+                before: originalBillDay.isEmpty ? '-' : originalBillDay,
+                now: billDayCtrl.text.trim().isEmpty
+                    ? '-'
+                    : billDayCtrl.text.trim(),
+              ),
+            if (normalizeFrequencyFromApi(freq) == recurringFreqWeekly)
+              compareRow(
+                label: l.recurringInvoicesWeekDayLabel,
+                before: originalBillDay.isEmpty ? '-' : originalBillDay,
+                now: weekDayCtrl.text.trim().isEmpty
+                    ? '-'
+                    : weekDayCtrl.text.trim(),
+              ),
+            compareRow(
+              label: l.recurringInvoicesTimezoneLabel,
+              before: originalTimezone,
+              now: timezoneLabel,
+            ),
+            compareRow(
+              label: isEs
+                  ? 'Fecha de emision de factura'
+                  : 'Invoice issue date policy',
+              before: originalIssueDatePolicySummary,
+              now: issueDatePolicySummary,
+            ),
+            compareRow(
+              label: l.recurringInvoicesExceptionsLabel,
+              before: originalExceptionsLabel,
+              now: nowExceptionsLabel,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final saveButton = canManage
+        ? FilledButton(
+            onPressed: saving ? null : onSave,
+            child: Text(
+              saving
+                  ? l.recurringInvoicesSavingRule
+                  : l.recurringInvoicesSaveRuleCta,
+            ),
+          )
+        : const SizedBox.shrink();
+
+    final form = RecurringScheduleForm(
+      freq: freq,
+      intervalCtrl: intervalCtrl,
+      startDate: startDate,
+      endType: endType,
+      endDate: endDate,
+      countCtrl: countCtrl,
+      billDayCtrl: billDayCtrl,
+      weekDayCtrl: weekDayCtrl,
+      timezoneCtrl: timezoneCtrl,
+      invoiceDateMode: invoiceDateMode,
+      invoiceDateDayCtrl: invoiceDateDayCtrl,
+      invoiceDateOffsetDaysCtrl: invoiceDateOffsetDaysCtrl,
+      invoiceDateClampPolicy: invoiceDateClampPolicy,
+      timezoneLabel: timezoneLabel,
+      exceptions: exceptions,
+      onFreqChanged: onFreqChanged,
+      onPickStart: onPickStart,
+      onPickStartTime: onPickStartTime,
+      onPickEnd: onPickEnd,
+      onEndTypeChanged: onEndTypeChanged,
+      onTimezoneChanged: onTimezoneChanged,
+      onPickTimezone: onPickTimezone,
+      onAddException: onAddException,
+      onRemoveException: onRemoveException,
+      onInvoiceDateModeChanged: onInvoiceDateModeChanged,
+      onInvoiceDateClampPolicyChanged: onInvoiceDateClampPolicyChanged,
+      errorText: errorText,
+      startReadOnly: startReadOnly,
+      allowExecutionTimeEditWhenStartReadOnly: true,
+    );
 
     return SingleChildScrollView(
       child: Column(
@@ -149,47 +342,13 @@ class RecurringDetailRuleTab extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 980;
-              final saveButton = canManage
-                  ? FilledButton(
-                      onPressed: saving ? null : onSave,
-                      child: Text(
-                        saving
-                            ? l.recurringInvoicesSavingRule
-                            : l.recurringInvoicesSaveRuleCta,
-                      ),
-                    )
-                  : const SizedBox.shrink();
-
-              final form = RecurringScheduleForm(
-                freq: freq,
-                intervalCtrl: intervalCtrl,
-                startDate: startDate,
-                endType: endType,
-                endDate: endDate,
-                countCtrl: countCtrl,
-                billDayCtrl: billDayCtrl,
-                weekDayCtrl: weekDayCtrl,
-                timezoneCtrl: timezoneCtrl,
-                timezoneLabel: timezoneLabel,
-                exceptions: exceptions,
-                onFreqChanged: onFreqChanged,
-                onPickStart: onPickStart,
-                onPickStartTime: onPickStartTime,
-                onPickEnd: onPickEnd,
-                onEndTypeChanged: onEndTypeChanged,
-                onTimezoneChanged: onTimezoneChanged,
-                onPickTimezone: onPickTimezone,
-                onAddException: onAddException,
-                onRemoveException: onRemoveException,
-              );
-
               if (!wide) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     form,
                     const SizedBox(height: 12),
-                    ruleSummaryCard(),
+                    detailsCard(),
                     if (canManage) ...[
                       const SizedBox(height: 12),
                       saveButton,
@@ -197,7 +356,6 @@ class RecurringDetailRuleTab extends StatelessWidget {
                   ],
                 );
               }
-
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -208,7 +366,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ruleSummaryCard(),
+                        detailsCard(),
                         if (canManage) ...[
                           const SizedBox(height: 12),
                           saveButton,
@@ -225,3 +383,4 @@ class RecurringDetailRuleTab extends StatelessWidget {
     );
   }
 }
+

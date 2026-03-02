@@ -35,7 +35,7 @@ class BillingContactForm extends StatelessWidget {
             },
             child: TextFormField(
               controller: c.billingEmail,
-              style: typo.bodyMedium,
+              style: typo.bodySmall.copyWith(fontSize: 13),
               keyboardType: TextInputType.emailAddress,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: buildInputDecoration(
@@ -64,7 +64,7 @@ class BillingContactForm extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: Focus(
             onFocusChange: (hasFocus) {
@@ -72,7 +72,7 @@ class BillingContactForm extends StatelessWidget {
             },
             child: TextFormField(
               controller: c.billingPhone,
-              style: typo.bodyMedium,
+              style: typo.bodySmall.copyWith(fontSize: 13),
               keyboardType: TextInputType.phone,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: buildInputDecoration(

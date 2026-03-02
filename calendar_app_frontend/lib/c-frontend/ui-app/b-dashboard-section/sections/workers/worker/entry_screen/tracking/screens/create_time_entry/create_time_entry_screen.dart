@@ -21,10 +21,12 @@ class CreateTimeEntryScreen extends StatefulWidget {
     super.key,
     required this.group,
     required this.workers,
+    this.embedded = false,
   }) : assert(workers.length > 0);
 
   final Group group;
   final List<Worker> workers;
+  final bool embedded;
 
   @override
   State<CreateTimeEntryScreen> createState() => _CreateTimeEntryScreenState();
@@ -146,70 +148,78 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
         widget.workers.where((w) => _selectedWorkerIds.contains(w.id)).toList();
     final cs = Theme.of(context).colorScheme;
 
+    final content = SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TimeEntryHeaderStrip(l: l, t: t),
+          const SizedBox(height: 16),
+          WorkerSelectionSection(
+            workers: widget.workers,
+            selectedIds: _selectedWorkerIds,
+            onSelectAll: () => setState(
+              () => _selectedWorkerIds =
+                  widget.workers.map((w) => w.id).toSet(),
+            ),
+            onClear: () => setState(() => _selectedWorkerIds.clear()),
+            onToggle: (id, selected) => setState(() {
+              if (selected) {
+                _selectedWorkerIds.add(id);
+              } else {
+                _selectedWorkerIds.remove(id);
+              }
+            }),
+          ),
+          const SizedBox(height: 18),
+          TimeSummarySection(
+            start: _start,
+            end: _end,
+            dateFormat: dateFormat,
+            timeFormat: timeFormat,
+            selectedCount: selectedWorkers.length,
+          ),
+          const SizedBox(height: 16),
+          TimePickersSection(
+            l: l,
+            t: t,
+            start: _start,
+            end: _end,
+            dateFormat: dateFormat,
+            timeFormat: timeFormat,
+            onPickStart: () => _pickDateTime(true),
+            onPickEnd: () => _pickDateTime(false),
+          ),
+          const SizedBox(height: 16),
+          NotesSection(
+            controller: _notesCtrl,
+            l: l,
+            t: t,
+          ),
+          const SizedBox(height: 20),
+          ActionsSection(
+            l: l,
+            saving: _saving,
+            onSave: _save,
+          ),
+        ],
+      ),
+    );
+
+    if (widget.embedded) {
+      return content;
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: cs.surface,
         iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
-        title: Text(l.addTimeEntryCta,
-            style: t.titleLarge.copyWith(fontWeight: FontWeight.w800)),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TimeEntryHeaderStrip(l: l, t: t),
-            const SizedBox(height: 16),
-            WorkerSelectionSection(
-              workers: widget.workers,
-              selectedIds: _selectedWorkerIds,
-              onSelectAll: () => setState(
-                () => _selectedWorkerIds =
-                    widget.workers.map((w) => w.id).toSet(),
-              ),
-              onClear: () => setState(() => _selectedWorkerIds.clear()),
-              onToggle: (id, selected) => setState(() {
-                if (selected) {
-                  _selectedWorkerIds.add(id);
-                } else {
-                  _selectedWorkerIds.remove(id);
-                }
-              }),
-            ),
-            const SizedBox(height: 18),
-            TimeSummarySection(
-              start: _start,
-              end: _end,
-              dateFormat: dateFormat,
-              timeFormat: timeFormat,
-              selectedCount: selectedWorkers.length,
-            ),
-            const SizedBox(height: 16),
-            TimePickersSection(
-              l: l,
-              t: t,
-              start: _start,
-              end: _end,
-              dateFormat: dateFormat,
-              timeFormat: timeFormat,
-              onPickStart: () => _pickDateTime(true),
-              onPickEnd: () => _pickDateTime(false),
-            ),
-            const SizedBox(height: 16),
-            NotesSection(
-              controller: _notesCtrl,
-              l: l,
-              t: t,
-            ),
-            const SizedBox(height: 20),
-            ActionsSection(
-              l: l,
-              saving: _saving,
-              onSave: _save,
-            ),
-          ],
+        title: Text(
+          l.addTimeEntryCta,
+          style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
+      body: content,
     );
   }
 }

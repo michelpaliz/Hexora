@@ -21,7 +21,7 @@ List<Event> expandRecurringEventForRange(
     final effectiveUntil =
         until.isBefore(range.end.toUtc()) ? until : range.end.toUtc();
 
-    // 👇 Expand only within correct bounds
+    // ðŸ‘‡ Expand only within correct bounds
     final allInstances = rule
         .getInstances(
           start: event.startDate.toUtc(),

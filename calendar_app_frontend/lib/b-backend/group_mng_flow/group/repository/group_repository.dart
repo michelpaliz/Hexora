@@ -209,13 +209,13 @@ class GroupRepository implements IGroupRepository {
             break;
           }
         }
-        devtools.log('🔁 allowed roles from backend: $allowed');
+        devtools.log('ðŸ” allowed roles from backend: $allowed');
       }
     } catch (_) {
       // If fetch fails, fall back to provided roleWire.
     }
     devtools.log(
-        '🔁 setUserRoleInGroup -> roleWire="$roleWire", normalized="$normalized"');
+        'ðŸ” setUserRoleInGroup -> roleWire="$roleWire", normalized="$normalized"');
 
     await _api.setUserRoleInGroup(
       groupId: groupId,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/insights_chat_fab.dart';
 import 'package:provider/provider.dart';
 
 import 'controller/group_dashboard_state.dart';
@@ -32,6 +33,11 @@ class GroupDashboard extends StatelessWidget {
           ),
           bottomNavigationBar:
               state.showBottomBar ? BottomBar(state: state) : null,
+          floatingActionButton: InsightsChatFab(
+            groupId: group.id,
+            heroTag: 'group-dashboard-insights-chat-fab',
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
     );

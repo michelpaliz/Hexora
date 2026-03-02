@@ -34,10 +34,16 @@ class ReceiptSummaryCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     final issued = status.contains('issue');
-    final statusBg = issued ? cs.secondaryContainer : cs.surfaceContainerHighest;
+    final statusBg = issued ? cs.secondaryContainer : Colors.transparent;
     final statusFg = issued ? cs.onSecondaryContainer : cs.onSurfaceVariant;
 
     return Card(
+      color: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

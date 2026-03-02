@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dart analyze lib/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/statements/shared/invoice_link/)",
+      "Bash(dart analyze lib/c-frontend/ui-app/b-dashboard-section/sections/mail/compose/widgets/inline_invoice_wizard.dart)",
+      "Bash(dart analyze lib/c-frontend/ui-app/b-dashboard-section/sections/mail/compose/mail_compose_screen.dart)",
+      "Bash(dart analyze lib/c-frontend/ui-app/b-dashboard-section/sections/mail/mail_compose_screen.dart)",
+      "Bash(dart analyze lib/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/mobile/invoices_mobile_view.dart)",
+      "Bash(dart analyze lib/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/mobile/invoices_mobile_view.dart lib/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart)",
+      "Bash(dart analyze lib/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_invoices_view.dart)",
+      "Bash(dart analyze lib/c-frontend/ui-app/a-home-section/home_page/widgets/home_left_nav.dart lib/c-frontend/ui-app/shared/widgets/sidebar_item.dart lib/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/layout/wide_layout.dart lib/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/controller/group_dashboard_state.dart)"
+    ]
+  }
+}

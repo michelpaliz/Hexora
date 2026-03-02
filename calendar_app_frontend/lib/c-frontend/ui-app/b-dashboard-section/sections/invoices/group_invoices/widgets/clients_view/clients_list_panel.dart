@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/clients_search_filters.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -61,22 +61,11 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
     final cs = Theme.of(context).colorScheme;
 
     return Card(
+      color: Colors.transparent,
+      elevation: 0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l.clientsTitle,
-                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
             child: ClientsSearchFilters(
@@ -119,36 +108,40 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                       if (widget.selectedHiddenByFilters)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                          child: Material(
-                            color: cs.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    cs.outlineVariant.withValues(alpha: 0.35),
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.filter_alt_outlined,
-                                    size: 18,
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      l.clientSelectedHiddenByFilters,
-                                      style: t.bodySmall.copyWith(
-                                        color: cs.onSurfaceVariant,
-                                      ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.filter_alt_outlined,
+                                  size: 18,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    l.clientSelectedHiddenByFilters,
+                                    style: t.bodySmall.copyWith(
+                                      color: cs.onSurfaceVariant,
                                     ),
                                   ),
-                                  TextButton(
-                                    onPressed: widget.onClearFilters,
-                                    child: Text(l.clientFiltersClear),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                TextButton(
+                                  onPressed: widget.onClearFilters,
+                                  child: Text(l.clientFiltersClear),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -237,21 +230,17 @@ class _ClientRow extends StatelessWidget {
 
     // Use a stable, opaque selection background to avoid contrast issues with
     // custom palettes; derive text colors from the actual background.
-    final bg = selected ? cs.surfaceContainerHighest : cs.surface;
-    final titleColor = selected
-        ? ThemeColors.contrastOn(bg)
-        : ThemeColors.textPrimary(context);
-    final subtitleColor = selected
-        ? ThemeColors.contrastOn(bg).withValues(alpha: 0.82)
-        : ThemeColors.textSecondary(context);
+    final titleColor = ThemeColors.textPrimary(context);
+    final subtitleColor = ThemeColors.textSecondary(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: ListItemCard(
         leading: CircleAvatar(
           radius: 16,
-          backgroundColor:
-              selected ? cs.primaryContainer : cs.surfaceContainerHighest,
+          backgroundColor: selected
+              ? cs.primaryContainer.withValues(alpha: 0.6)
+              : Colors.transparent,
           child: Text(
             title.trim().isEmpty ? '?' : title.trim().substring(0, 1),
             style: t.bodySmall.copyWith(

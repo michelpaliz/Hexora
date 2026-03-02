@@ -46,7 +46,7 @@ class CalendarTabsTheme extends StatelessWidget {
 class CalendarTabs {
   static List<Tab> build(BuildContext context, {bool large = false}) {
     final loc = AppLocalizations.of(context)!;
-    final iconSize = large ? 20.0 : 18.0;
+    final iconSize = large ? 18.0 : 16.0;
     return const [
       // We pass text; fonts/colors come from TabBarTheme above.
       Tab(text: '___DAY___', icon: Icon(Icons.today_outlined)),

@@ -5,8 +5,8 @@ class EmptyView extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final String? cta;              // now optional
-  final VoidCallback? onPressed;  // now optional
+  final String? cta; // now optional
+  final VoidCallback? onPressed; // now optional
 
   const EmptyView({
     super.key,
@@ -108,7 +108,7 @@ class ListItemCard extends StatelessWidget {
     this.onTap,
     this.selected = false,
     this.showLeadingStripe = false,
-    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     this.borderRadius,
   }) : assert(title != null || titleWidget != null);
 
@@ -116,9 +116,9 @@ class ListItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final bg = selected ? cs.surfaceContainerHighest : cs.surface;
+    final bg = Colors.transparent;
     final borderColor = selected
-        ? cs.outlineVariant.withValues(alpha: 0.4)
+        ? cs.primary.withValues(alpha: 0.35)
         : cs.outlineVariant.withValues(alpha: 0.3);
     final effectiveTitleStyle = titleStyle ??
         t.bodyMedium.copyWith(
@@ -131,7 +131,7 @@ class ListItemCard extends StatelessWidget {
           fontWeight: FontWeight.w600,
         );
 
-    final effectiveRadius = borderRadius ?? BorderRadius.circular(12);
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(10);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
@@ -165,7 +165,7 @@ class ListItemCard extends StatelessWidget {
                   child: Row(
                     children: [
                       leading,
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,7 +179,7 @@ class ListItemCard extends StatelessWidget {
                                 ),
                             if (subtitleWidget != null ||
                                 (subtitle != null && subtitle!.isNotEmpty)) ...[
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 3),
                               subtitleWidget ??
                                   Text(
                                     subtitle ?? '',

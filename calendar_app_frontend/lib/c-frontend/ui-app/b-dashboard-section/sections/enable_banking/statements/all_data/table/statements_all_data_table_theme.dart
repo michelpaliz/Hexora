@@ -50,19 +50,28 @@ class StatementsTableTheme {
   }
 
   factory StatementsTableTheme.softDark(ColorScheme cs) {
+    final isDark = cs.brightness == Brightness.dark;
     return StatementsTableTheme(
-      headerBg: const Color(0xFFDDE4EF),
+      headerBg: isDark
+          ? cs.surfaceContainerHighest
+          : const Color(0xFFDDE4EF),
       headerText: cs.onSurfaceVariant,
-      rowBg: const Color(0xFFE7ECF4),
-      rowBgAlt: const Color(0xFFDDE5F1),
-      rowHover: cs.primary.withOpacity(0.08),
-      rowSelected: cs.primaryContainer.withOpacity(0.22),
-      border: cs.outlineVariant.withOpacity(0.5),
+      rowBg: isDark
+          ? cs.surfaceContainerHigh
+          : const Color(0xFFE7ECF4),
+      rowBgAlt: isDark
+          ? cs.surfaceContainer
+          : const Color(0xFFDDE5F1),
+      rowHover: cs.primary.withOpacity(isDark ? 0.12 : 0.08),
+      rowSelected: cs.primaryContainer.withOpacity(isDark ? 0.3 : 0.22),
+      border: cs.outlineVariant.withOpacity(isDark ? 0.4 : 0.5),
       textPrimary: cs.onSurface,
       textSecondary: cs.onSurfaceVariant,
-      amountPositive: cs.primary.withOpacity(0.85),
-      amountNegative: cs.error.withOpacity(0.9),
-      chipBg: const Color(0xFFE3E9F2),
+      amountPositive: cs.primary.withOpacity(isDark ? 0.95 : 0.85),
+      amountNegative: cs.error.withOpacity(isDark ? 0.95 : 0.9),
+      chipBg: isDark
+          ? cs.surfaceContainerHighest
+          : const Color(0xFFE3E9F2),
       chipText: cs.onSurfaceVariant,
     );
   }

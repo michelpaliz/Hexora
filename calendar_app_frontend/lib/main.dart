@@ -1,10 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hexora/app/bootstrapp/app_bootstrap.dart';
 import 'package:hexora/app/init_main.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auht_gate.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/c-frontend/routes/routes.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
@@ -15,6 +13,8 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/l10n/l10n.dart';
 import 'package:provider/provider.dart';
 
+const String _appBuildTag = String.fromEnvironment('APP_BUILD_TAG');
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeAppServices();
@@ -22,13 +22,10 @@ void main() async {
 
   // Quick visibility into which API the app is targeting at runtime.
   // Remove or adjust as needed for production logging policies.
-  debugPrint('📡 API base: ${ApiConstants.baseUrl}');
-  debugPrint('📦 CDN base: ${ApiConstants.cdnBaseUrl}');
-  if (kDebugMode) {
-    final token = await TokenService.loadToken();
-    debugPrint(
-      '🔑 access_token present: ${token != null && token.isNotEmpty} (len=${token?.length ?? 0})',
-    );
+  debugPrint('ðŸ“¡ API base: ${ApiConstants.baseUrl}');
+  debugPrint('ðŸ“¦ CDN base: ${ApiConstants.cdnBaseUrl}');
+  if (_appBuildTag.isNotEmpty) {
+    debugPrint('ðŸ§± Build tag: $_appBuildTag');
   }
 
   runApp(const HexoraApp());
@@ -39,8 +36,8 @@ class HexoraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBootstrap(
-      child: const _AppShell(),
+    return const AppBootstrap(
+      child: _AppShell(),
     );
   }
 }

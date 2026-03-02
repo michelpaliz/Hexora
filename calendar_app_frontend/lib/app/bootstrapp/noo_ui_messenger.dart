@@ -1,5 +1,6 @@
 // feature_providers.dart (or a new file)
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/c-frontend/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/common/ui_messenger.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/use_cases/create_group_usecase.dart';
@@ -21,6 +22,12 @@ class NoopUiMessenger implements UiMessenger {
 
   @override
   void pop() {}
+
+  @override
+  Future<void> showPremiumRequired(GroupMembershipErrorContext errorContext) {
+    // TODO: implement showPremiumRequired
+    throw UnimplementedError();
+  }
 }
 
 final List<SingleChildWidget> editorProviders = [

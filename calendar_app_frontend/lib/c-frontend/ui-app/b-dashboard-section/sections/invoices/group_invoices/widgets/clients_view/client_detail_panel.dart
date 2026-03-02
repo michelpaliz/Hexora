@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_list_item.dart';
+import '../invoice_row_item.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/clients_view/billing_verification_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/clients_view/quick_assignment_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/date_range_filter_card.dart';
@@ -51,8 +51,6 @@ class ClientDetailPanel extends StatefulWidget {
 }
 
 class _ClientDetailPanelState extends State<ClientDetailPanel> {
-  bool _headerExpanded = false;
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -60,6 +58,8 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
     final cs = Theme.of(context).colorScheme;
 
     return Card(
+      color: Colors.transparent,
+      elevation: 0,
       child: widget.selectedClient == null
           ? Padding(
               padding: const EdgeInsets.all(12),
@@ -72,76 +72,42 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
             )
           : DefaultTabController(
               length: 2,
-              child: NestedScrollView(
-                headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: _Header(
-                        clientName: widget.selectedClient!.name,
-                        entityType:
-                            (widget.selectedClient!.entityType ?? '').trim(),
-                        propertyKind:
-                            (widget.selectedClient!.propertyKind ?? '').trim(),
-                        expanded: _headerExpanded,
-                        onToggleExpanded: () =>
-                            setState(() => _headerExpanded = !_headerExpanded),
-                        onEdit: widget.onEditSelectedClient,
-                        onCreateInvoice: widget.onCreateInvoice,
-                        onCreateReceipt: widget.onCreateReceipt,
-                      ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+                    child: _ClientTabs(
+                      invoicesCount: widget.issuedInvoices.length,
+                      draftsCount: widget.draftInvoices.length,
                     ),
                   ),
-                  if (_headerExpanded) ...[
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                        child: _QuickAssignAndBilling(
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _InvoiceList(
+                          emptyTitle: l.noInvoicesYet,
+                          emptySubtitle: l.noInvoicesYetSubtitle,
+                          icon: Icons.receipt_long_outlined,
+                          invoices: widget.issuedInvoices,
                           clients: widget.clients,
-                          selectedClient: widget.selectedClient!,
-                          entityOptions: widget.entityOptions,
-                          propertyOptions: widget.propertyOptions,
-                          assignBusy: widget.assignBusy,
-                          onApplyClassification: widget.onApplyClassification,
-                          onEditClient: widget.onEditSelectedClient,
+                          fallbackClient: widget.selectedClient!,
+                          onTap: widget.onOpenInvoiceDetail,
+                          onDelete: null,
                         ),
-                      ),
-                    ),
-                  ],
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _TabBarHeaderDelegate(
-                      child: _ClientTabs(
-                        invoicesCount: widget.issuedInvoices.length,
-                        draftsCount: widget.draftInvoices.length,
-                      ),
+                        _InvoiceList(
+                          emptyTitle: l.groupInvoicesDraftInvoicesTitle,
+                          emptySubtitle: l.noInvoicesYetSubtitle,
+                          icon: Icons.drafts_outlined,
+                          invoices: widget.draftInvoices,
+                          clients: widget.clients,
+                          fallbackClient: widget.selectedClient!,
+                          onTap: widget.onOpenInvoiceDetail,
+                          onDelete: widget.onDeleteInvoice,
+                        ),
+                      ],
                     ),
                   ),
                 ],
-                body: TabBarView(
-                  children: [
-                    _InvoiceList(
-                      emptyTitle: l.noInvoicesYet,
-                      emptySubtitle: l.noInvoicesYetSubtitle,
-                      icon: Icons.receipt_long_outlined,
-                      invoices: widget.issuedInvoices,
-                      clients: widget.clients,
-                      fallbackClient: widget.selectedClient!,
-                      onTap: widget.onOpenInvoiceDetail,
-                      onDelete: null,
-                    ),
-                    _InvoiceList(
-                      emptyTitle: l.groupInvoicesDraftInvoicesTitle,
-                      emptySubtitle: l.noInvoicesYetSubtitle,
-                      icon: Icons.drafts_outlined,
-                      invoices: widget.draftInvoices,
-                      clients: widget.clients,
-                      fallbackClient: widget.selectedClient!,
-                      onTap: widget.onOpenInvoiceDetail,
-                      onDelete: widget.onDeleteInvoice,
-                    ),
-                  ],
-                ),
               ),
             ),
     );
@@ -183,146 +149,143 @@ class _Header extends StatelessWidget {
       chips.add(_MiniChip(label: propertyKind));
     }
 
-    return Material(
-      color: cs.surfaceContainerHighest,
+    return InkWell(
       borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onToggleExpanded,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-            ),
+      onTap: onToggleExpanded,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.35),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: cs.primaryContainer,
-                    child: Text(
-                      clientName.trim().isEmpty
-                          ? '?'
-                          : clientName.trim().substring(0, 1).toUpperCase(),
-                      style: t.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onPrimaryContainer,
-                      ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: cs.primaryContainer,
+                  child: Text(
+                    clientName.trim().isEmpty
+                        ? '?'
+                        : clientName.trim().substring(0, 1).toUpperCase(),
+                    style: t.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: cs.onPrimaryContainer,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          clientName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: t.titleLarge.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: ThemeColors.textPrimary(context),
-                          ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        clientName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.titleLarge.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: ThemeColors.textPrimary(context),
                         ),
-                        if (chips.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Wrap(spacing: 6, runSpacing: 6, children: chips),
-                        ],
+                      ),
+                      if (chips.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Wrap(spacing: 6, runSpacing: 6, children: chips),
                       ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Tooltip(
+                  message: expanded
+                      ? l.clientDetailsCollapseTooltip
+                      : l.clientDetailsExpandTooltip,
+                  child: Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 640;
+
+                final editBtn = OutlinedButton.icon(
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(l.edit),
+                  onPressed: onEdit,
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: cs.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Tooltip(
-                    message: expanded
-                        ? l.clientDetailsCollapseTooltip
-                        : l.clientDetailsExpandTooltip,
-                    child: Icon(
-                      expanded ? Icons.expand_less : Icons.expand_more,
-                      color: cs.onSurfaceVariant,
+                );
+
+                final invoiceBtn = FilledButton.icon(
+                  icon: const Icon(Icons.add),
+                  label: Text(l.createInvoiceCta),
+                  onPressed: onCreateInvoice,
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final compact = constraints.maxWidth < 640;
+                );
 
-                  final editBtn = OutlinedButton.icon(
-                    icon: const Icon(Icons.edit_outlined),
-                    label: Text(l.edit),
-                    onPressed: onEdit,
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      foregroundColor: cs.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
+                final receiptBtn = FilledButton.tonalIcon(
+                  icon: const Icon(Icons.description_outlined),
+                  label: Text(l.createReceiptCta),
+                  onPressed: onCreateReceipt,
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-                  );
+                  ),
+                );
 
-                  final invoiceBtn = FilledButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: Text(l.createInvoiceCta),
-                    onPressed: onCreateInvoice,
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                    ),
+                if (!compact) {
+                  return Row(
+                    children: [
+                      Expanded(child: editBtn),
+                      const SizedBox(width: 10),
+                      Expanded(child: invoiceBtn),
+                      const SizedBox(width: 10),
+                      Expanded(child: receiptBtn),
+                    ],
                   );
+                }
 
-                  final receiptBtn = FilledButton.tonalIcon(
-                    icon: const Icon(Icons.description_outlined),
-                    label: Text(l.createReceiptCta),
-                    onPressed: onCreateReceipt,
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                    ),
-                  );
-
-                  if (!compact) {
-                    return Row(
+                return Column(
+                  children: [
+                    Row(
                       children: [
                         Expanded(child: editBtn),
                         const SizedBox(width: 10),
                         Expanded(child: invoiceBtn),
-                        const SizedBox(width: 10),
-                        Expanded(child: receiptBtn),
                       ],
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: editBtn),
-                          const SizedBox(width: 10),
-                          Expanded(child: invoiceBtn),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(width: double.infinity, child: receiptBtn),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: receiptBtn),
+                  ],
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -340,7 +303,7 @@ class _MiniChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
       ),
@@ -643,7 +606,7 @@ class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     final cs = Theme.of(context).colorScheme;
     return Material(
-      color: cs.surface,
+      color: Colors.transparent,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
         child: child,
@@ -655,3 +618,8 @@ class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant _TabBarHeaderDelegate oldDelegate) =>
       oldDelegate.child != child;
 }
+
+
+
+
+

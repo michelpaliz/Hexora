@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/money_format_utils.dart';
 
 class ExpenseLineDraft {
   final TextEditingController descriptionController = TextEditingController();
@@ -8,8 +9,7 @@ class ExpenseLineDraft {
   final TextEditingController taxRateController = TextEditingController();
 
   double _parseNum(String raw) {
-    final value = raw.trim().replaceAll(',', '.');
-    return double.tryParse(value) ?? 0;
+    return parseFlexibleMoney(raw) ?? 0;
   }
 
   double get quantity => _parseNum(quantityController.text);

@@ -41,7 +41,7 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
   }
 
   Future<List<Event>> _load() async {
-    // 🔄 use UserAgendaDomain instead of UserDomain
+    // ðŸ”„ use UserAgendaDomain instead of UserDomain
     final agenda = context.read<UserAgendaDomain>();
     final currentUserId =
         widget.currentUserId ?? context.read<UserDomain>().user?.id;
@@ -148,7 +148,7 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
               leading: const Icon(Icons.event_busy_rounded),
               title: Text(
                 loc.noUpcomingEvents,
-                // 🔵 blue title
+                // ðŸ”µ blue title
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: cs.primary,
                   fontWeight: FontWeight.w700,
@@ -174,7 +174,7 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                   leading: const Icon(Icons.upcoming_rounded),
                   title: Text(
                     loc.nextUp,
-                    // 🔵 blue title
+                    // ðŸ”µ blue title
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: cs.primary,
                       fontWeight: FontWeight.w800,
@@ -238,7 +238,7 @@ class _EventRow extends StatelessWidget {
         event.title.isEmpty ? loc.untitledEvent : event.title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        // 🔵 blue event title
+        // ðŸ”µ blue event title
         style: theme.textTheme.bodyMedium?.copyWith(
           color: cs.primary,
           fontWeight: FontWeight.w600,

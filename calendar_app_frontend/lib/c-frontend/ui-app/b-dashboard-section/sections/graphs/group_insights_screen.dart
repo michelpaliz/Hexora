@@ -64,7 +64,7 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
     });
 
     try {
-      // 🔄 use UserAgendaDomain instead of UserDomain
+      // ðŸ”„ use UserAgendaDomain instead of UserDomain
       final agenda = context.read<UserAgendaDomain>();
       final range = _resolveRange(DateTime.now());
 

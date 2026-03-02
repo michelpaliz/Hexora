@@ -2,16 +2,15 @@ import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
 import 'package:hexora/a-models/group_model/client/client.dart';
-import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
 class ClientsApi {
   final String _base = '${ApiConstants.baseUrl}/clients';
 
-  Future<Map<String, String>> _headers() async => {
+  Map<String, String> _headers() => {
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer ${await TokenService.loadToken()}',
       };
 
   Uri _u([String path = '', Map<String, String?> q = const {}]) {
@@ -47,12 +46,12 @@ class ClientsApi {
 
   // GET /clients?groupId=...&active=true|false
   Future<List<GroupClient>> list({String? groupId, bool? active}) async {
-    final r = await http.get(
+    final r = await AuthenticatedHttpClient.get(
         _u('', {
           'groupId': groupId,
           if (active != null) 'active': active.toString(),
         }),
-        headers: await _headers());
+        headers: _headers());
 
     return _decode<List<GroupClient>>(r, (j) {
       if (j is! List) throw Exception('Unexpected clients payload');
@@ -83,9 +82,9 @@ class ClientsApi {
       // if (client.meta != null) 'meta': client.meta,
     };
 
-    final r = await http.post(
+    final r = await AuthenticatedHttpClient.post(
       _u(),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(body),
     );
     return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
@@ -93,7 +92,7 @@ class ClientsApi {
 
   // GET /clients/:id
   Future<GroupClient> getById(String id) async {
-    final r = await http.get(_u('/$id'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
     return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
   }
 
@@ -119,9 +118,9 @@ class ClientsApi {
         'billing': client.billing!.toPayload(includeNulls: true),
       // if (client.meta != null) 'meta': client.meta,
     };
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       _u('/${client.id}'),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(patch),
     );
     return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
@@ -130,9 +129,9 @@ class ClientsApi {
   // PATCH /clients/:id  (partial fields)
   Future<GroupClient> updateFields(
       String id, Map<String, dynamic> fields) async {
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       _u('/$id'),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode(fields),
     );
     return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
@@ -140,9 +139,9 @@ class ClientsApi {
 
   // PATCH /clients/:id/active  { isActive: true|false }
   Future<GroupClient> setActive(String id, bool isActive) async {
-    final r = await http.patch(
+    final r = await AuthenticatedHttpClient.patch(
       _u('/$id/active'),
-      headers: await _headers(),
+      headers: _headers(),
       body: jsonEncode({'isActive': isActive}),
     );
     return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
@@ -150,9 +149,9 @@ class ClientsApi {
 
   // DELETE /clients/:id
   Future<bool> delete(String id) async {
-    final r = await http.delete(_u('/$id'), headers: await _headers());
+    final r = await AuthenticatedHttpClient.delete(_u('/$id'), headers: _headers());
     if (r.statusCode == 404) return false;
-    _decode<void>(r, (_) => null);
+    _decode<void>(r, (_) {});
     return true;
   }
 }

@@ -40,7 +40,7 @@ echo "🔗 Updating Android 'latest' symlink/file..."
 ssh "$REMOTE_USER_HOST" "cd '$REMOTE_ANDROID_DIR' && ln -sf 'hexora-android-$BUILD_TAG.apk' 'hexora-android-latest.apk'"
 
 echo "✅ Android ready at:"
-echo "   https://fastezcode.com/downloads/android/hexora-android-latest.apk"
+echo "   https://hexora.dev/downloads/android/hexora-android-latest.apk"
 
 # ===========================
 # IOS: build + upload IPA (optional)
@@ -66,7 +66,7 @@ else
     ssh "$REMOTE_USER_HOST" "cd '$REMOTE_IOS_DIR' && ln -sf 'hexora-ios-$BUILD_TAG.ipa' 'hexora-ios-latest.ipa'"
 
     echo "✅ iOS IPA stored at:"
-    echo "   https://fastezcode.com/downloads/ios/hexora-ios-latest.ipa"
+    echo "   https://hexora.dev/downloads/ios/hexora-ios-latest.ipa"
     echo "   (Hosted on your webserver, for internal use / download)"
   fi
 fi

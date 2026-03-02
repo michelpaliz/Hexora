@@ -8,7 +8,7 @@ class RecurringDetailSectionCard extends StatelessWidget {
   const RecurringDetailSectionCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(12),
+    this.padding = const EdgeInsets.all(8),
   });
 
   @override
@@ -17,8 +17,8 @@ class RecurringDetailSectionCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
       ),
       child: child,
@@ -41,7 +41,7 @@ class RecurringDetailSummaryRow extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
           Expanded(

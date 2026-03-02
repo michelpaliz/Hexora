@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'banking_tab.dart';
 import 'enable_banking_controller.dart';
 import 'enable_banking_left_nav.dart';
 import 'enable_banking_link_store.dart';
+import 'statements/all_data/mobile/statements_mobile_view.dart';
 import 'statements/all_data/statements_all_data_tab.dart';
+import 'statements/analytics/mobile/statements_analytics_mobile.dart';
 import 'statements/analytics/statements_analytics_controller.dart';
 import 'statements/analytics/statements_analytics_view.dart';
 import 'statements/statements_controller.dart';
+import 'statements/statements_history_tab.dart';
 import 'statements/statements_import_view.dart';
 import 'truelayer_controller.dart';
+import 'widgets/folder_section_card.dart';
 
 class EnableBankingScreen extends StatelessWidget {
   const EnableBankingScreen({
@@ -57,10 +63,36 @@ class _EnableBankingView extends StatefulWidget {
   State<_EnableBankingView> createState() => _EnableBankingViewState();
 }
 
-class _EnableBankingViewState extends State<_EnableBankingView> {
+class _EnableBankingViewState extends State<_EnableBankingView>
+    with SingleTickerProviderStateMixin {
   bool _didInit = false;
-  EnableBankingMenu _selectedMenu = EnableBankingMenu.imports;
-  bool _navCollapsed = false;
+  EnableBankingMenu _selectedMenu = EnableBankingMenu.allData;
+  late final TabController _mobileTabController;
+
+  // Mobile shows only these two tabs
+  static const _mobileTabs = [
+    EnableBankingMenu.allData,
+    EnableBankingMenu.analytics,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _mobileTabController = TabController(
+      length: _mobileTabs.length,
+      vsync: this,
+    );
+    _mobileTabController.addListener(() {
+      if (_mobileTabController.indexIsChanging) return;
+      setState(() => _selectedMenu = _mobileTabs[_mobileTabController.index]);
+    });
+  }
+
+  @override
+  void dispose() {
+    _mobileTabController.dispose();
+    super.dispose();
+  }
 
   bool? _parseBool(String? v) {
     if (v == null) return null;
@@ -68,6 +100,22 @@ class _EnableBankingViewState extends State<_EnableBankingView> {
     if (s == 'true' || s == '1' || s == 'yes' || s == 'y') return true;
     if (s == 'false' || s == '0' || s == 'no' || s == 'n') return false;
     return null;
+  }
+
+  String _menuTitle(AppLocalizations l, EnableBankingMenu menu) {
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    switch (menu) {
+      case EnableBankingMenu.imports:
+        return isSpanish ? 'Importar Excel' : 'Import Excel';
+      case EnableBankingMenu.history:
+        return l.statementsHistoryTabTitle;
+      case EnableBankingMenu.banking:
+        return 'Bank';
+      case EnableBankingMenu.allData:
+        return isSpanish ? 'Movimientos' : l.statementsAllDataTitle;
+      case EnableBankingMenu.analytics:
+        return isSpanish ? 'Analiticas' : l.statementsAnalyticsTitle;
+    }
   }
 
   @override
@@ -101,42 +149,222 @@ class _EnableBankingViewState extends State<_EnableBankingView> {
     });
   }
 
+  Widget _buildContentArea(
+    BuildContext context,
+    AppLocalizations l, {
+    EnableBankingMenu? forMenu,
+    bool isMobile = false,
+  }) {
+    switch (forMenu ?? _selectedMenu) {
+      case EnableBankingMenu.imports:
+        return const StatementsImportView();
+
+      case EnableBankingMenu.history:
+        return Builder(builder: (context) {
+          final s = context.watch<StatementsController>();
+          final cs = Theme.of(context).colorScheme;
+          Widget thresholdButton(int value) {
+            final sel = s.statusThreshold == value;
+            return OutlinedButton(
+              onPressed: () => s.setStatusThreshold(value),
+              style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: const Size(36, 30),
+                backgroundColor:
+                    sel ? cs.primaryContainer.withValues(alpha: 0.9) : null,
+              ),
+              child: Text('$value'),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+            child: FolderSectionCard(
+              label: l.statementsHistoryTabTitle,
+              leftTabOffset: 0,
+              actions: [
+                Tooltip(
+                  message: l.statementsFreshnessThreshold,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      thresholdButton(3),
+                      const SizedBox(width: 4),
+                      thresholdButton(5),
+                      const SizedBox(width: 4),
+                      thresholdButton(7),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: l.refreshAction,
+                  onPressed: s.loadingImports ? null : s.listImports,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  constraints:
+                      const BoxConstraints(minWidth: 30, minHeight: 30),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
+              child: const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: StatementsHistoryTab(),
+              ),
+            ),
+          );
+        });
+
+      case EnableBankingMenu.allData:
+        return isMobile
+            ? const StatementsMobileView()
+            : const StatementsAllDataTab();
+
+      case EnableBankingMenu.analytics:
+        return isMobile
+            ? const StatementsMobileAnalyticsView()
+            : const StatementsAnalyticsView();
+
+      case EnableBankingMenu.banking:
+        return const BankingTab();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final group = widget.group;
-    final content = Row(
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
+
+    // ── Mobile layout ─────────────────────────────────────────────────────────
+    if (isMobile) {
+      final mobileMenu = _mobileTabs[_mobileTabController.index];
+      final body = _buildContentArea(context, l, forMenu: mobileMenu, isMobile: true);
+
+      final cs = Theme.of(context).colorScheme;
+      final t = AppTypography.of(context);
+      final tabBar = TabBar(
+        controller: _mobileTabController,
+        dividerColor: Colors.transparent,
+        splashFactory: NoSplash.splashFactory,
+        overlayColor:
+            WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: cs.primaryContainer,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
+        labelColor: cs.onPrimaryContainer,
+        unselectedLabelColor: cs.onSurfaceVariant,
+        labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
+        unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+        tabs: [
+          Tab(
+            height: 36,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.table_chart_outlined, size: 15),
+                const SizedBox(width: 6),
+                Text(isSpanish ? 'Movimientos' : l.statementsAllDataTitle),
+              ],
+            ),
+          ),
+          Tab(
+            height: 36,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.analytics_outlined, size: 15),
+                const SizedBox(width: 6),
+                Text(isSpanish ? 'Analíticas' : l.statementsAnalyticsTitle),
+              ],
+            ),
+          ),
+        ],
+      );
+
+      if (widget.embedded) {
+        return Column(
+          children: [
+            Material(
+              color: Theme.of(context).colorScheme.surface,
+              child: tabBar,
+            ),
+            Expanded(child: body),
+          ],
+        );
+      }
+
+      return Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 48,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                        tooltip:
+                            MaterialLocalizations.of(context).backButtonTooltip,
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Bank',
+                          style: t.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+              ),
+              Material(
+                color: Theme.of(context).colorScheme.surface,
+                child: tabBar,
+              ),
+              Expanded(child: body),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ── Wide / desktop layout ─────────────────────────────────────────────────
+    final desktopContent = Row(
       children: [
         const SizedBox(width: 12),
         EnableBankingLeftNav(
           selected: _selectedMenu,
           onSelect: (menu) => setState(() => _selectedMenu = menu),
-          collapsed: _navCollapsed,
-          onToggleCollapse: () =>
-              setState(() => _navCollapsed = !_navCollapsed),
+          collapsed: false,
+          onToggleCollapse: () {},
         ),
         const SizedBox(width: 16),
-        Expanded(
-          child: _selectedMenu == EnableBankingMenu.imports
-              ? const StatementsImportView()
-              : (_selectedMenu == EnableBankingMenu.allData
-                  ? const StatementsAllDataTab()
-                  : (_selectedMenu == EnableBankingMenu.analytics
-                      ? const StatementsAnalyticsView()
-                      : const BankingTab())),
-        ),
+        Expanded(child: _buildContentArea(context, l, isMobile: false)),
         const SizedBox(width: 12),
       ],
     );
 
-    if (widget.embedded) {
-      return content;
-    }
+    if (widget.embedded) return desktopContent;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(group == null
-            ? 'Enable Banking'
-            : 'Enable Banking • ${group.name}'),
+        title: Text(
+          group == null
+              ? _menuTitle(l, _selectedMenu)
+              : '${_menuTitle(l, _selectedMenu)} - ${group.name}',
+        ),
         actions: [
           IconButton(
             tooltip: 'Refresh status',
@@ -146,7 +374,7 @@ class _EnableBankingViewState extends State<_EnableBankingView> {
           ),
         ],
       ),
-      body: content,
+      body: desktopContent,
     );
   }
 }

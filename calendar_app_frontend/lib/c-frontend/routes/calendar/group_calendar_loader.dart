@@ -132,7 +132,7 @@ class _GroupCalendarLoaderState extends State<GroupCalendarLoader> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // 🚦 No calendar? Show the simple white screen
+    // ðŸš¦ No calendar? Show the simple white screen
     if (!_group!.hasCalendar) {
       return const NoCalendarScreen();
     }
