@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -12,8 +12,9 @@ import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 
 class UserDomain extends ChangeNotifier {
   User? _user;
+  Object? _lastUpdateError;
 
-  // ✅ Injected repository interface (no direct instantiation)
+  // âœ… Injected repository interface (no direct instantiation)
   final IUserRepository userRepository;
   final NotificationDomain _notificationDomain;
 
@@ -22,6 +23,7 @@ class UserDomain extends ChangeNotifier {
   Timer? _avatarRefreshTimer;
 
   User? get user => _user;
+  Object? get lastUpdateError => _lastUpdateError;
 
   UserDomain({
     required this.userRepository,
@@ -48,7 +50,7 @@ class UserDomain extends ChangeNotifier {
 
   // ---------- User state ----------
   void setCurrentUser(User? user) {
-    debugPrint('👤 setCurrentUser called with: $user');
+    debugPrint('Ã°Å¸â€˜Â¤ setCurrentUser called with: $user');
     _stopAvatarRefreshTimer();
 
     if (user != null) {
@@ -128,7 +130,8 @@ class UserDomain extends ChangeNotifier {
       final fresh = await userRepository.getUserByEmail(updatedUser.email);
       updateCurrentUser(fresh);
     } catch (e) {
-      debugPrint('❌ Failed to update user: $e');
+      _lastUpdateError = e;
+      debugPrint('âŒ Failed to update user: $e');
     }
   }
 
@@ -137,13 +140,15 @@ class UserDomain extends ChangeNotifier {
     try {
       return await userRepository.getUserBySelector(_user!.userName);
     } catch (e) {
-      debugPrint('❌ Failed to get user: $e');
+      _lastUpdateError = e;
+      debugPrint('âŒ Failed to get user: $e');
       return null;
     }
   }
 
   Future<bool> updateUser(User updatedUser) async {
     try {
+      _lastUpdateError = null;
       final saved = await userRepository.updateUser(updatedUser);
       if (_user != null && saved.id == _user!.id) {
         updateCurrentUser(saved);
@@ -151,7 +156,8 @@ class UserDomain extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('❌ Failed to update user: $e');
+      _lastUpdateError = e;
+      debugPrint('âŒ Failed to update user: $e');
       return false;
     }
   }
@@ -173,9 +179,10 @@ class UserDomain extends ChangeNotifier {
         _user = _user!.copyWith(photoUrl: freshUrl);
         currentUserNotifier.value = _user;
         notifyListeners();
-        debugPrint('🔄 User avatar URL refreshed');
+        debugPrint('Ã°Å¸â€â€ž User avatar URL refreshed');
       } catch (e) {
-        debugPrint('❌ Failed to refresh avatar URL: $e');
+      _lastUpdateError = e;
+        debugPrint('âŒ Failed to refresh avatar URL: $e');
       }
     }
   }
@@ -195,13 +202,13 @@ class UserDomain extends ChangeNotifier {
       const Duration(minutes: 4),
       (_) => refreshUserAvatarUrlIfNeeded(),
     );
-    debugPrint('⏳ Avatar refresh timer started');
+    debugPrint('â³ Avatar refresh timer started');
   }
 
   void _stopAvatarRefreshTimer() {
     _avatarRefreshTimer?.cancel();
     _avatarRefreshTimer = null;
-    debugPrint('🛑 Avatar refresh timer stopped');
+    debugPrint('Ã°Å¸â€ºâ€˜ Avatar refresh timer stopped');
   }
 
   @override
@@ -223,3 +230,8 @@ String generateCustomId() {
     ),
   );
 }
+
+
+
+
+

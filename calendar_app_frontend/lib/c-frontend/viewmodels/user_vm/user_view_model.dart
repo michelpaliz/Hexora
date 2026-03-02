@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/c-frontend/utils/errors/group_membership_error_mapper.dart';
+import 'package:hexora/c-frontend/utils/errors/premium_upgrade_dialog.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 
 class UserViewModel extends ChangeNotifier {
@@ -113,6 +116,22 @@ class UserViewModel extends ChangeNotifier {
 
       final ok = await _userDomain.updateUser(updated);
       if (!ok) {
+        final err = _userDomain.lastUpdateError;
+        final ctx = _context;
+        if (ctx != null &&
+            err != null &&
+            GroupMembershipErrorMapper.isPremiumMultiGroupError(err)) {
+          await showPremiumUpgradeDialog(
+            ctx,
+            message: GroupMembershipErrorMapper.messageFor(
+              AppLocalizations.of(ctx)!,
+              GroupMembershipErrorContext.profileMembershipUpdate,
+            ),
+          );
+          saving = false;
+          notifyListeners();
+          return false;
+        }
         _showSnack('Could not save profile');
         saving = false;
         notifyListeners();

@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/blobUploader/blobServer.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/c-frontend/utils/errors/group_membership_error_mapper.dart';
+import 'package:hexora/c-frontend/utils/errors/premium_upgrade_dialog.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -20,7 +22,7 @@ class ProfileEditController {
 
     try {
       final auth = context.read<AuthProvider>();
-      final token = auth.lastToken;
+      final token = await auth.getToken();
       final userDomain = context.read<UserDomain>();
       final user = userDomain.user;
 
@@ -41,12 +43,9 @@ class ProfileEditController {
       );
 
       // 2) Commit on backend
-      final commitResp = await http.patch(
+      final commitResp = await AuthenticatedHttpClient.patch(
         Uri.parse('${ApiConstants.baseUrl}/users/me/photo'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({'blobName': result.blobName}),
       );
 
@@ -93,6 +92,19 @@ class ProfileEditController {
         userName: username.trim(),
       );
       final ok = await userDomain.updateUser(updated);
+      if (!ok && userDomain.lastUpdateError != null) {
+        final err = userDomain.lastUpdateError!;
+        if (GroupMembershipErrorMapper.isPremiumMultiGroupError(err)) {
+          await showPremiumUpgradeDialog(
+            context,
+            message: GroupMembershipErrorMapper.messageFor(
+              l,
+              GroupMembershipErrorContext.profileMembershipUpdate,
+            ),
+          );
+          return false;
+        }
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(ok ? l.profileSaved : l.failedToSaveProfile)),
       );

@@ -6,6 +6,7 @@ import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/user/api/i_user_api_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/shared/backend_api_exception.dart';
 import 'package:http/http.dart' as http;
 
 class UserApiClient implements IUserApiClient {
@@ -65,7 +66,7 @@ class UserApiClient implements IUserApiClient {
     );
 
     devtools.log('👤 GET /users/$userId → ${res.statusCode}');
-    devtools.log('👤 body: ${res.body}');
+    devtools.log('ðŸ‘¤ body: ${res.body}');
 
     if (res.statusCode != 200) {
       throw Exception('Failed to fetch user with id: $userId');
@@ -111,8 +112,10 @@ class UserApiClient implements IUserApiClient {
     );
 
     if (res.statusCode == 200) return User.fromJson(jsonDecode(res.body));
-    throw Exception(
-        'Failed to update user: ${res.statusCode} ${res.reasonPhrase}');
+    throw BackendApiException.fromResponse(
+      res,
+      fallbackMessage: 'Failed to update user',
+    );
   }
 
   @override
@@ -125,9 +128,10 @@ class UserApiClient implements IUserApiClient {
     );
 
     if (res.statusCode == 200) return User.fromJson(jsonDecode(res.body));
-    if (res.statusCode == 404) throw Exception('User not found');
-    throw Exception(
-        'Failed to update user: ${res.statusCode} ${res.reasonPhrase}');
+    throw BackendApiException.fromResponse(
+      res,
+      fallbackMessage: 'Failed to update user',
+    );
   }
 
   @override
@@ -246,7 +250,7 @@ class UserApiClient implements IUserApiClient {
     );
 
     devtools.log('👤 GET /users/by/$selector → ${res.statusCode}');
-    devtools.log('👤 body: ${res.body}');
+    devtools.log('ðŸ‘¤ body: ${res.body}');
 
     if (res.statusCode == 200) return User.fromJson(jsonDecode(res.body));
     if (res.statusCode == 404) throw Exception('User not found');

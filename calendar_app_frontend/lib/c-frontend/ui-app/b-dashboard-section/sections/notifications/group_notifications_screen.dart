@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/errors/group_limit_exception.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/notification/notification_api_client.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/enums/category/broad_category.dart';
+import 'package:hexora/c-frontend/utils/errors/group_membership_error_mapper.dart';
+import 'package:hexora/c-frontend/utils/errors/premium_upgrade_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/utils/notification_grouping.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/widgets/notification_card.dart';
 import 'package:hexora/c-frontend/viewmodels/notification_vm/view_model/notification_view_model.dart';
@@ -88,12 +89,18 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
       await _viewModel.handleConfirmation(notification);
       if (!mounted) return;
       await _load();
-    } on GroupLimitException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
+      if (GroupMembershipErrorMapper.isPremiumMultiGroupError(e)) {
+        await showPremiumUpgradeDialog(
+          context,
+          message: GroupMembershipErrorMapper.messageFor(
+            l,
+            GroupMembershipErrorContext.joinGroup,
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${l.error}: $e')),
       );

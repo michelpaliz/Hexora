@@ -7,6 +7,7 @@ import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/errorClases/error_classes/error_classes.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/api/i_group_api_client.dart';
+import 'package:hexora/b-backend/shared/backend_api_exception.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 import 'package:http/http.dart' as http;
 
@@ -34,7 +35,10 @@ class HttpGroupApiClient implements IGroupApiClient {
     if (res.statusCode == 201) {
       return Group.fromJson(jsonDecode(res.body));
     }
-    throw HttpFailure(res.statusCode, res.body);
+    throw BackendApiException.fromResponse(
+      res,
+      fallbackMessage: 'Failed to create group',
+    );
   }
 
   @override
@@ -45,7 +49,7 @@ class HttpGroupApiClient implements IGroupApiClient {
     );
 
     devtools.log('📥 GET /groups/$id → ${res.statusCode}');
-    devtools.log('📦 Body: ${res.body}');
+    devtools.log('ðŸ“¦ Body: ${res.body}');
 
     if (res.statusCode == 200 && res.body != 'null') {
       return Group.fromJson(jsonDecode(res.body));
@@ -157,7 +161,10 @@ class HttpGroupApiClient implements IGroupApiClient {
     );
     devtools.log('📤 PUT /invite/response → ${res.statusCode}');
     if (res.statusCode != 200) {
-      throw HttpFailure(res.statusCode, res.body);
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to respond to invitation',
+      );
     }
   }
 

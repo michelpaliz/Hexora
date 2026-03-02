@@ -628,6 +628,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Make the most of the day, whatever the weather.';
 
   @override
+  String get weatherForecastLoading => 'Loading weather forecast...';
+
+  @override
+  String get weatherForecastEmpty => 'No forecast data available.';
+
+  @override
+  String get weatherForecastRainShort => 'rain';
+
+  @override
   String get monday => 'monday';
 
   @override
@@ -3067,6 +3076,116 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invoiceBlocksModeLines => 'Lines';
 
   @override
+  String get invoiceLinesModeManual => 'Manual';
+
+  @override
+  String get invoiceLinesModePhoto => 'Photo';
+
+  @override
+  String get invoiceLinesModeJson => 'JSON';
+
+  @override
+  String get invoiceLinesPhotoTitle => 'Extract lines from invoice photo';
+
+  @override
+  String get invoiceLinesPhotoSubtitle =>
+      'Upload an invoice screenshot/image, then apply detected lines to the editor.';
+
+  @override
+  String get invoiceLinesPhotoApply => 'Apply to lines';
+
+  @override
+  String get invoiceLinesPhotoClear => 'Clear';
+
+  @override
+  String get invoiceLinesPhotoExtracting => 'Extracting...';
+
+  @override
+  String invoiceLinesPhotoExtractedCount(Object count) {
+    return '$count extracted line(s)';
+  }
+
+  @override
+  String get invoiceLineEvidenceAttach => 'Attach evidence';
+
+  @override
+  String get invoiceLineEvidenceOpen => 'Open evidence';
+
+  @override
+  String get invoiceLineEvidenceDelete => 'Delete evidence';
+
+  @override
+  String get invoiceLineEvidenceNoId =>
+      'Save the draft first to attach evidence.';
+
+  @override
+  String get invoiceLineEvidenceAttached => 'Evidence attached successfully.';
+
+  @override
+  String get invoiceLineEvidenceRemoved => 'Evidence removed.';
+
+  @override
+  String get invoiceLineEvidenceAttachFailed => 'Could not attach evidence.';
+
+  @override
+  String get invoiceLineEvidenceOpenFailed => 'Could not open evidence.';
+
+  @override
+  String get invoiceLineEvidenceDeleteFailed => 'Could not remove evidence.';
+
+  @override
+  String get invoiceLinesJsonImportTitle => 'Import lines from JSON';
+
+  @override
+  String get invoiceLinesJsonImportSubtitle =>
+      'Paste structured draftLines JSON or upload a .json file to create lines immediately.';
+
+  @override
+  String get invoiceLinesJsonImportModePaste => 'Paste JSON';
+
+  @override
+  String get invoiceLinesJsonImportModeFile => 'Upload file';
+
+  @override
+  String get invoiceLinesJsonImportInputHint =>
+      'Paste JSON payload with draftLines...';
+
+  @override
+  String get invoiceLinesJsonImportPickFile => 'Choose JSON file';
+
+  @override
+  String get invoiceLinesJsonImportNoFile => 'No JSON file selected.';
+
+  @override
+  String get invoiceLinesJsonImportOverwrite => 'Overwrite existing lines';
+
+  @override
+  String get invoiceLinesJsonImportDefaultTaxRate => 'Default tax rate';
+
+  @override
+  String get invoiceLinesJsonImportApply => 'Import lines';
+
+  @override
+  String get invoiceLinesJsonImportGetPrompt => 'Get LLM prompt';
+
+  @override
+  String get invoiceLinesJsonImportPromptCopied =>
+      'Prompt copied to clipboard.';
+
+  @override
+  String get invoiceLinesJsonImportInvalidPayload =>
+      'Invalid JSON. Provide a non-empty draftLines array.';
+
+  @override
+  String get invoiceLinesJsonImportGenericError =>
+      'Could not import JSON lines.';
+
+  @override
+  String invoiceLinesJsonImportSuccess(Object count) {
+    return 'Imported $count line(s).';
+  }
+
+  @override
   String get invoiceAddBlock => 'Add block';
 
   @override
@@ -3220,6 +3339,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusIssued => 'Issued';
+
+  @override
+  String get statusPaid => 'Paid';
 
   @override
   String get invoiceNotesLabel => 'Notes';
@@ -4069,7 +4191,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statementsRemoveFile => 'Remove';
 
   @override
-  String get statementsSecurityNote => '🔒 Your data is processed securely';
+  String get statementsSecurityNote => 'ðŸ”’ Your data is processed securely';
 
   @override
   String get statementsFileTooLarge => 'File exceeds 10 MB limit';
@@ -4478,7 +4600,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get statementsNavTitle => 'Statements';
+  String get statementsNavTitle => 'Bank';
 
   @override
   String get statementsNavCollapse => 'Collapse menu';
@@ -4722,7 +4844,68 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statementsNoSuggestions => 'No client suggestions found';
 
   @override
+  String get statementsNoInvoiceSuggestions => 'No matching invoices found';
+
+  @override
   String get statementsSuggestedClientsTitle => 'Suggested clients';
+
+  @override
+  String get statementsSuggestedInvoicesTitle => 'Suggested invoices';
+
+  @override
+  String get statementsBestMatchBadge => 'Best match';
+
+  @override
+  String get statementsInvoiceAlreadySelected =>
+      'Already selected in another movement';
+
+  @override
+  String get statementsInvoiceAlreadyLinkedBadge => 'Already linked';
+
+  @override
+  String statementsInvoiceAlreadyLinkedMeta(Object date, Object count) {
+    return 'Linked on $date · $count link(s)';
+  }
+
+  @override
+  String get statementsInvoiceAlreadyLinkedTitle => 'Invoice already linked';
+
+  @override
+  String get statementsInvoiceAlreadyLinkedBody =>
+      'This invoice is already linked to another transaction. Do you want to link it here as well?';
+
+  @override
+  String get statementsInvoiceLinkAnyway => 'Link anyway';
+
+  @override
+  String get statementsInvoiceAlreadyLinkedToast =>
+      'This invoice was already linked to another bank transaction.';
+
+  @override
+  String get statementsInvalidInvoiceToast => 'Invalid invoice.';
+
+  @override
+  String get statementsInvoiceNotFoundToast => 'Invoice not found.';
+
+  @override
+  String get statementsRepetitiveInvoiceBadge => 'Repeated invoice';
+
+  @override
+  String statementsRepetitiveInvoiceTooltip(Object count) {
+    return 'This invoice is linked to $count bank movements.';
+  }
+
+  @override
+  String statementsRepetitiveInvoiceLinkedToast(Object count) {
+    return 'Invoice linked, but it was already used in other movements ($count).';
+  }
+
+  @override
+  String get statementsSuggestionAlreadyLinkedSubtext =>
+      'Linked in other transactions';
+
+  @override
+  String get statementsInvoiceSuggestTolerance => 'Tolerance';
 
   @override
   String get statementsLinkClientTitle => 'Link client';
@@ -4902,6 +5085,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expenseUploadTabUpload => 'Upload';
+
+  @override
+  String get expenseUploadBatchFlow =>
+      'Batch flow: upload documents and then import.';
+
+  @override
+  String get expenseUploadBatchUploadDocsCta => 'Upload documents';
+
+  @override
+  String get expenseUploadBatchLimits => 'Up to 100 files, max 10MB each.';
+
+  @override
+  String expenseUploadBatchSelectedCount(int count) {
+    return '$count document(s) selected.';
+  }
+
+  @override
+  String get expenseUploadBatchVerificationTitle => 'Verification';
+
+  @override
+  String get expenseUploadBatchWaiting => 'Waiting for import...';
+
+  @override
+  String get expenseUploadBatchImportTitle => 'Import';
+
+  @override
+  String get expenseUploadBatchGroupRequired =>
+      'You must select a group before importing.';
+
+  @override
+  String get expenseUploadBatchImportCta => 'Import Expenses';
 
   @override
   String get expenseUploadTabByProvider => 'By provider';
@@ -5851,4 +6065,240 @@ class AppLocalizationsEn extends AppLocalizations {
   String mailFooterSaveFailed(Object error) {
     return 'Failed to save footer: $error';
   }
+
+  @override
+  String get budgetsMenuSection => 'Budgets';
+
+  @override
+  String get budgetsMenuList => 'List budgets';
+
+  @override
+  String get budgetsMenuNew => 'New budget';
+
+  @override
+  String get budgetStepClient => 'Client';
+
+  @override
+  String get budgetStepBudget => 'Budget';
+
+  @override
+  String get budgetStepLines => 'Lines';
+
+  @override
+  String get budgetStepConfirm => 'Confirm';
+
+  @override
+  String get budgetStepPreview => 'Preview';
+
+  @override
+  String get budgetClientInfoPrompt =>
+      'Presupuesto client information is flexible. Choose an existing client or enter a client name. At least one is required. This applies only to Presupuestos - invoices and receipts still require a saved client.';
+
+  @override
+  String get budgetClientSelectSavedLabel =>
+      'Select a saved client (optional for Presupuestos).';
+
+  @override
+  String get budgetClientNoneSaved => 'No saved client';
+
+  @override
+  String get budgetClientNameLabel =>
+      'Use this if the client isn\'t in your database yet.';
+
+  @override
+  String get budgetValidationClientRequired =>
+      'Provide either a saved client or a client name.';
+
+  @override
+  String get budgetValidationNumberFormat => 'Use NNN-YY (e.g., 001-26).';
+
+  @override
+  String get budgetValidationGroupRequired =>
+      'Missing groupId for presupuesto creation.';
+
+  @override
+  String get budgetValidationLineItemsRequired =>
+      'Add at least one line item before issuing.';
+
+  @override
+  String get budgetPreviewAcceptRequired => 'Accept before opening preview.';
+
+  @override
+  String get budgetNumberLabel => 'Budget number';
+
+  @override
+  String get budgetNumberHint => '001-26';
+
+  @override
+  String get budgetNumberAutoOnIssue =>
+      'Budget number is assigned by the server when issuing.';
+
+  @override
+  String get budgetNumberPendingIssue => 'Pending issue';
+
+  @override
+  String get budgetLineItemsSimulateLabel =>
+      'Simulate line items added (UI-only validation)';
+
+  @override
+  String get budgetInfoBanner =>
+      'Presupuestos can be created with a hardcoded client name. If no client is selected, the PDF will show the name and leave other client fields blank.';
+
+  @override
+  String budgetConfirmClientValue(Object value) {
+    return 'Client: $value';
+  }
+
+  @override
+  String budgetConfirmNumberValue(Object value) {
+    return 'Budget number: $value';
+  }
+
+  @override
+  String budgetConfirmDraftIdValue(Object value) {
+    return 'Draft ID: $value';
+  }
+
+  @override
+  String budgetConfirmLinesValue(Object value) {
+    return 'Lines: $value';
+  }
+
+  @override
+  String get budgetListIntro =>
+      'Budget listing (UI). Server listing will be connected later.';
+
+  @override
+  String get budgetListPlaceholder => 'No budgets to show yet.';
+
+  @override
+  String get budgetBackCta => 'Back';
+
+  @override
+  String get budgetNextCta => 'Next';
+
+  @override
+  String get budgetValidateCta => 'Validate';
+
+  @override
+  String get budgetValidatedSnack =>
+      'Budget draft validated (UI only). Server integration pending.';
+
+  @override
+  String budgetIssuedSnack(Object number) {
+    return 'Presupuesto issued with number $number.';
+  }
+
+  @override
+  String get budgetIssueConflict =>
+      'Numbering conflict while issuing. Please retry.';
+
+  @override
+  String get budgetPreviewInlineTitle => 'Preview';
+
+  @override
+  String get budgetPreviewDialogTitle => 'Budget preview';
+
+  @override
+  String get budgetPreviewOpenCta => 'Open preview';
+
+  @override
+  String get budgetPreviewAcceptLabel =>
+      'I confirm this data and want to generate the preview PDF';
+
+  @override
+  String budgetPreviewAutoTitle(Object id) {
+    return 'PDF preview for presupuesto $id';
+  }
+
+  @override
+  String get budgetPreviewEmpty => 'Add line items to preview this budget.';
+
+  @override
+  String get budgetShortLogicFlowTitle => 'Short Logic Flow';
+
+  @override
+  String get budgetShortLogicFlow1 =>
+      'Create draft without presupuestoNumber; backend stores it as draft.';
+
+  @override
+  String get budgetShortLogicFlow2 =>
+      'Either clientId or clientName is required, with groupId.';
+
+  @override
+  String get budgetShortLogicFlow3 =>
+      'Issue via POST /api/presupuestos/:id/issue to assign NNN-YY.';
+
+  @override
+  String get budgetShortLogicFlow4 =>
+      'Use returned presupuestoNumber for display; preview uses /api/presupuestos/:id/pdf/preview.';
+
+  @override
+  String get insightsChatFabTooltip => 'Insights chat';
+
+  @override
+  String get insightsChatTitle => 'Insights';
+
+  @override
+  String get insightsChatWelcome =>
+      'Ask me about your last 30 days of expenses and issued invoices.';
+
+  @override
+  String get insightsChatModeAuto => 'Auto';
+
+  @override
+  String get insightsChatModeStream => 'Stream';
+
+  @override
+  String get insightsChatClearTooltip => 'Clear chat';
+
+  @override
+  String get insightsChatClearTitle => 'Clear chat?';
+
+  @override
+  String get insightsChatClearMessage =>
+      'This will remove all messages in this chat.';
+
+  @override
+  String get insightsChatClearAction => 'Clear';
+
+  @override
+  String get insightsChatDaysPrefix => 'Context';
+
+  @override
+  String get insightsChatDaysTooltip => 'Context window days';
+
+  @override
+  String get insightsChatNoResponse =>
+      'No response returned by insights service.';
+
+  @override
+  String get insightsChatAnswerReady => 'Insights answer is ready.';
+
+  @override
+  String get insightsChatInputHint =>
+      'Ask about revenue, expenses, margin, trends...';
+
+  @override
+  String get insightsChatSend => 'Send';
+
+  @override
+  String get systemConfigMenuLabel => 'System configuration';
+
+  @override
+  String get groupPhotoUpdated => 'Group photo updated';
+
+  @override
+  String get groupPhotoUpdateFailed => 'Failed to update group photo';
+
+  @override
+  String get premiumRequiredSingleGroupMessage =>
+      'Your current plan allows only 1 group. Upgrade to Premium to create or join additional groups.';
+
+  @override
+  String get premiumRequiredJoinGroupOnlyMessage =>
+      'You are already in a group. Upgrade to Premium to join more groups.';
+
+  @override
+  String get upgradeToPremium => 'Upgrade to Premium';
 }

@@ -9,7 +9,6 @@ import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/a-models/notification_model/userInvitation_status.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/resolver/event_group_resolver.dart';
-import 'package:hexora/b-backend/group_mng_flow/group/errors/group_limit_exception.dart';
 // Repos (interfaces)
 import 'package:hexora/b-backend/group_mng_flow/group/repository/i_group_repository.dart';
 // UserDomain is referenced for refresh flow
@@ -114,16 +113,6 @@ class GroupDomain extends ChangeNotifier {
     required bool accepted,
     required UserDomain userDomain,
   }) async {
-    if (accepted) {
-      final freshUser = await userDomain.getUser();
-      final targetUser = freshUser ?? userDomain.user;
-      final groupCount = targetUser?.groupIds.length ?? 0;
-      if (groupCount >= 2) {
-        throw const GroupLimitException(
-          'You cannot join more than two groups.',
-        );
-      }
-    }
     await groupRepository.respondToInvite(
       groupId: groupId,
       userId: userId,
@@ -164,11 +153,6 @@ class GroupDomain extends ChangeNotifier {
   // ── Mutations that should trigger a repo refresh ───────────────────────────
   Future<bool> createGroup(Group group, UserDomain userDomain) async {
     try {
-      if (currentUser.groupIds.length >= 2) {
-        throw const GroupLimitException(
-          'You cannot belong to more than two groups.',
-        );
-      }
       await groupRepository.createGroup(group);
       await refreshGroupsForCurrentUser(userDomain);
       return true;
@@ -179,11 +163,6 @@ class GroupDomain extends ChangeNotifier {
   }
 
   Future<Group> createGroupReturning(Group group, UserDomain userDomain) async {
-    if (currentUser.groupIds.length >= 2) {
-      throw const GroupLimitException(
-        'You cannot belong to more than two groups.',
-      );
-    }
     final created = await groupRepository.createGroup(group);
     await refreshGroupsForCurrentUser(userDomain);
     return created;

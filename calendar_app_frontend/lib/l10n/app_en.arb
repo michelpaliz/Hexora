@@ -390,6 +390,9 @@
     "weatherFunGradeC": "Keep an umbrella handy just in case.",
     "weatherFunGradeD": "Maybe plan for indoor activities today.",
     "weatherFunDefault": "Make the most of the day, whatever the weather.",
+    "weatherForecastLoading": "Loading weather forecast...",
+    "weatherForecastEmpty": "No forecast data available.",
+    "weatherForecastRainShort": "rain",
     "monday": "monday",
     "tuesday": "tuesday",
     "wednesday": "wednesday",
@@ -1660,6 +1663,49 @@
   "invoiceBlocksTitle": "Invoice blocks",
   "invoiceBlocksModeBlocks": "Blocks",
   "invoiceBlocksModeLines": "Lines",
+  "invoiceLinesModeManual": "Manual",
+  "invoiceLinesModePhoto": "Photo",
+  "invoiceLinesModeJson": "JSON",
+  "invoiceLinesPhotoTitle": "Extract lines from invoice photo",
+  "invoiceLinesPhotoSubtitle": "Upload an invoice screenshot/image, then apply detected lines to the editor.",
+  "invoiceLinesPhotoApply": "Apply to lines",
+  "invoiceLinesPhotoClear": "Clear",
+  "invoiceLinesPhotoExtracting": "Extracting...",
+  "invoiceLinesPhotoExtractedCount": "{count} extracted line(s)",
+  "@invoiceLinesPhotoExtractedCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "invoiceLineEvidenceAttach": "Attach evidence",
+  "invoiceLineEvidenceOpen": "Open evidence",
+  "invoiceLineEvidenceDelete": "Delete evidence",
+  "invoiceLineEvidenceNoId": "Save the draft first to attach evidence.",
+  "invoiceLineEvidenceAttached": "Evidence attached successfully.",
+  "invoiceLineEvidenceRemoved": "Evidence removed.",
+  "invoiceLineEvidenceAttachFailed": "Could not attach evidence.",
+  "invoiceLineEvidenceOpenFailed": "Could not open evidence.",
+  "invoiceLineEvidenceDeleteFailed": "Could not remove evidence.",
+  "invoiceLinesJsonImportTitle": "Import lines from JSON",
+  "invoiceLinesJsonImportSubtitle": "Paste structured draftLines JSON or upload a .json file to create lines immediately.",
+  "invoiceLinesJsonImportModePaste": "Paste JSON",
+  "invoiceLinesJsonImportModeFile": "Upload file",
+  "invoiceLinesJsonImportInputHint": "Paste JSON payload with draftLines...",
+  "invoiceLinesJsonImportPickFile": "Choose JSON file",
+  "invoiceLinesJsonImportNoFile": "No JSON file selected.",
+  "invoiceLinesJsonImportOverwrite": "Overwrite existing lines",
+  "invoiceLinesJsonImportDefaultTaxRate": "Default tax rate",
+  "invoiceLinesJsonImportApply": "Import lines",
+  "invoiceLinesJsonImportGetPrompt": "Get LLM prompt",
+  "invoiceLinesJsonImportPromptCopied": "Prompt copied to clipboard.",
+  "invoiceLinesJsonImportInvalidPayload": "Invalid JSON. Provide a non-empty draftLines array.",
+  "invoiceLinesJsonImportGenericError": "Could not import JSON lines.",
+  "invoiceLinesJsonImportSuccess": "Imported {count} line(s).",
+  "@invoiceLinesJsonImportSuccess": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "invoiceAddBlock": "Add block",
   "invoiceBlocksInfoTooltip": "Blocks let you mix items with headers, notes, and checklists. Only billable items affect totals.",
   "invoiceBlocksEmptyMessage": "Start your invoice with blocks (Date, Section, Items...).",
@@ -1716,6 +1762,7 @@
   "invoiceStatusLabel": "Status",
   "statusDraft": "Draft",
   "statusIssued": "Issued",
+  "statusPaid": "Paid",
   "invoiceNotesLabel": "Notes",
   "invoiceAddLine": "Add line",
   "invoiceLinesRequired": "Add at least one line",
@@ -2006,7 +2053,7 @@
   "statementsDragDropHint": "Drag your file here or click to select",
   "statementsFormatsHint": "Supported formats: .xls, .xlsx · Max 10 MB",
   "statementsRemoveFile": "Remove",
-  "statementsSecurityNote": "🔒 Your data is processed securely",
+  "statementsSecurityNote": "ðŸ”’ Your data is processed securely",
   "statementsFileTooLarge": "File exceeds 10 MB limit",
   "statementsResultsTitle": "Import results",
   "statementsResultsHelp": "Review deduplication and client matching before confirming the import.",
@@ -2274,7 +2321,7 @@
       }
     }
   },
-  "statementsNavTitle": "Statements",
+  "statementsNavTitle": "Bank",
   "statementsNavCollapse": "Collapse menu",
   "statementsNavExpand": "Expand menu",
   "statementsAnalyticsTitle": "Statements Analytics",
@@ -2394,7 +2441,40 @@
   },
   "statementsRowDetailsRaw": "Raw data",
   "statementsNoSuggestions": "No client suggestions found",
+  "statementsNoInvoiceSuggestions": "No matching invoices found",
   "statementsSuggestedClientsTitle": "Suggested clients",
+  "statementsSuggestedInvoicesTitle": "Suggested invoices",
+  "statementsBestMatchBadge": "Best match",
+  "statementsInvoiceAlreadySelected": "Already selected in another movement",
+  "statementsInvoiceAlreadyLinkedBadge": "Already linked",
+  "statementsInvoiceAlreadyLinkedMeta": "Linked on {date} · {count} link(s)",
+  "@statementsInvoiceAlreadyLinkedMeta": {
+    "placeholders": {
+      "date": {},
+      "count": {}
+    }
+  },
+  "statementsInvoiceAlreadyLinkedTitle": "Invoice already linked",
+  "statementsInvoiceAlreadyLinkedBody": "This invoice is already linked to another transaction. Do you want to link it here as well?",
+  "statementsInvoiceLinkAnyway": "Link anyway",
+  "statementsInvoiceAlreadyLinkedToast": "This invoice was already linked to another bank transaction.",
+  "statementsInvalidInvoiceToast": "Invalid invoice.",
+  "statementsInvoiceNotFoundToast": "Invoice not found.",
+  "statementsRepetitiveInvoiceBadge": "Repeated invoice",
+  "statementsRepetitiveInvoiceTooltip": "This invoice is linked to {count} bank movements.",
+  "@statementsRepetitiveInvoiceTooltip": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "statementsRepetitiveInvoiceLinkedToast": "Invoice linked, but it was already used in other movements ({count}).",
+  "@statementsRepetitiveInvoiceLinkedToast": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "statementsSuggestionAlreadyLinkedSubtext": "Linked in other transactions",
+  "statementsInvoiceSuggestTolerance": "Tolerance",
   "statementsLinkClientTitle": "Link client",
   "statementsSearchClients": "Search clients",
   "statementsNoClientsMatch": "No clients match your search",
@@ -2453,6 +2533,22 @@
   "expenseUploadTabFile": "File",
   "expenseUploadTabList": "List",
   "expenseUploadTabUpload": "Upload",
+  "expenseUploadBatchFlow": "Batch flow: upload documents and then import.",
+  "expenseUploadBatchUploadDocsCta": "Upload documents",
+  "expenseUploadBatchLimits": "Up to 100 files, max 10MB each.",
+  "expenseUploadBatchSelectedCount": "{count} document(s) selected.",
+  "@expenseUploadBatchSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "expenseUploadBatchVerificationTitle": "Verification",
+  "expenseUploadBatchWaiting": "Waiting for import...",
+  "expenseUploadBatchImportTitle": "Import",
+  "expenseUploadBatchGroupRequired": "You must select a group before importing.",
+  "expenseUploadBatchImportCta": "Import Expenses",
   "expenseUploadTabByProvider": "By provider",
   "expenseUploadTabProviders": "Providers",
   "expenseUploadProvidersListTitle": "Providers",
@@ -2811,5 +2907,102 @@
     "placeholders": {
       "error": {}
     }
-  }
+  },
+  "budgetsMenuSection": "Budgets",
+  "budgetsMenuList": "List budgets",
+  "budgetsMenuNew": "New budget",
+  "budgetStepClient": "Client",
+  "budgetStepBudget": "Budget",
+  "budgetStepLines": "Lines",
+  "budgetStepConfirm": "Confirm",
+  "budgetStepPreview": "Preview",
+  "budgetClientInfoPrompt": "Presupuesto client information is flexible. Choose an existing client or enter a client name. At least one is required. This applies only to Presupuestos - invoices and receipts still require a saved client.",
+  "budgetClientSelectSavedLabel": "Select a saved client (optional for Presupuestos).",
+  "budgetClientNoneSaved": "No saved client",
+  "budgetClientNameLabel": "Use this if the client isn't in your database yet.",
+  "budgetValidationClientRequired": "Provide either a saved client or a client name.",
+  "budgetValidationNumberFormat": "Use NNN-YY (e.g., 001-26).",
+  "budgetValidationGroupRequired": "Missing groupId for presupuesto creation.",
+  "budgetValidationLineItemsRequired": "Add at least one line item before issuing.",
+  "budgetPreviewAcceptRequired": "Accept before opening preview.",
+  "budgetNumberLabel": "Budget number",
+  "budgetNumberHint": "001-26",
+  "budgetNumberAutoOnIssue": "Budget number is assigned by the server when issuing.",
+  "budgetNumberPendingIssue": "Pending issue",
+  "budgetLineItemsSimulateLabel": "Simulate line items added (UI-only validation)",
+  "budgetInfoBanner": "Presupuestos can be created with a hardcoded client name. If no client is selected, the PDF will show the name and leave other client fields blank.",
+  "budgetConfirmClientValue": "Client: {value}",
+  "@budgetConfirmClientValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "budgetConfirmNumberValue": "Budget number: {value}",
+  "@budgetConfirmNumberValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "budgetConfirmDraftIdValue": "Draft ID: {value}",
+  "@budgetConfirmDraftIdValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "budgetConfirmLinesValue": "Lines: {value}",
+  "@budgetConfirmLinesValue": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "budgetListIntro": "Budget listing (UI). Server listing will be connected later.",
+  "budgetListPlaceholder": "No budgets to show yet.",
+  "budgetBackCta": "Back",
+  "budgetNextCta": "Next",
+  "budgetValidateCta": "Validate",
+  "budgetValidatedSnack": "Budget draft validated (UI only). Server integration pending.",
+  "budgetIssuedSnack": "Presupuesto issued with number {number}.",
+  "@budgetIssuedSnack": {
+    "placeholders": {
+      "number": {}
+    }
+  },
+  "budgetIssueConflict": "Numbering conflict while issuing. Please retry.",
+  "budgetPreviewInlineTitle": "Preview",
+  "budgetPreviewDialogTitle": "Budget preview",
+  "budgetPreviewOpenCta": "Open preview",
+  "budgetPreviewAcceptLabel": "I confirm this data and want to generate the preview PDF",
+  "budgetPreviewAutoTitle": "PDF preview for presupuesto {id}",
+  "@budgetPreviewAutoTitle": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "budgetPreviewEmpty": "Add line items to preview this budget.",
+  "budgetShortLogicFlowTitle": "Short Logic Flow",
+  "budgetShortLogicFlow1": "Create draft without presupuestoNumber; backend stores it as draft.",
+  "budgetShortLogicFlow2": "Either clientId or clientName is required, with groupId.",
+  "budgetShortLogicFlow3": "Issue via POST /api/presupuestos/:id/issue to assign NNN-YY.",
+  "budgetShortLogicFlow4": "Use returned presupuestoNumber for display; preview uses /api/presupuestos/:id/pdf/preview.",
+  "insightsChatFabTooltip": "Insights chat",
+  "insightsChatTitle": "Insights",
+  "insightsChatWelcome": "Ask me about your last 30 days of expenses and issued invoices.",
+  "insightsChatModeAuto": "Auto",
+  "insightsChatModeStream": "Stream",
+  "insightsChatClearTooltip": "Clear chat",
+  "insightsChatClearTitle": "Clear chat?",
+  "insightsChatClearMessage": "This will remove all messages in this chat.",
+  "insightsChatClearAction": "Clear",
+  "insightsChatDaysPrefix": "Context",
+  "insightsChatDaysTooltip": "Context window days",
+  "insightsChatNoResponse": "No response returned by insights service.",
+  "insightsChatAnswerReady": "Insights answer is ready.",
+  "insightsChatInputHint": "Ask about revenue, expenses, margin, trends...",
+  "insightsChatSend": "Send",
+  "systemConfigMenuLabel": "System configuration",
+  "groupPhotoUpdated": "Group photo updated",
+  "groupPhotoUpdateFailed": "Failed to update group photo",
+  "premiumRequiredSingleGroupMessage": "Your current plan allows only 1 group. Upgrade to Premium to create or join additional groups.",
+  "premiumRequiredJoinGroupOnlyMessage": "You are already in a group. Upgrade to Premium to join more groups.",
+  "upgradeToPremium": "Upgrade to Premium"
 }

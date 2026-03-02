@@ -1184,6 +1184,24 @@ abstract class AppLocalizations {
   /// **'Make the most of the day, whatever the weather.'**
   String get weatherFunDefault;
 
+  /// No description provided for @weatherForecastLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading weather forecast...'**
+  String get weatherForecastLoading;
+
+  /// No description provided for @weatherForecastEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No forecast data available.'**
+  String get weatherForecastEmpty;
+
+  /// No description provided for @weatherForecastRainShort.
+  ///
+  /// In en, this message translates to:
+  /// **'rain'**
+  String get weatherForecastRainShort;
+
   /// No description provided for @monday.
   ///
   /// In en, this message translates to:
@@ -5524,6 +5542,204 @@ abstract class AppLocalizations {
   /// **'Lines'**
   String get invoiceBlocksModeLines;
 
+  /// No description provided for @invoiceLinesModeManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get invoiceLinesModeManual;
+
+  /// No description provided for @invoiceLinesModePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get invoiceLinesModePhoto;
+
+  /// No description provided for @invoiceLinesModeJson.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON'**
+  String get invoiceLinesModeJson;
+
+  /// No description provided for @invoiceLinesPhotoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extract lines from invoice photo'**
+  String get invoiceLinesPhotoTitle;
+
+  /// No description provided for @invoiceLinesPhotoSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload an invoice screenshot/image, then apply detected lines to the editor.'**
+  String get invoiceLinesPhotoSubtitle;
+
+  /// No description provided for @invoiceLinesPhotoApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply to lines'**
+  String get invoiceLinesPhotoApply;
+
+  /// No description provided for @invoiceLinesPhotoClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get invoiceLinesPhotoClear;
+
+  /// No description provided for @invoiceLinesPhotoExtracting.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting...'**
+  String get invoiceLinesPhotoExtracting;
+
+  /// No description provided for @invoiceLinesPhotoExtractedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} extracted line(s)'**
+  String invoiceLinesPhotoExtractedCount(Object count);
+
+  /// No description provided for @invoiceLineEvidenceAttach.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach evidence'**
+  String get invoiceLineEvidenceAttach;
+
+  /// No description provided for @invoiceLineEvidenceOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open evidence'**
+  String get invoiceLineEvidenceOpen;
+
+  /// No description provided for @invoiceLineEvidenceDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete evidence'**
+  String get invoiceLineEvidenceDelete;
+
+  /// No description provided for @invoiceLineEvidenceNoId.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the draft first to attach evidence.'**
+  String get invoiceLineEvidenceNoId;
+
+  /// No description provided for @invoiceLineEvidenceAttached.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence attached successfully.'**
+  String get invoiceLineEvidenceAttached;
+
+  /// No description provided for @invoiceLineEvidenceRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence removed.'**
+  String get invoiceLineEvidenceRemoved;
+
+  /// No description provided for @invoiceLineEvidenceAttachFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not attach evidence.'**
+  String get invoiceLineEvidenceAttachFailed;
+
+  /// No description provided for @invoiceLineEvidenceOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open evidence.'**
+  String get invoiceLineEvidenceOpenFailed;
+
+  /// No description provided for @invoiceLineEvidenceDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remove evidence.'**
+  String get invoiceLineEvidenceDeleteFailed;
+
+  /// No description provided for @invoiceLinesJsonImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import lines from JSON'**
+  String get invoiceLinesJsonImportTitle;
+
+  /// No description provided for @invoiceLinesJsonImportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste structured draftLines JSON or upload a .json file to create lines immediately.'**
+  String get invoiceLinesJsonImportSubtitle;
+
+  /// No description provided for @invoiceLinesJsonImportModePaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste JSON'**
+  String get invoiceLinesJsonImportModePaste;
+
+  /// No description provided for @invoiceLinesJsonImportModeFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload file'**
+  String get invoiceLinesJsonImportModeFile;
+
+  /// No description provided for @invoiceLinesJsonImportInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste JSON payload with draftLines...'**
+  String get invoiceLinesJsonImportInputHint;
+
+  /// No description provided for @invoiceLinesJsonImportPickFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose JSON file'**
+  String get invoiceLinesJsonImportPickFile;
+
+  /// No description provided for @invoiceLinesJsonImportNoFile.
+  ///
+  /// In en, this message translates to:
+  /// **'No JSON file selected.'**
+  String get invoiceLinesJsonImportNoFile;
+
+  /// No description provided for @invoiceLinesJsonImportOverwrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite existing lines'**
+  String get invoiceLinesJsonImportOverwrite;
+
+  /// No description provided for @invoiceLinesJsonImportDefaultTaxRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Default tax rate'**
+  String get invoiceLinesJsonImportDefaultTaxRate;
+
+  /// No description provided for @invoiceLinesJsonImportApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Import lines'**
+  String get invoiceLinesJsonImportApply;
+
+  /// No description provided for @invoiceLinesJsonImportGetPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Get LLM prompt'**
+  String get invoiceLinesJsonImportGetPrompt;
+
+  /// No description provided for @invoiceLinesJsonImportPromptCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt copied to clipboard.'**
+  String get invoiceLinesJsonImportPromptCopied;
+
+  /// No description provided for @invoiceLinesJsonImportInvalidPayload.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid JSON. Provide a non-empty draftLines array.'**
+  String get invoiceLinesJsonImportInvalidPayload;
+
+  /// No description provided for @invoiceLinesJsonImportGenericError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not import JSON lines.'**
+  String get invoiceLinesJsonImportGenericError;
+
+  /// No description provided for @invoiceLinesJsonImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {count} line(s).'**
+  String invoiceLinesJsonImportSuccess(Object count);
+
   /// No description provided for @invoiceAddBlock.
   ///
   /// In en, this message translates to:
@@ -5823,6 +6039,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Issued'**
   String get statusIssued;
+
+  /// No description provided for @statusPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get statusPaid;
 
   /// No description provided for @invoiceNotesLabel.
   ///
@@ -7381,7 +7603,7 @@ abstract class AppLocalizations {
   /// No description provided for @statementsSecurityNote.
   ///
   /// In en, this message translates to:
-  /// **'🔒 Your data is processed securely'**
+  /// **'ðŸ”’ Your data is processed securely'**
   String get statementsSecurityNote;
 
   /// No description provided for @statementsFileTooLarge.
@@ -8095,7 +8317,7 @@ abstract class AppLocalizations {
   /// No description provided for @statementsNavTitle.
   ///
   /// In en, this message translates to:
-  /// **'Statements'**
+  /// **'Bank'**
   String get statementsNavTitle;
 
   /// No description provided for @statementsNavCollapse.
@@ -8524,11 +8746,113 @@ abstract class AppLocalizations {
   /// **'No client suggestions found'**
   String get statementsNoSuggestions;
 
+  /// No description provided for @statementsNoInvoiceSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching invoices found'**
+  String get statementsNoInvoiceSuggestions;
+
   /// No description provided for @statementsSuggestedClientsTitle.
   ///
   /// In en, this message translates to:
   /// **'Suggested clients'**
   String get statementsSuggestedClientsTitle;
+
+  /// No description provided for @statementsSuggestedInvoicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested invoices'**
+  String get statementsSuggestedInvoicesTitle;
+
+  /// No description provided for @statementsBestMatchBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Best match'**
+  String get statementsBestMatchBadge;
+
+  /// No description provided for @statementsInvoiceAlreadySelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Already selected in another movement'**
+  String get statementsInvoiceAlreadySelected;
+
+  /// No description provided for @statementsInvoiceAlreadyLinkedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Already linked'**
+  String get statementsInvoiceAlreadyLinkedBadge;
+
+  /// No description provided for @statementsInvoiceAlreadyLinkedMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked on {date} · {count} link(s)'**
+  String statementsInvoiceAlreadyLinkedMeta(Object date, Object count);
+
+  /// No description provided for @statementsInvoiceAlreadyLinkedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice already linked'**
+  String get statementsInvoiceAlreadyLinkedTitle;
+
+  /// No description provided for @statementsInvoiceAlreadyLinkedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This invoice is already linked to another transaction. Do you want to link it here as well?'**
+  String get statementsInvoiceAlreadyLinkedBody;
+
+  /// No description provided for @statementsInvoiceLinkAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Link anyway'**
+  String get statementsInvoiceLinkAnyway;
+
+  /// No description provided for @statementsInvoiceAlreadyLinkedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'This invoice was already linked to another bank transaction.'**
+  String get statementsInvoiceAlreadyLinkedToast;
+
+  /// No description provided for @statementsInvalidInvoiceToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid invoice.'**
+  String get statementsInvalidInvoiceToast;
+
+  /// No description provided for @statementsInvoiceNotFoundToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice not found.'**
+  String get statementsInvoiceNotFoundToast;
+
+  /// No description provided for @statementsRepetitiveInvoiceBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeated invoice'**
+  String get statementsRepetitiveInvoiceBadge;
+
+  /// No description provided for @statementsRepetitiveInvoiceTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'This invoice is linked to {count} bank movements.'**
+  String statementsRepetitiveInvoiceTooltip(Object count);
+
+  /// No description provided for @statementsRepetitiveInvoiceLinkedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice linked, but it was already used in other movements ({count}).'**
+  String statementsRepetitiveInvoiceLinkedToast(Object count);
+
+  /// No description provided for @statementsSuggestionAlreadyLinkedSubtext.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked in other transactions'**
+  String get statementsSuggestionAlreadyLinkedSubtext;
+
+  /// No description provided for @statementsInvoiceSuggestTolerance.
+  ///
+  /// In en, this message translates to:
+  /// **'Tolerance'**
+  String get statementsInvoiceSuggestTolerance;
 
   /// No description provided for @statementsLinkClientTitle.
   ///
@@ -8877,6 +9201,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upload'**
   String get expenseUploadTabUpload;
+
+  /// No description provided for @expenseUploadBatchFlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch flow: upload documents and then import.'**
+  String get expenseUploadBatchFlow;
+
+  /// No description provided for @expenseUploadBatchUploadDocsCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload documents'**
+  String get expenseUploadBatchUploadDocsCta;
+
+  /// No description provided for @expenseUploadBatchLimits.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to 100 files, max 10MB each.'**
+  String get expenseUploadBatchLimits;
+
+  /// No description provided for @expenseUploadBatchSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} document(s) selected.'**
+  String expenseUploadBatchSelectedCount(int count);
+
+  /// No description provided for @expenseUploadBatchVerificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification'**
+  String get expenseUploadBatchVerificationTitle;
+
+  /// No description provided for @expenseUploadBatchWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for import...'**
+  String get expenseUploadBatchWaiting;
+
+  /// No description provided for @expenseUploadBatchImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get expenseUploadBatchImportTitle;
+
+  /// No description provided for @expenseUploadBatchGroupRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'You must select a group before importing.'**
+  String get expenseUploadBatchGroupRequired;
+
+  /// No description provided for @expenseUploadBatchImportCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Expenses'**
+  String get expenseUploadBatchImportCta;
 
   /// No description provided for @expenseUploadTabByProvider.
   ///
@@ -10624,6 +11002,408 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to save footer: {error}'**
   String mailFooterSaveFailed(Object error);
+
+  /// No description provided for @budgetsMenuSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Budgets'**
+  String get budgetsMenuSection;
+
+  /// No description provided for @budgetsMenuList.
+  ///
+  /// In en, this message translates to:
+  /// **'List budgets'**
+  String get budgetsMenuList;
+
+  /// No description provided for @budgetsMenuNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New budget'**
+  String get budgetsMenuNew;
+
+  /// No description provided for @budgetStepClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Client'**
+  String get budgetStepClient;
+
+  /// No description provided for @budgetStepBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get budgetStepBudget;
+
+  /// No description provided for @budgetStepLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines'**
+  String get budgetStepLines;
+
+  /// No description provided for @budgetStepConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get budgetStepConfirm;
+
+  /// No description provided for @budgetStepPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get budgetStepPreview;
+
+  /// No description provided for @budgetClientInfoPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Presupuesto client information is flexible. Choose an existing client or enter a client name. At least one is required. This applies only to Presupuestos - invoices and receipts still require a saved client.'**
+  String get budgetClientInfoPrompt;
+
+  /// No description provided for @budgetClientSelectSavedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a saved client (optional for Presupuestos).'**
+  String get budgetClientSelectSavedLabel;
+
+  /// No description provided for @budgetClientNoneSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved client'**
+  String get budgetClientNoneSaved;
+
+  /// No description provided for @budgetClientNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this if the client isn\'t in your database yet.'**
+  String get budgetClientNameLabel;
+
+  /// No description provided for @budgetValidationClientRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Provide either a saved client or a client name.'**
+  String get budgetValidationClientRequired;
+
+  /// No description provided for @budgetValidationNumberFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Use NNN-YY (e.g., 001-26).'**
+  String get budgetValidationNumberFormat;
+
+  /// No description provided for @budgetValidationGroupRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing groupId for presupuesto creation.'**
+  String get budgetValidationGroupRequired;
+
+  /// No description provided for @budgetValidationLineItemsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one line item before issuing.'**
+  String get budgetValidationLineItemsRequired;
+
+  /// No description provided for @budgetPreviewAcceptRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept before opening preview.'**
+  String get budgetPreviewAcceptRequired;
+
+  /// No description provided for @budgetNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget number'**
+  String get budgetNumberLabel;
+
+  /// No description provided for @budgetNumberHint.
+  ///
+  /// In en, this message translates to:
+  /// **'001-26'**
+  String get budgetNumberHint;
+
+  /// No description provided for @budgetNumberAutoOnIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget number is assigned by the server when issuing.'**
+  String get budgetNumberAutoOnIssue;
+
+  /// No description provided for @budgetNumberPendingIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending issue'**
+  String get budgetNumberPendingIssue;
+
+  /// No description provided for @budgetLineItemsSimulateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulate line items added (UI-only validation)'**
+  String get budgetLineItemsSimulateLabel;
+
+  /// No description provided for @budgetInfoBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Presupuestos can be created with a hardcoded client name. If no client is selected, the PDF will show the name and leave other client fields blank.'**
+  String get budgetInfoBanner;
+
+  /// No description provided for @budgetConfirmClientValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Client: {value}'**
+  String budgetConfirmClientValue(Object value);
+
+  /// No description provided for @budgetConfirmNumberValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget number: {value}'**
+  String budgetConfirmNumberValue(Object value);
+
+  /// No description provided for @budgetConfirmDraftIdValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft ID: {value}'**
+  String budgetConfirmDraftIdValue(Object value);
+
+  /// No description provided for @budgetConfirmLinesValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines: {value}'**
+  String budgetConfirmLinesValue(Object value);
+
+  /// No description provided for @budgetListIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget listing (UI). Server listing will be connected later.'**
+  String get budgetListIntro;
+
+  /// No description provided for @budgetListPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'No budgets to show yet.'**
+  String get budgetListPlaceholder;
+
+  /// No description provided for @budgetBackCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get budgetBackCta;
+
+  /// No description provided for @budgetNextCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get budgetNextCta;
+
+  /// No description provided for @budgetValidateCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Validate'**
+  String get budgetValidateCta;
+
+  /// No description provided for @budgetValidatedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget draft validated (UI only). Server integration pending.'**
+  String get budgetValidatedSnack;
+
+  /// No description provided for @budgetIssuedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Presupuesto issued with number {number}.'**
+  String budgetIssuedSnack(Object number);
+
+  /// No description provided for @budgetIssueConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbering conflict while issuing. Please retry.'**
+  String get budgetIssueConflict;
+
+  /// No description provided for @budgetPreviewInlineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get budgetPreviewInlineTitle;
+
+  /// No description provided for @budgetPreviewDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget preview'**
+  String get budgetPreviewDialogTitle;
+
+  /// No description provided for @budgetPreviewOpenCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Open preview'**
+  String get budgetPreviewOpenCta;
+
+  /// No description provided for @budgetPreviewAcceptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'I confirm this data and want to generate the preview PDF'**
+  String get budgetPreviewAcceptLabel;
+
+  /// No description provided for @budgetPreviewAutoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF preview for presupuesto {id}'**
+  String budgetPreviewAutoTitle(Object id);
+
+  /// No description provided for @budgetPreviewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Add line items to preview this budget.'**
+  String get budgetPreviewEmpty;
+
+  /// No description provided for @budgetShortLogicFlowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Logic Flow'**
+  String get budgetShortLogicFlowTitle;
+
+  /// No description provided for @budgetShortLogicFlow1.
+  ///
+  /// In en, this message translates to:
+  /// **'Create draft without presupuestoNumber; backend stores it as draft.'**
+  String get budgetShortLogicFlow1;
+
+  /// No description provided for @budgetShortLogicFlow2.
+  ///
+  /// In en, this message translates to:
+  /// **'Either clientId or clientName is required, with groupId.'**
+  String get budgetShortLogicFlow2;
+
+  /// No description provided for @budgetShortLogicFlow3.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue via POST /api/presupuestos/:id/issue to assign NNN-YY.'**
+  String get budgetShortLogicFlow3;
+
+  /// No description provided for @budgetShortLogicFlow4.
+  ///
+  /// In en, this message translates to:
+  /// **'Use returned presupuestoNumber for display; preview uses /api/presupuestos/:id/pdf/preview.'**
+  String get budgetShortLogicFlow4;
+
+  /// No description provided for @insightsChatFabTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights chat'**
+  String get insightsChatFabTooltip;
+
+  /// No description provided for @insightsChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights'**
+  String get insightsChatTitle;
+
+  /// No description provided for @insightsChatWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask me about your last 30 days of expenses and issued invoices.'**
+  String get insightsChatWelcome;
+
+  /// No description provided for @insightsChatModeAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get insightsChatModeAuto;
+
+  /// No description provided for @insightsChatModeStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream'**
+  String get insightsChatModeStream;
+
+  /// No description provided for @insightsChatClearTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear chat'**
+  String get insightsChatClearTooltip;
+
+  /// No description provided for @insightsChatClearTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear chat?'**
+  String get insightsChatClearTitle;
+
+  /// No description provided for @insightsChatClearMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will remove all messages in this chat.'**
+  String get insightsChatClearMessage;
+
+  /// No description provided for @insightsChatClearAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get insightsChatClearAction;
+
+  /// No description provided for @insightsChatDaysPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Context'**
+  String get insightsChatDaysPrefix;
+
+  /// No description provided for @insightsChatDaysTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Context window days'**
+  String get insightsChatDaysTooltip;
+
+  /// No description provided for @insightsChatNoResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'No response returned by insights service.'**
+  String get insightsChatNoResponse;
+
+  /// No description provided for @insightsChatAnswerReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights answer is ready.'**
+  String get insightsChatAnswerReady;
+
+  /// No description provided for @insightsChatInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about revenue, expenses, margin, trends...'**
+  String get insightsChatInputHint;
+
+  /// No description provided for @insightsChatSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get insightsChatSend;
+
+  /// No description provided for @systemConfigMenuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'System configuration'**
+  String get systemConfigMenuLabel;
+
+  /// No description provided for @groupPhotoUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Group photo updated'**
+  String get groupPhotoUpdated;
+
+  /// No description provided for @groupPhotoUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update group photo'**
+  String get groupPhotoUpdateFailed;
+
+  /// No description provided for @premiumRequiredSingleGroupMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current plan allows only 1 group. Upgrade to Premium to create or join additional groups.'**
+  String get premiumRequiredSingleGroupMessage;
+
+  /// No description provided for @premiumRequiredJoinGroupOnlyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already in a group. Upgrade to Premium to join more groups.'**
+  String get premiumRequiredJoinGroupOnlyMessage;
+
+  /// No description provided for @upgradeToPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Premium'**
+  String get upgradeToPremium;
 }
 
 class _AppLocalizationsDelegate

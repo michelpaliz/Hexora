@@ -77,6 +77,7 @@ class InvitationViewModel extends ChangeNotifier {
   }
 
   Future<void> accept(String invitationId) async {
+    errorMessage = null;
     final idx = invitations.indexWhere((i) => i.id == invitationId);
     Invitation? backup = idx >= 0 ? invitations[idx] : null;
     if (idx >= 0) {
@@ -92,6 +93,7 @@ class InvitationViewModel extends ChangeNotifier {
           notifyListeners();
         }
       case RepoFailure<Invitation>():
+        errorMessage = 'Failed to accept invitation';
         if (backup != null && idx >= 0) {
           invitations = List.of(invitations)..[idx] = backup;
           notifyListeners();

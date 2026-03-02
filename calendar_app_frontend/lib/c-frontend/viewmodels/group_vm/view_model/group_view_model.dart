@@ -5,6 +5,7 @@ import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/string_utils.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/errors/group_limit_exception.dart';
+import 'package:hexora/c-frontend/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/common/ui_messenger.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/group_editor_state.dart/group_editor_state.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/presentation/use_cases/create_group_usecase.dart';
@@ -167,13 +168,6 @@ class GroupEditorViewModel extends ChangeNotifier {
       }
 
       // ---------- CREATE PATH (existing) ----------
-      if (currentUser.groupIds.length >= 2) {
-        await ui.showError('You can only belong to two groups.');
-        status = GroupEditorStatus.error;
-        notifyListeners();
-        return;
-      }
-
       final created = await createGroup(
         name: _state.name,
         description: _state.description,
@@ -202,6 +196,10 @@ class GroupEditorViewModel extends ChangeNotifier {
     } catch (e) {
       status = GroupEditorStatus.error;
       notifyListeners();
+      if (GroupMembershipErrorMapper.isPremiumMultiGroupError(e)) {
+        await ui.showPremiumRequired(GroupMembershipErrorContext.createGroup);
+        return;
+      }
       await ui.showError('Failed to ${isEditing ? 'update' : 'create'} group');
     }
   }

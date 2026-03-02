@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:hexora/a-models/group_model/invite/invite.dart';
 import 'package:http/http.dart' as http;
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/shared/backend_api_exception.dart';
 
 // -----------------------------------------------------------------------------
 // API CLIENT (low-level HTTP, mirrors your Express routes)
@@ -14,6 +15,13 @@ class InvitationApiClient {
         if (token != null) 'Authorization': 'Bearer $token',
         ...?extra,
       };
+
+  Never _throwApiError(http.Response res, String fallbackMessage) {
+    throw BackendApiException.fromResponse(
+      res,
+      fallbackMessage: fallbackMessage,
+    );
+  }
 
   Future<Invitation> create({
     required String groupId,
@@ -40,7 +48,7 @@ class InvitationApiClient {
     if (res.statusCode == 200 || res.statusCode == 201) {
       return Invitation.fromJson(jsonDecode(res.body));
     }
-    throw Exception('Failed to create invitation: ${res.statusCode} ${res.reasonPhrase}');
+    _throwApiError(res, 'Failed to create invitation');
   }
 
   Future<List<Invitation>> listGroupInvitations(String groupId, {required String token}) async {
@@ -53,7 +61,7 @@ class InvitationApiClient {
       final list = (data is List ? data : (data['invitations'] as List?)) ?? [];
       return list.map<Invitation>((e) => Invitation.fromJson(e)).toList();
     }
-    throw Exception('Failed to fetch group invitations: ${res.statusCode} ${res.reasonPhrase}');
+    _throwApiError(res, 'Failed to fetch group invitations');
   }
 
   Future<List<Invitation>> listMyInvitations({required String token, String? userId, String? email}) async {
@@ -67,7 +75,7 @@ class InvitationApiClient {
       final list = (data is List ? data : (data['invitations'] as List?)) ?? [];
       return list.map<Invitation>((e) => Invitation.fromJson(e)).toList();
     }
-    throw Exception('Failed to fetch my invitations: ${res.statusCode} ${res.reasonPhrase}');
+    _throwApiError(res, 'Failed to fetch my invitations');
   }
 
   Future<Invitation> accept(String invitationId, {required String token, String? note}) async {
@@ -77,8 +85,7 @@ class InvitationApiClient {
       body: jsonEncode({'note': note}),
     );
     if (res.statusCode == 200) return Invitation.fromJson(jsonDecode(res.body));
-    if (res.statusCode == 404) throw Exception('Invitation not found');
-    throw Exception('Failed to accept: ${res.statusCode} ${res.reasonPhrase}');
+    _throwApiError(res, 'Failed to accept invitation');
   }
 
   Future<Invitation> decline(String invitationId, {required String token, String? reason}) async {
@@ -88,8 +95,7 @@ class InvitationApiClient {
       body: jsonEncode({'reason': reason}),
     );
     if (res.statusCode == 200) return Invitation.fromJson(jsonDecode(res.body));
-    if (res.statusCode == 404) throw Exception('Invitation not found');
-    throw Exception('Failed to decline: ${res.statusCode} ${res.reasonPhrase}');
+    _throwApiError(res, 'Failed to decline invitation');
   }
 
   Future<Invitation> resend(String invitationId, {required String token}) async {
@@ -99,8 +105,7 @@ class InvitationApiClient {
       body: jsonEncode({}),
     );
     if (res.statusCode == 200) return Invitation.fromJson(jsonDecode(res.body));
-    if (res.statusCode == 404) throw Exception('Invitation not found');
-    throw Exception('Failed to resend: ${res.statusCode} ${res.reasonPhrase}');
+    _throwApiError(res, 'Failed to resend invitation');
   }
 
   Future<Invitation> revoke(String invitationId, {required String token, String? reason}) async {
@@ -110,7 +115,6 @@ class InvitationApiClient {
       body: jsonEncode({'reason': reason}),
     );
     if (res.statusCode == 200) return Invitation.fromJson(jsonDecode(res.body));
-    if (res.statusCode == 404) throw Exception('Invitation not found');
-    throw Exception('Failed to revoke: ${res.statusCode} ${res.reasonPhrase}');
+    _throwApiError(res, 'Failed to revoke invitation');
   }
 }
