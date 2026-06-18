@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
+import 'package:hexora/c-frontend/utils/validation/email_validator.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -112,8 +113,9 @@ class ClientContactForm extends StatelessWidget {
             onChanged: (_) => onFieldChanged(),
             validator: (v) {
               if (!c.shouldShowError('email', showValidation)) return null;
-              if (v == null || v.isEmpty) return null;
-              final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v);
+              final txt = (v ?? '').trim();
+              if (txt.isEmpty) return null;
+              final ok = isLikelyValidEmail(txt);
               return ok ? null : l.invalidEmail;
             },
           ),

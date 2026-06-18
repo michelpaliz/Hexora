@@ -18,7 +18,7 @@ class StatementsAllDataTableLayout {
   // Client min width to avoid getting too small
   static const double clientMinWidth = 200.0;
 
-  static const double balanceClientGap = 16.0;
+  static const double balanceClientGap = 28.0;
   static const double horizontalPadding = 8.0;
 
   static const double columnGap = 6.0;
@@ -27,6 +27,7 @@ class StatementsAllDataTableLayout {
   // kept for backwards compatibility (not used if you move to flex)
   static const double balanceWidth = 170.0;
   static const double clientWidth = 280.0;
+  static const double notesWidth = 160.0;
   static const double invoiceWidth = 110.0;
-  static const double actionsWidth = 130.0;
+  static const double actionsWidth = 158.0;
 }

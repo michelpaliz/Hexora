@@ -19,28 +19,37 @@ class InvoiceDetailParty extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _PartyRow(
-          icon: Icons.business_outlined,
-          title: l.billingProfileTitle,
-          profile: issuer,
-          emptyLabel: l.billingProfileEmpty,
-          kind: _PartyKind.issuer,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.35),
         ),
-        Divider(
-          height: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.3),
-        ),
-        _PartyRow(
-          icon: Icons.person_outline,
-          title: l.invoiceClientSection,
-          profile: clientBilling,
-          emptyLabel: l.billingDetails,
-          kind: _PartyKind.client,
-        ),
-      ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _PartyRow(
+            icon: Icons.business_outlined,
+            title: l.billingProfileTitle,
+            profile: issuer,
+            emptyLabel: l.billingProfileEmpty,
+            kind: _PartyKind.issuer,
+          ),
+          Divider(
+            height: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.3),
+          ),
+          _PartyRow(
+            icon: Icons.person_outline,
+            title: l.invoiceClientSection,
+            profile: clientBilling,
+            emptyLabel: l.billingDetails,
+            kind: _PartyKind.client,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -156,7 +165,13 @@ class _PartyRowState extends State<_PartyRow> {
             // Header row: icon + title + summary + chevron
             Row(
               children: [
-                Icon(widget.icon, size: 16, color: cs.onSurfaceVariant),
+                Icon(
+              widget.icon,
+              size: 16,
+              color: widget.kind == _PartyKind.issuer
+                  ? cs.tertiary
+                  : cs.primary,
+            ),
                 const SizedBox(width: 8),
                 Text(
                   widget.title,

@@ -2,6 +2,7 @@ import 'package:hexora/b-backend/auth_user/api/auth_api_client.dart';
 import 'package:hexora/b-backend/auth_user/api/i_auth_api_client.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/token_store/Itoken_store.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/token_store/token_store.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
@@ -35,7 +36,9 @@ final List<SingleChildWidget> coreProviders = [
   Provider<IUserRepository>(
     create: (ctx) => UserRepository(
       apiClient: ctx.read<IUserApiClient>(),
-      tokenSupplier: () => ctx.read<TokenStore>().readAccess(), // <-- changed
+      // Use TokenService so access-token expiry/refresh is consistent
+      // across every feature that pulls tokens via UserDomain.
+      tokenSupplier: () => TokenService.loadToken(),
     ),
   ),
 

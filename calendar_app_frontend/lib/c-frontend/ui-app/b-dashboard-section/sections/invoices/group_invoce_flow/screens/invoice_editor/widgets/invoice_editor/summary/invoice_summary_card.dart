@@ -64,7 +64,11 @@ class InvoiceSummaryCard extends StatelessWidget {
     }
 
     String? issueReason() {
-      if (!previewedPdf) return l.invoiceIssueNeedsPreview;
+      if (!previewedPdf) {
+        return l.localeName.startsWith('es')
+            ? 'Revisa la factura en vista previa antes de guardar el borrador.'
+            : 'Review the invoice preview before saving the draft.';
+      }
       if (hasBlockingDrafts) return l.invoiceWarningPendingDrafts;
       if (!hasClient) return l.invoicePreviewNeedsClient;
       if (!datesComplete) return l.invoicePreviewNeedsDate;
@@ -183,7 +187,7 @@ class InvoiceSummaryCard extends StatelessWidget {
               ],
               const SizedBox(height: 12),
               Text(
-                l.invoiceStepIssueTitle,
+                l.statusDraft,
                 style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 10),
@@ -203,9 +207,9 @@ class InvoiceSummaryCard extends StatelessWidget {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.check_circle_outline),
+                      : const Icon(Icons.save_outlined),
                   label: Text(
-                    issuing ? l.invoiceIssuingLabel : l.invoiceIssueCta,
+                    issuing ? l.savingLabel : l.invoiceSaveDraftCta,
                   ),
                 ),
               ),

@@ -6,6 +6,7 @@ class Receipt {
   final String id;
   final String groupId;
   final String clientId;
+  final String? clientName;
   final String? receiptNumber; // assigned on issue (e.g. R000.25)
   final String? status; // draft|issued|void
   final DateTime? issueDate;
@@ -22,6 +23,7 @@ class Receipt {
     required this.id,
     required this.groupId,
     required this.clientId,
+    this.clientName,
     this.receiptNumber,
     this.status,
     this.issueDate,
@@ -54,6 +56,9 @@ class Receipt {
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       groupId: (json['groupId'] ?? '').toString(),
       clientId: (json['clientId'] ?? '').toString(),
+      clientName: json['clientName']?.toString().trim().isEmpty == true
+          ? null
+          : json['clientName']?.toString(),
       receiptNumber: (json['receiptNumber'] ?? json['number'])?.toString(),
       status: json['status']?.toString(),
       issueDate: parseDate(json['issueDate']),
@@ -85,18 +90,27 @@ class Receipt {
 
   Map<String, dynamic> toCreatePayload() => {
         'groupId': groupId,
-        'clientId': clientId,
+        if (clientName != null && clientName!.trim().isNotEmpty)
+          'clientName': clientName!.trim()
+        else
+          'clientId': clientId,
         if (status != null) 'status': status,
-        if (issueDate != null) 'issueDate': issueDate!.toUtc().toIso8601String(),
+        if (issueDate != null)
+          'issueDate': issueDate!.toUtc().toIso8601String(),
         if (notes != null && notes!.trim().isNotEmpty) 'notes': notes!.trim(),
         'lines': lines.map((l) => l.toJson()).toList(),
       };
 
   Map<String, dynamic> toUpdatePayload() => {
+        if (clientName != null && clientName!.trim().isNotEmpty) ...{
+          'clientId': null,
+          'clientName': clientName!.trim(),
+        } else
+          'clientId': clientId,
         if (status != null) 'status': status,
-        if (issueDate != null) 'issueDate': issueDate!.toUtc().toIso8601String(),
+        if (issueDate != null)
+          'issueDate': issueDate!.toUtc().toIso8601String(),
         if (notes != null) 'notes': notes!.trim(),
         'lines': lines.map((l) => l.toJson()).toList(),
       };
 }
-

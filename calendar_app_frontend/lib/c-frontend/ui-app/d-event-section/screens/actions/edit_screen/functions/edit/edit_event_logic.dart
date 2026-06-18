@@ -141,7 +141,14 @@ abstract class EditEventLogic<T extends StatefulWidget>
     }
 
     if (!mounted) return;
-    Navigator.of(context).pop(true);
+    afterSave();
+  }
+
+  /// Called after a successful save. Override to customize post-save navigation.
+  void afterSave() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   @override

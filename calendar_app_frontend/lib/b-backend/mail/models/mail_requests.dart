@@ -41,6 +41,8 @@ class MailSendRequest {
   final bool? attachReceiptPdf;
   final bool? includeInvoiceLinks;
   final bool? applyDefaultFooter;
+  final String? templateId;
+  final Map<String, dynamic>? templateVars;
 
   const MailSendRequest({
     this.groupId,
@@ -59,6 +61,8 @@ class MailSendRequest {
     this.attachReceiptPdf,
     this.includeInvoiceLinks,
     this.applyDefaultFooter,
+    this.templateId,
+    this.templateVars,
   });
 
   Map<String, dynamic> toJson() {
@@ -82,6 +86,8 @@ class MailSendRequest {
       if (includeInvoiceLinks != null)
         'includeInvoiceLinks': includeInvoiceLinks,
       if (applyDefaultFooter != null) 'applyDefaultFooter': applyDefaultFooter,
+      if (templateId != null && templateId!.isNotEmpty) 'templateId': templateId,
+      if (templateVars != null && templateVars!.isNotEmpty) 'templateVars': templateVars,
     };
   }
 }

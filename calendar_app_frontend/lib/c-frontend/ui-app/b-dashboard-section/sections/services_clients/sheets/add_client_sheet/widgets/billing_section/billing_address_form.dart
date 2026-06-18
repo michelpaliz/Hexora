@@ -153,7 +153,10 @@ class BillingAddressForm extends StatelessWidget {
                     showCheck: c.isBillingRequired('billingPostal') &&
                         c.billingPostal.text.trim().isNotEmpty,
                   ),
-                  onChanged: (_) => onFieldChanged(),
+                  onChanged: (_) {
+                    c.autofillBillingAddressFromPostalCode();
+                    onFieldChanged();
+                  },
                   validator: (v) {
                     if (!requireBilling ||
                         !c.isBillingRequired('billingPostal')) {

@@ -47,11 +47,12 @@ dependencies:
   flutter_slidable: ^4.0.0
   flutter_widget_from_html: ^0.16.1
   flutter_html: ^3.0.0
+  flutter_svg: ^2.2.3
+  qr_flutter: ^4.1.0
   
   dio: ^5.4.3+1
   socket_io_client: ^2.0.3+1
   file_picker: ^8.3.7
-
 
   # Freezed / JSON annotations
   freezed_annotation: ^3.0.0
@@ -62,6 +63,8 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   iconsax: ^0.0.8
   auto_size_text: ^3.0.0
+  flutter_dropzone: 4.2.1
+  flutter_dropzone_platform_interface: 2.2.0
 
 dev_dependencies:
   flutter_test:

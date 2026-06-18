@@ -30,6 +30,7 @@ abstract class IMailRepository {
     required MailFolder folder,
     int limit = 25,
     String? cursor,
+    String? query,
   });
 
   Future<MailThreadDetail> getThread(String threadKey);

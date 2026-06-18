@@ -284,18 +284,20 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
       setState(() => _currentInvoice = updated);
       await _notifyInvoiceChanged();
       if (!mounted) return;
+      final l = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Estado de envio actualizado')),
+        SnackBar(content: Text(l.invoiceDeliveryStatusUpdated)),
       );
     } catch (e) {
       if (!mounted) return;
+      final l = AppLocalizations.of(context)!;
       final message = e.toString().replaceFirst('Exception: ', '').trim();
       final normalized = message.toLowerCase();
       final readable = normalized.contains('409') ||
               normalized.contains('not issued') ||
               normalized.contains('solo') && normalized.contains('emit')
-          ? 'Solo se puede marcar envio en facturas emitidas.'
-          : (message.isEmpty ? 'No se pudo actualizar el estado de envio.' : message);
+          ? l.invoiceDeliveryOnlyIssued
+          : (message.isEmpty ? l.invoiceDeliveryUpdateError : message);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(readable)),
       );
@@ -313,24 +315,58 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
       setState(() => _currentInvoice = updated);
       await _notifyInvoiceChanged();
       if (!mounted) return;
+      final l = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Factura marcada como no enviada')),
+        SnackBar(content: Text(l.invoiceMarkedUnsent)),
       );
     } catch (e) {
       if (!mounted) return;
+      final l = AppLocalizations.of(context)!;
       final message = e.toString().replaceFirst('Exception: ', '').trim();
       final normalized = message.toLowerCase();
       final readable = normalized.contains('409') ||
               normalized.contains('not issued') ||
               normalized.contains('solo') && normalized.contains('emit')
-          ? 'Solo se puede marcar envio en facturas emitidas.'
-          : (message.isEmpty ? 'No se pudo actualizar el estado de envio.' : message);
+          ? l.invoiceDeliveryOnlyIssued
+          : (message.isEmpty ? l.invoiceDeliveryUpdateError : message);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(readable)),
       );
     } finally {
       if (mounted) setState(() => _updatingDelivery = false);
     }
+  }
+
+  static const _invoiceChronologyErrorMessage =
+      'Esta factura tiene una fecha anterior a la última factura emitida. '
+      'Para mantener la numeración cronológica, debes emitir primero las '
+      'facturas de fechas anteriores o corregir la fecha.';
+
+  DateTime? _invoiceChronologyDate(Invoice invoice) {
+    return invoice.issueDate ?? invoice.occurrenceDate ?? invoice.registeredAt;
+  }
+
+  bool _isBeforeCalendarDay(DateTime value, DateTime limit) {
+    final valueDay = DateTime(value.year, value.month, value.day);
+    final limitDay = DateTime(limit.year, limit.month, limit.day);
+    return valueDay.isBefore(limitDay);
+  }
+
+  Future<bool> _canIssueInvoiceByDate(Invoice invoice) async {
+    final selectedDate = _invoiceChronologyDate(invoice);
+    if (selectedDate == null) return true;
+    final issued =
+        await _invoicesApi.listByGroup(invoice.groupId, status: 'issued');
+    DateTime? latestIssuedDate;
+    for (final item in issued) {
+      final date = _invoiceChronologyDate(item);
+      if (date == null) continue;
+      if (latestIssuedDate == null || date.isAfter(latestIssuedDate)) {
+        latestIssuedDate = date;
+      }
+    }
+    if (latestIssuedDate == null) return true;
+    return !_isBeforeCalendarDay(selectedDate, latestIssuedDate);
   }
 
   Future<void> _issueInvoice() async {
@@ -343,6 +379,13 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l.invoiceLinesRequired)),
+        );
+        return;
+      }
+      if (!await _canIssueInvoiceByDate(_invoice)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(_invoiceChronologyErrorMessage)),
         );
         return;
       }

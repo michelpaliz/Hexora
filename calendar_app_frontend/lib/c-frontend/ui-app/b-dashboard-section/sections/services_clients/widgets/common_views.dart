@@ -116,7 +116,12 @@ class ListItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final bg = Colors.transparent;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final bg = isLight
+        ? (selected
+            ? cs.primaryContainer.withValues(alpha: 0.28)
+            : Colors.white)
+        : Colors.transparent;
     final borderColor = selected
         ? cs.primary.withValues(alpha: 0.35)
         : cs.outlineVariant.withValues(alpha: 0.3);
@@ -140,6 +145,16 @@ class ListItemCard extends StatelessWidget {
         color: bg,
         borderRadius: effectiveRadius,
         border: Border.all(color: borderColor),
+        boxShadow: isLight
+            ? [
+                BoxShadow(
+                  color:
+                      Colors.black.withValues(alpha: selected ? 0.055 : 0.035),
+                  blurRadius: selected ? 16 : 10,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : null,
       ),
       child: ClipRRect(
         borderRadius: effectiveRadius,

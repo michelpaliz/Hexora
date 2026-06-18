@@ -1,18 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
+import 'package:hexora/a-models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/recurring_invoices_api.dart';
+import 'package:hexora/b-backend/receipts/recurring_receipts_api.dart';
+import 'package:hexora/b-backend/receipts/receipts_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_details_sheet/invoice_detail_sheet.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_time_utils.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurring_invoices_helpers.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_detail_generated_tab.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_detail_header.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_detail_rule_tab.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_detail_template_tab.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/widgets/series_status_pill.dart';
@@ -21,7 +27,6 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'dart:typed_data';
 
 class RecurringDetailView extends StatefulWidget {
   final RecurringInvoicesApi api;
@@ -31,7 +36,7 @@ class RecurringDetailView extends StatefulWidget {
   final bool canManage;
   final bool enableTaxes;
   final VoidCallback onBack;
-  final VoidCallback onUpdated;
+  final FutureOr<void> Function() onUpdated;
 
   const RecurringDetailView({
     super.key,
@@ -51,6 +56,7 @@ class RecurringDetailView extends StatefulWidget {
 
 class _RecurringDetailViewState extends State<RecurringDetailView> {
   final _invoicesApi = InvoicesApi();
+  final _receiptsApi = ReceiptsApi();
 
   late String _freq;
   late TextEditingController _intervalCtrl;
@@ -74,6 +80,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
   final List<DateTime> _exceptions = [];
 
   late List<LineDraft> _lines;
+  late List<InvoiceBlockDraft> _templateBlocks;
 
   bool _savingRule = false;
   bool _savingTemplate = false;
@@ -83,6 +90,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
   bool _generatedRequested = false;
   int? _generatedCount;
   String? _ruleErrorText;
+  Map<String, dynamic> _initialRuleSnapshot = const <String, dynamic>{};
 
   @override
   void initState() {
@@ -120,6 +128,9 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     for (final l in _lines) {
       l.dispose();
     }
+    for (final block in _templateBlocks) {
+      block.dispose();
+    }
   }
 
   void _hydrateFromSeries({bool disposeExisting = false}) {
@@ -134,7 +145,8 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         rule['frequency'] ??
         widget.series['freq'] ??
         widget.series['frequency'];
-    _freq = normalizeFrequencyFromApi((rawFreq ?? recurringFreqMonthly).toString());
+    _freq =
+        normalizeFrequencyFromApi((rawFreq ?? recurringFreqMonthly).toString());
     _intervalCtrl = TextEditingController(
       text: (field('interval') ?? 1).toString(),
     );
@@ -197,6 +209,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       if (raw is num) return raw;
       return num.tryParse(raw.toString().trim().replaceAll(',', '.'));
     }
+
     final discountAmount = parseNum(widget.series['discountAmount']) ?? 0;
     final discountPercent = parseNum(widget.series['discountPercent']) ?? 0;
     _discountAmountCtrl = TextEditingController(
@@ -219,12 +232,40 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       widget.series,
       defaultTaxRate: widget.enableTaxes ? 21 : 0,
     );
+    _templateBlocks = _blocksFromLines(_lines);
     _generatedError = null;
     _generated = [];
     _generatedRequested = false;
     _generatedCount = null;
     _loadingGenerated = false;
     _ruleErrorText = null;
+    _initialRuleSnapshot = _buildCurrentRuleSnapshot();
+  }
+
+  Map<String, dynamic> _buildCurrentRuleSnapshot() {
+    final dateFmt = DateFormat('yyyy-MM-dd');
+    return <String, dynamic>{
+      'freq': canonicalFrequencyForApi(_freq),
+      'interval': _intervalCtrl.text.trim(),
+      'startDate': dateFmt.format(_startDate),
+      'startHour': _startTime.hour,
+      'startMinute': _startTime.minute,
+      'endType': _endType,
+      'endDate': _endDate == null ? '' : dateFmt.format(_endDate!),
+      'count': _countCtrl.text.trim(),
+      'billDay': _billDayCtrl.text.trim(),
+      'weekDay': _weekDayCtrl.text.trim(),
+      'timezone': _timezoneCtrl.text.trim(),
+      'invoiceDateMode': _invoiceDateMode,
+      'invoiceDateClampPolicy': _invoiceDateClampPolicy,
+      'invoiceDateDay': _invoiceDateDayCtrl.text.trim(),
+      'invoiceDateOffsetDays': _invoiceDateOffsetDaysCtrl.text.trim(),
+      'exceptions': _exceptions.map(dateFmt.format).toList(growable: false),
+    };
+  }
+
+  bool _hasUnsavedRuleChanges() {
+    return !mapEquals(_initialRuleSnapshot, _buildCurrentRuleSnapshot());
   }
 
   Future<void> _loadGenerated() async {
@@ -274,13 +315,16 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     final fallback = invoice.invoiceNumber.trim().isNotEmpty
         ? invoice.invoiceNumber.trim()
         : invoice.id.trim();
-    return fallback.endsWith('.pdf') ? fallback : 'invoice-$fallback.pdf';
+    final prefix = widget.api is RecurringReceiptsApi ? 'receipt' : 'invoice';
+    return fallback.endsWith('.pdf') ? fallback : '$prefix-$fallback.pdf';
   }
 
   Future<void> _downloadInvoicePdf(Invoice invoice) async {
     if (invoice.id.trim().isEmpty) return;
     try {
-      final r = await _invoicesApi.downloadPdf(invoice.id);
+      final r = widget.api is RecurringReceiptsApi
+          ? await _receiptsApi.downloadPdf(invoice.id)
+          : await _invoicesApi.downloadPdf(invoice.id);
       final fileName = _fileNameFromHeaders(r.headers, invoice);
       await launchFileDownload(
         r.bodyBytes,
@@ -295,11 +339,26 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
   }
 
   Future<Invoice> _loadGeneratedInvoiceDetails(String invoiceId) {
+    if (widget.api is RecurringReceiptsApi) {
+      return Future.value(
+        _generated.firstWhere(
+          (invoice) => invoice.id == invoiceId,
+          orElse: () => Invoice(
+            id: invoiceId,
+            invoiceNumber: '',
+            groupId: widget.group.id,
+            clientId: '',
+          ),
+        ),
+      );
+    }
     return _invoicesApi.getById(invoiceId);
   }
 
   Future<Uint8List> _loadGeneratedInvoicePreviewBytes(String invoiceId) async {
-    final response = await _invoicesApi.previewPdf(invoiceId);
+    final response = widget.api is RecurringReceiptsApi
+        ? await _receiptsApi.previewPdf(invoiceId)
+        : await _invoicesApi.previewPdf(invoiceId);
     return InvoiceEditorPdf.validatePdf(response);
   }
 
@@ -345,7 +404,10 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
           : 'Europe/Madrid',
     };
     final canonicalFreq = canonicalFrequencyForApi(_freq);
-    if ((canonicalFreq == recurringFreqMonthly || canonicalFreq == recurringFreqBimensual || canonicalFreq == recurringFreqTrimestral) && billDay != null) {
+    if ((canonicalFreq == recurringFreqMonthly ||
+            canonicalFreq == recurringFreqBimensual ||
+            canonicalFreq == recurringFreqTrimestral) &&
+        billDay != null) {
       rule['billDay'] = billDay;
     } else if (canonicalFreq == recurringFreqWeekly && weekDay != null) {
       rule['billDay'] = weekDay;
@@ -363,10 +425,10 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     return rule;
   }
 
-  Future<void> _saveRule() async {
-    if (_savingRule) return;
+  Future<bool> _saveRule() async {
+    if (_savingRule) return false;
     final id = seriesId(widget.series);
-    if (id.isEmpty) return;
+    if (id.isEmpty) return false;
     setState(() => _savingRule = true);
     try {
       final l = AppLocalizations.of(context)!;
@@ -382,7 +444,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                 : 'Invoice day is required (1-31).';
             _savingRule = false;
           });
-          return;
+          return false;
         }
       }
       if (_invoiceDateMode == 'offset_days') {
@@ -395,7 +457,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                 : 'Offset is required (-365..365).';
             _savingRule = false;
           });
-          return;
+          return false;
         }
       }
       final tzName = _timezoneCtrl.text.trim();
@@ -419,7 +481,9 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       } else if (_endType == 'count' && count != null) {
         payload['count'] = count;
       }
-      if (canonicalFrequencyForApi(_freq) == recurringFreqMonthly || canonicalFrequencyForApi(_freq) == recurringFreqBimensual || canonicalFrequencyForApi(_freq) == recurringFreqTrimestral) {
+      if (canonicalFrequencyForApi(_freq) == recurringFreqMonthly ||
+          canonicalFrequencyForApi(_freq) == recurringFreqBimensual ||
+          canonicalFrequencyForApi(_freq) == recurringFreqTrimestral) {
         payload['billDay'] = int.tryParse(_billDayCtrl.text.trim());
       } else if (canonicalFrequencyForApi(_freq) == recurringFreqWeekly) {
         payload['billDay'] = int.tryParse(_weekDayCtrl.text.trim());
@@ -430,8 +494,9 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
             .toList();
       }
       await widget.api.update(id, payload);
-      widget.onUpdated();
-      if (!mounted) return;
+      _initialRuleSnapshot = _buildCurrentRuleSnapshot();
+      await widget.onUpdated();
+      if (!mounted) return true;
       setState(() => _ruleErrorText = null);
       final locale = Localizations.localeOf(context).languageCode;
       final successText = locale.toLowerCase().startsWith('es')
@@ -440,16 +505,93 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(successText)),
       );
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       if (e.toString().contains('(400)')) {
         setState(() => _ruleErrorText = e.toString());
       }
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.toString())));
+      return false;
     } finally {
       if (mounted) setState(() => _savingRule = false);
     }
+  }
+
+  List<InvoiceBlockDraft> _blocksFromLines(List<LineDraft> lines) {
+    final blocks = lines
+        .map(
+          (line) => InvoiceBlockDraft(
+            type: 'item',
+            sku: isInvoiceUnitCode(line.sku) ? line.sku : null,
+            conceptItems: cleanInvoiceConceptItems(
+              line.conceptItems,
+              staleSku: line.sku,
+            ),
+            conceptTitle: invoiceConceptTitleFrom(
+              conceptTitle: line.conceptTitle,
+              sku: line.sku,
+            ),
+            serviceDate: cleanInvoiceServiceDate(line.serviceDate),
+            isCompositeConcept: line.isCompositeConcept,
+            description: line.description.text,
+            qty: (line.quantity ?? 1).toString(),
+            unitPrice: (line.unitPrice ?? 0).toString(),
+            taxRate: (line.taxRate ?? (widget.enableTaxes ? 21 : 0)).toString(),
+            isBillable: true,
+          ),
+        )
+        .toList(growable: true);
+    if (blocks.isEmpty) {
+      blocks.add(InvoiceBlockDraft.item());
+    }
+    return blocks;
+  }
+
+  List<Map<String, dynamic>> _templateLinesPayload() {
+    var position = 1;
+    return _templateBlocks
+        .where((block) => block.hasBillableContent)
+        .map((block) {
+      final description = block.description.text.trim().isNotEmpty
+          ? block.description.text.trim()
+          : block.title.text.trim();
+      final sku = block.sku.text.trim();
+      final conceptItems = cleanInvoiceConceptItems(
+        block.conceptItems,
+        staleSku: sku,
+      );
+      final conceptTitle = invoiceConceptTitleFrom(
+        conceptTitle: block.conceptTitle,
+        sku: sku,
+      );
+      return <String, dynamic>{
+        'position': position++,
+        'description': description,
+        if (sku.isNotEmpty && isInvoiceUnitCode(sku)) 'sku': sku,
+        if (conceptTitle != null) 'conceptTitle': conceptTitle,
+        if (conceptItems != null) 'conceptItems': conceptItems,
+        if (block.serviceDate != null)
+          'serviceDate': cleanInvoiceServiceDate(block.serviceDate),
+        if (block.isCompositeConcept != null)
+          'isCompositeConcept': block.isCompositeConcept
+        else if ((conceptItems?.length ?? 0) > 1)
+          'isCompositeConcept': true,
+        'quantity': block.qty ?? 1,
+        if (block.unitCtrl.text.trim().isNotEmpty)
+          'unit': block.unitCtrl.text.trim(),
+        'unitPrice': block.unitPrice ?? 0,
+        'taxRate': widget.enableTaxes ? (block.taxRate ?? 21) : 0,
+      };
+    }).toList(growable: false);
+  }
+
+  List<Map<String, dynamic>> _templateBlocksPayload() {
+    return _templateBlocks
+        .where((block) => block.hasBillableContent)
+        .map((block) => block.toBlock().toJson())
+        .toList(growable: false);
   }
 
   Future<void> _saveTemplate() async {
@@ -467,15 +609,8 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     setState(() => _savingTemplate = true);
     final discountPayload = _buildDiscountPayload();
     final payload = {
-      'lines': _lines
-          .map((line) => {
-                'position': line.position,
-                'description': line.description.text.trim(),
-                'quantity': line.quantity ?? 1,
-                'unitPrice': line.unitPrice ?? 0,
-                'taxRate': widget.enableTaxes ? (line.taxRate ?? 21) : 0,
-              })
-          .toList(),
+      'lines': _templateLinesPayload(),
+      'blocks': _templateBlocksPayload(),
       'totals': {
         'subtotal': _subtotal,
         'taxTotal': _tax,
@@ -491,7 +626,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     }
     try {
       await widget.api.update(id, payload);
-      widget.onUpdated();
+      await widget.onUpdated();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -501,16 +636,16 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     }
   }
 
-  num _lineSubtotal(LineDraft line) {
-    final qty = line.quantity ?? 1;
-    final price = line.unitPrice ?? 0;
+  num _blockSubtotal(InvoiceBlockDraft block) {
+    final qty = block.qty ?? 1;
+    final price = block.unitPrice ?? 0;
     return qty * price;
   }
 
-  num _lineTax(LineDraft line) {
+  num _blockTax(InvoiceBlockDraft block) {
     if (!widget.enableTaxes) return 0;
-    final taxRate = line.taxRate ?? 21;
-    return _lineSubtotal(line) * (taxRate / 100);
+    final taxRate = block.taxRate ?? 21;
+    return _blockSubtotal(block) * (taxRate / 100);
   }
 
   num? _tryParseDiscountInput(String raw) {
@@ -560,9 +695,12 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     return _discountAmountErrorText(l) ?? _discountPercentErrorText(l);
   }
 
-  num get _rawSubtotal =>
-      _lines.fold<num>(0, (sum, l) => sum + _lineSubtotal(l));
-  num get _rawTax => _lines.fold<num>(0, (sum, l) => sum + _lineTax(l));
+  num get _rawSubtotal => _templateBlocks
+      .where((block) => block.hasBillableContent)
+      .fold<num>(0, (sum, block) => sum + _blockSubtotal(block));
+  num get _rawTax => _templateBlocks
+      .where((block) => block.hasBillableContent)
+      .fold<num>(0, (sum, block) => sum + _blockTax(block));
 
   num get _discountAmountValue {
     final v = _tryParseDiscountInput(_discountAmountCtrl.text) ?? 0;
@@ -646,22 +784,34 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final rule = widget.series['rule'] as Map?;
     final status = (widget.series['status'] ?? 'active').toString();
-    final rawClientName =
-        (widget.series['clientName'] ?? widget.series['client']?['name'] ?? '')
-            .toString()
-            .trim();
-    final seriesClientId =
-        (widget.series['clientId'] ?? widget.series['client']?['id'] ?? '')
-            .toString()
-            .trim();
+    String pickClientName() {
+      final candidates = [
+        widget.series['clientName'],
+        widget.series['client']?['name'],
+        widget.series['billingName'],
+        (widget.series['rule'] as Map?)?['clientName'],
+      ];
+      for (final candidate in candidates) {
+        final value = (candidate ?? '').toString().trim();
+        if (value.isNotEmpty) return value;
+      }
+      return '';
+    }
+
+    final rawClientName = pickClientName();
+    final seriesClientId = (widget.series['clientId'] ??
+            widget.series['client']?['id'] ??
+            (widget.series['rule'] as Map?)?['clientId'] ??
+            '')
+        .toString()
+        .trim();
     final fallbackClient = widget.clients.where((c) => c.id == seriesClientId);
     final resolvedClientName = rawClientName.isNotEmpty
         ? rawClientName
-        : (fallbackClient.isNotEmpty ? fallbackClient.first.name : '-');
-    final nextRun = parseDate(widget.series['nextRunAt']);
-    final recurrenceLabel = ruleSummary(rule, l);
+        : (fallbackClient.isNotEmpty
+            ? fallbackClient.first.name
+            : l.unknownClient);
     final issuePolicySummary = recurringIssueDatePolicySummary({
       ...widget.series,
       'invoiceDateMode': _invoiceDateMode,
@@ -674,9 +824,6 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       widget.series,
       l,
     );
-    final nextRunLabel = nextRun == null
-        ? '${l.recurringInvoicesNextRunLabel}: -'
-        : '${l.recurringInvoicesNextRunLabel}: ${DateFormat.yMMMd(l.localeName).add_Hm().format(nextRun)}';
     final isPaused = status.toLowerCase() == 'paused';
     final timezoneLabel = timezoneLabelFrom(
       _timezoneCtrl.text.trim().isEmpty
@@ -688,38 +835,118 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         seriesId(widget.series),
         {'status': isPaused ? 'active' : 'paused'},
       );
-      widget.onUpdated();
+      await widget.onUpdated();
     }
 
     Future<void> handleCancel() async {
+      final isEs = l.localeName.toLowerCase().startsWith('es');
+      final messenger = ScaffoldMessenger.of(context);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          icon: const Icon(Icons.cancel_outlined, size: 28),
+          title: Text(l.recurringInvoicesCancelCta),
+          content: Text(
+            isEs
+                ? '¿Cancelar esta serie recurrente? Esta acción no se puede deshacer.'
+                : 'Cancel this recurring series? This cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+              child: Text(isEs ? 'Sí, cancelar' : 'Yes, cancel'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
       try {
         await widget.api.cancel(seriesId(widget.series));
-        widget.onUpdated();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              isEs
+                  ? 'Recurrencia cancelada correctamente'
+                  : 'Recurrence cancelled successfully',
+            ),
+          ),
+        );
+        if (mounted) widget.onBack();
       } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text(e.toString())),
         );
       }
     }
 
     Future<void> handleRunNow() async {
+      final messenger = ScaffoldMessenger.of(context);
       try {
+        final l = AppLocalizations.of(context)!;
+        final isEs = l.localeName.toLowerCase().startsWith('es');
+        if (_hasUnsavedRuleChanges()) {
+          final shouldSaveAndRun = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: Text(isEs
+                      ? 'Guardar antes de ejecutar'
+                      : 'Save before running'),
+                  content: Text(
+                    isEs
+                        ? 'Esta regla tiene cambios sin guardar. Guarda la regla antes de ejecutar para usar la configuracion actual.'
+                        : 'This rule has unsaved changes. Save the rule before running to use the current configuration.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      child: Text(isEs ? 'Guardar y ejecutar' : 'Save and run'),
+                    ),
+                  ],
+                ),
+              ) ??
+              false;
+          if (!shouldSaveAndRun || !mounted) return;
+          final saved = await _saveRule();
+          if (!saved || !mounted) return;
+        }
         final result = await widget.api.run();
         if (!mounted) return;
         final created = result['created']?.toString() ?? '0';
-        ScaffoldMessenger.of(context).showSnackBar(
+        final isReceiptFlow = widget.api is RecurringReceiptsApi;
+        final zeroMessage = isReceiptFlow
+            ? (isEs
+                ? 'No habia recibos pendientes para generar con la configuracion guardada.'
+                : 'No pending receipts to generate with the saved configuration.')
+            : l.recurringInvoicesNoRunsSnack;
+        final createdMessage = isReceiptFlow
+            ? (isEs
+                ? 'Recibos generados: $created'
+                : 'Receipts created: $created')
+            : l.recurringInvoicesRunCreatedSnack(created);
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
-              created == '0'
-                  ? l.recurringInvoicesNoRunsSnack
-                  : l.recurringInvoicesRunCreatedSnack(created),
+              created == '0' ? zeroMessage : createdMessage,
             ),
           ),
         );
+        await widget.onUpdated();
+        await _loadGenerated();
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text(e.toString())),
         );
       }
@@ -779,131 +1006,73 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         title: l.recurringInvoicesTitle,
         onBack: widget.onBack,
         showTab: true,
-        contentTopPadding: 4,
+        contentTopPadding: 56,
         actions: [
-          SeriesStatusPill(status: status, iconOnly: true),
-          Tooltip(
-            message: l.recurringInvoicesPreviewCta,
-            child: OutlinedButton(
-              onPressed: () =>
-                  previewSeries(context, widget.series, widget.api),
-              style: OutlinedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(40, 36),
-              ),
-              child: const Icon(Icons.calendar_today_outlined, size: 18),
-            ),
+          _RecurringDetailActionBar(
+            status: status,
+            onPreview: () => previewSeries(context, widget.series, widget.api),
+            previewTooltip: l.recurringInvoicesPreviewCta,
+            canManage: widget.canManage,
+            isPaused: isPaused,
+            onTogglePause: handleTogglePause,
+            togglePauseTooltip: isPaused
+                ? l.recurringInvoicesResumeCta
+                : l.recurringInvoicesPauseCta,
+            onCancel: handleCancel,
+            cancelTooltip: l.recurringInvoicesCancelCta,
+            onRunNow: handleRunNow,
+            runNowTooltip: l.recurringInvoicesRunNowCta,
           ),
-          if (widget.canManage)
-            Tooltip(
-              message: isPaused
-                  ? l.recurringInvoicesResumeCta
-                  : l.recurringInvoicesPauseCta,
-              child: OutlinedButton(
-                onPressed: handleTogglePause,
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(40, 36),
-                ),
-                child: Icon(
-                  isPaused
-                      ? Icons.play_circle_outline
-                      : Icons.pause_circle_outline,
-                  size: 18,
-                ),
-              ),
-            ),
-          if (widget.canManage)
-            Tooltip(
-              message: l.recurringInvoicesCancelCta,
-              child: FilledButton(
-                onPressed: handleCancel,
-                style: FilledButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(40, 36),
-                  foregroundColor: cs.onErrorContainer,
-                  backgroundColor: cs.errorContainer,
-                ),
-                child: const Icon(Icons.cancel_outlined, size: 18),
-              ),
-            ),
-          if (widget.canManage)
-            Tooltip(
-              message: l.recurringInvoicesRunNowCta,
-              child: FilledButton(
-                onPressed: handleRunNow,
-                style: FilledButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(40, 36),
-                ),
-                child: const Icon(Icons.play_arrow_outlined, size: 18),
-              ),
-            ),
         ],
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              RecurringDetailHeader(
-                title: resolvedClientName,
-                status: status,
-                showStatusPill: false,
-                onBack: null,
-                backTooltip: l.recurringInvoicesBackCta,
-                infoTooltip: l.recurringInvoicesChangesNote,
-                recurrenceLabel: recurrenceLabel,
-                nextRunLabel: nextRunLabel,
-                previewLabel: l.recurringInvoicesPreviewCta,
-                onPreview: () =>
-                    previewSeries(context, widget.series, widget.api),
-                canManage: widget.canManage,
-                showActionRow: false,
-              ),
-              const SizedBox(height: 25),
               Expanded(
                 child: DefaultTabController(
                   length: 4,
                   child: Column(
                     children: [
-                      TabBar(
-                        labelColor: cs.onPrimaryContainer,
-                        unselectedLabelColor: cs.onSurfaceVariant,
-                        labelStyle: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w800, fontSize: 13),
-                        unselectedLabelStyle:
-                            t.bodySmall.copyWith(fontSize: 13),
-                        indicator: BoxDecoration(
-                          color: cs.primaryContainer,
-                          borderRadius: BorderRadius.circular(999),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: TabBar(
+                          labelColor: cs.onPrimaryContainer,
+                          unselectedLabelColor: cs.onSurfaceVariant,
+                          labelStyle: t.bodySmall.copyWith(
+                              fontWeight: FontWeight.w800, fontSize: 13),
+                          unselectedLabelStyle:
+                              t.bodySmall.copyWith(fontSize: 13),
+                          indicator: BoxDecoration(
+                            color: cs.primaryContainer,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          labelPadding:
+                              const EdgeInsets.symmetric(horizontal: 24),
+                          dividerColor:
+                              cs.outlineVariant.withValues(alpha: 0.4),
+                          tabs: [
+                            Tab(
+                              height: 40,
+                              text: l.recurringInvoicesRuleTab,
+                            ),
+                            Tab(
+                              height: 40,
+                              text: l.recurringInvoicesTemplateTab,
+                            ),
+                            Tab(
+                              height: 40,
+                              text: l.recurringInvoicesGeneratedTab,
+                            ),
+                            Tab(
+                              height: 40,
+                              text: l.recurringInvoicesActivityTab,
+                            ),
+                          ],
                         ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        labelPadding: EdgeInsets.zero,
-                        dividerColor: cs.outlineVariant.withValues(alpha: 0.4),
-                        tabs: [
-                          Tab(
-                            height: 34,
-                            text: l.recurringInvoicesRuleTab,
-                          ),
-                          Tab(
-                            height: 34,
-                            text: l.recurringInvoicesTemplateTab,
-                          ),
-                          Tab(
-                            height: 34,
-                            text: l.recurringInvoicesGeneratedTab,
-                          ),
-                          Tab(
-                            height: 34,
-                            text: l.recurringInvoicesActivityTab,
-                          ),
-                        ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 14),
                       Expanded(
                         child: TabBarView(
                           children: [
@@ -925,7 +1094,8 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                               invoiceDateClampPolicy: _invoiceDateClampPolicy,
                               timezoneLabel: timezoneLabel,
                               exceptions: _exceptions,
-                              onFreqChanged: (v) => setState(() => _freq = canonicalFrequencyForApi(v)),
+                              onFreqChanged: (v) => setState(
+                                  () => _freq = canonicalFrequencyForApi(v)),
                               onPickStart: pickStartDate,
                               onPickStartTime: pickStartTime,
                               onPickEnd: pickEndDate,
@@ -961,22 +1131,19 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                               startReadOnly: true,
                             ),
                             RecurringDetailTemplateTab(
+                              key: ValueKey(
+                                'recurring-template-editor-${seriesId(widget.series)}-${_templateBlocks.length}',
+                              ),
                               currencyCtrl: _currencyCtrl,
                               notesCtrl: _notesCtrl,
-                              lines: _lines,
-                              onLinesChanged: () => setState(() {}),
+                              blocks: _templateBlocks,
+                              onBlocksChanged: () => setState(() {}),
                               discountAmountCtrl: _discountAmountCtrl,
                               discountPercentCtrl: _discountPercentCtrl,
                               useDiscountPercent: _useDiscountPercent,
                               onDiscountModeChanged: _setDiscountModePercent,
-                              rawSubtotal: _rawSubtotal,
                               discountAmount: _effectiveDiscount,
-                              subtotal: _subtotal,
-                              tax: _tax,
                               total: _total,
-                              amountErrorText: _discountAmountErrorText(l),
-                              percentErrorText: _discountPercentErrorText(l),
-                              showTax: widget.enableTaxes,
                               canManage: widget.canManage,
                               saving: _savingTemplate,
                               onSave: _saveTemplate,
@@ -997,6 +1164,8 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                                     _loadGeneratedInvoiceDetails,
                                 onLoadInvoicePreviewBytes:
                                     _loadGeneratedInvoicePreviewBytes,
+                                receiptsMode:
+                                    widget.api is RecurringReceiptsApi,
                               ),
                             ),
                             Center(
@@ -1022,3 +1191,129 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
   }
 }
 
+class _RecurringDetailActionBar extends StatelessWidget {
+  const _RecurringDetailActionBar({
+    required this.status,
+    required this.onPreview,
+    required this.previewTooltip,
+    required this.canManage,
+    required this.isPaused,
+    required this.onTogglePause,
+    required this.togglePauseTooltip,
+    required this.onCancel,
+    required this.cancelTooltip,
+    required this.onRunNow,
+    required this.runNowTooltip,
+  });
+
+  final String status;
+  final VoidCallback onPreview;
+  final String previewTooltip;
+  final bool canManage;
+  final bool isPaused;
+  final VoidCallback onTogglePause;
+  final String togglePauseTooltip;
+  final VoidCallback onCancel;
+  final String cancelTooltip;
+  final VoidCallback onRunNow;
+  final String runNowTooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: SeriesStatusPill(status: status, iconOnly: true),
+          ),
+          _RecurringDetailActionButton(
+            icon: Icons.calendar_today_outlined,
+            tooltip: previewTooltip,
+            onPressed: onPreview,
+          ),
+          if (canManage) ...[
+            _RecurringDetailActionButton(
+              icon: isPaused ? Icons.play_circle_outline : Icons.pause_outlined,
+              tooltip: togglePauseTooltip,
+              onPressed: onTogglePause,
+            ),
+            _RecurringDetailActionButton(
+              icon: Icons.close_rounded,
+              tooltip: cancelTooltip,
+              onPressed: onCancel,
+              foreground: cs.error,
+              background: cs.errorContainer.withValues(alpha: 0.72),
+            ),
+            _RecurringDetailActionButton(
+              icon: Icons.play_arrow_rounded,
+              tooltip: runNowTooltip,
+              onPressed: onRunNow,
+              foreground: cs.onPrimary,
+              background: cs.primary,
+              borderColor: cs.primary,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RecurringDetailActionButton extends StatelessWidget {
+  const _RecurringDetailActionButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.foreground,
+    this.background,
+    this.borderColor,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final Color? foreground;
+  final Color? background;
+  final Color? borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fg = foreground ?? cs.onSurfaceVariant;
+    return Tooltip(
+      message: tooltip,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(999),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: background ?? cs.surface.withValues(alpha: 0.7),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: borderColor ??
+                    cs.outlineVariant.withValues(
+                      alpha: background == null ? 0.55 : 0.0,
+                    ),
+              ),
+            ),
+            child: Icon(icon, size: 17, color: fg),
+          ),
+        ),
+      ),
+    );
+  }
+}

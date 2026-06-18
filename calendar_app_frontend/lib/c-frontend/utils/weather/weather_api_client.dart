@@ -90,17 +90,15 @@ class WeatherApiClient {
   WeatherApiClient({http.Client? httpClient})
       : _httpClient = httpClient ?? http.Client();
 
-  Future<WeatherForecastResponseDto> fetchDeniaForecast() async {
-    final uri = _weatherUri();
+  Future<WeatherForecastResponseDto> fetchDeniaForecast({int? days}) async {
+    final uri = _weatherUri(days: days);
 
     http.Response response;
     try {
-      response = await _httpClient
-          .get(
-            uri,
-            headers: const {'Accept': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 20));
+      response = await _httpClient.get(
+        uri,
+        headers: const {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 20));
     } on TimeoutException {
       throw const WeatherApiException('Weather request timed out');
     } catch (_) {
@@ -132,29 +130,36 @@ class WeatherApiClient {
     return WeatherForecastResponseDto.fromJson(decoded);
   }
 
-  Uri _weatherUri() {
+  Uri _weatherUri({int? days}) {
     final normalizedBase = _normalizeBase(ApiConstants.baseUrl);
     final baseWithApi = normalizedBase.endsWith('/api')
         ? normalizedBase
         : '$normalizedBase/api';
-    return Uri.parse('$baseWithApi/weather/denia');
+    final uri = Uri.parse('$baseWithApi/weather/denia');
+    if (days == null || days <= 0) return uri;
+    return uri.replace(queryParameters: {'days': days.toString()});
   }
 
   String _normalizeBase(String raw) {
     final trimmed = raw.trim();
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+      return trimmed.endsWith('/')
+          ? trimmed.substring(0, trimmed.length - 1)
+          : trimmed;
     }
     if (trimmed.startsWith('/')) {
       final origin = Uri.base.origin;
-      final v = trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+      final v = trimmed.endsWith('/')
+          ? trimmed.substring(0, trimmed.length - 1)
+          : trimmed;
       return '$origin$v';
     }
-    return trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+    return trimmed.endsWith('/')
+        ? trimmed.substring(0, trimmed.length - 1)
+        : trimmed;
   }
 
   void dispose() {
     _httpClient.close();
   }
 }
-

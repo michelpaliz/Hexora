@@ -78,9 +78,47 @@ class AuthApiClientImpl implements IAuthApiClient {
         'newPassword': newPassword,
       }),
     );
-    if (res.statusCode != 200) {
-      throw Exception('Password change failed: ${res.statusCode} ${res.body}');
+    if (res.statusCode == 200) return;
+
+    String message = 'Failed to change password. Please try again.';
+    if (res.body.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map && decoded['message'] != null) {
+          final raw = decoded['message'].toString().trim();
+          if (raw.isNotEmpty) message = raw;
+        }
+      } catch (_) {}
     }
+    throw Exception('HTTP ${res.statusCode}: $message');
+  }
+
+  @override
+  Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$_base/auth/forgot-password'),
+      headers: _headers(),
+      body: jsonEncode({'email': email}),
+    );
+    return _decode(res);
+  }
+
+  @override
+  Future<Map<String, dynamic>> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$_base/auth/reset-password'),
+      headers: _headers(),
+      body: jsonEncode({
+        'token': token,
+        'newPassword': newPassword,
+      }),
+    );
+    return _decode(res);
   }
 
   @override

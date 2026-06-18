@@ -139,6 +139,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
     final typo = AppTypography.of(context);
     final pad = MediaQuery.of(context).viewInsets.bottom + 16;
 
@@ -163,7 +164,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
         ),
         hintText: hintText,
         hintStyle: typo.bodySmall.copyWith(
-          color: cs.onSurfaceVariant.withOpacity(0.6),
+          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
           fontWeight: FontWeight.w500,
         ),
         prefixIcon: prefixIcon,
@@ -171,10 +172,13 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
             ? Icon(Icons.check_circle_rounded, color: cs.secondary)
             : null,
         filled: true,
-        fillColor: isFilled ? cs.primary.withOpacity(0.06) : cs.surface,
+        fillColor: isLight
+            ? Colors.white
+            : (isFilled ? cs.primary.withValues(alpha: 0.06) : cs.surface),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
+          borderSide:
+              BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -205,7 +209,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.12),
+                    color: cs.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -231,7 +235,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
             ),
 
             const SizedBox(height: 14),
-            Divider(height: 1, color: cs.outlineVariant.withOpacity(0.4)),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.4)),
             const SizedBox(height: 14),
 
             // Name
@@ -314,7 +318,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
                       boxShadow: selected
                           ? [
                               BoxShadow(
-                                  color: color.withOpacity(0.35),
+                                  color: color.withValues(alpha: 0.35),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4))
                             ]
@@ -322,7 +326,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
                       border: Border.all(
                         width: selected ? 3 : 1,
                         color: selected
-                            ? cs.onSurface.withOpacity(0.65)
+                            ? cs.onSurface.withValues(alpha: 0.65)
                             : Colors.black12,
                       ),
                     ),

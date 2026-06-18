@@ -9,8 +9,8 @@ OutlineInputBorder buildInputBorder(
   final cs = Theme.of(context).colorScheme;
   return OutlineInputBorder(
     borderRadius: BorderRadius.circular(8),
-    borderSide:
-        BorderSide(color: color ?? cs.outlineVariant.withOpacity(0.5), width: width),
+    borderSide: BorderSide(
+        color: color ?? cs.outlineVariant.withValues(alpha: 0.5), width: width),
   );
 }
 
@@ -25,6 +25,7 @@ InputDecoration buildInputDecoration(
   bool isRequired = false,
 }) {
   final cs = Theme.of(context).colorScheme;
+  final isLight = Theme.of(context).brightness == Brightness.light;
   final typo = AppTypography.of(context);
 
   return InputDecoration(
@@ -44,13 +45,13 @@ InputDecoration buildInputDecoration(
     ),
     hintText: hintText,
     hintStyle: typo.bodySmall.copyWith(
-      color: cs.onSurfaceVariant.withOpacity(0.6),
+      color: cs.onSurfaceVariant.withValues(alpha: 0.6),
       fontWeight: FontWeight.w500,
       fontSize: 12,
     ),
     helperText: helperText,
     helperStyle: typo.bodySmall.copyWith(
-      color: cs.onSurfaceVariant.withOpacity(0.85),
+      color: cs.onSurfaceVariant.withValues(alpha: 0.85),
       fontWeight: FontWeight.w500,
       fontSize: 10,
     ),
@@ -61,7 +62,9 @@ InputDecoration buildInputDecoration(
         : null,
     suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     filled: true,
-    fillColor: isFilled ? cs.primary.withOpacity(0.06) : cs.surface,
+    fillColor: isLight
+        ? Colors.white
+        : (isFilled ? cs.primary.withValues(alpha: 0.06) : cs.surface),
     enabledBorder: buildInputBorder(context),
     focusedBorder: buildInputBorder(
       context,

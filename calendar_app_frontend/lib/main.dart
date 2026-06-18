@@ -1,8 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hexora/app/bootstrapp/app_bootstrap.dart';
 import 'package:hexora/app/init_main.dart';
+import 'package:hexora/app/session/session_expiry_handler.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auht_gate.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/c-frontend/routes/routes.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
@@ -47,9 +49,13 @@ class _AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AuthenticatedHttpClient.setSessionExpiredHandler(
+        SessionExpiryHandler.handle);
+
     return Consumer2<ThemeModeProvider, LocaleProvider>(
       builder: (context, themeModeProvider, localeProvider, _) {
         return MaterialApp(
+          navigatorKey: SessionExpiryHandler.navigatorKey,
           locale: localeProvider.locale,
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
@@ -66,7 +72,15 @@ class _AppShell extends StatelessWidget {
           onGenerateRoute: (settings) {
             final name = settings.name;
             final path = name == null ? null : Uri.tryParse(name)?.path;
-            final builder = routes[path ?? name];
+            String? normalizedPath = path ?? name;
+            if (normalizedPath != null &&
+                normalizedPath.startsWith('/hexora/')) {
+              normalizedPath = normalizedPath.substring('/hexora'.length);
+            }
+            if (normalizedPath == '/hexora') {
+              normalizedPath = '/';
+            }
+            final builder = routes[normalizedPath];
             if (builder != null) {
               return MaterialPageRoute(
                 builder: builder,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/role_meta.dart';
 import 'package:hexora/a-models/group_model/invite/invite.dart';
+import 'package:hexora/a-models/group_model/permissions/group_permissions_response.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/enums/invitation/invitation_status.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
@@ -15,6 +17,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/pr
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/screen/tabs/add_user_tab.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/widgets/add_user_bottom_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/member_row/components/members_role_chip.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/user_profile_popup.dart';
 import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role_labels.dart';
@@ -35,6 +38,7 @@ part 'settings_members_section/settings_members_add_user_part.dart';
 part 'settings_members_section/settings_members_detail_part.dart';
 part 'settings_members_section/settings_members_list_part.dart';
 part 'settings_members_section/settings_members_models_part.dart';
+part 'settings_members_section/settings_members_roles_part.dart';
 part 'settings_members_section/settings_members_tabs_part.dart';
 
 class SettingsMembersSection extends StatefulWidget {
@@ -56,7 +60,10 @@ class SettingsMembersSection extends StatefulWidget {
 class _SettingsMembersSectionState extends State<SettingsMembersSection> {
   bool _seeded = false;
   late Future<List<GroupRole>> _rolesFuture;
-  int _selectedTab = 0; // 0=accepted, 1=pending, 2=notAccepted, 3=addUser
+  Future<GroupPermissionsResponse>? _permissionsFuture;
+  Future<List<RoleHistoryEntry>>? _roleHistoryFuture;
+  int _selectedTab =
+      0; // 0=accepted, 1=pending, 2=notAccepted, 3=addUser, 4=roles
   MemberRef? _selectedMember;
   User? _selectedUser;
   Invitation? _selectedInvitation;
@@ -114,25 +121,29 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
       _selectedUser = null;
       _selectedInvitation = null;
       _loadingUser = true;
+      _roleHistoryFuture = null; // reset for new member
     });
 
     // Look up matching invitation by userId or email
     final invitations = widget.membersVM.invitations;
     final inv = invitations.cast<Invitation?>().firstWhere(
-          (i) =>
-              i!.userId == ref.username ||
-              i.email == ref.username,
+          (i) => i!.userId == ref.username || i.email == ref.username,
           orElse: () => null,
         );
 
     try {
       final repo = context.read<IUserRepository>();
+      final groupRepo = context.read<GroupDomain>().groupRepository;
       final user = await repo.getUserBySelector(ref.username);
       if (mounted) {
         setState(() {
           _selectedUser = user;
           _selectedInvitation = inv;
           _loadingUser = false;
+          _roleHistoryFuture = groupRepo.getMemberRoleHistory(
+            widget.group.id,
+            user.id,
+          );
         });
       }
     } catch (_) {
@@ -148,12 +159,14 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final isLight = Theme.of(context).brightness == Brightness.light;
 
     return Padding(
       padding: const EdgeInsets.only(top: 24),
       child: FolderSectionCard(
         label: l.membersTitle,
         leftTabOffset: 0,
+        backgroundColor: isLight ? Colors.white : null,
         child: _buildContent(context),
       ),
     );
@@ -183,6 +196,8 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
               maxHeight: 400,
               child: _buildAddMembersTab(context),
             )
+          else if (_selectedTab == 4)
+            _buildRolesTab(context)
           else
             _buildSplitPanel(context),
         ],

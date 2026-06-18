@@ -1,4 +1,4 @@
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart';
 
 enum WorkerStatus { active, archived }
 
@@ -30,6 +30,7 @@ class Worker {
   final String? displayName; // optional or override
   final WorkerStatus status; // "active" | "archived"
   final double? defaultHourlyRate;
+  final double? advanceAmount;
   final String? currency; // e.g., "EUR"
   final String? externalId;
   final String? roleTag; // e.g., "barista"
@@ -44,6 +45,7 @@ class Worker {
     this.userId,
     this.displayName,
     this.defaultHourlyRate,
+    this.advanceAmount,
     this.currency,
     this.externalId,
     this.roleTag,
@@ -58,6 +60,7 @@ class Worker {
     required String groupId,
     String? displayName,
     double? defaultHourlyRate,
+    double? advanceAmount,
     String? currency,
     String? externalId,
     String? roleTag,
@@ -70,6 +73,7 @@ class Worker {
         userId: null,
         displayName: displayName,
         defaultHourlyRate: defaultHourlyRate,
+        advanceAmount: advanceAmount,
         currency: currency,
         externalId: externalId,
         roleTag: roleTag,
@@ -80,6 +84,7 @@ class Worker {
     required String groupId,
     required String userId,
     double? defaultHourlyRate,
+    double? advanceAmount,
     String? currency,
     String? roleTag,
     String? notes,
@@ -91,6 +96,7 @@ class Worker {
         userId: userId,
         displayName: null,
         defaultHourlyRate: defaultHourlyRate,
+        advanceAmount: advanceAmount,
         currency: currency,
         externalId: null,
         roleTag: roleTag,
@@ -104,6 +110,7 @@ class Worker {
     String? displayName,
     WorkerStatus? status,
     double? defaultHourlyRate,
+    double? advanceAmount,
     String? currency,
     String? externalId,
     String? roleTag,
@@ -118,6 +125,7 @@ class Worker {
       displayName: displayName ?? this.displayName,
       status: status ?? this.status,
       defaultHourlyRate: defaultHourlyRate ?? this.defaultHourlyRate,
+      advanceAmount: advanceAmount ?? this.advanceAmount,
       currency: currency ?? this.currency,
       externalId: externalId ?? this.externalId,
       roleTag: roleTag ?? this.roleTag,
@@ -135,6 +143,7 @@ class Worker {
       displayName: json['displayName'] as String?,
       status: _statusFromJson(json['status'] as String?),
       defaultHourlyRate: (json['defaultHourlyRate'] as num?)?.toDouble(),
+      advanceAmount: (json['advanceAmount'] as num?)?.toDouble(),
       currency: json['currency'] as String?,
       externalId: json['externalId'] as String?,
       roleTag: json['roleTag'] as String?,
@@ -155,6 +164,7 @@ class Worker {
       if (userId != null) 'userId': userId,
       if (displayName != null) 'displayName': displayName,
       if (defaultHourlyRate != null) 'defaultHourlyRate': defaultHourlyRate,
+      if (advanceAmount != null) 'advanceAmount': advanceAmount,
       if (currency != null) 'currency': currency,
       if (externalId != null) 'externalId': externalId,
       if (roleTag != null) 'roleTag': roleTag,
@@ -169,6 +179,7 @@ class Worker {
       if (displayName != null) 'displayName': displayName,
       'status': _statusToJson(status),
       if (defaultHourlyRate != null) 'defaultHourlyRate': defaultHourlyRate,
+      if (advanceAmount != null) 'advanceAmount': advanceAmount,
       if (currency != null) 'currency': currency,
       if (externalId != null) 'externalId': externalId,
       if (roleTag != null) 'roleTag': roleTag,

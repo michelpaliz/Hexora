@@ -155,6 +155,11 @@ class InvoiceLinesOcrService {
       lineSubtotal: line.lineSubtotal,
       lineTax: line.lineTax,
       lineTotal: line.lineTotal,
+      conceptTitle: line.conceptTitle,
+      conceptItems: line.conceptItems,
+      serviceDate: line.serviceDate,
+      isCompositeConcept: line.isCompositeConcept,
+      parseMethod: line.parseMethod,
     );
     return _linesApi.create(invoiceId, payload);
   }
@@ -200,6 +205,11 @@ class InvoiceLinesOcrService {
           lineSubtotal: line.lineSubtotal,
           lineTax: line.lineTax,
           lineTotal: line.lineTotal,
+          conceptTitle: line.conceptTitle,
+          conceptItems: line.conceptItems,
+          serviceDate: line.serviceDate,
+          isCompositeConcept: line.isCompositeConcept,
+          parseMethod: line.parseMethod,
         );
         await creator(invoiceId, payload);
         success.add(line);

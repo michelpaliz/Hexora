@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -9,6 +10,7 @@ import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/blobUploader/blobServer.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
@@ -72,6 +74,12 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   final List<String> _toList = [];
   final List<String> _ccList = [];
   final List<String> _bccList = [];
+
+  // ── Template picker state ──────────────────────────────────────────────────
+  List<Map<String, dynamic>> _composeTemplates = const [];
+  bool _composeTemplatesLoading = false;
+  String? _selectedComposeTemplateId;
+  String? _selectedComposeTemplateName;
 
   bool _attachInvoicePdf = false;
   bool _includeInvoiceLinks = false;
@@ -393,6 +401,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         attachReceiptPdf: receiptIds.isNotEmpty ? true : null,
         includeInvoiceLinks: hasDocumentIds ? _includeInvoiceLinks : null,
         applyDefaultFooter: true,
+        templateId: _selectedComposeTemplateId,
       );
       await mailDomain.sendMessage(request);
       if (!mounted) return;
@@ -448,12 +457,110 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _attachments.clear();
       _selectedPresupuestoIds.clear();
       _selectedReceiptIds.clear();
+      _selectedComposeTemplateId = null;
+      _selectedComposeTemplateName = null;
     });
   }
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
+    );
+  }
+
+  // ── Template loading & application ────────────────────────────────────────
+
+  Future<void> _loadComposeTemplates() async {
+    final groupId = _currentGroupId();
+    if (groupId == null || groupId.isEmpty) return;
+    setState(() => _composeTemplatesLoading = true);
+    try {
+      final base = ApiConstants.baseUrl.endsWith('/api')
+          ? ApiConstants.baseUrl
+          : '${ApiConstants.baseUrl}/api';
+      final uri = Uri.parse('$base/mail/templates')
+          .replace(queryParameters: {'groupId': groupId});
+      final r = await AuthenticatedHttpClient.get(uri);
+      if (!mounted) return;
+      if (r.statusCode >= 200 && r.statusCode < 300) {
+        final decoded = jsonDecode(r.body);
+        final raw = decoded is List
+            ? decoded
+            : (decoded['items'] ?? decoded['data'] ?? const []);
+        setState(() {
+          _composeTemplates = raw is List
+              ? raw
+                  .whereType<Map>()
+                  .map((e) => e.cast<String, dynamic>())
+                  .toList(growable: false)
+              : const [];
+        });
+      }
+    } catch (_) {
+      // Templates are optional — silently ignore load failures.
+    } finally {
+      if (mounted) setState(() => _composeTemplatesLoading = false);
+    }
+  }
+
+  void _applyComposeTemplate(Map<String, dynamic> template) {
+    final id = (template['id'] ?? template['_id'])?.toString().trim() ?? '';
+    final name = (template['name'] ?? '').toString().trim();
+    final subject = (template['subject'] ?? '').toString().trim();
+    final text = (template['text'] ?? '').toString().trim();
+    if (subject.isNotEmpty) _subjectCtrl.text = subject;
+    // Replace existing content. Use document.length - 1 to preserve the
+    // mandatory trailing newline that Quill always keeps at the end.
+    final docLen = _quillController.document.length;
+    final replaceLen = docLen > 1 ? docLen - 1 : 0;
+    _quillController.replaceText(
+      0,
+      replaceLen,
+      text,
+      TextSelection.collapsed(offset: text.length),
+    );
+    setState(() {
+      _selectedComposeTemplateId = id.isNotEmpty ? id : null;
+      _selectedComposeTemplateName = name.isNotEmpty ? name : null;
+    });
+  }
+
+  Future<void> _showTemplatePicker() async {
+    if (_composeTemplatesLoading) return;
+    if (_composeTemplates.isEmpty) {
+      await _loadComposeTemplates();
+      if (!mounted) return;
+    }
+    if (_composeTemplates.isEmpty) {
+      _showError('No hay plantillas disponibles. Crea una en la sección Templates.');
+      return;
+    }
+    final hasSelected = _selectedComposeTemplateId != null;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 560),
+          child: _ComposeTemplatePicker(
+            templates: _composeTemplates,
+            selectedId: _selectedComposeTemplateId,
+            onSelect: (template) {
+              Navigator.pop(dialogCtx);
+              _applyComposeTemplate(template);
+            },
+            onClear: hasSelected
+                ? () {
+                    Navigator.pop(dialogCtx);
+                    setState(() {
+                      _selectedComposeTemplateId = null;
+                      _selectedComposeTemplateName = null;
+                    });
+                  }
+                : null,
+          ),
+        ),
+      ),
     );
   }
 

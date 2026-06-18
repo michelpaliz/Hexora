@@ -25,6 +25,8 @@ import 'package:hexora/c-frontend/utils/weather/weather_service.dart';
 import 'package:provider/provider.dart';
 
 class CalendarScreenCoordinator {
+  static const String _defaultWeatherLocation = 'Denia';
+  static const int _calendarWeatherForecastDays = 31;
   final BuildContext context;
 
   // Public loading state for the widget to listen to
@@ -66,6 +68,8 @@ class CalendarScreenCoordinator {
     final contentBuilder = EventContentBuilder(colorManager: colorManager);
     _displayManager = EventDisplayManager(null, builder: contentBuilder);
   }
+
+  EventActionManager? get actionManager => _eventActionManager;
 
   void setInlineEditHandler(ValueChanged<Event>? handler) {
     _inlineEditHandler = handler;
@@ -262,6 +266,7 @@ class CalendarScreenCoordinator {
   void dispose() {
     _isDisposed = true;
     SocketManager().off('presence:update');
+    _weatherService.dispose();
     calendarUI?.dispose();
   }
 
@@ -273,16 +278,17 @@ class CalendarScreenCoordinator {
       if (_isDisposed) return;
     }
     if (location == null || location.isEmpty) {
-      calendarUI?.setWeatherForecast(const {});
-      return;
+      location = _defaultWeatherLocation;
     }
 
     if (_lastWeatherLocation == location) {
       // WeatherService caches per location; still call to refresh TTL
     }
 
-    final forecast =
-        await _weatherService.fetchForecastSummaries(location: location);
+    final forecast = await _weatherService.fetchForecastSummaries(
+      location: location,
+      days: _calendarWeatherForecastDays,
+    );
     if (_isDisposed) return;
     calendarUI?.setWeatherForecast(forecast);
     _lastWeatherLocation = location;

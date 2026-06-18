@@ -5,8 +5,9 @@ import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_card_widget/widgets/build_group_card.dart';
 import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
-class GroupCardTile extends StatelessWidget {
+class GroupCardTile extends StatefulWidget {
   const GroupCardTile({
     super.key,
     required this.group,
@@ -23,155 +24,179 @@ class GroupCardTile extends StatelessWidget {
   final void Function(String?) updateRole;
 
   @override
+  State<GroupCardTile> createState() => _GroupCardTileState();
+}
+
+class _GroupCardTileState extends State<GroupCardTile> {
+  bool _hovering = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final loc = AppLocalizations.of(context)!;
 
-    // Compact formatted created date
-    final createdLabel =
-        MaterialLocalizations.of(context).formatMediumDate(group.createdTime);
+    final createdLabel = MaterialLocalizations.of(context).formatMediumDate(
+      widget.group.createdTime,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-      child: Material(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        elevation: 1,
-        shadowColor: cs.shadow.withOpacity(0.1),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            showProfileAlertDialog(
-              context,
-              group,
-              /* owner */ currentUser,
-              currentUser,
-              userDomain,
-              groupDomain,
-              updateRole,
-            );
-          },
-          onHover: (hovering) {},
-          child: Container(
-            padding: const EdgeInsets.all(16),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          scale: _hovering ? 1.005 : 1.0,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  cs.surface,
-                  cs.surfaceContainerHighest.withOpacity(0.3),
-                ],
-              ),
-              border: Border.all(
-                color: cs.outlineVariant.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Group avatar with subtle shadow
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: cs.shadow.withOpacity(0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: AvatarUtils.groupAvatar(
-                        context,
-                        group.photoUrl,
-                        radius: 22,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Text content
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Name with subtle gradient text
-                      Text(
-                        group.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          height: 1.1,
-                          color: cs.onSurface,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-
-                      // Optional description
-                      if (group.description.trim().isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          group.description,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: tt.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant.withOpacity(0.8),
-                            height: 1.4,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 6),
-
-                      // Created date with icon
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_rounded,
-                            size: 12,
-                            color: cs.onSurfaceVariant.withOpacity(0.6),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Created $createdLabel',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: tt.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant.withOpacity(0.7),
-                              height: 1.1,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Modern chevron icon
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: cs.onSurface.withOpacity(0.05),
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 14,
-                    color: cs.onSurfaceVariant.withOpacity(0.7),
-                  ),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.shadow.withValues(alpha: _hovering ? 0.16 : 0.1),
+                  blurRadius: _hovering ? 14 : 10,
+                  offset: Offset(0, _hovering ? 5 : 3),
                 ),
               ],
+            ),
+            child: Material(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  showProfileAlertDialog(
+                    context,
+                    widget.group,
+                    widget.currentUser,
+                    widget.currentUser,
+                    widget.userDomain,
+                    widget.groupDomain,
+                    widget.updateRole,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        cs.surface,
+                        cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: _hovering
+                          ? cs.primary.withValues(alpha: 0.32)
+                          : cs.outlineVariant.withValues(alpha: 0.24),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: cs.shadow.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: AvatarUtils.groupAvatar(
+                              context,
+                              widget.group.photoUrl,
+                              radius: 22,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.group.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                                color: cs.onSurface,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            if (widget.group.description.trim().isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.group.description,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: tt.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant.withValues(alpha: 0.82),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 12,
+                                  color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${loc.createdOn} $createdLabel',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: tt.labelSmall?.copyWith(
+                                    color: cs.onSurfaceVariant.withValues(alpha: 0.72),
+                                    height: 1.1,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _hovering
+                              ? cs.primary.withValues(alpha: 0.14)
+                              : cs.onSurface.withValues(alpha: 0.05),
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: _hovering
+                              ? cs.primary
+                              : cs.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),

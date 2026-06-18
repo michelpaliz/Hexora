@@ -13,6 +13,8 @@ class ClientsListPanel extends StatefulWidget {
   final bool selectedHiddenByFilters;
   final bool hideInactive;
   final VoidCallback onToggleHideInactive;
+  final bool missingCurrentMonthInvoiceOnly;
+  final ValueChanged<bool> onToggleMissingCurrentMonthInvoiceOnly;
   final TextEditingController searchController;
   final VoidCallback onSearchChanged;
   final String? entityFilter;
@@ -35,6 +37,8 @@ class ClientsListPanel extends StatefulWidget {
     required this.selectedHiddenByFilters,
     required this.hideInactive,
     required this.onToggleHideInactive,
+    required this.missingCurrentMonthInvoiceOnly,
+    required this.onToggleMissingCurrentMonthInvoiceOnly,
     required this.searchController,
     required this.onSearchChanged,
     required this.entityFilter,
@@ -59,6 +63,20 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final hasInvoiceFlagData =
+        widget.allClients.any((c) => c.hasCurrentMonthInvoiceFlagData);
+    final missingInvoiceCount = widget.allClients
+        .where((c) => c.missingCurrentMonthInvoice == true)
+        .length;
+    final countsSource = widget.missingCurrentMonthInvoiceOnly
+        ? widget.allClients
+            .where((c) => c.missingCurrentMonthInvoice == true)
+            .toList(growable: false)
+        : widget.allClients;
+    final hasSearch = widget.searchController.text.trim().isNotEmpty;
+    final hasStructuredFilters =
+        (widget.entityFilter ?? '').trim().isNotEmpty ||
+        (widget.propertyFilter ?? '').trim().isNotEmpty;
 
     return Card(
       color: Colors.transparent,
@@ -73,7 +91,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
               onSearchChanged: widget.onSearchChanged,
               searchHint: l.clientSearchHint,
               padding: EdgeInsets.zero,
-              clientsForCounts: widget.allClients,
+              clientsForCounts: countsSource,
               activeCountLabel: l.activeClientsSection,
               inactiveCountLabel: l.statusInactive,
               inactiveValue: widget.hideInactive,
@@ -82,6 +100,22 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
               inactiveLabelOff: l.clientHideInactiveChip,
               countInactiveAsFilter: false,
               clearInactiveOnClear: false,
+              additionalFilters: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  FilterChip(
+                    label: Text(l.clientMissingInvoiceThisMonth),
+                    selected: widget.missingCurrentMonthInvoiceOnly,
+                    onSelected: widget.onToggleMissingCurrentMonthInvoiceOnly,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  if (hasInvoiceFlagData)
+                    _MissingInvoiceCountChip(count: missingInvoiceCount),
+                ],
+              ),
+              extraActiveFilterCount:
+                  widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
               onClearFilters: widget.onClearFilters,
               entityLabel: l.clientEntityTypeLabel,
               entityOptions: widget.entityOptions,
@@ -103,79 +137,106 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                     title: l.noClientsYet,
                     subtitle: l.noClientsYet,
                   )
-                : Column(
-                    children: [
-                      if (widget.selectedHiddenByFilters)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color:
-                                    cs.outlineVariant.withValues(alpha: 0.35),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.filter_alt_outlined,
-                                  size: 18,
-                                  color: cs.onSurfaceVariant,
+                : widget.filteredClients.isEmpty
+                    ? EmptyView(
+                        icon: widget.missingCurrentMonthInvoiceOnly &&
+                                !hasSearch &&
+                                !hasStructuredFilters
+                            ? (hasInvoiceFlagData
+                                ? Icons.verified_outlined
+                                : Icons.hourglass_empty_rounded)
+                            : Icons.search_off_rounded,
+                        title: widget.missingCurrentMonthInvoiceOnly &&
+                                !hasSearch &&
+                                !hasStructuredFilters
+                            ? (hasInvoiceFlagData
+                                ? l.clientAllHaveInvoiceTitle
+                                : l.clientInvoiceStatusUnavailableTitle)
+                            : l.clientNoMatchFiltersTitle,
+                        subtitle: widget.missingCurrentMonthInvoiceOnly &&
+                                !hasSearch &&
+                                !hasStructuredFilters
+                            ? (hasInvoiceFlagData
+                                ? l.clientAllHaveInvoiceDesc
+                                : l.clientInvoiceStatusUnavailableDesc)
+                            : l.clientNoMatchFiltersDesc,
+                      )
+                    : Column(
+                        children: [
+                          if (widget.selectedHiddenByFilters)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    l.clientSelectedHiddenByFilters,
-                                    style: t.bodySmall.copyWith(
-                                      color: cs.onSurfaceVariant,
+                                decoration: BoxDecoration(
+                                  color: Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: cs.outlineVariant.withValues(
+                                      alpha: 0.35,
                                     ),
                                   ),
                                 ),
-                                TextButton(
-                                  onPressed: widget.onClearFilters,
-                                  child: Text(l.clientFiltersClear),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.filter_alt_outlined,
+                                      size: 18,
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        l.clientSelectedHiddenByFilters,
+                                        style: t.bodySmall.copyWith(
+                                          color: cs.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: widget.onClearFilters,
+                                      child: Text(l.clientFiltersClear),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
+                            ),
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: widget.filteredClients.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (_, i) {
+                                final c = widget.filteredClients[i];
+                                final selected =
+                                    widget.selectedClient?.id == c.id;
+
+                                final subtitleParts = <String>[
+                                  c.billing?.legalName ?? (c.email ?? ''),
+                                  if ((c.entityType ?? '').trim().isNotEmpty)
+                                    c.entityType!.trim(),
+                                  if ((c.propertyKind ?? '').trim().isNotEmpty)
+                                    c.propertyKind!.trim(),
+                                ].where((e) => e.trim().isNotEmpty).toList();
+
+                                return _ClientRow(
+                                  client: c,
+                                  selected: selected,
+                                  title: c.name,
+                                  subtitle: subtitleParts.isEmpty
+                                      ? null
+                                      : subtitleParts.join(' | '),
+                                  onTap: () => widget.onSelectClient(c),
+                                );
+                              },
                             ),
                           ),
-                        ),
-                      Expanded(
-                        child: ListView.separated(
-                          itemCount: widget.filteredClients.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (_, i) {
-                            final c = widget.filteredClients[i];
-                            final selected = widget.selectedClient?.id == c.id;
-
-                            final subtitleParts = <String>[
-                              c.billing?.legalName ?? (c.email ?? ''),
-                              if ((c.entityType ?? '').trim().isNotEmpty)
-                                c.entityType!.trim(),
-                              if ((c.propertyKind ?? '').trim().isNotEmpty)
-                                c.propertyKind!.trim(),
-                            ].where((e) => e.trim().isNotEmpty).toList();
-
-                            return _ClientRow(
-                              client: c,
-                              selected: selected,
-                              title: c.name,
-                              subtitle: subtitleParts.isEmpty
-                                  ? null
-                                  : subtitleParts.join(' • '),
-                              onTap: () => widget.onSelectClient(c),
-                            );
-                          },
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
           ),
         ],
       ),
@@ -223,60 +284,164 @@ class _ClientRow extends StatelessWidget {
     required this.onTap,
   });
 
+  static const List<Color> _avatarPalette = [
+    Color(0xFF5C6BC0),
+    Color(0xFF26A69A),
+    Color(0xFFEF5350),
+    Color(0xFFAB47BC),
+    Color(0xFF42A5F5),
+    Color(0xFF66BB6A),
+    Color(0xFFFFA726),
+    Color(0xFF8D6E63),
+  ];
+
+  Color _avatarColor() {
+    if (title.trim().isEmpty) return _avatarPalette[0];
+    return _avatarPalette[title.codeUnitAt(0) % _avatarPalette.length];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    // Use a stable, opaque selection background to avoid contrast issues with
-    // custom palettes; derive text colors from the actual background.
     final titleColor = ThemeColors.textPrimary(context);
     final subtitleColor = ThemeColors.textSecondary(context);
+    final avatarBg = selected ? cs.primaryContainer : _avatarColor();
+    final avatarFg = selected ? cs.onPrimaryContainer : Colors.white;
+    final initial = title.trim().isEmpty ? '?' : title.trim()[0].toUpperCase();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListItemCard(
         leading: CircleAvatar(
-          radius: 16,
-          backgroundColor: selected
-              ? cs.primaryContainer.withValues(alpha: 0.6)
-              : Colors.transparent,
+          radius: 17,
+          backgroundColor: avatarBg,
           child: Text(
-            title.trim().isEmpty ? '?' : title.trim().substring(0, 1),
+            initial,
             style: t.bodySmall.copyWith(
-              fontWeight: FontWeight.w900,
-              color: selected
-                  ? cs.onPrimaryContainer
-                  : ThemeColors.textSecondary(context),
+              fontWeight: FontWeight.w700,
+              color: avatarFg,
+              fontSize: 13,
             ),
           ),
         ),
         titleWidget: _HorizontalText(
           title,
           style: t.bodyMedium.copyWith(
-            fontWeight: selected ? FontWeight.w900 : FontWeight.w800,
+            fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
             color: titleColor,
           ),
         ),
-        subtitleWidget: subtitle == null
-            ? null
-            : _HorizontalText(
+        subtitleWidget: subtitle != null
+            ? _HorizontalText(
                 subtitle!,
                 style: t.bodySmall.copyWith(
                   color: subtitleColor,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                 ),
-              ),
-        trailing: !client.isActive
-            ? Icon(
-                Icons.pause_circle_outline,
-                size: 18,
-                color: cs.onSurfaceVariant,
               )
             : null,
+        trailing: _buildTrailing(context, l, cs),
         selected: selected,
         showLeadingStripe: true,
         onTap: onTap,
+      ),
+    );
+  }
+
+  Widget? _buildTrailing(
+    BuildContext context,
+    AppLocalizations l,
+    ColorScheme cs,
+  ) {
+    final parts = <Widget>[];
+
+    if (client.hasCurrentMonthInvoiceFlagData) {
+      final isMissing = client.missingCurrentMonthInvoice == true;
+      final icon =
+          isMissing ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded;
+      final color = isMissing ? cs.error : cs.secondary;
+      final count = client.currentMonthInvoiceCount;
+      final tooltip = count != null
+          ? l.clientInvoiceCountThisMonth(count)
+          : (isMissing ? l.clientMissingInvoiceThisMonth : l.clientInvoiceAllGood);
+
+      parts.add(
+        Tooltip(
+          message: tooltip,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: color),
+              if (count != null) ...[
+                const SizedBox(width: 3),
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!client.isActive) {
+      if (parts.isNotEmpty) parts.add(const SizedBox(width: 6));
+      parts.add(
+        Tooltip(
+          message: l.statusInactive,
+          child: Icon(
+            Icons.pause_circle_outline,
+            size: 15,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+        ),
+      );
+    }
+
+    if (parts.isEmpty) return null;
+    return Row(mainAxisSize: MainAxisSize.min, children: parts);
+  }
+
+}
+
+class _MissingInvoiceCountChip extends StatelessWidget {
+  const _MissingInvoiceCountChip({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: cs.errorContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 12, color: cs.onErrorContainer),
+          const SizedBox(width: 4),
+          Text(
+            l.clientMissingCountThisMonth(count),
+            style: t.bodySmall.copyWith(
+              color: cs.onErrorContainer,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

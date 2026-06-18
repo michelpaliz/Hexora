@@ -82,20 +82,29 @@ class InvoiceLinkDialogSteps {
               separatorBuilder: (_, __) => const SizedBox(height: 6),
               itemBuilder: (_, index) {
                 final provider = filtered[index];
-                final id = (provider['id'] ?? provider['_id'] ?? provider['providerId'])?.toString() ?? '';
+                final id = (provider['id'] ??
+                            provider['_id'] ??
+                            provider['providerId'])
+                        ?.toString() ??
+                    '';
                 final name = provider['name']?.toString() ?? '-';
-                final selected = id.isNotEmpty && id == state.selectedProviderId;
+                final selected =
+                    id.isNotEmpty && id == state.selectedProviderId;
                 return ListTile(
                   dense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                     side: BorderSide(
-                      color: selected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.45),
+                      color: selected
+                          ? cs.primary
+                          : cs.outlineVariant.withValues(alpha: 0.45),
                     ),
                   ),
-                  title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(id.isEmpty ? '-' : id, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title:
+                      Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(id.isEmpty ? '-' : id,
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
                   onTap: () => state.selectProvider(id, onStateChanged),
                 );
               },
@@ -117,7 +126,7 @@ class InvoiceLinkDialogSteps {
       selectedClientId: state.selectedClientId,
       onClientChanged: (value) => state.selectClient(value, onStateChanged),
       useDefaultPropertyKind: false,
-      maxListHeight: stacked ? 160 : 240,
+      maxListHeight: stacked ? 320 : 520,
     );
   }
 
@@ -133,179 +142,493 @@ class InvoiceLinkDialogSteps {
     }
 
     final invoices = state.invoiceCacheByClient[clientId] ?? const <Invoice>[];
-    final issued =
-        invoices.where((i) => (i.status ?? '') == 'issued').toList();
-    final drafts =
-        invoices.where((i) => (i.status ?? '') != 'issued').toList();
+    final issued = invoices.where((i) => (i.status ?? '') == 'issued').toList();
+    final drafts = invoices.where((i) => (i.status ?? '') != 'issued').toList();
     final totalSelected = state.selectedInvoiceIds.length;
+    var clientName = '';
+    for (final client in pickerClients) {
+      if (client.id == clientId) {
+        clientName = client.name.trim();
+        break;
+      }
+    }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Manual ID input
-        TextField(
-          controller: state.idController,
-          onChanged: (_) => onStateChanged(),
-          decoration: const InputDecoration(
-            hintText: 'IDs separados por comas',
-            prefixIcon: Icon(Icons.search_rounded, size: 18),
-            border: OutlineInputBorder(),
-            isDense: true,
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Selection count badge
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bounded = constraints.maxHeight.isFinite;
+        final listHeight = bounded
+            ? (constraints.maxHeight - 142).clamp(240.0, 560.0).toDouble()
+            : (MediaQuery.of(context).size.height * (stacked ? 0.36 : 0.56))
+                .clamp(240.0, stacked ? 360.0 : 560.0)
+                .toDouble();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: bounded ? MainAxisSize.max : MainAxisSize.min,
           children: [
-            Text(
-              'IDs de factura: $totalSelected',
-              style: TextStyle(
-                color: totalSelected > 0 ? cs.primary : cs.onSurfaceVariant,
-                fontSize: 12,
-                fontWeight: totalSelected > 0
-                    ? FontWeight.w700
-                    : FontWeight.normal,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: cs.primary.withValues(alpha: 0.18),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.receipt_long_outlined,
+                          size: 18,
+                          color: cs.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              clientName.isEmpty
+                                  ? 'Selecciona documentos'
+                                  : clientName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: cs.onSurface,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              totalSelected == 0
+                                  ? 'Elige una factura o recibo para vincular.'
+                                  : '$totalSelected documento(s) seleccionado(s)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: totalSelected > 0
+                                    ? cs.primary
+                                    : cs.onSurfaceVariant,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (totalSelected > 0)
+                        TextButton.icon(
+                          onPressed: () {
+                            state.selectedInvoiceIds.clear();
+                            state.idController.clear();
+                            onStateChanged();
+                          },
+                          icon: const Icon(Icons.close_rounded, size: 16),
+                          label: const Text('Limpiar'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: cs.error,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: state.idController,
+                    onChanged: (_) => onStateChanged(),
+                    decoration: InputDecoration(
+                      hintText: 'IDs separados por comas',
+                      prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                      filled: true,
+                      fillColor:
+                          cs.surfaceContainerHighest.withValues(alpha: 0.24),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: 0.45),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: cs.primary, width: 1.4),
+                      ),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 13,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            if (totalSelected > 0) ...[
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () {
-                  state.selectedInvoiceIds.clear();
-                  state.idController.clear();
-                  onStateChanged();
-                },
-                child: Text(
-                  'Limpiar',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: cs.error,
-                      decoration: TextDecoration.underline),
-                ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Two-column layout
-        if (invoices.isEmpty)
-          _buildInfoContainer(l.noInvoicesYet)
-        else
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildInvoiceColumn(
-                  'IDs de factura',
-                  issued.isNotEmpty ? issued : invoices,
-                  onStateChanged,
-                ),
-              ),
-              if (drafts.isNotEmpty) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildInvoiceColumn(
-                    'Recibos',
-                    drafts,
-                    onStateChanged,
+            const SizedBox(height: 12),
+            // Two-column layout
+            if (invoices.isEmpty)
+              _buildInfoContainer(l.noInvoicesYet)
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _buildInvoiceColumn(
+                      'IDs de factura',
+                      issued.isNotEmpty ? issued : invoices,
+                      onStateChanged,
+                      listHeight: listHeight,
+                    ),
                   ),
-                ),
-              ],
-            ],
-          ),
-      ],
+                  if (drafts.isNotEmpty) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildInvoiceColumn(
+                        'Recibos',
+                        drafts,
+                        onStateChanged,
+                        listHeight: listHeight,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildInvoiceColumn(
     String title,
     List<Invoice> invoices,
-    VoidCallback onStateChanged,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: cs.onSurface,
+    VoidCallback onStateChanged, {
+    required double listHeight,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.11),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.26),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 2, right: 2, bottom: 8),
+            child: Row(
+              children: [
+                Icon(
+                  title == 'Recibos'
+                      ? Icons.request_quote_outlined
+                      : Icons.receipt_long_outlined,
+                  size: 16,
+                  color: cs.primary,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${invoices.length}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: cs.primary,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        ...invoices.map((inv) => _buildInvoiceCheckRow(inv, onStateChanged)),
-      ],
+          SizedBox(
+            height: listHeight,
+            child: ListView.builder(
+              itemCount: invoices.length,
+              itemBuilder: (_, index) =>
+                  _buildInvoiceCheckRow(invoices[index], onStateChanged),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  String _invoiceStatusLabel(String? raw) {
+    switch ((raw ?? '').trim().toLowerCase()) {
+      case 'issued':
+        return l.statusIssued;
+      case 'draft':
+        return l.statusDraft;
+      case 'paid':
+        return l.statusPaid;
+      case 'cancelled':
+      case 'canceled':
+        return l.statusCancelled;
+      default:
+        final value = (raw ?? '').trim();
+        return value.isEmpty ? l.statusDraft : value;
+    }
+  }
+
+  String _invoiceAmountLabel(Invoice inv) {
+    final formatted = inv.totalFormatted?.trim() ?? '';
+    if (formatted.isNotEmpty) return formatted;
+    final total = inv.total;
+    if (total == null) return '';
+    final parts = total.toStringAsFixed(2).split('.');
+    final whole = parts.first;
+    final buffer = StringBuffer();
+    for (var i = 0; i < whole.length; i++) {
+      final left = whole.length - i;
+      buffer.write(whole[i]);
+      if (left > 1 && left % 3 == 1) buffer.write('.');
+    }
+    final currency = (inv.currency?.trim().isNotEmpty ?? false)
+        ? inv.currency!.trim()
+        : 'EUR';
+    return '${buffer.toString()},${parts.last} $currency';
+  }
+
+  String _invoiceDateLabel(DateTime? date) {
+    if (date == null) return '';
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    final hasTime = date.hour != 0 || date.minute != 0;
+    return hasTime
+        ? '${date.day}/${date.month}/${date.year} - $hh:$mm'
+        : '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _invoiceLinkLabel(Invoice inv) {
+    final rawLabel = inv.linkStatusLabel?.trim() ?? '';
+    if (rawLabel.isNotEmpty) return rawLabel;
+    if (!inv.isLinkedResolved) return 'Sin vincular';
+    final count = inv.linkedEntriesCountSafe;
+    return count > 1 ? 'Vinculada ($count)' : 'Vinculada';
   }
 
   Widget _buildInvoiceCheckRow(Invoice inv, VoidCallback onStateChanged) {
     final selected = state.selectedInvoiceIds.contains(inv.id);
     final displayNum =
         inv.invoiceNumber.trim().isEmpty ? inv.id : inv.invoiceNumber;
-    final status = inv.status ?? 'draft';
-    final shortId =
-        inv.id.length > 22 ? '${inv.id.substring(0, 22)}…' : inv.id;
+    final status = _invoiceStatusLabel(inv.status);
+    final linked = inv.isLinkedResolved;
+
+    final clientName = inv.billingName?.trim().isNotEmpty == true
+        ? inv.billingName!.trim()
+        : (inv.clientSnapshot?.legalName?.trim() ?? '');
+    final amount = _invoiceAmountLabel(inv);
+    final issueDate = _invoiceDateLabel(inv.issueDate);
 
     return InkWell(
       onTap: () => state.toggleInvoiceSelection(inv.id, onStateChanged),
-      borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 2),
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.fromLTRB(9, 8, 8, 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? cs.primary.withValues(alpha: 0.16)
+              : cs.surfaceContainerHighest.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected
+                ? cs.primary.withValues(alpha: 0.56)
+                : cs.outlineVariant.withValues(alpha: 0.24),
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: cs.primary.withValues(alpha: 0.08),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: Checkbox(
-                value: selected,
-                onChanged: (_) =>
-                    state.toggleInvoiceSelection(inv.id, onStateChanged),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
+            Checkbox(
+              value: selected,
+              onChanged: (_) =>
+                  state.toggleInvoiceSelection(inv.id, onStateChanged),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    displayNum,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          displayNum,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: cs.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (amount.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          amount,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: selected ? cs.primary : cs.onSurface,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  Text(
-                    '$status · $shortId',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 5),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 5,
+                    children: [
+                      _invoiceMetaChip(
+                        icon: Icons.verified_outlined,
+                        label: status,
+                        selected: selected,
+                      ),
+                      _invoiceMetaChip(
+                        icon: linked
+                            ? Icons.link_rounded
+                            : Icons.link_off_outlined,
+                        label: _invoiceLinkLabel(inv),
+                        selected: selected,
+                        color: linked ? Colors.green : Colors.orange,
+                      ),
+                      if (issueDate.isNotEmpty)
+                        _invoiceMetaChip(
+                          icon: Icons.event_outlined,
+                          label: issueDate,
+                          selected: selected,
+                        ),
+                      if (clientName.isNotEmpty)
+                        _invoiceMetaChip(
+                          icon: Icons.person_outline,
+                          label: clientName,
+                          selected: selected,
+                        ),
+                    ],
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 14),
             IconButton(
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
               tooltip: l.preview,
-              icon: Icon(Icons.visibility_outlined,
-                  size: 16, color: cs.onSurfaceVariant),
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    cs.surfaceContainerHighest.withValues(alpha: 0.26),
+                foregroundColor: selected ? cs.primary : cs.onSurfaceVariant,
+              ),
+              icon: const Icon(Icons.visibility_outlined, size: 16),
               onPressed: () => _previewInvoice(inv),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _invoiceMetaChip({
+    required IconData icon,
+    required String label,
+    required bool selected,
+    Color? color,
+  }) {
+    final effectiveColor =
+        color ?? (selected ? cs.primary : cs.onSurfaceVariant);
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: color != null
+            ? color.withValues(alpha: selected ? 0.18 : 0.12)
+            : selected
+                ? cs.primary.withValues(alpha: 0.14)
+                : cs.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: color != null
+              ? color.withValues(alpha: selected ? 0.34 : 0.24)
+              : selected
+                  ? cs.primary.withValues(alpha: 0.28)
+                  : cs.outlineVariant.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 12,
+            color: effectiveColor,
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                color: effectiveColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -321,8 +644,8 @@ class InvoiceLinkDialogSteps {
       return _buildErrorContainer(state.expensesError!);
     }
 
-    final docs =
-        state.expenseCacheByProvider[providerId] ?? const <Map<String, dynamic>>[];
+    final docs = state.expenseCacheByProvider[providerId] ??
+        const <Map<String, dynamic>>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -369,8 +692,8 @@ class InvoiceLinkDialogSteps {
                           : cs.outlineVariant.withValues(alpha: 0.45),
                     ),
                   ),
-                  title: Text(title,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title:
+                      Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: Text(subtitle,
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   leading: Icon(

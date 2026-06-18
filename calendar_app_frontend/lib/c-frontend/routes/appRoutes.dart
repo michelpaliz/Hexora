@@ -2,6 +2,8 @@ class AppRoutes {
   static const splashRoute = '/';
   static const loginRoute = '/login';
   static const registerRoute = '/register';
+  static const forgotPasswordRoute = '/forgot-password';
+  static const resetPasswordRoute = '/reset-password';
   static const passwordRecoveryRoute = '/password-recovery';
   static const verifyEmailRoute = '/verify-email';
   static const verifyEmailSuccessRoute = '/verify-email/success';
@@ -20,7 +22,9 @@ class AppRoutes {
   static const groupMembers = '/group-members';
   static const groupTimeTracking = '/group/time-tracking';
   static const headerSection = '/dashboard-header-section';
+  static const groupIncome = '/ingresos';
   static const groupInvoices = '/group-invoices';
+  static const groupExpenses = '/gastos';
   static const recurringInvoices = '/recurring-invoices';
 
   // View (details) + Edit
@@ -37,6 +41,7 @@ class AppRoutes {
   static const showGroups = '/show-groups';
   static const showNotifications = '/show-notifications';
   static const groupNotifications = '/group-notifications';
+  static const expenseOcrReprocessResults = '/expense-ocr-reprocess-results';
 
   static const editGroup = '/edit-group';
   static const editGroupData = '/edit-group-data';

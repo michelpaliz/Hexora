@@ -25,23 +25,30 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
       if (groupId.isEmpty) {
         return;
       }
-      final items = await expensesApi.list(page: 1, size: 50, groupId: groupId);
+      final items = await expensesApi.listAll(groupId: groupId);
       if (!mounted) return;
+      Map<String, String>? matchedSelection;
       setState(() {
         recentUploads
           ..clear()
           ..addAll(items.map(mapExpenseToRecent));
         final selectedId = selectedRecentExpense?['id'];
         if (selectedId != null && selectedId.isNotEmpty) {
-          selectedRecentExpense = recentUploads.firstWhere(
+          matchedSelection = recentUploads.firstWhere(
             (item) => item['id'] == selectedId,
             orElse: () => const <String, String>{},
           );
-          if (selectedRecentExpense!.isEmpty) {
+          if (matchedSelection!.isEmpty) {
             selectedRecentExpense = null;
+          } else {
+            selectedRecentExpense = matchedSelection;
           }
         }
       });
+      if (matchedSelection != null && matchedSelection!.isNotEmpty) {
+        loadExpensePreview(matchedSelection!);
+        loadExpenseDetails(matchedSelection!);
+      }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Failed to load expenses: $e');
@@ -117,9 +124,36 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
       return '';
     }
 
+    final advancePayment = item['advancePayment'] is Map
+        ? Map<String, dynamic>.from(item['advancePayment'] as Map)
+        : const <String, dynamic>{};
+    final finalSettlement = item['finalSettlement'] is Map
+        ? Map<String, dynamic>.from(item['finalSettlement'] as Map)
+        : const <String, dynamic>{};
+    final rawLines = item['lines'] is List
+        ? item['lines']
+        : item['items'] is List
+            ? item['items']
+            : null;
+    final mappedLines = rawLines is List
+        ? rawLines
+            .whereType<Map>()
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList(growable: false)
+        : null;
+    final useSummaryTotals = ExpenseFormHelpers.shouldUseSummaryTotals(
+      expense: item,
+      storedTotal: ExpenseFormHelpers.parseNum(item['total'])?.toDouble(),
+      storedTax: ExpenseFormHelpers.parseNum(
+        item['taxTotal'] ?? item['vatTotal'] ?? item['tax'],
+      )?.toDouble(),
+      lines: mappedLines,
+    );
+
     return {
       'id': expenseId(),
       'vendor': pick(['vendorName', 'vendor']),
+      'subtotal': pick(['subtotal']),
       'total': pick(['total']),
       'date': pick(['issueDate', 'date']),
       'file': pick(['fileName', 'file']),
@@ -132,6 +166,37 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
       'tax': pick(['taxTotal', 'vatTotal', 'tax']),
       'due': pick(['dueDate']),
       'status': pick(['status']),
+      'discountAmount': pick(['discountAmount', 'discount_amount']),
+      'discountPercent': pick(['discountPercent', 'discount_percent']),
+      'taxSource': pick(['taxSource', 'totalsSource']),
+      'expenseType': pick(['expenseType']),
+      'advancePercent': (advancePayment['percent'] ?? '').toString(),
+      'advanceProjectBaseAmount':
+          (advancePayment['projectBaseAmount'] ?? '').toString(),
+      'advanceTaxRate': (advancePayment['taxRate'] ?? '').toString(),
+      'finalAdvanceExpenseId':
+          (finalSettlement['advanceExpenseId'] ?? '').toString(),
+      'finalAdvanceInvoiceNumber':
+          (finalSettlement['advanceInvoiceNumber'] ?? '').toString(),
+      'settlementDeductedBase':
+          (finalSettlement['deductedBase'] ?? '').toString(),
+      'settlementDeductedTax':
+          (finalSettlement['deductedTax'] ?? '').toString(),
+      'settlementDeductedTotal':
+          (finalSettlement['deductedTotal'] ?? '').toString(),
+      'settlementGrossBase':
+          (finalSettlement['grossBase'] ?? '').toString(),
+      'settlementGrossTax':
+          (finalSettlement['grossTax'] ?? '').toString(),
+      'settlementGrossTotal':
+          (finalSettlement['grossTotal'] ?? '').toString(),
+      'settlementRemainingBase':
+          (finalSettlement['remainingBase'] ?? '').toString(),
+      'settlementRemainingTax':
+          (finalSettlement['remainingTax'] ?? '').toString(),
+      'settlementRemainingTotal':
+          (finalSettlement['remainingTotal'] ?? '').toString(),
+      'useSummaryTotals': useSummaryTotals ? 'true' : 'false',
     };
   }
 
@@ -163,6 +228,26 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
     String? linesSummary,
     String? linesSubtotal,
     String? linesTotal,
+    String? expenseType,
+    String? advancePercent,
+    String? advanceProjectBaseAmount,
+    String? advanceTaxRate,
+    String? finalAdvanceExpenseId,
+    String? finalAdvanceInvoiceNumber,
+    String? settlementDeductedBase,
+    String? settlementDeductedTax,
+    String? settlementDeductedTotal,
+    String? settlementGrossBase,
+    String? settlementGrossTax,
+    String? settlementGrossTotal,
+    String? settlementRemainingBase,
+    String? settlementRemainingTax,
+    String? settlementRemainingTotal,
+    String? discountAmount,
+    String? discountPercent,
+    String? useSummaryTotals,
+    String? subtotal,
+    String? taxSource,
   }) {
     final idx = recentUploads.indexWhere((item) => item['id'] == id);
     if (idx == -1) return;
@@ -171,6 +256,52 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
     if (linesSummary != null) updated['linesSummary'] = linesSummary;
     if (linesSubtotal != null) updated['linesSubtotal'] = linesSubtotal;
     if (linesTotal != null) updated['linesTotal'] = linesTotal;
+    if (expenseType != null) updated['expenseType'] = expenseType;
+    if (advancePercent != null) updated['advancePercent'] = advancePercent;
+    if (advanceProjectBaseAmount != null) {
+      updated['advanceProjectBaseAmount'] = advanceProjectBaseAmount;
+    }
+    if (advanceTaxRate != null) updated['advanceTaxRate'] = advanceTaxRate;
+    if (finalAdvanceExpenseId != null) {
+      updated['finalAdvanceExpenseId'] = finalAdvanceExpenseId;
+    }
+    if (finalAdvanceInvoiceNumber != null) {
+      updated['finalAdvanceInvoiceNumber'] = finalAdvanceInvoiceNumber;
+    }
+    if (settlementDeductedBase != null) {
+      updated['settlementDeductedBase'] = settlementDeductedBase;
+    }
+    if (settlementDeductedTax != null) {
+      updated['settlementDeductedTax'] = settlementDeductedTax;
+    }
+    if (settlementDeductedTotal != null) {
+      updated['settlementDeductedTotal'] = settlementDeductedTotal;
+    }
+    if (settlementGrossBase != null) {
+      updated['settlementGrossBase'] = settlementGrossBase;
+    }
+    if (settlementGrossTax != null) {
+      updated['settlementGrossTax'] = settlementGrossTax;
+    }
+    if (settlementGrossTotal != null) {
+      updated['settlementGrossTotal'] = settlementGrossTotal;
+    }
+    if (settlementRemainingBase != null) {
+      updated['settlementRemainingBase'] = settlementRemainingBase;
+    }
+    if (settlementRemainingTax != null) {
+      updated['settlementRemainingTax'] = settlementRemainingTax;
+    }
+    if (settlementRemainingTotal != null) {
+      updated['settlementRemainingTotal'] = settlementRemainingTotal;
+    }
+    if (discountAmount != null) updated['discountAmount'] = discountAmount;
+    if (discountPercent != null) updated['discountPercent'] = discountPercent;
+    if (useSummaryTotals != null) {
+      updated['useSummaryTotals'] = useSummaryTotals;
+    }
+    if (subtotal != null) updated['subtotal'] = subtotal;
+    if (taxSource != null) updated['taxSource'] = taxSource;
     recentUploads[idx] = updated;
     if (selectedRecentExpense?['id'] == id) {
       selectedRecentExpense = updated;
@@ -228,19 +359,53 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
       String? linesSummary;
       String? linesSubtotal;
       String? linesTotal;
+      final storedTotal = ExpenseFormHelpers.parseNum(result['total']);
+      final storedTax = ExpenseFormHelpers.parseNum(
+        result['taxTotal'] ?? result['vatTotal'] ?? result['tax'],
+      );
+      final mappedLines = lines is List
+          ? lines
+              .whereType<Map>()
+              .map((entry) => Map<String, dynamic>.from(entry))
+              .toList(growable: false)
+          : const <Map<String, dynamic>>[];
+      final useSummaryTotals = ExpenseFormHelpers.shouldUseSummaryTotals(
+        expense: result,
+        storedTotal: storedTotal?.toDouble(),
+        storedTax: storedTax?.toDouble(),
+        lines: mappedLines,
+      );
       if (lines is List) {
         final summary = ExpenseFormHelpers.summarizeLines(lines);
         linesCount = summary['count'] as int?;
         linesSummary = (summary['summary'] ?? '').toString();
         final subtotal = summary['subtotal'] as double?;
-        final total = summary['total'] as double?;
-        if (subtotal != null) {
+        final lineTotal = summary['total'] as double?;
+        if (useSummaryTotals) {
+          final storedBase = (storedTotal != null)
+              ? (storedTotal - (storedTax ?? 0))
+                  .clamp(0, double.infinity)
+                  .toDouble()
+              : null;
+          if (storedBase != null) {
+            linesSubtotal = storedBase.toStringAsFixed(2);
+          }
+          if (storedTotal != null) {
+            linesTotal = storedTotal.toStringAsFixed(2);
+          }
+        } else if (subtotal != null) {
           linesSubtotal = subtotal.toStringAsFixed(2);
         }
-        if (total != null) {
-          linesTotal = total.toStringAsFixed(2);
+        if (!useSummaryTotals && lineTotal != null) {
+          linesTotal = lineTotal.toStringAsFixed(2);
         }
       }
+      final advancePayment = result['advancePayment'] is Map
+          ? Map<String, dynamic>.from(result['advancePayment'] as Map)
+          : const <String, dynamic>{};
+      final finalSettlement = result['finalSettlement'] is Map
+          ? Map<String, dynamic>.from(result['finalSettlement'] as Map)
+          : const <String, dynamic>{};
       setState(() {
         applyExpenseDetailsToRecent(
           id,
@@ -248,6 +413,43 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
           linesSummary: linesSummary,
           linesSubtotal: linesSubtotal,
           linesTotal: linesTotal,
+          subtotal: (result['subtotal'] ?? '').toString(),
+          taxSource: (result['taxSource'] ?? result['totalsSource'] ?? '')
+              .toString(),
+          expenseType: (result['expenseType'] ?? '').toString(),
+          advancePercent: (advancePayment['percent'] ?? '').toString(),
+          advanceProjectBaseAmount:
+              (advancePayment['projectBaseAmount'] ?? '').toString(),
+          advanceTaxRate: (advancePayment['taxRate'] ?? '').toString(),
+          finalAdvanceExpenseId:
+              (finalSettlement['advanceExpenseId'] ?? '').toString(),
+          finalAdvanceInvoiceNumber:
+              (finalSettlement['advanceInvoiceNumber'] ?? '').toString(),
+          settlementDeductedBase:
+              (finalSettlement['deductedBase'] ?? '').toString(),
+          settlementDeductedTax:
+              (finalSettlement['deductedTax'] ?? '').toString(),
+          settlementDeductedTotal:
+              (finalSettlement['deductedTotal'] ?? '').toString(),
+          settlementGrossBase:
+              (finalSettlement['grossBase'] ?? '').toString(),
+          settlementGrossTax:
+              (finalSettlement['grossTax'] ?? '').toString(),
+          settlementGrossTotal:
+              (finalSettlement['grossTotal'] ?? '').toString(),
+          settlementRemainingBase:
+              (finalSettlement['remainingBase'] ?? '').toString(),
+          settlementRemainingTax:
+              (finalSettlement['remainingTax'] ?? '').toString(),
+          settlementRemainingTotal:
+              (finalSettlement['remainingTotal'] ?? '').toString(),
+          discountAmount:
+              (result['discountAmount'] ?? result['discount_amount'] ?? '')
+                  .toString(),
+          discountPercent:
+              (result['discountPercent'] ?? result['discount_percent'] ?? '')
+                  .toString(),
+          useSummaryTotals: useSummaryTotals ? 'true' : 'false',
         );
       });
     } catch (_) {
@@ -337,6 +539,10 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
       if (!mounted) return;
       setState(() {
         recentUploads.removeWhere((item) => item['id'] == id);
+        if ((selectedRecentExpense?['id'] ?? '').trim() == id.trim()) {
+          selectedRecentExpense =
+              recentUploads.isEmpty ? null : recentUploads.first;
+        }
       });
     } catch (e) {
       if (!mounted) return;

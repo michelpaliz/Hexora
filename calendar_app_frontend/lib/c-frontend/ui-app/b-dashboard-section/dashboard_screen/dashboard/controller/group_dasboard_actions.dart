@@ -65,7 +65,15 @@ class DashboardActions {
         if (!state.canSeeAdmin) return;
         Navigator.pushNamed(
           context,
-          AppRoutes.groupInvoices,
+          AppRoutes.groupIncome,
+          arguments: state.group,
+        );
+        break;
+      case Sections.expenses:
+        if (!state.canSeeAdmin) return;
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupExpenses,
           arguments: state.group,
         );
         break;

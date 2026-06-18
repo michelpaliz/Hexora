@@ -234,46 +234,52 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
                     style: typo.bodySmall.copyWith(color: cs.error),
                   ),
                 )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                  children: [
-                    // BIG TABS (Clients / Services)
-                    DimensionTabs(
-                      value: _dimension,
-                      onChanged: (d) => setState(() => _dimension = d),
-                    ),
-                    const SizedBox(height: 12),
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 700;
+                    final hPad = isMobile ? 12.0 : 16.0;
+                    return ListView(
+                      padding: EdgeInsets.fromLTRB(hPad, 10, hPad, 24),
+                      children: [
+                        // BIG TABS (Clients / Services)
+                        DimensionTabs(
+                          value: _dimension,
+                          onChanged: (d) => setState(() => _dimension = d),
+                        ),
+                        SizedBox(height: isMobile ? 10 : 12),
 
-                    // PERIOD CARD (chips + date)
-                    InsightsFiltersSection(
-                      preset: _preset,
-                      onPresetChanged: (p) {
-                        setState(() => _preset = p);
-                        _load();
-                      },
-                      onPickCustom: () => _pickCustomRange(context),
-                      rangeText: rangeText,
-                    ),
+                        // PERIOD CARD (chips + date)
+                        InsightsFiltersSection(
+                          preset: _preset,
+                          onPresetChanged: (p) {
+                            setState(() => _preset = p);
+                            _load();
+                          },
+                          onPickCustom: () => _pickCustomRange(context),
+                          rangeText: rangeText,
+                        ),
 
-                    const SizedBox(height: 16),
+                        SizedBox(height: isMobile ? 12 : 16),
 
-                    // BARS
-                    InsightsBarsCard(
-                      title: _dimension == Dimension.clients
-                          ? l.timeByClient
-                          : l.timeByService,
-                      minutesByKey: minutesLabeled, // human-readable names
-                    ),
+                        // BARS
+                        InsightsBarsCard(
+                          title: _dimension == Dimension.clients
+                              ? l.timeByClient
+                              : l.timeByService,
+                          minutesByKey: minutesLabeled,
+                        ),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    if (_preset != RangePreset.custom &&
-                        _resolveRange(DateTime.now())
-                            .start
-                            .isBefore(DateTime.now()) &&
-                        _events.isEmpty)
-                      const InsightsPastDataHint(),
-                  ],
+                        if (_preset != RangePreset.custom &&
+                            _resolveRange(DateTime.now())
+                                .start
+                                .isBefore(DateTime.now()) &&
+                            _events.isEmpty)
+                          const InsightsPastDataHint(),
+                      ],
+                    );
+                  },
                 ),
     );
   }

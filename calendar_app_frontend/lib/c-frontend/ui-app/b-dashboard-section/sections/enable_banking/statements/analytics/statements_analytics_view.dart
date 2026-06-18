@@ -3,13 +3,20 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
+import '../../enable_banking_left_nav.dart';
 import '../../widgets/folder_section_card.dart';
 import '../statements_formatters.dart';
+import 'statements_analytics_copy.dart';
 import 'statements_analytics_controller.dart';
 import 'statements_analytics_widgets.dart';
 
 class StatementsAnalyticsView extends StatefulWidget {
-  const StatementsAnalyticsView({super.key});
+  const StatementsAnalyticsView({
+    super.key,
+    this.section = EnableBankingMenu.analyticsOverview,
+  });
+
+  final EnableBankingMenu section;
 
   @override
   State<StatementsAnalyticsView> createState() =>
@@ -94,17 +101,48 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
 
     Widget buildSelectors(BoxConstraints constraints) {
       final width = constraints.maxWidth;
-      final batchWidth = width < 980 ? 240.0 : 300.0;
-      final fieldWidth = width < 980 ? 170.0 : 200.0;
-      final topWidth = width < 980 ? 120.0 : 140.0;
+      final batchWidth = width < 980 ? 200.0 : 220.0;
+      const yearWidth = 110.0;
+      final monthWidth = width < 980 ? 150.0 : 160.0;
+      final modeWidth = width < 980 ? 150.0 : 165.0;
+      final compareWidth = width < 980 ? 160.0 : 175.0;
+      const topWidth = 92.0;
 
       Widget wrapField({required double width, required Widget child}) {
         return SizedBox(width: width, child: child);
       }
 
+      InputDecoration compactDecoration(String label) {
+        return InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: cs.onSurfaceVariant,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide:
+                BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: cs.primary, width: 1.5),
+          ),
+          filled: true,
+          fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        );
+      }
+
       return Wrap(
-        spacing: 12,
-        runSpacing: 10,
+        spacing: 8,
+        runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           wrapField(
@@ -113,11 +151,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
               initialValue: c.selectedBatchId,
               isExpanded: true,
               style: t.bodyMedium,
-              decoration: InputDecoration(
-                labelText: l.statementsAnalyticsBatch,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
+              decoration: compactDecoration(l.statementsAnalyticsBatch),
               items: [
                 DropdownMenuItem(
                   value: 'all',
@@ -141,16 +175,12 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           ),
           wrapField(
-            width: fieldWidth,
+            width: yearWidth,
             child: DropdownButtonFormField<int?>(
               initialValue: c.selectedYear,
               isExpanded: true,
               style: t.bodyMedium,
-              decoration: InputDecoration(
-                labelText: l.statementsFilterYear,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
+              decoration: compactDecoration(l.statementsFilterYear),
               items: [
                 DropdownMenuItem(
                   value: null,
@@ -167,16 +197,12 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           ),
           wrapField(
-            width: fieldWidth,
+            width: monthWidth,
             child: DropdownButtonFormField<int?>(
               initialValue: c.selectedMonth,
               isExpanded: true,
               style: t.bodyMedium,
-              decoration: InputDecoration(
-                labelText: l.statementsAnalyticsMonth,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
+              decoration: compactDecoration(l.statementsAnalyticsMonth),
               items: [
                 DropdownMenuItem(
                   value: null,
@@ -193,16 +219,12 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           ),
           wrapField(
-            width: fieldWidth,
+            width: modeWidth,
             child: DropdownButtonFormField<StatementsAnalyticsPeriodMode>(
               initialValue: c.periodMode,
               isExpanded: true,
               style: t.bodyMedium,
-              decoration: InputDecoration(
-                labelText: l.statementsAnalyticsMode,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
+              decoration: compactDecoration(l.statementsAnalyticsMode),
               items: [
                 DropdownMenuItem(
                   value: StatementsAnalyticsPeriodMode.calendarMonth,
@@ -220,16 +242,12 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           ),
           wrapField(
-            width: fieldWidth,
+            width: compareWidth,
             child: DropdownButtonFormField<StatementsAnalyticsCompareMode>(
               initialValue: c.compareMode,
               isExpanded: true,
               style: t.bodyMedium,
-              decoration: InputDecoration(
-                labelText: l.statementsAnalyticsCompareMode,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
+              decoration: compactDecoration(l.statementsAnalyticsCompareMode),
               items: compareOptions.entries
                   .map(
                     (entry) => DropdownMenuItem(
@@ -246,16 +264,13 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           ),
           if (c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow)
             wrapField(
-              width: 120,
+              width: 96,
               child: DropdownButtonFormField<int>(
                 initialValue: c.settlementStartDay,
                 isExpanded: true,
                 style: t.bodyMedium,
-                decoration: InputDecoration(
-                  labelText: l.statementsAnalyticsSettlementStart,
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                ),
+                decoration:
+                    compactDecoration(l.statementsAnalyticsSettlementStart),
                 items: dayOptions
                     .map(
                       (d) =>
@@ -270,16 +285,13 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           if (c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow)
             wrapField(
-              width: 120,
+              width: 96,
               child: DropdownButtonFormField<int>(
                 initialValue: c.settlementEndDay,
                 isExpanded: true,
                 style: t.bodyMedium,
-                decoration: InputDecoration(
-                  labelText: l.statementsAnalyticsSettlementEnd,
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                ),
+                decoration:
+                    compactDecoration(l.statementsAnalyticsSettlementEnd),
                 items: dayOptions
                     .map(
                       (d) =>
@@ -298,11 +310,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
               initialValue: c.top,
               isExpanded: true,
               style: t.bodyMedium,
-              decoration: InputDecoration(
-                labelText: l.statementsAnalyticsTop,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
+              decoration: compactDecoration(l.statementsAnalyticsTop),
               items: _topOptions
                   .map((v) =>
                       DropdownMenuItem(value: v, child: Text(v.toString())))
@@ -318,52 +326,110 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
     }
 
     Widget buildFilterChips() {
+      Widget chip(String label, {VoidCallback? onDelete}) {
+        final active = onDelete != null;
+        return MouseRegion(
+          cursor:
+              active ? SystemMouseCursors.click : SystemMouseCursors.basic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: EdgeInsets.only(
+                left: 10, right: active ? 6 : 10, top: 5, bottom: 5),
+            decoration: BoxDecoration(
+              color: active
+                  ? cs.primaryContainer.withValues(alpha: 0.85)
+                  : cs.surfaceContainerHighest.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: active
+                    ? cs.primary.withValues(alpha: 0.25)
+                    : cs.outlineVariant.withValues(alpha: 0.22),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: t.bodySmall.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: active
+                        ? cs.onPrimaryContainer
+                        : cs.onSurfaceVariant,
+                  ),
+                ),
+                if (active) ...[
+                  const SizedBox(width: 5),
+                  GestureDetector(
+                    onTap: onDelete,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: cs.onPrimaryContainer.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 10,
+                        color: cs.onPrimaryContainer.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }
+
       final chips = <Widget>[];
-      final batchLabel = c.selectedBatchId == null
+      final batchLabel = c.selectedBatchId == null ||
+              c.selectedBatchId == 'all'
           ? l.statementsAnalyticsAllBatches
-          : (c.selectedBatchId == 'all'
-              ? l.statementsAnalyticsAllBatches
-              : c.selectedBatchId!);
+          : c.selectedBatchId!;
       final modeLabel =
           c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow
               ? l.statementsAnalyticsModeSettlement
               : l.statementsAnalyticsModeCalendar;
       final compareLabel = compareOptions[c.compareMode]!;
-      chips.add(InputChip(
-        label: Text('${l.statementsAnalyticsBatch}: $batchLabel'),
-        onDeleted: c.selectedBatchId == null || c.selectedBatchId == 'all'
+
+      chips.add(chip(
+        '${l.statementsAnalyticsBatch}: $batchLabel',
+        onDelete: c.selectedBatchId == null || c.selectedBatchId == 'all'
             ? null
             : () => c.selectBatch('all'),
       ));
-      chips.add(InputChip(
-        label: Text('${l.statementsAnalyticsMode}: $modeLabel'),
-        onDeleted: c.periodMode == StatementsAnalyticsPeriodMode.calendarMonth
+      chips.add(chip(
+        '${l.statementsAnalyticsMode}: $modeLabel',
+        onDelete: c.periodMode == StatementsAnalyticsPeriodMode.calendarMonth
             ? null
             : () =>
                 c.setPeriodMode(StatementsAnalyticsPeriodMode.calendarMonth),
       ));
-      chips.add(InputChip(
-        label: Text('${l.statementsAnalyticsCompareMode}: $compareLabel'),
-        onDeleted: c.compareMode == StatementsAnalyticsCompareMode.both
+      chips.add(chip(
+        '${l.statementsAnalyticsCompareMode}: $compareLabel',
+        onDelete: c.compareMode == StatementsAnalyticsCompareMode.both
             ? null
             : () => c.setCompareMode(StatementsAnalyticsCompareMode.both),
       ));
-      chips.add(InputChip(
-        label: Text('${l.statementsAnalyticsTop}: ${c.top}'),
-        onDeleted: c.top == _topOptions.first
+      chips.add(chip(
+        '${l.statementsAnalyticsTop}: ${c.top}',
+        onDelete: c.top == _topOptions.first
             ? null
             : () => c.setTop(_topOptions.first),
       ));
       if (c.selectedYear != null) {
-        chips.add(InputChip(
-          label: Text('${l.statementsFilterYear}: ${c.selectedYear}'),
-          onDeleted: () => c.setYear(null),
+        chips.add(chip(
+          '${l.statementsFilterYear}: ${c.selectedYear}',
+          onDelete: () => c.setYear(null),
         ));
       }
       if (c.selectedMonth != null) {
-        chips.add(InputChip(
-          label: Text('${l.statementsAnalyticsMonth}: ${c.selectedMonth}'),
-          onDeleted: () => c.setMonth(null),
+        chips.add(chip(
+          '${l.statementsAnalyticsMonth}: ${c.selectedMonth}',
+          onDelete: () => c.setMonth(null),
         ));
       }
       if (c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow) {
@@ -371,17 +437,10 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         if (range != null) {
           final from = StatementsFormatters.formatDate(context, range.start);
           final to = StatementsFormatters.formatDate(context, range.end);
-          chips.add(InputChip(
-            label: Text(l.statementsAnalyticsPeriodLabel(from, to)),
-            onDeleted: null,
-          ));
+          chips.add(chip(l.statementsAnalyticsPeriodLabel(from, to)));
         }
       }
-      return Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: chips,
-      );
+      return Wrap(spacing: 8, runSpacing: 6, children: chips);
     }
 
     Widget buildTrend() {
@@ -435,7 +494,6 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l.statementsAnalyticsTrends, style: t.titleLarge),
               const SizedBox(height: 4),
               Text(l.statementsAnalyticsTrendsHelp, style: t.bodySmall),
               if (c.selectedYear == null && c.years.isNotEmpty) ...[
@@ -523,6 +581,126 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
       );
     }
 
+    Widget buildOverview() {
+      final rows = c.selectedYear == null ? c.years : c.months;
+      final income =
+          rows.fold<num>(0, (sum, row) => sum + ((row['income'] as num?) ?? 0));
+      final expense = rows.fold<num>(
+          0, (sum, row) => sum + ((row['expense'] as num?) ?? 0));
+      final net =
+          rows.fold<num>(0, (sum, row) => sum + ((row['net'] as num?) ?? 0));
+      final count =
+          rows.fold<num>(0, (sum, row) => sum + ((row['count'] as num?) ?? 0));
+      final topExpenseMerchant = c.topExpense.isEmpty
+          ? null
+          : c.topExpense.first['merchant']?.toString();
+      final topIncomeMerchant = c.topIncome.isEmpty
+          ? null
+          : c.topIncome.first['merchant']?.toString();
+      final isSettlement =
+          c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow;
+
+      Widget summaryCard({
+        required String title,
+        required String value,
+        String? subtitle,
+        IconData? icon,
+      }) {
+        return Container(
+          width: 240,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 18, color: cs.primary),
+                const SizedBox(height: 10),
+              ],
+              Text(
+                title,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 6),
+                Text(subtitle, style: t.caption),
+              ],
+            ],
+          ),
+        );
+      }
+
+      return FolderSectionCard(
+        label: l.statementsSummaryTitle,
+        leftTabOffset: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isSettlement
+                    ? l.statementsAnalyticsModeLabel(
+                        l.statementsAnalyticsModeSettlement)
+                    : l.statementsAnalyticsModeLabel(
+                        l.statementsAnalyticsModeCalendar),
+                style: t.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  summaryCard(
+                    title: l.statementsSummaryIncome,
+                    value: StatementsFormatters.formatCurrency(context, income),
+                    subtitle: l.statementsEntryCount(count.toString()),
+                    icon: Icons.south_west_rounded,
+                  ),
+                  summaryCard(
+                    title: l.statementsSummaryExpense,
+                    value:
+                        StatementsFormatters.formatCurrency(context, expense),
+                    subtitle: c.selectedYear == null
+                        ? l.statementsAnalyticsAllYears
+                        : '${l.statementsFilterYear}: ${c.selectedYear}',
+                    icon: Icons.north_east_rounded,
+                  ),
+                  summaryCard(
+                    title: l.statementsSummaryNet,
+                    value: StatementsFormatters.formatCurrency(context, net),
+                    subtitle: c.selectedMonth == null
+                        ? l.statementsAnalyticsAllMonths
+                        : '${l.statementsAnalyticsMonth}: ${c.selectedMonth}',
+                    icon: Icons.account_balance_wallet_outlined,
+                  ),
+                  summaryCard(
+                    title: l.statementsAnalyticsTopMerchants,
+                    value: topExpenseMerchant ?? '-',
+                    subtitle: topIncomeMerchant == null
+                        ? null
+                        : '${l.statementsSummaryIncome}: $topIncomeMerchant',
+                    icon: Icons.storefront_outlined,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     Widget buildTopMerchants() {
       return FolderSectionCard(
         label: l.statementsAnalyticsTopMerchants,
@@ -534,21 +712,6 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(l.statementsAnalyticsTopMerchants,
-                        style: t.titleLarge),
-                    const Spacer(),
-                    SizedBox(
-                      width: 140,
-                      child: Text(
-                        l.statementsAnalyticsTopHelp(c.top),
-                        style: t.bodySmall,
-                        textAlign: TextAlign.right,
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 4),
                 Text(l.statementsAnalyticsTopHelpSubtitle, style: t.bodySmall),
                 const SizedBox(height: 8),
@@ -800,6 +963,615 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
       );
     }
 
+    Widget buildSplit() {
+      final totals = c.visibleTotals;
+      if (totals.count == 0 && totals.income == 0 && totals.expense == 0) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.splitTitle(context),
+          leftTabOffset: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnalyticsStateMessage(message: l.statementsAnalyticsNoData),
+          ),
+        );
+      }
+      final incomeLabel =
+          StatementsFormatters.formatCurrency(context, totals.income);
+      final expenseLabel =
+          StatementsFormatters.formatCurrency(context, totals.expense);
+      final netLabel = StatementsFormatters.formatCurrency(context, totals.net);
+      return FolderSectionCard(
+        label: StatementsAnalyticsCopy.splitTitle(context),
+        leftTabOffset: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final chartWidth =
+                  constraints.maxWidth < 860 ? constraints.maxWidth : 340.0;
+              final metricWidth = constraints.maxWidth < 860
+                  ? constraints.maxWidth
+                  : constraints.maxWidth - chartWidth - 16;
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  SizedBox(
+                    width: chartWidth,
+                    child: AnalyticsDonutChart(
+                      slices: [
+                        AnalyticsDonutSlice(
+                          label: l.statementsSummaryIncome,
+                          value: totals.income,
+                          color: const Color(0xFF2E7D32),
+                          legendValue: incomeLabel,
+                          tooltipValue: incomeLabel,
+                        ),
+                        AnalyticsDonutSlice(
+                          label: l.statementsSummaryExpense,
+                          value: totals.expense,
+                          color: const Color(0xFFC62828),
+                          legendValue: expenseLabel,
+                          tooltipValue: expenseLabel,
+                        ),
+                      ],
+                      centerLabel: l.statementsSummaryNet,
+                      centerValue: netLabel,
+                    ),
+                  ),
+                  SizedBox(
+                    width: metricWidth,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          StatementsAnalyticsCopy.splitSubtitle(context),
+                          style: t.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            AnalyticsMetricCard(
+                              title: l.statementsSummaryIncome,
+                              value: incomeLabel,
+                              subtitle: l.statementsEntryCount(
+                                totals.count.toString(),
+                              ),
+                              icon: Icons.arrow_downward_rounded,
+                            ),
+                            AnalyticsMetricCard(
+                              title: l.statementsSummaryExpense,
+                              value: expenseLabel,
+                              subtitle: c.selectedMonth == null
+                                  ? l.statementsAnalyticsAllMonths
+                                  : '${l.statementsAnalyticsMonth}: ${c.selectedMonth}',
+                              icon: Icons.arrow_upward_rounded,
+                            ),
+                            AnalyticsMetricCard(
+                              title: l.statementsSummaryNet,
+                              value: netLabel,
+                              subtitle: c.selectedYear == null
+                                  ? l.statementsAnalyticsAllYears
+                                  : '${l.statementsFilterYear}: ${c.selectedYear}',
+                              icon: Icons.account_balance_wallet_outlined,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    Widget buildVolume() {
+      final points = c.volumePoints;
+      return FolderSectionCard(
+        label: StatementsAnalyticsCopy.volumeTitle(context),
+        leftTabOffset: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      StatementsAnalyticsCopy.volumeSubtitle(context),
+                      style: t.bodySmall,
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      c.volumeUsesDaily
+                          ? StatementsAnalyticsCopy.volumeDailyLabel(context)
+                          : StatementsAnalyticsCopy.volumePeriodLabel(context),
+                      style: t.caption.copyWith(
+                        color: cs.onPrimaryContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (c.loadingEntries && c.selectedMonth != null)
+                const LinearProgressIndicator(minHeight: 2),
+              if (c.loadingEntries && c.selectedMonth != null)
+                const SizedBox(height: 12),
+              AnalyticsVolumeChart(points: points),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget buildTicket() {
+      if (c.loadingEntries) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.ticketTitle(context),
+          leftTabOffset: 0,
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: AnalyticsSkeleton(),
+          ),
+        );
+      }
+      if (c.entriesError != null) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.ticketTitle(context),
+          leftTabOffset: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnalyticsStateMessage(
+              message: c.entriesError!,
+              icon: Icons.error_outline,
+              color: cs.error,
+            ),
+          ),
+        );
+      }
+      final stats = c.ticketStats;
+      if (stats == null) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.ticketTitle(context),
+          leftTabOffset: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnalyticsStateMessage(
+              message: StatementsAnalyticsCopy.noEntriesLabel(context),
+            ),
+          ),
+        );
+      }
+      return FolderSectionCard(
+        label: StatementsAnalyticsCopy.ticketTitle(context),
+        leftTabOffset: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                StatementsAnalyticsCopy.ticketSubtitle(context),
+                style: t.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.averageIncomeLabel(context),
+                    value: StatementsFormatters.formatCurrency(
+                      context,
+                      stats.averageIncome,
+                    ),
+                    subtitle: '${stats.incomeCount} ingresos',
+                    icon: Icons.south_west_rounded,
+                  ),
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.averageExpenseLabel(context),
+                    value: StatementsFormatters.formatCurrency(
+                      context,
+                      stats.averageExpense,
+                    ),
+                    subtitle: '${stats.expenseCount} gastos',
+                    icon: Icons.north_east_rounded,
+                  ),
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.largestIncomeLabel(context),
+                    value: StatementsFormatters.formatCurrency(
+                      context,
+                      stats.largestIncome,
+                    ),
+                    icon: Icons.trending_up_rounded,
+                  ),
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.largestExpenseLabel(context),
+                    value: StatementsFormatters.formatCurrency(
+                      context,
+                      stats.largestExpense,
+                    ),
+                    icon: Icons.trending_down_rounded,
+                  ),
+                  AnalyticsMetricCard(
+                    title:
+                        StatementsAnalyticsCopy.totalTransactionsLabel(context),
+                    value: StatementsFormatters.formatCount(
+                      context,
+                      stats.transactionCount,
+                    ),
+                    subtitle: l.statementsEntryCount(
+                      stats.transactionCount.toString(),
+                    ),
+                    icon: Icons.receipt_long_outlined,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget buildLinked() {
+      if (c.loadingEntries) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.linkedTitle(context),
+          leftTabOffset: 0,
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: AnalyticsSkeleton(),
+          ),
+        );
+      }
+      if (c.entriesError != null) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.linkedTitle(context),
+          leftTabOffset: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnalyticsStateMessage(
+              message: c.entriesError!,
+              icon: Icons.error_outline,
+              color: cs.error,
+            ),
+          ),
+        );
+      }
+      final stats = c.linkStats;
+      if (stats == null) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.linkedTitle(context),
+          leftTabOffset: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnalyticsStateMessage(
+              message: StatementsAnalyticsCopy.noEntriesLabel(context),
+            ),
+          ),
+        );
+      }
+      final linkedLabel = StatementsFormatters.formatCount(
+        context,
+        stats.linkedCount,
+      );
+      final unlinkedLabel = StatementsFormatters.formatCount(
+        context,
+        stats.unlinkedCount,
+      );
+      final linkedPct =
+          '${StatementsFormatters.formatAmount(context, stats.linkedRatio * 100)}%';
+      return FolderSectionCard(
+        label: StatementsAnalyticsCopy.linkedTitle(context),
+        leftTabOffset: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final chartWidth =
+                  constraints.maxWidth < 860 ? constraints.maxWidth : 340.0;
+              final metricWidth = constraints.maxWidth < 860
+                  ? constraints.maxWidth
+                  : constraints.maxWidth - chartWidth - 16;
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  SizedBox(
+                    width: chartWidth,
+                    child: AnalyticsDonutChart(
+                      slices: [
+                        AnalyticsDonutSlice(
+                          label: StatementsAnalyticsCopy.linkedLabel(context),
+                          value: stats.linkedCount,
+                          color: const Color(0xFF1565C0),
+                          legendValue: linkedLabel,
+                          tooltipValue: linkedLabel,
+                        ),
+                        AnalyticsDonutSlice(
+                          label:
+                              StatementsAnalyticsCopy.unlinkedLabel(context),
+                          value: stats.unlinkedCount,
+                          color: const Color(0xFFEF6C00),
+                          legendValue: unlinkedLabel,
+                          tooltipValue: unlinkedLabel,
+                        ),
+                      ],
+                      centerLabel: StatementsAnalyticsCopy.linkedRateLabel(
+                        context,
+                      ),
+                      centerValue: linkedPct,
+                    ),
+                  ),
+                  SizedBox(
+                    width: metricWidth,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          StatementsAnalyticsCopy.linkedSubtitle(context),
+                          style: t.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            AnalyticsMetricCard(
+                              title:
+                                  StatementsAnalyticsCopy.linkedLabel(context),
+                              value: linkedLabel,
+                              icon: Icons.link_outlined,
+                            ),
+                            AnalyticsMetricCard(
+                              title: StatementsAnalyticsCopy.unlinkedLabel(
+                                context,
+                              ),
+                              value: unlinkedLabel,
+                              icon: Icons.link_off_outlined,
+                            ),
+                            AnalyticsMetricCard(
+                              title:
+                                  StatementsAnalyticsCopy.linkedRateLabel(
+                                context,
+                              ),
+                              value: linkedPct,
+                              subtitle:
+                                  '${stats.total} movimientos analizados',
+                              icon: Icons.analytics_outlined,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    Widget buildActivity() {
+      if (c.loadingEntries) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.activityTitle(context),
+          leftTabOffset: 0,
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: AnalyticsSkeleton(),
+          ),
+        );
+      }
+      if (c.entriesError != null) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.activityTitle(context),
+          leftTabOffset: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnalyticsStateMessage(
+              message: c.entriesError!,
+              icon: Icons.error_outline,
+              color: cs.error,
+            ),
+          ),
+        );
+      }
+      final days = c.heatmapDays;
+      if (days.isEmpty) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.activityTitle(context),
+          leftTabOffset: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnalyticsStateMessage(
+              message: StatementsAnalyticsCopy.noEntriesLabel(context),
+            ),
+          ),
+        );
+      }
+      final activeDays = days.where((day) => day.count > 0).length;
+      var peakDay = days.first;
+      for (final day in days.skip(1)) {
+        if (day.count > peakDay.count) peakDay = day;
+      }
+      return FolderSectionCard(
+        label: StatementsAnalyticsCopy.activityTitle(context),
+        leftTabOffset: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                StatementsAnalyticsCopy.activitySubtitle(context),
+                style: t.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              AnalyticsHeatmap(days: days),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  AnalyticsMetricCard(
+                    title:
+                        StatementsAnalyticsCopy.activityActiveDaysLabel(context),
+                    value: StatementsFormatters.formatCount(
+                      context,
+                      activeDays,
+                    ),
+                    icon: Icons.calendar_today_outlined,
+                  ),
+                  AnalyticsMetricCard(
+                    title:
+                        StatementsAnalyticsCopy.activityPeakDayLabel(context),
+                    value: StatementsFormatters.formatDate(
+                      context,
+                      peakDay.date,
+                    ),
+                    subtitle: '${peakDay.count} movimientos',
+                    icon: Icons.local_fire_department_outlined,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget buildStatus() {
+      if (c.loadingStatus) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.statusTitle(context),
+          leftTabOffset: 0,
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: AnalyticsSkeleton(),
+          ),
+        );
+      }
+      if (c.statusError != null) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.statusTitle(context),
+          leftTabOffset: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnalyticsStateMessage(
+              message: c.statusError!,
+              icon: Icons.error_outline,
+              color: cs.error,
+            ),
+          ),
+        );
+      }
+      final status = c.statusSnapshot;
+      if (status == null) {
+        return FolderSectionCard(
+          label: StatementsAnalyticsCopy.statusTitle(context),
+          leftTabOffset: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: AnalyticsStateMessage(
+              message: StatementsAnalyticsCopy.noStatusLabel(context),
+            ),
+          ),
+        );
+      }
+      final badgeColor = status.mixed
+          ? cs.tertiary
+          : (status.stale ? cs.error : const Color(0xFF2E7D32));
+      final badgeLabel = status.mixed
+          ? StatementsAnalyticsCopy.mixedLabel(context)
+          : (status.stale
+              ? StatementsAnalyticsCopy.staleLabel(context)
+              : StatementsAnalyticsCopy.freshLabel(context));
+      return FolderSectionCard(
+        label: StatementsAnalyticsCopy.statusTitle(context),
+        leftTabOffset: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      StatementsAnalyticsCopy.statusSubtitle(context),
+                      style: t.bodySmall,
+                    ),
+                  ),
+                  AnalyticsStatusBadge(
+                    label: badgeLabel,
+                    color: badgeColor,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  AnalyticsMetricCard(
+                    title:
+                        StatementsAnalyticsCopy.lastTransactionLabel(context),
+                    value: status.lastDate == null
+                        ? '-'
+                        : StatementsFormatters.formatDate(
+                            context,
+                            status.lastDate,
+                          ),
+                    icon: Icons.event_outlined,
+                  ),
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.daysSinceLabel(context),
+                    value: status.daysSince == null
+                        ? '-'
+                        : status.daysSince.toString(),
+                    icon: Icons.timelapse_rounded,
+                  ),
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.thresholdLabel(context),
+                    value: status.thresholdDays == null
+                        ? '-'
+                        : status.thresholdDays.toString(),
+                    icon: Icons.flag_outlined,
+                  ),
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.batchesMonitoredLabel(
+                      context,
+                    ),
+                    value: status.totalBatches.toString(),
+                    subtitle:
+                        '${status.freshBatches} frescos · ${status.staleBatches} atrasados',
+                    icon: Icons.layers_outlined,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (c.loadingBatches) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -820,29 +1592,71 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           child: Text(l.statementsAnalyticsNoSelection, style: t.bodySmall));
     }
 
+    final sectionChildren = <Widget>[];
+    if (c.loadingSummary) {
+      sectionChildren.add(const AnalyticsSkeleton());
+    } else if (c.summaryError != null) {
+      sectionChildren.add(
+        Text(c.summaryError!, style: t.bodySmall.copyWith(color: cs.error)),
+      );
+    } else if (widget.section == EnableBankingMenu.analyticsOverview) {
+      sectionChildren.add(buildOverview());
+    } else if (widget.section == EnableBankingMenu.analyticsSplit) {
+      sectionChildren.add(buildSplit());
+    } else if (widget.section == EnableBankingMenu.analyticsVolume) {
+      sectionChildren.add(buildVolume());
+    } else if (widget.section == EnableBankingMenu.analyticsTicket) {
+      sectionChildren.add(buildTicket());
+    } else if (widget.section == EnableBankingMenu.analyticsLinked) {
+      sectionChildren.add(buildLinked());
+    } else if (widget.section == EnableBankingMenu.analyticsActivity) {
+      sectionChildren.add(buildActivity());
+    } else if (widget.section == EnableBankingMenu.analyticsStatus) {
+      sectionChildren.add(buildStatus());
+    } else if (widget.section == EnableBankingMenu.analyticsTrends) {
+      sectionChildren.add(buildTrend());
+      if (c.selectedMonth != null) {
+        sectionChildren.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              l.statementsAnalyticsMonthHint(c.selectedMonth!),
+              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+        );
+      }
+    } else if (widget.section == EnableBankingMenu.analyticsTopMerchants) {
+      sectionChildren.add(buildTopMerchants());
+    } else if (widget.section == EnableBankingMenu.analyticsComparison) {
+      sectionChildren.add(buildComparison());
+    } else {
+      sectionChildren.add(buildOverview());
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 980;
         final headerHeight = _filtersExpanded
-            ? (isNarrow ? 230.0 : 190.0)
-            : (isNarrow ? 150.0 : 120.0);
+            ? (isNarrow ? 190.0 : 138.0)
+            : (isNarrow ? 106.0 : 82.0);
         final headerMax = _filtersExpanded
-            ? (isNarrow ? 260.0 : 220.0)
-            : (isNarrow ? 180.0 : 140.0);
+            ? (isNarrow ? 220.0 : 162.0)
+            : (isNarrow ? 124.0 : 96.0);
         return CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.analytics_outlined),
-                    const SizedBox(width: 8),
-                    Text(l.statementsAnalyticsTitle, style: t.displayMedium),
-                  ],
-                ),
-              ),
-            ),
+            // SliverToBoxAdapter(
+            //   child: Padding(
+            //     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            //     child: Row(
+            //       children: [
+            //         const Icon(Icons.analytics_outlined),
+            //         const SizedBox(width: 8),
+            //         Text(l.statementsAnalyticsTitle, style: t.displayMedium),
+            //       ],
+            //     ),
+            //   ),
+            // ),
             SliverPersistentHeader(
               pinned: true,
               delegate: _FilterHeaderDelegate(
@@ -857,30 +1671,52 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                       ),
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: cs.primary.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.tune_rounded,
+                              size: 14,
+                              color: cs.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Text(
                             _filtersExpanded
                                 ? l.statementsFiltersTitle
                                 : l.statementsFiltersActive,
-                            style: t.bodyMedium
-                                .copyWith(fontWeight: FontWeight.w700),
+                            style: t.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           const Spacer(),
-                          TextButton.icon(
+                          FilledButton.tonalIcon(
                             onPressed: () => setState(
                                 () => _filtersExpanded = !_filtersExpanded),
                             icon: Icon(
-                              _filtersExpanded ? Icons.expand_less : Icons.tune,
-                              size: 18,
+                              _filtersExpanded
+                                  ? Icons.expand_less_rounded
+                                  : Icons.tune_rounded,
+                              size: 15,
                             ),
                             label: Text(_filtersExpanded
                                 ? l.statementsAnalyticsCollapse
                                 : l.statementsAnalyticsExpand),
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                            ),
                           ),
                         ],
                       ),
@@ -888,9 +1724,15 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                       if (_filtersExpanded) ...[
                         buildSelectors(constraints),
                         const SizedBox(height: 8),
-                        Text(filterSummary(), style: t.bodySmall),
+                        Tooltip(
+                          message: filterSummary(),
+                          child: buildFilterChips(),
+                        ),
                       ] else ...[
-                        buildFilterChips(),
+                        Tooltip(
+                          message: filterSummary(),
+                          child: buildFilterChips(),
+                        ),
                       ],
                     ],
                   ),
@@ -902,29 +1744,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (c.loadingSummary)
-                      const AnalyticsSkeleton()
-                    else if (c.summaryError != null)
-                      Text(c.summaryError!,
-                          style: t.bodySmall.copyWith(color: cs.error))
-                    else ...[
-                      buildTrend(),
-                      const SizedBox(height: 12),
-                      buildComparison(),
-                      const SizedBox(height: 12),
-                      buildTopMerchants(),
-                      if (c.selectedMonth != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Text(
-                            l.statementsAnalyticsMonthHint(c.selectedMonth!),
-                            style: t.bodySmall
-                                .copyWith(color: cs.onSurfaceVariant),
-                          ),
-                        ),
-                    ],
-                  ],
+                  children: sectionChildren,
                 ),
               ),
             ),

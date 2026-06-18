@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/widgets/series_status_pill.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
 class RecurringDetailHeader extends StatelessWidget {
   final String title;
@@ -33,6 +35,9 @@ class RecurringDetailHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
     ButtonStyle compactTonal = FilledButton.styleFrom(
       visualDensity: VisualDensity.compact,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -54,6 +59,45 @@ class RecurringDetailHeader extends StatelessWidget {
             if (showStatusPill) SeriesStatusPill(status: status),
           ],
         ),
+        if (title.trim().isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.24),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.28),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.person_outline_rounded,
+                    size: 16, color: cs.primary),
+                const SizedBox(width: 8),
+                Text(
+                  '${l.clientLabel}:',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodyMedium.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         if (showActionRow) ...[
           const SizedBox(height: 6),
           Row(

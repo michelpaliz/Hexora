@@ -67,7 +67,7 @@ class StatementsAllDataTable extends StatelessWidget {
 
         final list = ListView.builder(
           itemCount: entries.length,
-          itemExtent: 80,
+          itemExtent: 72,
           addAutomaticKeepAlives: false,
           addRepaintBoundaries: true,
           cacheExtent: 500,
@@ -80,7 +80,7 @@ class StatementsAllDataTable extends StatelessWidget {
             return Padding(
               key: ValueKey(entryId),
               padding: index < entries.length - 1
-                  ? const EdgeInsets.only(bottom: 4)
+                  ? const EdgeInsets.only(bottom: 6)
                   : EdgeInsets.zero,
               child: StatementsAllDataTableRow(
                 entry: entry,

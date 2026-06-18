@@ -45,6 +45,48 @@ class CurrentPasswordMismatchException implements Exception {
   String toString() => 'Current password is incorrect.';
 }
 
+class ChangePasswordValidationException implements Exception {
+  final String message;
+  ChangePasswordValidationException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class ChangePasswordRequestFailedException implements Exception {
+  final String message;
+  ChangePasswordRequestFailedException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class ForgotPasswordRequestFailedException implements Exception {
+  final String message;
+  ForgotPasswordRequestFailedException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class ResetPasswordInvalidOrExpiredTokenException implements Exception {
+  final String message;
+  ResetPasswordInvalidOrExpiredTokenException([
+    this.message = 'Invalid or expired reset token.',
+  ]);
+
+  @override
+  String toString() => message;
+}
+
+class ResetPasswordRequestFailedException implements Exception {
+  final String message;
+  ResetPasswordRequestFailedException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 // ==========================
 // GENERIC & SESSION EXCEPTIONS
 // ==========================

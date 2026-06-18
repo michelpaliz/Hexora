@@ -5,12 +5,7 @@ import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/notification/domain/socket_notification_listener.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
-import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/widgets/home_left_nav.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/widgets/home_sliver_content.dart';
-import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/create_edit/models/create_group_data.dart';
-import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/show_notifications.dart';
-import 'package:hexora/c-frontend/ui-app/g-agenda-section/agenda_screen.dart';
-import 'package:hexora/c-frontend/ui-app/i-settings-section/screens/settings.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/main_scaffold.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -32,7 +27,6 @@ class _HomePageState extends State<HomePage> {
   final _phraseKey = GlobalKey();
   final _groupsKey = GlobalKey();
   String _activeSection = 'summary';
-  String _activeNavRoute = AppRoutes.homePage;
 
   @override
   void didChangeDependencies() {
@@ -87,7 +81,6 @@ class _HomePageState extends State<HomePage> {
 
     final bottomSafePadding = MediaQuery.of(context).padding.bottom + 16;
     final isWide = MediaQuery.of(context).size.width >= 900;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final sectionItems = [
       HomeSectionNavItem(id: 'summary', label: loc.home, key: _summaryKey),
@@ -126,66 +119,24 @@ class _HomePageState extends State<HomePage> {
             ],
       showAppBar: !isWide,
       showBottomNavAndFab: !isWide,
-      body: isWide
-          ? HomeLeftNav(
-              user: user,
-              activeSection: _activeSection,
-              sectionItems: sectionItems,
-              onSectionSelected: handleSectionTap,
-              activeNavRoute: _activeNavRoute,
-              onNavSelected: (route) => setState(() => _activeNavRoute = route),
-              isDark: isDark,
-              content: _buildWideContent(
-                user: user,
-                isWide: isWide,
-                bottomSafePadding: bottomSafePadding,
-              ),
-              showSectionNavBar: false,
-              onCreateGroupInline: () =>
-                  setState(() => _activeNavRoute = AppRoutes.createGroupData),
-              floatingAction: null,
-            )
-          : HomeSliverContent(
-              user: user,
-              isWide: isWide,
-              bottomSafePadding: bottomSafePadding,
-              summaryKey: _summaryKey,
-              phraseKey: _phraseKey,
-              groupsKey: _groupsKey,
-              controller: _scrollController,
-              showSectionNavBar: false,
-              sectionItems: sectionItems,
-              activeSection: _activeSection,
-              onSectionSelected: handleSectionTap,
-            ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: HomeSliverContent(
+            user: user,
+            isWide: isWide,
+            bottomSafePadding: bottomSafePadding,
+            summaryKey: _summaryKey,
+            phraseKey: _phraseKey,
+            groupsKey: _groupsKey,
+            controller: _scrollController,
+            showSectionNavBar: false,
+            sectionItems: sectionItems,
+            activeSection: _activeSection,
+            onSectionSelected: handleSectionTap,
+          ),
+        ),
+      ),
     );
-  }
-
-  Widget _buildWideContent({
-    required User user,
-    required bool isWide,
-    required double bottomSafePadding,
-  }) {
-    switch (_activeNavRoute) {
-      case AppRoutes.agenda:
-        return const AgendaScreen(showBottomNav: false);
-      case AppRoutes.showNotifications:
-        return ShowNotifications(user: user, showBottomNav: false);
-      case AppRoutes.createGroupData:
-        return const CreateGroupData();
-      case AppRoutes.settings:
-        return const Settings();
-      default:
-        return HomeSliverContent(
-          user: user,
-          isWide: isWide,
-          bottomSafePadding: bottomSafePadding,
-          summaryKey: _summaryKey,
-          phraseKey: _phraseKey,
-          groupsKey: _groupsKey,
-          controller: _scrollController,
-          showSectionNavBar: false,
-        );
-    }
   }
 }

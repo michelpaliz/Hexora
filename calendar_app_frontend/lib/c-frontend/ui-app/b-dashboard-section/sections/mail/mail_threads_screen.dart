@@ -57,7 +57,9 @@ class _MailThreadsScreenState extends State<MailThreadsScreen>
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 280), () {
       if (!mounted) return;
-      context.read<MailDomain>().loadThreads(folder: folder, refresh: refresh);
+      context
+          .read<MailDomain>()
+          .loadThreads(folder: folder, refresh: refresh, query: '');
     });
   }
 
@@ -133,13 +135,13 @@ class _ThreadsListState extends State<_ThreadsList>
     if (state.folder != widget.folder) return;
     if (state.loading || state.loadingMore) return;
     if (!state.hasMore) return;
-    domain.loadThreads(folder: widget.folder, refresh: false);
+    domain.loadThreads(folder: widget.folder, refresh: false, query: '');
   }
 
   Future<void> _refresh() async {
     await context
         .read<MailDomain>()
-        .loadThreads(folder: widget.folder, refresh: true);
+        .loadThreads(folder: widget.folder, refresh: true, query: '');
   }
 
   @override

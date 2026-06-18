@@ -35,7 +35,7 @@ class StatementsExpenseUploadDialog {
         allowMultiple: false,
         withData: true,
         type: FileType.custom,
-        allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg'],
+        allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'jpe'],
       );
       final file = result?.files.single;
       if (file == null || file.bytes == null) return;

@@ -33,6 +33,7 @@ class MailDomain extends ChangeNotifier {
 
   MailThreadsState _threadsState = const MailThreadsState();
   MailThreadsState get threadsState => _threadsState;
+  Object? _threadsRequestMarker;
 
   final Map<String, MailMessageDetailState> _messageStates = {};
   final Map<String, MailThreadDetailState> _threadStates = {};
@@ -265,17 +266,27 @@ class MailDomain extends ChangeNotifier {
   Future<void> loadThreads({
     MailFolder folder = MailFolder.inbox,
     bool refresh = false,
+    String? query,
   }) async {
-    if (_threadsState.loading || _threadsState.loadingMore) return;
+    if ((_threadsState.loading || _threadsState.loadingMore) && !refresh) return;
+
+    final currentQuery = (_threadsState.query ?? '').trim();
+    final effectiveQuery = (query ?? currentQuery).trim();
+    final changedQuery = effectiveQuery != currentQuery;
 
     final initial = refresh || !_threadsState.hasRequested ||
-        _threadsState.folder != folder;
+        _threadsState.folder != folder ||
+        changedQuery;
+
+    final requestMarker = Object();
+    _threadsRequestMarker = requestMarker;
 
     if (initial) {
       _threadsState = _threadsState.copyWith(
         loading: true,
         error: null,
         folder: folder,
+        query: effectiveQuery,
         hasRequested: true,
         nextCursor: null,
         threads: const [],
@@ -294,7 +305,10 @@ class MailDomain extends ChangeNotifier {
         folder: folder,
         limit: 25,
         cursor: initial ? null : _threadsState.nextCursor,
+        query: effectiveQuery.length >= 2 ? effectiveQuery : null,
       );
+
+      if (!identical(requestMarker, _threadsRequestMarker)) return;
 
       final nextThreads = initial
           ? page.items
@@ -304,14 +318,17 @@ class MailDomain extends ChangeNotifier {
         loading: false,
         loadingMore: false,
         threads: nextThreads,
+        query: effectiveQuery,
         nextCursor: page.nextCursor,
         error: null,
       );
       notifyListeners();
     } catch (e) {
+      if (!identical(requestMarker, _threadsRequestMarker)) return;
       _threadsState = _threadsState.copyWith(
         loading: false,
         loadingMore: false,
+        query: effectiveQuery,
         error: e.toString(),
       );
       notifyListeners();
@@ -467,6 +484,7 @@ class MailDomain extends ChangeNotifier {
 }
 
 class MailFolderState {
+  static const Object _nextCursorNoChange = Object();
   final List<MailMessage> messages;
   final bool loading;
   final bool loadingMore;
@@ -490,7 +508,7 @@ class MailFolderState {
     bool? loading,
     bool? loadingMore,
     String? error,
-    String? nextCursor,
+    Object? nextCursor = _nextCursorNoChange,
     bool? hasRequested,
   }) {
     return MailFolderState(
@@ -498,7 +516,9 @@ class MailFolderState {
       loading: loading ?? this.loading,
       loadingMore: loadingMore ?? this.loadingMore,
       error: error,
-      nextCursor: nextCursor ?? this.nextCursor,
+      nextCursor: identical(nextCursor, _nextCursorNoChange)
+          ? this.nextCursor
+          : nextCursor as String?,
       hasRequested: hasRequested ?? this.hasRequested,
     );
   }
@@ -533,6 +553,7 @@ class MailSearchFilters {
 }
 
 class MailSearchState {
+  static const Object _nextCursorNoChange = Object();
   final String query;
   final MailSearchFilters filters;
   final List<MailMessage> results;
@@ -562,7 +583,7 @@ class MailSearchState {
     bool? loading,
     bool? loadingMore,
     String? error,
-    String? nextCursor,
+    Object? nextCursor = _nextCursorNoChange,
     bool? hasRequested,
   }) {
     return MailSearchState(
@@ -572,15 +593,19 @@ class MailSearchState {
       loading: loading ?? this.loading,
       loadingMore: loadingMore ?? this.loadingMore,
       error: error,
-      nextCursor: nextCursor ?? this.nextCursor,
+      nextCursor: identical(nextCursor, _nextCursorNoChange)
+          ? this.nextCursor
+          : nextCursor as String?,
       hasRequested: hasRequested ?? this.hasRequested,
     );
   }
 }
 
 class MailThreadsState {
+  static const Object _nextCursorNoChange = Object();
   final MailFolder folder;
   final List<MailThread> threads;
+  final String? query;
   final bool loading;
   final bool loadingMore;
   final String? error;
@@ -590,6 +615,7 @@ class MailThreadsState {
   const MailThreadsState({
     this.folder = MailFolder.inbox,
     this.threads = const [],
+    this.query = '',
     this.loading = false,
     this.loadingMore = false,
     this.error,
@@ -602,19 +628,23 @@ class MailThreadsState {
   MailThreadsState copyWith({
     MailFolder? folder,
     List<MailThread>? threads,
+    String? query,
     bool? loading,
     bool? loadingMore,
     String? error,
-    String? nextCursor,
+    Object? nextCursor = _nextCursorNoChange,
     bool? hasRequested,
   }) {
     return MailThreadsState(
       folder: folder ?? this.folder,
       threads: threads ?? this.threads,
+      query: query ?? this.query ?? '',
       loading: loading ?? this.loading,
       loadingMore: loadingMore ?? this.loadingMore,
       error: error,
-      nextCursor: nextCursor ?? this.nextCursor,
+      nextCursor: identical(nextCursor, _nextCursorNoChange)
+          ? this.nextCursor
+          : nextCursor as String?,
       hasRequested: hasRequested ?? this.hasRequested,
     );
   }

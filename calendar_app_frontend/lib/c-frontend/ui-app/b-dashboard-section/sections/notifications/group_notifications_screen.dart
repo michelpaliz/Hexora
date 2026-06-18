@@ -6,6 +6,10 @@ import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/notification/notification_api_client.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/enums/category/broad_category.dart';
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/expense_ocr_reprocess_results_screen.dart';
+import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/utils/notification_payload_helper.dart';
 import 'package:hexora/c-frontend/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/c-frontend/utils/errors/premium_upgrade_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/utils/notification_grouping.dart';
@@ -113,6 +117,102 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
     await _load();
   }
 
+  Future<void> _handleMarkRead(NotificationUser notification) async {
+    try {
+      await _viewModel.markNotificationAsRead(notification);
+      if (!mounted) return;
+      setState(() {
+        _notifications = _notifications.map((n) {
+          if (n.id == notification.id) {
+            n.isRead = true;
+          }
+          return n;
+        }).toList();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${AppLocalizations.of(context)!.error}: $e')),
+      );
+    }
+  }
+
+  void _openEvent(String eventId, String groupId) {
+    Navigator.of(context).pushNamed(
+      AppRoutes.groupCalendar,
+      arguments: groupId,
+    );
+  }
+
+  GroupInvoicesRouteArgs? _documentRouteArgs(NotificationUser notification) {
+    final data = documentIssuedNotification(notification);
+    final documentId = (data.documentId ?? '').trim();
+    if (documentId.isEmpty) return null;
+    switch (data.documentType) {
+      case IssuedDocumentType.invoice:
+        return GroupInvoicesRouteArgs(
+          group: widget.group,
+          initialMenu: 'invoices_issued',
+          initialInvoiceId: documentId,
+        );
+      case IssuedDocumentType.receipt:
+        return GroupInvoicesRouteArgs(
+          group: widget.group,
+          initialMenu: 'receipts',
+          initialReceiptId: documentId,
+        );
+      case IssuedDocumentType.presupuesto:
+        return GroupInvoicesRouteArgs(
+          group: widget.group,
+          initialMenu: 'budgets_list',
+          initialBudgetId: documentId,
+        );
+      case IssuedDocumentType.unknown:
+        return null;
+    }
+  }
+
+  void _openDocument(NotificationUser notification) {
+    final args = _documentRouteArgs(notification);
+    if (args == null) return;
+    Navigator.of(context).pushNamed(
+      AppRoutes.groupInvoices,
+      arguments: args,
+    );
+  }
+
+  bool _isOcrReprocessNotification(NotificationUser notification) {
+    final haystack = [
+      notification.titleKey,
+      notification.messageKey,
+      notification.fallbackTitle,
+      notification.fallbackMessage,
+      notification.args['key'],
+      notification.args['type'],
+      notification.args['actionUrl'],
+    ].join(' ').toLowerCase();
+    return haystack.contains('reprocess') ||
+        haystack.contains('reproces') ||
+        haystack.contains('iva 0') ||
+        haystack.contains('zero_vat');
+  }
+
+  void _openOcrReprocessResults(NotificationUser notification) {
+    final jobId = (notification.args['jobId'] ?? '').toString().trim();
+    final groupId = (notification.args['groupId'] ?? notification.groupId)
+        .toString()
+        .trim();
+    if (jobId.isEmpty || groupId.isEmpty) return;
+    Navigator.of(context).pushNamed(
+      AppRoutes.expenseOcrReprocessResults,
+      arguments: ExpenseOcrReprocessResultsArgs(
+        group: widget.group,
+        groupId: groupId,
+        jobId: jobId,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -164,6 +264,12 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
                           onDelete: _handleDelete,
                           onConfirm: _handleConfirm,
                           onNegate: _handleNegate,
+                          onMarkRead: _handleMarkRead,
+                          onOpenEvent: _openEvent,
+                          onOpenDocument: (notification) =>
+                              _isOcrReprocessNotification(notification)
+                                  ? _openOcrReprocessResults(notification)
+                                  : _openDocument(notification),
                         ),
                       ),
                     )
@@ -205,14 +311,12 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
     List<NotificationUser> notifications,
   ) {
     final loc = AppLocalizations.of(context)!;
-    final mapping = BroadCategoryManager().categoryMapping;
-
     final buckets = <BroadCategory, List<NotificationUser>>{
       for (final cat in BroadCategory.values) cat: <NotificationUser>[],
     };
 
     for (final notification in notifications) {
-      final resolved = mapping[notification.category] ?? BroadCategory.other;
+      final resolved = resolveBroadCategoryForNotification(notification);
       buckets.putIfAbsent(resolved, () => []).add(notification);
     }
 
@@ -253,12 +357,18 @@ class _NotificationsList extends StatelessWidget {
     required this.onDelete,
     required this.onConfirm,
     required this.onNegate,
+    required this.onMarkRead,
+    required this.onOpenEvent,
+    required this.onOpenDocument,
   });
 
   final List<NotificationUser> notifications;
   final ValueChanged<NotificationUser> onDelete;
   final ValueChanged<NotificationUser> onConfirm;
   final ValueChanged<NotificationUser> onNegate;
+  final ValueChanged<NotificationUser> onMarkRead;
+  final void Function(String eventId, String groupId) onOpenEvent;
+  final ValueChanged<NotificationUser> onOpenDocument;
 
   @override
   Widget build(BuildContext context) {
@@ -294,6 +404,9 @@ class _NotificationsList extends StatelessWidget {
               onDelete: () => onDelete(notification),
               onConfirm: () => onConfirm(notification),
               onNegate: () => onNegate(notification),
+              onMarkRead: () => onMarkRead(notification),
+              onOpenEvent: onOpenEvent,
+              onOpenDocument: () => onOpenDocument(notification),
             ),
           ),
         ];

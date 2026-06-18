@@ -1,8 +1,13 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/invoice/invoice_block.dart';
+import 'package:hexora/a-models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/invoicing/recurring_invoices_api.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_time_utils.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurring_invoices_helpers.dart';
@@ -15,6 +20,7 @@ import 'package:hexora/c-frontend/ui-app/shared/widgets/wizard_steps_header.dart
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RecurringCreateWizard extends StatefulWidget {
   final Group group;
@@ -23,6 +29,7 @@ class RecurringCreateWizard extends StatefulWidget {
   final VoidCallback onCancel;
   final ValueChanged<Map<String, dynamic>> onCreated;
   final bool enableTaxes;
+  final String draftScope;
 
   const RecurringCreateWizard({
     super.key,
@@ -32,6 +39,7 @@ class RecurringCreateWizard extends StatefulWidget {
     required this.onCancel,
     required this.onCreated,
     this.enableTaxes = true,
+    this.draftScope = 'invoice',
   });
 
   @override
@@ -39,9 +47,11 @@ class RecurringCreateWizard extends StatefulWidget {
 }
 
 class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
+  static const int _draftVersion = 1;
+
   int _step = 0;
   String? _clientId;
-  final List<LineDraft> _lines = [LineDraft(position: 1)];
+  final List<InvoiceBlockDraft> _templateBlocks = [InvoiceBlockDraft.item()];
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _notesCtrl = TextEditingController();
   final TextEditingController _currencyCtrl =
@@ -74,6 +84,16 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
   bool _created = false;
   String? _ruleErrorText;
   List<Map<String, String>> _previewRows = [];
+  Timer? _draftSaveTimer;
+  bool _restoringDraft = false;
+  bool _draftDirty = false;
+  bool _draftSaving = false;
+  bool _skipDraftSaveOnDispose = false;
+  bool _draftSaveFailed = false;
+  String? _lastSavedDraftJson;
+
+  String get _draftStorageKey =>
+      'recurring_${widget.draftScope}_create_draft_v${_draftVersion}_${widget.group.id}';
 
   @override
   void initState() {
@@ -84,12 +104,18 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
     _billDayCtrl.text = DateTime.now().day.toString();
     _startTime = TimeOfDay.fromDateTime(_startDate);
     _timezoneCtrl.text = _detectedTimezone;
+    _attachDraftListeners();
+    _restoreDraft();
   }
 
   @override
   void dispose() {
-    for (final l in _lines) {
-      l.dispose();
+    _draftSaveTimer?.cancel();
+    if (_draftDirty && !_created && !_skipDraftSaveOnDispose) {
+      _saveDraftNow();
+    }
+    for (final block in _templateBlocks) {
+      block.dispose();
     }
     _nameCtrl.dispose();
     _notesCtrl.dispose();
@@ -106,7 +132,371 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
     super.dispose();
   }
 
-  void _onChanged() => setState(() {});
+  void _attachDraftListeners() {
+    for (final ctrl in [
+      _nameCtrl,
+      _notesCtrl,
+      _currencyCtrl,
+      _discountAmountCtrl,
+      _discountPercentCtrl,
+      _intervalCtrl,
+      _countCtrl,
+      _billDayCtrl,
+      _weekDayCtrl,
+      _timezoneCtrl,
+      _invoiceDateDayCtrl,
+      _invoiceDateOffsetDaysCtrl,
+    ]) {
+      ctrl.addListener(_markDraftDirty);
+    }
+  }
+
+  void _onChanged() {
+    _markDraftDirty();
+    setState(() {});
+  }
+
+  void _setDraftState(VoidCallback change) {
+    setState(change);
+    _markDraftDirty();
+  }
+
+  void _markDraftDirty() {
+    if (_restoringDraft || _created) return;
+    _draftDirty = true;
+    _draftSaveTimer?.cancel();
+    _draftSaveTimer = Timer(const Duration(seconds: 2), _saveDraftNow);
+  }
+
+  String _draftJson() => jsonEncode(_buildDraftPayload());
+
+  Map<String, dynamic> _buildDraftPayload() {
+    return {
+      'version': _draftVersion,
+      'step': _step,
+      'clientId': _clientId,
+      'name': _nameCtrl.text,
+      'notes': _notesCtrl.text,
+      'currency': _currencyCtrl.text,
+      'discountAmount': _discountAmountCtrl.text,
+      'discountPercent': _discountPercentCtrl.text,
+      'useDiscountPercent': _useDiscountPercent,
+      'freq': _freq,
+      'interval': _intervalCtrl.text,
+      'startDate': _startDate.toIso8601String(),
+      'startTimeHour': _startTime.hour,
+      'startTimeMinute': _startTime.minute,
+      'endType': _endType,
+      'endDate': _endDate?.toIso8601String(),
+      'count': _countCtrl.text,
+      'billDay': _billDayCtrl.text,
+      'weekDay': _weekDayCtrl.text,
+      'timezone': _timezoneCtrl.text,
+      'invoiceDateMode': _invoiceDateMode,
+      'invoiceDateDay': _invoiceDateDayCtrl.text,
+      'invoiceDateOffsetDays': _invoiceDateOffsetDaysCtrl.text,
+      'invoiceDateClampPolicy': _invoiceDateClampPolicy,
+      'exceptions': _exceptions.map((d) => d.toIso8601String()).toList(),
+      'previewRows': _previewRows,
+      'blocks': _templateBlocks.map(_blockDraftToJson).toList(),
+    };
+  }
+
+  Map<String, dynamic> _blockDraftToJson(InvoiceBlockDraft block) {
+    return {
+      ...block.toBlock().toJson(),
+      'qtyText': block.qtyCtrl.text,
+      'unitPriceText': block.unitPriceCtrl.text,
+      'discountRateText': block.discountRateCtrl.text,
+      'taxRateText': block.taxRateCtrl.text,
+      'levelText': block.levelCtrl.text,
+      'dateValue': block.dateValue,
+      'isBillable': block.isBillable,
+    };
+  }
+
+  InvoiceBlockDraft _blockDraftFromJson(Map<String, dynamic> json) {
+    final items = json['items'] is List
+        ? (json['items'] as List)
+            .whereType<Map>()
+            .map(
+              (item) => InvoiceChecklistItemDraft(
+                initialText: (item['text'] ?? '').toString(),
+                checked: item['checked'] == true,
+              ),
+            )
+            .toList()
+        : <InvoiceChecklistItemDraft>[];
+    return InvoiceBlockDraft(
+      type: (json['type'] ?? InvoiceBlockType.item).toString(),
+      sku: json['sku']?.toString(),
+      conceptItems: json['conceptItems'] is List
+          ? (json['conceptItems'] as List)
+              .map((item) => item.toString())
+              .toList()
+          : null,
+      conceptTitle: json['conceptTitle']?.toString(),
+      serviceDate: cleanInvoiceServiceDate(json['serviceDate']),
+      isCompositeConcept: json['isCompositeConcept'] is bool
+          ? json['isCompositeConcept'] as bool
+          : null,
+      description: json['description']?.toString(),
+      qty: (json['qtyText'] ?? json['qty'] ?? '1').toString(),
+      unit: json['unit']?.toString(),
+      unitPrice: (json['unitPriceText'] ?? json['unitPrice'] ?? '').toString(),
+      discountRate:
+          (json['discountRateText'] ?? json['discountRate'] ?? '0').toString(),
+      taxRate: (json['taxRateText'] ?? json['taxRate'] ?? '21').toString(),
+      level: (json['levelText'] ?? json['level'] ?? '').toString(),
+      isBillable: json['isBillable'] is bool
+          ? json['isBillable'] as bool
+          : InvoiceBlockDraft.defaultBillableForType(
+              (json['type'] ?? InvoiceBlockType.item).toString(),
+            ),
+      title: json['title']?.toString(),
+      dateValue: json['dateValue']?.toString(),
+      text: json['text']?.toString(),
+      checklistItems: items,
+    );
+  }
+
+  Future<void> _saveDraftNow() async {
+    if (_created) return;
+    _draftSaveTimer?.cancel();
+    final json = _draftJson();
+    if (json == _lastSavedDraftJson) {
+      _draftDirty = false;
+      _draftSaveFailed = false;
+      return;
+    }
+    _draftSaving = true;
+    if (mounted) setState(() {});
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_draftStorageKey, json);
+      _lastSavedDraftJson = json;
+      _draftDirty = false;
+      _draftSaveFailed = false;
+    } catch (_) {
+      _draftDirty = true;
+      _draftSaveFailed = true;
+    } finally {
+      _draftSaving = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _restoreDraft() async {
+    _restoringDraft = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_draftStorageKey);
+      if (raw == null || raw.trim().isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return;
+      final blocks = decoded['blocks'];
+      final restoredBlocks = blocks is List
+          ? blocks
+              .whereType<Map>()
+              .map((block) =>
+                  _blockDraftFromJson(Map<String, dynamic>.from(block)))
+              .toList()
+          : <InvoiceBlockDraft>[];
+      if (!mounted) return;
+      setState(() {
+        _step =
+            (decoded['step'] is num ? (decoded['step'] as num).toInt() : _step)
+                .clamp(0, 4);
+        final restoredClientId = decoded['clientId']?.toString();
+        if (restoredClientId != null &&
+            widget.clients.any((client) => client.id == restoredClientId)) {
+          _clientId = restoredClientId;
+        }
+        _nameCtrl.text = decoded['name']?.toString() ?? '';
+        _notesCtrl.text = decoded['notes']?.toString() ?? '';
+        _currencyCtrl.text = decoded['currency']?.toString() ?? 'EUR';
+        _discountAmountCtrl.text = decoded['discountAmount']?.toString() ?? '';
+        _discountPercentCtrl.text =
+            decoded['discountPercent']?.toString() ?? '';
+        _useDiscountPercent = decoded['useDiscountPercent'] == true;
+        _freq = canonicalFrequencyForApi(decoded['freq']?.toString() ?? _freq);
+        _intervalCtrl.text = decoded['interval']?.toString() ?? '1';
+        _startDate =
+            DateTime.tryParse(decoded['startDate']?.toString() ?? '') ??
+                _startDate;
+        _startTime = TimeOfDay(
+          hour: decoded['startTimeHour'] is num
+              ? (decoded['startTimeHour'] as num).toInt()
+              : _startTime.hour,
+          minute: decoded['startTimeMinute'] is num
+              ? (decoded['startTimeMinute'] as num).toInt()
+              : _startTime.minute,
+        );
+        _endType = decoded['endType']?.toString() ?? 'never';
+        _endDate = DateTime.tryParse(decoded['endDate']?.toString() ?? '');
+        _countCtrl.text = decoded['count']?.toString() ?? '';
+        _billDayCtrl.text =
+            decoded['billDay']?.toString() ?? DateTime.now().day.toString();
+        _weekDayCtrl.text = decoded['weekDay']?.toString() ?? '';
+        _timezoneCtrl.text =
+            decoded['timezone']?.toString() ?? _detectedTimezone;
+        _invoiceDateMode =
+            decoded['invoiceDateMode']?.toString() ?? 'execution_day';
+        _invoiceDateDayCtrl.text = decoded['invoiceDateDay']?.toString() ?? '';
+        _invoiceDateOffsetDaysCtrl.text =
+            decoded['invoiceDateOffsetDays']?.toString() ?? '0';
+        _invoiceDateClampPolicy =
+            decoded['invoiceDateClampPolicy']?.toString() ?? 'end_of_month';
+        _exceptions
+          ..clear()
+          ..addAll(
+            decoded['exceptions'] is List
+                ? (decoded['exceptions'] as List)
+                    .map((item) => DateTime.tryParse(item.toString()))
+                    .whereType<DateTime>()
+                : const <DateTime>[],
+          );
+        _previewRows = decoded['previewRows'] is List
+            ? (decoded['previewRows'] as List)
+                .whereType<Map>()
+                .map((row) => row.map(
+                      (key, value) =>
+                          MapEntry(key.toString(), value.toString()),
+                    ))
+                .toList()
+            : [];
+        for (final block in _templateBlocks) {
+          block.dispose();
+        }
+        _templateBlocks
+          ..clear()
+          ..addAll(restoredBlocks.isEmpty
+              ? <InvoiceBlockDraft>[InvoiceBlockDraft.item()]
+              : restoredBlocks);
+      });
+      _lastSavedDraftJson = raw;
+      _draftDirty = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final l = AppLocalizations.of(context)!;
+        final isEs = l.localeName.toLowerCase().startsWith('es');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEs ? 'Recuperamos tu borrador.' : 'We restored your draft.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      });
+    } catch (_) {
+      // Ignore corrupt local drafts; the user can continue with a clean wizard.
+    } finally {
+      _restoringDraft = false;
+    }
+  }
+
+  Future<void> _clearDraft() async {
+    _draftSaveTimer?.cancel();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_draftStorageKey);
+    _lastSavedDraftJson = null;
+    _draftDirty = false;
+  }
+
+  Widget _draftStatusChip(AppTypography t, ColorScheme cs) {
+    final l = AppLocalizations.of(context)!;
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final text = _draftSaveFailed
+        ? (isEs
+            ? 'No se pudo guardar. Reintentando...'
+            : 'Save failed. Retrying...')
+        : _draftSaving
+            ? (isEs ? 'Guardando...' : 'Saving...')
+            : _draftDirty
+                ? (isEs ? 'Cambios pendientes' : 'Pending changes')
+                : (isEs ? 'Borrador guardado' : 'Draft saved');
+    final icon = _draftSaveFailed
+        ? Icons.cloud_off_outlined
+        : _draftSaving
+            ? Icons.sync_rounded
+            : _draftDirty
+                ? Icons.edit_note_rounded
+                : Icons.cloud_done_outlined;
+    final color = _draftSaveFailed
+        ? cs.error
+        : _draftSaving || _draftDirty
+            ? cs.tertiary
+            : cs.primary;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: t.bodySmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleCancel() async {
+    if (!_draftDirty && !_draftSaving) {
+      widget.onCancel();
+      return;
+    }
+    final l = AppLocalizations.of(context)!;
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),
+        content: Text(
+          isEs
+              ? 'Aun estamos guardando tu borrador. Puedes quedarte, salir sin guardar, o guardar ahora y salir.'
+              : 'Your draft is still being saved. You can stay, leave without saving, or save now and leave.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('stay'),
+            child: Text(isEs ? 'Quedarme' : 'Stay'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('leave'),
+            child: Text(isEs ? 'Salir sin guardar' : 'Leave without saving'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop('save'),
+            child: Text(isEs ? 'Guardar y salir' : 'Save & leave'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || result == null || result == 'stay') return;
+    if (result == 'leave') {
+      _skipDraftSaveOnDispose = true;
+      _draftSaveTimer?.cancel();
+      _draftDirty = false;
+    }
+    if (result == 'save') {
+      await _saveDraftNow();
+      if (!mounted) return;
+    }
+    widget.onCancel();
+  }
 
   String _timezoneLabel() => timezoneLabelFrom(
         _timezoneCtrl.text.trim().isEmpty
@@ -114,16 +504,18 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
             : _timezoneCtrl.text.trim(),
       );
 
-  num _lineSubtotal(LineDraft line) {
-    final qty = line.quantity ?? 1;
-    final price = line.unitPrice ?? 0;
+  num _blockSubtotal(InvoiceBlockDraft block) {
+    if (!block.hasBillableContent) return 0;
+    final qty = block.qty ?? 1;
+    final price = block.unitPrice ?? 0;
     return qty * price;
   }
 
-  num _lineTax(LineDraft line) {
+  num _blockTax(InvoiceBlockDraft block) {
     if (!widget.enableTaxes) return 0;
-    final taxRate = line.taxRate ?? 21;
-    return _lineSubtotal(line) * (taxRate / 100);
+    if (!block.hasBillableContent) return 0;
+    final taxRate = block.taxRate ?? 21;
+    return _blockSubtotal(block) * (taxRate / 100);
   }
 
   num? _tryParseDiscountInput(String raw) {
@@ -174,8 +566,9 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
   }
 
   num get _rawSubtotal =>
-      _lines.fold<num>(0, (sum, l) => sum + _lineSubtotal(l));
-  num get _rawTax => _lines.fold<num>(0, (sum, l) => sum + _lineTax(l));
+      _templateBlocks.fold<num>(0, (sum, b) => sum + _blockSubtotal(b));
+  num get _rawTax =>
+      _templateBlocks.fold<num>(0, (sum, b) => sum + _blockTax(b));
 
   num get _discountAmountValue {
     final v = _tryParseDiscountInput(_discountAmountCtrl.text) ?? 0;
@@ -214,7 +607,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
   num get _total => _subtotal + _tax;
 
   void _setDiscountModePercent(bool value) {
-    setState(() {
+    _setDraftState(() {
       _useDiscountPercent = value;
       if (value) {
         _discountAmountCtrl.clear();
@@ -251,7 +644,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
       lastDate: DateTime(_startDate.year + 5),
     );
     if (date == null) return;
-    setState(() {
+    _setDraftState(() {
       _startDate = DateTime(
         date.year,
         date.month,
@@ -268,7 +661,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
       initialTime: _startTime,
     );
     if (picked == null) return;
-    setState(() {
+    _setDraftState(() {
       _startTime = picked;
       _startDate = DateTime(
         _startDate.year,
@@ -288,7 +681,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
       lastDate: DateTime(_startDate.year + 5),
     );
     if (date == null) return;
-    setState(() => _endDate = date);
+    _setDraftState(() => _endDate = date);
   }
 
   Future<void> _addException() async {
@@ -299,7 +692,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
       lastDate: DateTime(_startDate.year + 5),
     );
     if (date == null) return;
-    setState(() => _exceptions.add(date));
+    _setDraftState(() => _exceptions.add(date));
   }
 
   Future<void> _pickTimezone() async {
@@ -310,7 +703,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
           : _timezoneCtrl.text.trim(),
     );
     if (selected == null) return;
-    setState(() => _timezoneCtrl.text = selected);
+    _setDraftState(() => _timezoneCtrl.text = selected);
   }
 
   Map<String, dynamic> _buildRule() {
@@ -332,7 +725,10 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
           : _timezoneCtrl.text.trim(),
     };
     final canonicalFreq = canonicalFrequencyForApi(_freq);
-    if ((canonicalFreq == recurringFreqMonthly || canonicalFreq == recurringFreqBimensual || canonicalFreq == recurringFreqTrimestral) && billDay != null) {
+    if ((canonicalFreq == recurringFreqMonthly ||
+            canonicalFreq == recurringFreqBimensual ||
+            canonicalFreq == recurringFreqTrimestral) &&
+        billDay != null) {
       rule['billDay'] = billDay;
     } else if (canonicalFreq == recurringFreqWeekly && weekDay != null) {
       rule['billDay'] = weekDay;
@@ -381,16 +777,57 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
     return null;
   }
 
+  String _blockDescription(InvoiceBlockDraft block) {
+    final description = block.description.text.trim();
+    if (description.isNotEmpty) return description;
+    final title = block.title.text.trim();
+    if (title.isNotEmpty) return title;
+    if (block.checklistItems.isNotEmpty) {
+      return block.checklistItems.first.text.text.trim();
+    }
+    return '';
+  }
+
   List<Map<String, dynamic>> _buildLines() {
-    return _lines.map((line) {
+    var position = 1;
+    return _templateBlocks
+        .where((block) => block.hasBillableContent)
+        .map((block) {
+      final sku = block.sku.text.trim();
+      final unit = block.unitCtrl.text.trim();
+      final conceptItems = cleanInvoiceConceptItems(
+        block.conceptItems,
+        staleSku: sku,
+      );
+      final conceptTitle = invoiceConceptTitleFrom(
+        conceptTitle: block.conceptTitle,
+        sku: sku,
+      );
       return {
-        'position': line.position,
-        'description': line.description.text.trim(),
-        'quantity': line.quantity ?? 1,
-        'unitPrice': line.unitPrice ?? 0,
-        'taxRate': widget.enableTaxes ? (line.taxRate ?? 21) : 0,
+        'position': position++,
+        'description': _blockDescription(block),
+        if (sku.isNotEmpty && isInvoiceUnitCode(sku)) 'sku': sku,
+        if (conceptTitle != null) 'conceptTitle': conceptTitle,
+        if (conceptItems != null) 'conceptItems': conceptItems,
+        if (block.serviceDate != null)
+          'serviceDate': cleanInvoiceServiceDate(block.serviceDate),
+        if (block.isCompositeConcept != null)
+          'isCompositeConcept': block.isCompositeConcept
+        else if ((conceptItems?.length ?? 0) > 1)
+          'isCompositeConcept': true,
+        if (unit.isNotEmpty) 'unit': unit,
+        'quantity': block.qty ?? 1,
+        'unitPrice': block.unitPrice ?? 0,
+        'taxRate': widget.enableTaxes ? (block.taxRate ?? 21) : 0,
       };
     }).toList();
+  }
+
+  List<Map<String, dynamic>> _buildBlocks() {
+    return _templateBlocks
+        .where((block) => block.hasBillableContent)
+        .map((block) => block.toBlock().toJson())
+        .toList();
   }
 
   Future<void> _loadPreview() async {
@@ -436,8 +873,8 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
           rows.add({
             'executionAt':
                 (row['executionAt'] ?? row['execution_at'] ?? '-').toString(),
-            'issueDate': (row['issueDate'] ?? row['issue_date'] ?? '-')
-                .toString(),
+            'issueDate':
+                (row['issueDate'] ?? row['issue_date'] ?? '-').toString(),
             'error': (row['error'] ?? '').toString(),
           });
         }
@@ -458,6 +895,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
           _previewRows = rows;
           _ruleErrorText = null;
         });
+        _markDraftDirty();
       }
     } catch (e) {
       if (!mounted) return;
@@ -482,7 +920,9 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
           .showSnackBar(SnackBar(content: Text(l.invoiceClientRequired)));
       return;
     }
-    if (_lines.isEmpty) {
+    final billableBlocks =
+        _templateBlocks.where((block) => block.hasBillableContent).toList();
+    if (billableBlocks.isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(l.invoiceLinesRequired)));
       return;
@@ -490,12 +930,12 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
     final policyError = _validateIssuePolicy(l);
     if (policyError != null) {
       setState(() => _ruleErrorText = policyError);
-      if (_step < 3) setState(() => _step = 3);
+      if (_step < 3) _setDraftState(() => _step = 3);
       return;
     }
     final discountValidationError = _validateDiscountInputs(l);
     if (discountValidationError != null) {
-      if (_step != 2) setState(() => _step = 2);
+      if (_step != 2) _setDraftState(() => _step = 2);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(discountValidationError)),
       );
@@ -515,8 +955,12 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
         'endDate': utcDateString(_endDate!, _startTime, tz),
       if (_endType == 'count' && int.tryParse(_countCtrl.text.trim()) != null)
         'count': int.tryParse(_countCtrl.text.trim()),
-      if ((canonicalFrequencyForApi(_freq) == recurringFreqMonthly || canonicalFrequencyForApi(_freq) == recurringFreqBimensual || canonicalFrequencyForApi(_freq) == recurringFreqTrimestral)) 'billDay': int.tryParse(_billDayCtrl.text.trim()),
-      if (canonicalFrequencyForApi(_freq) == recurringFreqWeekly) 'billDay': int.tryParse(_weekDayCtrl.text.trim()),
+      if ((canonicalFrequencyForApi(_freq) == recurringFreqMonthly ||
+          canonicalFrequencyForApi(_freq) == recurringFreqBimensual ||
+          canonicalFrequencyForApi(_freq) == recurringFreqTrimestral))
+        'billDay': int.tryParse(_billDayCtrl.text.trim()),
+      if (canonicalFrequencyForApi(_freq) == recurringFreqWeekly)
+        'billDay': int.tryParse(_weekDayCtrl.text.trim()),
       'timeOfDay': utcTimeOfDay,
       'timezone': _timezoneCtrl.text.trim().isEmpty
           ? 'Europe/Madrid'
@@ -538,6 +982,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
             int.tryParse(_invoiceDateOffsetDaysCtrl.text.trim()),
       'rule': _buildRule(),
       'lines': _buildLines(),
+      'blocks': _buildBlocks(),
       ..._buildDiscountPayload(),
       'totals': {
         'subtotal': _subtotal,
@@ -550,6 +995,8 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
       final created = await widget.api.create(payload);
       if (!mounted) return;
       setState(() => _created = true);
+      await _clearDraft();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.recurringInvoicesCreateSuccess)),
       );
@@ -611,7 +1058,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
           RecurringWizardClientStep(
             clients: widget.clients,
             clientId: _clientId,
-            onClientChanged: (v) => setState(() => _clientId = v),
+            onClientChanged: (v) => _setDraftState(() => _clientId = v),
             nameCtrl: _nameCtrl,
             currencyCtrl: _currencyCtrl,
             notesCtrl: _notesCtrl,
@@ -637,20 +1084,14 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
         title: stepTitle(l.recurringInvoicesStepTemplate, 2),
         content: wrapStepContent(
           RecurringWizardTemplateStep(
-            lines: _lines,
+            blocks: _templateBlocks,
             onChanged: _onChanged,
             discountAmountCtrl: _discountAmountCtrl,
             discountPercentCtrl: _discountPercentCtrl,
             useDiscountPercent: _useDiscountPercent,
             onDiscountModeChanged: _setDiscountModePercent,
-            subtotal: _subtotal,
-            rawSubtotal: _rawSubtotal,
             discountAmount: _effectiveDiscount,
-            tax: _tax,
             total: _total,
-            amountErrorText: _discountAmountErrorText(l),
-            percentErrorText: _discountPercentErrorText(l),
-            showTax: widget.enableTaxes,
           ),
         ),
         state: _step > 2 ? StepState.complete : StepState.indexed,
@@ -675,19 +1116,21 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
             invoiceDateClampPolicy: _invoiceDateClampPolicy,
             timezoneLabel: _timezoneLabel(),
             exceptions: _exceptions,
-            onFreqChanged: (v) => setState(() => _freq = canonicalFrequencyForApi(v)),
+            onFreqChanged: (v) =>
+                _setDraftState(() => _freq = canonicalFrequencyForApi(v)),
             onPickStart: _pickStartDate,
             onPickStartTime: _pickStartTime,
             onPickEnd: _pickEndDate,
-            onEndTypeChanged: (v) => setState(() => _endType = v),
-            onTimezoneChanged: (_) => setState(() {}),
+            onEndTypeChanged: (v) => _setDraftState(() => _endType = v),
+            onTimezoneChanged: (_) => _onChanged(),
             onPickTimezone: _pickTimezone,
             onAddException: _addException,
-            onRemoveException: (d) => setState(() => _exceptions.remove(d)),
+            onRemoveException: (d) =>
+                _setDraftState(() => _exceptions.remove(d)),
             onInvoiceDateModeChanged: (v) =>
-                setState(() => _invoiceDateMode = v),
+                _setDraftState(() => _invoiceDateMode = v),
             onInvoiceDateClampPolicyChanged: (v) =>
-                setState(() => _invoiceDateClampPolicy = v),
+                _setDraftState(() => _invoiceDateClampPolicy = v),
             errorText: _ruleErrorText,
           ),
         ),
@@ -770,7 +1213,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             child: FolderPanel(
               title: l.recurringInvoicesCreateTitle,
-              onBack: widget.onCancel,
+              onBack: _handleCancel,
               showTab: true,
               contentTopPadding: 6,
               child: Column(
@@ -806,7 +1249,10 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
                                         );
                                         return;
                                       }
-                                      if (_step == 2 && _lines.isEmpty) {
+                                      if (_step == 2 &&
+                                          !_templateBlocks.any(
+                                            (block) => block.hasBillableContent,
+                                          )) {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           SnackBar(
@@ -818,24 +1264,26 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
                                         return;
                                       }
                                       if (_step < steps.length - 1) {
-                                        setState(() => _step += 1);
+                                        _setDraftState(() => _step += 1);
                                       } else {
                                         _submit();
                                       }
                                     },
                                     onStepCancel: () {
                                       if (_step == 0) {
-                                        widget.onCancel();
+                                        _handleCancel();
                                       } else {
-                                        setState(() => _step -= 1);
+                                        _setDraftState(() => _step -= 1);
                                       }
                                     },
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 12),
+                              _draftStatusChip(t, cs),
+                              const SizedBox(width: 12),
                               InkWell(
-                                onTap: () => setState(() => _step = 0),
+                                onTap: () => _setDraftState(() => _step = 0),
                                 borderRadius: BorderRadius.circular(12),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
@@ -881,9 +1329,9 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
                                     ? null
                                     : () {
                                         if (_step == 0) {
-                                          widget.onCancel();
+                                          _handleCancel();
                                         } else {
-                                          setState(() => _step -= 1);
+                                          _setDraftState(() => _step -= 1);
                                         }
                                       },
                                 child: Text(l.recurringInvoicesBackCta),
@@ -905,7 +1353,11 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
                                           );
                                           return;
                                         }
-                                        if (_step == 2 && _lines.isEmpty) {
+                                        if (_step == 2 &&
+                                            !_templateBlocks.any(
+                                              (block) =>
+                                                  block.hasBillableContent,
+                                            )) {
                                           ScaffoldMessenger.of(context)
                                               .showSnackBar(
                                             SnackBar(
@@ -917,7 +1369,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
                                           return;
                                         }
                                         if (_step < steps.length - 1) {
-                                          setState(() => _step += 1);
+                                          _setDraftState(() => _step += 1);
                                         } else {
                                           _submit();
                                         }
@@ -936,9 +1388,11 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
                           const Divider(height: 1),
                           const SizedBox(height: 8),
                           Expanded(
-                            child: SingleChildScrollView(
-                              child: steps[_step].content,
-                            ),
+                            child: _step == 2
+                                ? steps[_step].content
+                                : SingleChildScrollView(
+                                    child: steps[_step].content,
+                                  ),
                           ),
                         ],
                       ),
@@ -1054,4 +1508,3 @@ class _RecurringWizardRuleDetailsStep extends StatelessWidget {
     );
   }
 }
-

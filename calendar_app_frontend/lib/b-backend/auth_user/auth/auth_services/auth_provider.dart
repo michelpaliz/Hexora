@@ -5,6 +5,7 @@ import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/api/i_auth_api_client.dart';
 import 'package:hexora/b-backend/auth_user/auth/models/verification_result.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/model/token_obj.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/token_store/Itoken_store.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
 import 'package:hexora/b-backend/auth_user/repositories/auth_repository.dart';
@@ -176,16 +177,97 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
     if (newPassword != confirmPassword) throw PasswordMismatchException();
     if (_authToken == null) throw UserNotSignedInException();
 
-    await _authApi.changePassword(
-      accessToken: _authToken!,
-      currentPassword: currentPassword,
+    try {
+      await _authApi.changePassword(
+        accessToken: _authToken!,
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+    } catch (e) {
+      final raw = e.toString();
+      final statusMatch = RegExp(r'HTTP\s+(\d{3})').firstMatch(raw);
+      final status = int.tryParse(statusMatch?.group(1) ?? '');
+      final messageMatch = RegExp(r'HTTP\s+\d{3}\s*:\s*(.*)$').firstMatch(raw);
+      final message = (messageMatch?.group(1) ?? raw).trim();
+      final loweredMessage = message.toLowerCase();
+
+      if (status == 401 &&
+          loweredMessage.contains('current password') &&
+          loweredMessage.contains('incorrect')) {
+        throw CurrentPasswordMismatchException();
+      }
+      if (status == 400 &&
+          (loweredMessage.contains('at least 8') ||
+              (loweredMessage.contains('different') &&
+                  loweredMessage.contains('current password')))) {
+        throw ChangePasswordValidationException(message);
+      }
+      throw ChangePasswordRequestFailedException(
+        message.isNotEmpty
+            ? message
+            : 'Failed to change password. Please try again.',
+      );
+    }
+  }
+
+  @override
+  Future<void> forgotPassword(String email) async {
+    final normalized = email.trim().toLowerCase();
+    final res = await _authApi.forgotPassword(email: normalized);
+    final status = res['_status'] as int? ?? 200;
+    if (status >= 200 && status < 300) {
+      return;
+    }
+    final message = res['message']?.toString().trim();
+    throw ForgotPasswordRequestFailedException(
+      message?.isNotEmpty == true
+          ? message!
+          : 'Failed to send reset link. Please try again.',
+    );
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    final res = await _authApi.resetPassword(
+      token: token.trim(),
       newPassword: newPassword,
+    );
+    final status = res['_status'] as int? ?? 200;
+    if (status >= 200 && status < 300) {
+      return;
+    }
+
+    final message = res['message']?.toString().trim() ?? '';
+    final lowered = message.toLowerCase();
+    if (status == 400 &&
+        (lowered.contains('token') ||
+            lowered.contains('expired') ||
+            lowered.contains('invalid'))) {
+      throw ResetPasswordInvalidOrExpiredTokenException(
+        message.isNotEmpty ? message : 'Invalid or expired reset token.',
+      );
+    }
+    throw ResetPasswordRequestFailedException(
+      message.isNotEmpty
+          ? message
+          : 'Failed to reset password. Please try again.',
     );
   }
 
   @override
   Future<String?> getToken() async {
-    if (_authToken != null && _authToken!.isNotEmpty) return _authToken;
+    // Always prefer TokenService so expiry/refresh is handled consistently
+    // across all feature repositories that depend on AuthService/AuthProvider.
+    final valid = await TokenService.loadToken();
+    if (valid != null && valid.isNotEmpty) {
+      _authToken = valid;
+      return valid;
+    }
+
+    // Fallback to raw store read for non-JWT/custom tokens.
     final stored = await _tokens.readAccess();
     if (stored != null && stored.isNotEmpty) {
       _authToken = stored;

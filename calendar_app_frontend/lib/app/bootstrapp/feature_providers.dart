@@ -23,6 +23,8 @@ import 'package:hexora/b-backend/mail/api/mail_api_client.dart';
 import 'package:hexora/b-backend/mail/domain/mail_domain.dart';
 import 'package:hexora/b-backend/mail/repository/i_mail_repository.dart';
 import 'package:hexora/b-backend/mail/repository/mail_repository.dart';
+import 'package:hexora/b-backend/telegram/api/telegram_api_client.dart';
+import 'package:hexora/b-backend/telegram/domain/telegram_domain.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -91,6 +93,14 @@ final List<SingleChildWidget> featureProviders = [
   ),
   ChangeNotifierProvider(
     create: (ctx) => MailDomain(repository: ctx.read<IMailRepository>()),
+  ),
+
+  // Telegram
+  Provider<ITelegramApiClient>(
+    create: (ctx) => TelegramApiClient(client: ctx.read<http.Client>()),
+  ),
+  ChangeNotifierProvider(
+    create: (ctx) => TelegramDomain(apiClient: ctx.read<ITelegramApiClient>()),
   ),
 
   // Invitations

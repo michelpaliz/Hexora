@@ -13,57 +13,118 @@ class DimensionTabs extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
 
-    Widget tab(String text, bool selected, VoidCallback onTap) {
-      return Expanded(
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+      height: isMobile ? 46 : 38,
+      padding: EdgeInsets.all(isMobile ? 4 : 3),
+      decoration: BoxDecoration(
+        color: isMobile
+            ? cs.surfaceContainerHighest.withValues(alpha: 0.28)
+            : cs.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(isMobile ? 18 : 12),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: isMobile ? 0.42 : 0.35),
+        ),
+      ),
+      child: Row(
+        children: [
+          _DimTab(
+            icon: Icons.people_alt_outlined,
+            label: l.filterDimensionClients,
+            selected: value == Dimension.clients,
+            onTap: () => onChanged(Dimension.clients),
+            cs: cs,
+            typo: typo,
+            isMobile: isMobile,
+          ),
+          SizedBox(width: isMobile ? 6 : 3),
+          _DimTab(
+            icon: Icons.build_circle_outlined,
+            label: l.filterDimensionServices,
+            selected: value == Dimension.services,
+            onTap: () => onChanged(Dimension.services),
+            cs: cs,
+            typo: typo,
+            isMobile: isMobile,
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+}
+
+class _DimTab extends StatelessWidget {
+  const _DimTab({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.cs,
+    required this.typo,
+    required this.isMobile,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final ColorScheme cs;
+  final AppTypography typo;
+  final bool isMobile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: selected ? null : onTap,
+        borderRadius: BorderRadius.circular(isMobile ? 14 : 9),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
-          height: 44,
           decoration: BoxDecoration(
-            color: selected ? cs.primary : cs.surfaceContainerHighest.withOpacity(0.7),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected
-                  ? cs.primary.withOpacity(0.0)
-                  : cs.outlineVariant.withOpacity(0.5),
-            ),
+            color: selected
+                ? cs.primary
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(isMobile ? 14 : 9),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: cs.primary.withOpacity(0.25),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
+                      color: cs.primary.withValues(alpha: 0.22),
+                      blurRadius: isMobile ? 10 : 8,
+                      offset: const Offset(0, 2),
+                    ),
                   ]
-                : [],
+                : null,
           ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: onTap,
-            child: Center(
-              child: Text(
-                text,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: isMobile ? 16 : 14,
+                color: selected
+                    ? cs.onPrimary
+                    : cs.onSurfaceVariant.withValues(alpha: 0.72),
+              ),
+              SizedBox(width: isMobile ? 7 : 5),
+              Text(
+                label,
                 style: typo.bodySmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-                  letterSpacing: .2,
+                  fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+                  color: selected
+                      ? cs.onPrimary
+                      : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                  letterSpacing: 0.1,
                 ),
               ),
-            ),
+            ],
           ),
         ),
-      );
-    }
-
-    return Row(
-      children: [
-        tab(l.filterDimensionClients, value == Dimension.clients,
-            () => onChanged(Dimension.clients)),
-        const SizedBox(width: 10),
-        tab(l.filterDimensionServices, value == Dimension.services,
-            () => onChanged(Dimension.services)),
-      ],
+      ),
     );
   }
 }

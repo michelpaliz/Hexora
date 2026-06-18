@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/b-backend/expenses/expenses_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../statements_controller.dart';
 import '../../statements_formatters.dart';
 import '../../statements_shared.dart';
+import '../../shared/statement_entry_notes_dialog.dart';
 import 'statements_all_data_table_layout.dart';
 import 'statements_all_data_table_theme.dart';
 
@@ -44,17 +47,19 @@ class StatementsAllDataTableRow extends StatelessWidget {
   final String? noProcedeReason;
   final StatementsTableTheme tableTheme;
   static final InvoicesApi _invoicesApi = InvoicesApi();
+  static final ExpensesApi _expensesApi = ExpensesApi();
 
   Widget _moneyText(
     BuildContext context,
     String amount, {
     required bool emphasize,
     required Color amountColor,
+    bool asPill = false,
     TextStyle? textStyle,
   }) {
     final typography = AppTypography.of(context);
     final formatted = StatementsFormatters.formatCurrency(context, amount);
-    return Text(
+    final text = Text(
       formatted,
       textAlign: TextAlign.right,
       style: (textStyle ??
@@ -63,6 +68,39 @@ class StatementsAllDataTableRow extends StatelessWidget {
         fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
         fontSize: emphasize ? 13 : null,
         color: amountColor,
+      ),
+    );
+    if (!asPill) return text;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: amountColor.withValues(alpha: 0.11),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: amountColor.withValues(alpha: 0.3)),
+      ),
+      child: text,
+    );
+  }
+
+  Widget _actionButton({
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback? onPressed,
+    Color? activeColor,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      padding: EdgeInsets.zero,
+      style: IconButton.styleFrom(
+        minimumSize: const Size(26, 26),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        foregroundColor: activeColor,
+        disabledForegroundColor: activeColor?.withValues(alpha: 0.35),
+        backgroundColor: activeColor?.withValues(alpha: 0.09),
+        disabledBackgroundColor: activeColor?.withValues(alpha: 0.04),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -109,6 +147,10 @@ class StatementsAllDataTableRow extends StatelessWidget {
         : StatementsShared.entryText(entry, ['balance']);
     final amountValue = StatementsFormatters.parseAmount(amount);
     final isNegative = (amountValue ?? 0) < 0;
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
     List<String> toStringList(dynamic raw) {
       if (raw is List) {
         return raw
@@ -120,13 +162,30 @@ class StatementsAllDataTableRow extends StatelessWidget {
     }
 
     final invoiceIds = toStringList(entry['invoiceIds']);
+    final expenseDocumentIdsRaw =
+        toStringList(entry['expenseDocumentIds'] ?? entry['expenseIds']);
     final primaryInvoiceId = invoiceIds.isNotEmpty
         ? invoiceIds.first
         : (entry['invoiceId'] ?? entry['invoice_id'] ?? entry['invoice'])
             ?.toString()
             .trim();
-    final hasInvoice =
-        primaryInvoiceId != null && primaryInvoiceId.trim().isNotEmpty;
+    final effectiveExpenseDocumentIds = expenseDocumentIdsRaw.isNotEmpty
+        ? expenseDocumentIdsRaw
+        : (isNegative && invoiceIds.isNotEmpty ? invoiceIds : const <String>[]);
+    final primaryExpenseDocumentId = effectiveExpenseDocumentIds.isNotEmpty
+        ? effectiveExpenseDocumentIds.first
+        : (entry['expenseDocumentId'] ??
+                entry['expense_document_id'] ??
+                entry['expenseId'] ??
+                entry['expense_id'])
+            ?.toString()
+            .trim();
+    final hasInvoice = !isNegative &&
+        primaryInvoiceId != null &&
+        primaryInvoiceId.trim().isNotEmpty;
+    final hasExpenseDocument = primaryExpenseDocumentId != null &&
+        primaryExpenseDocumentId.trim().isNotEmpty;
+    final hasLinkedDocument = hasInvoice || hasExpenseDocument;
     final hasRepetitiveInvoiceLink =
         entry['hasRepetitiveInvoiceLink'] == true ||
             entry['has_repetitive_invoice_link'] == true;
@@ -139,6 +198,10 @@ class StatementsAllDataTableRow extends StatelessWidget {
         noProcedeReason != null && noProcedeReason!.trim().isNotEmpty;
     final linkError = controller.linkClientError[entryId];
     final linkInvoiceError = controller.linkInvoiceError[entryId];
+    final notesError = controller.entryNotesError[entryId];
+    final notes = StatementsShared.entryText(entry, ['notes']).trim();
+    final hasNotes = notes.isNotEmpty;
+    final savingNotes = controller.savingEntryNotes[entryId] == true;
     final linking = controller.linkingClient[entryId] == true;
     final suggestLoading = controller.loadingSuggestions[entryId] == true ||
         controller.loadingInvoiceSuggestions[entryId] == true;
@@ -152,8 +215,45 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final amountAbs = (amountValue ?? 0).abs();
     final canLinkInvoice = amountAbs > 0;
     final canSuggest = (amountValue ?? 0) != 0;
+    final aiSuggestActionLabel =
+        isEs ? 'Sugerir coincidencias IA' : 'Suggest AI matches';
+    final manualLinkActionLabel = isNegative
+        ? (isEs ? 'Vincular gasto' : 'Link expense')
+        : (isEs ? 'Vincular factura' : 'Link invoice');
+    final previewActionLabel = isNegative
+        ? (isEs ? 'Ver gasto vinculado' : 'View linked expense')
+        : (isEs ? 'Ver factura vinculada' : 'View linked invoice');
+    final notesPreview =
+        notes.length > 90 ? '${notes.substring(0, 90)}...' : notes;
+    final notesActionLabel = hasNotes
+        ? 'Editar nota${notesPreview.isNotEmpty ? '\n$notesPreview' : ''}'
+        : 'Añadir nota';
 
     Future<void> previewLinkedInvoice() async {
+      if (hasExpenseDocument) {
+        final expenseId = primaryExpenseDocumentId.trim();
+        if (expenseId.isEmpty) return;
+        try {
+          final result = await _expensesApi.fetchExpenseFile(expenseId);
+          final url = Uri.tryParse((result['url'] ?? '').toString().trim());
+          if (url == null) throw Exception(l.preview);
+          final opened = await launchUrl(
+            url,
+            mode: LaunchMode.platformDefault,
+            webOnlyWindowName: '_blank',
+          );
+          if (!opened) throw Exception(l.preview);
+          return;
+        } catch (e) {
+          if (!context.mounted) return;
+          final msg = e.toString().replaceFirst('Exception: ', '').trim();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg.isEmpty ? l.preview : msg)),
+          );
+          return;
+        }
+      }
+
       final id = (primaryInvoiceId ?? '').trim();
       if (id.isEmpty) return;
       try {
@@ -171,6 +271,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
         );
       }
     }
+
     Future<void> showRowMenu(Offset position) async {
       final overlay =
           Overlay.of(context).context.findRenderObject() as RenderBox;
@@ -184,12 +285,12 @@ class StatementsAllDataTableRow extends StatelessWidget {
           PopupMenuItem(
             value: 'suggest',
             enabled: entryId.isNotEmpty && !suggestLoading,
-            child: Text(l.statementsActionSuggest),
+            child: Text(aiSuggestActionLabel),
           ),
           PopupMenuItem(
             value: 'link',
             enabled: entryId.isNotEmpty && !linking,
-            child: Text(l.statementsActionLink),
+            child: Text(manualLinkActionLabel),
           ),
           PopupMenuItem(
             value: 'details',
@@ -210,37 +311,53 @@ class StatementsAllDataTableRow extends StatelessWidget {
       }
     }
 
+    final amountColor =
+        isNegative ? tableTheme.amountNegative : tableTheme.amountPositive;
+
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tableTheme.border),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected
+              ? rowAccent.withValues(alpha: 0.65)
+              : tableTheme.border.withValues(alpha: 0.82),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Material(
         color: rowColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onSecondaryTapDown: (details) => showRowMenu(details.globalPosition),
           onLongPressStart: (details) => showRowMenu(details.globalPosition),
           child: InkWell(
             hoverColor: tableTheme.rowHover,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             onTap: () => onShowDetails(entry),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                vertical: 8,
-                horizontal: StatementsAllDataTableLayout.horizontalPadding,
+                vertical: 7,
+                horizontal: 12,
               ),
               child: Stack(
                 children: [
                   Positioned(
                     left: -6,
-                    top: 6,
-                    bottom: 6,
+                    top: 8,
+                    bottom: 8,
                     child: Container(
-                      width: 3,
+                      width: 4,
                       decoration: BoxDecoration(
-                        color: rowAccent.withValues(alpha: 0.5),
+                        color: rowAccent.withValues(
+                          alpha: isSelected ? 0.9 : 0.48,
+                        ),
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
@@ -386,13 +503,15 @@ class StatementsAllDataTableRow extends StatelessWidget {
                               width: StatementsAllDataTableLayout.columnGap),
                           SizedBox(
                             width: StatementsAllDataTableLayout.amountWidth,
-                            child: _moneyText(
-                              context,
-                              amount,
-                              emphasize: true,
-                              amountColor: isNegative
-                                  ? tableTheme.amountNegative
-                                  : tableTheme.amountPositive,
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: _moneyText(
+                                context,
+                                amount,
+                                emphasize: true,
+                                amountColor: amountColor,
+                                asPill: true,
+                              ),
                             ),
                           ),
                           if (!isCompact) ...[
@@ -440,6 +559,77 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                 );
                               }(),
                             ),
+                            const SizedBox(
+                                width:
+                                    StatementsAllDataTableLayout.columnGapWide),
+                            SizedBox(
+                              width: StatementsAllDataTableLayout.notesWidth,
+                              child: Tooltip(
+                                message: hasNotes ? notes : 'Añadir nota',
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(999),
+                                  onTap: entryId.isEmpty || savingNotes
+                                      ? null
+                                      : () => StatementEntryNotesDialog.show(
+                                            context,
+                                            controller,
+                                            entry,
+                                          ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: hasNotes
+                                          ? cs.primary.withValues(alpha: 0.08)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: hasNotes
+                                          ? Border.all(
+                                              color: cs.primary
+                                                  .withValues(alpha: 0.20),
+                                            )
+                                          : null,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          hasNotes
+                                              ? Icons.sticky_note_2
+                                              : Icons.sticky_note_2_outlined,
+                                          size: 14,
+                                          color: hasNotes
+                                              ? cs.primary
+                                              : tableTheme.textSecondary
+                                                  .withValues(alpha: 0.65),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            hasNotes ? notes : 'Sin nota',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style:
+                                                typography.bodySmall.copyWith(
+                                              fontSize: 12,
+                                              color: hasNotes
+                                                  ? tableTheme.textPrimary
+                                                  : tableTheme.textSecondary
+                                                      .withValues(alpha: 0.72),
+                                              fontWeight: hasNotes
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w400,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                           const SizedBox(
                               width:
@@ -455,6 +645,11 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                   final invoiceNumbers = toStringList(
                                     entry['invoiceNumbers'],
                                   );
+                                  final expenseDocumentNumbersRaw =
+                                      toStringList(
+                                    entry['expenseDocumentNumbers'] ??
+                                        entry['expenseNumbers'],
+                                  );
                                   final invoiceNumber =
                                       (entry['invoiceNumber'] ??
                                                   entry['invoice_number'])
@@ -467,18 +662,35 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                               ?.toString()
                                               .trim() ??
                                           '';
+                                  final expenseDocumentNumber = (entry[
+                                                  'expenseDocumentNumber'] ??
+                                              entry['expense_document_number'])
+                                          ?.toString()
+                                          .trim() ??
+                                      '';
                                   final effectiveInvoiceNumbers =
                                       invoiceNumbers.isNotEmpty
                                           ? invoiceNumbers
                                           : (invoiceNumber.isNotEmpty
                                               ? <String>[invoiceNumber]
                                               : const <String>[]);
-                                  final docNumber =
-                                      effectiveInvoiceNumbers.isNotEmpty
-                                          ? effectiveInvoiceNumbers.join(', ')
-                                          : (expenseNumber.isNotEmpty
-                                              ? expenseNumber
-                                              : '');
+                                  final effectiveExpenseNumbers =
+                                      expenseDocumentNumbersRaw.isNotEmpty
+                                          ? expenseDocumentNumbersRaw
+                                          : (isNegative &&
+                                                  effectiveInvoiceNumbers
+                                                      .isNotEmpty
+                                              ? effectiveInvoiceNumbers
+                                              : expenseDocumentNumber.isNotEmpty
+                                                  ? <String>[
+                                                      expenseDocumentNumber
+                                                    ]
+                                                  : expenseNumber.isNotEmpty
+                                                      ? <String>[expenseNumber]
+                                                      : const <String>[]);
+                                  final docNumber = isNegative
+                                      ? effectiveExpenseNumbers.join(', ')
+                                      : effectiveInvoiceNumbers.join(', ');
                                   final String displayText;
                                   final Color textColor;
                                   if (hasNoProcede) {
@@ -487,10 +699,27 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                   } else if (docNumber.isNotEmpty) {
                                     displayText = docNumber;
                                     textColor = tableTheme.textPrimary;
+                                  } else if (isNegative &&
+                                      hasExpenseDocument &&
+                                      effectiveExpenseDocumentIds.isNotEmpty) {
+                                    displayText = isEs
+                                        ? 'Gasto vinculado'
+                                        : 'Linked expense';
+                                    textColor = tableTheme.textPrimary;
+                                  } else if (!isNegative && hasInvoice) {
+                                    displayText = isEs
+                                        ? 'Factura vinculada'
+                                        : 'Linked invoice';
+                                    textColor = tableTheme.textPrimary;
                                   } else {
                                     displayText = l.statementsUnlinked;
                                     textColor = tableTheme.textSecondary;
                                   }
+                                  final pillColor = hasNoProcede
+                                      ? cs.tertiary
+                                      : hasLinkedDocument
+                                          ? tableTheme.amountPositive
+                                          : tableTheme.textSecondary;
                                   return Tooltip(
                                     message: hasNoProcede
                                         ? noProcedeReason!
@@ -505,15 +734,34 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(
-                                          displayText,
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.center,
-                                          style: typography.bodySmall.copyWith(
-                                            color: textColor,
-                                            fontWeight: docNumber.isNotEmpty
-                                                ? FontWeight.w600
-                                                : FontWeight.w400,
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: pillColor.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(999),
+                                            border: Border.all(
+                                              color: pillColor.withValues(
+                                                alpha: 0.28,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            displayText,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.center,
+                                            style:
+                                                typography.bodySmall.copyWith(
+                                              color: textColor,
+                                              fontWeight: docNumber.isNotEmpty
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                            ),
                                           ),
                                         ),
                                         if (hasInvoice &&
@@ -561,81 +809,67 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.max,
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    IconButton(
-                                      tooltip: 'Sugerir factura',
+                                    _actionButton(
+                                      tooltip: aiSuggestActionLabel,
                                       onPressed: (!canSuggest ||
                                               suggestLoading ||
                                               entryId.isEmpty)
                                           ? null
                                           : () => onSuggest(entry),
-                                      icon: const Icon(Icons.auto_awesome,
-                                          size: 16),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 24,
-                                        minHeight: 24,
-                                      ),
+                                      icon: Icons.auto_awesome,
+                                      activeColor: cs.primary,
                                     ),
-                                    IconButton(
-                                      tooltip: l.preview,
-                                      onPressed: hasInvoice
+                                    _actionButton(
+                                      tooltip: previewActionLabel,
+                                      onPressed: hasLinkedDocument
                                           ? previewLinkedInvoice
                                           : null,
-                                      icon: const Icon(
-                                        Icons.visibility_outlined,
-                                        size: 16,
-                                      ),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 24,
-                                        minHeight: 24,
-                                      ),
+                                      icon: Icons.visibility_outlined,
                                     ),
-                                    IconButton(
-                                      tooltip: isNegative
-                                          ? 'Vincular gasto'
-                                          : 'Vincular factura',
+                                    _actionButton(
+                                      tooltip: manualLinkActionLabel,
                                       onPressed:
                                           (!canLinkInvoice || entryId.isEmpty)
                                               ? null
                                               : () => onLinkInvoice(entry),
-                                      icon: const Icon(Icons.receipt_long,
-                                          size: 16),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 24,
-                                        minHeight: 24,
-                                      ),
+                                      icon: Icons.receipt_long,
+                                      activeColor: cs.primary,
                                     ),
-                                    IconButton(
+                                    _actionButton(
+                                      tooltip: notesActionLabel,
+                                      onPressed: (entryId.isEmpty ||
+                                              savingNotes)
+                                          ? null
+                                          : () =>
+                                              StatementEntryNotesDialog.show(
+                                                context,
+                                                controller,
+                                                entry,
+                                              ),
+                                      icon: savingNotes
+                                          ? Icons.hourglass_top_rounded
+                                          : hasNotes
+                                              ? Icons.sticky_note_2
+                                              : Icons.sticky_note_2_outlined,
+                                      activeColor: hasNotes ? cs.primary : null,
+                                    ),
+                                    _actionButton(
                                       tooltip: hasNoProcede
                                           ? 'Editar no procede'
                                           : 'Marcar no procede',
                                       onPressed: entryId.isEmpty
                                           ? null
                                           : () => onMarkNoProcede(entry),
-                                      icon: Icon(
-                                        hasNoProcede
-                                            ? Icons.block
-                                            : Icons.block_outlined,
-                                        size: 16,
-                                      ),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 24,
-                                        minHeight: 24,
-                                      ),
+                                      icon: hasNoProcede
+                                          ? Icons.block
+                                          : Icons.block_outlined,
+                                      activeColor:
+                                          hasNoProcede ? cs.tertiary : null,
                                     ),
-                                    IconButton(
+                                    _actionButton(
                                       tooltip: l.statementsViewDetails,
                                       onPressed: () => onShowDetails(entry),
-                                      icon: const Icon(Icons.info_outline,
-                                          size: 16),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 24,
-                                        minHeight: 24,
-                                      ),
+                                      icon: Icons.info_outline,
                                     ),
                                   ],
                                 ),
@@ -656,6 +890,12 @@ class StatementsAllDataTableRow extends StatelessWidget {
                           child: Text(linkInvoiceError,
                               style: TextStyle(color: cs.error)),
                         ),
+                      if (notesError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 44, top: 4),
+                          child: Text(notesError,
+                              style: TextStyle(color: cs.error)),
+                        ),
                     ],
                   ),
                 ],
@@ -667,4 +907,3 @@ class StatementsAllDataTableRow extends StatelessWidget {
     );
   }
 }
-

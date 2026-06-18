@@ -122,4 +122,18 @@ class NotificationViewModel {
     await notificationService.deleteNotification(notification.id);
     await notificationDomain.removeNotificationById(notification.id);
   }
+
+  Future<void> markNotificationAsRead(NotificationUser notification) async {
+    if (notification.isRead) return;
+    notification.isRead = true;
+    await notificationService.updateNotification(notification);
+
+    final updated = notificationDomain.notifications.map((n) {
+      if (n.id == notification.id) {
+        n.isRead = true;
+      }
+      return n;
+    }).toList();
+    await notificationDomain.updateNotificationStream(updated);
+  }
 }

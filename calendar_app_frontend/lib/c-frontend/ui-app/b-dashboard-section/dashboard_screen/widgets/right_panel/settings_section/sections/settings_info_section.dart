@@ -67,11 +67,14 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
   String _rolesSummary(Group g, AppLocalizations l) {
     final counts = _roleCounts(g);
     final parts = <String>[];
-    final adminCount =
-        (counts['owner'] ?? 0) + (counts['admin'] ?? 0) + (counts['co-admin'] ?? 0);
+    final adminCount = (counts['owner'] ?? 0) +
+        (counts['admin'] ?? 0) +
+        (counts['co-admin'] ?? 0);
     final memberCount = counts['member'] ?? 0;
     if (adminCount > 0) parts.add('$adminCount admin');
-    if (memberCount > 0) parts.add('$memberCount ${l.membersTitle.toLowerCase()}');
+    if (memberCount > 0) {
+      parts.add('$memberCount ${l.membersTitle.toLowerCase()}');
+    }
     return parts.isEmpty ? '-' : parts.join(' · ');
   }
 
@@ -80,6 +83,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
 
     // Listen to GroupDomain so photoUrl refreshes after upload
     final groupDomain = context.watch<GroupDomain>();
@@ -90,34 +94,45 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
     final createdStr =
         '${liveGroup.createdTime.day}/${liveGroup.createdTime.month}/${liveGroup.createdTime.year}';
 
-    final hasTimeTracking =
-        liveGroup.features?.timeTracking.enabled == true;
+    final hasTimeTracking = liveGroup.features?.timeTracking.enabled == true;
     final currency = liveGroup.features?.timeTracking.currency ?? 'EUR';
 
     return FolderSectionCard(
       label: l.groupInfo,
       leftTabOffset: 0,
+      backgroundColor: isLight ? Colors.white : null,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
         child: Column(
           children: [
             // ── Photo + Name hero ──
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    cs.primaryContainer.withValues(alpha: 0.25),
-                    cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                    cs.primaryContainer.withValues(alpha: isLight ? 0.42 : 0.2),
+                    cs.surface.withValues(alpha: isLight ? 0.92 : 0.18),
+                    cs.secondaryContainer
+                        .withValues(alpha: isLight ? 0.20 : 0.08),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(22),
                 border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.3),
+                  color: cs.primary.withValues(alpha: 0.12),
                 ),
+                boxShadow: isLight
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.035),
+                          blurRadius: 24,
+                          offset: const Offset(0, 12),
+                        ),
+                      ]
+                    : null,
               ),
               child: Column(
                 children: [
@@ -125,13 +140,15 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                   Stack(
                     children: [
                       Container(
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          color: cs.surface,
                           boxShadow: [
                             BoxShadow(
-                              color: cs.shadow.withValues(alpha: 0.12),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
+                              color: cs.primary.withValues(alpha: 0.16),
+                              blurRadius: 22,
+                              offset: const Offset(0, 8),
                             ),
                           ],
                         ),
@@ -187,8 +204,8 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                   const SizedBox(height: 14),
                   Text(
                     liveGroup.name,
-                    style: t.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w800,
+                    style: t.titleLarge.copyWith(
+                      fontWeight: FontWeight.w900,
                       color: cs.onSurface,
                     ),
                     textAlign: TextAlign.center,
@@ -220,6 +237,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                     label: l.membersTitle,
                     value: '${liveGroup.userIds.length}',
                     subtitle: _rolesSummary(liveGroup, l),
+                    accent: cs.primary,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -229,6 +247,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                     label: l.statementsHeaderDate,
                     value: createdStr,
                     subtitle: l.groupInfo,
+                    accent: cs.tertiary,
                   ),
                 ),
               ],
@@ -244,6 +263,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                     subtitle: liveGroup.lastInviteAt != null
                         ? '${liveGroup.lastInviteAt!.day}/${liveGroup.lastInviteAt!.month}/${liveGroup.lastInviteAt!.year}'
                         : '-',
+                    accent: cs.secondary,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -251,10 +271,9 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                   child: _DetailCard(
                     icon: Icons.settings_outlined,
                     label: 'Features',
-                    value: hasTimeTracking
-                        ? 'Time tracking'
-                        : 'N/A',
+                    value: hasTimeTracking ? 'Time tracking' : 'N/A',
                     subtitle: hasTimeTracking ? currency : '-',
+                    accent: cs.primary,
                   ),
                 ),
               ],
@@ -271,27 +290,42 @@ class _DetailCard extends StatelessWidget {
   final String label;
   final String value;
   final String? subtitle;
+  final Color? accent;
 
   const _DetailCard({
     required this.icon,
     required this.label,
     required this.value,
     this.subtitle,
+    this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final color = accent ?? cs.primary;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(12),
+        color: isLight
+            ? Colors.white
+            : cs.surfaceContainerHighest.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.3),
+          color: cs.outlineVariant.withValues(alpha: isLight ? 0.45 : 0.28),
         ),
+        boxShadow: isLight
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.025),
+                  blurRadius: 14,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,13 +336,13 @@ class _DetailCard extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: cs.primaryContainer.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(7),
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon,
                   size: 14,
-                  color: cs.primary,
+                  color: color,
                 ),
               ),
               const SizedBox(width: 8),
@@ -317,7 +351,8 @@ class _DetailCard extends StatelessWidget {
                   label,
                   style: t.bodySmall.copyWith(
                     color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.1,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -327,9 +362,9 @@ class _DetailCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             value,
-            style: t.bodyMedium.copyWith(
+            style: t.bodyLarge.copyWith(
               color: cs.onSurface,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w900,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

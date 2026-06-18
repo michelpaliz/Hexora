@@ -81,9 +81,28 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
     _primaryServiceId = widget.logic.primaryServiceId;
   }
 
+  @override
+  void didUpdateWidget(covariant EventFormWorkVisit oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextStart = widget.logic.selectedStartDate;
+    final nextEnd = widget.logic.selectedEndDate;
+    if (startDate == nextStart &&
+        endDate == nextEnd &&
+        _clientId == widget.logic.clientId &&
+        _primaryServiceId == widget.logic.primaryServiceId) {
+      return;
+    }
+    setState(() {
+      startDate = nextStart;
+      endDate = nextEnd;
+      _clientId = widget.logic.clientId;
+      _primaryServiceId = widget.logic.primaryServiceId;
+    });
+  }
+
   Future<void> _handleDateSelection(bool isStart) async {
     await widget.logic.selectDate(context, isStart);
-    if (!mounted) return; // <-- add this
+    if (!mounted) return;
     setState(() {
       startDate = widget.logic.selectedStartDate;
       endDate = widget.logic.selectedEndDate;
@@ -94,6 +113,7 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
     final typo = AppTypography.of(context);
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
 
     final clients = widget.logic.clients;
     final services = widget.logic.services;
@@ -106,7 +126,8 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
         primary: false,
         physics: const NeverScrollableScrollPhysics(),
         children: [
-          // TITLE
+          // ── EVENTO ──────────────────────────────────────────────────────
+          // Title — no label, it's the form header
           SectionCard(
             title: loc.title(15),
             child: TitleSection(
@@ -116,9 +137,10 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
               hintText: loc.titleHint,
             ),
           ),
-          WorkVisitStyle.sectionGap,
 
-          if (widget.enableClientServicePickers)
+          // Cliente + Servicio on the same row (responsive)
+          if (widget.enableClientServicePickers) ...[
+            WorkVisitStyle.sectionGap,
             ClientServiceSection(
               title: loc.workVisit,
               cardBuilder: SectionCard.new,
@@ -135,7 +157,10 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
                 widget.logic.setPrimaryServiceId?.call(v);
               },
             ),
-          if (widget.enableClientServicePickers) WorkVisitStyle.sectionGap,
+          ],
+
+          // ── HORARIO ──────────────────────────────────────────────────────
+          _FormSectionLabel(isSpanish ? 'Horario' : 'Schedule'),
           DateTimeSection(
             title: loc.date,
             cardBuilder: SectionCard.new,
@@ -144,7 +169,9 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             onStartTap: () => _handleDateSelection(true),
             onEndTap: () => _handleDateSelection(false),
           ),
-          WorkVisitStyle.sectionGap,
+
+          // ── RECORDATORIO ─────────────────────────────────────────────────
+          _FormSectionLabel(isSpanish ? 'Recordatorio' : 'Reminder'),
           ReminderSection(
             title: loc.notifyMe,
             cardBuilder: SectionCard.new,
@@ -158,13 +185,15 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             },
             onReminderChanged: (val) => _reminder = val,
           ),
-          WorkVisitStyle.sectionGap,
+
+          // ── DETALLES ─────────────────────────────────────────────────────
+          _FormSectionLabel(isSpanish ? 'Detalles' : 'Details'),
           DescriptionSection(
             title: loc.descriptionLabel,
             cardBuilder: SectionCard.new,
             controller: widget.logic.descriptionController,
           ),
-          WorkVisitStyle.sectionGap,
+          const SizedBox(height: 8),
           ColorSection(
             title: loc.colorLabel,
             cardBuilder: SectionCard.new,
@@ -174,7 +203,9 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             },
             colorValues: widget.logic.colorList,
           ),
-          WorkVisitStyle.sectionGap,
+
+          // ── PARTICIPANTES ────────────────────────────────────────────────
+          _FormSectionLabel(isSpanish ? 'Participantes' : 'Participants'),
           AssignedUsersSection(
             title: loc.assignedUsers,
             cardBuilder: SectionCard.new,
@@ -186,7 +217,9 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
               setState(() {});
             },
           ),
-          WorkVisitStyle.sectionGap,
+
+          // ── RECURRENCIA ──────────────────────────────────────────────────
+          _FormSectionLabel(isSpanish ? 'Recurrencia' : 'Recurrence'),
           RepetitionSection(
             title: loc.repetition,
             cardBuilder: SectionCard.new,
@@ -232,12 +265,36 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
               });
             },
           ),
+
+          // ── SUBMIT ───────────────────────────────────────────────────────
           WorkVisitStyle.afterSubmitGap,
-          Center(
-            child: ValueListenableBuilder<bool>(
-              valueListenable: widget.logic.canSubmit,
-              builder: (context, canSubmit, _) {
-                return ElevatedButton(
+          ValueListenableBuilder<bool>(
+            valueListenable: widget.logic.canSubmit,
+            builder: (context, canSubmit, _) {
+              final cs = Theme.of(context).colorScheme;
+              final label =
+                  widget.isEditing ? loc.save : loc.addEvent;
+              final icon = widget.isEditing
+                  ? Icons.check_rounded
+                  : Icons.add_rounded;
+
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: double.infinity,
+                height: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: canSubmit
+                      ? [
+                          BoxShadow(
+                            color: cs.primary.withValues(alpha: 0.28),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: FilledButton.icon(
                   onPressed: canSubmit
                       ? () async {
                           widget.logic.setReminderMinutes(
@@ -248,13 +305,66 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
                           await widget.onSubmit();
                         }
                       : null,
-                  child: Text(
-                    widget.isEditing ? loc.save : loc.addEvent,
-                    style:
-                        typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                  icon: Icon(icon, size: 18),
+                  label: Text(
+                    label,
+                    style: typo.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: canSubmit ? Colors.white : null,
+                    ),
                   ),
-                );
-              },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: canSubmit ? cs.primary : null,
+                    foregroundColor: canSubmit ? Colors.white : null,
+                    disabledBackgroundColor:
+                        cs.onSurface.withValues(alpha: 0.1),
+                    disabledForegroundColor:
+                        cs.onSurface.withValues(alpha: 0.35),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Section label ─────────────────────────────────────────────────────────────
+
+class _FormSectionLabel extends StatelessWidget {
+  final String label;
+  const _FormSectionLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 16, 2, 4),
+      child: Row(
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.9,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: cs.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
         ],

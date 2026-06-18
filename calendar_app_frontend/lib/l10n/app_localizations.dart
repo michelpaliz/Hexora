@@ -2379,6 +2379,78 @@ abstract class AppLocalizations {
   /// **'Password reset link sent!'**
   String get resetLinkSent;
 
+  /// No description provided for @forgotPasswordNeutralSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'If an account exists, we sent a password reset link.'**
+  String get forgotPasswordNeutralSuccess;
+
+  /// No description provided for @forgotPasswordNetworkError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send reset link. Check your connection and try again.'**
+  String get forgotPasswordNetworkError;
+
+  /// No description provided for @passwordMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 8 characters.'**
+  String get passwordMinLength;
+
+  /// No description provided for @confirmPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please confirm your new password.'**
+  String get confirmPasswordRequired;
+
+  /// No description provided for @resetPasswordSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get resetPasswordSubmit;
+
+  /// No description provided for @resetPasswordInvalidLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid reset link'**
+  String get resetPasswordInvalidLinkTitle;
+
+  /// No description provided for @resetPasswordInvalidLinkBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This reset link is invalid or missing a token. Request a new password reset link.'**
+  String get resetPasswordInvalidLinkBody;
+
+  /// No description provided for @resetPasswordRequestNewLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Request new reset link'**
+  String get resetPasswordRequestNewLink;
+
+  /// No description provided for @resetPasswordInvalidToken.
+  ///
+  /// In en, this message translates to:
+  /// **'This reset token is invalid or has expired.'**
+  String get resetPasswordInvalidToken;
+
+  /// No description provided for @resetPasswordGenericError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to reset password. Please try again.'**
+  String get resetPasswordGenericError;
+
+  /// No description provided for @resetPasswordSuccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset successfully'**
+  String get resetPasswordSuccessTitle;
+
+  /// No description provided for @resetPasswordSuccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password has been updated. You can now sign in with your new password.'**
+  String get resetPasswordSuccessBody;
+
   /// No description provided for @noUpcomingHint.
   ///
   /// In en, this message translates to:
@@ -5377,7 +5449,7 @@ abstract class AppLocalizations {
   /// No description provided for @billingLogoUploadBody.
   ///
   /// In en, this message translates to:
-  /// **'Select a PNG or JPG logo (max 5MB). This logo will appear in invoices and email footers.'**
+  /// **'Select a PNG or JPG logo (max 15MB). This logo will appear in invoices and email footers.'**
   String get billingLogoUploadBody;
 
   /// No description provided for @billingLogoUploadSelectFile.
@@ -5401,7 +5473,7 @@ abstract class AppLocalizations {
   /// No description provided for @billingLogoUploadError.
   ///
   /// In en, this message translates to:
-  /// **'Upload failed. Please try a smaller PNG/JPG.'**
+  /// **'The logo must be PNG or JPG and must not exceed 15 MB.'**
   String get billingLogoUploadError;
 
   /// No description provided for @createInvoiceCta.
@@ -5739,6 +5811,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Imported {count} line(s).'**
   String invoiceLinesJsonImportSuccess(Object count);
+
+  /// No description provided for @jsonAutoRepairAppliedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON auto-corrected before import.'**
+  String get jsonAutoRepairAppliedSnack;
 
   /// No description provided for @invoiceAddBlock.
   ///
@@ -6319,13 +6397,13 @@ abstract class AppLocalizations {
   /// No description provided for @invoiceStepIssueTitle.
   ///
   /// In en, this message translates to:
-  /// **'Step 3 - Issue invoice'**
+  /// **'Step 3 - Save draft'**
   String get invoiceStepIssueTitle;
 
   /// No description provided for @invoiceStepIssueShort.
   ///
   /// In en, this message translates to:
-  /// **'Issue'**
+  /// **'Draft'**
   String get invoiceStepIssueShort;
 
   /// No description provided for @invoiceChecklistClient.
@@ -6490,6 +6568,78 @@ abstract class AppLocalizations {
   /// **'Invoices this month'**
   String get invoiceClientInvoicesThisMonthLabel;
 
+  /// No description provided for @clientMissingInvoiceThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing invoice this month'**
+  String get clientMissingInvoiceThisMonth;
+
+  /// No description provided for @clientInvoiceAllGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice issued this month'**
+  String get clientInvoiceAllGood;
+
+  /// No description provided for @clientAllHaveInvoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All clients invoiced'**
+  String get clientAllHaveInvoiceTitle;
+
+  /// No description provided for @clientInvoiceStatusUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice status unavailable'**
+  String get clientInvoiceStatusUnavailableTitle;
+
+  /// No description provided for @clientNoMatchFiltersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No clients match these filters'**
+  String get clientNoMatchFiltersTitle;
+
+  /// No description provided for @clientAllHaveInvoiceDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'No clients are missing an invoice this month.'**
+  String get clientAllHaveInvoiceDesc;
+
+  /// No description provided for @clientInvoiceStatusUnavailableDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice data has not been returned for these clients yet.'**
+  String get clientInvoiceStatusUnavailableDesc;
+
+  /// No description provided for @clientNoMatchFiltersDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Try adjusting the search or filters.'**
+  String get clientNoMatchFiltersDesc;
+
+  /// No description provided for @clientNoInvoiceIssuedThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'No invoice this month'**
+  String get clientNoInvoiceIssuedThisMonth;
+
+  /// No description provided for @clientLastInvoiceShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Last: {date}'**
+  String clientLastInvoiceShort(String date);
+
+  /// No description provided for @clientMissingCountThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{None missing} =1{1 missing this month} other{{count} missing this month}}'**
+  String clientMissingCountThisMonth(int count);
+
+  /// No description provided for @clientInvoiceCountThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No invoices this month} =1{1 invoice this month} other{{count} invoices this month}}'**
+  String clientInvoiceCountThisMonth(int count);
+
   /// No description provided for @invoiceDraftInfoTooltip.
   ///
   /// In en, this message translates to:
@@ -6532,6 +6682,36 @@ abstract class AppLocalizations {
   /// **'Draft saved'**
   String get invoiceDraftSavedSnackNoNumber;
 
+  /// No description provided for @invoiceDraftSavedSnackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft saved'**
+  String get invoiceDraftSavedSnackTitle;
+
+  /// No description provided for @invoiceDraftSavedSnackMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your invoice draft is safe and ready to continue later.'**
+  String get invoiceDraftSavedSnackMessage;
+
+  /// No description provided for @invoiceDraftUpdatedSnackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft updated'**
+  String get invoiceDraftUpdatedSnackTitle;
+
+  /// No description provided for @invoiceDraftUpdatedSnackMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your latest changes were saved to this draft.'**
+  String get invoiceDraftUpdatedSnackMessage;
+
+  /// No description provided for @invoiceDraftSnackDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get invoiceDraftSnackDismiss;
+
   /// No description provided for @invoiceDraftSaveFailedSnack.
   ///
   /// In en, this message translates to:
@@ -6561,6 +6741,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not remove draft. Please try again.'**
   String get invoiceDraftRemoveFailedSnack;
+
+  /// No description provided for @invoiceBatchIssueSuccessSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} invoices issued successfully'**
+  String invoiceBatchIssueSuccessSnack(Object count);
+
+  /// No description provided for @invoiceBatchIssuePartialSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'{issued} issued, {failed} failed'**
+  String invoiceBatchIssuePartialSnack(Object issued, Object failed);
+
+  /// No description provided for @invoiceIssueDuplicateNumberSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'That invoice number already exists in this group. Refresh the list or edit the draft number before issuing.'**
+  String get invoiceIssueDuplicateNumberSnack;
+
+  /// No description provided for @invoiceIssueDuplicateNumberValueSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice number {number} already exists in this group. Refresh the list or edit the draft number before issuing.'**
+  String invoiceIssueDuplicateNumberValueSnack(Object number);
+
+  /// No description provided for @invoiceBatchIssueErrorsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Errors'**
+  String get invoiceBatchIssueErrorsTitle;
+
+  /// No description provided for @invoiceDraftOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open draft: {reason}'**
+  String invoiceDraftOpenFailed(Object reason);
 
   /// No description provided for @invoiceIssueSuccessSnack.
   ///
@@ -7039,7 +7255,7 @@ abstract class AppLocalizations {
   /// No description provided for @clientClassificationTitle.
   ///
   /// In en, this message translates to:
-  /// **'Saved options'**
+  /// **'Client classification'**
   String get clientClassificationTitle;
 
   /// No description provided for @clientClassificationManageCta.
@@ -7413,6 +7629,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Draft saved'**
   String get receiptDraftSavedSnack;
+
+  /// No description provided for @receiptDraftSavedSnackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt draft saved'**
+  String get receiptDraftSavedSnackTitle;
+
+  /// No description provided for @receiptDraftSavedSnackMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your receipt draft is safe and ready to continue later.'**
+  String get receiptDraftSavedSnackMessage;
 
   /// No description provided for @receiptSaveFailed.
   ///
@@ -9217,7 +9445,7 @@ abstract class AppLocalizations {
   /// No description provided for @expenseUploadBatchLimits.
   ///
   /// In en, this message translates to:
-  /// **'Up to 100 files, max 10MB each.'**
+  /// **'Up to 200 files, max 10MB each.'**
   String get expenseUploadBatchLimits;
 
   /// No description provided for @expenseUploadBatchSelectedCount.
@@ -10253,6 +10481,24 @@ abstract class AppLocalizations {
   /// **'No threads found.'**
   String get mailThreadsEmpty;
 
+  /// No description provided for @mailThreadSearchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations found.'**
+  String get mailThreadSearchNoResults;
+
+  /// No description provided for @mailThreadSearchNoResultsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another term, like \"invoice\", \"factura\", \"quote\", \"presupuesto\", or the client name.'**
+  String get mailThreadSearchNoResultsHint;
+
+  /// No description provided for @mailThreadSearchTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Search conversations. Try invoice, factura, quote, or presupuesto.'**
+  String get mailThreadSearchTooltip;
+
   /// No description provided for @mailThreadDetailTitle.
   ///
   /// In en, this message translates to:
@@ -10346,7 +10592,7 @@ abstract class AppLocalizations {
   /// No description provided for @mailConsoleSearchPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'Search threads (coming soon)'**
+  /// **'Search conversations...'**
   String get mailConsoleSearchPlaceholder;
 
   /// No description provided for @mailConsoleSelectThread.
@@ -10420,6 +10666,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Forward'**
   String get mailConversationForward;
+
+  /// No description provided for @mailLegalNoticeShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show legal notice'**
+  String get mailLegalNoticeShow;
+
+  /// No description provided for @mailLegalNoticeHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide legal notice'**
+  String get mailLegalNoticeHide;
 
   /// No description provided for @mailConsoleClientPanelTitle.
   ///
@@ -11096,8 +11354,50 @@ abstract class AppLocalizations {
   /// No description provided for @budgetValidationLineItemsRequired.
   ///
   /// In en, this message translates to:
-  /// **'Add at least one line item before issuing.'**
+  /// **'Add at least one line with a work concept before continuing.'**
   String get budgetValidationLineItemsRequired;
+
+  /// No description provided for @budgetDraftSavedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft changes saved.'**
+  String get budgetDraftSavedSnack;
+
+  /// No description provided for @budgetDraftCreatedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft saved successfully.'**
+  String get budgetDraftCreatedSnack;
+
+  /// No description provided for @budgetDraftSavedSnackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget draft saved'**
+  String get budgetDraftSavedSnackTitle;
+
+  /// No description provided for @budgetDraftSavedSnackMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your presupuesto draft is safe and ready to continue later.'**
+  String get budgetDraftSavedSnackMessage;
+
+  /// No description provided for @budgetDraftUpdatedSnackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget draft updated'**
+  String get budgetDraftUpdatedSnackTitle;
+
+  /// No description provided for @budgetDraftUpdatedSnackMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your latest presupuesto changes were saved.'**
+  String get budgetDraftUpdatedSnackMessage;
+
+  /// No description provided for @budgetDraftNotEditableSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'This budget is no longer a draft and cannot be edited.'**
+  String get budgetDraftNotEditableSnack;
 
   /// No description provided for @budgetPreviewAcceptRequired.
   ///
@@ -11369,6 +11669,36 @@ abstract class AppLocalizations {
   /// **'Send'**
   String get insightsChatSend;
 
+  /// No description provided for @insightsChatExportExcel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export to Excel'**
+  String get insightsChatExportExcel;
+
+  /// No description provided for @insightsChatExportExcelTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Export this finance answer to Excel'**
+  String get insightsChatExportExcelTooltip;
+
+  /// No description provided for @insightsChatExportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Excel generated: {fileName}'**
+  String insightsChatExportSuccess(String fileName);
+
+  /// No description provided for @insightsChatExportError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not export to Excel'**
+  String get insightsChatExportError;
+
+  /// No description provided for @insightsChatExportUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'File download is not available on this platform'**
+  String get insightsChatExportUnsupported;
+
   /// No description provided for @systemConfigMenuLabel.
   ///
   /// In en, this message translates to:
@@ -11404,6 +11734,1952 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upgrade to Premium'**
   String get upgradeToPremium;
+
+  /// No description provided for @contractsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Contracts'**
+  String get contractsTitle;
+
+  /// No description provided for @contractsForClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Contracts for {client}'**
+  String contractsForClient(Object client);
+
+  /// No description provided for @contractsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No contracts yet'**
+  String get contractsEmptyTitle;
+
+  /// No description provided for @contractsEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload the first contract for this client.'**
+  String get contractsEmptySubtitle;
+
+  /// No description provided for @contractsLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load contracts'**
+  String get contractsLoadFailedTitle;
+
+  /// No description provided for @contractUploadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload contract'**
+  String get contractUploadTitle;
+
+  /// No description provided for @contractUploadSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach a PDF and add the metadata you want to keep on this client.'**
+  String get contractUploadSubtitle;
+
+  /// No description provided for @contractEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit contract'**
+  String get contractEditTitle;
+
+  /// No description provided for @contractEditSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the contract metadata without re-uploading the PDF.'**
+  String get contractEditSubtitle;
+
+  /// No description provided for @contractUploadAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload contract'**
+  String get contractUploadAction;
+
+  /// No description provided for @contractUploadSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Contract uploaded successfully.'**
+  String get contractUploadSuccess;
+
+  /// No description provided for @contractUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not upload the contract: {reason}'**
+  String contractUploadFailed(Object reason);
+
+  /// No description provided for @contractUpdateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Contract updated successfully.'**
+  String get contractUpdateSuccess;
+
+  /// No description provided for @contractUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update the contract: {reason}'**
+  String contractUpdateFailed(Object reason);
+
+  /// No description provided for @contractDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete contract?'**
+  String get contractDeleteTitle;
+
+  /// No description provided for @contractDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete contract \"{name}\"? This action cannot be undone.'**
+  String contractDeleteBody(Object name);
+
+  /// No description provided for @contractDeleteSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Contract deleted successfully.'**
+  String get contractDeleteSuccess;
+
+  /// No description provided for @contractDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete the contract: {reason}'**
+  String contractDeleteFailed(Object reason);
+
+  /// No description provided for @contractMarkedCurrentSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Current contract updated.'**
+  String get contractMarkedCurrentSuccess;
+
+  /// No description provided for @contractOpenFailedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'The PDF could not be opened.'**
+  String get contractOpenFailedGeneric;
+
+  /// No description provided for @contractOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the PDF: {reason}'**
+  String contractOpenFailed(Object reason);
+
+  /// No description provided for @contractDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not download the PDF: {reason}'**
+  String contractDownloadFailed(Object reason);
+
+  /// No description provided for @contractTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get contractTitleLabel;
+
+  /// No description provided for @contractFileNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'File name'**
+  String get contractFileNameLabel;
+
+  /// No description provided for @contractVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get contractVersionLabel;
+
+  /// No description provided for @contractStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get contractStatusLabel;
+
+  /// No description provided for @contractRenewalDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Renewal date'**
+  String get contractRenewalDateLabel;
+
+  /// No description provided for @contractSignedDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed date'**
+  String get contractSignedDateLabel;
+
+  /// No description provided for @contractNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get contractNotesLabel;
+
+  /// No description provided for @contractTagsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get contractTagsLabel;
+
+  /// No description provided for @contractTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate tags with commas'**
+  String get contractTagsHint;
+
+  /// No description provided for @contractCurrentBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Current contract'**
+  String get contractCurrentBadge;
+
+  /// No description provided for @contractCurrentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark this document as the currently valid contract for the client.'**
+  String get contractCurrentHint;
+
+  /// No description provided for @contractPickPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose PDF'**
+  String get contractPickPdf;
+
+  /// No description provided for @contractNoFileSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No PDF selected'**
+  String get contractNoFileSelected;
+
+  /// No description provided for @contractPdfOnlyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF files only.'**
+  String get contractPdfOnlyHint;
+
+  /// No description provided for @contractDropHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag a PDF here or click to upload it.'**
+  String get contractDropHint;
+
+  /// No description provided for @contractDropActiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop the PDF to upload it.'**
+  String get contractDropActiveHint;
+
+  /// No description provided for @contractFileReadError.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected PDF could not be read.'**
+  String get contractFileReadError;
+
+  /// No description provided for @contractFileRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a PDF file before continuing.'**
+  String get contractFileRequired;
+
+  /// No description provided for @contractViewPdfAction.
+  ///
+  /// In en, this message translates to:
+  /// **'View PDF'**
+  String get contractViewPdfAction;
+
+  /// No description provided for @contractDownloadAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get contractDownloadAction;
+
+  /// No description provided for @contractMarkCurrentAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as current'**
+  String get contractMarkCurrentAction;
+
+  /// No description provided for @contractUploadedAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded'**
+  String get contractUploadedAtLabel;
+
+  /// No description provided for @contractExpiredBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get contractExpiredBadge;
+
+  /// No description provided for @contractExpiringSoonBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiring soon'**
+  String get contractExpiringSoonBadge;
+
+  /// No description provided for @contractClearDateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear date'**
+  String get contractClearDateAction;
+
+  /// No description provided for @clientContractTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Contract type'**
+  String get clientContractTypeLabel;
+
+  /// No description provided for @clientContractTypeService.
+  ///
+  /// In en, this message translates to:
+  /// **'Service'**
+  String get clientContractTypeService;
+
+  /// No description provided for @clientContractTypeMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get clientContractTypeMaintenance;
+
+  /// No description provided for @clientContractTypeRental.
+  ///
+  /// In en, this message translates to:
+  /// **'Rental'**
+  String get clientContractTypeRental;
+
+  /// No description provided for @clientContractTypeNda.
+  ///
+  /// In en, this message translates to:
+  /// **'NDA'**
+  String get clientContractTypeNda;
+
+  /// No description provided for @clientContractTypeCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get clientContractTypeCustom;
+
+  /// No description provided for @clientContractStatusExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get clientContractStatusExpired;
+
+  /// No description provided for @clientContractStatusTerminated.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminated'**
+  String get clientContractStatusTerminated;
+
+  /// No description provided for @clientContractStatusArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get clientContractStatusArchived;
+
+  /// No description provided for @statementsNoExpenseSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching expenses found'**
+  String get statementsNoExpenseSuggestions;
+
+  /// No description provided for @statementsSuggestedExpensesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested expenses'**
+  String get statementsSuggestedExpensesTitle;
+
+  /// No description provided for @statementsExpenseAlreadyLinkedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Already linked'**
+  String get statementsExpenseAlreadyLinkedBadge;
+
+  /// No description provided for @statementsExpenseLinkAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this expense'**
+  String get statementsExpenseLinkAction;
+
+  /// No description provided for @statementsExpenseOpenManualLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open manual selector'**
+  String get statementsExpenseOpenManualLink;
+
+  /// No description provided for @statementsExpenseSuggestionsLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load suggested expenses'**
+  String get statementsExpenseSuggestionsLoadFailedTitle;
+
+  /// No description provided for @statementsExpenseSuggestionsFallbackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can still link an expense manually.'**
+  String get statementsExpenseSuggestionsFallbackHint;
+
+  /// No description provided for @statementsExpenseLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not link the expense.'**
+  String get statementsExpenseLinkFailed;
+
+  /// No description provided for @statementsExpenseStatusRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'Registered'**
+  String get statementsExpenseStatusRegistered;
+
+  /// No description provided for @statementsExpenseAlreadyLinkedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {Already linked to # bank entry} other {Already linked to # bank entries}}'**
+  String statementsExpenseAlreadyLinkedCount(int count);
+
+  /// No description provided for @rolesTabLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles'**
+  String get rolesTabLabel;
+
+  /// No description provided for @rolesCurrentRoleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current role'**
+  String get rolesCurrentRoleLabel;
+
+  /// No description provided for @rolesPermissionsUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'permissions'**
+  String get rolesPermissionsUnit;
+
+  /// No description provided for @rolesGuideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Role guide'**
+  String get rolesGuideTitle;
+
+  /// No description provided for @rolesYourRoleBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Your role'**
+  String get rolesYourRoleBadge;
+
+  /// No description provided for @rolesLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load permissions'**
+  String get rolesLoadError;
+
+  /// No description provided for @rolesRetryButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get rolesRetryButton;
+
+  /// No description provided for @roleFallbackDescOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Full control over the group. Can transfer ownership.'**
+  String get roleFallbackDescOwner;
+
+  /// No description provided for @roleFallbackDescAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Can manage members, roles, billing and settings.'**
+  String get roleFallbackDescAdmin;
+
+  /// No description provided for @roleFallbackDescCoAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Can invite members and manage the calendar and events.'**
+  String get roleFallbackDescCoAdmin;
+
+  /// No description provided for @roleFallbackDescMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Can view and participate in the group.'**
+  String get roleFallbackDescMember;
+
+  /// No description provided for @permLabelInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get permLabelInvite;
+
+  /// No description provided for @permLabelKick.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove members'**
+  String get permLabelKick;
+
+  /// No description provided for @permLabelEditGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit group'**
+  String get permLabelEditGroup;
+
+  /// No description provided for @permLabelDeleteGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete group'**
+  String get permLabelDeleteGroup;
+
+  /// No description provided for @permLabelManageRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage roles'**
+  String get permLabelManageRoles;
+
+  /// No description provided for @permLabelViewBilling.
+  ///
+  /// In en, this message translates to:
+  /// **'View billing'**
+  String get permLabelViewBilling;
+
+  /// No description provided for @permLabelManageInvoices.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices'**
+  String get permLabelManageInvoices;
+
+  /// No description provided for @permLabelManageBudgets.
+  ///
+  /// In en, this message translates to:
+  /// **'Budgets'**
+  String get permLabelManageBudgets;
+
+  /// No description provided for @permLabelViewMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'View members'**
+  String get permLabelViewMembers;
+
+  /// No description provided for @permLabelManageMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage members'**
+  String get permLabelManageMembers;
+
+  /// No description provided for @permLabelSendMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get permLabelSendMessages;
+
+  /// No description provided for @permLabelViewCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'View calendar'**
+  String get permLabelViewCalendar;
+
+  /// No description provided for @permLabelEditCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit calendar'**
+  String get permLabelEditCalendar;
+
+  /// No description provided for @permLabelManageEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get permLabelManageEvents;
+
+  /// No description provided for @permLabelViewReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get permLabelViewReports;
+
+  /// No description provided for @permLabelManageSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get permLabelManageSettings;
+
+  /// No description provided for @permLabelTransferOwnership.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer ownership'**
+  String get permLabelTransferOwnership;
+
+  /// No description provided for @permLabelGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get permLabelGroup;
+
+  /// No description provided for @permLabelStatements.
+  ///
+  /// In en, this message translates to:
+  /// **'Statements'**
+  String get permLabelStatements;
+
+  /// No description provided for @permLabelCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get permLabelCalendar;
+
+  /// No description provided for @permLabelEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get permLabelEvents;
+
+  /// No description provided for @permLabelTimeTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Time tracking'**
+  String get permLabelTimeTracking;
+
+  /// No description provided for @permLabelExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses'**
+  String get permLabelExpenses;
+
+  /// No description provided for @permLabelInvoices.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices'**
+  String get permLabelInvoices;
+
+  /// No description provided for @permLabelReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get permLabelReports;
+
+  /// No description provided for @permLabelSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get permLabelSettings;
+
+  /// No description provided for @permLabelMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get permLabelMembers;
+
+  /// No description provided for @roleDescOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Full control of the group, members, settings, and shared tools.'**
+  String get roleDescOwner;
+
+  /// No description provided for @roleDescAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Legacy elevated manager role. Treated like a co-admin for frontend guidance.'**
+  String get roleDescAdmin;
+
+  /// No description provided for @roleDescCoAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Can manage most shared group operations, but cannot delete the group or outrank the owner.'**
+  String get roleDescCoAdmin;
+
+  /// No description provided for @roleDescMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Can view shared group data and manage only their own allowed actions.'**
+  String get roleDescMember;
+
+  /// No description provided for @expenseJsonTabFlowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the JSON and attach the invoice to import.'**
+  String get expenseJsonTabFlowHint;
+
+  /// No description provided for @expenseJsonTabPickJsonFile.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON file'**
+  String get expenseJsonTabPickJsonFile;
+
+  /// No description provided for @expenseJsonTabPickInvoiceFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice file'**
+  String get expenseJsonTabPickInvoiceFile;
+
+  /// No description provided for @expenseJsonTabGetAiPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Get AI Prompt'**
+  String get expenseJsonTabGetAiPrompt;
+
+  /// No description provided for @expenseJsonTabGeneratingPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating AI prompt...'**
+  String get expenseJsonTabGeneratingPrompt;
+
+  /// No description provided for @expenseJsonTabPromptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'AI PROMPT'**
+  String get expenseJsonTabPromptLabel;
+
+  /// No description provided for @expenseJsonTabCopyPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get expenseJsonTabCopyPrompt;
+
+  /// No description provided for @expenseJsonTabPayloadLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON Payload'**
+  String get expenseJsonTabPayloadLabel;
+
+  /// No description provided for @expenseJsonTabPayloadHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the invoice JSON here...'**
+  String get expenseJsonTabPayloadHint;
+
+  /// No description provided for @expenseJsonTabAdvancedOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'ADVANCED OPTIONS'**
+  String get expenseJsonTabAdvancedOptions;
+
+  /// No description provided for @expenseJsonTabSectionExpenseType.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense type'**
+  String get expenseJsonTabSectionExpenseType;
+
+  /// No description provided for @expenseJsonTabSectionDiscount.
+  ///
+  /// In en, this message translates to:
+  /// **'Global discount'**
+  String get expenseJsonTabSectionDiscount;
+
+  /// No description provided for @expenseJsonTabSectionTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Document total'**
+  String get expenseJsonTabSectionTotal;
+
+  /// No description provided for @expenseJsonTabImportCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Import JSON'**
+  String get expenseJsonTabImportCta;
+
+  /// No description provided for @expenseJsonTabImportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires JSON and attached invoice file.'**
+  String get expenseJsonTabImportHint;
+
+  /// No description provided for @expenseJsonLeftTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON Import'**
+  String get expenseJsonLeftTitle;
+
+  /// No description provided for @expenseJsonLeftSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Load the JSON, attach the invoice and review the payload on the right panel.'**
+  String get expenseJsonLeftSubtitle;
+
+  /// No description provided for @expenseJsonLeftDropActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop the JSON or invoice'**
+  String get expenseJsonLeftDropActive;
+
+  /// No description provided for @expenseJsonLeftDropHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag the JSON or invoice here'**
+  String get expenseJsonLeftDropHint;
+
+  /// No description provided for @expenseJsonLeftFileTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON / PDF / JPG / JPEG / PNG / WEBP'**
+  String get expenseJsonLeftFileTypes;
+
+  /// No description provided for @expenseJsonLeftPickJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Select JSON'**
+  String get expenseJsonLeftPickJson;
+
+  /// No description provided for @expenseJsonLeftPickInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach invoice'**
+  String get expenseJsonLeftPickInvoice;
+
+  /// No description provided for @expenseJsonLeftPromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Prompt'**
+  String get expenseJsonLeftPromptTitle;
+
+  /// No description provided for @expenseJsonLeftPromptAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get expenseJsonLeftPromptAvailable;
+
+  /// No description provided for @expenseJsonLeftPromptGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate template'**
+  String get expenseJsonLeftPromptGenerate;
+
+  /// No description provided for @expenseJsonLeftPromptTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Get AI prompt'**
+  String get expenseJsonLeftPromptTooltip;
+
+  /// No description provided for @expenseJsonLeftCopyPromptTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy prompt'**
+  String get expenseJsonLeftCopyPromptTooltip;
+
+  /// No description provided for @expenseJsonLeftSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get expenseJsonLeftSummaryTitle;
+
+  /// No description provided for @expenseJsonLeftJsonPending.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON pending'**
+  String get expenseJsonLeftJsonPending;
+
+  /// No description provided for @expenseJsonLeftInvoicePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice pending'**
+  String get expenseJsonLeftInvoicePending;
+
+  /// No description provided for @expenseBatchLeftTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import documents'**
+  String get expenseBatchLeftTitle;
+
+  /// No description provided for @expenseBatchLeftSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the PDFs or images to process. The full list and issues are shown in the right panel.'**
+  String get expenseBatchLeftSubtitle;
+
+  /// No description provided for @expenseBatchLeftDropActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop documents to load them'**
+  String get expenseBatchLeftDropActive;
+
+  /// No description provided for @expenseBatchLeftDropHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag your documents here'**
+  String get expenseBatchLeftDropHint;
+
+  /// No description provided for @expenseBatchLeftFileTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF / JPG / JPEG / PNG / WEBP'**
+  String get expenseBatchLeftFileTypes;
+
+  /// No description provided for @expenseBatchLeftPickCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Select documents'**
+  String get expenseBatchLeftPickCta;
+
+  /// No description provided for @expenseBatchLeftProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing batch...'**
+  String get expenseBatchLeftProcessing;
+
+  /// No description provided for @expenseBatchLeftSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} documents selected'**
+  String expenseBatchLeftSelected(int count);
+
+  /// No description provided for @expenseBatchLeftCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Capacity: {selected} / {max}'**
+  String expenseBatchLeftCapacity(int selected, int max);
+
+  /// No description provided for @expenseBatchLeftTotalSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Total size: {size}'**
+  String expenseBatchLeftTotalSize(String size);
+
+  /// No description provided for @expenseBatchLeftSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'Available slots: {slots}'**
+  String expenseBatchLeftSlots(int slots);
+
+  /// No description provided for @expenseBatchLeftClearCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selection'**
+  String get expenseBatchLeftClearCta;
+
+  /// No description provided for @expenseBatchLeftCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch completed'**
+  String get expenseBatchLeftCompleted;
+
+  /// No description provided for @expenseBatchLeftImportCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Import expenses'**
+  String get expenseBatchLeftImportCta;
+
+  /// No description provided for @expenseBatchLeftGroupRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a group before importing.'**
+  String get expenseBatchLeftGroupRequired;
+
+  /// No description provided for @expenseBatchProgressCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Import completed'**
+  String get expenseBatchProgressCompleted;
+
+  /// No description provided for @expenseBatchProgressFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed'**
+  String get expenseBatchProgressFailed;
+
+  /// No description provided for @expenseBatchProgressQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Import queued'**
+  String get expenseBatchProgressQueued;
+
+  /// No description provided for @expenseBatchProgressProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing batch'**
+  String get expenseBatchProgressProcessing;
+
+  /// No description provided for @expenseBatchStatProcessed.
+  ///
+  /// In en, this message translates to:
+  /// **'Processed'**
+  String get expenseBatchStatProcessed;
+
+  /// No description provided for @expenseBatchStatImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported'**
+  String get expenseBatchStatImported;
+
+  /// No description provided for @expenseBatchStatIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'With issues'**
+  String get expenseBatchStatIssues;
+
+  /// No description provided for @expenseBatchStatResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get expenseBatchStatResult;
+
+  /// No description provided for @expenseBatchStatLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get expenseBatchStatLoading;
+
+  /// No description provided for @expenseBatchHeaderSlotsFree.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} free'**
+  String expenseBatchHeaderSlotsFree(int count);
+
+  /// No description provided for @expenseBatchProgressBackgroundHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can leave this screen while the import completes.'**
+  String get expenseBatchProgressBackgroundHint;
+
+  /// No description provided for @expenseBatchListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Loaded files'**
+  String get expenseBatchListTitle;
+
+  /// No description provided for @expenseBatchListCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} file(s)'**
+  String expenseBatchListCount(int count);
+
+  /// No description provided for @expenseBatchListFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get expenseBatchListFilterAll;
+
+  /// No description provided for @expenseBatchListFilterReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get expenseBatchListFilterReady;
+
+  /// No description provided for @expenseBatchListFilterIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'Issues'**
+  String get expenseBatchListFilterIssues;
+
+  /// No description provided for @expenseBatchListRemoveWarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {count}'**
+  String expenseBatchListRemoveWarnings(int count);
+
+  /// No description provided for @expenseBatchListEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No files match this filter yet.'**
+  String get expenseBatchListEmpty;
+
+  /// No description provided for @expenseBatchListRemoveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from selection'**
+  String get expenseBatchListRemoveTooltip;
+
+  /// No description provided for @expenseBatchDocListFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files'**
+  String expenseBatchDocListFiles(int count);
+
+  /// No description provided for @expenseBatchDocListAlreadyUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Already uploaded'**
+  String get expenseBatchDocListAlreadyUploaded;
+
+  /// No description provided for @expenseBatchDocListDuplicates.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} already uploaded'**
+  String expenseBatchDocListDuplicates(int count);
+
+  /// No description provided for @expenseBatchDocListClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get expenseBatchDocListClearAll;
+
+  /// No description provided for @expenseBatchDocListRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get expenseBatchDocListRemove;
+
+  /// No description provided for @expenseBatchErrorCopyList.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy list'**
+  String get expenseBatchErrorCopyList;
+
+  /// No description provided for @expenseTotalsUseSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Use document summary'**
+  String get expenseTotalsUseSummaryLabel;
+
+  /// No description provided for @expenseTotalsSummaryMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals extracted from summary'**
+  String get expenseTotalsSummaryMode;
+
+  /// No description provided for @expenseTotalsCalculateMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculate from lines'**
+  String get expenseTotalsCalculateMode;
+
+  /// No description provided for @expenseTotalsSummaryHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The VAT for this document appears in the summary at the bottom of the ticket/invoice. It is not necessary for each line to show VAT separately.'**
+  String get expenseTotalsSummaryHelp;
+
+  /// No description provided for @expenseTotalsLockToLinesHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Base, VAT and total are calculated from the lines and discounts. Enable summary if the document only shows VAT in the footer.'**
+  String get expenseTotalsLockToLinesHelp;
+
+  /// No description provided for @expenseTotalsDirectReviewHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'You can review the document totals directly from this block.'**
+  String get expenseTotalsDirectReviewHelp;
+
+  /// No description provided for @expenseTotalsTaxableBase.
+  ///
+  /// In en, this message translates to:
+  /// **'Taxable base'**
+  String get expenseTotalsTaxableBase;
+
+  /// No description provided for @expenseTotalsTax.
+  ///
+  /// In en, this message translates to:
+  /// **'Total VAT'**
+  String get expenseTotalsTax;
+
+  /// No description provided for @expenseTotalsTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total document'**
+  String get expenseTotalsTotal;
+
+  /// No description provided for @suspectExpensesMenuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspect expenses'**
+  String get suspectExpensesMenuLabel;
+
+  /// No description provided for @suspectExpensesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspect expenses'**
+  String get suspectExpensesTitle;
+
+  /// No description provided for @suspectExpensesScanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanned'**
+  String get suspectExpensesScanned;
+
+  /// No description provided for @suspectExpensesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspects'**
+  String get suspectExpensesCount;
+
+  /// No description provided for @suspectExpensesFilterResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter results'**
+  String get suspectExpensesFilterResults;
+
+  /// No description provided for @suspectExpensesShown.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown suspects'**
+  String get suspectExpensesShown;
+
+  /// No description provided for @suspectExpensesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No suspect expenses found for this filter.'**
+  String get suspectExpensesEmpty;
+
+  /// No description provided for @suspectExpensesEmptyUnreviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'No unreviewed suspect expenses found.'**
+  String get suspectExpensesEmptyUnreviewed;
+
+  /// No description provided for @suspectExpensesEmptyConfirmedOk.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses are marked as confirmed correct.'**
+  String get suspectExpensesEmptyConfirmedOk;
+
+  /// No description provided for @suspectExpensesEmptyNeedsFix.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses are marked as needs correction.'**
+  String get suspectExpensesEmptyNeedsFix;
+
+  /// No description provided for @suspectExpensesFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get suspectExpensesFilterAll;
+
+  /// No description provided for @suspectExpensesFilterUnreviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unreviewed'**
+  String get suspectExpensesFilterUnreviewed;
+
+  /// No description provided for @suspectExpensesFilterConfirmedOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed OK'**
+  String get suspectExpensesFilterConfirmedOk;
+
+  /// No description provided for @suspectExpensesFilterNeedsFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs Fix'**
+  String get suspectExpensesFilterNeedsFix;
+
+  /// No description provided for @suspectExpensesStatusUnreviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unreviewed'**
+  String get suspectExpensesStatusUnreviewed;
+
+  /// No description provided for @suspectExpensesStatusConfirmedOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed OK'**
+  String get suspectExpensesStatusConfirmedOk;
+
+  /// No description provided for @suspectExpensesStatusNeedsFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs Fix'**
+  String get suspectExpensesStatusNeedsFix;
+
+  /// No description provided for @suspectExpensesStoredLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored'**
+  String get suspectExpensesStoredLabel;
+
+  /// No description provided for @suspectExpensesDerivedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Derived'**
+  String get suspectExpensesDerivedLabel;
+
+  /// No description provided for @suspectExpensesStoredSubtotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get suspectExpensesStoredSubtotal;
+
+  /// No description provided for @suspectExpensesStoredTax.
+  ///
+  /// In en, this message translates to:
+  /// **'VAT'**
+  String get suspectExpensesStoredTax;
+
+  /// No description provided for @suspectExpensesStoredTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get suspectExpensesStoredTotal;
+
+  /// No description provided for @suspectExpensesReasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected reasons'**
+  String get suspectExpensesReasons;
+
+  /// No description provided for @suspectExpensesActionConfirmOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as correct'**
+  String get suspectExpensesActionConfirmOk;
+
+  /// No description provided for @suspectExpensesActionNeedsFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark for fix'**
+  String get suspectExpensesActionNeedsFix;
+
+  /// No description provided for @suspectExpensesActionReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset review'**
+  String get suspectExpensesActionReset;
+
+  /// No description provided for @suspectExpensesNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get suspectExpensesNotes;
+
+  /// No description provided for @suspectExpensesNotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a note before saving…'**
+  String get suspectExpensesNotesHint;
+
+  /// No description provided for @suspectExpensesUploadedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded'**
+  String get suspectExpensesUploadedAt;
+
+  /// No description provided for @notificationBankExpensesDetectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank expenses detected'**
+  String get notificationBankExpensesDetectedTitle;
+
+  /// Notification shown when bank expenses are detected automatically
+  ///
+  /// In en, this message translates to:
+  /// **'{count} bank expenses totaling {amount} were detected.'**
+  String notificationBankExpensesDetectedMessage(int count, String amount);
+
+  /// No description provided for @invoiceCreateMobileComingSoonSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Create invoice on mobile will be available soon.'**
+  String get invoiceCreateMobileComingSoonSnack;
+
+  /// No description provided for @invoiceExportConceptsExcelFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not export invoice concepts to Excel.'**
+  String get invoiceExportConceptsExcelFailed;
+
+  /// No description provided for @receiptJsonImportDraftOnlySnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Only draft receipts can be updated via JSON import.'**
+  String get receiptJsonImportDraftOnlySnack;
+
+  /// No description provided for @receiptJsonImportSuccessSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {count} lines.'**
+  String receiptJsonImportSuccessSnack(Object count);
+
+  /// No description provided for @budgetDeletedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget deleted.'**
+  String get budgetDeletedSnack;
+
+  /// No description provided for @budgetAdvanceInvoiceCreatedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Advance invoice created successfully (70%).'**
+  String get budgetAdvanceInvoiceCreatedSnack;
+
+  /// No description provided for @budgetAdvanceInvoiceCreatedSimpleSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Advance invoice created successfully.'**
+  String get budgetAdvanceInvoiceCreatedSimpleSnack;
+
+  /// No description provided for @budgetFinalInvoiceCreatedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Final invoice created successfully.'**
+  String get budgetFinalInvoiceCreatedSnack;
+
+  /// No description provided for @budgetConvertedToInvoiceSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice created from budget.'**
+  String get budgetConvertedToInvoiceSnack;
+
+  /// No description provided for @chatComposerHintMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a message…'**
+  String get chatComposerHintMessage;
+
+  /// No description provided for @chatComposerHintReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a reply…'**
+  String get chatComposerHintReply;
+
+  /// No description provided for @chatComposerHintCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a caption…'**
+  String get chatComposerHintCaption;
+
+  /// No description provided for @chatComposerHintBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter sends · Shift+Enter new line'**
+  String get chatComposerHintBody;
+
+  /// No description provided for @chatComposerHintAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment ready · use the text box as a caption'**
+  String get chatComposerHintAttachment;
+
+  /// No description provided for @chatComposerAttachFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Local file'**
+  String get chatComposerAttachFile;
+
+  /// No description provided for @chatComposerAttachClientPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Client PDF'**
+  String get chatComposerAttachClientPdf;
+
+  /// No description provided for @chatComposerAttachWorkerPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Worker-hours PDF'**
+  String get chatComposerAttachWorkerPdf;
+
+  /// No description provided for @chatComposerSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get chatComposerSend;
+
+  /// No description provided for @chatComposerSendFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Send file'**
+  String get chatComposerSendFile;
+
+  /// No description provided for @chatComposerSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get chatComposerSending;
+
+  /// No description provided for @chatComposerUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading…'**
+  String get chatComposerUploading;
+
+  /// No description provided for @chatComposerRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get chatComposerRetry;
+
+  /// No description provided for @telegramSearchChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Search chats…'**
+  String get telegramSearchChats;
+
+  /// No description provided for @telegramMenuChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get telegramMenuChats;
+
+  /// No description provided for @telegramMenuExports.
+  ///
+  /// In en, this message translates to:
+  /// **'Exports'**
+  String get telegramMenuExports;
+
+  /// No description provided for @telegramMenuAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get telegramMenuAccount;
+
+  /// No description provided for @telegramMenuDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get telegramMenuDisconnect;
+
+  /// No description provided for @telegramFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get telegramFilterAll;
+
+  /// No description provided for @telegramFilterGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get telegramFilterGroups;
+
+  /// No description provided for @telegramFilterChannels.
+  ///
+  /// In en, this message translates to:
+  /// **'Channels'**
+  String get telegramFilterChannels;
+
+  /// No description provided for @telegramFilterPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get telegramFilterPrivate;
+
+  /// No description provided for @telegramNoChatsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No chats match \"{query}\"'**
+  String telegramNoChatsMatch(String query);
+
+  /// No description provided for @telegramNoChatsAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No Telegram chats available'**
+  String get telegramNoChatsAvailable;
+
+  /// No description provided for @telegramClearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get telegramClearSearch;
+
+  /// No description provided for @telegramMainChatsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Main Chats'**
+  String get telegramMainChatsSection;
+
+  /// No description provided for @telegramNoMainChatsInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'No chats in the main list. Archived chats are available below.'**
+  String get telegramNoMainChatsInfo;
+
+  /// No description provided for @telegramArchivedChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived Chats'**
+  String get telegramArchivedChats;
+
+  /// No description provided for @telegramChatsLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load chats'**
+  String get telegramChatsLoadError;
+
+  /// No description provided for @telegramRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get telegramRetry;
+
+  /// No description provided for @telegramTopics.
+  ///
+  /// In en, this message translates to:
+  /// **'Topics'**
+  String get telegramTopics;
+
+  /// No description provided for @telegramBrowseTopicsIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse forum topics inside {chat}.'**
+  String telegramBrowseTopicsIn(String chat);
+
+  /// No description provided for @telegramSearchTopics.
+  ///
+  /// In en, this message translates to:
+  /// **'Search topics…'**
+  String get telegramSearchTopics;
+
+  /// No description provided for @telegramGeneralTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'General topic'**
+  String get telegramGeneralTopic;
+
+  /// No description provided for @telegramHiddenTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden topic'**
+  String get telegramHiddenTopic;
+
+  /// No description provided for @telegramForumTopicLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Forum topic'**
+  String get telegramForumTopicLabel;
+
+  /// No description provided for @telegramNoTopicsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No topics match your search'**
+  String get telegramNoTopicsMatch;
+
+  /// No description provided for @telegramNoTopicsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No forum topics found'**
+  String get telegramNoTopicsFound;
+
+  /// No description provided for @telegramNoTopicsMatchBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different name or clear the search.'**
+  String get telegramNoTopicsMatchBody;
+
+  /// No description provided for @telegramNoTopicsFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This forum has no visible topics yet.'**
+  String get telegramNoTopicsFoundBody;
+
+  /// No description provided for @telegramToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get telegramToday;
+
+  /// No description provided for @telegramYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get telegramYesterday;
+
+  /// No description provided for @telegramLoadOlder.
+  ///
+  /// In en, this message translates to:
+  /// **'Load older'**
+  String get telegramLoadOlder;
+
+  /// No description provided for @telegramBeginningOfHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Beginning of history'**
+  String get telegramBeginningOfHistory;
+
+  /// No description provided for @telegramNoMessagesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages loaded yet'**
+  String get telegramNoMessagesYet;
+
+  /// No description provided for @telegramNoMessagesTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Try refreshing this chat or loading older history.'**
+  String get telegramNoMessagesTip;
+
+  /// No description provided for @telegramSelectChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a chat to start reading'**
+  String get telegramSelectChatTitle;
+
+  /// No description provided for @telegramSelectChatBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Telegram chat from the list to load recent messages, browse history, and export it.'**
+  String get telegramSelectChatBody;
+
+  /// No description provided for @telegramFailedToLoadMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load messages'**
+  String get telegramFailedToLoadMessages;
+
+  /// No description provided for @telegramRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get telegramRefresh;
+
+  /// No description provided for @telegramExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get telegramExport;
+
+  /// No description provided for @telegramEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'edited'**
+  String get telegramEdited;
+
+  /// No description provided for @telegramForwardedFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Forwarded from {source}'**
+  String telegramForwardedFrom(String source);
+
+  /// No description provided for @telegramForwardedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Forwarded message'**
+  String get telegramForwardedMessage;
+
+  /// No description provided for @telegramReplyingTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Replying to {sender}'**
+  String telegramReplyingTo(String sender);
+
+  /// No description provided for @telegramReplyTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to #{id}'**
+  String telegramReplyTo(String id);
+
+  /// No description provided for @telegramClearReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear reply'**
+  String get telegramClearReply;
+
+  /// No description provided for @telegramRemoveAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove attachment'**
+  String get telegramRemoveAttachment;
+
+  /// No description provided for @telegramReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get telegramReply;
+
+  /// No description provided for @telegramReplying.
+  ///
+  /// In en, this message translates to:
+  /// **'Replying'**
+  String get telegramReplying;
+
+  /// No description provided for @telegramPreviewPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview PDF'**
+  String get telegramPreviewPdf;
+
+  /// No description provided for @telegramDownloadDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Download document'**
+  String get telegramDownloadDocument;
+
+  /// No description provided for @telegramClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get telegramClose;
+
+  /// No description provided for @telegramTopicSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Topic · {name}'**
+  String telegramTopicSubtitle(String name);
+
+  /// No description provided for @telegramCouldNotReadFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the selected file.'**
+  String get telegramCouldNotReadFile;
+
+  /// No description provided for @telegramNeedGroupClientPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'A group must be selected before attaching client PDFs.'**
+  String get telegramNeedGroupClientPdf;
+
+  /// No description provided for @telegramNeedGroupWorkerPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'A group must be selected before attaching worker PDFs.'**
+  String get telegramNeedGroupWorkerPdf;
+
+  /// No description provided for @telegramCouldNotOpenPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the PDF preview.'**
+  String get telegramCouldNotOpenPdf;
+
+  /// No description provided for @telegramCouldNotDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not download this document.'**
+  String get telegramCouldNotDownload;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
+
+  /// No description provided for @issueInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue invoice'**
+  String get issueInvoice;
+
+  /// No description provided for @invoiceActionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get invoiceActionsTitle;
+
+  /// No description provided for @invoicePdfPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF preview'**
+  String get invoicePdfPreviewTitle;
+
+  /// No description provided for @invoicePdfGenerated.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated'**
+  String get invoicePdfGenerated;
+
+  /// No description provided for @invoicePdfReadyToPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF is ready to preview'**
+  String get invoicePdfReadyToPreview;
+
+  /// No description provided for @invoiceSaveDraftToPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Save draft to generate a PDF preview'**
+  String get invoiceSaveDraftToPreview;
+
+  /// No description provided for @invoicePdfOpenPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Open preview'**
+  String get invoicePdfOpenPreview;
+
+  /// No description provided for @invoicePreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get invoicePreviewTitle;
+
+  /// No description provided for @invoicePreviewNoNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes'**
+  String get invoicePreviewNoNotes;
+
+  /// No description provided for @invoicePreviewLinesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines: {count}'**
+  String invoicePreviewLinesCount(int count);
+
+  /// No description provided for @invoicePreviewTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {amount}'**
+  String invoicePreviewTotalLabel(String amount);
+
+  /// No description provided for @invoiceDraftPdfDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Draft PDF'**
+  String get invoiceDraftPdfDialogTitle;
+
+  /// No description provided for @invoiceDraftPdfDialogContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate a PDF preview of this draft invoice.'**
+  String get invoiceDraftPdfDialogContent;
+
+  /// No description provided for @invoiceDraftPreviewInBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview in Browser'**
+  String get invoiceDraftPreviewInBrowser;
+
+  /// No description provided for @invoiceDraftDownloadPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Download PDF'**
+  String get invoiceDraftDownloadPdf;
+
+  /// No description provided for @invoiceDeliveryStatusUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery status updated'**
+  String get invoiceDeliveryStatusUpdated;
+
+  /// No description provided for @invoiceMarkedUnsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice marked as unsent'**
+  String get invoiceMarkedUnsent;
+
+  /// No description provided for @invoiceDeliveryOnlyIssued.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery can only be marked on issued invoices.'**
+  String get invoiceDeliveryOnlyIssued;
+
+  /// No description provided for @invoiceDeliveryUpdateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update delivery status.'**
+  String get invoiceDeliveryUpdateError;
+
+  /// No description provided for @invoiceReviewPdfBeforeDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the PDF preview before saving the draft.'**
+  String get invoiceReviewPdfBeforeDraft;
+
+  /// No description provided for @invoiceStepClientShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Client'**
+  String get invoiceStepClientShort;
+
+  /// No description provided for @invoiceStepLinesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines'**
+  String get invoiceStepLinesShort;
+
+  /// No description provided for @invoiceStepDraftShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get invoiceStepDraftShort;
+
+  /// No description provided for @notificationRecurringDraftInvoiceCreatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring draft invoice created'**
+  String get notificationRecurringDraftInvoiceCreatedTitle;
+
+  /// No description provided for @notificationRecurringDraftInvoiceCreatedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'A draft invoice for {clientName} was created from recurrence \"{recurrenceName}\" for {amount}.'**
+  String notificationRecurringDraftInvoiceCreatedMessage(
+      String clientName, String recurrenceName, String amount);
+
+  /// No description provided for @notificationRecurringDraftInvoiceCreatedMessageNoAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'A draft invoice for {clientName} was created from recurrence \"{recurrenceName}\".'**
+  String notificationRecurringDraftInvoiceCreatedMessageNoAmount(
+      String clientName, String recurrenceName);
+
+  /// No description provided for @notificationRecurringDraftInvoiceCreatedMessageFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'A recurring draft invoice was created.'**
+  String get notificationRecurringDraftInvoiceCreatedMessageFallback;
 }
 
 class _AppLocalizationsDelegate

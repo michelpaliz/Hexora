@@ -1,11 +1,9 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';
 import 'package:hexora/a-models/mail/mail_attachment.dart';
 import 'package:hexora/a-models/mail/mail_message.dart';
 import 'package:hexora/b-backend/mail/domain/mail_domain.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/widgets/mail_html_content.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -293,18 +291,13 @@ class _ThreadMessageCard extends StatelessWidget {
               const SizedBox(height: 10),
               if (body.isNotEmpty)
                 hasHtml
-                    ? Html(
-                        data: body,
-                        style: {
-                          'body': Style(
-                            margin: Margins.zero,
-                            padding: HtmlPaddings.zero,
-                            color: cs.onSurface,
-                            fontSize: FontSize(t.bodySmall.fontSize ?? 14),
-                            fontFamily: t.bodySmall.fontFamily,
-                          ),
-                          'p': Style(margin: Margins.only(bottom: 10)),
-                        },
+                    ? MailHtmlContent(
+                        html: body,
+                        textColor: cs.onSurface,
+                        linkColor: cs.primary,
+                        fontFamily: t.bodySmall.fontFamily,
+                        fontSize: t.bodySmall.fontSize ?? 14,
+                        paragraphSpacing: 10,
                       )
                     : Text(
                         body,
@@ -432,7 +425,7 @@ class _AttachmentRow extends StatelessWidget {
 
 String? _formatBytes(int? bytes) {
   if (bytes == null) return null;
-  if (bytes < 1024) return '${bytes} B';
+  if (bytes < 1024) return '$bytes B';
   final kb = bytes / 1024;
   if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
   final mb = kb / 1024;

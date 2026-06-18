@@ -65,20 +65,26 @@ String _friendlyNameFromEmail(String? email) {
       .join(' ');
 }
 
-String _formatRelativeDate(DateTime? date) {
+String _formatRelativeDate(DateTime? date, {String locale = 'en'}) {
   if (date == null) return '-';
   final now = DateTime.now();
   final diff = now.difference(date);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+  final es = locale.startsWith('es');
+  if (diff.inMinutes < 1) return es ? 'ahora' : 'just now';
+  if (diff.inMinutes < 60) return es ? '${diff.inMinutes}min' : '${diff.inMinutes}m';
   if (diff.inHours < 24) return '${diff.inHours}h';
   if (diff.inDays < 7) return '${diff.inDays}d';
   final weeks = (diff.inDays / 7).floor();
-  if (weeks < 5) return '${weeks}w';
+  if (weeks < 5) return es ? '${weeks}sem' : '${weeks}w';
   final months = (diff.inDays / 30).floor();
-  if (months < 12) return '${months}mo';
+  if (months < 12) return es ? '${months}mes' : '${months}mo';
   final years = (diff.inDays / 365).floor();
-  return '${years}y';
+  return es ? '${years}a' : '${years}y';
+}
+
+String _formatFullDate(DateTime? date) {
+  if (date == null) return '-';
+  return DateFormat.yMMMMd().add_jm().format(date);
 }
 
 String? _formatBytes(int? bytes) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../statements_controller.dart';
@@ -17,6 +18,7 @@ class InvoiceLinkSummary {
     AppLocalizations l,
     ColorScheme cs,
   ) {
+    final t = AppTypography.of(context);
     final batchId = StatementsSharedUtils.entryText(entry, ['_batchId', 'batchId', '_id', 'id']);
     final date = StatementsSharedUtils.entryText(entry, ['valueDate', 'date']);
     final description = StatementsSharedUtils.entryText(entry, ['description']);
@@ -39,22 +41,48 @@ class InvoiceLinkSummary {
         : client;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.38)),
         borderRadius: BorderRadius.circular(12),
-        color: Colors.transparent,
+        color: cs.surface.withValues(alpha: 0.28),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'Movimiento seleccionado',
-            style: TextStyle(fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: 16,
+                  color: cs.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Movimiento seleccionado',
+                  style: t.bodyMedium.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           _summaryItem(
+            t,
             cs,
             icon: Icons.tag_outlined,
             label: 'Lote',
@@ -62,6 +90,7 @@ class InvoiceLinkSummary {
           ),
           const SizedBox(height: 8),
           _summaryItem(
+            t,
             cs,
             icon: Icons.calendar_today_outlined,
             label: 'Fecha',
@@ -69,6 +98,7 @@ class InvoiceLinkSummary {
           ),
           const SizedBox(height: 8),
           _summaryItem(
+            t,
             cs,
             icon: Icons.description_outlined,
             label: l.statementsHeaderDescription,
@@ -76,6 +106,7 @@ class InvoiceLinkSummary {
           ),
           const SizedBox(height: 8),
           _summaryItem(
+            t,
             cs,
             icon: Icons.person_outline,
             label: expenseOnly ? 'Proveedor' : l.statementsHeaderClient,
@@ -83,6 +114,7 @@ class InvoiceLinkSummary {
           ),
           const SizedBox(height: 8),
           _summaryItem(
+            t,
             cs,
             icon: Icons.payments_outlined,
             label: l.statementsHeaderAmount,
@@ -90,6 +122,7 @@ class InvoiceLinkSummary {
           ),
           const SizedBox(height: 8),
           _summaryItem(
+            t,
             cs,
             icon: Icons.account_balance_wallet_outlined,
             label: l.statementsHeaderBalance,
@@ -101,6 +134,7 @@ class InvoiceLinkSummary {
   }
 
   static Widget _summaryItem(
+    AppTypography t,
     ColorScheme cs, {
     required IconData icon,
     required String label,
@@ -120,13 +154,22 @@ class InvoiceLinkSummary {
             children: [
               Text(
                 label,
-                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                style: t.caption.copyWith(
+                  fontSize: 11.5,
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 value.isEmpty ? '-' : value,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurface,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),

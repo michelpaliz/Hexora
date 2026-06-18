@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
+import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/utils/notification_payload_helper.dart';
 
 enum BroadCategory { group, user, system, other }
 
@@ -31,6 +32,17 @@ class BroadCategoryManager {
   void filterNotifications(BroadCategory? category) {
     _selectedCategory = category;
   }
+}
+
+BroadCategory resolveBroadCategoryForNotification(NotificationUser notification) {
+  if (isIssuedDocumentNotification(notification)) {
+    return BroadCategory.other;
+  }
+  if (isConcurrentEventNotification(notification)) {
+    return BroadCategory.other;
+  }
+  return BroadCategoryManager().categoryMapping[notification.category] ??
+      BroadCategory.other;
 }
 
 /// Extension to localize BroadCategory values

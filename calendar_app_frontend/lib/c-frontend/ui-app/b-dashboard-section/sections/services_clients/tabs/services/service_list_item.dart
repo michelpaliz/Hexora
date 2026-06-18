@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/service/service.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
-class ServiceListItem extends StatelessWidget {
+class ServiceListItem extends StatefulWidget {
   final Service service;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
 
-  /// Typography (injected)
   final TextStyle nameStyle;
   final TextStyle metaStyle;
 
@@ -23,71 +21,143 @@ class ServiceListItem extends StatelessWidget {
   });
 
   @override
+  State<ServiceListItem> createState() => _ServiceListItemState();
+}
+
+class _ServiceListItemState extends State<ServiceListItem> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
     final l = AppLocalizations.of(context)!;
+    final isActive = widget.service.isActive;
 
-    final durationText = service.defaultMinutes != null
-        ? '${service.defaultMinutes} ${l.minutesAbbrev}'
+    final durationText = widget.service.defaultMinutes != null
+        ? '${widget.service.defaultMinutes} ${l.minutesAbbrev}'
         : l.noDefaultDuration;
 
-    return Card(
-      color: cs.surface,
-      elevation: 1,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: cs.outlineVariant.withOpacity(0.35), width: 1),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+    final stripeColor =
+        isActive ? cs.secondary : cs.onSurfaceVariant.withValues(alpha: 0.3);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          color: isLight
+              ? Colors.white
+              : _hovered
+                  ? cs.surfaceContainerHighest.withValues(alpha: 0.18)
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _hovered
+                ? cs.outlineVariant.withValues(alpha: 0.45)
+                : cs.outlineVariant.withValues(alpha: 0.25),
+          ),
+          boxShadow: isLight
+              ? [
+                  BoxShadow(
+                    color:
+                        Colors.black.withValues(alpha: _hovered ? 0.06 : 0.035),
+                    blurRadius: _hovered ? 16 : 10,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: widget.onTap,
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _ServiceDot(colorHex: service.color),
+              // Left status stripe
+              Container(
+                width: 3,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: stripeColor,
+                  borderRadius:
+                      const BorderRadius.horizontal(left: Radius.circular(12)),
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Colored service avatar (rounded square)
+              _ServiceAvatar(colorHex: widget.service.color),
               const SizedBox(width: 12),
 
               // Name + meta
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      service.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: nameStyle,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      durationText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: metaStyle,
-                    ),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.service.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: widget.nameStyle.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(Icons.timer_outlined,
+                              size: 11,
+                              color:
+                                  cs.onSurfaceVariant.withValues(alpha: 0.6)),
+                          const SizedBox(width: 3),
+                          Text(
+                            durationText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: widget.metaStyle.copyWith(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
 
-              // Status + chevron
+              // Right side: status + actions
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _StatusChip(active: service.isActive),
-                  const SizedBox(width: 6),
-                  if (onDelete != null)
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      color: cs.error,
-                      tooltip: AppLocalizations.of(context)!.remove,
-                      onPressed: onDelete,
+                  _StatusChip(active: isActive),
+                  if (widget.onDelete != null) ...[
+                    const SizedBox(width: 4),
+                    AnimatedOpacity(
+                      opacity: _hovered ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(Icons.delete_outline,
+                              size: 15, color: cs.error),
+                          tooltip: l.remove,
+                          onPressed: widget.onDelete,
+                        ),
+                      ),
                     ),
-                  Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+                  ],
+                  const SizedBox(width: 6),
+                  Icon(Icons.chevron_right,
+                      size: 16,
+                      color: cs.onSurfaceVariant
+                          .withValues(alpha: _hovered ? 0.8 : 0.4)),
+                  const SizedBox(width: 8),
                 ],
               ),
             ],
@@ -98,24 +168,12 @@ class ServiceListItem extends StatelessWidget {
   }
 }
 
-class _ServiceDot extends StatelessWidget {
+// ─── Service avatar ───────────────────────────────────────────────────────────
+
+class _ServiceAvatar extends StatelessWidget {
   final String? colorHex;
-  const _ServiceDot({this.colorHex});
+  const _ServiceAvatar({this.colorHex});
 
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final Color bg = _hexToColorOrNull(colorHex) ?? cs.secondaryContainer;
-    final Color fg = ThemeColors.contrastOn(bg);
-
-    return CircleAvatar(
-      radius: 20,
-      backgroundColor: bg,
-      child: Icon(Icons.design_services_outlined, size: 18, color: fg),
-    );
-  }
-
-  // Supports #rgb and #rrggbb
   Color? _hexToColorOrNull(String? hex) {
     if (hex == null || !hex.startsWith('#')) return null;
     var cleaned = hex.substring(1);
@@ -126,7 +184,26 @@ class _ServiceDot extends StatelessWidget {
     final value = int.tryParse('FF$cleaned', radix: 16);
     return value == null ? null : Color(value);
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final Color bg = _hexToColorOrNull(colorHex) ?? cs.secondaryContainer;
+    final Color fg = ThemeColors.contrastOn(bg);
+
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(Icons.design_services_outlined, size: 16, color: fg),
+    );
+  }
 }
+
+// ─── Status chip ──────────────────────────────────────────────────────────────
 
 class _StatusChip extends StatelessWidget {
   final bool active;
@@ -135,35 +212,38 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-
-    // Theme-driven containers instead of hard-coded hex
-    final Color bg = active ? cs.secondaryContainer : cs.errorContainer;
-    final Color fg = active ? cs.onSecondaryContainer : cs.onErrorContainer;
+    final color =
+        active ? cs.tertiary : cs.onSurfaceVariant.withValues(alpha: 0.5);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-        border:
-            Border.all(color: cs.outlineVariant.withOpacity(0.25), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: ThemeColors.chipGlow(context, bg),
-            blurRadius: active ? 8 : 4,
-            offset: const Offset(0, 3),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            active ? l.active : l.inactive,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ],
-      ),
-      child: Text(
-        active ? l.active : l.inactive,
-        style: t.bodySmall.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          letterSpacing: .2,
-        ),
       ),
     );
   }

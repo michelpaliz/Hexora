@@ -1,4 +1,4 @@
-﻿import 'package:hexora/a-models/weather/day_summary.dart';
+import 'package:hexora/a-models/weather/day_summary.dart';
 import 'package:hexora/c-frontend/utils/weather/weather_api_client.dart';
 
 class WeatherSnapshot {
@@ -82,7 +82,7 @@ class WeatherService {
       return const WeatherBundle(today: null, forecast: []);
     }
 
-    final cache = await _getForecast(cleaned);
+    final cache = await _getForecast(cleaned, minDays: days);
     if (cache == null) {
       return const WeatherBundle(today: null, forecast: []);
     }
@@ -96,7 +96,8 @@ class WeatherService {
         break;
       }
     }
-    snapshot ??= cache.entries.values.isNotEmpty ? cache.entries.values.first : null;
+    snapshot ??=
+        cache.entries.values.isNotEmpty ? cache.entries.values.first : null;
 
     return WeatherBundle(
       today: snapshot,
@@ -121,6 +122,8 @@ class WeatherService {
           summary: day.summary,
           emoji: day.emoji,
           grade: 'B',
+          tempMax: day.maxTemp,
+          tempMin: day.minTemp,
           isTooHot: day.maxTemp >= 30,
           isTooCold: day.minTemp <= 0,
         ),
@@ -134,14 +137,19 @@ class WeatherService {
     return bundle.forecast;
   }
 
-  Future<_CachedForecast?> _getForecast(String cleaned) async {
+  Future<_CachedForecast?> _getForecast(
+    String cleaned, {
+    required int minDays,
+  }) async {
     final now = DateTime.now();
     final cached = _cache[cleaned];
-    if (cached != null && now.difference(cached.fetchedAt) <= _cacheTtl) {
+    if (cached != null &&
+        cached.forecastDays.length >= minDays &&
+        now.difference(cached.fetchedAt) <= _cacheTtl) {
       return cached;
     }
 
-    final downloaded = await _downloadForecast(cleaned);
+    final downloaded = await _downloadForecast(cleaned, days: minDays);
     if (downloaded == null) {
       return cached;
     }
@@ -156,9 +164,11 @@ class WeatherService {
   }
 
   Future<_DownloadedForecast?> _downloadForecast(
-      String cleaned) async {
+    String cleaned, {
+    required int days,
+  }) async {
     try {
-      final dto = await _apiClient.fetchDeniaForecast();
+      final dto = await _apiClient.fetchDeniaForecast(days: days);
       final cityName = dto.location.isNotEmpty ? dto.location : cleaned;
 
       final snapshots = <DateTime, WeatherSnapshot>{};
@@ -173,11 +183,14 @@ class WeatherService {
           tempMin: day.minTemp,
         );
 
-        final normalized = DateTime(day.date.year, day.date.month, day.date.day);
+        final normalized =
+            DateTime(day.date.year, day.date.month, day.date.day);
         final summary = DaySummary(
           summary: mapped.summary,
           emoji: mapped.emoji,
           grade: mapped.grade,
+          tempMax: day.maxTemp,
+          tempMin: day.minTemp,
           isTooHot: mapped.isTooHot,
           isTooCold: mapped.isTooCold,
         );
@@ -203,7 +216,8 @@ class WeatherService {
       }
 
       if (snapshots.isEmpty) return null;
-      return _DownloadedForecast(entries: snapshots, forecastDays: forecastDays);
+      return _DownloadedForecast(
+          entries: snapshots, forecastDays: forecastDays);
     } on WeatherApiException {
       return null;
     } catch (_) {
@@ -274,7 +288,9 @@ _MappedSkySummary _mapSkyDescription({
       isTooCold: isCold,
     );
   }
-  if (text.contains('heavy') || text.contains('fuerte') || rainProbability >= 70) {
+  if (text.contains('heavy') ||
+      text.contains('fuerte') ||
+      rainProbability >= 70) {
     return _MappedSkySummary(
       summary: 'Heavy rain',
       emoji: '\ud83c\udf27\ufe0f',
@@ -283,7 +299,9 @@ _MappedSkySummary _mapSkyDescription({
       isTooCold: isCold,
     );
   }
-  if (text.contains('rain') || text.contains('lluvia') || rainProbability >= 35) {
+  if (text.contains('rain') ||
+      text.contains('lluvia') ||
+      rainProbability >= 35) {
     return _MappedSkySummary(
       summary: 'Light rain',
       emoji: '\ud83c\udf26\ufe0f',
@@ -292,7 +310,10 @@ _MappedSkySummary _mapSkyDescription({
       isTooCold: isCold,
     );
   }
-  if (text.contains('sun') || text.contains('solea') || text.contains('clear') || text.contains('despejad')) {
+  if (text.contains('sun') ||
+      text.contains('solea') ||
+      text.contains('clear') ||
+      text.contains('despejad')) {
     return _MappedSkySummary(
       summary: 'Sunny',
       emoji: '\ud83c\udf1e',
@@ -329,4 +350,3 @@ _MappedSkySummary _mapSkyDescription({
     isTooCold: isCold,
   );
 }
-

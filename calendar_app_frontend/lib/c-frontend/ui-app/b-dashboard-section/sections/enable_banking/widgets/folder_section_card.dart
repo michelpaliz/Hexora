@@ -10,6 +10,7 @@ class FolderSectionCard extends StatelessWidget {
     this.leadingAction,
     this.leftTabOffset = 10,
     this.rightTabOffset = 10,
+    this.backgroundColor,
   });
 
   final String label;
@@ -18,13 +19,14 @@ class FolderSectionCard extends StatelessWidget {
   final Widget? leadingAction;
   final double leftTabOffset;
   final double rightTabOffset;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final typography = AppTypography.of(context);
     final border = cs.outlineVariant.withValues(alpha: 0.35);
-    final bg = cs.surface;
+    final bg = backgroundColor ?? cs.surface;
     final hasActions = actions != null && actions!.isNotEmpty;
 
     return Stack(

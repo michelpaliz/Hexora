@@ -27,6 +27,15 @@ abstract class IAuthApiClient {
     required String newPassword,
   });
 
+  Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+  });
+
+  Future<Map<String, dynamic>> resetPassword({
+    required String token,
+    required String newPassword,
+  });
+
   Future<Map<String, dynamic>> verifyEmail({required String token});
 
   Future<Map<String, dynamic>> resendVerification({required String email});

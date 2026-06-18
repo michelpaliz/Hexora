@@ -44,17 +44,20 @@ class StatementsAllDataTableHeader extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        vertical: 10,
-        horizontal: StatementsAllDataTableLayout.horizontalPadding,
+        vertical: 12,
+        horizontal: 12,
       ),
       decoration: BoxDecoration(
         color: tableTheme.headerBg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: tableTheme.border.withValues(alpha: 0.55),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -172,6 +175,17 @@ class StatementsAllDataTableHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
+            ),
+            const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
+            _fixedCell(
+              Localizations.localeOf(context)
+                      .languageCode
+                      .toLowerCase()
+                      .startsWith('es')
+                  ? 'Notas'
+                  : 'Notes',
+              StatementsAllDataTableLayout.notesWidth,
+              headerStyle,
             ),
           ],
           const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),

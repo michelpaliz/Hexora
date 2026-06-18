@@ -11,6 +11,7 @@ class GreetingCard extends StatefulWidget {
   final DaySummary daySummary;
   final double tempMax;
   final double tempMin;
+  final bool showGreeting;
 
   const GreetingCard({
     super.key,
@@ -18,6 +19,7 @@ class GreetingCard extends StatefulWidget {
     required this.daySummary,
     required this.tempMax,
     required this.tempMin,
+    this.showGreeting = true,
   });
 
   @override
@@ -157,6 +159,7 @@ class _GreetingCardState extends State<GreetingCard> {
       forecastDays: _forecastDays,
       isForecastLoading: _forecastLoading,
       forecastError: _forecastError,
+      showGreeting: widget.showGreeting,
     );
   }
 }

@@ -8,6 +8,11 @@ import 'package:http/http.dart' as http;
 class AuthenticatedHttpClient {
   static final AuthApiClientImpl _authApi = AuthApiClientImpl();
   static Future<bool>? _refreshInFlight;
+  static Future<void> Function()? _onSessionExpired;
+
+  static void setSessionExpiredHandler(Future<void> Function() handler) {
+    _onSessionExpired = handler;
+  }
 
   static Future<Map<String, String>> authorizedHeaders({
     Map<String, String>? extra,
@@ -126,7 +131,10 @@ class AuthenticatedHttpClient {
       if (response.statusCode != 401) return response;
 
       final refreshed = await _refreshAccessToken();
-      if (!refreshed) return response;
+      if (!refreshed) {
+        await _notifySessionExpired();
+        return response;
+      }
 
       final retryHeaders = await authorizedHeaders(extra: headers);
       response = await _dispatch(
@@ -137,12 +145,23 @@ class AuthenticatedHttpClient {
         body: body,
         encoding: encoding,
       );
+      if (response.statusCode == 401) {
+        await _notifySessionExpired();
+      }
       return response;
     } finally {
       if (ownsClient) {
         c.close();
       }
     }
+  }
+
+  static Future<void> _notifySessionExpired() async {
+    final cb = _onSessionExpired;
+    if (cb == null) return;
+    try {
+      await cb();
+    } catch (_) {}
   }
 
   static Future<http.Response> _dispatch(

@@ -84,11 +84,30 @@ class _DialogButtonWidgetState extends State<DialogButtonWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final loc = AppLocalizations.of(context)!; // ⬅️
-    return Center(
-      child: ElevatedButton(
+    final loc = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
         onPressed: () => _showUserSelectionDialog(context),
-        child: Text(loc.dialogShowUsers), // ⬅️
+        icon: Icon(Icons.person_add_outlined, size: 15, color: cs.secondary),
+        label: Text(
+          loc.dialogShowUsers,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: cs.secondary,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: cs.secondary,
+          side: BorderSide(color: cs.secondary.withValues(alpha: 0.45)),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9),
+          ),
+        ),
       ),
     );
   }

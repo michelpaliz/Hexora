@@ -60,6 +60,16 @@ class AuthService with ChangeNotifier implements AuthRepository {
       _repo.changePassword(currentPassword, newPassword, confirmPassword);
 
   @override
+  Future<void> forgotPassword(String email) => _repo.forgotPassword(email);
+
+  @override
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) =>
+      _repo.resetPassword(token: token, newPassword: newPassword);
+
+  @override
   Future<String?> getToken() => _repo.getToken();
 
   @override

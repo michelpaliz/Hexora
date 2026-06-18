@@ -75,3 +75,70 @@ class _CompactStepsPanel extends StatelessWidget {
     );
   }
 }
+
+class _InvoiceDraftStatusChip extends StatelessWidget {
+  const _InvoiceDraftStatusChip({
+    required this.controller,
+    required this.t,
+    required this.cs,
+  });
+
+  final InvoiceEditorController controller;
+  final AppTypography t;
+  final ColorScheme cs;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final hasDraft = controller.savedInvoice != null ||
+        (controller.editingDraftId ?? '').trim().isNotEmpty;
+    final text = controller.draftSaveFailed
+        ? (isEs ? 'No se pudo guardar' : 'Save failed')
+        : controller.saving
+            ? (isEs ? 'Guardando...' : 'Saving...')
+            : controller.draftDirty
+                ? (isEs ? 'Cambios sin guardar' : 'Unsaved changes')
+                : hasDraft
+                    ? (isEs ? 'Borrador guardado' : 'Draft saved')
+                    : (isEs ? 'Sin guardar' : 'Not saved');
+    final icon = controller.draftSaveFailed
+        ? Icons.cloud_off_outlined
+        : controller.saving
+            ? Icons.sync_rounded
+            : controller.draftDirty
+                ? Icons.edit_note_rounded
+                : hasDraft
+                    ? Icons.cloud_done_outlined
+                    : Icons.cloud_queue_outlined;
+    final color = controller.draftSaveFailed
+        ? cs.error
+        : controller.saving || controller.draftDirty
+            ? cs.tertiary
+            : cs.primary;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: t.bodySmall.copyWith(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

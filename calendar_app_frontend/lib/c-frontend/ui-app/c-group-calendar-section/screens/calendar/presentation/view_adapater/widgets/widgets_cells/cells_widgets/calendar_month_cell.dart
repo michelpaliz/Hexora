@@ -80,6 +80,32 @@ Widget buildMonthCell({
     bg = Color.alphaBlend(busyTint, bg);
   }
 
+  String weatherTemperatureLabel(DaySummary summary) {
+    final temp = summary.tempMax;
+    if (temp == null) return '';
+    return '${temp.round()}°';
+  }
+
+  Color weatherTemperatureColor(DaySummary summary) {
+    if (summary.isTooHot) return const Color(0xFFDC2626);
+    if (summary.isTooCold) return const Color(0xFF2563EB);
+    return isSelected ? scheme.primary : const Color(0xFF64748B);
+  }
+
+  Color weatherChipBackground(DaySummary summary) {
+    final accent = weatherTemperatureColor(summary);
+    if (isSelected) {
+      return scheme.surface.withValues(alpha: isDark ? 0.18 : 0.72);
+    }
+    return accent.withValues(alpha: isDark ? 0.18 : 0.10);
+  }
+
+  Color weatherChipBorder(DaySummary summary) {
+    return weatherTemperatureColor(summary).withValues(
+      alpha: isDark ? 0.30 : 0.18,
+    );
+  }
+
   // --- text styles from AppTypography ---
   final countStyle = (isSelected
           ? typo.caption.copyWith(color: selectedFg)
@@ -101,7 +127,8 @@ Widget buildMonthCell({
       final showDots = eventsForDay.isNotEmpty && constraints.maxHeight >= 34;
 
       // Slightly smaller / tighter icon if the cell is really small
-      final weatherFontSize = isCompact ? 10.0 : 12.0;
+      final weatherFontSize = isCompact ? 10.5 : 12.5;
+      final tempFontSize = isCompact ? 8.0 : 9.0;
       final dayFontSize = isDenseHeight ? 11.0 : 12.0;
       final countFontSize = isDenseHeight ? 9.0 : 10.0;
       final dotSize = isDenseHeight ? 5.0 : 6.0;
@@ -195,17 +222,68 @@ Widget buildMonthCell({
               ),
             ),
 
-            // Tiny weather emoji in top-right corner
+            // Tiny weather summary in top-right corner
             if (weatherSummary != null)
               Positioned(
-                top: 3,
-                right: 3,
+                top: 4,
+                right: 4,
                 child: Tooltip(
-                  message: localizeWeatherSummary(l, weatherSummary.summary),
-                  child: Text(
-                    weatherSummary.emoji,
-                    style: typo.titleLarge.copyWith(
-                      fontSize: weatherFontSize,
+                  message: [
+                    localizeWeatherSummary(l, weatherSummary.summary),
+                    if (weatherTemperatureLabel(weatherSummary).isNotEmpty)
+                      weatherTemperatureLabel(weatherSummary),
+                  ].join(' · '),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 17),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: weatherChipBackground(weatherSummary),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: weatherChipBorder(weatherSummary),
+                        width: 0.7,
+                      ),
+                      boxShadow: [
+                        if (!isDark)
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                      ],
+                    ),
+                    child: DefaultTextStyle.merge(
+                      style: const TextStyle(
+                        height: 1,
+                        leadingDistribution: TextLeadingDistribution.even,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            weatherSummary.emoji,
+                            style: typo.titleLarge.copyWith(
+                              fontSize: weatherFontSize,
+                              height: 1,
+                            ),
+                          ),
+                          if (weatherTemperatureLabel(weatherSummary)
+                              .isNotEmpty) ...[
+                            const SizedBox(width: 2.5),
+                            Text(
+                              weatherTemperatureLabel(weatherSummary),
+                              style: typo.caption.copyWith(
+                                color: weatherTemperatureColor(weatherSummary),
+                                fontSize: tempFontSize,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                                letterSpacing: -0.45,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -1,8 +1,34 @@
-import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/text_field_widget.dart';
-import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/textfield_styles.dart'
-    show TextFieldStyles;
-import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
+import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
+
+class ForgotPasswordScreen extends StatelessWidget {
+  const ForgotPasswordScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.forgotPassword),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 480),
+              child: const ForgotPasswordForm(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class ForgotPasswordForm extends StatefulWidget {
   final VoidCallback? onBackToLogin;
@@ -15,25 +41,54 @@ class ForgotPasswordForm extends StatefulWidget {
 class _ForgotPasswordFormState extends State<ForgotPasswordForm> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
-  bool _canSubmit = false;
+  bool _isSubmitting = false;
+  bool _submittedSuccessfully = false;
+  String? _apiError;
 
   @override
   void initState() {
     super.initState();
-    _email.addListener(_recompute);
-    _recompute();
   }
 
   @override
   void dispose() {
-    _email.removeListener(_recompute);
     _email.dispose();
     super.dispose();
   }
 
-  void _recompute() {
-    final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(_email.text.trim());
-    setState(() => _canSubmit = ok);
+  String? _validateEmail(String? val, AppLocalizations l10n) {
+    final value = val?.trim() ?? '';
+    if (value.isEmpty) return l10n.emailRequired;
+    final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value);
+    return ok ? null : l10n.invalidEmail;
+  }
+
+  Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
+    if (_isSubmitting) return;
+    final valid = _formKey.currentState?.validate() ?? false;
+    if (!valid) return;
+    setState(() {
+      _isSubmitting = true;
+      _apiError = null;
+      _submittedSuccessfully = false;
+    });
+
+    try {
+      await context.read<AuthService>().forgotPassword(_email.text.trim());
+      if (!mounted) return;
+      setState(() => _submittedSuccessfully = true);
+    } on ForgotPasswordRequestFailedException catch (e) {
+      if (!mounted) return;
+      setState(() => _apiError = e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _apiError = l10n.forgotPasswordNetworkError);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override
@@ -57,45 +112,72 @@ class _ForgotPasswordFormState extends State<ForgotPasswordForm> {
           Text(
             l10n.forgotPasswordSubtitle,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurface.withOpacity(0.7),
+                  color: cs.onSurface.withValues(alpha: 0.7),
                 ),
           ),
           const SizedBox(height: 28),
-          TextFieldWidget(
+          TextFormField(
+            key: const Key('forgot_email_field'),
             controller: _email,
             keyboardType: TextInputType.emailAddress,
-            decoration: TextFieldStyles.saucyInputDecoration(
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _submit(),
+            autofillHints: const [AutofillHints.email],
+            decoration: InputDecoration(
               labelText: l10n.email,
               hintText: l10n.emailHint,
-              suffixIcon: Icons.email,
+              suffixIcon: const Icon(Icons.email),
+              border: const OutlineInputBorder(),
+              errorMaxLines: 2,
             ),
-            validator: (val) {
-              if (val == null || val.trim().isEmpty) return l10n.emailRequired;
-              final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(val.trim());
-              return ok ? null : l10n.invalidEmail;
-            },
+            validator: (val) => _validateEmail(val, l10n),
           ),
+          if (_apiError != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _apiError!,
+              key: const Key('forgot_api_error'),
+              style: TextStyle(color: cs.error),
+            ),
+          ],
+          if (_submittedSuccessfully) ...[
+            const SizedBox(height: 12),
+            Container(
+              key: const Key('forgot_success_message'),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                l10n.forgotPasswordNeutralSuccess,
+                style: TextStyle(color: cs.onSurface),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           SizedBox(
             height: 48,
             child: ElevatedButton(
-              onPressed: _canSubmit
-                  ? () async {
-                      if (!_formKey.currentState!.validate()) return;
-                      // TODO: call your reset endpoint
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l10n.resetLinkSent)));
-                      widget.onBackToLogin?.call();
-                    }
-                  : null,
-              child: Text(l10n.sendResetLink),
+              key: const Key('forgot_submit_button'),
+              onPressed: _isSubmitting ? null : _submit,
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l10n.sendResetLink),
             ),
           ),
           const SizedBox(height: 10),
           TextButton(
-            onPressed: widget.onBackToLogin,
-            child: Text(l10n.login),
+            onPressed: widget.onBackToLogin ??
+                () => Navigator.of(context).pushNamedAndRemoveUntil(
+                      AppRoutes.loginRoute,
+                      (route) => false,
+                    ),
+            child: Text(l10n.backToLogin),
           ),
         ],
       ),

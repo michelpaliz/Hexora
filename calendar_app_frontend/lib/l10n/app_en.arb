@@ -699,6 +699,18 @@
     "forgotPasswordSubtitle": "Enter your email and we’ll send you a reset link.",
     "sendResetLink": "Send Reset Link",
     "resetLinkSent": "Password reset link sent!",
+    "forgotPasswordNeutralSuccess": "If an account exists, we sent a password reset link.",
+    "forgotPasswordNetworkError": "Could not send reset link. Check your connection and try again.",
+    "passwordMinLength": "Password must be at least 8 characters.",
+    "confirmPasswordRequired": "Please confirm your new password.",
+    "resetPasswordSubmit": "Reset password",
+    "resetPasswordInvalidLinkTitle": "Invalid reset link",
+    "resetPasswordInvalidLinkBody": "This reset link is invalid or missing a token. Request a new password reset link.",
+    "resetPasswordRequestNewLink": "Request new reset link",
+    "resetPasswordInvalidToken": "This reset token is invalid or has expired.",
+    "resetPasswordGenericError": "Failed to reset password. Please try again.",
+    "resetPasswordSuccessTitle": "Password reset successfully",
+    "resetPasswordSuccessBody": "Your password has been updated. You can now sign in with your new password.",
     "noUpcomingHint": "Try another category or extend the range.",
     "agendaSelectGroupPrompt": "Select a group to load events",
     "agendaChooseGroupButton": "Choose",
@@ -1620,11 +1632,11 @@
   "billingAddress": "Address",
   "billingProfileSaved": "Billing profile saved",
   "billingLogoUploadTitle": "Upload Company Logo",
-  "billingLogoUploadBody": "Select a PNG or JPG logo (max 5MB). This logo will appear in invoices and email footers.",
+  "billingLogoUploadBody": "Select a PNG or JPG logo (max 15MB). This logo will appear in invoices and email footers.",
   "billingLogoUploadSelectFile": "Select file",
   "billingLogoUploadCta": "Upload",
   "billingLogoUploadSuccess": "Logo uploaded successfully.",
-  "billingLogoUploadError": "Upload failed. Please try a smaller PNG/JPG.",
+  "billingLogoUploadError": "The logo must be PNG or JPG and must not exceed 15 MB.",
 
   "createInvoiceCta": "Create invoice",
   "invoiceCreated": "Invoice created",
@@ -1706,6 +1718,7 @@
       "count": {}
     }
   },
+  "jsonAutoRepairAppliedSnack": "JSON auto-corrected before import.",
   "invoiceAddBlock": "Add block",
   "invoiceBlocksInfoTooltip": "Blocks let you mix items with headers, notes, and checklists. Only billable items affect totals.",
   "invoiceBlocksEmptyMessage": "Start your invoice with blocks (Date, Section, Items...).",
@@ -1808,8 +1821,8 @@
   "invoiceStepCreateShort": "Create",
   "invoiceStepPreviewTitle": "Step 2 - Preview",
   "invoiceStepPreviewShort": "Preview",
-  "invoiceStepIssueTitle": "Step 3 - Issue invoice",
-  "invoiceStepIssueShort": "Issue",
+  "invoiceStepIssueTitle": "Step 3 - Save draft",
+  "invoiceStepIssueShort": "Draft",
   "invoiceChecklistClient": "Client selected",
   "invoiceChecklistDates": "Invoice date selected",
   "invoiceChecklistLines": "Lines added",
@@ -1837,6 +1850,33 @@
   "invoiceNotesHideCta": "Hide",
   "invoiceNotesOptionalLabel": "Optional",
   "invoiceClientInvoicesThisMonthLabel": "Invoices this month",
+  "clientMissingInvoiceThisMonth": "Missing invoice this month",
+  "clientInvoiceAllGood": "Invoice issued this month",
+  "clientAllHaveInvoiceTitle": "All clients invoiced",
+  "clientInvoiceStatusUnavailableTitle": "Invoice status unavailable",
+  "clientNoMatchFiltersTitle": "No clients match these filters",
+  "clientAllHaveInvoiceDesc": "No clients are missing an invoice this month.",
+  "clientInvoiceStatusUnavailableDesc": "Invoice data has not been returned for these clients yet.",
+  "clientNoMatchFiltersDesc": "Try adjusting the search or filters.",
+  "clientNoInvoiceIssuedThisMonth": "No invoice this month",
+  "clientLastInvoiceShort": "Last: {date}",
+  "@clientLastInvoiceShort": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "clientMissingCountThisMonth": "{count, plural, =0{None missing} =1{1 missing this month} other{{count} missing this month}}",
+  "@clientMissingCountThisMonth": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "clientInvoiceCountThisMonth": "{count, plural, =0{No invoices this month} =1{1 invoice this month} other{{count} invoices this month}}",
+  "@clientInvoiceCountThisMonth": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "invoiceDraftInfoTooltip": "Drafts info",
   "invoiceDraftInfoTitle": "Before creating a draft",
   "invoiceDraftInfoMessage": "Before creating a draft, make sure you do not have any pending drafts.",
@@ -1844,11 +1884,31 @@
   "invoiceFillRequiredFieldsError": "Please fill the required fields",
   "invoiceDraftSavedSnack": "Draft saved: {invoiceNumber}",
   "invoiceDraftSavedSnackNoNumber": "Draft saved",
+  "invoiceDraftSavedSnackTitle": "Draft saved",
+  "invoiceDraftSavedSnackMessage": "Your invoice draft is safe and ready to continue later.",
+  "invoiceDraftUpdatedSnackTitle": "Draft updated",
+  "invoiceDraftUpdatedSnackMessage": "Your latest changes were saved to this draft.",
+  "invoiceDraftSnackDismiss": "Close",
   "invoiceDraftSaveFailedSnack": "Could not save draft. Please try again.",
   "invoiceDraftRemoveTitle": "Remove draft?",
   "invoiceDraftRemoveMessage": "This will delete the current draft.",
   "invoiceDraftRemovedSnack": "Draft removed",
   "invoiceDraftRemoveFailedSnack": "Could not remove draft. Please try again.",
+  "invoiceBatchIssueSuccessSnack": "{count} invoices issued successfully",
+  "@invoiceBatchIssueSuccessSnack": {
+    "placeholders": {"count": {}}
+  },
+  "invoiceBatchIssuePartialSnack": "{issued} issued, {failed} failed",
+  "@invoiceBatchIssuePartialSnack": {
+    "placeholders": {"issued": {}, "failed": {}}
+  },
+  "invoiceIssueDuplicateNumberSnack": "That invoice number already exists in this group. Refresh the list or edit the draft number before issuing.",
+  "invoiceIssueDuplicateNumberValueSnack": "Invoice number {number} already exists in this group. Refresh the list or edit the draft number before issuing.",
+  "invoiceBatchIssueErrorsTitle": "Errors",
+  "invoiceDraftOpenFailed": "Could not open draft: {reason}",
+  "@invoiceDraftOpenFailed": {
+    "placeholders": {"reason": {}}
+  },
   "invoiceIssueSuccessSnack": "Invoice issued: {invoiceNumber}",
   "invoiceIssueFailedSnack": "Could not issue invoice. Please try again.",
   "invoicePdfPreviewFailedSnack": "Could not generate PDF preview. Please try again.",
@@ -1945,7 +2005,7 @@
   "clientEntityTypeHint": "e.g. community, company, individual",
   "clientPropertyKindLabel": "Property kind",
   "clientPropertyKindHint": "e.g. building, apartment, chalet",
-  "clientClassificationTitle": "Saved options",
+  "clientClassificationTitle": "Client classification",
   "clientClassificationManageCta": "Manage",
   "clientClassificationManageTitle": "Manage saved options",
   "clientAddOptionHint": "Add option (max 50)",
@@ -2022,6 +2082,8 @@
   "receiptLinesRequired": "Add at least one line",
   "receiptNotesHint": "Optional notes",
   "receiptDraftSavedSnack": "Draft saved",
+  "receiptDraftSavedSnackTitle": "Receipt draft saved",
+  "receiptDraftSavedSnackMessage": "Your receipt draft is safe and ready to continue later.",
   "receiptSaveFailed": "Could not save receipt",
   "receiptPreviewFailed": "Could not preview receipt PDF",
   "receiptDownloadFailed": "Could not download receipt PDF",
@@ -2535,7 +2597,7 @@
   "expenseUploadTabUpload": "Upload",
   "expenseUploadBatchFlow": "Batch flow: upload documents and then import.",
   "expenseUploadBatchUploadDocsCta": "Upload documents",
-  "expenseUploadBatchLimits": "Up to 100 files, max 10MB each.",
+  "expenseUploadBatchLimits": "Up to 200 files, max 10MB each.",
   "expenseUploadBatchSelectedCount": "{count} document(s) selected.",
   "@expenseUploadBatchSelectedCount": {
     "placeholders": {
@@ -2737,6 +2799,9 @@
   "mailSearchNoResults": "No messages found.",
   "mailThreadsTitle": "Threads",
   "mailThreadsEmpty": "No threads found.",
+  "mailThreadSearchNoResults": "No conversations found.",
+  "mailThreadSearchNoResultsHint": "Try another term, like \"invoice\", \"factura\", \"quote\", \"presupuesto\", or the client name.",
+  "mailThreadSearchTooltip": "Search conversations. Try invoice, factura, quote, or presupuesto.",
   "mailThreadDetailTitle": "Thread",
   "mailThreadParticipantsLabel": "Participants",
   "mailThreadMessageCountLabel": "Messages",
@@ -2752,7 +2817,7 @@
   "mailFolderArchive": "Archive",
   "mailFolderTrash": "Trash",
   "mailFolderSpam": "Spam",
-  "mailConsoleSearchPlaceholder": "Search threads (coming soon)",
+  "mailConsoleSearchPlaceholder": "Search conversations...",
   "mailConsoleSelectThread": "Select a thread to view messages.",
   "mailConsoleLoadError": "Couldn't load mailbox. Retry.",
   "mailConsoleReplyPlaceholder": "Write a reply…",
@@ -2777,6 +2842,8 @@
   "mailConversationReply": "Reply",
   "mailConversationReplyAll": "Reply all",
   "mailConversationForward": "Forward",
+  "mailLegalNoticeShow": "Show legal notice",
+  "mailLegalNoticeHide": "Hide legal notice",
   "mailConsoleClientPanelTitle": "Client & invoices",
   "mailConsoleClientNotFound": "No client found for this thread.",
   "mailConsoleClientEmailMissing": "Client email is missing.",
@@ -2923,7 +2990,14 @@
   "budgetValidationClientRequired": "Provide either a saved client or a client name.",
   "budgetValidationNumberFormat": "Use NNN-YY (e.g., 001-26).",
   "budgetValidationGroupRequired": "Missing groupId for presupuesto creation.",
-  "budgetValidationLineItemsRequired": "Add at least one line item before issuing.",
+  "budgetValidationLineItemsRequired": "Add at least one line with a work concept before continuing.",
+  "budgetDraftSavedSnack": "Draft changes saved.",
+  "budgetDraftCreatedSnack": "Draft saved successfully.",
+  "budgetDraftSavedSnackTitle": "Budget draft saved",
+  "budgetDraftSavedSnackMessage": "Your presupuesto draft is safe and ready to continue later.",
+  "budgetDraftUpdatedSnackTitle": "Budget draft updated",
+  "budgetDraftUpdatedSnackMessage": "Your latest presupuesto changes were saved.",
+  "budgetDraftNotEditableSnack": "This budget is no longer a draft and cannot be edited.",
   "budgetPreviewAcceptRequired": "Accept before opening preview.",
   "budgetNumberLabel": "Budget number",
   "budgetNumberHint": "001-26",
@@ -2999,10 +3073,477 @@
   "insightsChatAnswerReady": "Insights answer is ready.",
   "insightsChatInputHint": "Ask about revenue, expenses, margin, trends...",
   "insightsChatSend": "Send",
+  "insightsChatExportExcel": "Export to Excel",
+  "insightsChatExportExcelTooltip": "Export this finance answer to Excel",
+  "insightsChatExportSuccess": "Excel generated: {fileName}",
+  "@insightsChatExportSuccess": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "insightsChatExportError": "Could not export to Excel",
+  "insightsChatExportUnsupported": "File download is not available on this platform",
   "systemConfigMenuLabel": "System configuration",
   "groupPhotoUpdated": "Group photo updated",
   "groupPhotoUpdateFailed": "Failed to update group photo",
   "premiumRequiredSingleGroupMessage": "Your current plan allows only 1 group. Upgrade to Premium to create or join additional groups.",
   "premiumRequiredJoinGroupOnlyMessage": "You are already in a group. Upgrade to Premium to join more groups.",
-  "upgradeToPremium": "Upgrade to Premium"
+  "upgradeToPremium": "Upgrade to Premium",
+  "contractsTitle": "Contracts",
+  "contractsForClient": "Contracts for {client}",
+  "@contractsForClient": {
+    "placeholders": {
+      "client": {}
+    }
+  },
+  "contractsEmptyTitle": "No contracts yet",
+  "contractsEmptySubtitle": "Upload the first contract for this client.",
+  "contractsLoadFailedTitle": "Could not load contracts",
+  "contractUploadTitle": "Upload contract",
+  "contractUploadSubtitle": "Attach a PDF and add the metadata you want to keep on this client.",
+  "contractEditTitle": "Edit contract",
+  "contractEditSubtitle": "Update the contract metadata without re-uploading the PDF.",
+  "contractUploadAction": "Upload contract",
+  "contractUploadSuccess": "Contract uploaded successfully.",
+  "contractUploadFailed": "Could not upload the contract: {reason}",
+  "@contractUploadFailed": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "contractUpdateSuccess": "Contract updated successfully.",
+  "contractUpdateFailed": "Could not update the contract: {reason}",
+  "@contractUpdateFailed": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "contractDeleteTitle": "Delete contract?",
+  "contractDeleteBody": "Delete contract \"{name}\"? This action cannot be undone.",
+  "@contractDeleteBody": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "contractDeleteSuccess": "Contract deleted successfully.",
+  "contractDeleteFailed": "Could not delete the contract: {reason}",
+  "@contractDeleteFailed": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "contractMarkedCurrentSuccess": "Current contract updated.",
+  "contractOpenFailedGeneric": "The PDF could not be opened.",
+  "contractOpenFailed": "Could not open the PDF: {reason}",
+  "@contractOpenFailed": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "contractDownloadFailed": "Could not download the PDF: {reason}",
+  "@contractDownloadFailed": {
+    "placeholders": {
+      "reason": {}
+    }
+  },
+  "contractTitleLabel": "Title",
+  "contractFileNameLabel": "File name",
+  "contractVersionLabel": "Version",
+  "contractStatusLabel": "Status",
+  "contractRenewalDateLabel": "Renewal date",
+  "contractSignedDateLabel": "Signed date",
+  "contractNotesLabel": "Notes",
+  "contractTagsLabel": "Tags",
+  "contractTagsHint": "Separate tags with commas",
+  "contractCurrentBadge": "Current contract",
+  "contractCurrentHint": "Mark this document as the currently valid contract for the client.",
+  "contractPickPdf": "Choose PDF",
+  "contractNoFileSelected": "No PDF selected",
+  "contractPdfOnlyHint": "PDF files only.",
+  "contractDropHint": "Drag a PDF here or click to upload it.",
+  "contractDropActiveHint": "Drop the PDF to upload it.",
+  "contractFileReadError": "The selected PDF could not be read.",
+  "contractFileRequired": "Select a PDF file before continuing.",
+  "contractViewPdfAction": "View PDF",
+  "contractDownloadAction": "Download",
+  "contractMarkCurrentAction": "Mark as current",
+  "contractUploadedAtLabel": "Uploaded",
+  "contractExpiredBadge": "Expired",
+  "contractExpiringSoonBadge": "Expiring soon",
+  "contractClearDateAction": "Clear date",
+  "clientContractTypeLabel": "Contract type",
+  "clientContractTypeService": "Service",
+  "clientContractTypeMaintenance": "Maintenance",
+  "clientContractTypeRental": "Rental",
+  "clientContractTypeNda": "NDA",
+  "clientContractTypeCustom": "Other",
+  "clientContractStatusExpired": "Expired",
+  "clientContractStatusTerminated": "Terminated",
+  "clientContractStatusArchived": "Archived",
+  "statementsNoExpenseSuggestions": "No matching expenses found",
+  "statementsSuggestedExpensesTitle": "Suggested expenses",
+  "statementsExpenseAlreadyLinkedBadge": "Already linked",
+  "statementsExpenseLinkAction": "Use this expense",
+  "statementsExpenseOpenManualLink": "Open manual selector",
+  "statementsExpenseSuggestionsLoadFailedTitle": "We couldn't load suggested expenses",
+  "statementsExpenseSuggestionsFallbackHint": "You can still link an expense manually.",
+  "statementsExpenseLinkFailed": "Could not link the expense.",
+  "statementsExpenseStatusRegistered": "Registered",
+  "statementsExpenseAlreadyLinkedCount": "{count, plural, one {Already linked to # bank entry} other {Already linked to # bank entries}}",
+  "@statementsExpenseAlreadyLinkedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rolesTabLabel": "Roles",
+  "rolesCurrentRoleLabel": "Your current role",
+  "rolesPermissionsUnit": "permissions",
+  "rolesGuideTitle": "Role guide",
+  "rolesYourRoleBadge": "Your role",
+  "rolesLoadError": "Could not load permissions",
+  "rolesRetryButton": "Retry",
+  "roleFallbackDescOwner": "Full control over the group. Can transfer ownership.",
+  "roleFallbackDescAdmin": "Can manage members, roles, billing and settings.",
+  "roleFallbackDescCoAdmin": "Can invite members and manage the calendar and events.",
+  "roleFallbackDescMember": "Can view and participate in the group.",
+  "permLabelInvite": "Invite",
+  "permLabelKick": "Remove members",
+  "permLabelEditGroup": "Edit group",
+  "permLabelDeleteGroup": "Delete group",
+  "permLabelManageRoles": "Manage roles",
+  "permLabelViewBilling": "View billing",
+  "permLabelManageInvoices": "Invoices",
+  "permLabelManageBudgets": "Budgets",
+  "permLabelViewMembers": "View members",
+  "permLabelManageMembers": "Manage members",
+  "permLabelSendMessages": "Messages",
+  "permLabelViewCalendar": "View calendar",
+  "permLabelEditCalendar": "Edit calendar",
+  "permLabelManageEvents": "Events",
+  "permLabelViewReports": "Reports",
+  "permLabelManageSettings": "Settings",
+  "permLabelTransferOwnership": "Transfer ownership",
+  "permLabelGroup": "Group",
+  "permLabelStatements": "Statements",
+  "permLabelCalendar": "Calendar",
+  "permLabelEvents": "Events",
+  "permLabelTimeTracking": "Time tracking",
+  "permLabelExpenses": "Expenses",
+  "permLabelInvoices": "Invoices",
+  "permLabelReports": "Reports",
+  "permLabelSettings": "Settings",
+  "permLabelMembers": "Members",
+  "roleDescOwner": "Full control of the group, members, settings, and shared tools.",
+  "roleDescAdmin": "Legacy elevated manager role. Treated like a co-admin for frontend guidance.",
+  "roleDescCoAdmin": "Can manage most shared group operations, but cannot delete the group or outrank the owner.",
+  "roleDescMember": "Can view shared group data and manage only their own allowed actions.",
+
+  "expenseJsonTabFlowHint": "Paste the JSON and attach the invoice to import.",
+  "expenseJsonTabPickJsonFile": "JSON file",
+  "expenseJsonTabPickInvoiceFile": "Invoice file",
+  "expenseJsonTabGetAiPrompt": "Get AI Prompt",
+  "expenseJsonTabGeneratingPrompt": "Generating AI prompt...",
+  "expenseJsonTabPromptLabel": "AI PROMPT",
+  "expenseJsonTabCopyPrompt": "Copy",
+  "expenseJsonTabPayloadLabel": "JSON Payload",
+  "expenseJsonTabPayloadHint": "Paste the invoice JSON here...",
+  "expenseJsonTabAdvancedOptions": "ADVANCED OPTIONS",
+  "expenseJsonTabSectionExpenseType": "Expense type",
+  "expenseJsonTabSectionDiscount": "Global discount",
+  "expenseJsonTabSectionTotal": "Document total",
+  "expenseJsonTabImportCta": "Import JSON",
+  "expenseJsonTabImportHint": "Requires JSON and attached invoice file.",
+
+  "expenseJsonLeftTitle": "JSON Import",
+  "expenseJsonLeftSubtitle": "Load the JSON, attach the invoice and review the payload on the right panel.",
+  "expenseJsonLeftDropActive": "Drop the JSON or invoice",
+  "expenseJsonLeftDropHint": "Drag the JSON or invoice here",
+  "expenseJsonLeftFileTypes": "JSON / PDF / JPG / JPEG / PNG / WEBP",
+  "expenseJsonLeftPickJson": "Select JSON",
+  "expenseJsonLeftPickInvoice": "Attach invoice",
+  "expenseJsonLeftPromptTitle": "AI Prompt",
+  "expenseJsonLeftPromptAvailable": "Available",
+  "expenseJsonLeftPromptGenerate": "Generate template",
+  "expenseJsonLeftPromptTooltip": "Get AI prompt",
+  "expenseJsonLeftCopyPromptTooltip": "Copy prompt",
+  "expenseJsonLeftSummaryTitle": "Summary",
+  "expenseJsonLeftJsonPending": "JSON pending",
+  "expenseJsonLeftInvoicePending": "Invoice pending",
+
+  "expenseBatchLeftTitle": "Import documents",
+  "expenseBatchLeftSubtitle": "Select the PDFs or images to process. The full list and issues are shown in the right panel.",
+  "expenseBatchLeftDropActive": "Drop documents to load them",
+  "expenseBatchLeftDropHint": "Drag your documents here",
+  "expenseBatchLeftFileTypes": "PDF / JPG / JPEG / PNG / WEBP",
+  "expenseBatchLeftPickCta": "Select documents",
+  "expenseBatchLeftProcessing": "Processing batch...",
+  "expenseBatchLeftSelected": "{count} documents selected",
+  "@expenseBatchLeftSelected": { "placeholders": { "count": { "type": "int" } } },
+  "expenseBatchLeftCapacity": "Capacity: {selected} / {max}",
+  "@expenseBatchLeftCapacity": { "placeholders": { "selected": { "type": "int" }, "max": { "type": "int" } } },
+  "expenseBatchLeftTotalSize": "Total size: {size}",
+  "@expenseBatchLeftTotalSize": { "placeholders": { "size": { "type": "String" } } },
+  "expenseBatchLeftSlots": "Available slots: {slots}",
+  "@expenseBatchLeftSlots": { "placeholders": { "slots": { "type": "int" } } },
+  "expenseBatchLeftClearCta": "Clear selection",
+  "expenseBatchLeftCompleted": "Batch completed",
+  "expenseBatchLeftImportCta": "Import expenses",
+  "expenseBatchLeftGroupRequired": "Select a group before importing.",
+
+  "expenseBatchProgressCompleted": "Import completed",
+  "expenseBatchProgressFailed": "Import failed",
+  "expenseBatchProgressQueued": "Import queued",
+  "expenseBatchProgressProcessing": "Processing batch",
+  "expenseBatchStatProcessed": "Processed",
+  "expenseBatchStatImported": "Imported",
+  "expenseBatchStatIssues": "With issues",
+  "expenseBatchStatResult": "Result",
+  "expenseBatchStatLoading": "Loading...",
+  "expenseBatchHeaderSlotsFree": "{count} free",
+  "@expenseBatchHeaderSlotsFree": { "placeholders": { "count": { "type": "int" } } },
+  "expenseBatchProgressBackgroundHint": "You can leave this screen while the import completes.",
+
+  "expenseBatchListTitle": "Loaded files",
+  "expenseBatchListCount": "{count} file(s)",
+  "@expenseBatchListCount": { "placeholders": { "count": { "type": "int" } } },
+  "expenseBatchListFilterAll": "All",
+  "expenseBatchListFilterReady": "Ready",
+  "expenseBatchListFilterIssues": "Issues",
+  "expenseBatchListRemoveWarnings": "Remove {count}",
+  "@expenseBatchListRemoveWarnings": { "placeholders": { "count": { "type": "int" } } },
+  "expenseBatchListEmpty": "No files match this filter yet.",
+  "expenseBatchListRemoveTooltip": "Remove from selection",
+
+  "expenseBatchDocListFiles": "{count} files",
+  "@expenseBatchDocListFiles": { "placeholders": { "count": { "type": "int" } } },
+  "expenseBatchDocListAlreadyUploaded": "Already uploaded",
+  "expenseBatchDocListDuplicates": "{count} already uploaded",
+  "@expenseBatchDocListDuplicates": { "placeholders": { "count": { "type": "int" } } },
+  "expenseBatchDocListClearAll": "Clear all",
+  "expenseBatchDocListRemove": "Remove",
+  "expenseBatchErrorCopyList": "Copy list",
+  "expenseTotalsUseSummaryLabel": "Use document summary",
+  "expenseTotalsSummaryMode": "Totals extracted from summary",
+  "expenseTotalsCalculateMode": "Calculate from lines",
+  "expenseTotalsSummaryHelp": "The VAT for this document appears in the summary at the bottom of the ticket/invoice. It is not necessary for each line to show VAT separately.",
+  "expenseTotalsLockToLinesHelp": "Base, VAT and total are calculated from the lines and discounts. Enable summary if the document only shows VAT in the footer.",
+  "expenseTotalsDirectReviewHelp": "You can review the document totals directly from this block.",
+  "expenseTotalsTaxableBase": "Taxable base",
+  "expenseTotalsTax": "Total VAT",
+  "expenseTotalsTotal": "Total document",
+
+  "suspectExpensesMenuLabel": "Suspect expenses",
+  "suspectExpensesTitle": "Suspect expenses",
+  "suspectExpensesScanned": "Scanned",
+  "suspectExpensesCount": "Suspects",
+  "suspectExpensesFilterResults": "Filter results",
+  "suspectExpensesShown": "Shown suspects",
+  "suspectExpensesEmpty": "No suspect expenses found for this filter.",
+  "suspectExpensesEmptyUnreviewed": "No unreviewed suspect expenses found.",
+  "suspectExpensesEmptyConfirmedOk": "No expenses are marked as confirmed correct.",
+  "suspectExpensesEmptyNeedsFix": "No expenses are marked as needs correction.",
+  "suspectExpensesFilterAll": "All",
+  "suspectExpensesFilterUnreviewed": "Unreviewed",
+  "suspectExpensesFilterConfirmedOk": "Confirmed OK",
+  "suspectExpensesFilterNeedsFix": "Needs Fix",
+  "suspectExpensesStatusUnreviewed": "Unreviewed",
+  "suspectExpensesStatusConfirmedOk": "Confirmed OK",
+  "suspectExpensesStatusNeedsFix": "Needs Fix",
+  "suspectExpensesStoredLabel": "Stored",
+  "suspectExpensesDerivedLabel": "Derived",
+  "suspectExpensesStoredSubtotal": "Subtotal",
+  "suspectExpensesStoredTax": "VAT",
+  "suspectExpensesStoredTotal": "Total",
+  "suspectExpensesReasons": "Detected reasons",
+  "suspectExpensesActionConfirmOk": "Mark as correct",
+  "suspectExpensesActionNeedsFix": "Mark for fix",
+  "suspectExpensesActionReset": "Reset review",
+  "suspectExpensesNotes": "Notes",
+  "suspectExpensesNotesHint": "Add a note before saving…",
+  "suspectExpensesUploadedAt": "Uploaded",
+  "notificationBankExpensesDetectedTitle": "Bank expenses detected",
+  "notificationBankExpensesDetectedMessage": "{count} bank expenses totaling {amount} were detected.",
+  "@notificationBankExpensesDetectedMessage": {
+    "description": "Notification shown when bank expenses are detected automatically",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "invoiceCreateMobileComingSoonSnack": "Create invoice on mobile will be available soon.",
+  "invoiceExportConceptsExcelFailed": "Could not export invoice concepts to Excel.",
+  "receiptJsonImportDraftOnlySnack": "Only draft receipts can be updated via JSON import.",
+  "receiptJsonImportSuccessSnack": "Imported {count} lines.",
+  "@receiptJsonImportSuccessSnack": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "budgetDeletedSnack": "Budget deleted.",
+  "budgetAdvanceInvoiceCreatedSnack": "Advance invoice created successfully (70%).",
+  "budgetAdvanceInvoiceCreatedSimpleSnack": "Advance invoice created successfully.",
+  "budgetFinalInvoiceCreatedSnack": "Final invoice created successfully.",
+  "budgetConvertedToInvoiceSnack": "Invoice created from budget.",
+
+  "chatComposerHintMessage": "Write a message…",
+  "chatComposerHintReply": "Write a reply…",
+  "chatComposerHintCaption": "Add a caption…",
+  "chatComposerHintBody": "Enter sends · Shift+Enter new line",
+  "chatComposerHintAttachment": "Attachment ready · use the text box as a caption",
+  "chatComposerAttachFile": "Local file",
+  "chatComposerAttachClientPdf": "Client PDF",
+  "chatComposerAttachWorkerPdf": "Worker-hours PDF",
+  "chatComposerSend": "Send",
+  "chatComposerSendFile": "Send file",
+  "chatComposerSending": "Sending…",
+  "chatComposerUploading": "Uploading…",
+  "chatComposerRetry": "Retry",
+
+  "telegramSearchChats": "Search chats…",
+  "telegramMenuChats": "Chats",
+  "telegramMenuExports": "Exports",
+  "telegramMenuAccount": "Account",
+  "telegramMenuDisconnect": "Disconnect",
+  "telegramFilterAll": "All",
+  "telegramFilterGroups": "Groups",
+  "telegramFilterChannels": "Channels",
+  "telegramFilterPrivate": "Private",
+  "telegramNoChatsMatch": "No chats match \"{query}\"",
+  "@telegramNoChatsMatch": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "telegramNoChatsAvailable": "No Telegram chats available",
+  "telegramClearSearch": "Clear search",
+  "telegramMainChatsSection": "Main Chats",
+  "telegramNoMainChatsInfo": "No chats in the main list. Archived chats are available below.",
+  "telegramArchivedChats": "Archived Chats",
+  "telegramChatsLoadError": "Failed to load chats",
+  "telegramRetry": "Retry",
+  "telegramTopics": "Topics",
+  "telegramBrowseTopicsIn": "Browse forum topics inside {chat}.",
+  "@telegramBrowseTopicsIn": {
+    "placeholders": {
+      "chat": { "type": "String" }
+    }
+  },
+  "telegramSearchTopics": "Search topics…",
+  "telegramGeneralTopic": "General topic",
+  "telegramHiddenTopic": "Hidden topic",
+  "telegramForumTopicLabel": "Forum topic",
+  "telegramNoTopicsMatch": "No topics match your search",
+  "telegramNoTopicsFound": "No forum topics found",
+  "telegramNoTopicsMatchBody": "Try a different name or clear the search.",
+  "telegramNoTopicsFoundBody": "This forum has no visible topics yet.",
+  "telegramToday": "Today",
+  "telegramYesterday": "Yesterday",
+  "telegramLoadOlder": "Load older",
+  "telegramBeginningOfHistory": "Beginning of history",
+  "telegramNoMessagesYet": "No messages loaded yet",
+  "telegramNoMessagesTip": "Try refreshing this chat or loading older history.",
+  "telegramSelectChatTitle": "Select a chat to start reading",
+  "telegramSelectChatBody": "Choose a Telegram chat from the list to load recent messages, browse history, and export it.",
+  "telegramFailedToLoadMessages": "Failed to load messages",
+  "telegramRefresh": "Refresh",
+  "telegramExport": "Export",
+  "telegramEdited": "edited",
+  "telegramForwardedFrom": "Forwarded from {source}",
+  "@telegramForwardedFrom": {
+    "placeholders": {
+      "source": { "type": "String" }
+    }
+  },
+  "telegramForwardedMessage": "Forwarded message",
+  "telegramReplyingTo": "Replying to {sender}",
+  "@telegramReplyingTo": {
+    "placeholders": {
+      "sender": { "type": "String" }
+    }
+  },
+  "telegramReplyTo": "Reply to #{id}",
+  "@telegramReplyTo": {
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "telegramClearReply": "Clear reply",
+  "telegramRemoveAttachment": "Remove attachment",
+  "telegramReply": "Reply",
+  "telegramReplying": "Replying",
+  "telegramPreviewPdf": "Preview PDF",
+  "telegramDownloadDocument": "Download document",
+  "telegramClose": "Close",
+  "telegramTopicSubtitle": "Topic · {name}",
+  "@telegramTopicSubtitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "telegramCouldNotReadFile": "Could not read the selected file.",
+  "telegramNeedGroupClientPdf": "A group must be selected before attaching client PDFs.",
+  "telegramNeedGroupWorkerPdf": "A group must be selected before attaching worker PDFs.",
+  "telegramCouldNotOpenPdf": "Could not open the PDF preview.",
+  "telegramCouldNotDownload": "Could not download this document.",
+
+  "back": "Back",
+  "issueInvoice": "Issue invoice",
+  "invoiceActionsTitle": "Actions",
+  "invoicePdfPreviewTitle": "PDF preview",
+  "invoicePdfGenerated": "Generated",
+  "invoicePdfReadyToPreview": "PDF is ready to preview",
+  "invoiceSaveDraftToPreview": "Save draft to generate a PDF preview",
+  "invoicePdfOpenPreview": "Open preview",
+  "invoicePreviewTitle": "Preview",
+  "invoicePreviewNoNotes": "No notes",
+  "invoicePreviewLinesCount": "Lines: {count}",
+  "@invoicePreviewLinesCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "invoicePreviewTotalLabel": "Total: {amount}",
+  "@invoicePreviewTotalLabel": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "invoiceDraftPdfDialogTitle": "Download Draft PDF",
+  "invoiceDraftPdfDialogContent": "Generate a PDF preview of this draft invoice.",
+  "invoiceDraftPreviewInBrowser": "Preview in Browser",
+  "invoiceDraftDownloadPdf": "Download PDF",
+  "invoiceDeliveryStatusUpdated": "Delivery status updated",
+  "invoiceMarkedUnsent": "Invoice marked as unsent",
+  "invoiceDeliveryOnlyIssued": "Delivery can only be marked on issued invoices.",
+  "invoiceDeliveryUpdateError": "Could not update delivery status.",
+  "invoiceReviewPdfBeforeDraft": "Review the PDF preview before saving the draft.",
+  "invoiceStepClientShort": "Client",
+  "invoiceStepLinesShort": "Lines",
+  "invoiceStepDraftShort": "Draft",
+
+  "notificationRecurringDraftInvoiceCreatedTitle": "Recurring draft invoice created",
+  "notificationRecurringDraftInvoiceCreatedMessage": "A draft invoice for {clientName} was created from recurrence \"{recurrenceName}\" for {amount}.",
+  "@notificationRecurringDraftInvoiceCreatedMessage": {
+    "placeholders": {
+      "clientName": { "type": "String" },
+      "recurrenceName": { "type": "String" },
+      "amount": { "type": "String" }
+    }
+  },
+  "notificationRecurringDraftInvoiceCreatedMessageNoAmount": "A draft invoice for {clientName} was created from recurrence \"{recurrenceName}\".",
+  "@notificationRecurringDraftInvoiceCreatedMessageNoAmount": {
+    "placeholders": {
+      "clientName": { "type": "String" },
+      "recurrenceName": { "type": "String" }
+    }
+  },
+  "notificationRecurringDraftInvoiceCreatedMessageFallback": "A recurring draft invoice was created."
 }

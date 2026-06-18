@@ -72,6 +72,7 @@ class MailRepository implements IMailRepository {
     required MailFolder folder,
     int limit = 25,
     String? cursor,
+    String? query,
   }) async {
     final token = await _requireToken();
     return _api.getThreads(
@@ -79,6 +80,7 @@ class MailRepository implements IMailRepository {
       token: token,
       limit: limit,
       cursor: cursor,
+      query: query,
     );
   }
 

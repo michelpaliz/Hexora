@@ -32,20 +32,18 @@ class DateTimeSection extends StatelessWidget {
     return cardBuilder(
       title: title,
       child: Padding(
-        // more air around the whole block
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 2),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isHorizontal = constraints.maxWidth >= 560;
 
-            // Warm, accessible greens/reds (tuned per theme brightness)
             final brightness = Theme.of(context).brightness;
             final startBase = brightness == Brightness.dark
-                ? const Color(0xFF1E7A4A) // deep warm green
-                : const Color(0xFF2E8B57); // sea green
+                ? const Color(0xFF1E7A4A)
+                : const Color(0xFF2E8B57);
             final endBase = brightness == Brightness.dark
-                ? const Color(0xFF9B2C2C) // deep warm red
-                : const Color(0xFFCC3A3A); // warm red
+                ? const Color(0xFF9B2C2C)
+                : const Color(0xFFCC3A3A);
 
             final startField = _DateFieldTile(
               label: loc.startDate,
@@ -67,7 +65,7 @@ class DateTimeSection extends StatelessWidget {
               return Row(
                 children: [
                   Expanded(child: startField),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 10),
                   Expanded(child: endField),
                 ],
               );
@@ -81,7 +79,7 @@ class DateTimeSection extends StatelessWidget {
                     icon: Icons.event_available_rounded,
                     baseColor: startBase,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   _DateFieldTile(
                     label: loc.endDate,
                     date: endLocal,
@@ -104,7 +102,7 @@ class _DateFieldTile extends StatelessWidget {
   final DateTime date;
   final VoidCallback onTap;
   final IconData icon;
-  final Color baseColor; // warm green or warm red per tile
+  final Color baseColor;
 
   const _DateFieldTile({
     required this.label,
@@ -114,25 +112,14 @@ class _DateFieldTile extends StatelessWidget {
     required this.baseColor,
   });
 
-  // Simple EN/ES helper (fallbacks if your l10n doesn’t expose today/tomorrow)
   String _todayWord(BuildContext context) {
     final code = Localizations.localeOf(context).languageCode.toLowerCase();
-    switch (code) {
-      case 'es':
-        return 'Hoy';
-      default:
-        return 'Today';
-    }
+    return code == 'es' ? 'Hoy' : 'Today';
   }
 
   String _tomorrowWord(BuildContext context) {
     final code = Localizations.localeOf(context).languageCode.toLowerCase();
-    switch (code) {
-      case 'es':
-        return 'Mañana';
-      default:
-        return 'Tomorrow';
-    }
+    return code == 'es' ? 'Mañana' : 'Tomorrow';
   }
 
   String _formatDate(BuildContext context, DateTime date) {
@@ -140,11 +127,8 @@ class _DateFieldTile extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
     final dateOnly = DateTime(date.year, date.month, date.day);
-
-    final locale =
-        Localizations.localeOf(context).toLanguageTag(); // e.g. en, es
+    final locale = Localizations.localeOf(context).toLanguageTag();
     final timeFmt = DateFormat('h:mm a', locale);
-
     if (dateOnly == today) {
       return '${_todayWord(context)}, ${timeFmt.format(date)}';
     } else if (dateOnly == tomorrow) {
@@ -159,10 +143,8 @@ class _DateFieldTile extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
     final dateOnly = DateTime(date.year, date.month, date.day);
-
     if (dateOnly == today) return _todayWord(context);
     if (dateOnly == tomorrow) return _tomorrowWord(context);
-
     final locale = Localizations.localeOf(context).toLanguageTag();
     return DateFormat('EEEE', locale).format(date);
   }
@@ -179,29 +161,27 @@ class _DateFieldTile extends StatelessWidget {
     final time = DateFormat('h:mm a', locale).format(date);
     final dayOfWeek = _formatDay(context, date);
 
-    // Derived colors for container/text/accents from the base warm color
     final container = Color.lerp(baseColor, cs.surface, 0.70)!;
     final chipBg = Color.lerp(baseColor, cs.surface, 0.20)!;
     final border = Color.lerp(baseColor, cs.outlineVariant, 0.50)!;
 
-    // Choose on-color with decent contrast (simple heuristic)
-    Color _on(Color bg) =>
+    Color onColor(Color bg) =>
         ThemeData.estimateBrightnessForColor(bg) == Brightness.dark
             ? Colors.white
             : Colors.black87;
 
-    final onContainer = _on(container);
-    final onChip = _on(chipBg);
-    final onMuted = onContainer.withOpacity(0.75);
+    final onContainer = onColor(container);
+    final onChip = onColor(chipBg);
+    final onMuted = onContainer.withValues(alpha:0.75);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -213,28 +193,29 @@ class _DateFieldTile extends StatelessWidget {
             border: Border.all(color: border, width: 1),
             boxShadow: [
               BoxShadow(
-                color: baseColor.withOpacity(0.16),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
+                color: baseColor.withValues(alpha:0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            // ↓ reduced from (16, 18) → (12, 10) for ~30% height reduction
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                // Icon chip tinted by base color
+                // Icon chip — smaller padding + icon
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
                     color: chipBg,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: baseColor.withOpacity(0.35), width: 1),
+                        color: baseColor.withValues(alpha:0.35), width: 1),
                   ),
-                  child: Icon(icon, color: onChip, size: 20),
+                  child: Icon(icon, color: onChip, size: 18),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 10),
 
                 // Date text block
                 Expanded(
@@ -243,18 +224,16 @@ class _DateFieldTile extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Label (Start/End)
                         Text(
                           label,
                           style: typo.bodySmall.copyWith(
                             color: onMuted,
                             letterSpacing: 0.2,
                             fontWeight: FontWeight.w600,
+                            fontSize: 11,
                           ),
                         ),
-                        const SizedBox(height: 6),
-
-                        // Day of week
+                        const SizedBox(height: 3),
                         Text(
                           dayOfWeek,
                           maxLines: 1,
@@ -264,18 +243,16 @@ class _DateFieldTile extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 2),
-
-                        // Time row
+                        const SizedBox(height: 1),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.access_time_rounded,
-                                size: 14, color: onMuted),
-                            const SizedBox(width: 4),
+                                size: 12, color: onMuted),
+                            const SizedBox(width: 3),
                             Text(
                               time,
-                              style: typo.bodyMedium.copyWith(
+                              style: typo.bodySmall.copyWith(
                                 color: onMuted,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -286,15 +263,15 @@ class _DateFieldTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
 
-                // Mini calendar chip (month + day) using the base tone
+                // Mini calendar chip — smaller (44×44 from 56×56)
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: baseColor,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(9),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -302,15 +279,16 @@ class _DateFieldTile extends StatelessWidget {
                       Text(
                         month.toUpperCase(),
                         style: typo.bodySmall.copyWith(
-                          color: _on(baseColor).withOpacity(0.9),
+                          color: onColor(baseColor).withValues(alpha:0.9),
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
+                          letterSpacing: 0.4,
+                          fontSize: 10,
                         ),
                       ),
                       Text(
                         day,
                         style: typo.bodyMedium.copyWith(
-                          color: _on(baseColor),
+                          color: onColor(baseColor),
                           fontWeight: FontWeight.w800,
                           height: 1.05,
                         ),

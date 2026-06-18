@@ -4,6 +4,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import '../../statements_formatters.dart';
+import '../statements_analytics_copy.dart';
 import '../statements_analytics_controller.dart';
 import '../statements_analytics_view.dart' show AnalyticsSkeleton;
 import '../statements_analytics_widgets.dart';
@@ -135,13 +136,307 @@ class _StatementsMobileAnalyticsViewState
       ),
     );
 
-    final baseRows = c.selectedYear == null ? c.years : c.months;
+    final baseRows = c.trendRows;
 
     String labelBuilder(Map<String, dynamic> row) {
       final year = row['year']?.toString() ?? '-';
       final month = row['month']?.toString();
       if (c.selectedYear == null || month == null || month.isEmpty) return year;
       return month.padLeft(2, '0');
+    }
+
+    Widget buildOverviewSection() {
+      final totals = c.visibleTotals;
+      return _SectionCard(
+        title: StatementsAnalyticsCopy.billableOverviewLabel(context),
+        child: Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            AnalyticsMetricCard(
+              title: l.statementsSummaryIncome,
+              value: StatementsFormatters.formatCurrency(context, totals.income),
+              subtitle: l.statementsEntryCount(totals.count.toString()),
+              icon: Icons.south_west_rounded,
+            ),
+            AnalyticsMetricCard(
+              title: l.statementsSummaryExpense,
+              value: StatementsFormatters.formatCurrency(context, totals.expense),
+              icon: Icons.north_east_rounded,
+            ),
+            AnalyticsMetricCard(
+              title: l.statementsSummaryNet,
+              value: StatementsFormatters.formatCurrency(context, totals.net),
+              icon: Icons.account_balance_wallet_outlined,
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget buildSplitSection() {
+      final totals = c.visibleTotals;
+      return _SectionCard(
+        title: StatementsAnalyticsCopy.splitTitle(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              StatementsAnalyticsCopy.splitSubtitle(context),
+              style: t.bodySmall,
+            ),
+            const SizedBox(height: 10),
+            AnalyticsDonutChart(
+              slices: [
+                AnalyticsDonutSlice(
+                  label: l.statementsSummaryIncome,
+                  value: totals.income,
+                  color: const Color(0xFF2E7D32),
+                  legendValue:
+                      StatementsFormatters.formatCurrency(context, totals.income),
+                  tooltipValue:
+                      StatementsFormatters.formatCurrency(context, totals.income),
+                ),
+                AnalyticsDonutSlice(
+                  label: l.statementsSummaryExpense,
+                  value: totals.expense,
+                  color: const Color(0xFFC62828),
+                  legendValue: StatementsFormatters.formatCurrency(
+                    context,
+                    totals.expense,
+                  ),
+                  tooltipValue: StatementsFormatters.formatCurrency(
+                    context,
+                    totals.expense,
+                  ),
+                ),
+              ],
+              centerLabel: l.statementsSummaryNet,
+              centerValue:
+                  StatementsFormatters.formatCurrency(context, totals.net),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget buildVolumeSection() => _SectionCard(
+          title: StatementsAnalyticsCopy.volumeTitle(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                StatementsAnalyticsCopy.volumeSubtitle(context),
+                style: t.bodySmall,
+              ),
+              const SizedBox(height: 10),
+              AnalyticsVolumeChart(points: c.volumePoints),
+            ],
+          ),
+        );
+
+    Widget buildTicketSection() {
+      if (c.loadingEntries) {
+        return _SectionCard(
+          title: StatementsAnalyticsCopy.ticketTitle(context),
+          child: const AnalyticsSkeleton(),
+        );
+      }
+      if (c.entriesError != null) {
+        return _SectionCard(
+          title: StatementsAnalyticsCopy.ticketTitle(context),
+          child: AnalyticsStateMessage(
+            message: c.entriesError!,
+            icon: Icons.error_outline,
+            color: cs.error,
+          ),
+        );
+      }
+      final stats = c.ticketStats;
+      return _SectionCard(
+        title: StatementsAnalyticsCopy.ticketTitle(context),
+        child: stats == null
+            ? AnalyticsStateMessage(
+                message: StatementsAnalyticsCopy.noEntriesLabel(context),
+              )
+            : Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.averageIncomeLabel(context),
+                    value: StatementsFormatters.formatCurrency(
+                      context,
+                      stats.averageIncome,
+                    ),
+                  ),
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.averageExpenseLabel(context),
+                    value: StatementsFormatters.formatCurrency(
+                      context,
+                      stats.averageExpense,
+                    ),
+                  ),
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.largestIncomeLabel(context),
+                    value: StatementsFormatters.formatCurrency(
+                      context,
+                      stats.largestIncome,
+                    ),
+                  ),
+                  AnalyticsMetricCard(
+                    title: StatementsAnalyticsCopy.largestExpenseLabel(context),
+                    value: StatementsFormatters.formatCurrency(
+                      context,
+                      stats.largestExpense,
+                    ),
+                  ),
+                  AnalyticsMetricCard(
+                    title:
+                        StatementsAnalyticsCopy.totalTransactionsLabel(context),
+                    value: stats.transactionCount.toString(),
+                  ),
+                ],
+              ),
+      );
+    }
+
+    Widget buildLinkedSection() {
+      if (c.loadingEntries) {
+        return _SectionCard(
+          title: StatementsAnalyticsCopy.linkedTitle(context),
+          child: const AnalyticsSkeleton(),
+        );
+      }
+      if (c.entriesError != null) {
+        return _SectionCard(
+          title: StatementsAnalyticsCopy.linkedTitle(context),
+          child: AnalyticsStateMessage(
+            message: c.entriesError!,
+            icon: Icons.error_outline,
+            color: cs.error,
+          ),
+        );
+      }
+      final stats = c.linkStats;
+      return _SectionCard(
+        title: StatementsAnalyticsCopy.linkedTitle(context),
+        child: stats == null
+            ? AnalyticsStateMessage(
+                message: StatementsAnalyticsCopy.noEntriesLabel(context),
+              )
+            : AnalyticsDonutChart(
+                slices: [
+                  AnalyticsDonutSlice(
+                    label: StatementsAnalyticsCopy.linkedLabel(context),
+                    value: stats.linkedCount,
+                    color: const Color(0xFF1565C0),
+                    legendValue: stats.linkedCount.toString(),
+                    tooltipValue: stats.linkedCount.toString(),
+                  ),
+                  AnalyticsDonutSlice(
+                    label: StatementsAnalyticsCopy.unlinkedLabel(context),
+                    value: stats.unlinkedCount,
+                    color: const Color(0xFFEF6C00),
+                    legendValue: stats.unlinkedCount.toString(),
+                    tooltipValue: stats.unlinkedCount.toString(),
+                  ),
+                ],
+                centerLabel: StatementsAnalyticsCopy.linkedRateLabel(context),
+                centerValue:
+                    '${StatementsFormatters.formatAmount(context, stats.linkedRatio * 100)}%',
+              ),
+      );
+    }
+
+    Widget buildActivitySection() {
+      if (c.loadingEntries) {
+        return _SectionCard(
+          title: StatementsAnalyticsCopy.activityTitle(context),
+          child: const AnalyticsSkeleton(),
+        );
+      }
+      if (c.entriesError != null) {
+        return _SectionCard(
+          title: StatementsAnalyticsCopy.activityTitle(context),
+          child: AnalyticsStateMessage(
+            message: c.entriesError!,
+            icon: Icons.error_outline,
+            color: cs.error,
+          ),
+        );
+      }
+      return _SectionCard(
+        title: StatementsAnalyticsCopy.activityTitle(context),
+        child: AnalyticsHeatmap(days: c.heatmapDays),
+      );
+    }
+
+    Widget buildStatusSection() {
+      if (c.loadingStatus) {
+        return _SectionCard(
+          title: StatementsAnalyticsCopy.statusTitle(context),
+          child: const AnalyticsSkeleton(),
+        );
+      }
+      if (c.statusError != null) {
+        return _SectionCard(
+          title: StatementsAnalyticsCopy.statusTitle(context),
+          child: AnalyticsStateMessage(
+            message: c.statusError!,
+            icon: Icons.error_outline,
+            color: cs.error,
+          ),
+        );
+      }
+      final status = c.statusSnapshot;
+      final badgeColor = status == null
+          ? cs.onSurfaceVariant
+          : (status.mixed
+              ? cs.tertiary
+              : (status.stale ? cs.error : const Color(0xFF2E7D32)));
+      final badgeLabel = status == null
+          ? '-'
+          : (status.mixed
+              ? StatementsAnalyticsCopy.mixedLabel(context)
+              : (status.stale
+                  ? StatementsAnalyticsCopy.staleLabel(context)
+                  : StatementsAnalyticsCopy.freshLabel(context)));
+      return _SectionCard(
+        title: StatementsAnalyticsCopy.statusTitle(context),
+        child: status == null
+            ? AnalyticsStateMessage(
+                message: StatementsAnalyticsCopy.noStatusLabel(context),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnalyticsStatusBadge(label: badgeLabel, color: badgeColor),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      AnalyticsMetricCard(
+                        title:
+                            StatementsAnalyticsCopy.lastTransactionLabel(context),
+                        value: status.lastDate == null
+                            ? '-'
+                            : StatementsFormatters.formatDate(
+                                context,
+                                status.lastDate,
+                              ),
+                      ),
+                      AnalyticsMetricCard(
+                        title:
+                            StatementsAnalyticsCopy.daysSinceLabel(context),
+                        value: status.daysSince?.toString() ?? '-',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+      );
     }
 
     // ── Content ──────────────────────────────────────────────────────────────
@@ -159,6 +454,48 @@ class _StatementsMobileAnalyticsViewState
                     )
                   : CustomScrollView(
                       slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                            child: buildOverviewSection(),
+                          ),
+                        ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                            child: buildSplitSection(),
+                          ),
+                        ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                            child: buildVolumeSection(),
+                          ),
+                        ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                            child: buildTicketSection(),
+                          ),
+                        ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                            child: buildLinkedSection(),
+                          ),
+                        ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                            child: buildActivitySection(),
+                          ),
+                        ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                            child: buildStatusSection(),
+                          ),
+                        ),
                         // ── Trend chart ──────────────────────────────────────
                         SliverToBoxAdapter(
                           child: Padding(
@@ -195,8 +532,7 @@ class _StatementsMobileAnalyticsViewState
                                             labelBuilder: labelBuilder,
                                           ),
                                           AnalyticsTrendChart(
-                                            rows: _buildAverageRows(
-                                                baseRows),
+                                            rows: c.averageTrendRows,
                                             labelBuilder: labelBuilder,
                                           ),
                                         ],
@@ -286,20 +622,6 @@ class _StatementsMobileAnalyticsViewState
         ),
       ],
     );
-  }
-
-  List<Map<String, dynamic>> _buildAverageRows(
-      List<Map<String, dynamic>> rows) {
-    return rows.map((row) {
-      final count = (row['count'] as num?)?.toDouble() ?? 0;
-      final divisor = count == 0 ? 1.0 : count;
-      return {
-        ...row,
-        'income': ((row['income'] as num?)?.toDouble() ?? 0) / divisor,
-        'expense': ((row['expense'] as num?)?.toDouble() ?? 0) / divisor,
-        'net': ((row['net'] as num?)?.toDouble() ?? 0) / divisor,
-      };
-    }).toList();
   }
 }
 

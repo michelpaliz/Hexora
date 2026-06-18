@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
 import 'package:hexora/a-models/group_model/client/client.dart';
+import 'package:hexora/a-models/group_model/client/client_invoice_stats.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
@@ -45,11 +46,21 @@ class ClientsApi {
   }
 
   // GET /clients?groupId=...&active=true|false
-  Future<List<GroupClient>> list({String? groupId, bool? active}) async {
+  Future<List<GroupClient>> list({
+    String? groupId,
+    bool? active,
+    bool includeCurrentMonthInvoiceFlag = false,
+    bool? missingCurrentMonthInvoice,
+  }) async {
     final r = await AuthenticatedHttpClient.get(
         _u('', {
           'groupId': groupId,
           if (active != null) 'active': active.toString(),
+          if (includeCurrentMonthInvoiceFlag)
+            'includeCurrentMonthInvoiceFlag': 'true',
+          if (missingCurrentMonthInvoice != null)
+            'missingCurrentMonthInvoice':
+                missingCurrentMonthInvoice.toString(),
         }),
         headers: _headers());
 
@@ -94,6 +105,23 @@ class ClientsApi {
   Future<GroupClient> getById(String id) async {
     final r = await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
     return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
+  }
+
+  // GET /clients/:id/invoice-stats?months=12
+  Future<ClientInvoiceStats> getInvoiceStats(
+    String id, {
+    int months = 12,
+  }) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/$id/invoice-stats', {
+        'months': months.toString(),
+      }),
+      headers: _headers(),
+    );
+    return _decode<ClientInvoiceStats>(r, (j) {
+      if (j is! Map) throw Exception('Unexpected client invoice stats payload');
+      return ClientInvoiceStats.fromJson(j.cast<String, dynamic>());
+    });
   }
 
   // PATCH /clients/:id  (full update: send client.toJson())

@@ -13,6 +13,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/wi
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/settings_section/right_panel_settings_inline.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/undone_section/right_panel_undone_inline.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/workers_section/right_panel_workers_inline.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/insights_chat_fab.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
@@ -83,6 +84,9 @@ class GroupDashboardRightPanel extends StatelessWidget {
         break;
       case 'insights':
         content = InsightsInlinePanel(group: group);
+        break;
+      case 'chat':
+        content = InsightsChatPanel(groupId: group.id);
         break;
       case 'workers':
         content = WorkersInlinePanel(group: group);

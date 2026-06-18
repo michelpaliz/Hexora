@@ -18,10 +18,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get calendar => 'Calendario';
 
   @override
-  String get settings => 'ConfiguraciÃ³n';
+  String get settings => 'Configuración';
 
   @override
-  String get logout => 'Cerrar sesiÃ³n';
+  String get logout => 'Cerrar sesión';
 
   @override
   String get groupData => 'Datos del grupo';
@@ -30,7 +30,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get notifications => 'Notificaciones';
 
   @override
-  String get goodMorning => 'Buenos dÃ­as';
+  String get goodMorning => 'Buenos días';
 
   @override
   String get goodAfternoon => 'Buenas tardes';
@@ -46,7 +46,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String welcomeGroupView(Object username) {
-    return 'Bienvenido $username, aquÃ­ puedes ver la lista de grupos de los que formas parte.';
+    return 'Bienvenido $username, aquí puedes ver la lista de grupos de los que formas parte.';
   }
 
   @override
@@ -57,22 +57,22 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String groupName(int maxChar) {
-    return 'Nombre del grupo (mÃ¡ximo $maxChar caracteres)';
+    return 'Nombre del grupo (máximo $maxChar caracteres)';
   }
 
   @override
   String groupDescription(int maxChar) {
-    return 'DescripciÃ³n del grupo (mÃ¡ximo $maxChar caracteres)';
+    return 'Descripción del grupo (máximo $maxChar caracteres)';
   }
 
   @override
-  String get addPplGroup => 'AÃ±adir personas a tu grupo';
+  String get addPplGroup => 'Añadir personas a tu grupo';
 
   @override
-  String get addUser => 'AÃ±adir usuario';
+  String get addUser => 'Añadir usuario';
 
   @override
-  String get addEvent => 'AÃ±adir evento';
+  String get addEvent => 'Añadir evento';
 
   @override
   String get administrator => 'Administrador';
@@ -87,22 +87,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get saveGroup => 'Guardar grupo';
 
   @override
-  String get addImageGroup => 'AÃ±adir imagen para el grupo';
+  String get addImageGroup => 'Añadir imagen para el grupo';
 
   @override
   String get removeEvent =>
-      'Â¿EstÃ¡s seguro de que quieres eliminar este evento?';
+      '¿Estás seguro de que quieres eliminar este evento?';
 
   @override
-  String get removeGroup =>
-      'Â¿EstÃ¡s seguro de que quieres eliminar este grupo?';
+  String get removeGroup => '¿Estás seguro de que quieres eliminar este grupo?';
 
   @override
   String get removeCalendar =>
-      'Â¿EstÃ¡s seguro de que quieres eliminar este calendario?';
+      '¿Estás seguro de que quieres eliminar este calendario?';
 
   @override
-  String get groupCreated => 'Â¡Grupo creado con Ã©xito!';
+  String get groupCreated => '¡Grupo creado con éxito!';
 
   @override
   String get failedToCreateGroup => 'Error al crear el grupo';
@@ -114,7 +113,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get eventEdited => 'El evento ha sido editado';
 
   @override
-  String get eventAddedGroup => 'El evento ha sido aÃ±adido al grupo';
+  String get eventAddedGroup => 'El evento ha sido añadido al grupo';
 
   @override
   String get event => 'Evento';
@@ -123,7 +122,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get chooseEventColor => 'Elige el color del evento:';
 
   @override
-  String get errorEventNote => 'Â¡La nota del evento no puede estar vacÃ­a!';
+  String get errorEventNote => '¡La nota del evento no puede estar vacía!';
 
   @override
   String get name => 'Nombre';
@@ -132,28 +131,28 @@ class AppLocalizationsEs extends AppLocalizations {
   String get userName => 'Nombre de usuario';
 
   @override
-  String get currentPassword => 'Introduce tu contraseÃ±a actual';
+  String get currentPassword => 'Introduce tu contraseña actual';
 
   @override
-  String get newPassword => 'Actualiza tu contraseÃ±a actual';
+  String get newPassword => 'Actualiza tu contraseña actual';
 
   @override
-  String get confirmPassword => 'Confirmar contraseÃ±a';
+  String get confirmPassword => 'Confirmar contraseña';
 
   @override
-  String get password => 'ContraseÃ±a';
+  String get password => 'Contraseña';
 
   @override
   String get register => 'Registrarse';
 
   @override
-  String get login => 'Iniciar sesiÃ³n';
+  String get login => 'Iniciar sesión';
 
   @override
-  String get backToLogin => 'Volver al inicio de sesiÃ³n';
+  String get backToLogin => 'Volver al inicio de sesión';
 
   @override
-  String get downloadMobileApp => 'Descargar la app mÃ³vil';
+  String get downloadMobileApp => 'Descargar la app móvil';
 
   @override
   String get userNameHint =>
@@ -163,36 +162,36 @@ class AppLocalizationsEs extends AppLocalizations {
   String get nameHint => 'Introduce tu nombre';
 
   @override
-  String get emailHint => 'Introduce tu correo electrÃ³nico';
+  String get emailHint => 'Introduce tu correo electrónico';
 
   @override
-  String get passwordHint => 'Introduce tu contraseÃ±a';
+  String get passwordHint => 'Introduce tu contraseña';
 
   @override
-  String get confirmPasswordHint => 'Introduce tu contraseÃ±a de nuevo';
+  String get confirmPasswordHint => 'Introduce tu contraseña de nuevo';
 
   @override
-  String get logoutMessage => 'Â¿EstÃ¡s seguro de que quieres cerrar sesiÃ³n?';
+  String get logoutMessage => '¿Estás seguro de que quieres cerrar sesión?';
 
   @override
   String get passwordNotMatch =>
-      'La nueva contraseÃ±a y la confirmaciÃ³n no coinciden.';
+      'La nueva contraseña y la confirmación no coinciden.';
 
   @override
-  String get userNameTaken => 'El nombre de usuario ya estÃ¡ en uso';
+  String get userNameTaken => 'El nombre de usuario ya está en uso';
 
   @override
-  String get weakPassword => 'ContraseÃ±a dÃ©bil';
+  String get weakPassword => 'Contraseña débil';
 
   @override
-  String get emailTaken => 'El correo electrÃ³nico ya estÃ¡ en uso';
+  String get emailTaken => 'El correo electrónico ya está en uso';
 
   @override
   String get invalidEmail =>
-      'Esta direcciÃ³n de correo electrÃ³nico no es vÃ¡lida';
+      'Esta dirección de correo electrónico no es válida';
 
   @override
-  String get invalidUrl => 'Esta URL no es vÃ¡lida';
+  String get invalidUrl => 'Esta URL no es válida';
 
   @override
   String get registrationError => 'Error de registro';
@@ -209,16 +208,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get loginInvalidCredentials =>
-      'Credenciales invÃ¡lidas. IntÃ©ntalo de nuevo.';
+      'Credenciales inválidas. Inténtalo de nuevo.';
 
   @override
-  String get authError => 'Error de autenticaciÃ³n';
+  String get authError => 'Error de autenticación';
 
   @override
-  String get verifyEmailTitle => 'Verifica tu correo electrÃ³nico';
+  String get verifyEmailTitle => 'Verifica tu correo electrónico';
 
   @override
-  String get verifyEmailInfo => 'Te enviamos un enlace de VerificaciÃ³n.';
+  String get verifyEmailInfo => 'Te enviamos un enlace de Verificación.';
 
   @override
   String get verifyingEmail => 'Verificando tu correo...';
@@ -227,23 +226,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get verifyEmailTryAgain => 'Intentar de nuevo';
 
   @override
-  String get resendVerificationButton => 'Reenviar VerificaciÃ³n';
+  String get resendVerificationButton => 'Reenviar Verificación';
 
   @override
   String get resendVerificationSending => 'Enviando...';
 
   @override
   String get resendVerificationInvalidEmail =>
-      'Ingresa un correo vÃ¡lido para reenviar.';
+      'Ingresa un correo válido para reenviar.';
 
   @override
   String resendVerificationSent(String email) {
-    return 'Correo de VerificaciÃ³nviado a $email';
+    return 'Correo de Verificaciónviado a $email';
   }
 
   @override
   String resendVerificationFailed(String error) {
-    return 'No se pudo reenviar la VerificaciÃ³n: $error';
+    return 'No se pudo reenviar la Verificación: $error';
   }
 
   @override
@@ -251,60 +250,59 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get verifySuccessMessage =>
-      'Tu correo ha sido confirmado. Ya puedes iniciar sesiÃ³n y usar la aplicaciÃ³n.';
+      'Tu correo ha sido confirmado. Ya puedes iniciar sesión y usar la aplicación.';
 
   @override
-  String get downloadAppTitle => 'ObtÃ©n Hexora en tu telÃ©fono';
+  String get downloadAppTitle => 'Obtén Hexora en tu teléfono';
 
   @override
   String get downloadAppSubtitle =>
-      'Instala la app para Android o iOS y mantente al dÃ­a donde estÃ©s.';
+      'Instala la app para Android o iOS y mantente al día donde estés.';
 
   @override
-  String get downloadAppAndroid => 'ConsÃ­guela en Google Play';
+  String get downloadAppAndroid => 'Consíguela en Google Play';
 
   @override
-  String get downloadAppIos => 'DescÃ¡rgala en App Store';
+  String get downloadAppIos => 'Descárgala en App Store';
 
   @override
   String get downloadAppOpenError =>
       'No se pudo abrir el enlace de la tienda. Intenta de nuevo.';
 
   @override
-  String get changePassword => 'Cambiar contraseÃ±a';
+  String get changePassword => 'Cambiar contraseña';
 
   @override
   String get notRegistered =>
-      'Â¿No estÃ¡s registrado? No te preocupes, regÃ­strate aquÃ­.';
+      '¿No estás registrado? No te preocupes, regístrate aquí.';
 
   @override
-  String get alreadyRegistered =>
-      'Â¿Ya estÃ¡s registrado? Inicia sesiÃ³n aquÃ­.';
+  String get alreadyRegistered => '¿Ya estás registrado? Inicia sesión aquí.';
 
   @override
   String title(Object maxChar) {
-    return 'TÃ­tulo (mÃ¡ximo $maxChar caracteres)';
+    return 'Título (máximo $maxChar caracteres)';
   }
 
   @override
   String description(int maxChar) {
-    return 'DescripciÃ³n (mÃ¡ximo $maxChar caracteres)';
+    return 'Descripción (máximo $maxChar caracteres)';
   }
 
   @override
   String note(int maxChar) {
-    return 'Nota (mÃ¡ximo $maxChar caracteres)';
+    return 'Nota (máximo $maxChar caracteres)';
   }
 
   @override
-  String get location => 'UbicaciÃ³n';
+  String get location => 'Ubicación';
 
   @override
   String get repetitionEvent => 'Fecha de inicio duplicada';
 
   @override
   String get repetitionEventInfo =>
-      'Ya existe un evento con la misma hora y dÃ­a de inicio.';
+      'Ya existe un evento con la misma hora y día de inicio.';
 
   @override
   String get daily => 'Diario';
@@ -319,11 +317,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get yearly => 'Anual';
 
   @override
-  String get repetitionDetails => 'Detalles de repeticiÃ³n';
+  String get repetitionDetails => 'Detalles de repetición';
 
   @override
   String dailyRepetitionInf(int concurrenceDay) {
-    return 'Este evento se repetirÃ¡ cada $concurrenceDay dÃ­a';
+    return 'Este evento se repetirá cada $concurrenceDay día';
   }
 
   @override
@@ -339,7 +337,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get monthlies => 'mensual(es)';
 
   @override
-  String get yearlys => 'aÃ±o(s)';
+  String get yearlys => 'año(s)';
 
   @override
   String get untilDate => 'Hasta la fecha:';
@@ -357,15 +355,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get specifyRepeatInterval =>
-      'Por favor, especifica el intervalo de repeticiÃ³n';
+      'Por favor, especifica el intervalo de repetición';
 
   @override
   String get selectOneDayAtLeast =>
-      'Por favor, selecciona al menos un dÃ­a de la semana.';
+      'Por favor, selecciona al menos un día de la semana.';
 
   @override
   String get datesMustBeSame =>
-      'Las fechas de inicio y fin deben ser el mismo dÃ­a para que el evento se repita.';
+      'Las fechas de inicio y fin deben ser el mismo día para que el evento se repita.';
 
   @override
   String get startDate => 'Fecha de inicio:';
@@ -374,17 +372,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get endDate => 'Fecha de fin:';
 
   @override
-  String get noDaysSelected => 'No hay dÃ­as seleccionados';
+  String get noDaysSelected => 'No hay días seleccionados';
 
   @override
-  String get selectRepetition => 'Seleccionar repeticiÃ³n';
+  String get selectRepetition => 'Seleccionar repetición';
 
   @override
-  String get selectDay => 'Seleccionar dÃ­a:';
+  String get selectDay => 'Seleccionar día:';
 
   @override
   String dayRepetitionInf(int concurrenceWeeks) {
-    return 'Este evento se repetirÃ¡ cada $concurrenceWeeks dÃ­a.';
+    return 'Este evento se repetirá cada $concurrenceWeeks día.';
   }
 
   @override
@@ -393,12 +391,12 @@ class AppLocalizationsEs extends AppLocalizations {
       String customDaysOfWeeksString,
       String lastDay,
       Object customDaysOfWeekString) {
-    return 'Este evento se repetirÃ¡ cada $concurrenceWeeks semana(s) el $customDaysOfWeekString, y $lastDay';
+    return 'Este evento se repetirá cada $concurrenceWeeks semana(s) el $customDaysOfWeekString, y $lastDay';
   }
 
   @override
   String weeklyRepetitionInf1(int repeatInterval, String selectedDayNames) {
-    return 'Este evento se repetirÃ¡ cada $repeatInterval semana(s) en \$$selectedDayNames';
+    return 'Este evento se repetirá cada $repeatInterval semana(s) en \$$selectedDayNames';
   }
 
   @override
@@ -408,7 +406,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tue => 'Mar';
 
   @override
-  String get wed => 'MiÃ©';
+  String get wed => 'Mié';
 
   @override
   String get thu => 'Jue';
@@ -417,36 +415,36 @@ class AppLocalizationsEs extends AppLocalizations {
   String get fri => 'Vie';
 
   @override
-  String get sat => 'SÃ¡b';
+  String get sat => 'Sáb';
 
   @override
   String get sun => 'Dom';
 
   @override
   String errorSelectedDays(String selectedDays) {
-    return 'El dÃ­a del evento $selectedDays debe coincidir con uno de los dÃ­as seleccionados.';
+    return 'El día del evento $selectedDays debe coincidir con uno de los días seleccionados.';
   }
 
   @override
   String textFieldGroupName(int TITLE_MAX_LENGHT) {
-    return 'Introduce el nombre del grupo (LÃ­mite: $TITLE_MAX_LENGHT caracteres)';
+    return 'Introduce el nombre del grupo (Límite: $TITLE_MAX_LENGHT caracteres)';
   }
 
   @override
   String textFieldDescription(int DESCRIPTION_MAX_LENGHT) {
-    return 'Introduce la descripciÃ³n del grupo (LÃ­mite: $DESCRIPTION_MAX_LENGHT caracteres)';
+    return 'Introduce la descripción del grupo (Límite: $DESCRIPTION_MAX_LENGHT caracteres)';
   }
 
   @override
   String monthlyRepetitionInf(
       String selectedDay, int repeatInterval, Object selectDay) {
-    return 'Este evento se repetirÃ¡ el dÃ­a $selectDay de cada $repeatInterval mes(es)';
+    return 'Este evento se repetirá el día $selectDay de cada $repeatInterval mes(es)';
   }
 
   @override
   String yearlyRepetitionInf(
       String selectedDay, int repeatInterval, Object selectDay) {
-    return 'Este evento se repetirÃ¡ el dÃ­a $selectDay de cada $repeatInterval aÃ±o(s)';
+    return 'Este evento se repetirá el día $selectDay de cada $repeatInterval año(s)';
   }
 
   @override
@@ -462,10 +460,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get cancel => 'Cancelar';
 
   @override
-  String get confirmation => 'ConfirmaciÃ³n';
+  String get confirmation => 'Confirmación';
 
   @override
-  String get removeConfirmation => 'Confirmar eliminaciÃ³n';
+  String get removeConfirmation => 'Confirmar eliminación';
 
   @override
   String get permissionDenied => 'Permiso denegado';
@@ -489,24 +487,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get close => 'Cerrar';
 
   @override
-  String get addNewUser => 'AÃ±adir un nuevo usuario a tu grupo';
+  String get addNewUser => 'Añadir un nuevo usuario a tu grupo';
 
   @override
   String get cannotRemoveYourself => 'No puedes eliminarte del grupo';
 
   @override
   String get requiredTextFields =>
-      'El nombre y la descripciÃ³n del grupo son obligatorios.';
+      'El nombre y la descripción del grupo son obligatorios.';
 
   @override
-  String get groupNameRequired => 'El nombre del grupo no puede estar vacÃ­o';
+  String get groupNameRequired => 'El nombre del grupo no puede estar vacío';
 
   @override
-  String get groupEdited => 'Â¡Grupo editado con Ã©xito!';
+  String get groupEdited => '¡Grupo editado con éxito!';
 
   @override
   String get failedToEditGroup =>
-      'Error al editar el grupo. Por favor, intÃ©ntalo de nuevo';
+      'Error al editar el grupo. Por favor, inténtalo de nuevo';
 
   @override
   String get searchPerson => 'Buscar por nombre de usuario';
@@ -516,13 +514,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get confirmRemovalMessage =>
-      'Â¿EstÃ¡s seguro de que quieres eliminar este grupo?';
+      '¿Estás seguro de que quieres eliminar este grupo?';
 
   @override
-  String get confirmRemoval => 'Confirmar eliminaciÃ³n';
+  String get confirmRemoval => 'Confirmar eliminación';
 
   @override
-  String get groupDeletedSuccessfully => 'Â¡Grupo eliminado con Ã©xito!';
+  String get groupDeletedSuccessfully => '¡Grupo eliminado con éxito!';
 
   @override
   String get showInactiveClients => 'Mostrar clientes inactivos';
@@ -532,12 +530,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String removeClientConfirm(Object name) {
-    return 'Â¿Eliminar el cliente \"$name\"?';
+    return '¿Eliminar el cliente \"$name\"?';
   }
 
   @override
   String removeServiceConfirm(Object name) {
-    return 'Â¿Eliminar el servicio \"$name\"?';
+    return '¿Eliminar el servicio \"$name\"?';
   }
 
   @override
@@ -572,7 +570,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noGroupsFound => 'No se encontraron grupos';
 
   @override
-  String get noGroupsDescription => 'Crea o Ãºnete a un grupo para comenzar';
+  String get noGroupsDescription => 'Crea o únete a un grupo para comenzar';
 
   @override
   String get searchGroups => 'Buscar grupos';
@@ -608,37 +606,37 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String weatherTempLine(Object max, Object min) {
-    return 'MÃ¡x $maxÂ° / MÃ­n $minÂ°';
+    return 'Máx $max° / Mín $min°';
   }
 
   @override
-  String get weatherFunTooHot => 'Mantente hidratado, harÃ¡ mucho calor.';
+  String get weatherFunTooHot => 'Mantente hidratado, hará mucho calor.';
 
   @override
-  String get weatherFunTooCold => 'AbrÃ­gate bien, harÃ¡ mucho frÃ­o.';
+  String get weatherFunTooCold => 'Abrígate bien, hará mucho frío.';
 
   @override
   String get weatherFunGradeA =>
-      'DÃ­a de calificaciÃ³n A. Â¡Planea algo divertido al aire libre!';
+      'Día de calificación A. ¡Planea algo divertido al aire libre!';
 
   @override
-  String get weatherFunGradeB => 'El clima estÃ¡ bastante bien en general.';
+  String get weatherFunGradeB => 'El clima está bastante bien en general.';
 
   @override
   String get weatherFunGradeC => 'Ten un paraguas a mano por si acaso.';
 
   @override
   String get weatherFunGradeD =>
-      'QuizÃ¡s planees actividades en interiores hoy.';
+      'Quizás planees actividades en interiores hoy.';
 
   @override
-  String get weatherFunDefault => 'Aprovecha el dÃ­a sin importar el clima.';
+  String get weatherFunDefault => 'Aprovecha el día sin importar el clima.';
 
   @override
-  String get weatherForecastLoading => 'Cargando pronÃ³stico del tiempo...';
+  String get weatherForecastLoading => 'Cargando pronóstico del tiempo...';
 
   @override
-  String get weatherForecastEmpty => 'No hay datos de pronÃ³stico disponibles.';
+  String get weatherForecastEmpty => 'No hay datos de pronóstico disponibles.';
 
   @override
   String get weatherForecastRainShort => 'lluvia';
@@ -650,7 +648,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tuesday => 'martes';
 
   @override
-  String get wednesday => 'miÃ©rcoles';
+  String get wednesday => 'miércoles';
 
   @override
   String get thursday => 'jueves';
@@ -659,13 +657,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get friday => 'viernes';
 
   @override
-  String get saturday => 'sÃ¡bado';
+  String get saturday => 'sábado';
 
   @override
   String get sunday => 'domingo';
 
   @override
-  String get save => 'Guardar EdiciÃ³n';
+  String get save => 'Guardar Edición';
 
   @override
   String get groupNameText => 'Nombre del grupo';
@@ -677,46 +675,46 @@ class AppLocalizationsEs extends AppLocalizations {
   String get enableRepetitiveEvents => 'Habilitar eventos repetitivos';
 
   @override
-  String get passwordChangedSuccessfully => 'ContraseÃ±a cambiada con Ã©xito';
+  String get passwordChangedSuccessfully => 'Contraseña cambiada con éxito';
 
   @override
   String get currentPasswordIncorrect =>
-      'La contraseÃ±a actual es incorrecta. Por favor, intÃ©ntalo de nuevo.';
+      'La contraseña actual es incorrecta. Por favor, inténtalo de nuevo.';
 
   @override
   String get newPasswordConfirmationError =>
-      'La nueva contraseÃ±a y la confirmaciÃ³n no coinciden.';
+      'La nueva contraseña y la confirmación no coinciden.';
 
   @override
   String get changedPasswordError =>
-      'Error al cambiar la contraseÃ±a. Por favor, intÃ©ntalo de nuevo';
+      'Error al cambiar la contraseña. Por favor, inténtalo de nuevo';
 
   @override
   String get passwordContainsUnwantedChar =>
-      'La contraseÃ±a contiene caracteres no deseados.';
+      'La contraseña contiene caracteres no deseados.';
 
   @override
   String get changeUsername => 'Cambiar tu nombre de usuario';
 
   @override
   String get successChangingUsername =>
-      'Â¡Nombre de usuario actualizado con Ã©xito!';
+      '¡Nombre de usuario actualizado con éxito!';
 
   @override
   String get usernameAlreadyTaken =>
-      'El nombre de usuario ya estÃ¡ en uso. Elige otro.';
+      'El nombre de usuario ya está en uso. Elige otro.';
 
   @override
   String get errorUnwantedCharactersUsername =>
-      'Caracteres invÃ¡lidos en el nombre de usuario. Usa solo caracteres alfanumÃ©ricos y guiones bajos.';
+      'Caracteres inválidos en el nombre de usuario. Usa solo caracteres alfanuméricos y guiones bajos.';
 
   @override
   String get errorChangingUsername =>
-      'Error al cambiar el nombre de usuario. Por favor, intÃ©ntalo de nuevo mÃ¡s tarde.';
+      'Error al cambiar el nombre de usuario. Por favor, inténtalo de nuevo más tarde.';
 
   @override
   String get errorChangingPassword =>
-      'Error al cambiar la contraseÃ±a. Por favor, intÃ©ntalo de nuevo.';
+      'Error al cambiar la contraseña. Por favor, inténtalo de nuevo.';
 
   @override
   String get errorUsernameLength =>
@@ -728,7 +726,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get forgotPassword => 'Recupera tu contraseÃ±a aquÃ­.';
+  String get forgotPassword => 'Recupera tu contraseña aquí.';
 
   @override
   String get nameRequired => 'El nombre es obligatorio';
@@ -737,34 +735,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String get userNameRequired => 'El nombre de usuario es obligatorio';
 
   @override
-  String get emailRequired => 'El correo electrÃ³nico es obligatorio';
+  String get emailRequired => 'El correo electrónico es obligatorio';
 
   @override
   String get passwordLength =>
-      'La contraseÃ±a debe tener un mÃ¡ximo de 6 caracteres';
+      'La contraseña debe tener un máximo de 6 caracteres';
 
   @override
-  String get groupNotCreated => 'Error al crear el grupo, intÃ©ntalo de nuevo';
+  String get groupNotCreated => 'Error al crear el grupo, inténtalo de nuevo';
 
   @override
   String get questionDeleteGroup =>
-      'Â¿EstÃ¡s seguro de que quieres eliminar este grupo?';
+      '¿Estás seguro de que quieres eliminar este grupo?';
 
   @override
   String get errorEventCreation =>
-      'Se produjo un error al crear el evento, intÃ©ntalo mÃ¡s tarde';
+      'Se produjo un error al crear el evento, inténtalo más tarde';
 
   @override
   String get eventEditFailed =>
-      'Se produjo un error al editar el evento, intÃ©ntalo mÃ¡s tarde';
+      'Se produjo un error al editar el evento, inténtalo más tarde';
 
   @override
   String get noEventsFoundForDate =>
-      'No se encontraron eventos para esta fecha, intÃ©ntalo mÃ¡s tarde.';
+      'No se encontraron eventos para esta fecha, inténtalo más tarde.';
 
   @override
   String get confirmDelete =>
-      'Â¿EstÃ¡s seguro de que quieres eliminar este evento?';
+      '¿Estás seguro de que quieres eliminar este evento?';
 
   @override
   String get confirmDeleteDescription => 'Eliminar evento.';
@@ -773,7 +771,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get groupNameLabel => 'Nombre del grupo';
 
   @override
-  String get descriptionLabel => 'DescripciÃ³n';
+  String get descriptionLabel => 'Descripción';
 
   @override
   String get refresh => 'Actualizando pantalla...';
@@ -817,26 +815,26 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String timeDaysAgo(Object days) {
-    return 'hace $days dÃ­as';
+    return 'hace $days días';
   }
 
   @override
-  String get timeLast30Days => 'Ãšltimos 30 dÃ­as';
+  String get timeLast30Days => 'Últimos 30 días';
 
   @override
   String get groupRecent => 'Reciente';
 
   @override
-  String get groupLast7Days => 'Ãšltimos 7 dÃ­as';
+  String get groupLast7Days => 'Últimos 7 días';
 
   @override
-  String get groupLast30Days => 'Ãšltimos 30 dÃ­as';
+  String get groupLast30Days => 'Últimos 30 días';
 
   @override
   String get groupOlder => 'Antiguos';
 
   @override
-  String get notificationGroupCreationTitle => 'Â¡Felicidades!';
+  String get notificationGroupCreationTitle => '¡Felicidades!';
 
   @override
   String notificationGroupCreationMessage(Object groupName) {
@@ -852,7 +850,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get notificationInvitationTitle => 'InvitaciÃ³n al grupo';
+  String get notificationInvitationTitle => 'Invitación al grupo';
 
   @override
   String notificationInvitationMessage(Object groupName) {
@@ -860,12 +858,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get notificationInvitationDeniedTitle => 'InvitaciÃ³n rechazada';
+  String get notificationInvitationDeniedTitle => 'Invitación rechazada';
 
   @override
   String notificationInvitationDeniedMessage(
       Object groupName, Object userName) {
-    return '$userName rechazÃ³ la invitaciÃ³n para unirse a $groupName';
+    return '$userName rechazó la invitación para unirse a $groupName';
   }
 
   @override
@@ -873,7 +871,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String notificationUserAcceptedMessage(Object groupName, Object userName) {
-    return '$userName ha aceptado la invitaciÃ³n para unirse a $groupName';
+    return '$userName ha aceptado la invitación para unirse a $groupName';
   }
 
   @override
@@ -910,7 +908,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get notificationUserLeftTitle => 'Usuario saliÃ³ del grupo';
+  String get notificationUserLeftTitle => 'Usuario salió del grupo';
 
   @override
   String notificationUserLeftMessage(Object groupName, Object userName) {
@@ -922,7 +920,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String notificationGroupUpdateMessage(Object editorName, Object groupName) {
-    return '$editorName actualizÃ³ el grupo: $groupName';
+    return '$editorName actualizó el grupo: $groupName';
   }
 
   @override
@@ -941,21 +939,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String eventDayNotIncludedWarning(String day) {
-    return 'Advertencia: El evento comienza el $day, pero este dÃ­a no estÃ¡ seleccionado en el patrÃ³n de repeticiÃ³n.';
+    return 'Advertencia: El evento comienza el $day, pero este día no está seleccionado en el patrón de repetición.';
   }
 
   @override
-  String get removeRecurrence => 'Eliminar repeticiÃ³n';
+  String get removeRecurrence => 'Eliminar repetición';
 
   @override
   String get removeRecurrenceConfirm =>
-      'Â¿Deseas eliminar la repeticiÃ³n de este evento?';
+      '¿Deseas eliminar la repetición de este evento?';
 
   @override
   String get reminderLabel => 'Recordatorio';
 
   @override
-  String get reminderHelper => 'Elige cuÃ¡ndo deseas ser recordado';
+  String get reminderHelper => 'Elige cuándo deseas ser recordado';
 
   @override
   String get reminderOptionAtTime => 'A la hora del evento';
@@ -976,13 +974,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reminderOption2hours => '2 horas antes';
 
   @override
-  String get reminderOption1day => '1 dÃ­a antes';
+  String get reminderOption1day => '1 día antes';
 
   @override
-  String get reminderOption2days => '2 dÃ­as antes';
+  String get reminderOption2days => '2 días antes';
 
   @override
-  String get reminderOption3days => '3 dÃ­as antes';
+  String get reminderOption3days => '3 días antes';
 
   @override
   String get saveChangesMessage => 'Guardando cambios...';
@@ -1003,7 +1001,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get repeatEventLabel => 'Repetir evento:';
 
   @override
-  String get repeatYes => 'SÃ­';
+  String get repeatYes => 'Sí';
 
   @override
   String get repeatNo => 'No';
@@ -1020,7 +1018,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get userDropdownSelect => 'Seleccionar usuarios';
 
   @override
-  String get noUsersSelected => 'NingÃºn usuario seleccionado.';
+  String get noUsersSelected => 'Ningún usuario seleccionado.';
 
   @override
   String get noUserRolesAvailable =>
@@ -1033,7 +1031,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get eventDetailsTitle => 'Detalles del evento';
 
   @override
-  String get eventTitleHint => 'TÃ­tulo';
+  String get eventTitleHint => 'Título';
 
   @override
   String get eventStartDateHint => 'Fecha de inicio';
@@ -1042,16 +1040,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get eventEndDateHint => 'Fecha de fin';
 
   @override
-  String get eventLocationHint => 'UbicaciÃ³n';
+  String get eventLocationHint => 'Ubicación';
 
   @override
-  String get eventDescriptionHint => 'DescripciÃ³n';
+  String get eventDescriptionHint => 'Descripción';
 
   @override
   String get eventNoteHint => 'Nota';
 
   @override
-  String get eventRecurrenceHint => 'Regla de repeticiÃ³n';
+  String get eventRecurrenceHint => 'Regla de repetición';
 
   @override
   String get notificationEventCreatedTitle => 'Evento creado';
@@ -1117,8 +1115,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get notificationEventReminderManual =>
-      'NotificaciÃ³n de prueba manual';
+  String get notificationEventReminderManual => 'Notificación de prueba manual';
 
   @override
   String get categoryGroup => 'Grupo';
@@ -1133,29 +1130,29 @@ class AppLocalizationsEs extends AppLocalizations {
   String get categoryOther => 'Otro';
 
   @override
-  String get passwordRecoveryTitle => 'RecuperaciÃ³n de contraseÃ±a';
+  String get passwordRecoveryTitle => 'Recuperación de contraseña';
 
   @override
   String get passwordRecoveryInstruction =>
-      'Introduce tu correo electrÃ³nico o nombre de usuario para iniciar la recuperaciÃ³n de contraseÃ±a:';
+      'Introduce tu correo electrónico o nombre de usuario para iniciar la recuperación de contraseña:';
 
   @override
-  String get emailOrUsername => 'Correo electrÃ³nico o nombre de usuario';
+  String get emailOrUsername => 'Correo electrónico o nombre de usuario';
 
   @override
-  String get resetPassword => 'Restablecer contraseÃ±a';
+  String get resetPassword => 'Restablecer contraseña';
 
   @override
   String get passwordRecoveryEmptyField =>
-      'Por favor, introduce tu correo electrÃ³nico o nombre de usuario.';
+      'Por favor, introduce tu correo electrónico o nombre de usuario.';
 
   @override
   String get passwordRecoverySuccess =>
-      'Se ha recibido una solicitud para restablecer la contraseÃ±a. Contacta con soporte o revisa la configuraciÃ³n de tu cuenta.';
+      'Se ha recibido una solicitud para restablecer la contraseña. Contacta con soporte o revisa la configuración de tu cuenta.';
 
   @override
   String get endDateMustBeAfterStartDate =>
-      'La fecha de finalizaciÃ³n debe ser posterior a la fecha de inicio';
+      'La fecha de finalización debe ser posterior a la fecha de inicio';
 
   @override
   String get pleaseSelectAtLeastOneUser =>
@@ -1179,7 +1176,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get groupDescriptionLabel => 'DescripciÃ³n del grupo';
+  String get groupDescriptionLabel => 'Descripción del grupo';
 
   @override
   String get agenda => 'Agenda';
@@ -1188,10 +1185,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get today => 'Hoy';
 
   @override
-  String get tomorrow => 'MaÃ±ana';
+  String get tomorrow => 'Mañana';
 
   @override
-  String get noItems => 'Nada prÃ³ximo';
+  String get noItems => 'Nada próximo';
 
   @override
   String get home => 'Inicio';
@@ -1206,7 +1203,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get username => 'Nombre de usuario';
 
   @override
-  String get email => 'Correo electrÃ³nico';
+  String get email => 'Correo electrónico';
 
   @override
   String get saving => 'Guardando...';
@@ -1231,10 +1228,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No autenticado o falta el usuario';
 
   @override
-  String get noUserLoaded => 'No se ha cargado ningÃºn usuario';
+  String get noUserLoaded => 'No se ha cargado ningún usuario';
 
   @override
-  String get motivationSectionTitle => 'Frase del dÃ­a';
+  String get motivationSectionTitle => 'Frase del día';
 
   @override
   String get groupSectionTitle => 'Grupos';
@@ -1246,11 +1243,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clearAll => 'Borrar todo';
 
   @override
-  String get clearAllConfirmTitle => 'Â¿Borrar todo?';
+  String get clearAllConfirmTitle => '¿Borrar todo?';
 
   @override
   String get clearAllConfirmMessage =>
-      'Â¿Quieres eliminar todas las notificaciones? Esta acciÃ³n no se puede deshacer.';
+      '¿Quieres eliminar todas las notificaciones? Esta acción no se puede deshacer.';
 
   @override
   String get clearedAllSuccess => 'Se borraron todas las notificaciones';
@@ -1259,27 +1256,27 @@ class AppLocalizationsEs extends AppLocalizations {
   String get all => 'Todos';
 
   @override
-  String get showPassword => 'Mostrar contraseÃ±a';
+  String get showPassword => 'Mostrar contraseña';
 
   @override
-  String get hidePassword => 'Ocultar contraseÃ±a';
+  String get hidePassword => 'Ocultar contraseña';
 
   @override
   String get termsAndPrivacy =>
-      'Al registrarte, aceptas nuestros TÃ©rminos y la PolÃ­tica de Privacidad';
+      'Al registrarte, aceptas nuestros Términos y la Política de Privacidad';
 
   @override
-  String get passwordRequired => 'La contraseÃ±a es obligatoria';
+  String get passwordRequired => 'La contraseña es obligatoria';
 
   @override
-  String get welcomeTitle => 'Â¡Bienvenido!';
+  String get welcomeTitle => '¡Bienvenido!';
 
   @override
   String get welcomeSubtitle =>
-      'Crea una cuenta para comenzar a usar nuestra aplicaciÃ³n.';
+      'Crea una cuenta para comenzar a usar nuestra aplicación.';
 
   @override
-  String get passwordWeak => 'DÃ©bil';
+  String get passwordWeak => 'Débil';
 
   @override
   String get passwordMedium => 'Media';
@@ -1288,10 +1285,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get passwordStrong => 'Fuerte';
 
   @override
-  String get terms => 'TÃ©rminos';
+  String get terms => 'Términos';
 
   @override
-  String get privacyPolicy => 'PolÃ­tica de Privacidad';
+  String get privacyPolicy => 'Política de Privacidad';
 
   @override
   String get termsAndPrivacyPrefix => 'Al registrarte, aceptas nuestros ';
@@ -1300,13 +1297,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get andSeparator => ' y ';
 
   @override
-  String get alreadyHaveAccount => 'Â¿Ya tienes una cuenta?';
+  String get alreadyHaveAccount => '¿Ya tienes una cuenta?';
 
   @override
-  String get dontHaveAccount => 'Â¿No tienes una cuenta?';
+  String get dontHaveAccount => '¿No tienes una cuenta?';
 
   @override
-  String get loginWelcomeTitle => 'Â¡Bienvenido de nuevo!';
+  String get loginWelcomeTitle => '¡Bienvenido de nuevo!';
 
   @override
   String get loginWelcomeSubtitle =>
@@ -1320,10 +1317,55 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sendResetLink => 'Enviar enlace de restablecimiento';
 
   @override
-  String get resetLinkSent => 'Â¡Enlace de restablecimiento enviado!';
+  String get resetLinkSent => '¡Enlace de restablecimiento enviado!';
 
   @override
-  String get noUpcomingHint => 'Prueba con otra categorÃ­a o amplÃ­a el rango.';
+  String get forgotPasswordNeutralSuccess =>
+      'Si existe una cuenta, hemos enviado un enlace para restablecer la contraseña.';
+
+  @override
+  String get forgotPasswordNetworkError =>
+      'No se pudo enviar el enlace. Revisa tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get passwordMinLength =>
+      'La contraseña debe tener al menos 8 caracteres.';
+
+  @override
+  String get confirmPasswordRequired => 'Confirma tu nueva contraseña.';
+
+  @override
+  String get resetPasswordSubmit => 'Restablecer contraseña';
+
+  @override
+  String get resetPasswordInvalidLinkTitle =>
+      'Enlace de restablecimiento inválido';
+
+  @override
+  String get resetPasswordInvalidLinkBody =>
+      'Este enlace no es válido o no incluye token. Solicita un nuevo enlace.';
+
+  @override
+  String get resetPasswordRequestNewLink => 'Solicitar nuevo enlace';
+
+  @override
+  String get resetPasswordInvalidToken =>
+      'Este token es inválido o ha expirado.';
+
+  @override
+  String get resetPasswordGenericError =>
+      'No se pudo restablecer la contraseña. Inténtalo de nuevo.';
+
+  @override
+  String get resetPasswordSuccessTitle =>
+      'Contraseña restablecida correctamente';
+
+  @override
+  String get resetPasswordSuccessBody =>
+      'Tu contraseña se actualizó. Ya puedes iniciar sesión con la nueva contraseña.';
+
+  @override
+  String get noUpcomingHint => 'Prueba con otra categoría o amplía el rango.';
 
   @override
   String get agendaSelectGroupPrompt =>
@@ -1339,10 +1381,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get completed => 'Completados';
 
   @override
-  String get showFourteenDays => '14 dÃ­as';
+  String get showFourteenDays => '14 días';
 
   @override
-  String get showThirtyDays => '30 dÃ­as';
+  String get showThirtyDays => '30 días';
 
   @override
   String get meetings => 'Reuniones';
@@ -1386,10 +1428,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get notifyMe => 'Notificarme';
 
   @override
-  String get notifyMeOnSubtitle => 'RecibirÃ¡s un recordatorio de este evento';
+  String get notifyMeOnSubtitle => 'Recibirás un recordatorio de este evento';
 
   @override
-  String get notifyMeOffSubtitle => 'No se enviarÃ¡ ningÃºn recordatorio';
+  String get notifyMeOffSubtitle => 'No se enviará ningún recordatorio';
 
   @override
   String get noInvitableUsers => 'No hay usuarios disponibles para invitar';
@@ -1398,13 +1440,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashboard => 'Panel de control';
 
   @override
-  String get noClientsYet => 'AÃºn no hay clientes';
+  String get noClientsYet => 'Aún no hay clientes';
 
   @override
-  String get addYourFirstClient => 'AÃ±ade tu primer cliente a este grupo.';
+  String get addYourFirstClient => 'Añade tu primer cliente a este grupo.';
 
   @override
-  String get addClient => 'AÃ±adir cliente';
+  String get addClient => 'Añadir cliente';
 
   @override
   String get active => 'Activo';
@@ -1413,17 +1455,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get inactive => 'Inactivo';
 
   @override
-  String get noServicesYet => 'AÃºn no hay servicios';
+  String get noServicesYet => 'Aún no hay servicios';
 
   @override
   String get createServicesSubtitle =>
       'Crea servicios que puedes asignar a las reservas.';
 
   @override
-  String get addService => 'AÃ±adir servicio';
+  String get addService => 'Añadir servicio';
 
   @override
-  String get noDefaultDuration => 'Sin duraciÃ³n predeterminada';
+  String get noDefaultDuration => 'Sin duración predeterminada';
 
   @override
   String get minutesAbbrev => 'min';
@@ -1441,10 +1483,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get nameIsRequired => 'El nombre es obligatorio';
 
   @override
-  String get phoneLabel => 'TelÃ©fono';
+  String get phoneLabel => 'Teléfono';
 
   @override
-  String get emailLabel => 'Correo electrÃ³nico';
+  String get emailLabel => 'Correo electrónico';
 
   @override
   String get saveChanges => 'Guardar cambios';
@@ -1554,7 +1596,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sectionOverview => 'Resumen';
 
   @override
-  String get sectionUpcoming => 'PrÃ³ximos';
+  String get sectionUpcoming => 'Próximos';
 
   @override
   String get sectionEvents => 'Eventos';
@@ -1567,7 +1609,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Marca las visitas como finalizadas cuando termines.';
 
   @override
-  String get pendingEventsEmpty => 'Todo al dÃ­a.';
+  String get pendingEventsEmpty => 'Todo al día.';
 
   @override
   String get pendingEventsError => 'No pudimos cargar los eventos pendientes.';
@@ -1583,7 +1625,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Visitas y tareas completadas recientemente.';
 
   @override
-  String get completedEventsEmpty => 'AÃºn no hay eventos completados.';
+  String get completedEventsEmpty => 'Aún no hay eventos completados.';
 
   @override
   String get roleCardTapHint => 'Toca para ver todas las capacidades del rol.';
@@ -1624,7 +1666,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get noCalendarWarning =>
-      'Este grupo aÃºn no tiene un calendario vinculado.';
+      'Este grupo aún no tiene un calendario vinculado.';
 
   @override
   String get sectionFilters => 'Filtros';
@@ -1634,7 +1676,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get noMembersMatchFilters =>
-      'NingÃºn miembro coincide con estos filtros.';
+      'Ningún miembro coincide con estos filtros.';
 
   @override
   String get tryAdjustingFilters => 'Prueba ajustando los filtros de arriba.';
@@ -1684,10 +1726,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get share => 'Compartir';
 
   @override
-  String get copiedToClipboard => 'Â¡Copiado!';
+  String get copiedToClipboard => '¡Copiado!';
 
   @override
-  String get comingSoon => 'PrÃ³ximamente';
+  String get comingSoon => 'Próximamente';
 
   @override
   String get team => 'Equipo';
@@ -1726,14 +1768,14 @@ class AppLocalizationsEs extends AppLocalizations {
       count,
       locale: localeName,
       other: '# notificaciones',
-      one: '# notificaciÃ³n',
+      one: '# notificación',
     );
     return '$_temp0';
   }
 
   @override
   String get clearAllConfirm =>
-      'Â¿EstÃ¡s seguro de que deseas eliminar todas las notificaciones?';
+      '¿Estás seguro de que deseas eliminar todas las notificaciones?';
 
   @override
   String get clearedAllNotifications =>
@@ -1751,7 +1793,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get groupNotificationsEmpty =>
-      'Este grupo todavÃ­a no tiene notificaciones.';
+      'Este grupo todavía no tiene notificaciones.';
 
   @override
   String get groupNotificationsError =>
@@ -1766,7 +1808,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get error => 'Error';
 
   @override
-  String get typeNameOrEmail => 'Escribe un nombre o correo electrÃ³nico';
+  String get typeNameOrEmail => 'Escribe un nombre o correo electrónico';
 
   @override
   String noMatchesForX(String query) {
@@ -1778,7 +1820,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get noMatchesInvite =>
-      'No se encontraron resultados. Â¿Quieres invitar por correo?';
+      'No se encontraron resultados. ¿Quieres invitar por correo?';
 
   @override
   String get addPeople => 'Agregar personas';
@@ -1790,7 +1832,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get jobTitle => 'Puesto de trabajo';
 
   @override
-  String get addPhoto => 'AÃ±ade una foto';
+  String get addPhoto => 'Añade una foto';
 
   @override
   String get client => 'Cliente';
@@ -1805,26 +1847,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get simpleEvent => 'Evento simple';
 
   @override
-  String get loadingUpcoming => 'Cargando prÃ³ximosâ€¦';
+  String get loadingUpcoming => 'Cargando próximos…';
 
   @override
-  String get noUpcomingEvents => 'No hay eventos prÃ³ximos';
+  String get noUpcomingEvents => 'No hay eventos próximos';
 
   @override
   String get nothingScheduledSoon =>
       'No hay eventos programados pronto para este grupo.';
 
   @override
-  String get nextUp => 'PrÃ³ximos';
+  String get nextUp => 'Próximos';
 
   @override
-  String get upcomingEventsSubtitle => 'Eventos prÃ³ximos para este grupo';
+  String get upcomingEventsSubtitle => 'Eventos próximos para este grupo';
 
   @override
   String get seeAll => 'Ver todos';
 
   @override
-  String get untitledEvent => '(sin tÃ­tulo)';
+  String get untitledEvent => '(sin título)';
 
   @override
   String get userId => 'ID de usuario';
@@ -1858,10 +1900,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No hay nada programado pronto para este grupo.';
 
   @override
-  String get upcomingEventsForThisGroup => 'Eventos prÃ³ximos de este grupo';
+  String get upcomingEventsForThisGroup => 'Eventos próximos de este grupo';
 
   @override
-  String get untitled => '(sin tÃ­tulo)';
+  String get untitled => '(sin título)';
 
   @override
   String get allTypes => 'Todos';
@@ -1873,13 +1915,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workVisits => 'Trabajo';
 
   @override
-  String get byCategory => 'por categorÃ­a';
+  String get byCategory => 'por categoría';
 
   @override
-  String get sectionInsights => 'GrÃ¡ficas';
+  String get sectionInsights => 'Gráficas';
 
   @override
-  String get insightsTitle => 'GrÃ¡ficas e Informes';
+  String get insightsTitle => 'Gráficas e Informes';
 
   @override
   String get insightsSubtitle => 'Tiempo invertido por cliente o servicio';
@@ -1912,7 +1954,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dateRange1y => '1a';
 
   @override
-  String get dateRangeYTD => 'AÃ±o en curso';
+  String get dateRangeYTD => 'Año en curso';
 
   @override
   String get dateRangeCustom => 'Personalizado';
@@ -1934,13 +1976,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get insightsHintUpcomingOnly =>
-      'Mostrando solo datos futuros. Para rangos pasados, habilita la bÃºsqueda por rango en el servidor.';
+      'Mostrando solo datos futuros. Para rangos pasados, habilita la búsqueda por rango en el servidor.';
 
   @override
-  String get logoutConfirmTitle => 'Cerrar sesiÃ³n';
+  String get logoutConfirmTitle => 'Cerrar sesión';
 
   @override
-  String get logoutConfirmMessage => 'Â¿Seguro que quieres cerrar sesiÃ³n?';
+  String get logoutConfirmMessage => '¿Seguro que quieres cerrar sesión?';
 
   @override
   String get accountSectionTitle => 'Cuenta';
@@ -1949,13 +1991,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get preferencesSectionTitle => 'Preferencias';
 
   @override
-  String get appVersionLabel => 'VersiÃ³n de la app';
+  String get appVersionLabel => 'Versión de la app';
 
   @override
   String get roleCoAdmin => 'Co-Administrador';
 
   @override
-  String get leaveGroupQuestion => 'Â¿Seguro que deseas salir de este grupo?';
+  String get leaveGroupQuestion => '¿Seguro que deseas salir de este grupo?';
 
   @override
   String get removeMembersFirst =>
@@ -1971,7 +2013,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get shareButtonTooltip => 'Compartir';
 
   @override
-  String get soonLabel => 'PrÃ³ximamente';
+  String get soonLabel => 'Próximamente';
 
   @override
   String get detailsSectionTitle => 'Detalles';
@@ -1983,7 +2025,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get rawFieldsSectionTitle => 'Campos sin procesar';
 
   @override
-  String get eventWhenLabel => 'CuÃ¡ndo';
+  String get eventWhenLabel => 'Cuándo';
 
   @override
   String get clientLabel => 'Cliente';
@@ -2004,10 +2046,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get duplicateAction => 'Duplicar';
 
   @override
-  String get analyticsSectionTitle => 'EstadÃ­sticas';
+  String get analyticsSectionTitle => 'Estadísticas';
 
   @override
-  String get graphsComingSoon => 'GrÃ¡ficas prÃ³ximamente';
+  String get graphsComingSoon => 'Gráficas próximamente';
 
   @override
   String get timeTrackingEnabled => 'Seguimiento de tiempo habilitado';
@@ -2079,27 +2121,27 @@ class AppLocalizationsEs extends AppLocalizations {
   String get workerPickerTitle => 'Elegir trabajadores';
 
   @override
-  String get workerPickerSave => 'Guardar selecciÃ³n';
+  String get workerPickerSave => 'Guardar selección';
 
   @override
   String get selectAll => 'Seleccionar todos';
 
   @override
-  String get clearSelection => 'Limpiar selecciÃ³n';
+  String get clearSelection => 'Limpiar selección';
 
   @override
   String get currencyWorkersSectionTitle => 'Trabajadores y moneda';
 
   @override
   String get currencyWorkersSectionDescription =>
-      'Filtra por moneda y elige quÃ© trabajadores incluir.';
+      'Filtra por moneda y elige qué trabajadores incluir.';
 
   @override
   String get currencyHelperText =>
-      'Usa una moneda para acotar la lista rÃ¡pidamente.';
+      'Usa una moneda para acotar la lista rápidamente.';
 
   @override
-  String get workersHelperText => 'Toca para aÃ±adir o quitar trabajadores.';
+  String get workersHelperText => 'Toca para añadir o quitar trabajadores.';
 
   @override
   String get workersValidationHint =>
@@ -2109,46 +2151,46 @@ class AppLocalizationsEs extends AppLocalizations {
   String get notesLabel => 'Notas';
 
   @override
-  String get notesOptionalHint => 'AÃ±ade contexto o dÃ©jalo vacÃ­o';
+  String get notesOptionalHint => 'Añade contexto o déjalo vacío';
 
   @override
-  String get savingLabel => 'Guardandoâ€¦';
+  String get savingLabel => 'Guardando…';
 
   @override
   String get invalidTimeRange =>
       'La hora de fin debe ser posterior a la hora de inicio.';
 
   @override
-  String get toggleEmptyDays => 'Mostrar/ocultar dÃ­as sin horas';
+  String get toggleEmptyDays => 'Mostrar/ocultar días sin horas';
 
   @override
   String didNotWorkDay(Object name) {
-    return '$name no trabajÃ³ este dÃ­a';
+    return '$name no trabajó este día';
   }
 
   @override
   String daysMissedAll(int count) {
-    return '$count dÃ­as sin horas';
+    return '$count días sin horas';
   }
 
   @override
   String daysMissedNoSunday(int count) {
-    return '$count dÃ­as sin horas (lun-sÃ¡b)';
+    return '$count días sin horas (lun-sáb)';
   }
 
   @override
   String avgHoursPerDayWorked(String hours) {
-    return 'Promedio $hours h/dÃ­a trabajadas';
+    return 'Promedio $hours h/día trabajadas';
   }
 
   @override
   String didNotWorkSunday(String name) {
-    return '$name no registrÃ³ horas (domingo)';
+    return '$name no registró horas (domingo)';
   }
 
   @override
   String daysWorked(int count) {
-    return '$count dÃ­as trabajados';
+    return '$count días trabajados';
   }
 
   @override
@@ -2158,14 +2200,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String avgHoursPerDayWorkedWithCount(String hours, int count) {
-    return 'Promedio $hours h/dÃ­a en $count dÃ­as';
+    return 'Promedio $hours h/día en $count días';
   }
 
   @override
   String get unknownWorker => 'Trabajador sin nombre';
 
   @override
-  String get noTrackedYet => 'AÃºn no se ha registrado tiempo';
+  String get noTrackedYet => 'Aún no se ha registrado tiempo';
 
   @override
   String trackedTotal(Object tracked) {
@@ -2173,17 +2215,17 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get somethingWentWrong => 'Algo saliÃ³ mal';
+  String get somethingWentWrong => 'Algo salió mal';
 
   @override
   String get tryAgain => 'Intentar de nuevo';
 
   @override
-  String get noWorkersYetTitle => 'AÃºn no hay trabajadores';
+  String get noWorkersYetTitle => 'Aún no hay trabajadores';
 
   @override
   String get noWorkersYetSubtitle =>
-      'Habilita el seguimiento para comenzar a contar las horas y aÃ±adir trabajadores.';
+      'Habilita el seguimiento para comenzar a contar las horas y añadir trabajadores.';
 
   @override
   String get timeTrackingTitle => 'Seguimiento de tiempo';
@@ -2203,11 +2245,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Los eventos deben crearse dentro de este horario.';
 
   @override
-  String get businessHoursUnset => 'AÃºn no configurado';
+  String get businessHoursUnset => 'Aún no configurado';
 
   @override
   String businessHoursRange(String start, String end, String timezone) {
-    return '$start â€“ $end Â· $timezone';
+    return '$start – $end · $timezone';
   }
 
   @override
@@ -2254,11 +2296,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get timeTrackingDisabledTitle =>
-      'El seguimiento de tiempo estÃ¡ desactivado';
+      'El seguimiento de tiempo está desactivado';
 
   @override
   String get timeTrackingDisabledSubtitle =>
-      'ActÃ­valo para comenzar a registrar las horas de tu equipo.';
+      'Actívalo para comenzar a registrar las horas de tu equipo.';
 
   @override
   String get createWorkerTitle => 'Crear trabajador';
@@ -2268,7 +2310,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get linkExistingUserHint =>
-      'Si el trabajador ya tiene cuenta, vincÃºlala aquÃ­.';
+      'Si el trabajador ya tiene cuenta, vincúlala aquí.';
 
   @override
   String get userIdLabel => 'ID de usuario';
@@ -2306,7 +2348,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get saveWorkerCta => 'Guardar trabajador';
 
   @override
-  String get workerCreated => 'Â¡Trabajador creado con Ã©xito!';
+  String get workerCreated => '¡Trabajador creado con éxito!';
 
   @override
   String get createWorkerCta => 'Agregar trabajador';
@@ -2333,7 +2375,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get saveTimeEntryCta => 'Guardar registro';
 
   @override
-  String get timeEntryCreated => 'Â¡Horas registradas correctamente!';
+  String get timeEntryCreated => '¡Horas registradas correctamente!';
 
   @override
   String get addTimeEntryCta => 'Registrar horas';
@@ -2342,7 +2384,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get timeTrackingActionsCta => 'Acciones';
 
   @override
-  String get noTimeEntriesYetTitle => 'AÃºn no hay registros de tiempo';
+  String get noTimeEntriesYetTitle => 'Aún no hay registros de tiempo';
 
   @override
   String get noTimeEntriesYetSubtitle =>
@@ -2394,7 +2436,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statusInactive => 'Inactivo';
 
   @override
-  String get invalidRate => 'Introduce una tarifa vÃ¡lida';
+  String get invalidRate => 'Introduce una tarifa válida';
 
   @override
   String get editTimeEntry => 'Editar registro de tiempo';
@@ -2418,7 +2460,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get pickEndTime => 'Seleccionar hora de fin';
 
   @override
-  String get noTimeEntries => 'AÃºn no hay registros de tiempo.';
+  String get noTimeEntries => 'Aún no hay registros de tiempo.';
 
   @override
   String totalHoursFormat(Object hours, Object minutes) {
@@ -2427,7 +2469,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String totalHoursAndPayFormat(Object hours, Object pay) {
-    return 'Total: ${hours}h â€“ $pay';
+    return 'Total: ${hours}h – $pay';
   }
 
   @override
@@ -2447,7 +2489,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get areYouSureDelete =>
-      'Â¿Seguro que quieres eliminar este parte de tiempo?';
+      '¿Seguro que quieres eliminar este parte de tiempo?';
 
   @override
   String get entries => 'partes';
@@ -2456,8 +2498,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get exportExcel => 'Exportar';
 
   @override
-  String get exportReady =>
-      'ExportaciÃ³n lista â€” elige dÃ³nde compartir/guardar';
+  String get exportReady => 'Exportación lista — elige dónde compartir/guardar';
 
   @override
   String get previousMonth => 'Mes anterior';
@@ -2473,7 +2514,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get overviewInfoBody =>
-      'Cada tarjeta muestra el mes, horas totales y pago de este trabajador. Toca un mes para ver los partes detallados. Usa las flechas para cambiar de aÃ±o. Desliza hacia abajo para actualizar.';
+      'Cada tarjeta muestra el mes, horas totales y pago de este trabajador. Toca un mes para ver los partes detallados. Usa las flechas para cambiar de año. Desliza hacia abajo para actualizar.';
 
   @override
   String get hours => 'Horas';
@@ -2488,7 +2529,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tipPullToRefresh => 'Desliza hacia abajo para actualizar';
 
   @override
-  String get addWorker => 'AÃ±adir trabajador';
+  String get addWorker => 'Añadir trabajador';
 
   @override
   String get addWorkerSubtitle =>
@@ -2499,7 +2540,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get membersInfoPending =>
-      'Invitaciones enviadas y a la espera de aceptaciÃ³n.';
+      'Invitaciones enviadas y a la espera de aceptación.';
 
   @override
   String get membersInfoNotAccepted =>
@@ -2509,7 +2550,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get contact => 'Contacto';
 
   @override
-  String get e_gJohnDoe => 'p.ej., Corte bÃ¡sico';
+  String get e_gJohnDoe => 'p.ej., Corte básico';
 
   @override
   String get e_gPhone => 'p.ej., +34 600-123-456';
@@ -2518,10 +2559,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get e_gEmail => 'p.ej., juan.perez@ejemplo.com';
 
   @override
-  String get clientWillBeActive => 'El cliente estarÃ¡ activo';
+  String get clientWillBeActive => 'El cliente estará activo';
 
   @override
-  String get clientWillBeInactive => 'El cliente estarÃ¡ inactivo';
+  String get clientWillBeInactive => 'El cliente estará inactivo';
 
   @override
   String get noContactInfo => 'Sin datos de contacto';
@@ -2533,21 +2574,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get inactiveStatus => 'Inactivo';
 
   @override
-  String get serviceWillBeActive => 'El servicio estarÃ¡ activo';
+  String get serviceWillBeActive => 'El servicio estará activo';
 
   @override
-  String get serviceWillBeInactive => 'El servicio estarÃ¡ inactivo';
+  String get serviceWillBeInactive => 'El servicio estará inactivo';
 
   @override
   String get chooseType => 'Elige tipo';
 
   @override
   String get simpleEventHint =>
-      'Crea un evento rÃ¡pido sin seleccionar cliente/servicio.';
+      'Crea un evento rápido sin seleccionar cliente/servicio.';
 
   @override
   String get workVisitHint =>
-      'Registra una visita seleccionando un cliente y uno o mÃ¡s servicios.';
+      'Registra una visita seleccionando un cliente y uno o más servicios.';
 
   @override
   String get color => 'Color';
@@ -2559,10 +2600,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get assignedUsers => 'Usuarios asignados';
 
   @override
-  String get repetition => 'RepeticiÃ³n';
+  String get repetition => 'Repetición';
 
   @override
-  String get category => 'CategorÃ­a';
+  String get category => 'Categoría';
 
   @override
   String get workVisitHintShort =>
@@ -2572,10 +2613,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get simpleEventHintShort => 'Evento simple sin cliente ni servicio.';
 
   @override
-  String get newCategory => 'Nueva categorÃ­a';
+  String get newCategory => 'Nueva categoría';
 
   @override
-  String get newSubcategory => 'Nueva subcategorÃ­a';
+  String get newSubcategory => 'Nueva subcategoría';
 
   @override
   String failedToCreate(String error) {
@@ -2583,16 +2624,16 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get noCategoriesYet => 'AÃºn no hay categorÃ­as';
+  String get noCategoriesYet => 'Aún no hay categorías';
 
   @override
-  String get addCategory => 'Agregar categorÃ­a';
+  String get addCategory => 'Agregar categoría';
 
   @override
-  String get addSubcategory => 'Agregar subcategorÃ­a';
+  String get addSubcategory => 'Agregar subcategoría';
 
   @override
-  String get subcategory => 'SubcategorÃ­a';
+  String get subcategory => 'Subcategoría';
 
   @override
   String get newEvent => 'Nuevo evento ';
@@ -2604,7 +2645,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noGroupAvailable => 'No hay grupo disponible';
 
   @override
-  String get tabDay => 'DÃ­a';
+  String get tabDay => 'Día';
 
   @override
   String get tabWeek => 'Semana';
@@ -2697,7 +2738,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get groupNameHint => 'Introduce el nombre del grupo';
 
   @override
-  String get reviewUsersTitle => 'Miembros â€” RevisiÃ³n y Roles';
+  String get reviewUsersTitle => 'Miembros — Revisión y Roles';
 
   @override
   String get tabUpdateRoles => 'Actualizar roles';
@@ -2713,7 +2754,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String loadMore(Object count) {
-    return 'Cargar mÃ¡s ($count)';
+    return 'Cargar más ($count)';
   }
 
   @override
@@ -2737,16 +2778,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get userAlreadyAdded => 'El usuario ya es miembro';
 
   @override
-  String get userAlreadyPending => 'El usuario ya estÃ¡ en la selecciÃ³n';
+  String get userAlreadyPending => 'El usuario ya está en la selección';
 
   @override
   String selectedCommitted(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Se aÃ±adieron $count usuarios',
-      one: 'Se aÃ±adiÃ³ 1 usuario',
-      zero: 'No se aÃ±adieron usuarios',
+      other: 'Se añadieron $count usuarios',
+      one: 'Se añadió 1 usuario',
+      zero: 'No se añadieron usuarios',
     );
     return '$_temp0';
   }
@@ -2756,7 +2797,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get addUsersHelperText =>
-      'Busca y prepara a los miembros que se aÃ±adirÃ¡n. Puedes definir las funciones de cada usuario antes de enviar los cambios.';
+      'Busca y prepara a los miembros que se añadirán. Puedes definir las funciones de cada usuario antes de enviar los cambios.';
 
   @override
   String get updateRolesHelperText =>
@@ -2776,7 +2817,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tapToChangePhoto => 'Toca para cambiar la foto del grupo';
 
   @override
-  String get tapToAddPhoto => 'Toca para aÃ±adir foto del grupo';
+  String get tapToAddPhoto => 'Toca para añadir foto del grupo';
 
   @override
   String get groupSaved => 'Grupo guardado';
@@ -2794,14 +2835,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get ofThisGroup => 'de este grupo';
 
   @override
-  String get youHaveSuperPowersHere => 'Â¡Tienes sÃºper poderes en este grupo!';
+  String get youHaveSuperPowersHere => '¡Tienes súper poderes en este grupo!';
 
   @override
   String get roleOwnerBullet1 =>
-      'Cambiar la configuraciÃ³n y las funciones del grupo';
+      'Cambiar la configuración y las funciones del grupo';
 
   @override
-  String get roleOwnerBullet2 => 'Gestionar la facturaciÃ³n y la suscripciÃ³n';
+  String get roleOwnerBullet2 => 'Gestionar la facturación y la suscripción';
 
   @override
   String get roleOwnerBullet3 =>
@@ -2841,7 +2882,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get groupSettingsOwnerBannerOwner =>
-      'Eres el propietario de este grupo. Puedes administrar todos los ajustes desde aquÃ­.';
+      'Eres el propietario de este grupo. Puedes administrar todos los ajustes desde aquí.';
 
   @override
   String get groupSettingsOwnerBannerNotOwner =>
@@ -2852,13 +2893,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get groupSettingsOverviewSubtitle =>
-      'InformaciÃ³n general de este grupo.';
+      'Información general de este grupo.';
 
   @override
-  String get groupSettingsDescriptionLabel => 'DescripciÃ³n';
+  String get groupSettingsDescriptionLabel => 'Descripción';
 
   @override
-  String get groupSettingsNoDescription => 'No se proporcionÃ³ descripciÃ³n';
+  String get groupSettingsNoDescription => 'No se proporcionó descripción';
 
   @override
   String get groupSettingsOwnerIdLabel => 'ID del propietario';
@@ -2867,7 +2908,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get groupSettingsCreatedOnLabel => 'Creado el';
 
   @override
-  String get groupSettingsMemberCountLabel => 'NÃºmero de miembros';
+  String get groupSettingsMemberCountLabel => 'Número de miembros';
 
   @override
   String get groupSettingsUserRolesTitle => 'Roles de usuario';
@@ -2877,8 +2918,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Permisos para los usuarios de este grupo.';
 
   @override
-  String get groupSettingsNoRoles =>
-      'AÃºn no hay roles especÃ­ficos asignados.';
+  String get groupSettingsNoRoles => 'Aún no hay roles específicos asignados.';
 
   @override
   String get groupSettingsUserIdLabel => 'ID de usuario:';
@@ -2912,23 +2952,23 @@ class AppLocalizationsEs extends AppLocalizations {
       'Solo el propietario del grupo puede eliminarlo.';
 
   @override
-  String get groupInfo => 'InformaciÃ³n del grupo';
+  String get groupInfo => 'Información del grupo';
 
   @override
-  String get groupInfoSubtitle => 'Nombre, descripciÃ³n y detalles bÃ¡sicos';
+  String get groupInfoSubtitle => 'Nombre, descripción y detalles básicos';
 
   @override
   String get notificationsSubtitle => 'Alertas, recordatorios y preferencias';
 
   @override
-  String get billingDetails => 'Detalles de facturaciÃ³n';
+  String get billingDetails => 'Detalles de facturación';
 
   @override
   String get billingDetailsSubtitle =>
-      'Datos para facturas (razÃ³n social, CIF, direcciÃ³n y contacto).';
+      'Datos para facturas (razón social, CIF, dirección y contacto).';
 
   @override
-  String get billingLegalName => 'RazÃ³n social';
+  String get billingLegalName => 'Razón social';
 
   @override
   String get billingTaxId => 'NIF/CIF';
@@ -2940,7 +2980,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addressStreet => 'Calle';
 
   @override
-  String get addressExtra => 'Complemento de direcciÃ³n';
+  String get addressExtra => 'Complemento de dirección';
 
   @override
   String get addressCity => 'Ciudad';
@@ -2949,22 +2989,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addressProvince => 'Provincia/Estado';
 
   @override
-  String get addressPostalCode => 'CÃ³digo postal';
+  String get addressPostalCode => 'Código postal';
 
   @override
-  String get addressCountry => 'PaÃ­s';
+  String get addressCountry => 'País';
 
   @override
-  String get billingEmailLabel => 'Email de facturaciÃ³n';
+  String get billingEmailLabel => 'Email de facturación';
 
   @override
-  String get billingPhoneLabel => 'TelÃ©fono de facturaciÃ³n';
+  String get billingPhoneLabel => 'Teléfono de facturación';
 
   @override
-  String get billingComplete => 'FacturaciÃ³n lista';
+  String get billingComplete => 'Facturación lista';
 
   @override
-  String get billingMissing => 'Faltan datos de facturaciÃ³n';
+  String get billingMissing => 'Faltan datos de facturación';
 
   @override
   String billingProgressLabel(Object completed, Object total) {
@@ -2972,11 +3012,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get billingProfileTitle => 'Perfil de facturaciÃ³n';
+  String get billingProfileTitle => 'Perfil de facturación';
 
   @override
   String get billingProfileEmpty =>
-      'AÃ±ade los datos del emisor (razÃ³n social, CIF, direcciÃ³n, IVA, IBAN) para emitir facturas.';
+      'Añade los datos del emisor (razón social, CIF, dirección, IVA, IBAN) para emitir facturas.';
 
   @override
   String get billingWebsite => 'Sitio web';
@@ -2992,7 +3032,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get billingTaxRate => 'IVA';
 
   @override
-  String get billingTaxRateHelper => 'IVA por defecto (0â€“100).';
+  String get billingTaxRateHelper => 'IVA por defecto (0–100).';
 
   @override
   String get billingCurrency => 'Moneda';
@@ -3004,20 +3044,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get billingLanguage => 'Idioma';
 
   @override
-  String get billingLanguageHelper => 'CÃ³digo de idioma (p. ej. es, en).';
+  String get billingLanguageHelper => 'Código de idioma (p. ej. es, en).';
 
   @override
-  String get billingAddress => 'DirecciÃ³n';
+  String get billingAddress => 'Dirección';
 
   @override
-  String get billingProfileSaved => 'Perfil de facturaciÃ³n guardado';
+  String get billingProfileSaved => 'Perfil de facturación guardado';
 
   @override
   String get billingLogoUploadTitle => 'Subir logo de la empresa';
 
   @override
   String get billingLogoUploadBody =>
-      'Selecciona un logo PNG o JPG (mÃ¡x. 5 MB). Este logo aparecerÃ¡ en facturas y pies de email.';
+      'Selecciona un logo PNG o JPG (máx. 15 MB). Este logo aparecerá en facturas y pies de email.';
 
   @override
   String get billingLogoUploadSelectFile => 'Seleccionar archivo';
@@ -3030,7 +3070,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get billingLogoUploadError =>
-      'La subida fallÃ³. Intenta con un PNG/JPG mÃ¡s pequeÃ±o.';
+      'El logo debe ser PNG o JPG y no superar 15 MB.';
 
   @override
   String get createInvoiceCta => 'Crear factura';
@@ -3039,11 +3079,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceCreated => 'Factura creada';
 
   @override
-  String get noInvoicesYet => 'AÃºn no hay facturas';
+  String get noInvoicesYet => 'Aún no hay facturas';
 
   @override
   String get noInvoicesYetSubtitle =>
-      'Crea tu primera factura para organizar la facturaciÃ³n.';
+      'Crea tu primera factura para organizar la facturación.';
 
   @override
   String get invoicesListTitle => 'Facturas';
@@ -3056,23 +3096,23 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String invoicesTitle(String groupName) {
-    return 'Facturas Â· $groupName';
+    return 'Facturas · $groupName';
   }
 
   @override
   String get openInvoicesWorkspace => 'Abrir espacio de facturas';
 
   @override
-  String get invoiceNumberLabel => 'NÃºmero de factura (NNN-AA)';
+  String get invoiceNumberLabel => 'Número de factura (NNN-AA)';
 
   @override
   String invoiceNumberHelper(String year) {
-    return 'El sufijo de aÃ±o estÃ¡ fijado a $year. Introduce los 3 dÃ­gitos.';
+    return 'El sufijo de año está fijado a $year. Introduce los 3 dígitos.';
   }
 
   @override
   String get invoiceNumberInvalid =>
-      'Usa tres dÃ­gitos (ej. 001). El aÃ±o se fija al AA actual.';
+      'Usa tres dígitos (ej. 001). El año se fija al AA actual.';
 
   @override
   String get invoiceClientLabel => 'Cliente';
@@ -3096,7 +3136,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceClientSection => 'Datos de cliente';
 
   @override
-  String get invoiceLinesTitle => 'LÃ­neas de factura';
+  String get invoiceLinesTitle => 'Líneas de factura';
 
   @override
   String get invoiceBlocksTitle => 'Bloques de factura';
@@ -3105,7 +3145,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceBlocksModeBlocks => 'Bloques';
 
   @override
-  String get invoiceBlocksModeLines => 'LÃ­neas';
+  String get invoiceBlocksModeLines => 'Líneas';
 
   @override
   String get invoiceLinesModeManual => 'Manual';
@@ -3223,18 +3263,22 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get jsonAutoRepairAppliedSnack =>
+      'JSON corregido automáticamente antes de importar.';
+
+  @override
   String get invoiceAddBlock => 'Agregar bloque';
 
   @override
   String get invoiceBlocksInfoTooltip =>
-      'Los bloques permiten mezclar partidas con encabezados, notas y listas. Solo los Ã­tems facturables afectan los totales.';
+      'Los bloques permiten mezclar partidas con encabezados, notas y listas. Solo los ítems facturables afectan los totales.';
 
   @override
   String get invoiceBlocksEmptyMessage =>
-      'Crea tu factura por bloques (Fecha, SecciÃ³n, Ãtems...)';
+      'Crea tu factura por bloques (Fecha, Sección, Ítems...)';
 
   @override
-  String get invoiceBlocksQuickItem => 'Ãtem';
+  String get invoiceBlocksQuickItem => 'Ítem';
 
   @override
   String get invoiceBlocksQuickDate => 'Fecha';
@@ -3252,39 +3296,39 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceBlockAdvancedHideCta => 'Ocultar avanzado';
 
   @override
-  String get invoiceAddBlockMore => 'MÃ¡s...';
+  String get invoiceAddBlockMore => 'Más...';
 
   @override
   String get invoiceAddBlockRecommended => 'Recomendado';
 
   @override
   String get invoiceAddBlockFooterInsert =>
-      'Se aÃ±adirÃ¡ debajo del bloque actual';
+      'Se añadirá debajo del bloque actual';
 
   @override
   String get invoiceAddBlockFooterOutsideWrapper =>
-      'Se aÃ±adirÃ¡ fuera del bloque agrupado';
+      'Se añadirá fuera del bloque agrupado';
 
   @override
-  String get invoiceWrapperAddInsideLabel => 'AÃ±adir dentro';
+  String get invoiceWrapperAddInsideLabel => 'Añadir dentro';
 
   @override
-  String get invoiceBlockDateAutoFormatCta => 'Usar formato automÃ¡tico';
+  String get invoiceBlockDateAutoFormatCta => 'Usar formato automático';
 
   @override
   String get invoiceBlockTypeLabel => 'Tipo de bloque';
 
   @override
-  String get invoiceBlockTypeItem => 'Ãtem';
+  String get invoiceBlockTypeItem => 'Ítem';
 
   @override
   String get invoiceBlockTypeDate => 'Fecha';
 
   @override
-  String get invoiceBlockTypeSection => 'SecciÃ³n';
+  String get invoiceBlockTypeSection => 'Sección';
 
   @override
-  String get invoiceBlockTypeSubsection => 'SubsecciÃ³n';
+  String get invoiceBlockTypeSubsection => 'Subsección';
 
   @override
   String get invoiceBlockTypeDivider => 'Divisor';
@@ -3305,16 +3349,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceBlockLevelLabel => 'Nivel';
 
   @override
-  String get invoiceBlockBillableLabel => 'Ãtem facturable';
+  String get invoiceBlockBillableLabel => 'Ítem facturable';
 
   @override
-  String get invoiceBlockTitleLabelDate => 'TÃ­tulo de fecha';
+  String get invoiceBlockTitleLabelDate => 'Título de fecha';
 
   @override
-  String get invoiceBlockTitleLabelSection => 'TÃ­tulo de secciÃ³n';
+  String get invoiceBlockTitleLabelSection => 'Título de sección';
 
   @override
-  String get invoiceBlockTitleLabelSubsection => 'TÃ­tulo de subsecciÃ³n';
+  String get invoiceBlockTitleLabelSubsection => 'Título de subsección';
 
   @override
   String get invoiceBlockNoteLabel => 'Nota';
@@ -3338,11 +3382,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceValidationTaxRate => 'El IVA debe estar entre 0 y 100';
 
   @override
-  String get invoiceLinesPlaceholderTitle => 'LÃ­neas de factura pronto';
+  String get invoiceLinesPlaceholderTitle => 'Líneas de factura pronto';
 
   @override
   String get invoiceLinesPlaceholderSubtitle =>
-      'AquÃ­ verÃ¡s los conceptos con cantidad, precio, impuesto y totales.';
+      'Aquí verás los conceptos con cantidad, precio, impuesto y totales.';
 
   @override
   String get unknownClient => 'Cliente desconocido';
@@ -3384,13 +3428,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceNotesLabel => 'Notas';
 
   @override
-  String get invoiceAddLine => 'Agregar lÃ­nea';
+  String get invoiceAddLine => 'Agregar línea';
 
   @override
-  String get invoiceLinesRequired => 'AÃ±ade al menos una lÃ­nea';
+  String get invoiceLinesRequired => 'Añade al menos una línea';
 
   @override
-  String get lineDescription => 'DescripciÃ³n';
+  String get lineDescription => 'Descripción';
 
   @override
   String get lineQuantity => 'Cantidad';
@@ -3438,7 +3482,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceTaxLabel => 'IVA';
 
   @override
-  String get invoiceNoLinesYet => 'Sin lÃ­neas';
+  String get invoiceNoLinesYet => 'Sin líneas';
 
   @override
   String get invoicePdfGeneratedLabel => 'PDF generado';
@@ -3466,30 +3510,30 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invoiceBillingNameEditCta =>
-      'Editar datos de facturaciÃ³n del cliente';
+      'Editar datos de facturación del cliente';
 
   @override
-  String get invoiceBillingNameCurrentLabel => 'Nombre de facturaciÃ³n actual';
+  String get invoiceBillingNameCurrentLabel => 'Nombre de facturación actual';
 
   @override
-  String get invoiceBillingNameNewLabel => 'Nombre de facturaciÃ³n';
+  String get invoiceBillingNameNewLabel => 'Nombre de facturación';
 
   @override
   String get invoiceBillingNameReasonLabel => 'Motivo (opcional)';
 
   @override
   String get invoiceBillingNameNewRequired =>
-      'El nombre de facturaciÃ³n es obligatorio';
+      'El nombre de facturación es obligatorio';
 
   @override
   String get invoiceBillingNameUpdateSuccess =>
-      'Datos de facturaciÃ³n del cliente actualizados';
+      'Datos de facturación del cliente actualizados';
 
   @override
   String get invoiceChangeHistoryTitle => 'Cambios';
 
   @override
-  String get invoiceChangeHistoryEmpty => 'TodavÃ­a no hay cambios.';
+  String get invoiceChangeHistoryEmpty => 'Todavía no hay cambios.';
 
   @override
   String get reasonLabel => 'Motivo';
@@ -3519,10 +3563,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceStepPreviewShort => 'Vista previa';
 
   @override
-  String get invoiceStepIssueTitle => 'Paso 3 - Emitir factura';
+  String get invoiceStepIssueTitle => 'Paso 3 - Guardar borrador';
 
   @override
-  String get invoiceStepIssueShort => 'Emitir';
+  String get invoiceStepIssueShort => 'Borrador';
 
   @override
   String get invoiceChecklistClient => 'Cliente seleccionado';
@@ -3531,7 +3575,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceChecklistDates => 'Fecha de factura seleccionada';
 
   @override
-  String get invoiceChecklistLines => 'LÃ­neas agregadas';
+  String get invoiceChecklistLines => 'Líneas agregadas';
 
   @override
   String get invoiceWarningsTitle => 'Advertencias';
@@ -3542,7 +3586,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invoiceWarningPendingDrafts =>
-      'Tienes borradores pendientes. ResuÃ©lvelos antes de continuar.';
+      'Tienes borradores pendientes. Resuélvelos antes de continuar.';
 
   @override
   String get invoicePreviewNeedsClient =>
@@ -3558,7 +3602,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invoicePreviewNeedsLines =>
-      'Agrega al menos una lÃ­nea con precio para continuar.';
+      'Agrega al menos una línea con precio para continuar.';
 
   @override
   String get invoicePreviewNeedsDraft =>
@@ -3572,7 +3616,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceSummaryTitle => 'Resumen';
 
   @override
-  String get invoiceNumberSummaryLabel => 'NÃºmero de factura';
+  String get invoiceNumberSummaryLabel => 'Número de factura';
 
   @override
   String get invoicePreviewPendingLabel => 'Vista previa pendiente';
@@ -3587,10 +3631,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceIssueConfirmTitle => 'Emitir factura';
 
   @override
-  String get invoiceIssueConfirmMessage => 'Esta acciÃ³n no se puede deshacer.';
+  String get invoiceIssueConfirmMessage => 'Esta acción no se puede deshacer.';
 
   @override
-  String get invoiceIssuingLabel => 'Emitiendoâ€¦';
+  String get invoiceIssuingLabel => 'Emitiendo…';
 
   @override
   String get invoiceDetailsShowCta => 'Mostrar detalles';
@@ -3614,6 +3658,66 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceClientInvoicesThisMonthLabel => 'Facturas este mes';
 
   @override
+  String get clientMissingInvoiceThisMonth => 'Factura pendiente este mes';
+
+  @override
+  String get clientInvoiceAllGood => 'Factura emitida este mes';
+
+  @override
+  String get clientAllHaveInvoiceTitle => 'Todos los clientes facturados';
+
+  @override
+  String get clientInvoiceStatusUnavailableTitle =>
+      'Estado de factura no disponible';
+
+  @override
+  String get clientNoMatchFiltersTitle => 'Ningún cliente coincide';
+
+  @override
+  String get clientAllHaveInvoiceDesc =>
+      'Ningún cliente tiene una factura pendiente este mes.';
+
+  @override
+  String get clientInvoiceStatusUnavailableDesc =>
+      'Los datos de factura aún no están disponibles para estos clientes.';
+
+  @override
+  String get clientNoMatchFiltersDesc =>
+      'Intenta ajustar la búsqueda o los filtros.';
+
+  @override
+  String get clientNoInvoiceIssuedThisMonth => 'Sin factura este mes';
+
+  @override
+  String clientLastInvoiceShort(String date) {
+    return 'Última: $date';
+  }
+
+  @override
+  String clientMissingCountThisMonth(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pendientes este mes',
+      one: '1 pendiente este mes',
+      zero: 'Ninguno pendiente',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String clientInvoiceCountThisMonth(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count facturas este mes',
+      one: '1 factura este mes',
+      zero: 'Sin facturas este mes',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get invoiceDraftInfoTooltip => 'Info de borradores';
 
   @override
@@ -3621,7 +3725,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invoiceDraftInfoMessage =>
-      'Antes de crear un borrador, asegÃºrate de no tener borradores pendientes.';
+      'Antes de crear un borrador, asegúrate de no tener borradores pendientes.';
 
   @override
   String get invoicePendingDraftsLabel => 'Borradores pendientes';
@@ -3639,21 +3743,65 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceDraftSavedSnackNoNumber => 'Borrador guardado';
 
   @override
+  String get invoiceDraftSavedSnackTitle => 'Borrador guardado';
+
+  @override
+  String get invoiceDraftSavedSnackMessage =>
+      'Tu borrador de factura está seguro y listo para continuar después.';
+
+  @override
+  String get invoiceDraftUpdatedSnackTitle => 'Borrador actualizado';
+
+  @override
+  String get invoiceDraftUpdatedSnackMessage =>
+      'Tus últimos cambios se guardaron en este borrador.';
+
+  @override
+  String get invoiceDraftSnackDismiss => 'Cerrar';
+
+  @override
   String get invoiceDraftSaveFailedSnack =>
-      'No se pudo guardar el borrador. IntÃ©ntalo de nuevo.';
+      'No se pudo guardar el borrador. Inténtalo de nuevo.';
 
   @override
-  String get invoiceDraftRemoveTitle => 'Â¿Eliminar borrador?';
+  String get invoiceDraftRemoveTitle => '¿Eliminar borrador?';
 
   @override
-  String get invoiceDraftRemoveMessage => 'Esto eliminarÃ¡ el borrador actual.';
+  String get invoiceDraftRemoveMessage => 'Esto eliminará el borrador actual.';
 
   @override
   String get invoiceDraftRemovedSnack => 'Borrador eliminado';
 
   @override
   String get invoiceDraftRemoveFailedSnack =>
-      'No se pudo eliminar el borrador. IntÃ©ntalo de nuevo.';
+      'No se pudo eliminar el borrador. Inténtalo de nuevo.';
+
+  @override
+  String invoiceBatchIssueSuccessSnack(Object count) {
+    return '$count facturas emitidas correctamente';
+  }
+
+  @override
+  String invoiceBatchIssuePartialSnack(Object issued, Object failed) {
+    return '$issued emitidas, $failed con error';
+  }
+
+  @override
+  String get invoiceIssueDuplicateNumberSnack =>
+      'Ese número de factura ya existe en este grupo. Actualiza la lista o edita el número del borrador antes de emitir.';
+
+  @override
+  String invoiceIssueDuplicateNumberValueSnack(Object number) {
+    return 'El número de factura $number ya existe en este grupo. Actualiza la lista o edita el número del borrador antes de emitir.';
+  }
+
+  @override
+  String get invoiceBatchIssueErrorsTitle => 'Errores';
+
+  @override
+  String invoiceDraftOpenFailed(Object reason) {
+    return 'No se pudo abrir el borrador: $reason';
+  }
 
   @override
   String invoiceIssueSuccessSnack(Object invoiceNumber) {
@@ -3662,11 +3810,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invoiceIssueFailedSnack =>
-      'No se pudo emitir la factura. IntÃ©ntalo de nuevo.';
+      'No se pudo emitir la factura. Inténtalo de nuevo.';
 
   @override
   String get invoicePdfPreviewFailedSnack =>
-      'No se pudo generar la vista previa del PDF. IntÃ©ntalo de nuevo.';
+      'No se pudo generar la vista previa del PDF. Inténtalo de nuevo.';
 
   @override
   String get invoiceSortByNumberLabel => 'Ordenar por numero';
@@ -3703,19 +3851,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invoiceEmailSettingsChecking =>
-      'Comprobando configuraciÃ³n de email...';
+      'Comprobando configuración de email...';
 
   @override
   String get invoiceEmailSettingsUnavailable =>
-      'ConfiguraciÃ³n de email no disponible';
+      'Configuración de email no disponible';
 
   @override
   String get invoiceEmailSettingsConfigured =>
-      'El envÃ­o de emails estÃ¡ configurado âœ…';
+      'El envío de emails está configurado ✅';
 
   @override
   String get invoiceEmailSettingsNeedsSetup =>
-      'El envÃ­o de emails necesita configuraciÃ³n âš ï¸';
+      'El envío de emails necesita configuración ⚠️';
 
   @override
   String get invoiceEmailConfigureCta => 'Configurar email';
@@ -3724,7 +3872,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceEmailCopyLinkCta => 'Copiar enlace de la factura';
 
   @override
-  String get invoiceEmailNoSentYet => 'AÃºn no se ha enviado ningÃºn email';
+  String get invoiceEmailNoSentYet => 'Aún no se ha enviado ningún email';
 
   @override
   String get invoiceEmailHistoryShowCta => 'Ver historial';
@@ -3733,7 +3881,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceEmailHistoryHideCta => 'Ocultar historial';
 
   @override
-  String get invoiceEmailNoHistory => 'TodavÃ­a no hay historial de emails.';
+  String get invoiceEmailNoHistory => 'Todavía no hay historial de emails.';
 
   @override
   String get invoiceEmailResentSnack => 'Email de factura reenviado';
@@ -3802,7 +3950,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invoiceEmailNoPreview =>
-      'AÃºn no hay vista previa. Pulsa actualizar para generar.';
+      'Aún no hay vista previa. Pulsa actualizar para generar.';
 
   @override
   String get invoiceEmailPreviewRefreshCta => 'Actualizar vista previa';
@@ -3870,7 +4018,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String groupInvoicesTotalsInline(Object draftsCount, Object issuedCount) {
-    return 'Emitidas: $issuedCount â€¢ Borradores: $draftsCount';
+    return 'Emitidas: $issuedCount • Borradores: $draftsCount';
   }
 
   @override
@@ -3884,14 +4032,14 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get groupInvoicesRemoveDraftTitle => 'Â¿Eliminar borrador?';
+  String get groupInvoicesRemoveDraftTitle => '¿Eliminar borrador?';
 
   @override
-  String get groupInvoicesRemoveInvoiceTitle => 'Â¿Eliminar factura?';
+  String get groupInvoicesRemoveInvoiceTitle => '¿Eliminar factura?';
 
   @override
   String groupInvoicesRemoveInvoiceMessage(Object invoiceNumber) {
-    return 'Esto eliminarÃ¡ la factura $invoiceNumber.';
+    return 'Esto eliminará la factura $invoiceNumber.';
   }
 
   @override
@@ -3899,7 +4047,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get groupInvoicesInvoiceAlreadyRemovedSnack =>
-      'Factura no encontrada (ya eliminada). Actualizandoâ€¦';
+      'Factura no encontrada (ya eliminada). Actualizando…';
 
   @override
   String groupInvoicesRemoveFailedSnack(Object reason) {
@@ -3911,7 +4059,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get selectClientFirst =>
-      'Selecciona un cliente para ver facturaciÃ³n e invoices';
+      'Selecciona un cliente para ver facturación e invoices';
 
   @override
   String get clientEntityTypeLabel => 'Tipo de entidad';
@@ -3926,7 +4074,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clientPropertyKindHint => 'p. ej. edificio, apartamento, chalet';
 
   @override
-  String get clientClassificationTitle => 'Opciones guardadas';
+  String get clientClassificationTitle => 'Clasificación clientes';
 
   @override
   String get clientClassificationManageCta => 'Administrar';
@@ -3936,7 +4084,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Administrar opciones guardadas';
 
   @override
-  String get clientAddOptionHint => 'Agregar opciÃ³n (mÃ¡x. 50)';
+  String get clientAddOptionHint => 'Agregar opción (máx. 50)';
 
   @override
   String get clientClassificationManageHint =>
@@ -3955,10 +4103,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clientClassificationRebuiltSnack => 'Opciones reconstruidas';
 
   @override
-  String get clientClassificationSectionTitle => 'ClasificaciÃ³n';
+  String get clientClassificationSectionTitle => 'Clasificación';
 
   @override
-  String get clientClassificationAddTitle => 'Agregar clasificaciÃ³n';
+  String get clientClassificationAddTitle => 'Agregar clasificación';
 
   @override
   String get clientClassificationTypeLabel => 'Tipo';
@@ -3968,7 +4116,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get clientClassificationSelectHint =>
-      'Selecciona una clasificaciÃ³n para ver asignaciones';
+      'Selecciona una clasificación para ver asignaciones';
 
   @override
   String clientClassificationAssignedCount(int count) {
@@ -3976,7 +4124,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get clientClassificationNoClients => 'AÃºn no hay clientes asignados.';
+  String get clientClassificationNoClients => 'Aún no hay clientes asignados.';
 
   @override
   String get clientClassificationExpandTooltip => 'Expandir';
@@ -3997,7 +4145,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clientDetailsCollapseTooltip => 'Ocultar detalles';
 
   @override
-  String get clientSearchHint => 'Buscar clientesâ€¦';
+  String get clientSearchHint => 'Buscar clientes…';
 
   @override
   String get clientFiltersTitle => 'Filtros';
@@ -4007,10 +4155,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get clientSelectedHiddenByFilters =>
-      'El cliente seleccionado estÃ¡ oculto por los filtros';
+      'El cliente seleccionado está oculto por los filtros';
 
   @override
-  String get clientQuickAssignTitle => 'AsignaciÃ³n rÃ¡pida';
+  String get clientQuickAssignTitle => 'Asignación rápida';
 
   @override
   String get clientQuickAssignSubtitle =>
@@ -4020,7 +4168,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clientClassificationUpdatedSnack => 'Cliente actualizado';
 
   @override
-  String get clientBillingMissingTitle => 'Faltan datos de facturaciÃ³n';
+  String get clientBillingMissingTitle => 'Faltan datos de facturación';
 
   @override
   String clientBillingMissingMessage(String fields) {
@@ -4057,11 +4205,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Selecciona un recibo para ver detalles';
 
   @override
-  String get groupReceiptsRemoveDraftTitle => 'Â¿Eliminar borrador de recibo?';
+  String get groupReceiptsRemoveDraftTitle => '¿Eliminar borrador de recibo?';
 
   @override
   String groupReceiptsRemoveDraftMessage(Object receiptNumber) {
-    return 'Esto eliminarÃ¡ el recibo $receiptNumber.';
+    return 'Esto eliminará el recibo $receiptNumber.';
   }
 
   @override
@@ -4069,7 +4217,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get groupReceiptsAlreadyRemovedSnack =>
-      'Recibo no encontrado (ya eliminado). Actualizandoâ€¦';
+      'Recibo no encontrado (ya eliminado). Actualizando…';
 
   @override
   String get groupReceiptsCannotRemoveIssuedSnack =>
@@ -4087,16 +4235,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get receiptDateUnknown => 'Fecha desconocida';
 
   @override
-  String get receiptIssueDateLabel => 'Fecha de emisiÃ³n';
+  String get receiptIssueDateLabel => 'Fecha de emisión';
 
   @override
-  String get receiptLinesTitle => 'LÃ­neas de recibo';
+  String get receiptLinesTitle => 'Líneas de recibo';
 
   @override
   String get receiptSummaryTitle => 'Resumen';
 
   @override
-  String get receiptNoLinesYet => 'AÃºn no hay lÃ­neas';
+  String get receiptNoLinesYet => 'Aún no hay líneas';
 
   @override
   String get receiptLineTotalLabel => 'Total';
@@ -4111,7 +4259,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get receiptIssueCta => 'Emitir recibo';
 
   @override
-  String get receiptLockedHint => 'Los recibos emitidos estÃ¡n bloqueados';
+  String get receiptLockedHint => 'Los recibos emitidos están bloqueados';
 
   @override
   String receiptEditorTitle(Object number) {
@@ -4128,13 +4276,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get receiptClientRequired => 'Selecciona un cliente primero';
 
   @override
-  String get receiptLinesRequired => 'Agrega al menos una lÃ­nea';
+  String get receiptLinesRequired => 'Agrega al menos una línea';
 
   @override
   String get receiptNotesHint => 'Notas opcionales';
 
   @override
   String get receiptDraftSavedSnack => 'Borrador guardado';
+
+  @override
+  String get receiptDraftSavedSnackTitle => 'Borrador de recibo guardado';
+
+  @override
+  String get receiptDraftSavedSnackMessage =>
+      'Tu borrador de recibo está seguro y listo para continuar después.';
 
   @override
   String get receiptSaveFailed => 'No se pudo guardar el recibo';
@@ -4147,11 +4302,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get receiptDownloadFailed => 'No se pudo descargar el PDF del recibo';
 
   @override
-  String get receiptIssueConfirmTitle => 'Â¿Emitir recibo?';
+  String get receiptIssueConfirmTitle => '¿Emitir recibo?';
 
   @override
   String get receiptIssueConfirmMessage =>
-      'Asignar nÃºmero final y bloquear el recibo.';
+      'Asignar número final y bloquear el recibo.';
 
   @override
   String receiptIssueSuccessSnack(Object receiptNumber) {
@@ -4171,7 +4326,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get saveDraft => 'Guardar borrador';
 
   @override
-  String get addLine => 'Agregar lÃ­nea';
+  String get addLine => 'Agregar línea';
 
   @override
   String get statementsTabTitle => 'Importar extractos (Excel)';
@@ -4192,68 +4347,68 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsStepReview => 'Revisar datos';
 
   @override
-  String get statementsStepConfirm => 'Confirmar importaciÃ³n';
+  String get statementsStepConfirm => 'Confirmar importación';
 
   @override
   String get statementsReviewDisabled =>
-      'Sube un archivo para revisar entradas y deduplicaciÃ³n.';
+      'Sube un archivo para revisar entradas y deduplicación.';
 
   @override
   String get statementsConfirmHelp =>
-      'Revisa el resumen y confirma para finalizar la importaciÃ³n.';
+      'Revisa el resumen y confirma para finalizar la importación.';
 
   @override
   String get statementsConfirmDisabled =>
-      'Completa la subida para habilitar la confirmaciÃ³n.';
+      'Completa la subida para habilitar la confirmación.';
 
   @override
-  String get statementsConfirmAction => 'Confirmar importaciÃ³n';
+  String get statementsConfirmAction => 'Confirmar importación';
 
   @override
-  String get statementsConfirmSuccess => 'ImportaciÃ³n confirmada.';
+  String get statementsConfirmSuccess => 'Importación confirmada.';
 
   @override
   String get statementsStepDisabledHint =>
       'Completa el paso anterior para continuar.';
 
   @override
-  String get autoStatementImportTitle => 'Habilitar datos automÃ¡ticos';
+  String get autoStatementImportTitle => 'Habilitar datos automáticos';
 
   @override
   String get autoStatementImportHelper =>
-      'Cuando estÃ¡ activado, importaremos automÃ¡ticamente tu extracto diario de Caixa en tu cuenta.';
+      'Cuando está activado, importaremos automáticamente tu extracto diario de Caixa en tu cuenta.';
 
   @override
   String get autoStatementImportUpdateFailed =>
-      'No se pudo actualizar la configuraciÃ³n de datos automÃ¡ticos.';
+      'No se pudo actualizar la configuración de datos automáticos.';
 
   @override
   String get statementsDragDropTitle => 'Sube tu extracto';
 
   @override
   String get statementsDragDropHint =>
-      'Arrastra tu archivo aquÃ­ o haz clic para seleccionar';
+      'Arrastra tu archivo aquí o haz clic para seleccionar';
 
   @override
   String get statementsFormatsHint =>
-      'Formatos soportados: .xls, .xlsx Â· MÃ¡x. 10 MB';
+      'Formatos soportados: .xls, .xlsx · Máx. 10 MB';
 
   @override
   String get statementsRemoveFile => 'Quitar';
 
   @override
   String get statementsSecurityNote =>
-      'Ã°Å¸â€â€™ Tus datos se procesan de forma segura';
+      '🔒 Tus datos se procesan de forma segura';
 
   @override
-  String get statementsFileTooLarge => 'El archivo supera el lÃ­mite de 10 MB';
+  String get statementsFileTooLarge => 'El archivo supera el límite de 10 MB';
 
   @override
-  String get statementsResultsTitle => 'Resultado de la importaciÃ³n';
+  String get statementsResultsTitle => 'Resultado de la importación';
 
   @override
   String get statementsResultsHelp =>
-      'Revisa la deduplicaciÃ³n y el emparejamiento de clientes antes de confirmar la importaciÃ³n.';
+      'Revisa la deduplicación y el emparejamiento de clientes antes de confirmar la importación.';
 
   @override
   String get statementsResultsEmpty =>
@@ -4264,7 +4419,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Este archivo ya fue importado (checksum duplicado).';
 
   @override
-  String get statementsFilterYear => 'AÃ±o';
+  String get statementsFilterYear => 'Año';
 
   @override
   String get statementsFilterFrom => 'Desde';
@@ -4279,11 +4434,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsClearFilters => 'Limpiar';
 
   @override
-  String get statementsPageSize => 'TamaÃ±o de pÃ¡gina';
+  String get statementsPageSize => 'Tamaño de página';
 
   @override
   String statementsPageInfo(int page, int total) {
-    return 'PÃ¡gina $page de $total';
+    return 'Página $page de $total';
   }
 
   @override
@@ -4316,28 +4471,28 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String statementsSummaryLine(String total, String count) {
-    return 'total $total â€¢ $count movimientos';
+    return 'total $total • $count movimientos';
   }
 
   @override
   String get statementsActionViewEntries => 'Ver entradas';
 
   @override
-  String get statementsReprocessTitle => 'Â¿Reprocesar lote?';
+  String get statementsReprocessTitle => '¿Reprocesar lote?';
 
   @override
   String get statementsReprocessMessage =>
-      'Se volverÃ¡ a ejecutar el parser usando el mapa de columnas guardado.';
+      'Se volverá a ejecutar el parser usando el mapa de columnas guardado.';
 
   @override
   String get statementsReprocessAction => 'Reprocesar';
 
   @override
-  String get statementsDeleteTitle => 'Â¿Eliminar lote?';
+  String get statementsDeleteTitle => '¿Eliminar lote?';
 
   @override
   String get statementsDeleteMessage =>
-      'Esto eliminarÃ¡ el lote y todas sus entradas de forma permanente.';
+      'Esto eliminará el lote y todas sus entradas de forma permanente.';
 
   @override
   String get statementsDeleteAction => 'Eliminar';
@@ -4347,23 +4502,23 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String statementsDuplicateSummary(String count) {
-    return '$count movimientos duplicados omitidos â€” Ver detalles';
+    return '$count movimientos duplicados omitidos — Ver detalles';
   }
 
   @override
   String get statementsViewDetails => 'Ver detalles';
 
   @override
-  String get statementsStatusSuccess => 'Ã‰xito';
+  String get statementsStatusSuccess => 'Éxito';
 
   @override
   String get statementsStatusWarning => 'Advertencia';
 
   @override
-  String get statementsShowTechDetails => 'Ver detalles tÃ©cnicos';
+  String get statementsShowTechDetails => 'Ver detalles técnicos';
 
   @override
-  String get statementsHideTechDetails => 'Ocultar detalles tÃ©cnicos';
+  String get statementsHideTechDetails => 'Ocultar detalles técnicos';
 
   @override
   String get statementsTechBatchId => 'ID de lote';
@@ -4378,11 +4533,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsCopy => 'Copiar';
 
   @override
-  String get moreActions => 'MÃ¡s acciones';
+  String get moreActions => 'Más acciones';
 
   @override
   String get statementsNoImportsHelp =>
-      'Cuando importes un archivo, los lotes aparecerÃ¡n aquÃ­ para revisiÃ³n rÃ¡pida.';
+      'Cuando importes un archivo, los lotes aparecerán aquí para revisión rápida.';
 
   @override
   String get statementsDownloadTemplate => 'Descargar plantilla Excel';
@@ -4392,13 +4547,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statementsUploadDescription =>
-      'Sube extractos XLS/XLSX para analizar, deduplicar y vincular entradas a clientes. Los duplicados se omiten automÃ¡ticamente y se informan por separado.';
+      'Sube extractos XLS/XLSX para analizar, deduplicar y vincular entradas a clientes. Los duplicados se omiten automáticamente y se informan por separado.';
 
   @override
   String get statementsChooseFile => 'Elegir XLS/XLSX';
 
   @override
-  String get statementsNoFileSelected => 'NingÃºn archivo seleccionado';
+  String get statementsNoFileSelected => 'Ningún archivo seleccionado';
 
   @override
   String statementsSelectedFile(String fileName) {
@@ -4444,7 +4599,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get statementsNoDescription => '(sin descripciÃ³n)';
+  String get statementsNoDescription => '(sin descripción)';
 
   @override
   String statementsAmountLabel(String amount) {
@@ -4458,7 +4613,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get refreshAction => 'Actualizar';
 
   @override
-  String get statementsNoImports => 'AÃºn no hay importaciones.';
+  String get statementsNoImports => 'Aún no hay importaciones.';
 
   @override
   String get statementsBatchFallback => 'Lote';
@@ -4509,7 +4664,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsHeaderDate => 'Fecha';
 
   @override
-  String get statementsHeaderDescription => 'DescripciÃ³n';
+  String get statementsHeaderDescription => 'Descripción';
 
   @override
   String get statementsHeaderDetails => 'Detalles';
@@ -4543,42 +4698,42 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statementsAllDataSubtitle =>
-      'Revisa todos los movimientos, vincula clientes y mantÃ©n los datos limpios.';
+      'Revisa todos los movimientos, vincula clientes y mantén los datos limpios.';
 
   @override
   String get statementsAllDataEmpty =>
-      'AÃºn no hay movimientos. Importa un Excel para revisarlos aquÃ­.';
+      'Aún no hay movimientos. Importa un Excel para revisarlos aquí.';
 
   @override
   String get statementsFiltersTitle => 'Filtros';
 
   @override
-  String get statementsPaginationTitle => 'PaginaciÃ³n';
+  String get statementsPaginationTitle => 'Paginación';
 
   @override
-  String get statementsPresetsTitle => 'Rangos rÃ¡pidos';
+  String get statementsPresetsTitle => 'Rangos rápidos';
 
   @override
   String get statementsPickRange => 'Elegir rango';
 
   @override
-  String get statementsPanelCollapse => 'Ocultar panel de guÃ­a';
+  String get statementsPanelCollapse => 'Ocultar panel de guía';
 
   @override
-  String get statementsPanelExpand => 'Mostrar panel de guÃ­a';
+  String get statementsPanelExpand => 'Mostrar panel de guía';
 
   @override
-  String get statementsStepContextUploadTitle => 'Paso 1 Â· Subir archivo';
+  String get statementsStepContextUploadTitle => 'Paso 1 · Subir archivo';
 
   @override
-  String get statementsStepContextReviewTitle => 'Paso 2 Â· Revisar datos';
+  String get statementsStepContextReviewTitle => 'Paso 2 · Revisar datos';
 
   @override
   String get statementsStepContextConfirmTitle =>
-      'Paso 3 Â· Confirmar importaciÃ³n';
+      'Paso 3 · Confirmar importación';
 
   @override
-  String get statementsImportSummaryTitle => 'Resumen de importaciÃ³n';
+  String get statementsImportSummaryTitle => 'Resumen de importación';
 
   @override
   String get statementsConfirmChecklistTitle => 'Checklist final';
@@ -4589,16 +4744,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statementsConfirmChecklistItem2 =>
-      'PodrÃ¡s vincular clientes despuÃ©s de importar.';
+      'Podrás vincular clientes después de importar.';
 
   @override
   String get statementsPresetThisMonth => 'Este mes';
 
   @override
-  String get statementsPresetLast30Days => 'Ãšltimos 30 dÃ­as';
+  String get statementsPresetLast30Days => 'Últimos 30 días';
 
   @override
-  String get statementsPresetThisYear => 'Este aÃ±o';
+  String get statementsPresetThisYear => 'Este año';
 
   @override
   String get statementsFiltersActive => 'Filtros activos';
@@ -4614,7 +4769,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statementsActionsTooltipSuggest =>
-      'Sugerir cliente segÃºn la descripciÃ³n';
+      'Sugerir cliente según la descripción';
 
   @override
   String get statementsActionsTooltipLink => 'Vincular un cliente manualmente';
@@ -4631,11 +4786,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsBulkLink => 'Vincular en lote';
 
   @override
-  String get statementsClearSelection => 'Limpiar selecciÃ³n';
+  String get statementsClearSelection => 'Limpiar selección';
 
   @override
   String statementsBulkSuggestResult(int withSuggestions, int linked) {
-    return '$withSuggestions sugerencias encontradas Â· $linked vinculadas';
+    return '$withSuggestions sugerencias encontradas · $linked vinculadas';
   }
 
   @override
@@ -4648,7 +4803,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsTotalCount => 'Total de movimientos';
 
   @override
-  String get statementsLastBalance => 'Saldo mÃ¡s reciente';
+  String get statementsLastBalance => 'Saldo más reciente';
 
   @override
   String statementsLastBalanceDate(String date) {
@@ -4659,13 +4814,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsNavTitle => 'Banco';
 
   @override
-  String get statementsNavCollapse => 'Contraer menÃº';
+  String get statementsNavCollapse => 'Contraer menú';
 
   @override
-  String get statementsNavExpand => 'Expandir menÃº';
+  String get statementsNavExpand => 'Expandir menú';
 
   @override
-  String get statementsAnalyticsTitle => 'AnalÃ­ticas de extractos';
+  String get statementsAnalyticsTitle => 'Analíticas de extractos';
 
   @override
   String get statementsAnalyticsBatch => 'Lote';
@@ -4677,18 +4832,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsAnalyticsMode => 'Modo';
 
   @override
-  String get statementsAnalyticsCompareMode => 'ComparaciÃ³n';
+  String get statementsAnalyticsCompareMode => 'Comparación';
 
   @override
-  String get statementsAnalyticsCompareTitle => 'ComparaciÃ³n de periodos';
+  String get statementsAnalyticsCompareTitle => 'Comparación de periodos';
 
   @override
   String get statementsAnalyticsCompareHelp =>
-      'Compara el mes calendario con la ventana de liquidaciÃ³n para cada mes del aÃ±o seleccionado.';
+      'Compara el mes calendario con la ventana de liquidación para cada mes del año seleccionado.';
 
   @override
   String get statementsAnalyticsComparePickYear =>
-      'Selecciona un aÃ±o para ver la comparaciÃ³n.';
+      'Selecciona un año para ver la comparación.';
 
   @override
   String get statementsAnalyticsCompareBoth => 'Ambos';
@@ -4697,7 +4852,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsAnalyticsCompareCalendar => 'Calendario';
 
   @override
-  String get statementsAnalyticsCompareSettlement => 'LiquidaciÃ³n';
+  String get statementsAnalyticsCompareSettlement => 'Liquidación';
 
   @override
   String get statementsAnalyticsCompareDelta => 'Diferencia';
@@ -4706,7 +4861,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsAnalyticsModeCalendar => 'Mes calendario';
 
   @override
-  String get statementsAnalyticsModeSettlement => 'Ventana de liquidaciÃ³n';
+  String get statementsAnalyticsModeSettlement => 'Ventana de liquidación';
 
   @override
   String statementsAnalyticsModeLabel(Object mode) {
@@ -4714,19 +4869,19 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get statementsAnalyticsSettlementStart => 'DÃ­a de inicio';
+  String get statementsAnalyticsSettlementStart => 'Día de inicio';
 
   @override
-  String get statementsAnalyticsSettlementEnd => 'DÃ­a de fin';
+  String get statementsAnalyticsSettlementEnd => 'Día de fin';
 
   @override
   String statementsAnalyticsPeriodLabel(Object from, Object to) {
-    return 'Periodo: $from â€“ $to';
+    return 'Periodo: $from – $to';
   }
 
   @override
   String get statementsAnalyticsPeriodPending =>
-      'Periodo: selecciona aÃ±o y mes';
+      'Periodo: selecciona año y mes';
 
   @override
   String get statementsAnalyticsTop => 'Top';
@@ -4748,7 +4903,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statementsAnalyticsYearAveragesTitle =>
-      'Promedio mensual de ingresos y gastos por aÃ±o';
+      'Promedio mensual de ingresos y gastos por año';
 
   @override
   String get statementsAnalyticsAverageIncome => 'Ingreso promedio';
@@ -4770,27 +4925,27 @@ class AppLocalizationsEs extends AppLocalizations {
       'Comercios con mayor importe total para los filtros seleccionados.';
 
   @override
-  String get statementsAnalyticsNoData => 'AÃºn no hay datos analÃ­ticos.';
+  String get statementsAnalyticsNoData => 'Aún no hay datos analíticos.';
 
   @override
   String get statementsAnalyticsNoMerchants =>
       'No hay datos de comercios para este rango.';
 
   @override
-  String get statementsAnalyticsNoBatches => 'AÃºn no hay lotes de extractos.';
+  String get statementsAnalyticsNoBatches => 'Aún no hay lotes de extractos.';
 
   @override
   String get statementsAnalyticsAllBatches => 'Todos los lotes';
 
   @override
-  String get statementsAnalyticsAllYears => 'Todos los aÃ±os';
+  String get statementsAnalyticsAllYears => 'Todos los años';
 
   @override
   String get statementsAnalyticsAllMonths => 'Todos los meses';
 
   @override
   String get statementsAnalyticsNoSelection =>
-      'Selecciona un lote para ver analÃ­ticas.';
+      'Selecciona un lote para ver analíticas.';
 
   @override
   String statementsAnalyticsMonthHint(int month) {
@@ -4798,28 +4953,28 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get statementsAnalyticsExpand => 'Ver mÃ¡s';
+  String get statementsAnalyticsExpand => 'Ver más';
 
   @override
   String get statementsAnalyticsCollapse => 'Ver menos';
 
   @override
-  String get statementsFreshnessThreshold => 'Umbral (dÃ­as)';
+  String get statementsFreshnessThreshold => 'Umbral (días)';
 
   @override
   String get statementsFreshnessLoading => 'Cargando frescura...';
 
   @override
-  String get statementsFreshnessNoData => 'AÃºn no hay transacciones';
+  String get statementsFreshnessNoData => 'Aún no hay transacciones';
 
   @override
   String statementsFreshnessStale(Object date, Object days) {
-    return 'Ãšltimo movimiento: $date (hace $days dÃ­as)';
+    return 'Último movimiento: $date (hace $days días)';
   }
 
   @override
   String statementsFreshnessUpToDate(Object date) {
-    return 'Al dÃ­a (Ãšltimo movimiento: $date)';
+    return 'Al día (Último movimiento: $date)';
   }
 
   @override
@@ -4834,60 +4989,60 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statementsFreshnessNotStale =>
-      'Los datos no estÃ¡n desactualizados. No se enviÃ³ ninguna notificaciÃ³n.';
+      'Los datos no están desactualizados. No se envió ninguna notificación.';
 
   @override
   String get statementsReminderSettingsTitle =>
-      'ConfiguraciÃ³n de recordatorios';
+      'Configuración de recordatorios';
 
   @override
   String get statementsReminderSettingsLoading =>
-      'Cargando configuraciÃ³n de recordatorios...';
+      'Cargando configuración de recordatorios...';
 
   @override
-  String get statementsReminderSettingsAuto => 'Recordatorios automÃ¡ticos';
+  String get statementsReminderSettingsAuto => 'Recordatorios automáticos';
 
   @override
-  String get statementsReminderSettingsThreshold => 'Umbral (dÃ­as)';
+  String get statementsReminderSettingsThreshold => 'Umbral (días)';
 
   @override
   String get statementsReminderSettingsSaved =>
-      'ConfiguraciÃ³n de recordatorios guardada';
+      'Configuración de recordatorios guardada';
 
   @override
   String get statementsReminderSettingsFailed =>
-      'No se pudo guardar la configuraciÃ³n de recordatorios';
+      'No se pudo guardar la configuración de recordatorios';
 
   @override
   String statementsReminderStatusOn(Object days) {
-    return 'Recordatorios automÃ¡ticos ACTIVOS ($days dÃ­as)';
+    return 'Recordatorios automáticos ACTIVOS ($days días)';
   }
 
   @override
   String get statementsReminderStatusOff =>
-      'Recordatorios automÃ¡ticos INACTIVOS';
+      'Recordatorios automáticos INACTIVOS';
 
   @override
   String get statementsReminderStatusUnknown =>
-      'Recordatorios automÃ¡ticos: N/D';
+      'Recordatorios automáticos: N/D';
 
   @override
   String get statementsAllDataSummaryTitle => 'Resumen del rango actual';
 
   @override
-  String get dashboardNavTitle => 'NavegaciÃ³n';
+  String get dashboardNavTitle => 'Navegación';
 
   @override
-  String get dashboardNavCollapse => 'Contraer menÃº';
+  String get dashboardNavCollapse => 'Contraer menú';
 
   @override
-  String get dashboardNavExpand => 'Expandir menÃº';
+  String get dashboardNavExpand => 'Expandir menú';
 
   @override
-  String get groupInvoicesNavCollapse => 'Contraer menÃº';
+  String get groupInvoicesNavCollapse => 'Contraer menú';
 
   @override
-  String get groupInvoicesNavExpand => 'Expandir menÃº';
+  String get groupInvoicesNavExpand => 'Expandir menú';
 
   @override
   String get statementsRowDetailsTitle => 'Detalle del movimiento';
@@ -4915,7 +5070,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsSuggestedInvoicesTitle => 'Facturas sugeridas';
 
   @override
-  String get statementsBestMatchBadge => 'Mejor opciÃ³n';
+  String get statementsBestMatchBadge => 'Mejor opción';
 
   @override
   String get statementsInvoiceAlreadySelected =>
@@ -4926,7 +5081,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String statementsInvoiceAlreadyLinkedMeta(Object date, Object count) {
-    return 'Vinculada en $date Â· $count vÃ­nculo(s)';
+    return 'Vinculada en $date · $count vínculo(s)';
   }
 
   @override
@@ -4934,17 +5089,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statementsInvoiceAlreadyLinkedBody =>
-      'Esta factura ya estÃ¡ vinculada a otra transacciÃ³n. Â¿Quieres vincularla tambiÃ©n aquÃ­?';
+      'Esta factura ya está vinculada a otra transacción. ¿Quieres vincularla también aquí?';
 
   @override
   String get statementsInvoiceLinkAnyway => 'Vincular de todos modos';
 
   @override
   String get statementsInvoiceAlreadyLinkedToast =>
-      'Esta factura ya estaba vinculada a otra transacciÃ³n bancaria.';
+      'Esta factura ya estaba vinculada a otra transacción bancaria.';
 
   @override
-  String get statementsInvalidInvoiceToast => 'Factura invÃ¡lida.';
+  String get statementsInvalidInvoiceToast => 'Factura inválida.';
 
   @override
   String get statementsInvoiceNotFoundToast => 'Factura no encontrada.';
@@ -4954,7 +5109,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String statementsRepetitiveInvoiceTooltip(Object count) {
-    return 'Esta factura estÃ¡ vinculada a $count movimientos bancarios.';
+    return 'Esta factura está vinculada a $count movimientos bancarios.';
   }
 
   @override
@@ -4977,10 +5132,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statementsNoClientsMatch =>
-      'NingÃºn cliente coincide con tu bÃºsqueda';
+      'Ningún cliente coincide con tu búsqueda';
 
   @override
-  String get statementsClearLink => 'Quitar vÃ­nculo';
+  String get statementsClearLink => 'Quitar vínculo';
 
   @override
   String get statementsUnnamedClient => '(sin nombre)';
@@ -4995,7 +5150,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get expenseUploadFileSectionTitle => 'Archivo';
 
   @override
-  String get expenseUploadFileDropHint => 'Arrastra el archivo aquÃ­';
+  String get expenseUploadFileDropHint => 'Arrastra el archivo aquí';
 
   @override
   String get expenseUploadFileOrLabel => 'o';
@@ -5022,7 +5177,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get expenseUploadVendorLabel => 'Proveedor';
 
   @override
-  String get expenseUploadIssueDateLabel => 'Fecha emisiÃ³n';
+  String get expenseUploadIssueDateLabel => 'Fecha emisión';
 
   @override
   String get expenseUploadDateButtonLabel => 'Fecha';
@@ -5034,7 +5189,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get expenseUploadVendorTaxIdLabel => 'NIF proveedor';
 
   @override
-  String get expenseUploadInvoiceNumberLabel => 'NÃºmero factura';
+  String get expenseUploadInvoiceNumberLabel => 'Número factura';
 
   @override
   String get expenseUploadDueDateLabel => 'Fecha vencimiento';
@@ -5053,10 +5208,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get expenseUploadFileHelp =>
-      'DespuÃ©s de seleccionar el archivo, completa los datos en Organizar.';
+      'Después de seleccionar el archivo, completa los datos en Organizar.';
 
   @override
-  String get expenseUploadEmptyList => 'Sin gastos subidos en esta sesiÃ³n.';
+  String get expenseUploadEmptyList => 'Sin gastos subidos en esta sesión.';
 
   @override
   String get expenseUploadNewProviderTitle => 'Nuevo proveedor';
@@ -5074,7 +5229,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get expenseUploadProviderEmailLabel => 'Email';
 
   @override
-  String get expenseUploadProviderPhoneLabel => 'TelÃ©fono';
+  String get expenseUploadProviderPhoneLabel => 'Teléfono';
 
   @override
   String get expenseUploadProviderStreetLabel => 'Calle';
@@ -5089,10 +5244,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get expenseUploadProviderProvinceLabel => 'Provincia';
 
   @override
-  String get expenseUploadProviderPostalCodeLabel => 'CÃ³digo postal';
+  String get expenseUploadProviderPostalCodeLabel => 'Código postal';
 
   @override
-  String get expenseUploadProviderCountryLabel => 'PaÃ­s';
+  String get expenseUploadProviderCountryLabel => 'País';
 
   @override
   String get expenseUploadProviderSaveCta => 'Guardar';
@@ -5122,18 +5277,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get expenseUploadTotalOrLinesError =>
-      'Total o lÃ­neas son obligatorios';
+      'Total o líneas son obligatorios';
 
   @override
-  String get expenseUploadLinesRequiredError => 'Las lÃ­neas son obligatorias';
+  String get expenseUploadLinesRequiredError => 'Las líneas son obligatorias';
 
   @override
   String get expenseUploadLinesInvalidError =>
-      'Completa descripciÃ³n, cantidad, precio unitario y IVA en todas las lÃ­neas';
+      'Completa descripción, cantidad, precio unitario y IVA en todas las líneas';
 
   @override
-  String get expenseUploadInvalidIssueDateError =>
-      'Fecha de emisiÃ³n invÃ¡lida';
+  String get expenseUploadInvalidIssueDateError => 'Fecha de emisión inválida';
 
   @override
   String get expenseUploadSuccessSnack => 'Gasto subido';
@@ -5159,7 +5313,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get expenseUploadBatchLimits =>
-      'Hasta 100 archivos, mÃ¡ximo 10MB cada uno.';
+      'Hasta 200 archivos, máximo 10MB cada uno.';
 
   @override
   String expenseUploadBatchSelectedCount(int count) {
@@ -5167,10 +5321,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get expenseUploadBatchVerificationTitle => 'VerificaciÃ³n';
+  String get expenseUploadBatchVerificationTitle => 'Verificación';
 
   @override
-  String get expenseUploadBatchWaiting => 'Esperando importaciÃ³n...';
+  String get expenseUploadBatchWaiting => 'Esperando importación...';
 
   @override
   String get expenseUploadBatchImportTitle => 'Importar';
@@ -5195,19 +5349,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get expenseUploadProvidersInvoicesTitle => 'Gastos del proveedor';
 
   @override
-  String get expenseUploadLinesTitle => 'LÃ­neas';
+  String get expenseUploadLinesTitle => 'Líneas';
 
   @override
-  String get expenseUploadLinesEmpty => 'Sin lÃ­neas todavÃ­a.';
+  String get expenseUploadLinesEmpty => 'Sin líneas todavía.';
 
   @override
-  String get expenseUploadLinesAddCta => 'AÃ±adir lÃ­nea';
+  String get expenseUploadLinesAddCta => 'Añadir línea';
 
   @override
-  String get expenseUploadLinesItemLabel => 'LÃ­nea';
+  String get expenseUploadLinesItemLabel => 'Línea';
 
   @override
-  String get expenseUploadLinesDescriptionLabel => 'DescripciÃ³n';
+  String get expenseUploadLinesDescriptionLabel => 'Descripción';
 
   @override
   String get expenseUploadLinesQuantityLabel => 'Cantidad';
@@ -5229,7 +5383,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get expenseUploadTotalAutoHelper =>
-      'Calculado automÃ¡ticamente desde las lÃ­neas';
+      'Calculado automáticamente desde las líneas';
 
   @override
   String get expenseUploadVatBreakdownTitle => 'Desglose IVA';
@@ -5250,10 +5404,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get vatSummaryTitle => 'Resumen IVA';
 
   @override
-  String get vatSummaryPrevYear => 'AÃ±o anterior';
+  String get vatSummaryPrevYear => 'Año anterior';
 
   @override
-  String get vatSummaryNextYear => 'AÃ±o siguiente';
+  String get vatSummaryNextYear => 'Año siguiente';
 
   @override
   String get vatSummaryQuarterQ1 => 'T1';
@@ -5274,42 +5428,42 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String vatSummaryQuarterRangeQ1(Object year) {
-    return '1 ene â€“ 31 mar $year';
+    return '1 ene – 31 mar $year';
   }
 
   @override
   String vatSummaryQuarterRangeQ2(Object year) {
-    return '1 abr â€“ 30 jun $year';
+    return '1 abr – 30 jun $year';
   }
 
   @override
   String vatSummaryQuarterRangeQ3(Object year) {
-    return '1 jul â€“ 30 sep $year';
+    return '1 jul – 30 sep $year';
   }
 
   @override
   String vatSummaryQuarterRangeQ4(Object year) {
-    return '1 oct â€“ 31 dic $year';
+    return '1 oct – 31 dic $year';
   }
 
   @override
   String vatSummaryQuarterDeadlineQ1(Object year) {
-    return 'LÃ­mite: 20 abr $year';
+    return 'Límite: 20 abr $year';
   }
 
   @override
   String vatSummaryQuarterDeadlineQ2(Object year) {
-    return 'LÃ­mite: 20 jul $year';
+    return 'Límite: 20 jul $year';
   }
 
   @override
   String vatSummaryQuarterDeadlineQ3(Object year) {
-    return 'LÃ­mite: 20 oct $year';
+    return 'Límite: 20 oct $year';
   }
 
   @override
   String vatSummaryQuarterDeadlineQ4(Object year) {
-    return 'LÃ­mite: 30 ene $year';
+    return 'Límite: 30 ene $year';
   }
 
   @override
@@ -5349,7 +5503,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recurringInvoicesTitle => 'Facturas recurrentes';
 
   @override
-  String get recurringInvoicesSubtitle => 'Crea y automatiza la facturaciÃ³n.';
+  String get recurringInvoicesSubtitle => 'Crea y automatiza la facturación.';
 
   @override
   String get recurringInvoicesRefreshCta => 'Actualizar';
@@ -5382,13 +5536,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recurringInvoicesDueSoon => 'Vencen pronto';
 
   @override
-  String get recurringInvoicesEmpty => 'No hay recurrencias todavÃ­a.';
+  String get recurringInvoicesEmpty => 'No hay recurrencias todavía.';
 
   @override
-  String get recurringInvoicesNextRunLabel => 'PrÃ³xima';
+  String get recurringInvoicesNextRunLabel => 'Próxima';
 
   @override
-  String get recurringInvoicesPreviewCta => 'Ver prÃ³ximas facturas';
+  String get recurringInvoicesPreviewCta => 'Ver próximas facturas';
 
   @override
   String get recurringInvoicesPauseCta => 'Pausar';
@@ -5404,7 +5558,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get recurringInvoicesNoRunsSnack =>
-      'No habÃ­a facturas pendientes para generar.';
+      'No había facturas pendientes para generar.';
 
   @override
   String recurringInvoicesRunCreatedSnack(Object count) {
@@ -5416,11 +5570,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get recurringInvoicesCreateFailed =>
-      'No se pudo crear la recurrencia. IntÃ©ntalo de nuevo.';
+      'No se pudo crear la recurrencia. Inténtalo de nuevo.';
 
   @override
   String get recurringInvoicesChangesNote =>
-      'Los cambios solo afectarÃ¡n a facturas futuras ya que las generadas son un snapshot.';
+      'Los cambios solo afectarán a facturas futuras ya que las generadas son un snapshot.';
 
   @override
   String get recurringInvoicesRuleTab => 'Regla';
@@ -5443,7 +5597,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get recurringInvoicesSeriesInvoicesEmpty =>
-      'TodavÃ­a no hay facturas generadas.';
+      'Todavía no hay facturas generadas.';
 
   @override
   String get recurringInvoicesActivityTab => 'Actividad';
@@ -5462,11 +5616,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get recurringInvoicesGeneratedHint =>
-      'Las facturas generadas aparecerÃ¡n en Borradores.';
+      'Las facturas generadas aparecerán en Borradores.';
 
   @override
   String get recurringInvoicesActivityHint =>
-      'Actividad disponible prÃ³ximamente.';
+      'Actividad disponible próximamente.';
 
   @override
   String get recurringInvoicesCreateTitle => 'Crear recurrencia';
@@ -5478,7 +5632,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recurringInvoicesStepTemplate => 'Plantilla';
 
   @override
-  String get recurringInvoicesStepSchedule => 'ProgramaciÃ³n';
+  String get recurringInvoicesStepSchedule => 'Programación';
 
   @override
   String get recurringInvoicesStepPreview => 'Vista previa';
@@ -5503,17 +5657,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String recurringInvoicesLocalTimeHelper(Object timezone) {
-    return 'Se programa segÃºn tu hora local ($timezone). Guardamos en UTC automÃ¡ticamente.';
+    return 'Se programa según tu hora local ($timezone). Guardamos en UTC automáticamente.';
   }
 
   @override
   String recurringInvoicesLocalTimeSummary(
       Object local, Object timezone, Object utc) {
-    return 'Hora seleccionada: $local ($timezone) Â· Se guardarÃ¡: $utc UTC';
+    return 'Hora seleccionada: $local ($timezone) · Se guardará: $utc UTC';
   }
 
   @override
-  String get recurringInvoicesEndLabel => 'FinalizaciÃ³n';
+  String get recurringInvoicesEndLabel => 'Finalización';
 
   @override
   String get recurringInvoicesEndNever => 'Nunca';
@@ -5522,7 +5676,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recurringInvoicesEndDate => 'Hasta fecha';
 
   @override
-  String get recurringInvoicesEndCount => 'NÃºmero de veces';
+  String get recurringInvoicesEndCount => 'Número de veces';
 
   @override
   String get recurringInvoicesEndDateSelect => 'Seleccionar fecha';
@@ -5533,20 +5687,20 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get recurringInvoicesCountLabel => 'NÃºmero de facturas';
+  String get recurringInvoicesCountLabel => 'Número de facturas';
 
   @override
-  String get recurringInvoicesBillDayLabel => 'DÃ­a de facturaciÃ³n (1-31)';
+  String get recurringInvoicesBillDayLabel => 'Día de facturación (1-31)';
 
   @override
   String get recurringInvoicesBillDayHelper =>
-      'Si el mes no tiene ese dÃ­a, se usarÃ¡ el Ãºltimo dÃ­a del mes.';
+      'Si el mes no tiene ese día, se usará el último día del mes.';
 
   @override
-  String get recurringInvoicesWeekDayLabel => 'DÃ­a de semana (0-6)';
+  String get recurringInvoicesWeekDayLabel => 'Día de semana (0-6)';
 
   @override
-  String get recurringInvoicesWeekDayHelper => '0=domingo, 6=sÃ¡bado.';
+  String get recurringInvoicesWeekDayHelper => '0=domingo, 6=sábado.';
 
   @override
   String get recurringInvoicesTimezoneLabel => 'Zona horaria';
@@ -5555,17 +5709,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recurringInvoicesExceptionsLabel => 'Excepciones';
 
   @override
-  String get recurringInvoicesAddExceptionCta => 'AÃ±adir fecha';
+  String get recurringInvoicesAddExceptionCta => 'Añadir fecha';
 
   @override
   String get recurringInvoicesNoExceptions => 'Sin excepciones.';
 
   @override
   String get recurringInvoicesPreviewEmpty =>
-      'No hay fechas calculadas todavÃ­a.';
+      'No hay fechas calculadas todavía.';
 
   @override
-  String get recurringInvoicesPreviewTitle => 'PrÃ³ximas facturas';
+  String get recurringInvoicesPreviewTitle => 'Próximas facturas';
 
   @override
   String get recurringInvoicesPreviewDialogEmpty => 'No hay fechas calculadas.';
@@ -5574,7 +5728,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recurringInvoicesContinueCta => 'Continuar';
 
   @override
-  String get recurringInvoicesBackCta => 'AtrÃ¡s';
+  String get recurringInvoicesBackCta => 'Atrás';
 
   @override
   String get recurringFrequencyDaily => 'Diaria';
@@ -5590,7 +5744,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String recurringEveryDays(Object count) {
-    return 'Cada $count dÃ­as';
+    return 'Cada $count días';
   }
 
   @override
@@ -5605,12 +5759,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String recurringEveryYears(Object count) {
-    return 'Cada $count aÃ±os';
+    return 'Cada $count años';
   }
 
   @override
   String recurringBillDaySummary(Object day) {
-    return 'dÃ­a $day';
+    return 'día $day';
   }
 
   @override
@@ -5619,7 +5773,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get recurringRuleEmpty => 'Sin programaciÃ³n';
+  String get recurringRuleEmpty => 'Sin programación';
 
   @override
   String get recurringInvoicesTimezoneSearchHint => 'Buscar zona horaria';
@@ -5655,10 +5809,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailDetailNotFound => 'Mensaje no encontrado.';
 
   @override
-  String get mailDetailMarkRead => 'Marcar como leÃ­do';
+  String get mailDetailMarkRead => 'Marcar como leído';
 
   @override
-  String get mailDetailMarkUnread => 'Marcar como no leÃ­do';
+  String get mailDetailMarkUnread => 'Marcar como no leído';
 
   @override
   String get mailDetailArchive => 'Archivar';
@@ -5670,10 +5824,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailDetailSpam => 'Spam';
 
   @override
-  String get mailDetailMarkedRead => 'Marcado como leÃ­do.';
+  String get mailDetailMarkedRead => 'Marcado como leído.';
 
   @override
-  String get mailDetailMarkedUnread => 'Marcado como no leÃ­do.';
+  String get mailDetailMarkedUnread => 'Marcado como no leído.';
 
   @override
   String get mailDetailArchived => 'Archivado.';
@@ -5686,7 +5840,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String mailDetailActionFailed(Object error) {
-    return 'AcciÃ³n fallida: $error';
+    return 'Acción fallida: $error';
   }
 
   @override
@@ -5696,7 +5850,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailDetailDownloadUnsupported =>
-      'Las descargas solo estÃ¡n disponibles en la web por ahora.';
+      'Las descargas solo están disponibles en la web por ahora.';
 
   @override
   String get mailDetailDownloadTooltip => 'Descargar';
@@ -5711,14 +5865,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailSearchHint => 'Buscar correo';
 
   @override
-  String get mailSearchClear => 'Borrar bÃºsqueda';
+  String get mailSearchClear => 'Borrar búsqueda';
 
   @override
   String get mailSearchMinChars =>
-      'La bÃºsqueda debe tener al menos 2 caracteres.';
+      'La búsqueda debe tener al menos 2 caracteres.';
 
   @override
-  String get mailSearchUnreadOnly => 'Solo no leÃ­dos';
+  String get mailSearchUnreadOnly => 'Solo no leídos';
 
   @override
   String get mailSearchDateRange => 'Rango de fechas';
@@ -5736,6 +5890,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailThreadsEmpty => 'No se encontraron hilos.';
 
   @override
+  String get mailThreadSearchNoResults => 'No se encontraron conversaciones.';
+
+  @override
+  String get mailThreadSearchNoResultsHint =>
+      'Prueba con otro término, por ejemplo \"factura\", \"invoice\", \"presupuesto\" o el nombre del cliente.';
+
+  @override
+  String get mailThreadSearchTooltip =>
+      'Busca conversaciones. Prueba con factura, invoice, presupuesto o quote.';
+
+  @override
   String get mailThreadDetailTitle => 'Hilo';
 
   @override
@@ -5745,7 +5910,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailThreadMessageCountLabel => 'Mensajes';
 
   @override
-  String get mailThreadUnreadCountLabel => 'No leÃ­dos';
+  String get mailThreadUnreadCountLabel => 'No leídos';
 
   @override
   String get mailThreadNoMessages => 'No hay mensajes en este hilo.';
@@ -5781,30 +5946,30 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailFolderSpam => 'Spam';
 
   @override
-  String get mailConsoleSearchPlaceholder => 'Buscar hilos (prÃ³ximamente)';
+  String get mailConsoleSearchPlaceholder => 'Buscar conversaciones...';
 
   @override
   String get mailConsoleSelectThread =>
       'Selecciona un hilo para ver los mensajes.';
 
   @override
-  String get mailConsoleLoadError => 'No se pudo cargar el buzÃ³n. Reintenta.';
+  String get mailConsoleLoadError => 'No se pudo cargar el buzón. Reintenta.';
 
   @override
-  String get mailConsoleReplyPlaceholder => 'Escribe una respuestaâ€¦';
+  String get mailConsoleReplyPlaceholder => 'Escribe una respuesta…';
 
   @override
   String get mailConsoleReplySend => 'Responder';
 
   @override
-  String get mailConsoleReplySending => 'Enviandoâ€¦';
+  String get mailConsoleReplySending => 'Enviando…';
 
   @override
   String get mailConsoleReplySent => 'Respuesta enviada.';
 
   @override
   String mailConversationReplyTo(Object name) {
-    return 'Responder a $nameâ€¦';
+    return 'Responder a $name…';
   }
 
   @override
@@ -5825,11 +5990,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailConversationForward => 'Reenviar';
 
   @override
+  String get mailLegalNoticeShow => 'Mostrar aviso legal';
+
+  @override
+  String get mailLegalNoticeHide => 'Ocultar aviso legal';
+
+  @override
   String get mailConsoleClientPanelTitle => 'Cliente y facturas';
 
   @override
   String get mailConsoleClientNotFound =>
-      'No se encontrÃ³ un cliente para este hilo.';
+      'No se encontró un cliente para este hilo.';
 
   @override
   String get mailConsoleClientEmailMissing => 'Falta el correo del cliente.';
@@ -5866,7 +6037,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String mailConsoleActionFailed(Object error) {
-    return 'AcciÃ³n fallida: $error';
+    return 'Acción fallida: $error';
   }
 
   @override
@@ -5889,25 +6060,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailComposeToHint => 'Introduce correos de destinatarios';
 
   @override
-  String get mailComposeToHelper => 'AÃ±ade al menos un destinatario';
+  String get mailComposeToHelper => 'Añade al menos un destinatario';
 
   @override
   String get mailComposeCcLabel => 'Cc';
 
   @override
-  String get mailComposeCcHint => 'AÃ±ade correos en copia';
+  String get mailComposeCcHint => 'Añade correos en copia';
 
   @override
-  String get mailComposeAddCc => 'AÃ±adir Cc';
+  String get mailComposeAddCc => 'Añadir Cc';
 
   @override
   String get mailComposeBccLabel => 'Cco';
 
   @override
-  String get mailComposeBccHint => 'AÃ±ade correos en copia oculta';
+  String get mailComposeBccHint => 'Añade correos en copia oculta';
 
   @override
-  String get mailComposeAddBcc => 'AÃ±adir Cco';
+  String get mailComposeAddBcc => 'Añadir Cco';
 
   @override
   String get mailComposeSubjectLabel => 'Asunto';
@@ -5917,7 +6088,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailComposeSubjectHelper =>
-      'El asunto ayuda a identificar la conversaciÃ³n';
+      'El asunto ayuda a identificar la conversación';
 
   @override
   String get mailComposeBodyLabel => 'Cuerpo';
@@ -5941,10 +6112,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailComposeAttachmentsLabel => 'Adjuntos';
 
   @override
-  String get mailComposeAttachmentsEmpty => 'AÃºn no hay adjuntos.';
+  String get mailComposeAttachmentsEmpty => 'Aún no hay adjuntos.';
 
   @override
-  String get mailComposeAddAttachment => 'AÃ±adir adjunto';
+  String get mailComposeAddAttachment => 'Añadir adjunto';
 
   @override
   String get mailComposeStorageKeyLabel => 'Clave de almacenamiento';
@@ -5965,7 +6136,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailComposeContentTypeHint => 'application/pdf';
 
   @override
-  String get mailComposeSizeLabel => 'TamaÃ±o (opcional)';
+  String get mailComposeSizeLabel => 'Tamaño (opcional)';
 
   @override
   String get mailComposeSizeHint => 'Bytes';
@@ -5989,7 +6160,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailComposeApplyFooterHelper =>
-      'AÃ±ade el pie por defecto a este correo.';
+      'Añade el pie por defecto a este correo.';
 
   @override
   String get mailComposeInvoiceIdsLabel => 'IDs de factura';
@@ -6007,7 +6178,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailComposeUploadAttachment => 'Subir archivo';
 
   @override
-  String get mailComposeUploading => 'Subiendoâ€¦';
+  String get mailComposeUploading => 'Subiendo…';
 
   @override
   String get mailComposeFileReadError =>
@@ -6022,7 +6193,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailComposeSend => 'Enviar';
 
   @override
-  String get mailComposeSending => 'Enviandoâ€¦';
+  String get mailComposeSending => 'Enviando…';
 
   @override
   String get mailComposeSentToast => 'Enviado';
@@ -6046,7 +6217,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailFooterBody =>
-      'Crea un pie que aparecerÃ¡ en los correos salientes. El logo de la empresa se aÃ±adirÃ¡ automÃ¡ticamente.';
+      'Crea un pie que aparecerá en los correos salientes. El logo de la empresa se añadirá automáticamente.';
 
   @override
   String get mailFooterNameLabel => 'Nombre del pie';
@@ -6075,7 +6246,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailFooterHelperHtmlOverrides =>
-      'Si proporcionas HTML, se usarÃ¡ en los correos HTML.';
+      'Si proporcionas HTML, se usará en los correos HTML.';
 
   @override
   String get mailFooterSaveCta => 'Guardar pie';
@@ -6097,7 +6268,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailFooterSystemDefault =>
-      'Se estÃ¡ usando el pie predeterminado del sistema.';
+      'Se está usando el pie predeterminado del sistema.';
 
   @override
   String get mailFooterUnnamed => 'Pie sin nombre';
@@ -6119,7 +6290,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mailFooterPreviewBody =>
-      'Previsualiza cÃ³mo se verÃ¡ tu pie en los correos enviados.';
+      'Previsualiza cómo se verá tu pie en los correos enviados.';
 
   @override
   String get mailFooterPreviewCta => 'Previsualizar pie';
@@ -6154,7 +6325,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get budgetStepBudget => 'Presupuesto';
 
   @override
-  String get budgetStepLines => 'LÃ­neas';
+  String get budgetStepLines => 'Líneas';
 
   @override
   String get budgetStepConfirm => 'Confirmar';
@@ -6164,7 +6335,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get budgetClientInfoPrompt =>
-      'La informaciÃ³n del cliente en presupuestos es flexible. Elige un cliente existente o escribe un nombre de cliente. Se requiere al menos uno. Esto aplica solo a Presupuestos: facturas y recibos siguen requiriendo un cliente guardado.';
+      'La información del cliente en presupuestos es flexible. Elige un cliente existente o escribe un nombre de cliente. Se requiere al menos uno. Esto aplica solo a Presupuestos: facturas y recibos siguen requiriendo un cliente guardado.';
 
   @override
   String get budgetClientSelectSavedLabel =>
@@ -6175,7 +6346,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get budgetClientNameLabel =>
-      'Usa esto si el cliente todavÃ­a no estÃ¡ en tu base de datos.';
+      'Usa esto si el cliente todavía no está en tu base de datos.';
 
   @override
   String get budgetValidationClientRequired =>
@@ -6191,32 +6362,57 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get budgetValidationLineItemsRequired =>
-      'AÃ±ade al menos una lÃ­nea antes de emitir.';
+      'Añade al menos una línea con concepto de trabajo antes de continuar.';
+
+  @override
+  String get budgetDraftSavedSnack => 'Cambios guardados en borrador.';
+
+  @override
+  String get budgetDraftCreatedSnack => 'Borrador guardado correctamente.';
+
+  @override
+  String get budgetDraftSavedSnackTitle => 'Borrador de presupuesto guardado';
+
+  @override
+  String get budgetDraftSavedSnackMessage =>
+      'Tu borrador de presupuesto está seguro y listo para continuar después.';
+
+  @override
+  String get budgetDraftUpdatedSnackTitle =>
+      'Borrador de presupuesto actualizado';
+
+  @override
+  String get budgetDraftUpdatedSnackMessage =>
+      'Tus últimos cambios del presupuesto se guardaron.';
+
+  @override
+  String get budgetDraftNotEditableSnack =>
+      'Este presupuesto ya no es borrador y no se puede editar.';
 
   @override
   String get budgetPreviewAcceptRequired =>
-      'Acepta antes de abrir la previsualizaciÃ³n.';
+      'Acepta antes de abrir la previsualización.';
 
   @override
-  String get budgetNumberLabel => 'NÃºmero de presupuesto';
+  String get budgetNumberLabel => 'Número de presupuesto';
 
   @override
   String get budgetNumberHint => '001-26';
 
   @override
   String get budgetNumberAutoOnIssue =>
-      'El nÃºmero del presupuesto lo asigna el servidor al emitir.';
+      'El número del presupuesto lo asigna el servidor al emitir.';
 
   @override
-  String get budgetNumberPendingIssue => 'Pendiente de emisiÃ³n';
+  String get budgetNumberPendingIssue => 'Pendiente de emisión';
 
   @override
   String get budgetLineItemsSimulateLabel =>
-      'Simular lÃ­neas agregadas (validaciÃ³n solo UI)';
+      'Simular líneas agregadas (validación solo UI)';
 
   @override
   String get budgetInfoBanner =>
-      'Los presupuestos se pueden crear con un nombre de cliente fijo. Si no se selecciona cliente, el PDF mostrarÃ¡ el nombre y dejarÃ¡ el resto de campos del cliente en blanco.';
+      'Los presupuestos se pueden crear con un nombre de cliente fijo. Si no se selecciona cliente, el PDF mostrará el nombre y dejará el resto de campos del cliente en blanco.';
 
   @override
   String budgetConfirmClientValue(Object value) {
@@ -6225,7 +6421,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String budgetConfirmNumberValue(Object value) {
-    return 'NÃºmero de presupuesto: $value';
+    return 'Número de presupuesto: $value';
   }
 
   @override
@@ -6235,19 +6431,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String budgetConfirmLinesValue(Object value) {
-    return 'LÃ­neas: $value';
+    return 'Líneas: $value';
   }
 
   @override
   String get budgetListIntro =>
-      'Listado de presupuestos (UI). El listado del servidor se conectarÃ¡ mÃ¡s adelante.';
+      'Listado de presupuestos (UI). El listado del servidor se conectará más adelante.';
 
   @override
   String get budgetListPlaceholder =>
-      'No hay presupuestos para mostrar todavÃ­a.';
+      'No hay presupuestos para mostrar todavía.';
 
   @override
-  String get budgetBackCta => 'AtrÃ¡s';
+  String get budgetBackCta => 'Atrás';
 
   @override
   String get budgetNextCta => 'Siguiente';
@@ -6257,41 +6453,41 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get budgetValidatedSnack =>
-      'Borrador de presupuesto validado (solo UI). IntegraciÃ³n con servidor pendiente.';
+      'Borrador de presupuesto validado (solo UI). Integración con servidor pendiente.';
 
   @override
   String budgetIssuedSnack(Object number) {
-    return 'Presupuesto emitido con nÃºmero $number.';
+    return 'Presupuesto emitido con número $number.';
   }
 
   @override
   String get budgetIssueConflict =>
-      'Conflicto de numeraciÃ³n al emitir. Vuelve a intentarlo.';
+      'Conflicto de numeración al emitir. Vuelve a intentarlo.';
 
   @override
-  String get budgetPreviewInlineTitle => 'PrevisualizaciÃ³n';
+  String get budgetPreviewInlineTitle => 'Previsualización';
 
   @override
-  String get budgetPreviewDialogTitle => 'PrevisualizaciÃ³n del presupuesto';
+  String get budgetPreviewDialogTitle => 'Previsualización del presupuesto';
 
   @override
-  String get budgetPreviewOpenCta => 'Abrir previsualizaciÃ³n';
+  String get budgetPreviewOpenCta => 'Abrir previsualización';
 
   @override
   String get budgetPreviewAcceptLabel =>
-      'Confirmo estos datos y quiero generar el PDF de previsualizaciÃ³n';
+      'Confirmo estos datos y quiero generar el PDF de previsualización';
 
   @override
   String budgetPreviewAutoTitle(Object id) {
-    return 'PDF de previsualizaciÃ³n para presupuesto $id';
+    return 'PDF de previsualización para presupuesto $id';
   }
 
   @override
   String get budgetPreviewEmpty =>
-      'AÃ±ade lÃ­neas para previsualizar este presupuesto.';
+      'Añade líneas para previsualizar este presupuesto.';
 
   @override
-  String get budgetShortLogicFlowTitle => 'Flujo lÃ³gico corto';
+  String get budgetShortLogicFlowTitle => 'Flujo lógico corto';
 
   @override
   String get budgetShortLogicFlow1 =>
@@ -6329,7 +6525,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get insightsChatClearTooltip => 'Limpiar chat';
 
   @override
-  String get insightsChatClearTitle => 'Â¿Limpiar chat?';
+  String get insightsChatClearTitle => '¿Limpiar chat?';
 
   @override
   String get insightsChatClearMessage =>
@@ -6359,7 +6555,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get insightsChatSend => 'Enviar';
 
   @override
-  String get systemConfigMenuLabel => 'ConfiguraciÃ³n del sistema';
+  String get insightsChatExportExcel => 'Exportar a Excel';
+
+  @override
+  String get insightsChatExportExcelTooltip =>
+      'Exportar esta respuesta financiera a Excel';
+
+  @override
+  String insightsChatExportSuccess(String fileName) {
+    return 'Excel generado: $fileName';
+  }
+
+  @override
+  String get insightsChatExportError => 'No se pudo exportar a Excel';
+
+  @override
+  String get insightsChatExportUnsupported =>
+      'La descarga de archivos no esta disponible en esta plataforma';
+
+  @override
+  String get systemConfigMenuLabel => 'Configuración del sistema';
 
   @override
   String get groupPhotoUpdated => 'Foto del grupo actualizada';
@@ -6377,4 +6592,1098 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get upgradeToPremium => 'Mejorar a Premium';
+
+  @override
+  String get contractsTitle => 'Contratos';
+
+  @override
+  String contractsForClient(Object client) {
+    return 'Contratos de $client';
+  }
+
+  @override
+  String get contractsEmptyTitle => 'Sin contratos todavia';
+
+  @override
+  String get contractsEmptySubtitle =>
+      'Sube el primer contrato de este cliente.';
+
+  @override
+  String get contractsLoadFailedTitle => 'No se pudieron cargar los contratos';
+
+  @override
+  String get contractUploadTitle => 'Subir contrato';
+
+  @override
+  String get contractUploadSubtitle =>
+      'Adjunta un PDF y guarda la metadata que necesites para este cliente.';
+
+  @override
+  String get contractEditTitle => 'Editar contrato';
+
+  @override
+  String get contractEditSubtitle =>
+      'Actualiza la metadata del contrato sin volver a subir el PDF.';
+
+  @override
+  String get contractUploadAction => 'Subir contrato';
+
+  @override
+  String get contractUploadSuccess => 'Contrato subido correctamente.';
+
+  @override
+  String contractUploadFailed(Object reason) {
+    return 'No se pudo subir el contrato: $reason';
+  }
+
+  @override
+  String get contractUpdateSuccess => 'Contrato actualizado correctamente.';
+
+  @override
+  String contractUpdateFailed(Object reason) {
+    return 'No se pudo actualizar el contrato: $reason';
+  }
+
+  @override
+  String get contractDeleteTitle => 'Eliminar contrato?';
+
+  @override
+  String contractDeleteBody(Object name) {
+    return 'Eliminar el contrato \"$name\"? Esta accion no se puede deshacer.';
+  }
+
+  @override
+  String get contractDeleteSuccess => 'Contrato eliminado correctamente.';
+
+  @override
+  String contractDeleteFailed(Object reason) {
+    return 'No se pudo eliminar el contrato: $reason';
+  }
+
+  @override
+  String get contractMarkedCurrentSuccess => 'Contrato actual actualizado.';
+
+  @override
+  String get contractOpenFailedGeneric => 'No se pudo abrir el PDF.';
+
+  @override
+  String contractOpenFailed(Object reason) {
+    return 'No se pudo abrir el PDF: $reason';
+  }
+
+  @override
+  String contractDownloadFailed(Object reason) {
+    return 'No se pudo descargar el PDF: $reason';
+  }
+
+  @override
+  String get contractTitleLabel => 'Titulo';
+
+  @override
+  String get contractFileNameLabel => 'Nombre del archivo';
+
+  @override
+  String get contractVersionLabel => 'Version';
+
+  @override
+  String get contractStatusLabel => 'Estado';
+
+  @override
+  String get contractRenewalDateLabel => 'Fecha de renovacion';
+
+  @override
+  String get contractSignedDateLabel => 'Fecha de firma';
+
+  @override
+  String get contractNotesLabel => 'Notas';
+
+  @override
+  String get contractTagsLabel => 'Etiquetas';
+
+  @override
+  String get contractTagsHint => 'Separa las etiquetas con comas';
+
+  @override
+  String get contractCurrentBadge => 'Contrato actual';
+
+  @override
+  String get contractCurrentHint =>
+      'Marca este documento como el contrato vigente del cliente.';
+
+  @override
+  String get contractPickPdf => 'Elegir PDF';
+
+  @override
+  String get contractNoFileSelected => 'Ningun PDF seleccionado';
+
+  @override
+  String get contractPdfOnlyHint => 'Solo se admiten archivos PDF.';
+
+  @override
+  String get contractDropHint => 'Arrastra un PDF aqui o pulsa para subirlo.';
+
+  @override
+  String get contractDropActiveHint => 'Suelta el PDF para subirlo.';
+
+  @override
+  String get contractFileReadError => 'No se pudo leer el PDF seleccionado.';
+
+  @override
+  String get contractFileRequired =>
+      'Selecciona un archivo PDF antes de continuar.';
+
+  @override
+  String get contractViewPdfAction => 'Ver PDF';
+
+  @override
+  String get contractDownloadAction => 'Descargar';
+
+  @override
+  String get contractMarkCurrentAction => 'Marcar como actual';
+
+  @override
+  String get contractUploadedAtLabel => 'Subido';
+
+  @override
+  String get contractExpiredBadge => 'Caducado';
+
+  @override
+  String get contractExpiringSoonBadge => 'Proximo a vencer';
+
+  @override
+  String get contractClearDateAction => 'Limpiar fecha';
+
+  @override
+  String get clientContractTypeLabel => 'Tipo de contrato';
+
+  @override
+  String get clientContractTypeService => 'Servicio';
+
+  @override
+  String get clientContractTypeMaintenance => 'Mantenimiento';
+
+  @override
+  String get clientContractTypeRental => 'Alquiler';
+
+  @override
+  String get clientContractTypeNda => 'NDA';
+
+  @override
+  String get clientContractTypeCustom => 'Otro';
+
+  @override
+  String get clientContractStatusExpired => 'Expirado';
+
+  @override
+  String get clientContractStatusTerminated => 'Terminado';
+
+  @override
+  String get clientContractStatusArchived => 'Archivado';
+
+  @override
+  String get statementsNoExpenseSuggestions =>
+      'No se encontraron gastos coincidentes';
+
+  @override
+  String get statementsSuggestedExpensesTitle => 'Gastos sugeridos';
+
+  @override
+  String get statementsExpenseAlreadyLinkedBadge => 'Ya vinculado';
+
+  @override
+  String get statementsExpenseLinkAction => 'Usar este gasto';
+
+  @override
+  String get statementsExpenseOpenManualLink => 'Abrir selector manual';
+
+  @override
+  String get statementsExpenseSuggestionsLoadFailedTitle =>
+      'No se pudieron cargar los gastos sugeridos';
+
+  @override
+  String get statementsExpenseSuggestionsFallbackHint =>
+      'Todavia puedes vincular un gasto manualmente.';
+
+  @override
+  String get statementsExpenseLinkFailed => 'No se pudo vincular el gasto.';
+
+  @override
+  String get statementsExpenseStatusRegistered => 'Registrado';
+
+  @override
+  String statementsExpenseAlreadyLinkedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ya vinculado a # movimientos bancarios',
+      one: 'Ya vinculado a # movimiento bancario',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rolesTabLabel => 'Roles';
+
+  @override
+  String get rolesCurrentRoleLabel => 'Tu rol actual';
+
+  @override
+  String get rolesPermissionsUnit => 'permisos';
+
+  @override
+  String get rolesGuideTitle => 'Guía de roles';
+
+  @override
+  String get rolesYourRoleBadge => 'Tu rol';
+
+  @override
+  String get rolesLoadError => 'No se pudieron cargar los permisos';
+
+  @override
+  String get rolesRetryButton => 'Reintentar';
+
+  @override
+  String get roleFallbackDescOwner =>
+      'Control total sobre el grupo. Puede transferir la propiedad.';
+
+  @override
+  String get roleFallbackDescAdmin =>
+      'Puede gestionar miembros, roles, facturación y configuración.';
+
+  @override
+  String get roleFallbackDescCoAdmin =>
+      'Puede invitar miembros y gestionar el calendario y eventos.';
+
+  @override
+  String get roleFallbackDescMember => 'Puede ver y participar en el grupo.';
+
+  @override
+  String get permLabelInvite => 'Invitar';
+
+  @override
+  String get permLabelKick => 'Eliminar miembros';
+
+  @override
+  String get permLabelEditGroup => 'Editar grupo';
+
+  @override
+  String get permLabelDeleteGroup => 'Eliminar grupo';
+
+  @override
+  String get permLabelManageRoles => 'Gestionar roles';
+
+  @override
+  String get permLabelViewBilling => 'Ver facturación';
+
+  @override
+  String get permLabelManageInvoices => 'Facturas';
+
+  @override
+  String get permLabelManageBudgets => 'Presupuestos';
+
+  @override
+  String get permLabelViewMembers => 'Ver miembros';
+
+  @override
+  String get permLabelManageMembers => 'Gestionar miembros';
+
+  @override
+  String get permLabelSendMessages => 'Mensajes';
+
+  @override
+  String get permLabelViewCalendar => 'Ver calendario';
+
+  @override
+  String get permLabelEditCalendar => 'Editar calendario';
+
+  @override
+  String get permLabelManageEvents => 'Eventos';
+
+  @override
+  String get permLabelViewReports => 'Informes';
+
+  @override
+  String get permLabelManageSettings => 'Ajustes';
+
+  @override
+  String get permLabelTransferOwnership => 'Transferir propiedad';
+
+  @override
+  String get permLabelGroup => 'Grupo';
+
+  @override
+  String get permLabelStatements => 'Extractos';
+
+  @override
+  String get permLabelCalendar => 'Calendario';
+
+  @override
+  String get permLabelEvents => 'Eventos';
+
+  @override
+  String get permLabelTimeTracking => 'Control horario';
+
+  @override
+  String get permLabelExpenses => 'Gastos';
+
+  @override
+  String get permLabelInvoices => 'Facturas';
+
+  @override
+  String get permLabelReports => 'Informes';
+
+  @override
+  String get permLabelSettings => 'Ajustes';
+
+  @override
+  String get permLabelMembers => 'Miembros';
+
+  @override
+  String get roleDescOwner =>
+      'Control total del grupo, miembros, ajustes y herramientas compartidas.';
+
+  @override
+  String get roleDescAdmin =>
+      'Rol de gestor avanzado heredado. Tratado como co-admin en la guía.';
+
+  @override
+  String get roleDescCoAdmin =>
+      'Puede gestionar la mayoría de las operaciones grupales, pero no puede eliminar el grupo ni superar al propietario.';
+
+  @override
+  String get roleDescMember =>
+      'Puede ver los datos compartidos del grupo y gestionar solo sus propias acciones permitidas.';
+
+  @override
+  String get expenseJsonTabFlowHint =>
+      'Pega el JSON y adjunta la factura para importar.';
+
+  @override
+  String get expenseJsonTabPickJsonFile => 'Archivo JSON';
+
+  @override
+  String get expenseJsonTabPickInvoiceFile => 'Factura';
+
+  @override
+  String get expenseJsonTabGetAiPrompt => 'Obtener Prompt IA';
+
+  @override
+  String get expenseJsonTabGeneratingPrompt => 'Generando prompt IA...';
+
+  @override
+  String get expenseJsonTabPromptLabel => 'PROMPT IA';
+
+  @override
+  String get expenseJsonTabCopyPrompt => 'Copiar';
+
+  @override
+  String get expenseJsonTabPayloadLabel => 'JSON Payload';
+
+  @override
+  String get expenseJsonTabPayloadHint => 'Pega aquí el JSON de la factura...';
+
+  @override
+  String get expenseJsonTabAdvancedOptions => 'OPCIONES AVANZADAS';
+
+  @override
+  String get expenseJsonTabSectionExpenseType => 'Tipo de gasto';
+
+  @override
+  String get expenseJsonTabSectionDiscount => 'Descuento global';
+
+  @override
+  String get expenseJsonTabSectionTotal => 'Total documento';
+
+  @override
+  String get expenseJsonTabImportCta => 'Importar JSON';
+
+  @override
+  String get expenseJsonTabImportHint =>
+      'Requiere JSON y archivo de factura adjunto.';
+
+  @override
+  String get expenseJsonLeftTitle => 'Importación JSON';
+
+  @override
+  String get expenseJsonLeftSubtitle =>
+      'Carga el JSON, adjunta la factura y revisa el payload en el panel derecho.';
+
+  @override
+  String get expenseJsonLeftDropActive => 'Suelta el JSON o la factura';
+
+  @override
+  String get expenseJsonLeftDropHint => 'Arrastra aquí el JSON o la factura';
+
+  @override
+  String get expenseJsonLeftFileTypes => 'JSON / PDF / JPG / JPEG / PNG / WEBP';
+
+  @override
+  String get expenseJsonLeftPickJson => 'Seleccionar JSON';
+
+  @override
+  String get expenseJsonLeftPickInvoice => 'Adjuntar factura';
+
+  @override
+  String get expenseJsonLeftPromptTitle => 'Prompt AI';
+
+  @override
+  String get expenseJsonLeftPromptAvailable => 'Disponible';
+
+  @override
+  String get expenseJsonLeftPromptGenerate => 'Generar plantilla';
+
+  @override
+  String get expenseJsonLeftPromptTooltip => 'Obtener prompt AI';
+
+  @override
+  String get expenseJsonLeftCopyPromptTooltip => 'Copiar prompt';
+
+  @override
+  String get expenseJsonLeftSummaryTitle => 'Resumen';
+
+  @override
+  String get expenseJsonLeftJsonPending => 'JSON pendiente';
+
+  @override
+  String get expenseJsonLeftInvoicePending => 'Factura pendiente';
+
+  @override
+  String get expenseBatchLeftTitle => 'Importar documentos';
+
+  @override
+  String get expenseBatchLeftSubtitle =>
+      'Selecciona los PDFs o imágenes a procesar. La lista completa y las incidencias se muestran en el panel derecho.';
+
+  @override
+  String get expenseBatchLeftDropActive =>
+      'Suelta los documentos para cargarlos';
+
+  @override
+  String get expenseBatchLeftDropHint => 'Arrastra aquí tus documentos';
+
+  @override
+  String get expenseBatchLeftFileTypes => 'PDF / JPG / JPEG / PNG / WEBP';
+
+  @override
+  String get expenseBatchLeftPickCta => 'Seleccionar documentos';
+
+  @override
+  String get expenseBatchLeftProcessing => 'Procesando lote...';
+
+  @override
+  String expenseBatchLeftSelected(int count) {
+    return '$count documentos seleccionados';
+  }
+
+  @override
+  String expenseBatchLeftCapacity(int selected, int max) {
+    return 'Capacidad: $selected / $max';
+  }
+
+  @override
+  String expenseBatchLeftTotalSize(String size) {
+    return 'Tamaño total: $size';
+  }
+
+  @override
+  String expenseBatchLeftSlots(int slots) {
+    return 'Espacios disponibles: $slots';
+  }
+
+  @override
+  String get expenseBatchLeftClearCta => 'Limpiar selección';
+
+  @override
+  String get expenseBatchLeftCompleted => 'Lote completado';
+
+  @override
+  String get expenseBatchLeftImportCta => 'Importar gastos';
+
+  @override
+  String get expenseBatchLeftGroupRequired =>
+      'Selecciona un grupo antes de importar.';
+
+  @override
+  String get expenseBatchProgressCompleted => 'Importación completada';
+
+  @override
+  String get expenseBatchProgressFailed => 'Importación fallida';
+
+  @override
+  String get expenseBatchProgressQueued => 'Importación en cola';
+
+  @override
+  String get expenseBatchProgressProcessing => 'Procesando lote de gastos';
+
+  @override
+  String get expenseBatchStatProcessed => 'Procesados';
+
+  @override
+  String get expenseBatchStatImported => 'Importados';
+
+  @override
+  String get expenseBatchStatIssues => 'Con incidencia';
+
+  @override
+  String get expenseBatchStatResult => 'Resultado';
+
+  @override
+  String get expenseBatchStatLoading => 'Cargando...';
+
+  @override
+  String expenseBatchHeaderSlotsFree(int count) {
+    return '$count libres';
+  }
+
+  @override
+  String get expenseBatchProgressBackgroundHint =>
+      'Puedes salir de esta pantalla mientras se completa la importación.';
+
+  @override
+  String get expenseBatchListTitle => 'Archivos cargados';
+
+  @override
+  String expenseBatchListCount(int count) {
+    return '$count archivo(s)';
+  }
+
+  @override
+  String get expenseBatchListFilterAll => 'Todos';
+
+  @override
+  String get expenseBatchListFilterReady => 'Listos';
+
+  @override
+  String get expenseBatchListFilterIssues => 'Incidencias';
+
+  @override
+  String expenseBatchListRemoveWarnings(int count) {
+    return 'Quitar $count';
+  }
+
+  @override
+  String get expenseBatchListEmpty =>
+      'No hay archivos para este filtro todavía.';
+
+  @override
+  String get expenseBatchListRemoveTooltip => 'Quitar de la selección';
+
+  @override
+  String expenseBatchDocListFiles(int count) {
+    return '$count archivos';
+  }
+
+  @override
+  String get expenseBatchDocListAlreadyUploaded => 'Ya subido';
+
+  @override
+  String expenseBatchDocListDuplicates(int count) {
+    return '$count ya subidos';
+  }
+
+  @override
+  String get expenseBatchDocListClearAll => 'Limpiar todo';
+
+  @override
+  String get expenseBatchDocListRemove => 'Quitar';
+
+  @override
+  String get expenseBatchErrorCopyList => 'Copiar lista';
+
+  @override
+  String get expenseTotalsUseSummaryLabel => 'Usar resumen del documento';
+
+  @override
+  String get expenseTotalsSummaryMode => 'Totales extraidos del resumen';
+
+  @override
+  String get expenseTotalsCalculateMode => 'Calcular desde lineas';
+
+  @override
+  String get expenseTotalsSummaryHelp =>
+      'El IVA de este documento aparece en el resumen inferior del ticket/factura. No es necesario que cada linea muestre IVA por separado.';
+
+  @override
+  String get expenseTotalsLockToLinesHelp =>
+      'Base, IVA y total se calculan desde las lineas y descuentos. Activa el resumen si el documento solo muestra el IVA en el pie.';
+
+  @override
+  String get expenseTotalsDirectReviewHelp =>
+      'Puedes revisar los totales del documento directamente desde este bloque.';
+
+  @override
+  String get expenseTotalsTaxableBase => 'Base imponible';
+
+  @override
+  String get expenseTotalsTax => 'IVA total';
+
+  @override
+  String get expenseTotalsTotal => 'Total documento';
+
+  @override
+  String get suspectExpensesMenuLabel => 'Gastos sospechosos';
+
+  @override
+  String get suspectExpensesTitle => 'Gastos sospechosos';
+
+  @override
+  String get suspectExpensesScanned => 'Analizados';
+
+  @override
+  String get suspectExpensesCount => 'Sospechosos';
+
+  @override
+  String get suspectExpensesFilterResults => 'Resultados del filtro';
+
+  @override
+  String get suspectExpensesShown => 'Sospechosos mostrados';
+
+  @override
+  String get suspectExpensesEmpty =>
+      'No hay gastos sospechosos para este filtro.';
+
+  @override
+  String get suspectExpensesEmptyUnreviewed =>
+      'No hay gastos sospechosos sin revisar.';
+
+  @override
+  String get suspectExpensesEmptyConfirmedOk =>
+      'No hay gastos marcados como confirmado correcto.';
+
+  @override
+  String get suspectExpensesEmptyNeedsFix =>
+      'No hay gastos marcados como necesita corrección.';
+
+  @override
+  String get suspectExpensesFilterAll => 'Todos';
+
+  @override
+  String get suspectExpensesFilterUnreviewed => 'Sin revisar';
+
+  @override
+  String get suspectExpensesFilterConfirmedOk => 'Confirmado correcto';
+
+  @override
+  String get suspectExpensesFilterNeedsFix => 'Necesita corrección';
+
+  @override
+  String get suspectExpensesStatusUnreviewed => 'Sin revisar';
+
+  @override
+  String get suspectExpensesStatusConfirmedOk => 'Confirmado correcto';
+
+  @override
+  String get suspectExpensesStatusNeedsFix => 'Necesita corrección';
+
+  @override
+  String get suspectExpensesStoredLabel => 'Guardado';
+
+  @override
+  String get suspectExpensesDerivedLabel => 'Derivado';
+
+  @override
+  String get suspectExpensesStoredSubtotal => 'Subtotal guardado';
+
+  @override
+  String get suspectExpensesStoredTax => 'IVA guardado';
+
+  @override
+  String get suspectExpensesStoredTotal => 'Total guardado';
+
+  @override
+  String get suspectExpensesReasons => 'Motivos detectados';
+
+  @override
+  String get suspectExpensesActionConfirmOk => 'Marcar como correcto';
+
+  @override
+  String get suspectExpensesActionNeedsFix => 'Marcar para corregir';
+
+  @override
+  String get suspectExpensesActionReset => 'Restablecer revisión';
+
+  @override
+  String get suspectExpensesNotes => 'Notas';
+
+  @override
+  String get suspectExpensesNotesHint => 'Añade una nota antes de guardar…';
+
+  @override
+  String get suspectExpensesUploadedAt => 'Subido';
+
+  @override
+  String get notificationBankExpensesDetectedTitle =>
+      'Gastos bancarios detectados';
+
+  @override
+  String notificationBankExpensesDetectedMessage(int count, String amount) {
+    return 'Se detectaron $count gastos bancarios por un total de $amount.';
+  }
+
+  @override
+  String get invoiceCreateMobileComingSoonSnack =>
+      'Crear factura en móvil estará disponible pronto.';
+
+  @override
+  String get invoiceExportConceptsExcelFailed =>
+      'No se pudo exportar los conceptos de facturas a Excel.';
+
+  @override
+  String get receiptJsonImportDraftOnlySnack =>
+      'Solo se pueden actualizar recibos en borrador mediante importación JSON.';
+
+  @override
+  String receiptJsonImportSuccessSnack(Object count) {
+    return 'Se importaron $count líneas.';
+  }
+
+  @override
+  String get budgetDeletedSnack => 'Presupuesto eliminado.';
+
+  @override
+  String get budgetAdvanceInvoiceCreatedSnack =>
+      'Factura de anticipo creada correctamente (70%).';
+
+  @override
+  String get budgetAdvanceInvoiceCreatedSimpleSnack =>
+      'Factura de anticipo creada correctamente.';
+
+  @override
+  String get budgetFinalInvoiceCreatedSnack =>
+      'Factura final creada correctamente.';
+
+  @override
+  String get budgetConvertedToInvoiceSnack =>
+      'Factura creada desde presupuesto.';
+
+  @override
+  String get chatComposerHintMessage => 'Escribe un mensaje…';
+
+  @override
+  String get chatComposerHintReply => 'Escribe una respuesta…';
+
+  @override
+  String get chatComposerHintCaption => 'Añade un pie de foto…';
+
+  @override
+  String get chatComposerHintBody => 'Intro envía · Shift+Intro nueva línea';
+
+  @override
+  String get chatComposerHintAttachment =>
+      'Adjunto listo · usa el texto como pie de foto';
+
+  @override
+  String get chatComposerAttachFile => 'Archivo local';
+
+  @override
+  String get chatComposerAttachClientPdf => 'PDF de cliente';
+
+  @override
+  String get chatComposerAttachWorkerPdf => 'PDF de horas trabajadas';
+
+  @override
+  String get chatComposerSend => 'Enviar';
+
+  @override
+  String get chatComposerSendFile => 'Enviar archivo';
+
+  @override
+  String get chatComposerSending => 'Enviando…';
+
+  @override
+  String get chatComposerUploading => 'Subiendo…';
+
+  @override
+  String get chatComposerRetry => 'Reintentar';
+
+  @override
+  String get telegramSearchChats => 'Buscar chats…';
+
+  @override
+  String get telegramMenuChats => 'Chats';
+
+  @override
+  String get telegramMenuExports => 'Exportaciones';
+
+  @override
+  String get telegramMenuAccount => 'Cuenta';
+
+  @override
+  String get telegramMenuDisconnect => 'Desconectar';
+
+  @override
+  String get telegramFilterAll => 'Todos';
+
+  @override
+  String get telegramFilterGroups => 'Grupos';
+
+  @override
+  String get telegramFilterChannels => 'Canales';
+
+  @override
+  String get telegramFilterPrivate => 'Privados';
+
+  @override
+  String telegramNoChatsMatch(String query) {
+    return 'No hay chats que coincidan con \"$query\"';
+  }
+
+  @override
+  String get telegramNoChatsAvailable => 'No hay chats de Telegram disponibles';
+
+  @override
+  String get telegramClearSearch => 'Borrar búsqueda';
+
+  @override
+  String get telegramMainChatsSection => 'Chats principales';
+
+  @override
+  String get telegramNoMainChatsInfo =>
+      'No hay chats en la lista principal. Los archivados están abajo.';
+
+  @override
+  String get telegramArchivedChats => 'Chats archivados';
+
+  @override
+  String get telegramChatsLoadError => 'Error al cargar los chats';
+
+  @override
+  String get telegramRetry => 'Reintentar';
+
+  @override
+  String get telegramTopics => 'Temas';
+
+  @override
+  String telegramBrowseTopicsIn(String chat) {
+    return 'Explora los temas del foro en $chat.';
+  }
+
+  @override
+  String get telegramSearchTopics => 'Buscar temas…';
+
+  @override
+  String get telegramGeneralTopic => 'Tema general';
+
+  @override
+  String get telegramHiddenTopic => 'Tema oculto';
+
+  @override
+  String get telegramForumTopicLabel => 'Tema del foro';
+
+  @override
+  String get telegramNoTopicsMatch =>
+      'No hay temas que coincidan con tu búsqueda';
+
+  @override
+  String get telegramNoTopicsFound => 'No se encontraron temas del foro';
+
+  @override
+  String get telegramNoTopicsMatchBody =>
+      'Prueba con otro nombre o borra la búsqueda.';
+
+  @override
+  String get telegramNoTopicsFoundBody =>
+      'Este foro aún no tiene temas visibles.';
+
+  @override
+  String get telegramToday => 'Hoy';
+
+  @override
+  String get telegramYesterday => 'Ayer';
+
+  @override
+  String get telegramLoadOlder => 'Cargar anteriores';
+
+  @override
+  String get telegramBeginningOfHistory => 'Inicio del historial';
+
+  @override
+  String get telegramNoMessagesYet => 'No se han cargado mensajes';
+
+  @override
+  String get telegramNoMessagesTip =>
+      'Intenta actualizar este chat o cargar el historial anterior.';
+
+  @override
+  String get telegramSelectChatTitle => 'Selecciona un chat para empezar';
+
+  @override
+  String get telegramSelectChatBody =>
+      'Elige un chat de Telegram de la lista para cargar mensajes recientes, ver el historial y exportarlo.';
+
+  @override
+  String get telegramFailedToLoadMessages => 'Error al cargar los mensajes';
+
+  @override
+  String get telegramRefresh => 'Actualizar';
+
+  @override
+  String get telegramExport => 'Exportar';
+
+  @override
+  String get telegramEdited => 'editado';
+
+  @override
+  String telegramForwardedFrom(String source) {
+    return 'Reenviado de $source';
+  }
+
+  @override
+  String get telegramForwardedMessage => 'Mensaje reenviado';
+
+  @override
+  String telegramReplyingTo(String sender) {
+    return 'Respondiendo a $sender';
+  }
+
+  @override
+  String telegramReplyTo(String id) {
+    return 'Respuesta a #$id';
+  }
+
+  @override
+  String get telegramClearReply => 'Cancelar respuesta';
+
+  @override
+  String get telegramRemoveAttachment => 'Eliminar adjunto';
+
+  @override
+  String get telegramReply => 'Responder';
+
+  @override
+  String get telegramReplying => 'Respondiendo';
+
+  @override
+  String get telegramPreviewPdf => 'Ver PDF';
+
+  @override
+  String get telegramDownloadDocument => 'Descargar documento';
+
+  @override
+  String get telegramClose => 'Cerrar';
+
+  @override
+  String telegramTopicSubtitle(String name) {
+    return 'Tema · $name';
+  }
+
+  @override
+  String get telegramCouldNotReadFile =>
+      'No se pudo leer el archivo seleccionado.';
+
+  @override
+  String get telegramNeedGroupClientPdf =>
+      'Debes seleccionar un grupo antes de adjuntar PDFs de cliente.';
+
+  @override
+  String get telegramNeedGroupWorkerPdf =>
+      'Debes seleccionar un grupo antes de adjuntar PDFs de trabajadores.';
+
+  @override
+  String get telegramCouldNotOpenPdf =>
+      'No se pudo abrir la vista previa del PDF.';
+
+  @override
+  String get telegramCouldNotDownload => 'No se pudo descargar este documento.';
+
+  @override
+  String get back => 'Atrás';
+
+  @override
+  String get issueInvoice => 'Emitir factura';
+
+  @override
+  String get invoiceActionsTitle => 'Acciones';
+
+  @override
+  String get invoicePdfPreviewTitle => 'Vista previa PDF';
+
+  @override
+  String get invoicePdfGenerated => 'Generado';
+
+  @override
+  String get invoicePdfReadyToPreview => 'El PDF está listo para previsualizar';
+
+  @override
+  String get invoiceSaveDraftToPreview =>
+      'Guarda el borrador para generar una vista previa PDF';
+
+  @override
+  String get invoicePdfOpenPreview => 'Abrir vista previa';
+
+  @override
+  String get invoicePreviewTitle => 'Vista previa';
+
+  @override
+  String get invoicePreviewNoNotes => 'Sin notas';
+
+  @override
+  String invoicePreviewLinesCount(int count) {
+    return 'Líneas: $count';
+  }
+
+  @override
+  String invoicePreviewTotalLabel(String amount) {
+    return 'Total: $amount';
+  }
+
+  @override
+  String get invoiceDraftPdfDialogTitle => 'Descargar PDF del borrador';
+
+  @override
+  String get invoiceDraftPdfDialogContent =>
+      'Genera una vista previa PDF de este borrador de factura.';
+
+  @override
+  String get invoiceDraftPreviewInBrowser => 'Ver en navegador';
+
+  @override
+  String get invoiceDraftDownloadPdf => 'Descargar PDF';
+
+  @override
+  String get invoiceDeliveryStatusUpdated => 'Estado de envío actualizado';
+
+  @override
+  String get invoiceMarkedUnsent => 'Factura marcada como no enviada';
+
+  @override
+  String get invoiceDeliveryOnlyIssued =>
+      'Solo se puede marcar envío en facturas emitidas.';
+
+  @override
+  String get invoiceDeliveryUpdateError =>
+      'No se pudo actualizar el estado de envío.';
+
+  @override
+  String get invoiceReviewPdfBeforeDraft =>
+      'Revisa la vista previa antes de guardar el borrador.';
+
+  @override
+  String get invoiceStepClientShort => 'Cliente';
+
+  @override
+  String get invoiceStepLinesShort => 'Líneas';
+
+  @override
+  String get invoiceStepDraftShort => 'Borrador';
+
+  @override
+  String get notificationRecurringDraftInvoiceCreatedTitle =>
+      'Borrador de factura recurrente creado';
+
+  @override
+  String notificationRecurringDraftInvoiceCreatedMessage(
+      String clientName, String recurrenceName, String amount) {
+    return 'Se ha creado un borrador de factura para $clientName a partir de la recurrencia \"$recurrenceName\" por $amount.';
+  }
+
+  @override
+  String notificationRecurringDraftInvoiceCreatedMessageNoAmount(
+      String clientName, String recurrenceName) {
+    return 'Se ha creado un borrador de factura para $clientName a partir de la recurrencia \"$recurrenceName\".';
+  }
+
+  @override
+  String get notificationRecurringDraftInvoiceCreatedMessageFallback =>
+      'Se ha creado un borrador de factura recurrente.';
 }

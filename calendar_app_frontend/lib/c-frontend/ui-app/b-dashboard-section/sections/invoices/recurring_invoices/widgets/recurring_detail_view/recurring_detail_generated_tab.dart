@@ -32,6 +32,7 @@ class RecurringDetailGeneratedTab extends StatefulWidget {
   final ValueChanged<Invoice> onDownloadPdf;
   final Future<Invoice> Function(String invoiceId) onLoadInvoiceDetails;
   final Future<Uint8List> Function(String invoiceId) onLoadInvoicePreviewBytes;
+  final bool receiptsMode;
 
   const RecurringDetailGeneratedTab({
     super.key,
@@ -45,6 +46,7 @@ class RecurringDetailGeneratedTab extends StatefulWidget {
     required this.onDownloadPdf,
     required this.onLoadInvoiceDetails,
     required this.onLoadInvoicePreviewBytes,
+    this.receiptsMode = false,
   });
 
   @override
@@ -61,6 +63,7 @@ class _RecurringDetailGeneratedTabState
   bool _loadingPreview = false;
   String? _previewError;
   bool _prefetchingDetails = false;
+  bool _showPreview = false;
 
   @override
   void initState() {
@@ -84,15 +87,13 @@ class _RecurringDetailGeneratedTabState
     }
     if (widget.invoices.isEmpty) {
       _selectedInvoiceId = null;
+      _showPreview = false;
       return;
     }
     final exists = widget.invoices.any((i) => i.id == _selectedInvoiceId);
     if (!exists) {
       _selectedInvoiceId = widget.invoices.first.id;
-      _loadSelectionData(_selectedInvoiceId!);
-    } else if (_selectedInvoiceId != null &&
-        !_detailById.containsKey(_selectedInvoiceId)) {
-      _loadSelectionData(_selectedInvoiceId!);
+      _showPreview = false;
     }
     if (oldWidget.invoices != widget.invoices) {
       _prefetchVisibleDetails();
@@ -121,6 +122,17 @@ class _RecurringDetailGeneratedTabState
       if (mounted) {
         setState(() => _loadingPreview = false);
       }
+    }
+  }
+
+  Future<void> _openPreview(Invoice invoice) async {
+    setState(() {
+      _selectedInvoiceId = invoice.id;
+      _showPreview = true;
+    });
+    if (!_detailById.containsKey(invoice.id) ||
+        !_pdfBytesById.containsKey(invoice.id)) {
+      await _loadSelectionData(invoice.id);
     }
   }
 
@@ -255,6 +267,15 @@ class _RecurringDetailGeneratedTabState
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
+    final generatedTitle = widget.receiptsMode
+        ? (isEs ? 'Recibos de esta serie' : 'Receipts in this series')
+        : l.recurringInvoicesSeriesInvoicesTitle;
+    final emptyGeneratedLabel = widget.receiptsMode
+        ? (isEs ? 'No hay recibos generados.' : 'No generated receipts.')
+        : l.recurringInvoicesSeriesInvoicesEmpty;
+    final listHeaderLabel = widget.receiptsMode
+        ? (isEs ? 'Recibos' : 'Receipts')
+        : (isEs ? 'Facturas' : 'Invoices');
     final visibleInvoices = _sortedInvoices();
     final Invoice? selectedInvoice = visibleInvoices.isEmpty
         ? null
@@ -331,7 +352,7 @@ class _RecurringDetailGeneratedTabState
       children: [
         Expanded(
           child: Text(
-            l.recurringInvoicesSeriesInvoicesTitle,
+            generatedTitle,
             style:
                 t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 13),
           ),
@@ -402,7 +423,7 @@ class _RecurringDetailGeneratedTabState
           header,
           const SizedBox(height: 8),
           Text(
-            l.recurringInvoicesSeriesInvoicesEmpty,
+            emptyGeneratedLabel,
             style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -420,7 +441,7 @@ class _RecurringDetailGeneratedTabState
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
         ),
@@ -466,6 +487,46 @@ class _RecurringDetailGeneratedTabState
       );
     }
 
+    if (_showPreview && selectedResolved != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => setState(() => _showPreview = false),
+                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                label: Text(isEs ? 'Atrás' : 'Back'),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isEs ? 'Previsualización PDF' : 'PDF preview',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(child: buildInvoicePreview(selectedResolved)),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -474,7 +535,7 @@ class _RecurringDetailGeneratedTabState
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: cs.outlineVariant.withValues(alpha: 0.3),
@@ -486,7 +547,7 @@ class _RecurringDetailGeneratedTabState
                 child: Row(
                   children: [
                     Text(
-                      isEs ? 'Facturas' : 'Invoices',
+                      listHeaderLabel,
                       style: t.bodySmall.copyWith(
                         fontWeight: FontWeight.w800,
                         color: cs.onSurfaceVariant,
@@ -528,145 +589,173 @@ class _RecurringDetailGeneratedTabState
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 980;
-              final list = ListView.separated(
-                itemCount: visibleInvoices.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 6),
-                itemBuilder: (_, i) {
-                  final inv = visibleInvoices[i];
-                  final resolved = _detailById[inv.id] ?? inv;
-                  final selected = inv.id == selectedInvoice?.id;
-                  final date = resolved.occurrenceDate ??
-                      resolved.issueDate ??
-                      resolved.registeredAt;
-                  final dateLabel = date == null
-                      ? '-'
-                      : DateFormat.yMMMd(l.localeName).add_Hm().format(date);
-                  final currency = (resolved.currency ?? 'EUR').trim();
-                  final amounts = _amountsFor(resolved);
-                  final money = NumberFormat.simpleCurrency(
-                    locale: l.localeName,
-                    name: currency.isEmpty ? 'EUR' : currency,
-                  );
-                  return InkWell(
-                    onTap: () {
-                      setState(() => _selectedInvoiceId = inv.id);
-                      if (!_detailById.containsKey(inv.id) ||
-                          !_pdfBytesById.containsKey(inv.id)) {
-                        _loadSelectionData(inv.id);
-                      }
-                    },
-                    onDoubleTap: () => widget.onOpenInvoice(inv),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
+              Widget buildInvoiceCard(Invoice inv) {
+                final resolved = _detailById[inv.id] ?? inv;
+                final selected = inv.id == selectedInvoice?.id;
+                final date = resolved.occurrenceDate ??
+                    resolved.issueDate ??
+                    resolved.registeredAt;
+                final dateLabel = date == null
+                    ? '-'
+                    : DateFormat.yMMMd(l.localeName).add_Hm().format(date);
+                final currency = (resolved.currency ?? 'EUR').trim();
+                final amounts = _amountsFor(resolved);
+                final money = NumberFormat.simpleCurrency(
+                  locale: l.localeName,
+                  name: currency.isEmpty ? 'EUR' : currency,
+                );
+                return InkWell(
+                  onTap: () {
+                    setState(() => _selectedInvoiceId = inv.id);
+                    if (!_detailById.containsKey(inv.id) ||
+                        !_pdfBytesById.containsKey(inv.id)) {
+                      _loadSelectionData(inv.id);
+                    }
+                  },
+                  onDoubleTap: () => _openPreview(inv),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? cs.primaryContainer.withValues(alpha: 0.35)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
                         color: selected
-                            ? cs.primaryContainer.withValues(alpha: 0.35)
-                            : cs.surfaceContainerHighest.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: selected
-                              ? cs.primary.withValues(alpha: 0.7)
-                              : cs.outlineVariant.withValues(alpha: 0.35),
-                        ),
+                            ? cs.primary.withValues(alpha: 0.7)
+                            : cs.outlineVariant.withValues(alpha: 0.35),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.receipt_long_outlined,
-                            color: cs.onSurfaceVariant,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  resolved.invoiceNumber.isEmpty
-                                      ? '-'
-                                      : resolved.invoiceNumber,
-                                  style: t.bodySmall.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  dateLabel,
-                                  style: t.bodySmall.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Subtotal: ${money.format(amounts.subtotal)} - IVA: ${money.format(amounts.tax)} - Total: ${money.format(amounts.total)}',
-                                  style: t.bodySmall.copyWith(
-                                    color: cs.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          color: cs.onSurfaceVariant,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                statusLabel(resolved.status),
+                                resolved.invoiceNumber.isEmpty
+                                    ? '-'
+                                    : resolved.invoiceNumber,
                                 style: t.bodySmall.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              Tooltip(
-                                message: l.invoicePdfDownloadCta,
-                                child: IconButton(
-                                  onPressed: () => widget.onDownloadPdf(inv),
-                                  icon: const Icon(
-                                    Icons.download_outlined,
-                                    size: 18,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                  splashRadius: 16,
+                              const SizedBox(height: 2),
+                              Text(
+                                dateLabel,
+                                style: t.bodySmall.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Subtotal: ${money.format(amounts.subtotal)} - IVA: ${money.format(amounts.tax)} - Total: ${money.format(amounts.total)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: t.bodySmall.copyWith(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              statusLabel(resolved.status),
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            TextButton.icon(
+                              onPressed: () => _openPreview(inv),
+                              icon: const Icon(
+                                Icons.visibility_outlined,
+                                size: 15,
+                              ),
+                              label: Text(
+                                isEs ? 'Mostrar PDF' : 'Show PDF preview',
+                              ),
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                foregroundColor: cs.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
+                                textStyle: t.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Tooltip(
+                              message: l.invoicePdfDownloadCta,
+                              child: IconButton(
+                                onPressed: () => widget.onDownloadPdf(inv),
+                                icon: const Icon(
+                                  Icons.download_outlined,
+                                  size: 18,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                splashRadius: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                );
+              }
+
+              final list = ListView.separated(
+                itemCount: visibleInvoices.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 6),
+                itemBuilder: (_, i) => buildInvoiceCard(visibleInvoices[i]),
               );
 
               if (!wide) {
-                return Column(
-                  children: [
-                    Expanded(child: list),
-                    const SizedBox(height: 8),
-                    if (visibleInvoices.isNotEmpty)
-                      SizedBox(
-                        height: (constraints.maxHeight * 0.44).clamp(280, 560),
-                        child: buildInvoicePreview(selectedResolved!),
-                      ),
-                  ],
-                );
+                return list;
               }
 
               return Row(
                 children: [
-                  Expanded(flex: 2, child: list),
-                  const SizedBox(width: 10),
+                  Expanded(flex: 4, child: list),
+                  const SizedBox(width: 12),
                   Expanded(
-                    flex: 3,
+                    flex: 5,
                     child: selectedResolved == null
-                        ? const SizedBox.shrink()
+                        ? Center(
+                            child: Text(
+                              isEs
+                                  ? 'Selecciona una factura para ver el PDF.'
+                                  : 'Select an invoice to preview the PDF.',
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          )
                         : buildInvoicePreview(selectedResolved),
                   ),
                 ],

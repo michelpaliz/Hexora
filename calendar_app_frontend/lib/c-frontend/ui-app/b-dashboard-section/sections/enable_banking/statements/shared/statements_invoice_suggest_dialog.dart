@@ -633,6 +633,11 @@ class StatementsInvoiceSuggestDialog {
                                                                 ? null
                                                                 : invoiceNumber
                                                                     .trim(),
+                                                        counterpartyName:
+                                                            clientName ==
+                                                                    l.statementsUnlinked
+                                                                ? null
+                                                                : clientName,
                                                         expenseOnly:
                                                             expenseOnly,
                                                       );

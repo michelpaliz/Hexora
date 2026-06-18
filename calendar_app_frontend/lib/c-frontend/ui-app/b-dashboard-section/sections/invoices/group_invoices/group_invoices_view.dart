@@ -19,11 +19,39 @@ class _GroupInvoicesView extends StatelessWidget {
     final showInlineReceiptEditor = state._selectedMenu == 'receipt_editor' &&
         state.widget.embedded &&
         kIsWeb;
+    final activeMenu = state._selectedMenu;
     final menu = state._selectedMenu == 'invoice_editor'
         ? state._menuBeforeInvoiceEditor
         : state._selectedMenu == 'receipt_editor'
             ? state._menuBeforeReceiptEditor
             : state._selectedMenu;
+    final compactSecondaryButtonStyle = OutlinedButton.styleFrom(
+      visualDensity: VisualDensity.compact,
+      minimumSize: const Size(0, 40),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      foregroundColor: cs.onSurfaceVariant,
+      backgroundColor: cs.surface.withValues(alpha: 0.88),
+    );
+    final compactPrimaryButtonStyle = FilledButton.styleFrom(
+      visualDensity: VisualDensity.compact,
+      minimumSize: const Size(44, 40),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      backgroundColor: cs.primary,
+      foregroundColor: cs.onPrimary,
+      elevation: 0,
+    );
+    final compactIconButtonStyle = IconButton.styleFrom(
+      visualDensity: VisualDensity.compact,
+      minimumSize: const Size(40, 40),
+      padding: const EdgeInsets.all(10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      foregroundColor: cs.onSurfaceVariant,
+      backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+      side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
+    );
 
     Widget body;
     if (state._loading) {
@@ -43,14 +71,16 @@ class _GroupInvoicesView extends StatelessWidget {
               .toList();
       final folderTitle = showInlineReceiptEditor
           ? l.receiptEditorTitle(l.receiptDraftNumberPlaceholder)
-          : switch (menu) {
+          : switch (activeMenu) {
               'invoice_editor' => l.invoiceEditorTitle,
               'billing_profile' => l.billingProfileTitle,
               'invoices_drafts' => l.groupInvoicesDraftInvoicesTitle,
               'invoices_issued' => l.invoicesListTitle,
               'budgets_list' => l.budgetsMenuList,
               'budgets_new' => l.budgetsMenuNew,
+              'budgets_convert' => 'Convertir presupuesto',
               'clients' => 'Clientes',
+              'client_invoice_stats' => 'Gráfico facturas',
               'clients_flow' => l.groupInvoicesClientsFlowCta,
               'receipts' => 'Recibos',
               'emails' => 'Correo electrónico',
@@ -58,75 +88,100 @@ class _GroupInvoicesView extends StatelessWidget {
               'expenses_list' => 'Gastos',
               'providers' => 'Proveedores',
               'vat' => 'Impuestos',
+              'invoices_suspects' => Localizations.localeOf(context)
+                      .languageCode
+                      .toLowerCase()
+                      .startsWith('es')
+                  ? 'Auditoría IVA ingresos'
+                  : 'Income VAT audit',
+              'invoices_accountant_compare' => Localizations.localeOf(context)
+                      .languageCode
+                      .toLowerCase()
+                      .startsWith('es')
+                  ? 'Comparar Excel de asesoría'
+                  : 'Compare accountant Excel',
+              'expenses_suspects' => Localizations.localeOf(context)
+                      .languageCode
+                      .toLowerCase()
+                      .startsWith('es')
+                  ? 'Auditoría IVA gastos'
+                  : 'Expense VAT audit',
               'recurring' => 'Recurrentes',
               'recurring_receipts' => 'Recibos recurrentes',
               'client_classifications' => l.clientClassificationTitle,
               _ => l.invoicesTitle(state.widget.group.name),
             };
-      final showInvoiceActions = menu == 'invoices' ||
-          menu == 'invoices_issued' ||
-          menu == 'invoices_drafts';
+      final showInvoiceActions = activeMenu == 'invoices' ||
+          activeMenu == 'invoices_issued' ||
+          activeMenu == 'invoices_drafts';
+      final showInvoiceConceptExport =
+          activeMenu == 'invoices' || activeMenu == 'invoices_issued';
       final invoiceActions = showInvoiceActions
           ? <Widget>[
               Tooltip(
                 message: l.createInvoiceCta,
                 child: FilledButton(
                   onPressed: state._openCreateInvoice,
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(40, 36),
-                  ),
+                  style: compactPrimaryButtonStyle,
                   child: const Icon(Icons.add_rounded, size: 18),
                 ),
               ),
               Tooltip(
                 message: '${l.download} PDFs',
-                child: OutlinedButton(
+                child: OutlinedButton.icon(
                   onPressed: state._downloadingAllPdfs
                       ? null
-                      : state._downloadAllInvoicesPdfs,
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(40, 36),
-                  ),
-                  child: state._downloadingAllPdfs
+                      : state._showBulkDownloadDialog,
+                  style: compactSecondaryButtonStyle,
+                  icon: state._downloadingAllPdfs
                       ? const SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.download_outlined, size: 18),
+                      : const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                  label: const Text('PDF'),
                 ),
               ),
+              if (showInvoiceConceptExport)
+                Tooltip(
+                  message: Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Exporta las facturas con una categoría calculada según los conceptos de sus líneas.'
+                      : 'Export invoices with a calculated category based on line concepts.',
+                  child: OutlinedButton.icon(
+                    onPressed: state._exportingInvoiceConcepts
+                        ? null
+                        : state._exportInvoiceConceptsExcel,
+                    style: compactSecondaryButtonStyle,
+                    icon: state._exportingInvoiceConcepts
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.table_view_outlined, size: 16),
+                    label: const Text('Excel'),
+                  ),
+                ),
               Tooltip(
                 message: l.refreshAction,
-                child: OutlinedButton(
+                child: IconButton(
                   onPressed: state._refreshInvoiceListsOnly,
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(40, 36),
-                  ),
-                  child: const Icon(Icons.refresh, size: 18),
+                  style: compactIconButtonStyle,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
                 ),
               ),
             ]
           : null;
       final recurringActions =
-          menu == 'recurring' && state._recurringActions != null
+          activeMenu == 'recurring' && state._recurringActions != null
               ? <Widget>[
                   Tooltip(
                     message: l.recurringInvoicesRefreshCta,
-                    child: OutlinedButton(
+                    child: IconButton(
                       onPressed: state._recurringActions!.onRefresh,
-                      style: OutlinedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(40, 36),
-                      ),
-                      child: const Icon(Icons.refresh, size: 18),
+                      style: compactIconButtonStyle,
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
                     ),
                   ),
                   Tooltip(
@@ -135,29 +190,21 @@ class _GroupInvoicesView extends StatelessWidget {
                       onPressed: state._recurringActions!.canManage
                           ? state._recurringActions!.onCreate
                           : null,
-                      style: FilledButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(40, 36),
-                      ),
+                      style: compactPrimaryButtonStyle,
                       child: const Icon(Icons.add_rounded, size: 18),
                     ),
                   ),
                 ]
               : null;
-      final recurringReceiptsActions = menu == 'recurring_receipts' &&
+      final recurringReceiptsActions = activeMenu == 'recurring_receipts' &&
               state._recurringReceiptsActions != null
           ? <Widget>[
               Tooltip(
                 message: l.recurringInvoicesRefreshCta,
-                child: OutlinedButton(
+                child: IconButton(
                   onPressed: state._recurringReceiptsActions!.onRefresh,
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(40, 36),
-                  ),
-                  child: const Icon(Icons.refresh, size: 18),
+                  style: compactIconButtonStyle,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
                 ),
               ),
               Tooltip(
@@ -166,59 +213,73 @@ class _GroupInvoicesView extends StatelessWidget {
                   onPressed: state._recurringReceiptsActions!.canManage
                       ? state._recurringReceiptsActions!.onCreate
                       : null,
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(40, 36),
-                  ),
+                  style: compactPrimaryButtonStyle,
                   child: const Icon(Icons.add_rounded, size: 18),
                 ),
               ),
             ]
           : null;
-      final expenseListActions = menu == 'expenses_list'
+      final expenseListActions = activeMenu == 'expenses_list'
           ? <Widget>[
               Tooltip(
                 message: l.refreshAction,
-                child: OutlinedButton(
+                child: IconButton(
                   onPressed: state._refreshExpensesListOnly,
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(40, 36),
-                  ),
-                  child: const Icon(Icons.refresh, size: 18),
+                  style: compactIconButtonStyle,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
                 ),
               ),
             ]
           : null;
-      final clientsActions = menu == 'clients' || menu == 'clients_flow'
+      final receiptActions = activeMenu == 'receipts'
           ? <Widget>[
+              Tooltip(
+                message: l.refreshAction,
+                child: IconButton(
+                  onPressed: state._refreshInvoiceListsOnly,
+                  style: compactIconButtonStyle,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                ),
+              ),
+            ]
+          : null;
+      final clientsActions = activeMenu == 'clients' ||
+              activeMenu == 'clients_flow' ||
+              activeMenu == 'client_invoice_stats'
+          ? <Widget>[
+              Tooltip(
+                message: l.refreshAction,
+                child: IconButton(
+                  onPressed: state._refreshingClientsSection == true
+                      ? null
+                      : state._refreshClientsSection,
+                  style: compactIconButtonStyle,
+                  icon: state._refreshingClientsSection == true
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh_rounded, size: 18),
+                ),
+              ),
               Tooltip(
                 message: l.addClient,
                 child: FilledButton(
                   onPressed: state._openCreateClient,
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(40, 36),
-                  ),
+                  style: compactPrimaryButtonStyle,
                   child: const Icon(Icons.person_add_outlined, size: 18),
                 ),
               ),
             ]
           : null;
-      final classificationActions = menu == 'client_classifications'
+      final classificationActions = activeMenu == 'client_classifications'
           ? <Widget>[
               Tooltip(
                 message: l.clientClassificationAddTitle,
                 child: FilledButton(
                   onPressed: state._openClientClassificationManager,
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(40, 36),
-                  ),
+                  style: compactPrimaryButtonStyle,
                   child: const Icon(Icons.add_rounded, size: 18),
                 ),
               ),
@@ -226,6 +287,7 @@ class _GroupInvoicesView extends StatelessWidget {
           : null;
       final folderActions = classificationActions ??
           expenseListActions ??
+          receiptActions ??
           clientsActions ??
           recurringReceiptsActions ??
           recurringActions ??
@@ -261,6 +323,7 @@ class _GroupInvoicesView extends StatelessWidget {
                   gastosExpanded: state._gastosExpanded,
                   impuestosExpanded: state._impuestosExpanded,
                   informesExpanded: state._informesExpanded,
+                  clientsExpanded: state._clientsExpanded,
                   issuedCount: state._invoices.length,
                   draftsCount: state._drafts.length,
                   receiptsCount:
@@ -272,6 +335,8 @@ class _GroupInvoicesView extends StatelessWidget {
                   onToggleFacturacionExpanded: () => state.setState(() {
                     final next = !state._facturacionExpanded;
                     if (!isWide && next) {
+                      state._businessExpanded = false;
+                      state._clientsExpanded = false;
                       state._gastosExpanded = false;
                       state._impuestosExpanded = false;
                       state._informesExpanded = false;
@@ -300,17 +365,33 @@ class _GroupInvoicesView extends StatelessWidget {
                     final next = !state._informesExpanded;
                     if (!isWide && next) {
                       state._facturacionExpanded = false;
+                      state._businessExpanded = false;
                       state._gastosExpanded = false;
                       state._impuestosExpanded = false;
+                      state._clientsExpanded = false;
                     }
                     state._informesExpanded = next;
                   }),
+                  onToggleClientsExpanded: () => state.setState(() {
+                    final next = !state._clientsExpanded;
+                    if (!isWide && next) {
+                      state._facturacionExpanded = false;
+                      state._businessExpanded = false;
+                      state._gastosExpanded = false;
+                      state._impuestosExpanded = false;
+                      state._informesExpanded = false;
+                    }
+                    state._clientsExpanded = next;
+                  }),
                   selectedMenu: state._selectedMenu,
-                  onMenuChanged: (m) =>
-                      state.setState(() => state._selectedMenu = m),
-                  collapsed: false,
+                  onMenuChanged: (m) async {
+                    final canLeave = await state._confirmLeaveActiveEditor();
+                    if (!canLeave || !state.mounted) return;
+                    state._changeInvoicesMenu(m);
+                  },
+                  collapsed: state._invoiceSideMenuCollapsed,
                   compactMode: false,
-                  onToggleCollapse: () {},
+                  onToggleCollapse: state._toggleInvoiceSideMenuCollapsed,
                 ),
                 Expanded(
                   child: (kIsWeb && state._selectedMenu != 'receipt_editor')
@@ -330,26 +411,31 @@ class _GroupInvoicesView extends StatelessWidget {
     }
 
     final fabIsReceipts = state._selectedMenu == 'receipts';
-    final hideFab = menu == 'invoices' ||
-        menu == 'invoices_drafts' ||
-        menu == 'invoices_issued' ||
+    final hideFab = activeMenu == 'invoices' ||
+        activeMenu == 'invoices_drafts' ||
+        activeMenu == 'invoices_issued' ||
         state._selectedMenu == 'invoice_editor' ||
         state._selectedMenu == 'receipt_editor' ||
         state._selectedMenu == 'billing_profile' ||
-        menu == 'clients' ||
-        menu == 'clients_flow' ||
-        menu == 'receipts' ||
-        menu == 'emails' ||
-        menu == 'client_classifications' ||
-        menu == 'expenses' ||
-        menu == 'expenses_upload' ||
-        menu == 'expenses_list' ||
-        menu == 'providers' ||
-        menu == 'vat' ||
-        menu == 'budgets_list' ||
-        menu == 'budgets_new' ||
-        menu == 'recurring_receipts' ||
-        menu == 'recurring';
+        activeMenu == 'clients' ||
+        activeMenu == 'client_invoice_stats' ||
+        activeMenu == 'clients_flow' ||
+        activeMenu == 'receipts' ||
+        activeMenu == 'emails' ||
+        activeMenu == 'client_classifications' ||
+        activeMenu == 'expenses' ||
+        activeMenu == 'expenses_upload' ||
+        activeMenu == 'expenses_list' ||
+        activeMenu == 'providers' ||
+        activeMenu == 'vat' ||
+        activeMenu == 'budgets_list' ||
+        activeMenu == 'budgets_new' ||
+        activeMenu == 'budgets_convert' ||
+        activeMenu == 'recurring_receipts' ||
+        activeMenu == 'recurring' ||
+        activeMenu == 'invoices_suspects' ||
+        activeMenu == 'invoices_accountant_compare' ||
+        activeMenu == 'expenses_suspects';
 
     if (state.widget.embedded && kIsWeb) {
       if (hideFab) {

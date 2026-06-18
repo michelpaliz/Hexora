@@ -20,6 +20,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../dashboard/controller/group_dashboard_state.dart';
+import '../dashboard/controller/group_dashboard_sections.dart';
 
 class GroupDashboardBodyAdmin extends StatefulWidget {
   const GroupDashboardBodyAdmin({
@@ -151,6 +152,37 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             onTap: () => _editBusinessHours(context),
           ),
           const SizedBox(height: 20),
+          SectionHeader(title: l.calendarTitle, textStyle: sectionTitle),
+          Card(
+            color: tileBg,
+            child: ListTile(
+              leading: const Icon(Icons.calendar_month_rounded),
+              title: Text(l.calendarTitle, style: tileTitle),
+              subtitle: Text(
+                _group.hasCalendar ? l.goToCalendar : l.noCalendarWarning,
+                style: tileSub,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => context
+                  .read<GroupDashboardState>()
+                  .openSection(Sections.calendar),
+            ),
+          ),
+          if (!_group.hasCalendar) ...[
+            const SizedBox(height: 8),
+            Card(
+              color: cs.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  l.noCalendarWarning,
+                  style: t.bodyMedium.copyWith(color: cs.onErrorContainer),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
           SectionHeader(
             title: l.sectionEvents,
             subtitle: l.pendingEventsSectionTitle,
@@ -222,6 +254,40 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          Card(
+            color: tileBg,
+            child: ListTile(
+              leading: const Icon(Icons.receipt_long_rounded),
+              title: Text(
+                l.localeName.startsWith('es') ? 'Gastos' : 'Expenses',
+                style: tileTitle,
+              ),
+              subtitle: Text(
+                l.localeName.startsWith('es')
+                    ? 'Gestiona facturas de proveedor y gastos'
+                    : 'Manage supplier invoices and expenses',
+                style: tileSub,
+              ),
+              onTap: () =>
+                  context.read<GroupDashboardState>().openSection('expenses'),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+          Card(
+            color: tileBg,
+            child: ListTile(
+              leading: const Icon(Icons.mail_outline_rounded),
+              title: Text(l.mailConsoleTitle, style: tileTitle),
+              subtitle: Text(
+                '${l.mailConsoleTitle} ${l.sectionManage.toLowerCase()}',
+                style: tileSub,
+              ),
+              onTap: () =>
+                  context.read<GroupDashboardState>().openSection('emails'),
+            ),
+          ),
 
           const SizedBox(height: 8),
           SectionHeader(title: l.sectionInsights, textStyle: sectionTitle),
@@ -235,19 +301,6 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                   context.read<GroupDashboardState>().openSection('insights'),
             ),
           ),
-
-          const SizedBox(height: 20),
-          if (!_group.hasCalendar)
-            Card(
-              color: cs.errorContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  l.noCalendarWarning,
-                  style: t.bodyMedium.copyWith(color: cs.onErrorContainer),
-                ),
-              ),
-            ),
 
           const SizedBox(height: 20),
           SectionHeader(title: l.sectionWorkersHours, textStyle: sectionTitle),

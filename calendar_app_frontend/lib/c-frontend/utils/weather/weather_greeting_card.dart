@@ -16,6 +16,10 @@ class WeatherGreetingCard extends StatelessWidget {
   final bool isForecastLoading;
   final String? forecastError;
 
+  /// When false the top greeting row and fun-fact chip are hidden.
+  /// Use in wide layouts where a separate hero greeting is already shown.
+  final bool showGreeting;
+
   const WeatherGreetingCard({
     super.key,
     required this.userName,
@@ -26,6 +30,7 @@ class WeatherGreetingCard extends StatelessWidget {
     this.forecastDays = const [],
     this.isForecastLoading = false,
     this.forecastError,
+    this.showGreeting = true,
   });
 
   String _localizedSummary(AppLocalizations l) {
@@ -83,10 +88,10 @@ class WeatherGreetingCard extends StatelessWidget {
     final locationText = _locationText();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -102,69 +107,124 @@ class WeatherGreetingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: emoji + greeting + temp badge + location
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(summary.emoji, style: const TextStyle(fontSize: 28)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _buildMainLine(l),
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        color: cs.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          _buildTempLine(l),
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontSize: 12,
-                          ),
+          if (showGreeting) ...[
+            // Top row: emoji + greeting + temp + location
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(summary.emoji, style: const TextStyle(fontSize: 28)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _buildMainLine(l),
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: cs.onSurface,
                         ),
-                        if (locationText != null) ...[
-                          const SizedBox(width: 8),
-                          Icon(Icons.location_on_outlined, size: 13, color: cs.onSurfaceVariant),
-                          const SizedBox(width: 2),
-                          Flexible(
-                            child: Text(
-                              locationText,
-                              style: t.bodySmall.copyWith(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: cs.onSurface,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            _buildTempLine(l),
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontSize: 12,
                             ),
                           ),
+                          if (locationText != null) ...[
+                            const SizedBox(width: 8),
+                            Icon(Icons.location_on_outlined, size: 13, color: cs.onSurfaceVariant),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(
+                                locationText,
+                                style: t.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  color: cs.onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                _buildFunLine(l),
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _buildFunLine(l),
-            style: t.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontSize: 11,
-              fontStyle: FontStyle.italic,
             ),
-          ),
+          ] else ...[
+            // Compact header: emoji + condition + temp + location (no name)
+            Row(
+              children: [
+                Text(summary.emoji, style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _buildTempLine(l),
+                    style: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ),
+                if (locationText != null) ...[
+                  Icon(Icons.location_on_outlined, size: 13, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 3),
+                  Text(
+                    locationText,
+                    style: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                _buildFunLine(l),
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
           WeatherForecastList(
             days: forecastDays,
             isLoading: isForecastLoading,

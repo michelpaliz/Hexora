@@ -47,7 +47,7 @@ class FolderPanel extends StatelessWidget {
             if (showTab)
               Positioned(
                 left: 0,
-                top: -8,
+                top: 0,
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -101,7 +101,7 @@ class FolderPanel extends StatelessWidget {
             if (showTab && hasActions)
               Positioned(
                 right: 0,
-                top: -8,
+                top: 0,
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

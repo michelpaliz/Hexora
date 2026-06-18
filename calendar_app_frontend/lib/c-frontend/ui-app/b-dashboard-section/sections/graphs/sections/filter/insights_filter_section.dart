@@ -21,6 +21,7 @@ class InsightsFiltersSection extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1180;
 
     String labelForPreset(RangePreset p) {
       switch (p) {
@@ -43,19 +44,186 @@ class InsightsFiltersSection extends StatelessWidget {
       }
     }
 
-    Widget chip(RangePreset p) => ChoiceChip(
-          label: Text(labelForPreset(p)),
-          selected: preset == p,
-          onSelected: (_) => onPresetChanged(p),
-          // tighter, compact chips
-          labelPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-          visualDensity: const VisualDensity(horizontal: -3, vertical: -3),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        );
+    final periodLabel = l.localeName.startsWith('es') ? 'Periodo' : 'Period';
+    final quickPresets = <RangePreset>[
+      RangePreset.d7,
+      RangePreset.d30,
+      RangePreset.m3,
+      RangePreset.m6,
+    ];
+    final segments = <ButtonSegment<RangePreset>>[
+      for (final value in [
+        RangePreset.d7,
+        RangePreset.d30,
+        RangePreset.m3,
+        RangePreset.m6,
+        RangePreset.y1,
+        RangePreset.custom,
+      ])
+        ButtonSegment(value: value, label: Text(labelForPreset(value))),
+    ];
 
-    final periodLabel = (l.localeName.startsWith('es')) ? 'Periodo' : 'Period';
+    Widget datePicker({required bool compact}) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(compact ? 12 : 14),
+        onTap: onPickCustom,
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 12 : 14,
+            vertical: compact ? 9 : 10,
+          ),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(
+              alpha: compact ? 0.5 : 0.32,
+            ),
+            borderRadius: BorderRadius.circular(compact ? 12 : 14),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: .55)),
+            boxShadow: compact
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: .08),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: compact ? 26 : 30,
+                height: compact ? 26 : 30,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(compact ? 8 : 9),
+                ),
+                child: Icon(
+                  Icons.calendar_month_rounded,
+                  size: compact ? 15 : 17,
+                  color: cs.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  rangeText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: (compact ? tt.bodySmall : tt.bodyMedium)?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                compact
+                    ? Icons.chevron_right_rounded
+                    : Icons.expand_more_rounded,
+                size: compact ? 18 : 20,
+                color: cs.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget mobilePresetChip(RangePreset value) {
+      final selected = preset == value;
+      return Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => onPresetChanged(value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? cs.primary
+                  : cs.surfaceContainerHighest.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: selected
+                    ? cs.primary.withValues(alpha: 0.55)
+                    : cs.outlineVariant.withValues(alpha: 0.42),
+              ),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: cs.primary.withValues(alpha: 0.16),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (selected) ...[
+                  Icon(
+                    Icons.check_rounded,
+                    size: 15,
+                    color: cs.onPrimary,
+                  ),
+                  const SizedBox(width: 5),
+                ],
+                Text(
+                  labelForPreset(value),
+                  style: tt.bodySmall?.copyWith(
+                    color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget customChip() {
+      final selected = preset == RangePreset.custom;
+      return InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onPickCustom,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? cs.primary
+                : cs.surfaceContainerHighest.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? cs.primary.withValues(alpha: 0.55)
+                  : cs.outlineVariant.withValues(alpha: 0.42),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                size: 15,
+                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                l.dateRangeCustom,
+                style: tt.bodySmall?.copyWith(
+                  color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Card(
       elevation: 0,
@@ -63,78 +231,82 @@ class InsightsFiltersSection extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(periodLabel,
-                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 10),
-
-            // ---- SCROLLABLE PRESET ROW (1 line, no wrap) ----
-            SizedBox(
-              height: 38, // keeps chips to one tidy line
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    chip(RangePreset.d7),
-                    const SizedBox(width: 8),
-                    chip(RangePreset.d30),
-                    const SizedBox(width: 8),
-                    chip(RangePreset.m3),
-                    const SizedBox(width: 8),
-                    chip(RangePreset.m6),
-                    const SizedBox(width: 8),
-                    chip(RangePreset.y1),
-                    const SizedBox(width: 8),
-                    ActionChip(
-                      label: Text(l.dateRangeCustom),
-                      onPressed: onPickCustom,
-                      visualDensity:
-                          const VisualDensity(horizontal: -3, vertical: -3),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // ---- EMPHASIZED DATE RANGE PILL ----
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: onPickCustom,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(
-                  // subtle fill + hairline border for emphasis
-                  color: cs.surfaceContainerHighest.withOpacity(.55),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: cs.outlineVariant.withOpacity(.6)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today_rounded, size: 18),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        rangeText,
-                        style: tt.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurface,
+        child: isDesktop
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        periodLabel,
+                        style:
+                            tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SegmentedButton<RangePreset>(
+                            segments: segments,
+                            selected: <RangePreset>{preset},
+                            onSelectionChanged: (selection) {
+                              final selected = selection.first;
+                              if (selected == RangePreset.custom) {
+                                onPickCustom();
+                                return;
+                              }
+                              onPresetChanged(selected);
+                            },
+                            showSelectedIcon: true,
+                            multiSelectionEnabled: false,
+                            style: ButtonStyle(
+                              visualDensity: const VisualDensity(
+                                horizontal: -4,
+                                vertical: -4,
+                              ),
+                              padding: const WidgetStatePropertyAll(
+                                EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              ),
+                              textStyle: WidgetStatePropertyAll(
+                                tt.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  datePicker(compact: false),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    periodLabel,
+                    style: tt.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: cs.onSurface,
                     ),
-                    Icon(Icons.chevron_right_rounded,
-                        size: 20, color: cs.onSurfaceVariant),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final value in quickPresets)
+                          mobilePresetChip(value),
+                        customChip(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  datePicker(compact: true),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

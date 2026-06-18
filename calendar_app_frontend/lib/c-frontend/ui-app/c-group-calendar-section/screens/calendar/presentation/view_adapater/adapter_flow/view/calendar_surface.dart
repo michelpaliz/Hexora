@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/weather/day_summary.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/cells_widgets/calendar_month_cell.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/cells_widgets/calendar_styles.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/month_schedule_img/calendar_styles.dart';
@@ -15,14 +16,18 @@ import 'appointment_builder_bridge.dart';
 class CalendarSurface extends StatefulWidget {
   final CalendarState state;
   final AppointmentBuilderBridge apptBridge;
+  final EventDomain eventDomain;
   final String? forcedViewMode;
+  final bool showMonthAgenda;
   final ValueChanged<DateTime>? onTimeSlotTap;
 
   const CalendarSurface({
     super.key,
     required this.state,
     required this.apptBridge,
+    required this.eventDomain,
     this.forcedViewMode,
+    this.showMonthAgenda = true,
     this.onTimeSlotTap,
   });
 
@@ -34,7 +39,9 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
   final sf.CalendarController _controller = sf.CalendarController();
   sf.CalendarView _selectedView = sf.CalendarView.month;
   DateTime? _selectedDate;
+  DateTime? _tappedSlot;
   bool _syncScheduled = false;
+  bool _isDraggingEvent = false;
 
   sf.CalendarView _mapModeToSf(String mode) {
     switch (mode) {
@@ -60,6 +67,34 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     _controller.view = _selectedView;
   }
 
+  List<sf.TimeRegion> _buildSelectedSlotRegion() {
+    final slot = _tappedSlot;
+    if (slot == null) return const [];
+    return [
+      sf.TimeRegion(
+        startTime: slot,
+        endTime: slot.add(const Duration(minutes: 30)),
+        enablePointerInteraction: false,
+        color: Colors.transparent,
+        text: '__selected__',
+      ),
+    ];
+  }
+
+  Widget _buildTimeRegionWidget(
+      BuildContext ctx, sf.TimeRegionDetails details) {
+    if (details.region.text != '__selected__') return const SizedBox.shrink();
+    final cs = Theme.of(ctx).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.13),
+        border: Border(
+          left: BorderSide(color: cs.primary, width: 3),
+        ),
+      ),
+    );
+  }
+
   void _scheduleSync(VoidCallback action) {
     if (_syncScheduled) return;
     _syncScheduled = true;
@@ -68,6 +103,135 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
       _syncScheduled = false;
       action();
     });
+  }
+
+  Event? _extractDraggedEvent(Object? raw) {
+    if (raw is Event) return raw;
+    if (raw is List && raw.isNotEmpty) {
+      final first = raw.first;
+      if (first is Event) return first;
+    }
+    return null;
+  }
+
+  Future<bool> _confirmMoveEvent(
+    BuildContext context, {
+    required Event event,
+    required DateTime newStart,
+    required DateTime newEnd,
+  }) async {
+    final localizations = MaterialLocalizations.of(context);
+    final dateLabel = localizations.formatMediumDate(newStart);
+    final startLabel = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(newStart),
+      alwaysUse24HourFormat: true,
+    );
+    final endLabel = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(newEnd),
+      alwaysUse24HourFormat: true,
+    );
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final cs = Theme.of(dialogContext).colorScheme;
+        return AlertDialog(
+          title: const Text('Confirmar cambio de fecha'),
+          content: Text(
+            'Quieres mover "${event.title}" al $dateLabel de $startLabel a $endLabel?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(localizations.cancelButtonLabel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: cs.primary,
+                foregroundColor: cs.onPrimary,
+              ),
+              child: const Text('Mover evento'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return confirmed == true;
+  }
+
+  Future<void> _handleAppointmentDragEnd(
+    BuildContext context,
+    sf.AppointmentDragEndDetails details,
+  ) async {
+    final dragged = _extractDraggedEvent(details.appointment);
+    final droppedTime = details.droppingTime;
+    if (dragged == null || droppedTime == null || _isDraggingEvent) return;
+
+    if (dragged.recurrenceRule != null || dragged.rawRuleId != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Los eventos recurrentes deben editarse manualmente.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final duration = dragged.endDate.difference(dragged.startDate);
+    final newStart = dragged.allDay
+        ? DateTime(
+            droppedTime.year,
+            droppedTime.month,
+            droppedTime.day,
+            dragged.startDate.hour,
+            dragged.startDate.minute,
+            dragged.startDate.second,
+            dragged.startDate.millisecond,
+            dragged.startDate.microsecond,
+          )
+        : droppedTime;
+    final newEnd = newStart.add(duration);
+
+    if (newStart == dragged.startDate && newEnd == dragged.endDate) return;
+
+    final confirmed = await _confirmMoveEvent(
+      context,
+      event: dragged,
+      newStart: newStart,
+      newEnd: newEnd,
+    );
+    if (!mounted || !confirmed) return;
+
+    final movedEvent = dragged.copyWith(
+      startDate: newStart,
+      endDate: newEnd,
+    );
+
+    _isDraggingEvent = true;
+    try {
+      await widget.eventDomain.updateEvent(this.context, movedEvent);
+      widget.state.jumpTo(newStart);
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        const SnackBar(
+          content: Text('Evento movido correctamente.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo mover el evento.'),
+        ),
+      );
+    } finally {
+      _isDraggingEvent = false;
+    }
   }
 
   // calendar_surface.dart (add near other fields)
@@ -139,10 +303,12 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                             final weatherMap = showWeatherIcons
                                 ? _resolveForecast(forecast)
                                 : const <DateTime, DaySummary>{};
-                            final isTimeGridView = _selectedView == sf.CalendarView.day ||
-                                _selectedView == sf.CalendarView.week ||
-                                _selectedView == sf.CalendarView.workWeek;
-                            final calendarHeaderHeight = isTimeGridView ? 42.0 : 36.0;
+                            final isTimeGridView =
+                                _selectedView == sf.CalendarView.day ||
+                                    _selectedView == sf.CalendarView.week ||
+                                    _selectedView == sf.CalendarView.workWeek;
+                            final calendarHeaderHeight =
+                                isTimeGridView ? 42.0 : 36.0;
                             final calendarViewHeaderHeight =
                                 isTimeGridView ? 56.0 : 40.0;
 
@@ -170,12 +336,17 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                   final tapped = details.date;
                                   if (tapped == null) return;
                                   final target = details.targetElement;
-                                  if (target != sf.CalendarElement.calendarCell) return;
-                                  if (_selectedView != sf.CalendarView.week &&
-                                      _selectedView != sf.CalendarView.day &&
-                                      _selectedView != sf.CalendarView.workWeek) {
+                                  if (target !=
+                                      sf.CalendarElement.calendarCell) {
                                     return;
                                   }
+                                  if (_selectedView != sf.CalendarView.week &&
+                                      _selectedView != sf.CalendarView.day &&
+                                      _selectedView !=
+                                          sf.CalendarView.workWeek) {
+                                    return;
+                                  }
+                                  setState(() => _tappedSlot = tapped);
                                   widget.onTimeSlotTap?.call(tapped);
                                 },
                                 // ✅ Keep Month custom tiles (old behavior)
@@ -206,6 +377,11 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                 appointmentBuilder: (context, details) =>
                                     widget.apptBridge.build(context,
                                         _selectedView, details, textColor),
+                                allowDragAndDrop: isTimeGridView,
+                                onDragEnd: (details) =>
+                                    _handleAppointmentDragEnd(context, details),
+                                specialRegions: _buildSelectedSlotRegion(),
+                                timeRegionBuilder: _buildTimeRegionWidget,
                                 selectionDecoration: const BoxDecoration(
                                     color: Colors.transparent),
                                 showNavigationArrow: true,
@@ -219,7 +395,9 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                 // scheduleViewSettings: buildScheduleSettings(
                                 //     fontSize, backgroundColor,
                                 //     monthHeaderHeight: monthHeaderHeight),
-                                monthViewSettings: buildMonthSettings(),
+                                monthViewSettings: buildMonthSettings(
+                                  showAgenda: widget.showMonthAgenda,
+                                ),
                               ),
                             ).animate().fadeIn(duration: 300.ms);
                           },
@@ -238,33 +416,5 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
 }
 
 Map<DateTime, DaySummary> _resolveForecast(Map<DateTime, DaySummary> forecast) {
-  if (forecast.isNotEmpty) return forecast;
-  return _generateFallbackForecast();
-}
-
-Map<DateTime, DaySummary> _generateFallbackForecast() {
-  final today = DateTime.now();
-  final start = DateTime(today.year, today.month, today.day);
-  const seeds = [
-    (code: 0, precip: 0.0, max: 27.0, min: 17.0),
-    (code: 2, precip: 0.5, max: 24.0, min: 16.0),
-    (code: 63, precip: 6.0, max: 21.0, min: 14.0),
-    (code: 1, precip: 0.0, max: 28.0, min: 18.0),
-    (code: 3, precip: 1.4, max: 23.0, min: 15.5),
-    (code: 71, precip: 3.2, max: 12.0, min: 2.0),
-    (code: 95, precip: 5.5, max: 19.0, min: 11.0),
-  ];
-
-  final map = <DateTime, DaySummary>{};
-  for (var i = 0; i < 3; i++) {
-    final seed = seeds[i % seeds.length];
-    final day = start.add(Duration(days: i));
-    map[DateTime(day.year, day.month, day.day)] = mapToDaySummary(
-      weatherCode: seed.code,
-      precip: seed.precip,
-      tempMax: seed.max,
-      tempMin: seed.min,
-    );
-  }
-  return map;
+  return forecast;
 }

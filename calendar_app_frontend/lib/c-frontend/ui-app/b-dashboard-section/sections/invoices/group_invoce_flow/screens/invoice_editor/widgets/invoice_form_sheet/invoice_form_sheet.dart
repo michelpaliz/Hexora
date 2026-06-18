@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
-import 'package:hexora/a-models/invoice/invoice_line.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_formatters.dart';
@@ -151,17 +150,16 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
         registeredAt: _registeredAt,
         status: _status,
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        lines: lineDrafts,
       );
       final created = await widget.api.create(invoice);
 
-      final createdLines = <InvoiceLine>[];
-      for (final draft in lineDrafts) {
-        final saved = await widget.linesApi.create(created.id, draft);
-        createdLines.add(saved);
-      }
-
       if (!mounted) return;
-      Navigator.of(context).pop<Invoice>(created.copyWith(lines: createdLines));
+      Navigator.of(context).pop<Invoice>(
+        created.copyWith(
+          lines: created.lines.isNotEmpty ? created.lines : lineDrafts,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       final raw = e.toString().trim();

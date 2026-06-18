@@ -14,12 +14,8 @@ class BillingProfileApi {
 
   Uri _u([String path = '']) => Uri.parse('$_base$path');
 
-  Uri _logoUploadUri(String groupId) {
-    final base = ApiConstants.baseUrl.endsWith('/api')
-        ? ApiConstants.baseUrl
-        : '${ApiConstants.baseUrl}/api';
-    return Uri.parse('$base/billing-profile/group/$groupId/logo/upload');
-  }
+  Uri _logoUploadUri(String groupId) =>
+      Uri.parse('$_base/group/$groupId/logo/upload');
 
   T _decode<T>(http.Response r, T Function(dynamic) map) {
     final ok = r.statusCode >= 200 && r.statusCode < 300;

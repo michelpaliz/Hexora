@@ -2,11 +2,13 @@ part of '../group_invoices_budgets_view.dart';
 
 // ignore_for_file: invalid_use_of_protected_member
 
-extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgetsViewState {
+extension _GroupInvoicesBudgetsViewImportExtractSection
+    on _GroupInvoicesBudgetsViewState {
   static const Set<String> _supportedOcrExtensions = {
     'pdf',
     'jpg',
     'jpeg',
+    'jpe',
     'png',
     'webp',
   };
@@ -31,7 +33,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
     final m = raw.trim();
     if (m.isEmpty) return m;
     final lower = m.toLowerCase();
-    if (lower.contains('only draft presupuestos can be updated via json import')) {
+    if (lower
+        .contains('only draft presupuestos can be updated via json import')) {
       return 'Este presupuesto ya no esta en borrador.';
     }
     if (lower.contains('invalid_import_payload') ||
@@ -51,7 +54,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
   bool _isDraftOnlyImportError(String message) {
     final lower = message.toLowerCase();
     return lower.contains('only draft presupuestos can be updated') ||
-        lower.contains('solo se pueden importar lineas en presupuestos en borrador');
+        lower.contains(
+            'solo se pueden importar lineas en presupuestos en borrador');
   }
 
   bool _isDraftOnlyImportCode(String? code) {
@@ -98,7 +102,9 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
       return 'Estructura no valida. Usa {"lines":[...]} o una lista de lineas.';
     }
     final map = Map<String, dynamic>.from(decoded);
-    if (map['lines'] is List || map['draftLines'] is List || map['blocks'] is List) {
+    if (map['lines'] is List ||
+        map['draftLines'] is List ||
+        map['blocks'] is List) {
       return null;
     }
     if (_looksLikeBudgetLineObject(map)) return null;
@@ -115,7 +121,9 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
     }
     if (decoded is Map) {
       final map = Map<String, dynamic>.from(decoded);
-      if (map['lines'] is List || map['draftLines'] is List || map['blocks'] is List) {
+      if (map['lines'] is List ||
+          map['draftLines'] is List ||
+          map['blocks'] is List) {
         return sourceText;
       }
       if (_looksLikeBudgetLineObject(map)) {
@@ -182,6 +190,9 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
         fallback: 1,
       );
       final unitPrice = _coerceNum(raw['unitPrice'] ?? raw['price'] ?? 0);
+      final discountRate = _coerceNum(
+        raw['discountRate'] ?? raw['discountPercent'] ?? 0,
+      ).clamp(0, 100);
       final taxRate =
           _coerceNum(raw['taxRate'] ?? raw['vat'] ?? raw['iva'] ?? 21);
       if (description.isEmpty) continue;
@@ -191,6 +202,7 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
         'description': description,
         'quantity': quantity,
         'unitPrice': unitPrice,
+        'discountRate': discountRate,
         'taxRate': taxRate,
       });
     }
@@ -236,12 +248,10 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
       final id = await _ensureDraftCreated(forceRebuild: false);
       final response = await _presupuestosApi.getImportJsonPromptTemplate(id);
       final prompt = JsonImportService.extractPromptText(response);
-      await Clipboard.setData(
-        ClipboardData(text: prompt.isEmpty ? jsonEncode(response) : prompt),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.invoiceLinesJsonImportPromptCopied)),
+      await copyTextWithManualFallbackDialog(
+        context,
+        text: prompt.isEmpty ? jsonEncode(response) : prompt,
+        successMessage: l.invoiceLinesJsonImportPromptCopied,
       );
     } on PresupuestosApiException catch (e) {
       if (!mounted) return;
@@ -291,6 +301,18 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
       overwrite: overwrite,
       defaultTaxRate: defaultTaxRate,
     );
+    int payloadLineCount() {
+      final candidates = <dynamic>[
+        payload['lines'],
+        payload['draftLines'],
+        payload['blocks'],
+      ];
+      for (final value in candidates) {
+        if (value is List) return value.length;
+      }
+      return 0;
+    }
+
     setState(() {
       _jsonImportLoading = true;
       _jsonImportError = null;
@@ -305,7 +327,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
       try {
         response = await runImport(id);
       } on PresupuestosApiException catch (e) {
-        if (!_isDraftOnlyImportCode(e.code) && !_isDraftOnlyImportError(e.message)) {
+        if (!_isDraftOnlyImportCode(e.code) &&
+            !_isDraftOnlyImportError(e.message)) {
           rethrow;
         }
         _markDraftDirty();
@@ -321,20 +344,13 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
         return;
       }
       _applyPresupuestoPayload(refreshed);
-      final imported = (refreshed['importedCount'] ??
-              refreshed['lineCount'] ??
-              refreshed['createdCount'] ??
-              refreshed['count'] ??
-              0)
-          .toString();
+      final importedCount = JsonImportService.extractImportedCount(response);
+      final imported =
+          (importedCount > 0 ? importedCount : payloadLineCount()).toString();
       setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.invoiceLinesJsonImportSuccess(imported))),
-      );
+      showSuccessSnack(context, l.invoiceLinesJsonImportSuccess(imported));
       if (JsonImportService.extractRepairApplied(response)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('JSON auto-corrected before import.')),
-        );
+        showInfoSnack(context, l.jsonAutoRepairAppliedSnack);
       }
     } on PresupuestosApiException catch (e) {
       if (!mounted) return;
@@ -384,7 +400,7 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
     final picked = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       type: FileType.custom,
-      allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp', 'pdf'],
+      allowedExtensions: const ['png', 'jpg', 'jpeg', 'jpe', 'webp', 'pdf'],
       withData: true,
     );
     final file =
@@ -394,7 +410,7 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
     if (!_isSupportedOcrFile(file.name)) {
       setState(() {
         _extractError =
-            'Tipo de archivo no soportado. Usa: pdf, jpg, jpeg, png o webp.';
+            'Tipo de archivo no soportado. Usa: pdf, jpg, jpeg, jpe, png o webp.';
       });
       return;
     }
@@ -450,7 +466,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
           rethrow;
         }
       }
-      var raw = response['draftLines'] ?? response['blocks'] ?? response['lines'];
+      var raw =
+          response['draftLines'] ?? response['blocks'] ?? response['lines'];
       if (raw is! List || raw.isEmpty) {
         try {
           final full = await _presupuestosApi.extractLinesOcr(
@@ -460,7 +477,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
             preview: false,
           );
           response = full;
-          raw = response['draftLines'] ?? response['blocks'] ?? response['lines'];
+          raw =
+              response['draftLines'] ?? response['blocks'] ?? response['lines'];
         } catch (_) {
           // Keep preview response/errors as source of truth.
         }
@@ -485,9 +503,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
       ];
       setState(() {
         _extractedBlocks = rows;
-        _extractMethodUsed = (response['methodUsed'] ?? response['method'])
-            ?.toString()
-            .trim();
+        _extractMethodUsed =
+            (response['methodUsed'] ?? response['method'])?.toString().trim();
         _extractDiagnostics = diagnostics;
         if (rows.isEmpty) {
           _extractError =
@@ -500,7 +517,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
           _friendlyPresupuestoImportError(e.message, code: e.code));
     } catch (e) {
       if (!mounted) return;
-      setState(() => _extractError = e.toString().replaceFirst('Exception: ', ''));
+      setState(
+          () => _extractError = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _extractingBlocks = false);
     }
@@ -534,6 +552,7 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
         'description': '',
         'qty': 1,
         'unitPrice': 0,
+        'discountRate': 0,
         'taxRate': 21,
       });
     setState(() => _extractedBlocks = next);
@@ -572,7 +591,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
           payload: payload,
         );
       } on PresupuestosApiException catch (e) {
-        if (_isDraftOnlyImportCode(e.code) || _isDraftOnlyImportError(e.message)) {
+        if (_isDraftOnlyImportCode(e.code) ||
+            _isDraftOnlyImportError(e.message)) {
           _markDraftDirty();
           id = await _ensureDraftCreated(forceRebuild: true);
           response = await _presupuestosApi.importLinesMultipart(
@@ -590,7 +610,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
           response = await _presupuestosApi.importJson(id, payload);
         }
       } on PresupuestosApiException catch (e) {
-        if (_isDraftOnlyImportCode(e.code) || _isDraftOnlyImportError(e.message)) {
+        if (_isDraftOnlyImportCode(e.code) ||
+            _isDraftOnlyImportError(e.message)) {
           _markDraftDirty();
           id = await _ensureDraftCreated(forceRebuild: true);
           response = await _presupuestosApi.importJson(id, payload);
@@ -605,13 +626,10 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
       _applyPresupuestoPayload(refreshed);
       final imported = JsonImportService.extractImportedCount(response);
       setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            l.invoiceLinesJsonImportSuccess(
-              '${imported > 0 ? imported : normalizedLines.length}',
-            ),
-          ),
+      showSuccessSnack(
+        context,
+        l.invoiceLinesJsonImportSuccess(
+          '${imported > 0 ? imported : normalizedLines.length}',
         ),
       );
     } on PresupuestosApiException catch (e) {
@@ -620,7 +638,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
           _friendlyPresupuestoImportError(e.message, code: e.code));
     } catch (e) {
       if (!mounted) return;
-      setState(() => _jsonImportError = e.toString().replaceFirst('Exception: ', ''));
+      setState(() =>
+          _jsonImportError = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _jsonImportLoading = false);
     }
@@ -682,7 +701,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
-                onPressed: _extractingBlocks ? null : _extractBudgetBlocksWithOpenAi,
+                onPressed:
+                    _extractingBlocks ? null : _extractBudgetBlocksWithOpenAi,
                 icon: _extractingBlocks
                     ? const SizedBox(
                         width: 14,
@@ -696,7 +716,9 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
-                onPressed: _extractedBlocks.isEmpty ? null : _clearBudgetExtractedBlocks,
+                onPressed: _extractedBlocks.isEmpty
+                    ? null
+                    : _clearBudgetExtractedBlocks,
                 icon: const Icon(Icons.clear_all),
                 label: Text(l.invoiceLinesPhotoClear),
               ),
@@ -731,14 +753,16 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
             Row(
               children: [
                 Text(
-                  l.invoiceLinesPhotoExtractedCount('${_extractedBlocks.length}'),
+                  l.invoiceLinesPhotoExtractedCount(
+                      '${_extractedBlocks.length}'),
                   style: t.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const Spacer(),
-                IconButton(onPressed: _addExtractedBlock, icon: const Icon(Icons.add)),
+                IconButton(
+                    onPressed: _addExtractedBlock, icon: const Icon(Icons.add)),
               ],
             ),
             const SizedBox(height: 6),
@@ -761,14 +785,16 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
                       children: [
                         TextField(
                           controller: TextEditingController(
-                            text: (row['description'] ?? row['title'] ?? '').toString(),
+                            text: (row['description'] ?? row['title'] ?? '')
+                                .toString(),
                           ),
                           decoration: const InputDecoration(
                             isDense: true,
                             labelText: 'Descripcion',
                             border: OutlineInputBorder(),
                           ),
-                          onChanged: (v) => _updateExtractedBlockField(i, 'description', v),
+                          onChanged: (v) =>
+                              _updateExtractedBlockField(i, 'description', v),
                         ),
                         const SizedBox(height: 6),
                         Row(
@@ -782,13 +808,25 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
                             smallNumField(
                               'Precio unitario',
                               (row['unitPrice'] ?? 0).toString(),
-                              (v) => _updateExtractedBlockField(i, 'unitPrice', v),
+                              (v) =>
+                                  _updateExtractedBlockField(i, 'unitPrice', v),
+                            ),
+                            const SizedBox(width: 6),
+                            smallNumField(
+                              'Dto. %',
+                              (row['discountRate'] ??
+                                      row['discountPercent'] ??
+                                      0)
+                                  .toString(),
+                              (v) => _updateExtractedBlockField(
+                                  i, 'discountRate', v),
                             ),
                             const SizedBox(width: 6),
                             smallNumField(
                               'Impuesto',
                               (row['taxRate'] ?? 21).toString(),
-                              (v) => _updateExtractedBlockField(i, 'taxRate', v),
+                              (v) =>
+                                  _updateExtractedBlockField(i, 'taxRate', v),
                             ),
                             const Spacer(),
                             IconButton(
@@ -825,5 +863,4 @@ extension _GroupInvoicesBudgetsViewImportExtractSection on _GroupInvoicesBudgets
       ),
     );
   }
-
 }

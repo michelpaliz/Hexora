@@ -55,7 +55,22 @@ Write-Host "Uploading build to temp directory..."
 scp -r "$LOCAL_BUILD_PATH\*" "${REMOTE_USER_HOST}:${RemoteTmpPath}/"
 
 Write-Host "Verifying critical Flutter web assets in temp upload..."
-ssh $REMOTE_USER_HOST "test -f '$RemoteTmpPath/index.html' && (test -f '$RemoteTmpPath/FontManifest.json' || test -f '$RemoteTmpPath/assets/FontManifest.json') && (test -f '$RemoteTmpPath/assets/fonts/MaterialIcons-Regular.otf' || find '$RemoteTmpPath/assets' -type f -name '*MaterialSymbols*' | grep -q .)"
+$RemoteVerifyCommand = @"
+bash -lc '
+  test -f "$RemoteTmpPath/index.html" &&
+  test -f "$RemoteTmpPath/flutter_bootstrap.js" &&
+  test -f "$RemoteTmpPath/main.dart.js" &&
+  (test -f "$RemoteTmpPath/FontManifest.json" || test -f "$RemoteTmpPath/assets/FontManifest.json") &&
+  (
+    test -f "$RemoteTmpPath/assets/fonts/MaterialIcons-Regular.otf" ||
+    test -f "$RemoteTmpPath/assets/fonts/MaterialSymbolsOutlined.ttf" ||
+    test -f "$RemoteTmpPath/assets/fonts/MaterialSymbolsRounded.ttf" ||
+    test -f "$RemoteTmpPath/assets/fonts/MaterialSymbolsSharp.ttf"
+  )
+'
+"@
+ssh $REMOTE_USER_HOST $RemoteVerifyCommand
+Write-Host "Remote asset verification passed."
 
 Write-Host "Swapping temp deploy into final destination..."
 ssh $REMOTE_USER_HOST "set -e; mkdir -p '$REMOTE_DEST_PATH'; find '$REMOTE_DEST_PATH' -mindepth 1 -maxdepth 1 ! -path '$RemoteTmpPath' -exec rm -rf {} +; cp -a '$RemoteTmpPath'/. '$REMOTE_DEST_PATH'; chmod -R a+rX '$REMOTE_DEST_PATH'; rm -rf '$RemoteTmpPath'"

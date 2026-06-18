@@ -216,6 +216,7 @@ class _RecurringReceiptsScreenState extends State<RecurringReceiptsScreen> {
         clients: _clients,
         api: _api,
         enableTaxes: false,
+        draftScope: 'receipt',
         onCancel: _backToList,
         onCreated: (series) {
           setState(() {
@@ -223,8 +224,9 @@ class _RecurringReceiptsScreenState extends State<RecurringReceiptsScreen> {
             _selectedSeries = series;
             _view = _RecurringReceiptsView.detail;
           });
-          final uiMessage =
-              (series['uiMessage'] ?? series['message'] ?? '').toString().trim();
+          final uiMessage = (series['uiMessage'] ?? series['message'] ?? '')
+              .toString()
+              .trim();
           final message = uiMessage.isNotEmpty
               ? uiMessage
               : 'Recurrencia de recibo creada correctamente.';
@@ -273,6 +275,8 @@ class _RecurringReceiptsScreenState extends State<RecurringReceiptsScreen> {
             ? (series) => _updateSeriesStatus(series, 'active')
             : null,
         onCancelSeries: canManage ? (series) => _cancelSeries(series) : null,
+        api: _api,
+        receiptsMode: true,
       );
     }
 

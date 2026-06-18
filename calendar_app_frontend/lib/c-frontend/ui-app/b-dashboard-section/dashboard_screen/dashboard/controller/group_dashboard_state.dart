@@ -17,6 +17,35 @@ import 'package:provider/provider.dart';
 
 import '../controller/group_dashboard_sections.dart';
 
+/// Actions the mail console can inject into the parent AppBar on mobile.
+class MailBarActions {
+  const MailBarActions({
+    required this.title,
+    required this.isDetailView,
+    this.onBack,
+    this.onOpenFolderMenu,
+    this.onRefresh,
+    this.onCompose,
+    this.hasUnread,
+    this.onToggleRead,
+    this.onArchive,
+    this.onSpam,
+    this.onTrash,
+  });
+
+  final String title;
+  final bool isDetailView;
+  final VoidCallback? onBack;
+  final VoidCallback? onOpenFolderMenu;
+  final VoidCallback? onRefresh;
+  final VoidCallback? onCompose;
+  final bool? hasUnread;
+  final VoidCallback? onToggleRead;
+  final VoidCallback? onArchive;
+  final VoidCallback? onSpam;
+  final VoidCallback? onTrash;
+}
+
 class GroupDashboardState extends ChangeNotifier {
   GroupDashboardState(this.context, this.group) {
     _gm = context.read<GroupDomain>();
@@ -45,6 +74,18 @@ class GroupDashboardState extends ChangeNotifier {
       if (calendarActions == actions) return;
       calendarActions = actions;
       notifyListeners();
+    });
+  }
+
+  MailBarActions? _mailBarActions;
+  MailBarActions? get mailBarActions => _mailBarActions;
+
+  void setMailBarActions(MailBarActions? actions) {
+    _mailBarActions = actions;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        notifyListeners();
+      } catch (_) {}
     });
   }
 
@@ -134,6 +175,110 @@ class GroupDashboardState extends ChangeNotifier {
     final theme = Theme.of(context);
     final topBarColor = backdrop;
     final onTopBar = theme.colorScheme.onSurface;
+
+    final ma = (!isWide && activeSection == Sections.emails) ? _mailBarActions : null;
+
+    if (ma != null) {
+      return AppBar(
+        backgroundColor: topBarColor,
+        elevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: onTopBar),
+        actionsIconTheme: IconThemeData(color: onTopBar),
+        // Back arrow: detail view → back to thread list; list view → back to dashboard
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: ma.isDetailView
+              ? ma.onBack
+              : () {
+                  activeSection = Sections.calendar;
+                  notifyListeners();
+                },
+        ),
+        title: Text(
+          ma.title,
+          style: t.bodyLarge.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.1,
+            color: onTopBar,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          if (!ma.isDetailView) ...[
+            if (ma.onRefresh != null)
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: l.refreshAction,
+                onPressed: ma.onRefresh,
+              ),
+            // Hamburger moved to right side
+            if (ma.onOpenFolderMenu != null)
+              IconButton(
+                icon: const Icon(Icons.menu_rounded),
+                tooltip: l.mailConsoleFoldersTitle,
+                onPressed: ma.onOpenFolderMenu,
+              ),
+          ],
+          if (ma.isDetailView) ...[
+            if (ma.onToggleRead != null)
+              IconButton(
+                icon: Icon(
+                  ma.hasUnread == true
+                      ? Icons.mark_email_read_outlined
+                      : Icons.mark_email_unread_outlined,
+                ),
+                tooltip: ma.hasUnread == true
+                    ? l.mailDetailMarkRead
+                    : l.mailDetailMarkUnread,
+                onPressed: ma.onToggleRead,
+              ),
+            if (ma.onArchive != null || ma.onTrash != null)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert_rounded),
+                onSelected: (v) {
+                  if (v == 'archive') ma.onArchive?.call();
+                  if (v == 'spam') ma.onSpam?.call();
+                  if (v == 'trash') ma.onTrash?.call();
+                },
+                itemBuilder: (_) => [
+                  if (ma.onArchive != null)
+                    PopupMenuItem(
+                      value: 'archive',
+                      child: Row(children: [
+                        const Icon(Icons.archive_outlined, size: 18),
+                        const SizedBox(width: 10),
+                        Text(l.mailDetailArchived),
+                      ]),
+                    ),
+                  if (ma.onSpam != null)
+                    PopupMenuItem(
+                      value: 'spam',
+                      child: Row(children: [
+                        const Icon(Icons.report_gmailerrorred_outlined,
+                            size: 18),
+                        const SizedBox(width: 10),
+                        Text(l.mailDetailSpammed),
+                      ]),
+                    ),
+                  if (ma.onTrash != null)
+                    PopupMenuItem(
+                      value: 'trash',
+                      child: Row(children: [
+                        const Icon(Icons.delete_outline_rounded, size: 18),
+                        const SizedBox(width: 10),
+                        Text(l.mailDetailTrashed),
+                      ]),
+                    ),
+                ],
+              ),
+          ],
+        ],
+        bottom: null,
+      );
+    }
 
     return AppBar(
       backgroundColor: topBarColor,

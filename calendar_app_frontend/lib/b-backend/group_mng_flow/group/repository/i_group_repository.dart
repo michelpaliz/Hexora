@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
+import 'package:hexora/a-models/group_model/permissions/group_permissions_response.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
+import 'package:hexora/a-models/group_model/group/role_meta.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_count.dart';
 
@@ -56,12 +58,20 @@ abstract class IGroupRepository {
   /// Fetch supported group roles (wire values) from backend.
   Future<List<String>> getGroupRoles();
 
+  /// Fetch role + permission definitions for a group.
+  Future<GroupPermissionsResponse> getGroupPermissions(String groupId);
+
   /// Send an invitation to join this group.
   Future<void> sendGroupInvitation({
     required String groupId,
     required String userId,
     required String roleWire,
   });
+
+  /// Fetch the full role-change history for a group member.
+  /// Returns entries newest-first.
+  Future<List<RoleHistoryEntry>> getMemberRoleHistory(
+      String groupId, String userId);
 
   // Lifecycle
   void dispose();

@@ -9,6 +9,7 @@ import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/invoice/invoice_block.dart';
+import 'package:hexora/a-models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/a-models/invoice/invoice_line.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart' as line_ev;
@@ -18,6 +19,8 @@ import 'package:hexora/b-backend/invoicing/invoice_lines_ocr_service.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_formatters.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/json_import_service.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/prompt_clipboard_helper.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
@@ -92,12 +95,16 @@ class InvoiceEditorController extends ChangeNotifier {
   List<Invoice> _pendingDrafts = const [];
   int _issuedThisMonthCount = 0;
   int _pendingDraftsCount = 0;
+  int _clientDraftCount = 0;
+  List<Invoice> _clientPastInvoices = [];
   bool _loadingClientStats = false;
   bool _invoiceNumberTouched = false;
   bool _settingInvoiceNumber = false;
   bool _useDiscountPercent = false;
   String? _editingDraftId;
   bool _editingDraftMode = false;
+  bool _draftDirty = false;
+  bool _draftSaveFailed = false;
   Uint8List? _lastOcrImageBytes;
   String? _lastOcrImageName;
   Uint8List? _jsonImportFileBytes;
@@ -125,12 +132,16 @@ class InvoiceEditorController extends ChangeNotifier {
   Invoice? get savedInvoice => _savedInvoice;
   int get issuedThisMonthCount => _issuedThisMonthCount;
   int get pendingDraftsCount => _pendingDraftsCount;
+  int get clientDraftCount => _clientDraftCount;
+  List<Invoice> get clientPastInvoices => _clientPastInvoices;
   List<Invoice> get pendingDrafts => _pendingDrafts;
   bool get loadingClientStats => _loadingClientStats;
   bool get useBlocks => _useBlocks;
   bool get deletingDraft => _deletingDraft;
   String? get editingDraftId => _editingDraftId;
   bool get editingDraft => _editingDraftMode;
+  bool get draftDirty => _draftDirty;
+  bool get draftSaveFailed => _draftSaveFailed;
   bool get hasLastOcrImagePreview => _lastOcrImageBytes != null;
   Uint8List? get jsonImportFileBytes => _jsonImportFileBytes;
   String? get jsonImportFileName => _jsonImportFileName;
@@ -175,8 +186,7 @@ class InvoiceEditorController extends ChangeNotifier {
     if (_useBlocks) {
       return blocks.any((block) => block.hasBillableContent);
     }
-    return lines.any((line) =>
-        line.description.text.trim().isNotEmpty && (line.unitPrice ?? 0) > 0);
+    return lines.any(_isBillableLineDraft);
   }
 
   bool get useDiscountPercent => _useDiscountPercent;
@@ -339,6 +349,15 @@ class InvoiceEditorController extends ChangeNotifier {
           desc = block.title.text.trim();
         } else {
           desc = block.description.text.trim();
+          if (desc.isEmpty) {
+            final firstConcept = block.conceptItemsCtrl.text
+                .split(RegExp(r'[,;\n]'))
+                .map((item) => item.trim())
+                .firstWhere((item) => item.isNotEmpty, orElse: () => '');
+            desc = firstConcept.isNotEmpty
+                ? firstConcept
+                : block.conceptTitleCtrl.text.trim();
+          }
         }
         return InvoiceLine(
           id: '',
@@ -348,10 +367,15 @@ class InvoiceEditorController extends ChangeNotifier {
           quantity: block.qty ?? 1,
           unitPrice: block.unitPrice ?? 0,
           taxRate: block.taxRate ?? 0,
+          sku: block.sku.text.trim().isEmpty ? null : block.sku.text.trim(),
+          conceptItems: block.conceptItems,
+          conceptTitle: block.conceptTitle,
+          serviceDate: block.serviceDate,
+          isCompositeConcept: block.isCompositeConcept,
         );
       });
     }
-    return lines
+    return _billableLineDrafts()
         .map(
           (d) => d.toLine().copyWith(
                 id: '',
@@ -359,6 +383,17 @@ class InvoiceEditorController extends ChangeNotifier {
               ),
         )
         .toList(growable: false);
+  }
+
+  bool _isBillableLineDraft(LineDraft line) {
+    final hasConcept = line.description.text.trim().isNotEmpty ||
+        line.conceptTitle?.trim().isNotEmpty == true ||
+        (line.conceptItems?.any((item) => item.trim().isNotEmpty) ?? false);
+    return hasConcept && (line.unitPrice ?? 0) > 0;
+  }
+
+  List<LineDraft> _billableLineDrafts() {
+    return lines.where(_isBillableLineDraft).toList(growable: false);
   }
 
   Future<int> _syncLinesForInvoice(String invoiceId) async {
@@ -380,6 +415,8 @@ class InvoiceEditorController extends ChangeNotifier {
   // --- UI hooks ---
   void notifyUi() {
     // Any form change makes the saved draft stale (there is no update API).
+    _draftDirty = true;
+    _draftSaveFailed = false;
     _savedInvoice = null;
     _previewedPdf = false;
     _previewPdfBytes = null;
@@ -395,6 +432,8 @@ class InvoiceEditorController extends ChangeNotifier {
 
   void setClientId(String? v) {
     _clientId = v;
+    _draftDirty = true;
+    _draftSaveFailed = false;
     _savedInvoice = null;
     _previewedPdf = false;
     _previewPdfBytes = null;
@@ -412,6 +451,12 @@ class InvoiceEditorController extends ChangeNotifier {
   void setCurrentStepIndex(int value) {
     if (_currentStepIndex == value) return;
     _currentStepIndex = value.clamp(0, 99);
+    notifyListeners();
+  }
+
+  void releasePreviewSurface() {
+    if (_previewPdfBytes == null) return;
+    _previewPdfBytes = null;
     notifyListeners();
   }
 
@@ -491,13 +536,23 @@ class InvoiceEditorController extends ChangeNotifier {
       _invoiceNumberTouched = true;
     }
 
-    _useBlocks = invoice.blocks.isNotEmpty;
+    final hasUsableBlocks = invoice.blocks.any(_blockHasBillableContent);
+    final hasUsableLines = invoice.lines.any(
+        (line) => line.description.trim().isNotEmpty && (line.unitPrice) > 0);
+    _useBlocks = hasUsableBlocks || hasUsableLines;
     _resetDraftLines();
     _resetDraftBlocks();
-    if (_useBlocks) {
+    if (hasUsableBlocks) {
       final drafts =
           invoice.blocks.map(_draftFromBlock).whereType<InvoiceBlockDraft>();
       blocks.addAll(drafts);
+      if (blocks.isEmpty) {
+        blocks.add(InvoiceBlockDraft.item());
+      }
+    } else if (hasUsableLines) {
+      final sorted = [...invoice.lines]
+        ..sort((a, b) => a.position.compareTo(b.position));
+      blocks.addAll(sorted.map(_blockDraftFromLine));
       if (blocks.isEmpty) {
         blocks.add(InvoiceBlockDraft.item());
       }
@@ -510,6 +565,9 @@ class InvoiceEditorController extends ChangeNotifier {
       if (lines.isEmpty) {
         lines.add(LineDraft(position: 1));
       }
+    }
+    if (_editingDraftMode) {
+      _currentStepIndex = 2;
     }
   }
 
@@ -551,6 +609,33 @@ class InvoiceEditorController extends ChangeNotifier {
     };
   }
 
+  bool _blockHasBillableContent(InvoiceBlock block) {
+    final type = block.type.trim().toLowerCase();
+    final isBillable = block.isBillable ??
+        InvoiceBlockDraft.defaultBillableForType(block.type);
+    if (!isBillable) return false;
+    if (type == InvoiceBlockType.item) {
+      return (block.description ?? '').trim().isNotEmpty &&
+          (block.unitPrice ?? 0) > 0 &&
+          (block.qty ?? 0) >= 0;
+    }
+    if (type == InvoiceBlockType.section) {
+      return (block.title ?? '').trim().isNotEmpty &&
+          (block.unitPrice ?? 0) > 0 &&
+          (block.qty ?? 0) >= 0;
+    }
+    if (type == InvoiceBlockType.checklist) {
+      final title = (block.title ?? '').trim();
+      final firstItem = (block.items ?? const <InvoiceChecklistItem>[])
+          .map((item) => item.text.trim())
+          .firstWhere((text) => text.isNotEmpty, orElse: () => '');
+      return (title.isNotEmpty || firstItem.isNotEmpty) &&
+          (block.unitPrice ?? 0) > 0 &&
+          (block.qty ?? 0) >= 0;
+    }
+    return false;
+  }
+
   void _resetDraftLines() {
     for (final l in lines) {
       l.dispose();
@@ -565,30 +650,94 @@ class InvoiceEditorController extends ChangeNotifier {
     blocks.clear();
   }
 
+  String _optionalDetailText(
+    String? description, {
+    String? conceptTitle,
+    List<String>? conceptItems,
+  }) {
+    final detail = (description ?? '').trim();
+    if (detail.isEmpty) return '';
+    final title = (conceptTitle ?? '').trim();
+    if (title.isNotEmpty && detail.toLowerCase() == title.toLowerCase()) {
+      return '';
+    }
+    final items = (conceptItems ?? const <String>[])
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+    if (items.length == 1 &&
+        detail.toLowerCase() == items.first.toLowerCase()) {
+      return '';
+    }
+    return detail;
+  }
+
   LineDraft _draftFromLine(InvoiceLine line) {
     final draft = LineDraft(
       position: line.position,
       id: line.id,
       evidenceBlobName: line.evidenceBlobName,
+      sku: line.sku,
+      conceptItems: line.conceptItems,
+      conceptTitle: line.conceptTitle,
+      serviceDate: line.serviceDate,
+      isCompositeConcept: line.isCompositeConcept,
+      parseMethod: line.parseMethod,
     );
-    draft.description.text = line.description;
+    draft.description.text = _optionalDetailText(
+      line.description,
+      conceptTitle: line.conceptTitle,
+      conceptItems: line.conceptItems,
+    );
     draft.quantityCtrl.text = line.quantity.toString();
     draft.unitPriceCtrl.text = line.unitPrice.toString();
+    draft.discountRateCtrl.text = line.discountRate.toString();
     draft.taxRateCtrl.text = line.taxRate.toString();
     return draft;
+  }
+
+  InvoiceBlockDraft _blockDraftFromLine(InvoiceLine line) {
+    return InvoiceBlockDraft(
+      type: InvoiceBlockType.item,
+      sku: line.sku,
+      conceptItems: line.conceptItems,
+      conceptTitle: line.conceptTitle,
+      serviceDate: line.serviceDate,
+      isCompositeConcept: line.isCompositeConcept,
+      description: _optionalDetailText(
+        line.description,
+        conceptTitle: line.conceptTitle,
+        conceptItems: line.conceptItems,
+      ),
+      qty: line.quantity.toString(),
+      unitPrice: line.unitPrice.toString(),
+      discountRate: line.discountRate.toString(),
+      taxRate: line.taxRate.toString(),
+      isBillable: true,
+    );
   }
 
   InvoiceBlockDraft _draftFromBlock(InvoiceBlock block) {
     final draft = InvoiceBlockDraft(
       type: block.type,
       sku: block.sku,
-      description: block.description,
+      conceptItems: block.conceptItems,
+      conceptTitle: block.conceptTitle,
+      serviceDate: block.serviceDate,
+      isCompositeConcept: block.isCompositeConcept,
+      description: _optionalDetailText(
+        block.description,
+        conceptTitle: block.conceptTitle,
+        conceptItems: block.conceptItems,
+      ),
       qty: block.qty?.toString(),
       unit: block.unit,
       unitPrice: block.unitPrice?.toString(),
+      discountRate: block.discountRate?.toString(),
       taxRate: block.taxRate?.toString(),
       level: block.level?.toString(),
-      isBillable: block.isBillable ?? true,
+      isBillable: block.isBillable ??
+          InvoiceBlockDraft.defaultBillableForType(block.type),
       title: block.title,
       dateValue: block.value,
       text: block.text,
@@ -618,6 +767,8 @@ class InvoiceEditorController extends ChangeNotifier {
     );
     if (selected != null) {
       target.value = selected;
+      _draftDirty = true;
+      _draftSaveFailed = false;
       _savedInvoice = null;
       notifyListeners();
     }
@@ -637,6 +788,8 @@ class InvoiceEditorController extends ChangeNotifier {
 
       if (_clientId == null) {
         _issuedThisMonthCount = 0;
+        _clientDraftCount = 0;
+        _clientPastInvoices = [];
       } else {
         _issuedThisMonthCount = issued.where((inv) {
           if (inv.clientId != _clientId) return false;
@@ -644,6 +797,28 @@ class InvoiceEditorController extends ChangeNotifier {
           if (d == null) return false;
           return d.year == now.year && d.month == now.month;
         }).length;
+
+        _clientDraftCount = drafts.where((inv) {
+          if (inv.clientId != _clientId) return false;
+          final d = inv.registeredAt ?? inv.issueDate;
+          if (d == null) return false;
+          return d.year == now.year && d.month == now.month;
+        }).length;
+
+        _clientPastInvoices = issued.where((inv) {
+          if (inv.clientId != _clientId) return false;
+          final d = inv.registeredAt ?? inv.issueDate;
+          if (d == null) return true;
+          return !(d.year == now.year && d.month == now.month);
+        }).toList()
+          ..sort((a, b) {
+            final da = a.registeredAt ?? a.issueDate;
+            final db = b.registeredAt ?? b.issueDate;
+            if (da == null && db == null) return 0;
+            if (da == null) return 1;
+            if (db == null) return -1;
+            return db.compareTo(da);
+          });
       }
     } catch (_) {
       // Keep previous values; stats are a best-effort UI enhancement.
@@ -651,6 +826,11 @@ class InvoiceEditorController extends ChangeNotifier {
       _loadingClientStats = false;
       notifyListeners();
     }
+  }
+
+  Future<Uint8List> fetchHistoricalPdf(String invoiceId) async {
+    final r = await _invoicesApi.previewPdf(invoiceId);
+    return InvoiceEditorPdf.validatePdf(r);
   }
 
   void _maybeAutofillInvoiceDigits(List<Invoice> invoices) {

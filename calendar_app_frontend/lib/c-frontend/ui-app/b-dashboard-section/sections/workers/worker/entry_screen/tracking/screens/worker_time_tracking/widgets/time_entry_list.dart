@@ -72,7 +72,8 @@ class TimeEntriesList extends StatelessWidget {
         itemCount: months.length,
         itemBuilder: (ctx, i) {
           final month = months[i];
-          final list = grouped[month]!..sort((a, b) => a.start.compareTo(b.start));
+          final list = grouped[month]!
+            ..sort((a, b) => a.start.compareTo(b.start));
           final monthDate = DateFormat.yMMMM(locale).parse(month);
           final daysInMonth =
               DateUtils.getDaysInMonth(monthDate.year, monthDate.month);
@@ -124,53 +125,6 @@ class TimeEntriesList extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Compact month header with total hours
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        month,
-                        style: t.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: .2,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withOpacity(0.10),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.18),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.timer, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            _fmtHm(totalMinutes),
-                            style: t.bodySmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: .2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
                 // Entries or missing days
                 ...dayWidgets,
               ],
@@ -197,9 +151,8 @@ class _MissingDayTile extends StatelessWidget {
     final t = AppTypography.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
     final isSunday = date.weekday == DateTime.sunday;
-    final label = isSunday
-        ? l.didNotWorkSunday(workerName)
-        : l.didNotWorkDay(workerName);
+    final label =
+        isSunday ? l.didNotWorkSunday(workerName) : l.didNotWorkDay(workerName);
     final fg = isSunday
         ? Theme.of(context).colorScheme.secondary
         : Theme.of(context).colorScheme.error;

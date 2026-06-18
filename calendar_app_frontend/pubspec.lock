@@ -454,6 +454,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
+  flutter_dropzone:
+    dependency: "direct main"
+    description:
+      name: flutter_dropzone
+      sha256: d0917c4e366ebb3a98c9c02faac79223d119af5e236967c70e7e4002cdfb20d3
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.1"
+  flutter_dropzone_platform_interface:
+    dependency: "direct main"
+    description:
+      name: flutter_dropzone_platform_interface
+      sha256: "96d2c51c86063ba150551c3b40fd26c5a18785bee071c0c751502d28a545df3b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
+  flutter_dropzone_web:
+    dependency: transitive
+    description:
+      name: flutter_dropzone_web
+      sha256: "03b216f9443add6ad1d075ab513a354a47edf3d1b87d830a8ed314f0d3a2beac"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.0"
   flutter_html:
     dependency: "direct main"
     description:
@@ -676,7 +700,7 @@ packages:
     source: hosted
     version: "1.1.1"
   flutter_svg:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: flutter_svg
       sha256: "87fbd7c534435b6c5d9d98b01e1fd527812b82e68ddd8bd35fc45ed0fa8f0a95"
@@ -1381,6 +1405,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.0"
+  qr:
+    dependency: transitive
+    description:
+      name: qr
+      sha256: "5a1d2586170e172b8a8c8470bbbffd5eb0cd38a66c0d77155ea138d3af3a4445"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.2"
+  qr_flutter:
+    dependency: "direct main"
+    description:
+      name: qr_flutter
+      sha256: "5095f0fc6e3f71d08adef8feccc8cea4f12eec18a2e31c2e8d82cb6019f4b097"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.0"
   quill_native_bridge:
     dependency: transitive
     description:

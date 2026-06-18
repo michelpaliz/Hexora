@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
-import 'package:hexora/b-backend/auth_user/exceptions/password_exceptions.dart';
+import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
 import 'package:hexora/c-frontend/ui-app/i-settings-section/dialogs/change_password_dialog.dart';
@@ -48,36 +48,47 @@ class _SettingsState extends State<Settings> {
     String newPassword,
     String confirmPassword,
   ) async {
-    final loc = AppLocalizations.of(context)!;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
-      if (newPassword.length < 6 || newPassword.length > 10) {
-        _snack(loc.errorUsernameLength);
+      final current = currentPassword.trim();
+      final next = newPassword.trim();
+      final confirm = confirmPassword.trim();
+      if (current.isEmpty || next.isEmpty) {
+        _snack('Current password and new password are required.');
         return false;
       }
-      final unwanted = RegExp(r'[!@#\$%^&*(),.?":{}|<>]');
-      if (unwanted.hasMatch(newPassword)) {
-        _snack(loc.errorUnwantedCharactersUsername);
+      if (next.length < 8) {
+        _snack('New password must be at least 8 characters');
+        return false;
+      }
+      if (current == next) {
+        _snack('New password must be different from current password');
+        return false;
+      }
+      if (next != confirm) {
+        _snack(AppLocalizations.of(context)!.passwordNotMatch);
         return false;
       }
 
       await authProvider.changePassword(
-        currentPassword,
-        newPassword,
-        confirmPassword,
+        current,
+        next,
+        confirm,
       );
 
-      _snack(loc.passwordChangedSuccessfully);
+      _snack('Password changed successfully.');
       return true;
     } on CurrentPasswordMismatchException {
-      _snack(loc.currentPasswordIncorrect);
+      _snack('Current password is incorrect.');
     } on PasswordMismatchException {
-      _snack(loc.passwordNotMatch);
+      _snack(AppLocalizations.of(context)!.passwordNotMatch);
+    } on ChangePasswordValidationException catch (e) {
+      _snack(e.message);
     } on UserNotSignedInException {
-      _snack(loc.userNotSignedIn);
+      _snack(AppLocalizations.of(context)!.userNotSignedIn);
     } catch (_) {
-      _snack(loc.errorChangingPassword);
+      _snack('Failed to change password. Please try again.');
     }
     return false;
   }
@@ -209,7 +220,8 @@ class _SettingsState extends State<Settings> {
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            // Section headers are their own widgets, but keep them aligned via bodyM in that widget.
+            _ProfileHeroCard(userName: userName),
+            const SizedBox(height: 24),
             SectionHeader(
               title: loc.accountSectionTitle,
               textStyle: typography.bodyLarge.copyWith(
@@ -272,5 +284,101 @@ class _SettingsState extends State<Settings> {
   String _languageName(BuildContext context) {
     final lp = Provider.of<LocaleProvider>(context, listen: false);
     return lp.locale.languageCode == 'es' ? 'Español' : 'English';
+  }
+}
+
+class _ProfileHeroCard extends StatelessWidget {
+  const _ProfileHeroCard({required this.userName});
+
+  final String userName;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+
+    final initial = userName.isNotEmpty ? userName[0].toUpperCase() : '?';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [cs.primary, cs.tertiary],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                initial,
+                style: t.titleLarge.copyWith(
+                  color: cs.onPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  userName,
+                  style: t.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Hexora',
+                    style: t.caption.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

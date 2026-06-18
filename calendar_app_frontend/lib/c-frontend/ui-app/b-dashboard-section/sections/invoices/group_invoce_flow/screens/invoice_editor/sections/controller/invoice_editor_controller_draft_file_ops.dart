@@ -6,7 +6,7 @@ extension InvoiceEditorControllerDraftFileOps on InvoiceEditorController {
       throw Exception('Draft is missing an id');
     }
     var full = await _invoicesApi.getById(draft.id);
-    if (full.lines.isEmpty && full.blocks.isEmpty) {
+    if (full.lines.isEmpty) {
       final lines = await _linesApi.list(draft.id);
       if (lines.isNotEmpty) {
         full = full.copyWith(lines: lines);

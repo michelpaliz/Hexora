@@ -6,6 +6,8 @@ class VatSummaryHeader extends StatelessWidget {
   final int year;
   final String rangeLabel;
   final String deadlineLabel;
+  final bool exportingVatAudit;
+  final VoidCallback? onExportVatAudit;
   final VoidCallback onPrevYear;
   final VoidCallback onNextYear;
   final TabController tabs;
@@ -15,6 +17,8 @@ class VatSummaryHeader extends StatelessWidget {
     required this.year,
     required this.rangeLabel,
     required this.deadlineLabel,
+    required this.exportingVatAudit,
+    required this.onExportVatAudit,
     required this.onPrevYear,
     required this.onNextYear,
     required this.tabs,
@@ -29,7 +33,7 @@ class VatSummaryHeader extends StatelessWidget {
 
     Widget quarterButton({
       required int quarter,
-      required IconData icon,
+      required String label,
       required String tooltip,
     }) {
       final selected = selectedQuarter == quarter;
@@ -38,21 +42,53 @@ class VatSummaryHeader extends StatelessWidget {
         child: InkWell(
           onTap: () => tabs.animateTo(quarter - 1),
           borderRadius: BorderRadius.circular(999),
-          child: Container(
-            width: 24,
-            height: 24,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: selected ? cs.primaryContainer : Colors.transparent,
+              borderRadius: BorderRadius.circular(999),
+              color: selected ? cs.primary : Colors.transparent,
               border: Border.all(
-                color: selected ? cs.primary : cs.outlineVariant,
+                color: selected
+                    ? cs.primary
+                    : cs.outlineVariant.withValues(alpha: 0.55),
+                width: selected ? 1.5 : 1,
               ),
             ),
-            child: Icon(
-              icon,
-              size: 13,
-              color: selected ? cs.primary : cs.onSurface,
+            child: Text(
+              label,
+              style: t.bodySmall.copyWith(
+                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+                letterSpacing: 0.3,
+              ),
             ),
+          ),
+        ),
+      );
+    }
+
+    Widget navButton({
+      required IconData icon,
+      required VoidCallback onTap,
+      required String tooltip,
+    }) {
+      return Tooltip(
+        message: tooltip,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.6),
+              ),
+            ),
+            child: Icon(icon, size: 16, color: cs.onSurface),
           ),
         ),
       );
@@ -65,125 +101,138 @@ class VatSummaryHeader extends StatelessWidget {
         child: Transform.translate(
           offset: const Offset(0, -16),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: cs.surface,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.45),
+                color: cs.outlineVariant.withValues(alpha: 0.4),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.shadow.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.event, size: 15, color: cs.onSurface),
+                Tooltip(
+                  message:
+                      'Descarga un Excel con base, IVA y total por factura para revisión contable.',
+                  child: FilledButton.tonalIcon(
+                    onPressed: exportingVatAudit ? null : onExportVatAudit,
+                    icon: exportingVatAudit
+                        ? SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: cs.primary,
+                            ),
+                          )
+                        : const Icon(Icons.download_rounded, size: 16),
+                    label: Text(
+                      exportingVatAudit
+                          ? 'Generando Excel...'
+                          : 'Exportar auditoría IVA',
+                    ),
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Icon(Icons.event_outlined, size: 14, color: cs.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Text(
                   rangeLabel,
                   style: t.bodySmall.copyWith(
                     color: cs.onSurface,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Tooltip(
                   message: deadlineLabel,
                   child: Container(
-                    width: 24,
-                    height: 24,
+                    width: 26,
+                    height: 26,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: cs.outlineVariant),
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.6),
+                      ),
                     ),
-                    child: Icon(
-                      Icons.schedule,
-                      size: 14,
-                      color: cs.onSurface,
-                    ),
+                    child: Icon(Icons.schedule_outlined, size: 14, color: cs.onSurfaceVariant),
                   ),
+                ),
+                const SizedBox(width: 8),
+                // Year display with nav buttons
+                navButton(
+                  icon: Icons.chevron_left,
+                  onTap: onPrevYear,
+                  tooltip: l.vatSummaryPrevYear,
                 ),
                 const SizedBox(width: 6),
                 Tooltip(
                   message: 'Year: $year',
                   child: Container(
-                    width: 24,
-                    height: 24,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: cs.primary),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: cs.primary.withValues(alpha: 0.5),
+                      ),
+                      color: cs.primary.withValues(alpha: 0.07),
                     ),
-                    child: Icon(
-                      Icons.calendar_today_outlined,
-                      size: 13,
-                      color: cs.primary,
+                    child: Text(
+                      year.toString(),
+                      style: t.bodySmall.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 6),
+                navButton(
+                  icon: Icons.chevron_right,
+                  onTap: onNextYear,
+                  tooltip: l.vatSummaryNextYear,
+                ),
+                const SizedBox(width: 10),
+                // Quarter selector
                 quarterButton(
                   quarter: 1,
-                  icon: Icons.looks_one_outlined,
+                  label: 'T1',
                   tooltip: l.vatSummaryQuarterQ1,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 quarterButton(
                   quarter: 2,
-                  icon: Icons.looks_two_outlined,
+                  label: 'T2',
                   tooltip: l.vatSummaryQuarterQ2,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 quarterButton(
                   quarter: 3,
-                  icon: Icons.looks_3_outlined,
+                  label: 'T3',
                   tooltip: l.vatSummaryQuarterQ3,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 quarterButton(
                   quarter: 4,
-                  icon: Icons.looks_4_outlined,
+                  label: 'T4',
                   tooltip: l.vatSummaryQuarterQ4,
-                ),
-                const SizedBox(width: 6),
-                Tooltip(
-                  message: l.vatSummaryPrevYear,
-                  child: InkWell(
-                    onTap: onPrevYear,
-                    borderRadius: BorderRadius.circular(999),
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: cs.outlineVariant),
-                      ),
-                      child: Icon(
-                        Icons.chevron_left,
-                        size: 15,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Tooltip(
-                  message: l.vatSummaryNextYear,
-                  child: InkWell(
-                    onTap: onNextYear,
-                    borderRadius: BorderRadius.circular(999),
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: cs.outlineVariant),
-                      ),
-                      child: Icon(
-                        Icons.chevron_right,
-                        size: 15,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                  ),
                 ),
               ],
             ),

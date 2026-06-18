@@ -1,4 +1,5 @@
 part of '../invoice_editor_controller.dart';
+
 extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
   Future<Invoice> saveDraft(BuildContext context) async {
     return _saveDraftInternal(context, allowEmptyLines: false);
@@ -20,7 +21,7 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
       if (!allowEmptyLines || hasBillableEntries) {
         _validateBlocks(l);
       }
-    } else if (!allowEmptyLines && !hasLines) {
+    } else if (!allowEmptyLines && !hasBillableEntries) {
       throw Exception(l.invoiceLinesRequired);
     }
     if (_clientId == null) {
@@ -47,8 +48,7 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
           }
           final updatedLines = <InvoiceLine>[];
           if (!allowEmptyLines) {
-            for (var i = 0; i < lines.length; i++) {
-              final d = lines[i];
+            for (final d in _billableLineDrafts()) {
               final saved =
                   await _linesApi.create(_editingDraftId!, d.toLine());
               updatedLines.add(saved);
@@ -65,11 +65,18 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
           ..._pendingDrafts.where((inv) => inv.id != _savedInvoice!.id),
         ];
         _pendingDraftsCount = _pendingDrafts.length;
+        _draftDirty = false;
+        _draftSaveFailed = false;
         notifyListeners();
         return _savedInvoice!;
       }
       final sanitizedBlocks =
-          _useBlocks ? _sanitizeBlocks(blocks) : const <InvoiceBlock>[];
+          _useBlocks ? _sanitizeBlocks(blocks) : _blocksFromLines(lines);
+      final draftLines = _useBlocks
+          ? const <InvoiceLine>[]
+          : _billableLineDrafts()
+              .map((d) => d.toLine())
+              .toList(growable: false);
       final invoice = Invoice(
         id: '',
         invoiceNumber: invoiceNumber,
@@ -87,6 +94,7 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
                 ? discountPercentValue
                 : null,
         blocks: sanitizedBlocks,
+        lines: draftLines,
       );
 
       final payload = invoice.toCreatePayload();
@@ -100,17 +108,9 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
         debugPrint('[InvoiceDraft] fetch failed: $e');
       }
 
-      final createdLines = <InvoiceLine>[];
       if (!_useBlocks) {
-        if (!allowEmptyLines) {
-          for (var i = 0; i < lines.length; i++) {
-            final d = lines[i];
-            final saved = await _linesApi.create(created.id, d.toLine());
-            createdLines.add(saved);
-            d.id = saved.id;
-            d.evidenceBlobName = saved.evidenceBlobName;
-          }
-        }
+        final createdLines =
+            created.lines.isNotEmpty ? created.lines : draftLines;
         _savedInvoice = created.copyWith(lines: createdLines);
       } else {
         _savedInvoice = created.copyWith(blocks: sanitizedBlocks);
@@ -124,13 +124,17 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
         ];
         _pendingDraftsCount = _pendingDrafts.length;
       }
+      _draftDirty = false;
+      _draftSaveFailed = false;
       notifyListeners();
       return _savedInvoice!;
+    } catch (_) {
+      _draftSaveFailed = true;
+      notifyListeners();
+      rethrow;
     } finally {
       _saving = false;
       notifyListeners();
     }
   }
-
-
 }

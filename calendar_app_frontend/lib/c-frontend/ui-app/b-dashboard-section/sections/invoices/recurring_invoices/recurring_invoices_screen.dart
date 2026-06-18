@@ -151,10 +151,13 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
 
   void _openCreate() => setState(() => _view = _RecurringView.create);
 
-  void _backToList() => setState(() {
-        _view = _RecurringView.list;
-        _selectedSeries = null;
-      });
+  void _backToList() {
+    setState(() {
+      _view = _RecurringView.list;
+      _selectedSeries = null;
+    });
+    _refreshSeries();
+  }
 
   List<Map<String, dynamic>> _filteredSeries() {
     return _series.where((s) {
@@ -163,7 +166,8 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
         if (status != _statusFilter) return false;
       }
       if (_clientFilter != null && _clientFilter!.isNotEmpty) {
-        final rawClient = s['clientId'] ?? s['client']?['id'] ?? s['client']?['_id'];
+        final rawClient =
+            s['clientId'] ?? s['client']?['id'] ?? s['client']?['_id'];
         final clientId = rawClient is Map
             ? (rawClient[r'$oid'] ?? '').toString()
             : (rawClient ?? '').toString();
@@ -241,6 +245,7 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
         series: _filteredSeries(),
         clients: _clients,
         canManage: canManage,
+        api: _api,
         showHeader: !widget.embedded,
         statusFilter: _statusFilter,
         clientFilter: _clientFilter,

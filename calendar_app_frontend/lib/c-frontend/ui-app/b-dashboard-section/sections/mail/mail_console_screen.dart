@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
@@ -19,6 +18,8 @@ import 'package:hexora/b-backend/mail/domain/mail_domain.dart';
 import 'package:hexora/b-backend/mail/models/mail_requests.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/controller/group_dashboard_state.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/console/hexora_email_template.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/widgets/mail_html_content.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/mail_compose_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -36,6 +37,18 @@ part 'console/mail_console_utils.dart';
 part 'console/mail_console_view.dart';
 part 'console/mail_console_footer_manager.dart';
 part 'console/mail_console_templates_manager.dart';
+
+VoidCallback _asyncCallback(Future<void> Function() action) {
+  return () {
+    unawaited(action());
+  };
+}
+
+ValueChanged<T> _asyncValueChanged<T>(Future<void> Function(T value) action) {
+  return (value) {
+    unawaited(action(value));
+  };
+}
 
 class MailConsoleScreen extends StatefulWidget {
   const MailConsoleScreen({
@@ -70,7 +83,9 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   String? _selectedThreadKey;
   String? _lastRoute;
   final ScrollController _threadScroll = ScrollController();
+  final FocusNode _threadListFocus = FocusNode();
   final TextEditingController _replyCtrl = TextEditingController();
+  TextEditingController? _threadSearchCtrl;
 
   bool _leftCollapsed = false;
   bool _showCompose = false;
@@ -89,8 +104,11 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   bool _sendingReply = false;
   bool _downloadingAttachment = false;
   Timer? _threadDebounce;
+  Timer? _threadSearchDebounce;
 
   final EmailApi _emailApi = EmailApi();
+  TextEditingController get _threadSearchController =>
+      _threadSearchCtrl ??= TextEditingController();
 
   void update(VoidCallback fn) {
     if (!mounted) return;
@@ -128,7 +146,13 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     _folder = widget.initialFolder;
     _selectedThreadKey = widget.initialThreadKey;
     _threadScroll.addListener(_onThreadScroll);
+    _threadSearchCtrl ??= TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final domain = context.read<MailDomain>();
+      final currentQuery = (domain.threadsState.query ?? '').trim();
+      if (currentQuery.isNotEmpty) {
+        _threadSearchCtrl?.text = currentQuery;
+      }
       _loadThreads(refresh: true);
       if (_selectedThreadKey != null) {
         _selectThread(_selectedThreadKey!);
@@ -140,8 +164,11 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   void dispose() {
     _threadScroll.removeListener(_onThreadScroll);
     _threadScroll.dispose();
+    _threadListFocus.dispose();
     _replyCtrl.dispose();
+    _threadSearchCtrl?.dispose();
     _threadDebounce?.cancel();
+    _threadSearchDebounce?.cancel();
     _footerNameCtrl.dispose();
     _footerTextCtrl.dispose();
     _footerHtmlCtrl.dispose();
@@ -149,6 +176,12 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     _templateSubjectCtrl.dispose();
     _templateTextCtrl.dispose();
     _templateHtmlCtrl.dispose();
+    // Clear mail bar actions from parent dashboard AppBar (mobile embedded only)
+    if (widget.embedded) {
+      try {
+        context.read<GroupDashboardState>().setMailBarActions(null);
+      } catch (_) {}
+    }
     super.dispose();
   }
 
@@ -168,8 +201,42 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     _threadDebounce?.cancel();
     _threadDebounce = Timer(const Duration(milliseconds: 200), () {
       if (!mounted) return;
-      context.read<MailDomain>().loadThreads(folder: _folder, refresh: refresh);
+      final query = (_threadSearchCtrl?.text ?? '').trim();
+      context.read<MailDomain>().loadThreads(
+            folder: _folder,
+            refresh: refresh,
+            query: query,
+          );
     });
+  }
+
+  void _onThreadSearchChanged(String value) {
+    _threadSearchCtrl ??= TextEditingController();
+    _threadSearchDebounce?.cancel();
+    _threadSearchDebounce = Timer(const Duration(milliseconds: 320), () {
+      if (!mounted) return;
+      _loadThreads(refresh: true);
+    });
+    setState(() {});
+  }
+
+  void _clearThreadSearch() {
+    _threadSearchDebounce?.cancel();
+    if ((_threadSearchCtrl?.text ?? '').isEmpty) return;
+    _threadSearchCtrl?.clear();
+    _loadThreads(refresh: true);
+    setState(() {});
+  }
+
+  void _navigateThread(int delta) {
+    final threads = context.read<MailDomain>().threadsState.threads;
+    if (threads.isEmpty) return;
+    final currentIdx = _selectedThreadKey == null
+        ? -1
+        : threads.indexWhere((t) => t.threadKey == _selectedThreadKey);
+    final newIdx = (currentIdx + delta).clamp(0, threads.length - 1);
+    if (newIdx == currentIdx && _selectedThreadKey != null) return;
+    _selectThread(threads[newIdx].threadKey);
   }
 
   Future<void> _selectThread(String threadKey) async {
@@ -418,7 +485,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     }
   }
 
-  Future<void> _openCompose() async {
+  void _openCompose() {
     if (!mounted) return;
     setState(() {
       _showCompose = true;
@@ -793,6 +860,19 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       _templateHtmlCtrl.clear();
       _templateDefault = false;
       _templateError = null;
+    });
+  }
+
+  void _applyHexoraTemplatePreset() {
+    setState(() {
+      _templateNameCtrl.text = HexoraEmailTemplatePreset.defaultName;
+      _templateSubjectCtrl.text = HexoraEmailTemplatePreset.defaultSubject;
+      _templateTextCtrl.text = HexoraEmailTemplatePreset.textBody();
+      _templateHtmlCtrl.text = HexoraEmailTemplatePreset.htmlBody();
+      _templateError = null;
+      if (_selectedTemplateId == null || _selectedTemplateId!.isEmpty) {
+        _templateDefault = false;
+      }
     });
   }
 

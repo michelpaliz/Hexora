@@ -2,7 +2,8 @@ part of '../receipt_editor_wizard_screen.dart';
 
 // ignore_for_file: invalid_use_of_protected_member
 
-extension _ReceiptEditorWizardImportExtractSection on _ReceiptEditorWizardScreenState {
+extension _ReceiptEditorWizardImportExtractSection
+    on _ReceiptEditorWizardScreenState {
   void _applyReceiptLinesFromReceipt(Receipt receipt) {
     for (final line in _lines) {
       line.dispose();
@@ -69,21 +70,16 @@ extension _ReceiptEditorWizardImportExtractSection on _ReceiptEditorWizardScreen
       if (prompt.isEmpty) {
         throw Exception(l.invoiceLinesJsonImportGenericError);
       }
-      await Clipboard.setData(ClipboardData(text: prompt));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.invoiceLinesJsonImportPromptCopied)),
+      await copyTextWithManualFallbackDialog(
+        context,
+        text: prompt,
+        successMessage: l.invoiceLinesJsonImportPromptCopied,
       );
     } catch (e) {
       if (!mounted) return;
       final msg = e.toString().replaceFirst('Exception: ', '').trim();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            msg.isEmpty ? l.invoiceLinesJsonImportGenericError : msg,
-          ),
-        ),
-      );
+      showErrorSnack(
+          context, msg.isEmpty ? l.invoiceLinesJsonImportGenericError : msg);
     } finally {
       if (mounted) setState(() => _jsonPromptLoading = false);
     }
@@ -122,18 +118,15 @@ extension _ReceiptEditorWizardImportExtractSection on _ReceiptEditorWizardScreen
         _draftReceipt = refreshed;
         _didPersist = true;
         _applyReceiptLinesFromReceipt(refreshed);
+        _markDraftSynced();
       });
       final importedCount = (response['importedCount'] is num)
           ? (response['importedCount'] as num).toInt()
           : refreshed.lines.length;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(l.invoiceLinesJsonImportSuccess('$importedCount'))),
-      );
+      showSuccessSnack(
+          context, l.invoiceLinesJsonImportSuccess('$importedCount'));
       if (JsonImportService.extractRepairApplied(response)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('JSON auto-corrected before import.')),
-        );
+        showInfoSnack(context, l.jsonAutoRepairAppliedSnack);
       }
     } catch (e) {
       if (!mounted) return;
@@ -184,7 +177,7 @@ extension _ReceiptEditorWizardImportExtractSection on _ReceiptEditorWizardScreen
     final picked = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       type: FileType.custom,
-      allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp', 'pdf'],
+      allowedExtensions: const ['png', 'jpg', 'jpeg', 'jpe', 'webp', 'pdf'],
       withData: true,
     );
     final file =
@@ -252,9 +245,8 @@ extension _ReceiptEditorWizardImportExtractSection on _ReceiptEditorWizardScreen
       ];
       setState(() {
         _extractedDraftLines = rows;
-        _extractMethodUsed = (response['methodUsed'] ?? response['method'])
-            ?.toString()
-            .trim();
+        _extractMethodUsed =
+            (response['methodUsed'] ?? response['method'])?.toString().trim();
         _extractDiagnostics = diagnostics;
       });
     } on ReceiptsApiException catch (e) {
@@ -262,7 +254,8 @@ extension _ReceiptEditorWizardImportExtractSection on _ReceiptEditorWizardScreen
       setState(() => _extractError = e.message);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _extractError = e.toString().replaceFirst('Exception: ', ''));
+      setState(
+          () => _extractError = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _extractingLines = false);
     }
@@ -327,15 +320,13 @@ extension _ReceiptEditorWizardImportExtractSection on _ReceiptEditorWizardScreen
         _draftReceipt = refreshed;
         _didPersist = true;
         _applyReceiptLinesFromReceipt(refreshed);
+        _markDraftSynced();
       });
       final importedCount = JsonImportService.extractImportedCount(response);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            l.invoiceLinesJsonImportSuccess(
-              '${importedCount > 0 ? importedCount : _extractedDraftLines.length}',
-            ),
-          ),
+      showSuccessSnack(
+        context,
+        l.invoiceLinesJsonImportSuccess(
+          '${importedCount > 0 ? importedCount : _extractedDraftLines.length}',
         ),
       );
     } on ReceiptsApiException catch (e) {
@@ -343,7 +334,8 @@ extension _ReceiptEditorWizardImportExtractSection on _ReceiptEditorWizardScreen
       setState(() => _jsonImportError = e.message);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _jsonImportError = e.toString().replaceFirst('Exception: ', ''));
+      setState(() =>
+          _jsonImportError = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _jsonImporting = false);
     }
@@ -354,8 +346,4 @@ extension _ReceiptEditorWizardImportExtractSection on _ReceiptEditorWizardScreen
     if (existing != null && existing.isNotEmpty) return existing;
     return l.receiptDraftNumberPlaceholder;
   }
-
 }
-
-
-

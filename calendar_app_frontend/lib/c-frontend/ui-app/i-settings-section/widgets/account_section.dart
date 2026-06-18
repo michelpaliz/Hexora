@@ -5,44 +5,59 @@ import 'package:hexora/l10n/app_localizations.dart';
 
 class AccountSection extends StatelessWidget {
   final String userName;
+  final String? userSubtitle;
   final VoidCallback onEditUsername;
   final VoidCallback onChangePassword;
-  final VoidCallback onLogout;
+  final VoidCallback? onLogout;
 
   const AccountSection({
     super.key,
     required this.userName,
+    this.userSubtitle,
     required this.onEditUsername,
     required this.onChangePassword,
-    required this.onLogout,
+    this.onLogout,
   });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final errorColor = Theme.of(context).colorScheme.error;
+    final cs = Theme.of(context).colorScheme;
 
     return Column(
       children: [
         NavTile(
-          leading: const Icon(Icons.person_outline_rounded),
-          title: l.userName,
-          subtitle: userName,
+          leading:
+              Icon(Icons.person_outline_rounded, size: 18, color: cs.primary),
+          iconBgColor: cs.primary.withValues(alpha: 0.12),
+          title: userName.isEmpty ? l.userName : userName,
+          subtitle: userSubtitle,
           onTap: onEditUsername,
         ),
-        const Divider(height: 0),
+        Divider(
+            height: 0,
+            indent: 63,
+            color: cs.outlineVariant.withValues(alpha: 0.4)),
         NavTile(
-          leading: const Icon(Icons.lock_outline_rounded),
+          leading:
+              Icon(Icons.lock_outline_rounded, size: 18, color: cs.secondary),
+          iconBgColor: cs.secondary.withValues(alpha: 0.12),
           title: l.changePassword,
           onTap: onChangePassword,
         ),
-        const Divider(height: 0),
-        NavTile(
-          leading: Icon(Icons.logout_rounded, color: errorColor),
-          title: l.logout,
-          onTap: onLogout,
-          danger: true, // will color title/subtitle via NavTile
-        ),
+        if (onLogout != null) ...[
+          Divider(
+              height: 0,
+              indent: 63,
+              color: cs.outlineVariant.withValues(alpha: 0.4)),
+          NavTile(
+            leading: Icon(Icons.logout_rounded, size: 18, color: cs.error),
+            iconBgColor: cs.error.withValues(alpha: 0.10),
+            title: l.logout,
+            onTap: onLogout,
+            danger: true,
+          ),
+        ],
       ],
     );
   }

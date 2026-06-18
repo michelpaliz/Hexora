@@ -1310,6 +1310,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resetLinkSent => 'Password reset link sent!';
 
   @override
+  String get forgotPasswordNeutralSuccess =>
+      'If an account exists, we sent a password reset link.';
+
+  @override
+  String get forgotPasswordNetworkError =>
+      'Could not send reset link. Check your connection and try again.';
+
+  @override
+  String get passwordMinLength => 'Password must be at least 8 characters.';
+
+  @override
+  String get confirmPasswordRequired => 'Please confirm your new password.';
+
+  @override
+  String get resetPasswordSubmit => 'Reset password';
+
+  @override
+  String get resetPasswordInvalidLinkTitle => 'Invalid reset link';
+
+  @override
+  String get resetPasswordInvalidLinkBody =>
+      'This reset link is invalid or missing a token. Request a new password reset link.';
+
+  @override
+  String get resetPasswordRequestNewLink => 'Request new reset link';
+
+  @override
+  String get resetPasswordInvalidToken =>
+      'This reset token is invalid or has expired.';
+
+  @override
+  String get resetPasswordGenericError =>
+      'Failed to reset password. Please try again.';
+
+  @override
+  String get resetPasswordSuccessTitle => 'Password reset successfully';
+
+  @override
+  String get resetPasswordSuccessBody =>
+      'Your password has been updated. You can now sign in with your new password.';
+
+  @override
   String get noUpcomingHint => 'Try another category or extend the range.';
 
   @override
@@ -2985,7 +3027,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get billingLogoUploadBody =>
-      'Select a PNG or JPG logo (max 5MB). This logo will appear in invoices and email footers.';
+      'Select a PNG or JPG logo (max 15MB). This logo will appear in invoices and email footers.';
 
   @override
   String get billingLogoUploadSelectFile => 'Select file';
@@ -2998,7 +3040,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get billingLogoUploadError =>
-      'Upload failed. Please try a smaller PNG/JPG.';
+      'The logo must be PNG or JPG and must not exceed 15 MB.';
 
   @override
   String get createInvoiceCta => 'Create invoice';
@@ -3184,6 +3226,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String invoiceLinesJsonImportSuccess(Object count) {
     return 'Imported $count line(s).';
   }
+
+  @override
+  String get jsonAutoRepairAppliedSnack => 'JSON auto-corrected before import.';
 
   @override
   String get invoiceAddBlock => 'Add block';
@@ -3480,10 +3525,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invoiceStepPreviewShort => 'Preview';
 
   @override
-  String get invoiceStepIssueTitle => 'Step 3 - Issue invoice';
+  String get invoiceStepIssueTitle => 'Step 3 - Save draft';
 
   @override
-  String get invoiceStepIssueShort => 'Issue';
+  String get invoiceStepIssueShort => 'Draft';
 
   @override
   String get invoiceChecklistClient => 'Client selected';
@@ -3571,6 +3616,65 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invoiceClientInvoicesThisMonthLabel => 'Invoices this month';
 
   @override
+  String get clientMissingInvoiceThisMonth => 'Missing invoice this month';
+
+  @override
+  String get clientInvoiceAllGood => 'Invoice issued this month';
+
+  @override
+  String get clientAllHaveInvoiceTitle => 'All clients invoiced';
+
+  @override
+  String get clientInvoiceStatusUnavailableTitle =>
+      'Invoice status unavailable';
+
+  @override
+  String get clientNoMatchFiltersTitle => 'No clients match these filters';
+
+  @override
+  String get clientAllHaveInvoiceDesc =>
+      'No clients are missing an invoice this month.';
+
+  @override
+  String get clientInvoiceStatusUnavailableDesc =>
+      'Invoice data has not been returned for these clients yet.';
+
+  @override
+  String get clientNoMatchFiltersDesc => 'Try adjusting the search or filters.';
+
+  @override
+  String get clientNoInvoiceIssuedThisMonth => 'No invoice this month';
+
+  @override
+  String clientLastInvoiceShort(String date) {
+    return 'Last: $date';
+  }
+
+  @override
+  String clientMissingCountThisMonth(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count missing this month',
+      one: '1 missing this month',
+      zero: 'None missing',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String clientInvoiceCountThisMonth(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count invoices this month',
+      one: '1 invoice this month',
+      zero: 'No invoices this month',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get invoiceDraftInfoTooltip => 'Drafts info';
 
   @override
@@ -3596,6 +3700,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invoiceDraftSavedSnackNoNumber => 'Draft saved';
 
   @override
+  String get invoiceDraftSavedSnackTitle => 'Draft saved';
+
+  @override
+  String get invoiceDraftSavedSnackMessage =>
+      'Your invoice draft is safe and ready to continue later.';
+
+  @override
+  String get invoiceDraftUpdatedSnackTitle => 'Draft updated';
+
+  @override
+  String get invoiceDraftUpdatedSnackMessage =>
+      'Your latest changes were saved to this draft.';
+
+  @override
+  String get invoiceDraftSnackDismiss => 'Close';
+
+  @override
   String get invoiceDraftSaveFailedSnack =>
       'Could not save draft. Please try again.';
 
@@ -3611,6 +3732,33 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get invoiceDraftRemoveFailedSnack =>
       'Could not remove draft. Please try again.';
+
+  @override
+  String invoiceBatchIssueSuccessSnack(Object count) {
+    return '$count invoices issued successfully';
+  }
+
+  @override
+  String invoiceBatchIssuePartialSnack(Object issued, Object failed) {
+    return '$issued issued, $failed failed';
+  }
+
+  @override
+  String get invoiceIssueDuplicateNumberSnack =>
+      'That invoice number already exists in this group. Refresh the list or edit the draft number before issuing.';
+
+  @override
+  String invoiceIssueDuplicateNumberValueSnack(Object number) {
+    return 'Invoice number $number already exists in this group. Refresh the list or edit the draft number before issuing.';
+  }
+
+  @override
+  String get invoiceBatchIssueErrorsTitle => 'Errors';
+
+  @override
+  String invoiceDraftOpenFailed(Object reason) {
+    return 'Could not open draft: $reason';
+  }
 
   @override
   String invoiceIssueSuccessSnack(Object invoiceNumber) {
@@ -3879,7 +4027,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clientPropertyKindHint => 'e.g. building, apartment, chalet';
 
   @override
-  String get clientClassificationTitle => 'Saved options';
+  String get clientClassificationTitle => 'Client classification';
 
   @override
   String get clientClassificationManageCta => 'Manage';
@@ -4086,6 +4234,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get receiptDraftSavedSnack => 'Draft saved';
+
+  @override
+  String get receiptDraftSavedSnackTitle => 'Receipt draft saved';
+
+  @override
+  String get receiptDraftSavedSnackMessage =>
+      'Your receipt draft is safe and ready to continue later.';
 
   @override
   String get receiptSaveFailed => 'Could not save receipt';
@@ -5094,7 +5249,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expenseUploadBatchUploadDocsCta => 'Upload documents';
 
   @override
-  String get expenseUploadBatchLimits => 'Up to 100 files, max 10MB each.';
+  String get expenseUploadBatchLimits => 'Up to 200 files, max 10MB each.';
 
   @override
   String expenseUploadBatchSelectedCount(int count) {
@@ -5669,6 +5824,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailThreadsEmpty => 'No threads found.';
 
   @override
+  String get mailThreadSearchNoResults => 'No conversations found.';
+
+  @override
+  String get mailThreadSearchNoResultsHint =>
+      'Try another term, like \"invoice\", \"factura\", \"quote\", \"presupuesto\", or the client name.';
+
+  @override
+  String get mailThreadSearchTooltip =>
+      'Search conversations. Try invoice, factura, quote, or presupuesto.';
+
+  @override
   String get mailThreadDetailTitle => 'Thread';
 
   @override
@@ -5714,7 +5880,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailFolderSpam => 'Spam';
 
   @override
-  String get mailConsoleSearchPlaceholder => 'Search threads (coming soon)';
+  String get mailConsoleSearchPlaceholder => 'Search conversations...';
 
   @override
   String get mailConsoleSelectThread => 'Select a thread to view messages.';
@@ -5755,6 +5921,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mailConversationForward => 'Forward';
+
+  @override
+  String get mailLegalNoticeShow => 'Show legal notice';
+
+  @override
+  String get mailLegalNoticeHide => 'Hide legal notice';
 
   @override
   String get mailConsoleClientPanelTitle => 'Client & invoices';
@@ -6118,7 +6290,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get budgetValidationLineItemsRequired =>
-      'Add at least one line item before issuing.';
+      'Add at least one line with a work concept before continuing.';
+
+  @override
+  String get budgetDraftSavedSnack => 'Draft changes saved.';
+
+  @override
+  String get budgetDraftCreatedSnack => 'Draft saved successfully.';
+
+  @override
+  String get budgetDraftSavedSnackTitle => 'Budget draft saved';
+
+  @override
+  String get budgetDraftSavedSnackMessage =>
+      'Your presupuesto draft is safe and ready to continue later.';
+
+  @override
+  String get budgetDraftUpdatedSnackTitle => 'Budget draft updated';
+
+  @override
+  String get budgetDraftUpdatedSnackMessage =>
+      'Your latest presupuesto changes were saved.';
+
+  @override
+  String get budgetDraftNotEditableSnack =>
+      'This budget is no longer a draft and cannot be edited.';
 
   @override
   String get budgetPreviewAcceptRequired => 'Accept before opening preview.';
@@ -6283,6 +6479,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insightsChatSend => 'Send';
 
   @override
+  String get insightsChatExportExcel => 'Export to Excel';
+
+  @override
+  String get insightsChatExportExcelTooltip =>
+      'Export this finance answer to Excel';
+
+  @override
+  String insightsChatExportSuccess(String fileName) {
+    return 'Excel generated: $fileName';
+  }
+
+  @override
+  String get insightsChatExportError => 'Could not export to Excel';
+
+  @override
+  String get insightsChatExportUnsupported =>
+      'File download is not available on this platform';
+
+  @override
   String get systemConfigMenuLabel => 'System configuration';
 
   @override
@@ -6301,4 +6516,1088 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get upgradeToPremium => 'Upgrade to Premium';
+
+  @override
+  String get contractsTitle => 'Contracts';
+
+  @override
+  String contractsForClient(Object client) {
+    return 'Contracts for $client';
+  }
+
+  @override
+  String get contractsEmptyTitle => 'No contracts yet';
+
+  @override
+  String get contractsEmptySubtitle =>
+      'Upload the first contract for this client.';
+
+  @override
+  String get contractsLoadFailedTitle => 'Could not load contracts';
+
+  @override
+  String get contractUploadTitle => 'Upload contract';
+
+  @override
+  String get contractUploadSubtitle =>
+      'Attach a PDF and add the metadata you want to keep on this client.';
+
+  @override
+  String get contractEditTitle => 'Edit contract';
+
+  @override
+  String get contractEditSubtitle =>
+      'Update the contract metadata without re-uploading the PDF.';
+
+  @override
+  String get contractUploadAction => 'Upload contract';
+
+  @override
+  String get contractUploadSuccess => 'Contract uploaded successfully.';
+
+  @override
+  String contractUploadFailed(Object reason) {
+    return 'Could not upload the contract: $reason';
+  }
+
+  @override
+  String get contractUpdateSuccess => 'Contract updated successfully.';
+
+  @override
+  String contractUpdateFailed(Object reason) {
+    return 'Could not update the contract: $reason';
+  }
+
+  @override
+  String get contractDeleteTitle => 'Delete contract?';
+
+  @override
+  String contractDeleteBody(Object name) {
+    return 'Delete contract \"$name\"? This action cannot be undone.';
+  }
+
+  @override
+  String get contractDeleteSuccess => 'Contract deleted successfully.';
+
+  @override
+  String contractDeleteFailed(Object reason) {
+    return 'Could not delete the contract: $reason';
+  }
+
+  @override
+  String get contractMarkedCurrentSuccess => 'Current contract updated.';
+
+  @override
+  String get contractOpenFailedGeneric => 'The PDF could not be opened.';
+
+  @override
+  String contractOpenFailed(Object reason) {
+    return 'Could not open the PDF: $reason';
+  }
+
+  @override
+  String contractDownloadFailed(Object reason) {
+    return 'Could not download the PDF: $reason';
+  }
+
+  @override
+  String get contractTitleLabel => 'Title';
+
+  @override
+  String get contractFileNameLabel => 'File name';
+
+  @override
+  String get contractVersionLabel => 'Version';
+
+  @override
+  String get contractStatusLabel => 'Status';
+
+  @override
+  String get contractRenewalDateLabel => 'Renewal date';
+
+  @override
+  String get contractSignedDateLabel => 'Signed date';
+
+  @override
+  String get contractNotesLabel => 'Notes';
+
+  @override
+  String get contractTagsLabel => 'Tags';
+
+  @override
+  String get contractTagsHint => 'Separate tags with commas';
+
+  @override
+  String get contractCurrentBadge => 'Current contract';
+
+  @override
+  String get contractCurrentHint =>
+      'Mark this document as the currently valid contract for the client.';
+
+  @override
+  String get contractPickPdf => 'Choose PDF';
+
+  @override
+  String get contractNoFileSelected => 'No PDF selected';
+
+  @override
+  String get contractPdfOnlyHint => 'PDF files only.';
+
+  @override
+  String get contractDropHint => 'Drag a PDF here or click to upload it.';
+
+  @override
+  String get contractDropActiveHint => 'Drop the PDF to upload it.';
+
+  @override
+  String get contractFileReadError => 'The selected PDF could not be read.';
+
+  @override
+  String get contractFileRequired => 'Select a PDF file before continuing.';
+
+  @override
+  String get contractViewPdfAction => 'View PDF';
+
+  @override
+  String get contractDownloadAction => 'Download';
+
+  @override
+  String get contractMarkCurrentAction => 'Mark as current';
+
+  @override
+  String get contractUploadedAtLabel => 'Uploaded';
+
+  @override
+  String get contractExpiredBadge => 'Expired';
+
+  @override
+  String get contractExpiringSoonBadge => 'Expiring soon';
+
+  @override
+  String get contractClearDateAction => 'Clear date';
+
+  @override
+  String get clientContractTypeLabel => 'Contract type';
+
+  @override
+  String get clientContractTypeService => 'Service';
+
+  @override
+  String get clientContractTypeMaintenance => 'Maintenance';
+
+  @override
+  String get clientContractTypeRental => 'Rental';
+
+  @override
+  String get clientContractTypeNda => 'NDA';
+
+  @override
+  String get clientContractTypeCustom => 'Other';
+
+  @override
+  String get clientContractStatusExpired => 'Expired';
+
+  @override
+  String get clientContractStatusTerminated => 'Terminated';
+
+  @override
+  String get clientContractStatusArchived => 'Archived';
+
+  @override
+  String get statementsNoExpenseSuggestions => 'No matching expenses found';
+
+  @override
+  String get statementsSuggestedExpensesTitle => 'Suggested expenses';
+
+  @override
+  String get statementsExpenseAlreadyLinkedBadge => 'Already linked';
+
+  @override
+  String get statementsExpenseLinkAction => 'Use this expense';
+
+  @override
+  String get statementsExpenseOpenManualLink => 'Open manual selector';
+
+  @override
+  String get statementsExpenseSuggestionsLoadFailedTitle =>
+      'We couldn\'t load suggested expenses';
+
+  @override
+  String get statementsExpenseSuggestionsFallbackHint =>
+      'You can still link an expense manually.';
+
+  @override
+  String get statementsExpenseLinkFailed => 'Could not link the expense.';
+
+  @override
+  String get statementsExpenseStatusRegistered => 'Registered';
+
+  @override
+  String statementsExpenseAlreadyLinkedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Already linked to # bank entries',
+      one: 'Already linked to # bank entry',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rolesTabLabel => 'Roles';
+
+  @override
+  String get rolesCurrentRoleLabel => 'Your current role';
+
+  @override
+  String get rolesPermissionsUnit => 'permissions';
+
+  @override
+  String get rolesGuideTitle => 'Role guide';
+
+  @override
+  String get rolesYourRoleBadge => 'Your role';
+
+  @override
+  String get rolesLoadError => 'Could not load permissions';
+
+  @override
+  String get rolesRetryButton => 'Retry';
+
+  @override
+  String get roleFallbackDescOwner =>
+      'Full control over the group. Can transfer ownership.';
+
+  @override
+  String get roleFallbackDescAdmin =>
+      'Can manage members, roles, billing and settings.';
+
+  @override
+  String get roleFallbackDescCoAdmin =>
+      'Can invite members and manage the calendar and events.';
+
+  @override
+  String get roleFallbackDescMember => 'Can view and participate in the group.';
+
+  @override
+  String get permLabelInvite => 'Invite';
+
+  @override
+  String get permLabelKick => 'Remove members';
+
+  @override
+  String get permLabelEditGroup => 'Edit group';
+
+  @override
+  String get permLabelDeleteGroup => 'Delete group';
+
+  @override
+  String get permLabelManageRoles => 'Manage roles';
+
+  @override
+  String get permLabelViewBilling => 'View billing';
+
+  @override
+  String get permLabelManageInvoices => 'Invoices';
+
+  @override
+  String get permLabelManageBudgets => 'Budgets';
+
+  @override
+  String get permLabelViewMembers => 'View members';
+
+  @override
+  String get permLabelManageMembers => 'Manage members';
+
+  @override
+  String get permLabelSendMessages => 'Messages';
+
+  @override
+  String get permLabelViewCalendar => 'View calendar';
+
+  @override
+  String get permLabelEditCalendar => 'Edit calendar';
+
+  @override
+  String get permLabelManageEvents => 'Events';
+
+  @override
+  String get permLabelViewReports => 'Reports';
+
+  @override
+  String get permLabelManageSettings => 'Settings';
+
+  @override
+  String get permLabelTransferOwnership => 'Transfer ownership';
+
+  @override
+  String get permLabelGroup => 'Group';
+
+  @override
+  String get permLabelStatements => 'Statements';
+
+  @override
+  String get permLabelCalendar => 'Calendar';
+
+  @override
+  String get permLabelEvents => 'Events';
+
+  @override
+  String get permLabelTimeTracking => 'Time tracking';
+
+  @override
+  String get permLabelExpenses => 'Expenses';
+
+  @override
+  String get permLabelInvoices => 'Invoices';
+
+  @override
+  String get permLabelReports => 'Reports';
+
+  @override
+  String get permLabelSettings => 'Settings';
+
+  @override
+  String get permLabelMembers => 'Members';
+
+  @override
+  String get roleDescOwner =>
+      'Full control of the group, members, settings, and shared tools.';
+
+  @override
+  String get roleDescAdmin =>
+      'Legacy elevated manager role. Treated like a co-admin for frontend guidance.';
+
+  @override
+  String get roleDescCoAdmin =>
+      'Can manage most shared group operations, but cannot delete the group or outrank the owner.';
+
+  @override
+  String get roleDescMember =>
+      'Can view shared group data and manage only their own allowed actions.';
+
+  @override
+  String get expenseJsonTabFlowHint =>
+      'Paste the JSON and attach the invoice to import.';
+
+  @override
+  String get expenseJsonTabPickJsonFile => 'JSON file';
+
+  @override
+  String get expenseJsonTabPickInvoiceFile => 'Invoice file';
+
+  @override
+  String get expenseJsonTabGetAiPrompt => 'Get AI Prompt';
+
+  @override
+  String get expenseJsonTabGeneratingPrompt => 'Generating AI prompt...';
+
+  @override
+  String get expenseJsonTabPromptLabel => 'AI PROMPT';
+
+  @override
+  String get expenseJsonTabCopyPrompt => 'Copy';
+
+  @override
+  String get expenseJsonTabPayloadLabel => 'JSON Payload';
+
+  @override
+  String get expenseJsonTabPayloadHint => 'Paste the invoice JSON here...';
+
+  @override
+  String get expenseJsonTabAdvancedOptions => 'ADVANCED OPTIONS';
+
+  @override
+  String get expenseJsonTabSectionExpenseType => 'Expense type';
+
+  @override
+  String get expenseJsonTabSectionDiscount => 'Global discount';
+
+  @override
+  String get expenseJsonTabSectionTotal => 'Document total';
+
+  @override
+  String get expenseJsonTabImportCta => 'Import JSON';
+
+  @override
+  String get expenseJsonTabImportHint =>
+      'Requires JSON and attached invoice file.';
+
+  @override
+  String get expenseJsonLeftTitle => 'JSON Import';
+
+  @override
+  String get expenseJsonLeftSubtitle =>
+      'Load the JSON, attach the invoice and review the payload on the right panel.';
+
+  @override
+  String get expenseJsonLeftDropActive => 'Drop the JSON or invoice';
+
+  @override
+  String get expenseJsonLeftDropHint => 'Drag the JSON or invoice here';
+
+  @override
+  String get expenseJsonLeftFileTypes => 'JSON / PDF / JPG / JPEG / PNG / WEBP';
+
+  @override
+  String get expenseJsonLeftPickJson => 'Select JSON';
+
+  @override
+  String get expenseJsonLeftPickInvoice => 'Attach invoice';
+
+  @override
+  String get expenseJsonLeftPromptTitle => 'AI Prompt';
+
+  @override
+  String get expenseJsonLeftPromptAvailable => 'Available';
+
+  @override
+  String get expenseJsonLeftPromptGenerate => 'Generate template';
+
+  @override
+  String get expenseJsonLeftPromptTooltip => 'Get AI prompt';
+
+  @override
+  String get expenseJsonLeftCopyPromptTooltip => 'Copy prompt';
+
+  @override
+  String get expenseJsonLeftSummaryTitle => 'Summary';
+
+  @override
+  String get expenseJsonLeftJsonPending => 'JSON pending';
+
+  @override
+  String get expenseJsonLeftInvoicePending => 'Invoice pending';
+
+  @override
+  String get expenseBatchLeftTitle => 'Import documents';
+
+  @override
+  String get expenseBatchLeftSubtitle =>
+      'Select the PDFs or images to process. The full list and issues are shown in the right panel.';
+
+  @override
+  String get expenseBatchLeftDropActive => 'Drop documents to load them';
+
+  @override
+  String get expenseBatchLeftDropHint => 'Drag your documents here';
+
+  @override
+  String get expenseBatchLeftFileTypes => 'PDF / JPG / JPEG / PNG / WEBP';
+
+  @override
+  String get expenseBatchLeftPickCta => 'Select documents';
+
+  @override
+  String get expenseBatchLeftProcessing => 'Processing batch...';
+
+  @override
+  String expenseBatchLeftSelected(int count) {
+    return '$count documents selected';
+  }
+
+  @override
+  String expenseBatchLeftCapacity(int selected, int max) {
+    return 'Capacity: $selected / $max';
+  }
+
+  @override
+  String expenseBatchLeftTotalSize(String size) {
+    return 'Total size: $size';
+  }
+
+  @override
+  String expenseBatchLeftSlots(int slots) {
+    return 'Available slots: $slots';
+  }
+
+  @override
+  String get expenseBatchLeftClearCta => 'Clear selection';
+
+  @override
+  String get expenseBatchLeftCompleted => 'Batch completed';
+
+  @override
+  String get expenseBatchLeftImportCta => 'Import expenses';
+
+  @override
+  String get expenseBatchLeftGroupRequired =>
+      'Select a group before importing.';
+
+  @override
+  String get expenseBatchProgressCompleted => 'Import completed';
+
+  @override
+  String get expenseBatchProgressFailed => 'Import failed';
+
+  @override
+  String get expenseBatchProgressQueued => 'Import queued';
+
+  @override
+  String get expenseBatchProgressProcessing => 'Processing batch';
+
+  @override
+  String get expenseBatchStatProcessed => 'Processed';
+
+  @override
+  String get expenseBatchStatImported => 'Imported';
+
+  @override
+  String get expenseBatchStatIssues => 'With issues';
+
+  @override
+  String get expenseBatchStatResult => 'Result';
+
+  @override
+  String get expenseBatchStatLoading => 'Loading...';
+
+  @override
+  String expenseBatchHeaderSlotsFree(int count) {
+    return '$count free';
+  }
+
+  @override
+  String get expenseBatchProgressBackgroundHint =>
+      'You can leave this screen while the import completes.';
+
+  @override
+  String get expenseBatchListTitle => 'Loaded files';
+
+  @override
+  String expenseBatchListCount(int count) {
+    return '$count file(s)';
+  }
+
+  @override
+  String get expenseBatchListFilterAll => 'All';
+
+  @override
+  String get expenseBatchListFilterReady => 'Ready';
+
+  @override
+  String get expenseBatchListFilterIssues => 'Issues';
+
+  @override
+  String expenseBatchListRemoveWarnings(int count) {
+    return 'Remove $count';
+  }
+
+  @override
+  String get expenseBatchListEmpty => 'No files match this filter yet.';
+
+  @override
+  String get expenseBatchListRemoveTooltip => 'Remove from selection';
+
+  @override
+  String expenseBatchDocListFiles(int count) {
+    return '$count files';
+  }
+
+  @override
+  String get expenseBatchDocListAlreadyUploaded => 'Already uploaded';
+
+  @override
+  String expenseBatchDocListDuplicates(int count) {
+    return '$count already uploaded';
+  }
+
+  @override
+  String get expenseBatchDocListClearAll => 'Clear all';
+
+  @override
+  String get expenseBatchDocListRemove => 'Remove';
+
+  @override
+  String get expenseBatchErrorCopyList => 'Copy list';
+
+  @override
+  String get expenseTotalsUseSummaryLabel => 'Use document summary';
+
+  @override
+  String get expenseTotalsSummaryMode => 'Totals extracted from summary';
+
+  @override
+  String get expenseTotalsCalculateMode => 'Calculate from lines';
+
+  @override
+  String get expenseTotalsSummaryHelp =>
+      'The VAT for this document appears in the summary at the bottom of the ticket/invoice. It is not necessary for each line to show VAT separately.';
+
+  @override
+  String get expenseTotalsLockToLinesHelp =>
+      'Base, VAT and total are calculated from the lines and discounts. Enable summary if the document only shows VAT in the footer.';
+
+  @override
+  String get expenseTotalsDirectReviewHelp =>
+      'You can review the document totals directly from this block.';
+
+  @override
+  String get expenseTotalsTaxableBase => 'Taxable base';
+
+  @override
+  String get expenseTotalsTax => 'Total VAT';
+
+  @override
+  String get expenseTotalsTotal => 'Total document';
+
+  @override
+  String get suspectExpensesMenuLabel => 'Suspect expenses';
+
+  @override
+  String get suspectExpensesTitle => 'Suspect expenses';
+
+  @override
+  String get suspectExpensesScanned => 'Scanned';
+
+  @override
+  String get suspectExpensesCount => 'Suspects';
+
+  @override
+  String get suspectExpensesFilterResults => 'Filter results';
+
+  @override
+  String get suspectExpensesShown => 'Shown suspects';
+
+  @override
+  String get suspectExpensesEmpty =>
+      'No suspect expenses found for this filter.';
+
+  @override
+  String get suspectExpensesEmptyUnreviewed =>
+      'No unreviewed suspect expenses found.';
+
+  @override
+  String get suspectExpensesEmptyConfirmedOk =>
+      'No expenses are marked as confirmed correct.';
+
+  @override
+  String get suspectExpensesEmptyNeedsFix =>
+      'No expenses are marked as needs correction.';
+
+  @override
+  String get suspectExpensesFilterAll => 'All';
+
+  @override
+  String get suspectExpensesFilterUnreviewed => 'Unreviewed';
+
+  @override
+  String get suspectExpensesFilterConfirmedOk => 'Confirmed OK';
+
+  @override
+  String get suspectExpensesFilterNeedsFix => 'Needs Fix';
+
+  @override
+  String get suspectExpensesStatusUnreviewed => 'Unreviewed';
+
+  @override
+  String get suspectExpensesStatusConfirmedOk => 'Confirmed OK';
+
+  @override
+  String get suspectExpensesStatusNeedsFix => 'Needs Fix';
+
+  @override
+  String get suspectExpensesStoredLabel => 'Stored';
+
+  @override
+  String get suspectExpensesDerivedLabel => 'Derived';
+
+  @override
+  String get suspectExpensesStoredSubtotal => 'Subtotal';
+
+  @override
+  String get suspectExpensesStoredTax => 'VAT';
+
+  @override
+  String get suspectExpensesStoredTotal => 'Total';
+
+  @override
+  String get suspectExpensesReasons => 'Detected reasons';
+
+  @override
+  String get suspectExpensesActionConfirmOk => 'Mark as correct';
+
+  @override
+  String get suspectExpensesActionNeedsFix => 'Mark for fix';
+
+  @override
+  String get suspectExpensesActionReset => 'Reset review';
+
+  @override
+  String get suspectExpensesNotes => 'Notes';
+
+  @override
+  String get suspectExpensesNotesHint => 'Add a note before saving…';
+
+  @override
+  String get suspectExpensesUploadedAt => 'Uploaded';
+
+  @override
+  String get notificationBankExpensesDetectedTitle => 'Bank expenses detected';
+
+  @override
+  String notificationBankExpensesDetectedMessage(int count, String amount) {
+    return '$count bank expenses totaling $amount were detected.';
+  }
+
+  @override
+  String get invoiceCreateMobileComingSoonSnack =>
+      'Create invoice on mobile will be available soon.';
+
+  @override
+  String get invoiceExportConceptsExcelFailed =>
+      'Could not export invoice concepts to Excel.';
+
+  @override
+  String get receiptJsonImportDraftOnlySnack =>
+      'Only draft receipts can be updated via JSON import.';
+
+  @override
+  String receiptJsonImportSuccessSnack(Object count) {
+    return 'Imported $count lines.';
+  }
+
+  @override
+  String get budgetDeletedSnack => 'Budget deleted.';
+
+  @override
+  String get budgetAdvanceInvoiceCreatedSnack =>
+      'Advance invoice created successfully (70%).';
+
+  @override
+  String get budgetAdvanceInvoiceCreatedSimpleSnack =>
+      'Advance invoice created successfully.';
+
+  @override
+  String get budgetFinalInvoiceCreatedSnack =>
+      'Final invoice created successfully.';
+
+  @override
+  String get budgetConvertedToInvoiceSnack => 'Invoice created from budget.';
+
+  @override
+  String get chatComposerHintMessage => 'Write a message…';
+
+  @override
+  String get chatComposerHintReply => 'Write a reply…';
+
+  @override
+  String get chatComposerHintCaption => 'Add a caption…';
+
+  @override
+  String get chatComposerHintBody => 'Enter sends · Shift+Enter new line';
+
+  @override
+  String get chatComposerHintAttachment =>
+      'Attachment ready · use the text box as a caption';
+
+  @override
+  String get chatComposerAttachFile => 'Local file';
+
+  @override
+  String get chatComposerAttachClientPdf => 'Client PDF';
+
+  @override
+  String get chatComposerAttachWorkerPdf => 'Worker-hours PDF';
+
+  @override
+  String get chatComposerSend => 'Send';
+
+  @override
+  String get chatComposerSendFile => 'Send file';
+
+  @override
+  String get chatComposerSending => 'Sending…';
+
+  @override
+  String get chatComposerUploading => 'Uploading…';
+
+  @override
+  String get chatComposerRetry => 'Retry';
+
+  @override
+  String get telegramSearchChats => 'Search chats…';
+
+  @override
+  String get telegramMenuChats => 'Chats';
+
+  @override
+  String get telegramMenuExports => 'Exports';
+
+  @override
+  String get telegramMenuAccount => 'Account';
+
+  @override
+  String get telegramMenuDisconnect => 'Disconnect';
+
+  @override
+  String get telegramFilterAll => 'All';
+
+  @override
+  String get telegramFilterGroups => 'Groups';
+
+  @override
+  String get telegramFilterChannels => 'Channels';
+
+  @override
+  String get telegramFilterPrivate => 'Private';
+
+  @override
+  String telegramNoChatsMatch(String query) {
+    return 'No chats match \"$query\"';
+  }
+
+  @override
+  String get telegramNoChatsAvailable => 'No Telegram chats available';
+
+  @override
+  String get telegramClearSearch => 'Clear search';
+
+  @override
+  String get telegramMainChatsSection => 'Main Chats';
+
+  @override
+  String get telegramNoMainChatsInfo =>
+      'No chats in the main list. Archived chats are available below.';
+
+  @override
+  String get telegramArchivedChats => 'Archived Chats';
+
+  @override
+  String get telegramChatsLoadError => 'Failed to load chats';
+
+  @override
+  String get telegramRetry => 'Retry';
+
+  @override
+  String get telegramTopics => 'Topics';
+
+  @override
+  String telegramBrowseTopicsIn(String chat) {
+    return 'Browse forum topics inside $chat.';
+  }
+
+  @override
+  String get telegramSearchTopics => 'Search topics…';
+
+  @override
+  String get telegramGeneralTopic => 'General topic';
+
+  @override
+  String get telegramHiddenTopic => 'Hidden topic';
+
+  @override
+  String get telegramForumTopicLabel => 'Forum topic';
+
+  @override
+  String get telegramNoTopicsMatch => 'No topics match your search';
+
+  @override
+  String get telegramNoTopicsFound => 'No forum topics found';
+
+  @override
+  String get telegramNoTopicsMatchBody =>
+      'Try a different name or clear the search.';
+
+  @override
+  String get telegramNoTopicsFoundBody =>
+      'This forum has no visible topics yet.';
+
+  @override
+  String get telegramToday => 'Today';
+
+  @override
+  String get telegramYesterday => 'Yesterday';
+
+  @override
+  String get telegramLoadOlder => 'Load older';
+
+  @override
+  String get telegramBeginningOfHistory => 'Beginning of history';
+
+  @override
+  String get telegramNoMessagesYet => 'No messages loaded yet';
+
+  @override
+  String get telegramNoMessagesTip =>
+      'Try refreshing this chat or loading older history.';
+
+  @override
+  String get telegramSelectChatTitle => 'Select a chat to start reading';
+
+  @override
+  String get telegramSelectChatBody =>
+      'Choose a Telegram chat from the list to load recent messages, browse history, and export it.';
+
+  @override
+  String get telegramFailedToLoadMessages => 'Failed to load messages';
+
+  @override
+  String get telegramRefresh => 'Refresh';
+
+  @override
+  String get telegramExport => 'Export';
+
+  @override
+  String get telegramEdited => 'edited';
+
+  @override
+  String telegramForwardedFrom(String source) {
+    return 'Forwarded from $source';
+  }
+
+  @override
+  String get telegramForwardedMessage => 'Forwarded message';
+
+  @override
+  String telegramReplyingTo(String sender) {
+    return 'Replying to $sender';
+  }
+
+  @override
+  String telegramReplyTo(String id) {
+    return 'Reply to #$id';
+  }
+
+  @override
+  String get telegramClearReply => 'Clear reply';
+
+  @override
+  String get telegramRemoveAttachment => 'Remove attachment';
+
+  @override
+  String get telegramReply => 'Reply';
+
+  @override
+  String get telegramReplying => 'Replying';
+
+  @override
+  String get telegramPreviewPdf => 'Preview PDF';
+
+  @override
+  String get telegramDownloadDocument => 'Download document';
+
+  @override
+  String get telegramClose => 'Close';
+
+  @override
+  String telegramTopicSubtitle(String name) {
+    return 'Topic · $name';
+  }
+
+  @override
+  String get telegramCouldNotReadFile => 'Could not read the selected file.';
+
+  @override
+  String get telegramNeedGroupClientPdf =>
+      'A group must be selected before attaching client PDFs.';
+
+  @override
+  String get telegramNeedGroupWorkerPdf =>
+      'A group must be selected before attaching worker PDFs.';
+
+  @override
+  String get telegramCouldNotOpenPdf => 'Could not open the PDF preview.';
+
+  @override
+  String get telegramCouldNotDownload => 'Could not download this document.';
+
+  @override
+  String get back => 'Back';
+
+  @override
+  String get issueInvoice => 'Issue invoice';
+
+  @override
+  String get invoiceActionsTitle => 'Actions';
+
+  @override
+  String get invoicePdfPreviewTitle => 'PDF preview';
+
+  @override
+  String get invoicePdfGenerated => 'Generated';
+
+  @override
+  String get invoicePdfReadyToPreview => 'PDF is ready to preview';
+
+  @override
+  String get invoiceSaveDraftToPreview =>
+      'Save draft to generate a PDF preview';
+
+  @override
+  String get invoicePdfOpenPreview => 'Open preview';
+
+  @override
+  String get invoicePreviewTitle => 'Preview';
+
+  @override
+  String get invoicePreviewNoNotes => 'No notes';
+
+  @override
+  String invoicePreviewLinesCount(int count) {
+    return 'Lines: $count';
+  }
+
+  @override
+  String invoicePreviewTotalLabel(String amount) {
+    return 'Total: $amount';
+  }
+
+  @override
+  String get invoiceDraftPdfDialogTitle => 'Download Draft PDF';
+
+  @override
+  String get invoiceDraftPdfDialogContent =>
+      'Generate a PDF preview of this draft invoice.';
+
+  @override
+  String get invoiceDraftPreviewInBrowser => 'Preview in Browser';
+
+  @override
+  String get invoiceDraftDownloadPdf => 'Download PDF';
+
+  @override
+  String get invoiceDeliveryStatusUpdated => 'Delivery status updated';
+
+  @override
+  String get invoiceMarkedUnsent => 'Invoice marked as unsent';
+
+  @override
+  String get invoiceDeliveryOnlyIssued =>
+      'Delivery can only be marked on issued invoices.';
+
+  @override
+  String get invoiceDeliveryUpdateError => 'Could not update delivery status.';
+
+  @override
+  String get invoiceReviewPdfBeforeDraft =>
+      'Review the PDF preview before saving the draft.';
+
+  @override
+  String get invoiceStepClientShort => 'Client';
+
+  @override
+  String get invoiceStepLinesShort => 'Lines';
+
+  @override
+  String get invoiceStepDraftShort => 'Draft';
+
+  @override
+  String get notificationRecurringDraftInvoiceCreatedTitle =>
+      'Recurring draft invoice created';
+
+  @override
+  String notificationRecurringDraftInvoiceCreatedMessage(
+      String clientName, String recurrenceName, String amount) {
+    return 'A draft invoice for $clientName was created from recurrence \"$recurrenceName\" for $amount.';
+  }
+
+  @override
+  String notificationRecurringDraftInvoiceCreatedMessageNoAmount(
+      String clientName, String recurrenceName) {
+    return 'A draft invoice for $clientName was created from recurrence \"$recurrenceName\".';
+  }
+
+  @override
+  String get notificationRecurringDraftInvoiceCreatedMessageFallback =>
+      'A recurring draft invoice was created.';
 }

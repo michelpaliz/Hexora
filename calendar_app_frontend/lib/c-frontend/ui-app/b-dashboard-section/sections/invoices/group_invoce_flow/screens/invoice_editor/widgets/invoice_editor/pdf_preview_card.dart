@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
 class InvoicePdfPreviewCard extends StatelessWidget {
   final Invoice? savedInvoice;
@@ -14,13 +15,12 @@ class InvoicePdfPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
     final ready = savedInvoice != null;
-    final subtitle = ready
-        ? 'PDF is ready to preview'
-        : 'Save draft to generate a PDF preview';
+    final subtitle = ready ? l.invoicePdfReadyToPreview : l.invoiceSaveDraftToPreview;
 
     return Card(
       elevation: 1,
@@ -34,7 +34,7 @@ class InvoicePdfPreviewCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'PDF preview',
+                    l.invoicePdfPreviewTitle,
                     style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
                   ),
                 ),
@@ -47,7 +47,7 @@ class InvoicePdfPreviewCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      'Generated',
+                      l.invoicePdfGenerated,
                       style: t.bodySmall.copyWith(
                         color: cs.onTertiaryContainer,
                         fontWeight: FontWeight.w800,
@@ -112,7 +112,7 @@ class InvoicePdfPreviewCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onPreviewPdf,
                 icon: const Icon(Icons.open_in_new_rounded),
-                label: const Text('Open preview'),
+                label: Text(l.invoicePdfOpenPreview),
               ),
             ),
           ],

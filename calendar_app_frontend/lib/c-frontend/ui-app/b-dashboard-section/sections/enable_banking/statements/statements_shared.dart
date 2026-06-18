@@ -2,17 +2,19 @@
 // This maintains backward compatibility while code is now organized in separate files
 
 export 'shared/statements_shared_utils.dart';
+export 'shared/statements_ai_match_suggest_dialog.dart';
 export 'shared/statements_client_dialogs.dart';
 export 'shared/statements_expense_upload_dialog.dart';
+export 'shared/statements_expense_suggest_dialog.dart';
 export 'shared/statements_invoice_suggest_dialog.dart';
 export 'shared/invoice_link/invoice_link_dialog.dart';
 
 import 'package:flutter/widgets.dart';
 
 import 'shared/invoice_link/invoice_link_dialog.dart';
+import 'shared/statements_ai_match_suggest_dialog.dart';
 import 'shared/statements_client_dialogs.dart';
 import 'shared/statements_expense_upload_dialog.dart';
-import 'shared/statements_invoice_suggest_dialog.dart';
 import 'shared/statements_shared_utils.dart';
 import 'statements_controller.dart';
 
@@ -56,7 +58,7 @@ class StatementsShared {
     StatementsController s,
     Map<String, dynamic> entry,
   ) {
-    return StatementsInvoiceSuggestDialog.show(context, s, entry);
+    return StatementsAiMatchSuggestDialog.show(context, s, entry);
   }
 
   /// Show invoice/expense link wizard dialog

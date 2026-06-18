@@ -1,5 +1,40 @@
 part of '../invoice_editor_controller.dart';
+
 extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
+  bool _isPlaceholderBlock(InvoiceBlockDraft block) {
+    final hasDescription = block.description.text.trim().isNotEmpty;
+    final hasTitle = block.title.text.trim().isNotEmpty;
+    final hasText = block.text.text.trim().isNotEmpty;
+    final hasSku = block.sku.text.trim().isNotEmpty;
+    final hasConceptTitle = block.conceptTitleCtrl.text.trim().isNotEmpty;
+    final hasConceptItems = block.conceptItemsCtrl.text.trim().isNotEmpty;
+    final hasServiceDate = block.serviceDateCtrl.text.trim().isNotEmpty;
+    final hasUnit = block.unitCtrl.text.trim().isNotEmpty;
+    final hasDateValue = (block.dateValue ?? '').trim().isNotEmpty;
+    final hasChecklistText = block.checklistItems.any(
+      (item) => item.text.text.trim().isNotEmpty,
+    );
+    final hasNonDefaultQty = block.qty != null && block.qty != 1;
+    final hasNonDefaultPrice = block.unitPrice != null && block.unitPrice != 0;
+    final hasNonDefaultTax = block.taxRate != null && block.taxRate != 21;
+    final hasLevel = block.level != null;
+
+    return !hasDescription &&
+        !hasTitle &&
+        !hasText &&
+        !hasSku &&
+        !hasConceptTitle &&
+        !hasConceptItems &&
+        !hasServiceDate &&
+        !hasUnit &&
+        !hasDateValue &&
+        !hasChecklistText &&
+        !hasNonDefaultQty &&
+        !hasNonDefaultPrice &&
+        !hasNonDefaultTax &&
+        !hasLevel;
+  }
+
   Future<String?> _ensureDraftIdForOcr(BuildContext context) async {
     final existing = _savedInvoice?.id.trim();
     if (existing != null && existing.isNotEmpty) return existing;
@@ -15,7 +50,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final picked = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       type: FileType.custom,
-      allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp', 'pdf'],
+      allowedExtensions: const ['png', 'jpg', 'jpeg', 'jpe', 'webp', 'pdf'],
       withData: true,
     );
     final files = picked?.files;
@@ -82,8 +117,19 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final startAt = lines.length;
     for (var i = 0; i < extracted.length; i++) {
       final line = extracted[i];
-      final draft = LineDraft(position: startAt + i + 1);
-      draft.description.text = line.description;
+      final draft = LineDraft(
+        position: startAt + i + 1,
+        conceptItems: line.conceptItems,
+        conceptTitle: line.conceptTitle,
+        serviceDate: line.serviceDate,
+        isCompositeConcept: line.isCompositeConcept,
+        parseMethod: line.parseMethod,
+      );
+      draft.description.text = _optionalDetailText(
+        line.description,
+        conceptTitle: line.conceptTitle,
+        conceptItems: line.conceptItems,
+      );
       draft.quantityCtrl.text = line.quantity.toString();
       draft.unitPriceCtrl.text = line.unitPrice.toStringAsFixed(2);
       draft.taxRateCtrl.text = line.taxRate.toStringAsFixed(2);
@@ -178,6 +224,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     switch (raw) {
       case 'jpg':
       case 'jpeg':
+      case 'jpe':
         return 'image/jpeg';
       case 'png':
         return 'image/png';
@@ -207,7 +254,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final picked = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       type: FileType.custom,
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+      allowedExtensions: const ['jpg', 'jpeg', 'jpe', 'png', 'webp', 'pdf'],
       withData: true,
     );
     final files = picked?.files;
@@ -309,6 +356,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final source = (value ?? '').toLowerCase();
     return source.endsWith('.jpg') ||
         source.endsWith('.jpeg') ||
+        source.endsWith('.jpe') ||
         source.endsWith('.png') ||
         source.endsWith('.webp') ||
         source.contains('image/jpeg') ||
@@ -461,14 +509,35 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
   }
 
   List<InvoiceBlock> _sanitizeBlocks(List<InvoiceBlockDraft> draftBlocks) {
-    return draftBlocks.map((draft) {
+    String? legacyDescriptionFallback(InvoiceBlock block) {
+      final detail = (block.description ?? '').trim();
+      if (detail.isNotEmpty) return detail;
+      final firstConcept = (block.conceptItems ?? const <String>[])
+          .map((item) => item.trim())
+          .firstWhere((item) => item.isNotEmpty, orElse: () => '');
+      if (firstConcept.isNotEmpty) return firstConcept;
+      final title = (block.conceptTitle ?? '').trim();
+      return title.isEmpty ? null : title;
+    }
+
+    return draftBlocks
+        .where((draft) => !_isPlaceholderBlock(draft))
+        .map((draft) {
       final block = draft.toBlock();
       final type = block.type;
+      final sectionHasBillableValue =
+          type == InvoiceBlockType.section && (block.unitPrice ?? 0) > 0;
+      final checklistHasBillableValue =
+          type == InvoiceBlockType.checklist && (block.unitPrice ?? 0) > 0;
       if (type == InvoiceBlockType.item) {
         return InvoiceBlock(
           type: type,
           sku: block.sku,
-          description: block.description,
+          conceptItems: block.conceptItems,
+          conceptTitle: block.conceptTitle,
+          serviceDate: block.serviceDate,
+          isCompositeConcept: block.isCompositeConcept,
+          description: legacyDescriptionFallback(block),
           qty: block.qty,
           unit: block.unit,
           unitPrice: block.unitPrice,
@@ -480,7 +549,9 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       if (type == InvoiceBlockType.date ||
           type == InvoiceBlockType.section ||
           type == InvoiceBlockType.subsection) {
-        if (type == InvoiceBlockType.section && block.isBillable == true) {
+        if (type == InvoiceBlockType.section &&
+            block.isBillable == true &&
+            sectionHasBillableValue) {
           return InvoiceBlock(
             type: InvoiceBlockType.item,
             description: block.title,
@@ -498,8 +569,9 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
           unit: type == InvoiceBlockType.section ? block.unit : null,
           unitPrice: type == InvoiceBlockType.section ? block.unitPrice : null,
           taxRate: type == InvoiceBlockType.section ? block.taxRate : null,
-          isBillable:
-              type == InvoiceBlockType.section ? block.isBillable : null,
+          isBillable: type == InvoiceBlockType.section
+              ? (block.isBillable == true && sectionHasBillableValue)
+              : null,
           level: type == InvoiceBlockType.subsection ? block.level : null,
         );
       }
@@ -525,7 +597,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
           lines.addAll(itemTexts.map((item) => '- $item'));
           return lines.join('\n');
         }();
-        if (block.isBillable == true) {
+        if (block.isBillable == true && checklistHasBillableValue) {
           return InvoiceBlock(
             type: InvoiceBlockType.item,
             description: checklistDescription,
@@ -562,12 +634,33 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final blocks = <InvoiceBlock>[];
     for (final line in draftLines) {
       final desc = line.description.text.trim();
-      if (desc.isEmpty) continue;
+      final unitPrice = line.unitPrice ?? 0;
+      final items = cleanInvoiceConceptItems(
+        line.conceptItems,
+        staleSku: line.sku,
+      );
+      final title = invoiceConceptTitleFrom(
+        conceptTitle: line.conceptTitle,
+        sku: line.sku,
+      );
+      final hasConcept =
+          desc.isNotEmpty || title != null || (items?.isNotEmpty ?? false);
+      if (!hasConcept || unitPrice <= 0) continue;
       blocks.add(InvoiceBlock(
         type: InvoiceBlockType.item,
-        description: desc,
+        sku: isInvoiceUnitCode(line.sku) ? line.sku : null,
+        conceptItems: items,
+        conceptTitle: title,
+        serviceDate: cleanInvoiceServiceDate(line.serviceDate),
+        isCompositeConcept:
+            line.isCompositeConcept ?? ((items?.length ?? 0) > 1 ? true : null),
+        description: desc.isNotEmpty
+            ? desc
+            : (items?.isNotEmpty ?? false)
+                ? items!.first
+                : title,
         qty: line.quantity ?? 1,
-        unitPrice: line.unitPrice ?? 0,
+        unitPrice: unitPrice,
         taxRate: line.taxRate ?? 21,
         isBillable: true,
       ));
@@ -575,12 +668,15 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     return blocks;
   }
 
-  Future<void> handleSaveDraft(BuildContext context) async {
+  Future<void> handleSaveDraft(
+    BuildContext context, {
+    bool confirmIfEditing = true,
+  }) async {
     final l = AppLocalizations.of(context)!;
     try {
       final editing =
           _editingDraftId != null && _editingDraftId!.trim().isNotEmpty;
-      if (editing) {
+      if (editing && confirmIfEditing) {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
@@ -608,12 +704,18 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       final inv = await saveDraft(context);
       if (!context.mounted) return;
 
-      final msg = editing
-          ? 'Draft updated successfully.'
-          : (inv.invoiceNumber.isNotEmpty
-              ? l.invoiceDraftSavedSnack(inv.invoiceNumber)
-              : l.invoiceDraftSavedSnackNoNumber);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      _showDraftSuccessSnack(
+        context,
+        title: editing
+            ? l.invoiceDraftUpdatedSnackTitle
+            : (inv.invoiceNumber.isNotEmpty
+                ? l.invoiceDraftSavedSnack(inv.invoiceNumber)
+                : l.invoiceDraftSavedSnackTitle),
+        message: editing
+            ? l.invoiceDraftUpdatedSnackMessage
+            : l.invoiceDraftSavedSnackMessage,
+        dismissLabel: l.invoiceDraftSnackDismiss,
+      );
     } catch (e) {
       debugPrint('[InvoicePreview] $e');
       if (!context.mounted) return;
@@ -629,6 +731,94 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         ),
       );
     }
+  }
+
+  void _showDraftSuccessSnack(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String dismissLabel,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final successColor =
+        isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final snackWidth = screenWidth < 472 ? screenWidth - 32 : 440.0;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          width: snackWidth,
+          elevation: 10,
+          backgroundColor: cs.surface,
+          dismissDirection: DismissDirection.horizontal,
+          duration: const Duration(seconds: 4),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(
+              color: successColor.withValues(alpha: isDark ? 0.32 : 0.18),
+            ),
+          ),
+          action: SnackBarAction(
+            label: dismissLabel,
+            textColor: successColor,
+            onPressed: messenger.hideCurrentSnackBar,
+          ),
+          content: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: successColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.check_circle_rounded,
+                    color: successColor,
+                    size: 21,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        message,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
   }
 
   Future<void> previewPdf(BuildContext context) async {
@@ -678,8 +868,40 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     }
   }
 
+  static const _invoiceChronologyErrorMessage =
+      'Esta factura tiene una fecha anterior a la última factura emitida. '
+      'Para mantener la numeración cronológica, debes emitir primero las '
+      'facturas de fechas anteriores o corregir la fecha.';
+
+  DateTime? _invoiceChronologyDate(Invoice invoice) {
+    return invoice.issueDate ?? invoice.occurrenceDate ?? invoice.registeredAt;
+  }
+
+  bool _isBeforeCalendarDay(DateTime value, DateTime limit) {
+    final valueDay = DateTime(value.year, value.month, value.day);
+    final limitDay = DateTime(limit.year, limit.month, limit.day);
+    return valueDay.isBefore(limitDay);
+  }
+
+  Future<bool> _canIssueSavedInvoiceByDate(Invoice invoice) async {
+    final selectedDate = _invoiceChronologyDate(invoice);
+    if (selectedDate == null) return true;
+    final issued = await _invoicesApi.listByGroup(group.id, status: 'issued');
+    DateTime? latestIssuedDate;
+    for (final item in issued) {
+      final date = _invoiceChronologyDate(item);
+      if (date == null) continue;
+      if (latestIssuedDate == null || date.isAfter(latestIssuedDate)) {
+        latestIssuedDate = date;
+      }
+    }
+    if (latestIssuedDate == null) return true;
+    return !_isBeforeCalendarDay(selectedDate, latestIssuedDate);
+  }
+
   Future<void> issue(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
+    Invoice? savedInvoice;
 
     if (!hasBillableEntries || total <= 0 || _clientId == null) {
       ScaffoldMessenger.of(context)
@@ -689,6 +911,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
 
     try {
       final inv = await saveDraft(context);
+      savedInvoice = inv;
       final count = await _syncLinesForInvoice(inv.id);
       if (count == 0) {
         if (!context.mounted) return;
@@ -706,6 +929,30 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
               context,
               e,
               fallback: l.invoiceDraftSaveFailedSnack,
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      if (!await _canIssueSavedInvoiceByDate(savedInvoice)) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(_invoiceChronologyErrorMessage)),
+        );
+        return;
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _safeErrorMessage(
+              context,
+              e,
+              fallback: l.invoiceIssueFailedSnack,
             ),
           ),
         ),
@@ -778,6 +1025,9 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       throw Exception(l.invoiceLinesRequired);
     }
     for (final block in blocks) {
+      if (_isPlaceholderBlock(block)) {
+        continue;
+      }
       final type = block.type;
       if (type == InvoiceBlockType.item) {
         final qty = block.qty;
@@ -792,7 +1042,10 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         if (tax != null && (tax < 0 || tax > 100)) {
           throw Exception(l.invoiceValidationTaxRate);
         }
-        if (block.description.text.trim().isEmpty) {
+        final hasConcept = block.description.text.trim().isNotEmpty ||
+            block.conceptTitleCtrl.text.trim().isNotEmpty ||
+            block.conceptItemsCtrl.text.trim().isNotEmpty;
+        if (!hasConcept) {
           throw Exception(l.fieldIsRequired);
         }
       } else if (type == InvoiceBlockType.date ||
@@ -814,9 +1067,6 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
           if (tax != null && (tax < 0 || tax > 100)) {
             throw Exception(l.invoiceValidationTaxRate);
           }
-          if ((price ?? 0) <= 0) {
-            throw Exception(l.invoiceValidationNonNegative);
-          }
         }
       } else if (type == InvoiceBlockType.note) {
         if (block.text.text.trim().isEmpty) {
@@ -834,9 +1084,6 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         if (block.isBillable) {
           final price = block.unitPrice;
           if (price != null && price < 0) {
-            throw Exception(l.invoiceValidationNonNegative);
-          }
-          if ((price ?? 0) <= 0) {
             throw Exception(l.invoiceValidationNonNegative);
           }
         }
@@ -975,6 +1222,4 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       notifyListeners();
     }
   }
-
-
 }

@@ -167,6 +167,11 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                               onTap: onTap,
                               onDelete: onDelete,
                               onEdit: onEdit,
+                              onPreview: () => _openInvoiceDetailSheet(
+                                invoice: invoice,
+                                clients: s.clients,
+                                billingProfile: s.billingProfile,
+                              ),
                             );
                           },
                         )
@@ -182,6 +187,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                               _c.deleteInvoice(context, inv),
                           onEditDraft: (inv) =>
                               _c.openEditDraft(context, inv),
+                          onIssueAll: (drafts) =>
+                              _c.issueAllDrafts(context, drafts),
                           detailBuilder: (inv) => InvoiceDetailSheet(
                             key: ValueKey(inv.id),
                             invoice: inv,
@@ -200,6 +207,11 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                               onTap: onTap,
                               onDelete: onDelete,
                               onEdit: onEdit,
+                              onPreview: () => _openInvoiceDetailSheet(
+                                invoice: inv,
+                                clients: s.clients,
+                                billingProfile: s.billingProfile,
+                              ),
                             );
                           },
                         ),

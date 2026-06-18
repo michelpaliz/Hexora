@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:hexora/a-models/invoice/invoice_block.dart';
+import 'package:hexora/b-backend/invoicing/models/manual_editor_capabilities.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -12,6 +13,7 @@ class BlocksTableEditor extends StatefulWidget {
   final VoidCallback onChanged;
   final int? selectedIndex;
   final ValueChanged<int?> onSelectionChanged;
+  final List<ManualEditorBlockTypeCapability> availableBlockTypes;
 
   const BlocksTableEditor({
     super.key,
@@ -19,6 +21,7 @@ class BlocksTableEditor extends StatefulWidget {
     required this.onChanged,
     required this.selectedIndex,
     required this.onSelectionChanged,
+    required this.availableBlockTypes,
   });
 
   @override
@@ -88,6 +91,7 @@ class _BlocksTableEditorState extends State<BlocksTableEditor> {
   }
 
   void _moveBlock(int from, int to) {
+    debugPrint('[BlocksTableEditor] move from=$from to=$to total=${widget.blocks.length}');
     if (to < 0 || to >= widget.blocks.length) return;
     final item = widget.blocks.removeAt(from);
     widget.blocks.insert(to, item);
@@ -107,6 +111,7 @@ class _BlocksTableEditorState extends State<BlocksTableEditor> {
   }
 
   void _removeBlockAt(int index) {
+    debugPrint('[BlocksTableEditor] remove index=$index total=${widget.blocks.length}');
     if (index < 0 || index >= widget.blocks.length) return;
     widget.blocks.removeAt(index).dispose();
     widget.onChanged();
@@ -126,11 +131,25 @@ class _BlocksTableEditorState extends State<BlocksTableEditor> {
     return widget.blocks.indexOf(block);
   }
 
+  // Action buttons are now embedded directly inside BlockCard's header row.
+  // This wrapper is kept only for the Padding indentation used by wrappers.
+  Widget _cardWithActions({
+    required BuildContext context,
+    required BlockCard card,
+    required int index,
+    required VoidCallback onMoveUp,
+    required VoidCallback onMoveDown,
+    required VoidCallback onDelete,
+  }) {
+    return card;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final lang = Localizations.localeOf(context).languageCode;
 
     int findWrapperEnd(int start, int max) {
       final current = widget.blocks[start];
@@ -167,24 +186,61 @@ class _BlocksTableEditorState extends State<BlocksTableEditor> {
       while (i < end) {
         final block = widget.blocks[i];
         if (!_isWrapperType(block.type)) {
+          final blockIdx = _indexOfBlock(block);
+          final card = BlockCard(
+            key: ValueKey(block),
+            index: blockIdx,
+            total: widget.blocks.length,
+            block: block,
+            selected: widget.selectedIndex == blockIdx,
+            availableBlockTypes: widget.availableBlockTypes,
+            onSelect: () {
+              final idx = _indexOfBlock(block);
+              if (idx < 0) return;
+              widget.onSelectionChanged(idx);
+            },
+            onDelete: () => _removeBlockAt(_indexOfBlock(block)),
+            onMoveUp: () {
+              final idx = _indexOfBlock(block);
+              if (idx < 0) return;
+              _moveBlock(idx, idx - 1);
+            },
+            onMoveDown: () {
+              final idx = _indexOfBlock(block);
+              if (idx < 0) return;
+              _moveBlock(idx, idx + 1);
+            },
+            onChanged: () {
+              widget.onChanged();
+              _scheduleRebuild();
+            },
+            onAddChecklistItem: () {
+              final idx = _indexOfBlock(block);
+              if (idx < 0) return;
+              widget.blocks[idx].checklistItems
+                  .add(InvoiceChecklistItemDraft());
+              widget.onChanged();
+              _scheduleRebuild();
+            },
+            onRemoveChecklistItem: (idx) {
+              final bIdx = _indexOfBlock(block);
+              if (bIdx < 0) return;
+              if (idx < 0 ||
+                  idx >= widget.blocks[bIdx].checklistItems.length) {
+                return;
+              }
+              widget.blocks[bIdx].checklistItems.removeAt(idx).dispose();
+              widget.onChanged();
+              _scheduleRebuild();
+            },
+          );
           widgets.add(
             Padding(
               padding: EdgeInsets.only(left: depth * _wrapperIndent),
-              child: BlockCard(
-                key: ValueKey(block),
-                index: _indexOfBlock(block),
-                total: widget.blocks.length,
-                block: block,
-                selected: widget.selectedIndex == _indexOfBlock(block),
-                onSelect: () {
-                  final idx = _indexOfBlock(block);
-                  if (idx < 0) return;
-                  widget.onSelectionChanged(idx);
-                },
-                onDelete: () {
-                  final idx = _indexOfBlock(block);
-                  _removeBlockAt(idx);
-                },
+              child: _cardWithActions(
+                context: context,
+                card: card,
+                index: blockIdx,
                 onMoveUp: () {
                   final idx = _indexOfBlock(block);
                   if (idx < 0) return;
@@ -195,31 +251,7 @@ class _BlocksTableEditorState extends State<BlocksTableEditor> {
                   if (idx < 0) return;
                   _moveBlock(idx, idx + 1);
                 },
-                onChanged: () {
-                  widget.onChanged();
-                  _scheduleRebuild();
-                },
-                onAddChecklistItem: () {
-                  final idx = _indexOfBlock(block);
-                  if (idx < 0) return;
-                  widget.blocks[idx].checklistItems
-                      .add(InvoiceChecklistItemDraft());
-                  widget.onChanged();
-                  _scheduleRebuild();
-                },
-                onRemoveChecklistItem: (idx) {
-                  final blockIdx = _indexOfBlock(block);
-                  if (blockIdx < 0) return;
-                  if (idx < 0 ||
-                      idx >= widget.blocks[blockIdx].checklistItems.length) {
-                    return;
-                  }
-                  widget.blocks[blockIdx].checklistItems
-                      .removeAt(idx)
-                      .dispose();
-                  widget.onChanged();
-                  _scheduleRebuild();
-                },
+                onDelete: () => _removeBlockAt(_indexOfBlock(block)),
               ),
             ),
           );
@@ -229,21 +261,20 @@ class _BlocksTableEditorState extends State<BlocksTableEditor> {
 
         final wrapperEnd = findWrapperEnd(i, end);
         final headerBlock = widget.blocks[i];
-        final header = BlockCard(
+        final headerIdx = _indexOfBlock(headerBlock);
+        final headerCard = BlockCard(
           key: ValueKey(headerBlock),
-          index: _indexOfBlock(headerBlock),
+          index: headerIdx,
           total: widget.blocks.length,
           block: headerBlock,
-          selected: widget.selectedIndex == _indexOfBlock(headerBlock),
+          selected: widget.selectedIndex == headerIdx,
+          availableBlockTypes: widget.availableBlockTypes,
           onSelect: () {
             final idx = _indexOfBlock(headerBlock);
             if (idx < 0) return;
             widget.onSelectionChanged(idx);
           },
-          onDelete: () {
-            final idx = _indexOfBlock(headerBlock);
-            _removeBlockAt(idx);
-          },
+          onDelete: () => _removeBlockAt(_indexOfBlock(headerBlock)),
           onMoveUp: () {
             final idx = _indexOfBlock(headerBlock);
             if (idx < 0) return;
@@ -292,69 +323,92 @@ class _BlocksTableEditorState extends State<BlocksTableEditor> {
                     color: cs.outlineVariant.withValues(alpha: 0.35)),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  header,
+                  _cardWithActions(
+                    context: context,
+                    card: headerCard,
+                    index: headerIdx,
+                    onMoveUp: () {
+                      final idx = _indexOfBlock(headerBlock);
+                      if (idx < 0) return;
+                      _moveBlock(idx, idx - 1);
+                    },
+                    onMoveDown: () {
+                      final idx = _indexOfBlock(headerBlock);
+                      if (idx < 0) return;
+                      _moveBlock(idx, idx + 1);
+                    },
+                    onDelete: () =>
+                        _removeBlockAt(_indexOfBlock(headerBlock)),
+                  ),
                   const SizedBox(height: 8),
                   if (children.isNotEmpty) ...children,
                   const SizedBox(height: 6),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final compact = constraints.maxWidth < 420;
-                      if (compact) {
-                        return Row(
-                          children: [
-                            Text(
-                              l.invoiceWrapperAddInsideLabel,
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
+                      final compact = constraints.maxWidth < 520;
+                      final addButton = PopupMenuButton<String>(
+                        tooltip: l.invoiceAddBlock,
+                        onSelected: (type) => insertInside(headerBlock, type),
+                        itemBuilder: (_) {
+                          final insertable = widget.availableBlockTypes
+                              .where((t) => !_isWrapperType(t.id))
+                              .toList();
+                          if (insertable.isEmpty) {
+                            return [
+                              PopupMenuItem<String>(
+                                value: InvoiceBlockType.item,
+                                child: Text(l.invoiceBlockTypeItem),
                               ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              tooltip: l.invoiceBlocksQuickItem,
-                              onPressed: () => insertInside(
-                                  headerBlock, InvoiceBlockType.item),
-                              icon: const Icon(Icons.add),
-                            ),
-                            IconButton(
-                              tooltip: l.invoiceBlockTypeNote,
-                              onPressed: () => insertInside(
-                                  headerBlock, InvoiceBlockType.note),
-                              icon: const Icon(Icons.sticky_note_2_outlined),
-                            ),
+                            ];
+                          }
+                          return insertable
+                              .map((t) => PopupMenuItem<String>(
+                                    value: t.id,
+                                    child: Text(
+                                      t.label.resolve(lang, fallback: t.id),
+                                    ),
+                                  ))
+                              .toList();
+                        },
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.add, size: 18),
+                        ),
+                      );
+
+                      final label = Text(
+                        l.invoiceWrapperAddInsideLabel,
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      );
+
+                      if (compact) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            label,
+                            const SizedBox(height: 8),
+                            addButton,
                           ],
                         );
                       }
+
                       return Row(
                         children: [
-                          Text(
-                            l.invoiceWrapperAddInsideLabel,
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            tooltip: l.invoiceBlocksQuickItem,
-                            onPressed: () => insertInside(
-                                headerBlock, InvoiceBlockType.item),
-                            icon: const Icon(Icons.add),
-                          ),
-                          IconButton(
-                            tooltip: l.invoiceBlockTypeNote,
-                            onPressed: () => insertInside(
-                                headerBlock, InvoiceBlockType.note),
-                            icon: const Icon(Icons.sticky_note_2_outlined),
-                          ),
-                          IconButton(
-                            tooltip: l.invoiceBlockTypeChecklist,
-                            onPressed: () => insertInside(
-                                headerBlock, InvoiceBlockType.checklist),
-                            icon: const Icon(Icons.checklist_outlined),
-                          ),
+                          addButton,
+                          const SizedBox(width: 8),
+                          Expanded(child: label),
                         ],
                       );
                     },
@@ -370,57 +424,31 @@ class _BlocksTableEditorState extends State<BlocksTableEditor> {
     }
 
     if (widget.blocks.isEmpty) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.add_box_outlined,
+                size: 20, color: cs.onSurfaceVariant),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
                 l.invoiceBlocksEmptyMessage,
-                style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 8,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () {
-                      widget.blocks
-                          .add(InvoiceBlockDraft.ofType(InvoiceBlockType.item));
-                      widget.onChanged();
-                      _scheduleRebuild();
-                    },
-                    icon: const Icon(Icons.add),
-                    label: Text(l.invoiceBlocksQuickItem),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      widget.blocks
-                          .add(InvoiceBlockDraft.ofType(InvoiceBlockType.date));
-                      widget.onChanged();
-                      _scheduleRebuild();
-                    },
-                    icon: const Icon(Icons.today_outlined),
-                    label: Text(l.invoiceBlocksQuickDate),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: buildRange(0, widget.blocks.length, 0),
     );
   }

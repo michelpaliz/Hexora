@@ -2,6 +2,7 @@
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/a-models/group_model/group/group_features.dart';
+import 'package:hexora/a-models/group_model/group/role_meta.dart';
 import 'package:hexora/c-frontend/utils/roles/id_normalize/id_normalizer.dart';
 
 class Group {
@@ -13,6 +14,10 @@ class Group {
   /// userRoles is keyed by **userId**, not username.
   /// Values: "owner", "admin", "co-admin", "member"
   final Map<String, String> userRoles;
+
+  /// Role assignment metadata keyed by userId.
+  /// Populated when the backend returns `userRolesMeta` (members endpoint or group endpoint).
+  final Map<String, RoleMeta> userRolesMeta;
 
   List<String> userIds;
   DateTime createdTime;
@@ -40,6 +45,7 @@ class Group {
     required this.name,
     required this.ownerId,
     required this.userRoles,
+    this.userRolesMeta = const {},
     required this.userIds,
     required this.createdTime,
     required this.description,
@@ -114,11 +120,22 @@ class Group {
     final normalizedUserRoles =
         normalizeUserRoleWireMap(json['userRoles'] as Map?);
 
+    // Parse optional userRolesMeta (keyed by userId)
+    final Map<String, RoleMeta> roleMeta = {};
+    if (json['userRolesMeta'] is Map) {
+      (json['userRolesMeta'] as Map).forEach((k, v) {
+        if (v is Map<String, dynamic>) {
+          roleMeta[k.toString()] = RoleMeta.fromJson(v);
+        }
+      });
+    }
+
     return Group(
       id: normalizeId(json['_id'] ?? json['id']),
       name: (json['name'] ?? '').toString(),
       ownerId: normalizeId(json['ownerId']),
       userRoles: normalizedUserRoles,
+      userRolesMeta: roleMeta,
       userIds: normalizeIdList(json['userIds']),
       createdTime: _parseDate(json['createdTime']) ?? DateTime.now(),
       description: (json['description'] ?? '').toString(),
@@ -173,6 +190,7 @@ class Group {
     String? name,
     String? ownerId,
     Map<String, String>? userRoles,
+    Map<String, RoleMeta>? userRolesMeta,
     List<String>? userIds,
     DateTime? createdTime,
     String? description,
@@ -191,6 +209,7 @@ class Group {
       name: name ?? this.name,
       ownerId: ownerId ?? this.ownerId,
       userRoles: userRoles ?? Map<String, String>.from(this.userRoles),
+      userRolesMeta: userRolesMeta ?? Map<String, RoleMeta>.from(this.userRolesMeta),
       userIds: userIds ?? List<String>.from(this.userIds),
       createdTime: createdTime ?? this.createdTime,
       description: description ?? this.description,

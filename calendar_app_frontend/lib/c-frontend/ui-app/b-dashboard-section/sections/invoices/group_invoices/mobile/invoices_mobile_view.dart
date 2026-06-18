@@ -72,6 +72,26 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     );
   }
 
+  GroupClient _clientForInvoice(Invoice invoice, AppLocalizations l) {
+    final clientId = invoice.clientId.trim();
+    for (final client in widget.state._clients) {
+      if (client.id == clientId) return client;
+    }
+    final fallbackName = [
+      invoice.billingName,
+      invoice.clientSnapshot?.legalName,
+    ].map((value) => value?.trim() ?? '').firstWhere(
+          (value) => value.isNotEmpty,
+          orElse: () => l.unknownClient,
+        );
+    return GroupClient(
+      id: clientId,
+      name: fallbackName,
+      isActive: true,
+      billing: invoice.clientSnapshot,
+    );
+  }
+
   void _openInvoiceDetail(Invoice inv) {
     final l = AppLocalizations.of(context)!;
     final s = widget.state;
@@ -83,7 +103,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => DraggableScrollableSheet(
+        builder: (_) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.92,
         minChildSize: 0.5,
@@ -91,7 +111,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
         builder: (ctx, scrollController) => InvoiceDetailSheet(
           key: ValueKey(inv.id),
           invoice: inv,
-          client: _clientFor(inv.clientId, l),
+          client: _clientForInvoice(inv, l),
           billingProfile: s._billingProfile,
           group: s.widget.group,
           onInvoiceChanged: s._refreshInvoiceListsOnly,
@@ -310,6 +330,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
           receipt: r,
           client: _clientFor(r.clientId, l),
           onTap: () => _openReceiptDetail(r),
+          onPreview: () => s._previewReceiptPdf(r),
           onDownload: () => s._downloadReceiptPdf(r),
           onIssue: isDraft ? () => s._issueReceipt(r) : null,
           onDelete: isDraft ? () => s._deleteReceipt(r) : null,
@@ -690,7 +711,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     final tabBar = TabBar(
       controller: _tabController,
       isScrollable: true,
-      tabAlignment: TabAlignment.start,
+      tabAlignment: TabAlignment.center,
       dividerColor: Colors.transparent,
       splashFactory: NoSplash.splashFactory,
       overlayColor:
@@ -744,7 +765,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     final body = Column(
       children: [
         Material(
-          color: cs.surface,
+          color: Colors.transparent,
           child: tabBar,
         ),
         Expanded(
@@ -833,13 +854,25 @@ class _ClientMobileInvoicesScreenState
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  String _monthLabel(DateTime date, bool isSpanish) {
+    const es = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    ];
+    const en = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${(isSpanish ? es : en)[date.month - 1]} ${date.year}';
   }
 
   // Refreshes the parent state lists then rebuilds this screen.
@@ -906,13 +939,36 @@ class _ClientMobileInvoicesScreenState
               : l.noInvoicesYet,
         );
       }
-      return ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        itemCount: invoices.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 6),
+
+      final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+      final items = <Object>[];
+      String? lastKey;
+      for (final inv in invoices) {
+        final date = inv.issueDate ?? inv.registeredAt ?? inv.occurrenceDate;
+        final key = date == null
+            ? '__none__'
+            : '${date.year}-${date.month.toString().padLeft(2, '0')}';
+        if (key != lastKey) {
+          items.add(date == null
+              ? (isSpanish ? 'Sin fecha' : 'No date')
+              : _monthLabel(date.toLocal(), isSpanish));
+          lastKey = key;
+        }
+        items.add(inv);
+      }
+
+      return ListView.builder(
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+        itemCount: items.length,
         itemBuilder: (_, i) {
-          final inv = invoices[i];
-          return InvoiceListItem(
+          final item = items[i];
+          if (item is String) {
+            return _MonthSectionHeader(label: item, first: i == 0);
+          }
+          final inv = item as Invoice;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: InvoiceListItem(
             invoice: inv,
             client: _clientFor(inv.clientId),
             onTap: () => _openInvoiceDetail(inv),
@@ -928,6 +984,7 @@ class _ClientMobileInvoicesScreenState
                     await _refresh();
                   }
                 : null,
+            ),
           );
         },
       );
@@ -935,6 +992,7 @@ class _ClientMobileInvoicesScreenState
 
     final tabBar = TabBar(
       controller: _tabController,
+      isScrollable: true,
       dividerColor: Colors.transparent,
       splashFactory: NoSplash.splashFactory,
       overlayColor:
@@ -965,6 +1023,14 @@ class _ClientMobileInvoicesScreenState
             const Icon(Icons.drafts_outlined, size: 15),
             const SizedBox(width: 5),
             Text(l.groupInvoicesTabDrafts(draftInvoices.length)),
+          ]),
+        ),
+        Tab(
+          height: 36,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.description_outlined, size: 15),
+            const SizedBox(width: 5),
+            Text(l.contractsTitle),
           ]),
         ),
       ],
@@ -1026,7 +1092,7 @@ class _ClientMobileInvoicesScreenState
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Material(
-            color: cs.surface,
+            color: Colors.transparent,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: tabBar,
@@ -1039,6 +1105,11 @@ class _ClientMobileInvoicesScreenState
         children: [
           buildList(issuedInvoices, false),
           buildList(draftInvoices, true),
+          ClientContractsTab(
+            key: ValueKey('mobile-contracts-${c.id}'),
+            client: c,
+            compact: true,
+          ),
         ],
       ),
     );

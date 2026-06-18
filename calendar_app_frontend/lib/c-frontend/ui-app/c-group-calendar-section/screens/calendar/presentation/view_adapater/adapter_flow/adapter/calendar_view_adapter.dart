@@ -17,6 +17,7 @@ class CalendarViewAdapter implements SupportsViewMode {
   final GroupDomain groupDomain;
   final String userRole;
   final EventDisplayManager _displayManager;
+  EventDomain _eventDomain;
 
   late final CalendarState _state;
   late final CalendarBinding _binding;
@@ -27,7 +28,8 @@ class CalendarViewAdapter implements SupportsViewMode {
     required EventDisplayManager eventDisplayManager,
     required this.groupDomain,
     required this.userRole,
-  }) : _displayManager = eventDisplayManager {
+  })  : _displayManager = eventDisplayManager,
+        _eventDomain = eventDomain {
     _state = CalendarState();
     _binding = CalendarBinding(eventDomain, _state);
     _bridge = AppointmentBuilderBridge(
@@ -47,6 +49,7 @@ class CalendarViewAdapter implements SupportsViewMode {
   }
 
   void rebindEventDomain(EventDomain newDomain) {
+    _eventDomain = newDomain;
     _binding.rebind(newDomain);
   }
 
@@ -76,6 +79,10 @@ class CalendarViewAdapter implements SupportsViewMode {
   String? get currentEventFilterUserId => _state.currentFilterUserId;
 
   ValueNotifier<List<Event>> get allEventsNotifier => _state.allEvents;
+  ValueNotifier<List<Event>> get dailyEventsNotifier => _state.dailyEvents;
+  ValueNotifier<DateTime> get selectedDateNotifier => _state.anchorDate;
+  ValueNotifier<Map<DateTime, DaySummary>> get weatherForecastNotifier =>
+      _state.weatherForecast;
 
   // ---- UI -------------------------------------------------------------------
 
@@ -84,6 +91,7 @@ class CalendarViewAdapter implements SupportsViewMode {
     double? height,
     double? width,
     String? forcedViewMode,
+    bool showMonthAgenda = true,
     ValueChanged<DateTime>? onTimeSlotTap,
   }) {
     return SizedBox(
@@ -92,7 +100,9 @@ class CalendarViewAdapter implements SupportsViewMode {
       child: widgets.CalendarSurface(
         state: _state,
         apptBridge: _bridge,
+        eventDomain: _eventDomain,
         forcedViewMode: forcedViewMode,
+        showMonthAgenda: showMonthAgenda,
         onTimeSlotTap: onTimeSlotTap,
       ),
     );

@@ -46,6 +46,8 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
     implements EventDialogs {
   bool _initialized = false;
   bool _isLoading = true;
+  DateTime? _lastAppliedStartDate;
+  DateTime? _lastAppliedEndDate;
 
   @override
   void didChangeDependencies() {
@@ -65,11 +67,7 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
   Future<void> _initializeLogic() async {
     try {
       await initializeLogic(widget.group, context);
-      final initialStart = widget.initialStartDate;
-      if (initialStart != null) {
-        setStartDate(initialStart);
-        setEndDate(widget.initialEndDate ?? initialStart.add(const Duration(hours: 1)));
-      }
+      _applyInitialDateSelection();
 
       // keep reactive title validity update
       titleController.addListener(() {
@@ -100,6 +98,30 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant AddEventScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final startChanged = widget.initialStartDate != oldWidget.initialStartDate;
+    final endChanged = widget.initialEndDate != oldWidget.initialEndDate;
+    if (!_initialized || (!startChanged && !endChanged)) return;
+    _applyInitialDateSelection();
+  }
+
+  void _applyInitialDateSelection() {
+    final initialStart = widget.initialStartDate;
+    if (initialStart == null) return;
+    final initialEnd =
+        widget.initialEndDate ?? initialStart.add(const Duration(hours: 1));
+    final alreadyApplied =
+        _lastAppliedStartDate == initialStart && _lastAppliedEndDate == initialEnd;
+    if (alreadyApplied) return;
+    _lastAppliedStartDate = initialStart;
+    _lastAppliedEndDate = initialEnd;
+    setStartDate(initialStart);
+    setEndDate(initialEnd);
+    if (mounted) setState(() {});
   }
 
   @override

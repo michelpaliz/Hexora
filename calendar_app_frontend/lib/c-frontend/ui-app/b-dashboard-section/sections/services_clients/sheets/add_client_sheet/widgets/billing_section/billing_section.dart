@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_address_form.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_contact_form.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_document_type.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_legal_and_tax.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -37,14 +36,27 @@ class _BillingSectionState extends State<BillingSection> {
 
     // mirrors: initiallyExpanded: _billingExpanded || _hasBillingData
     final initiallyExpanded = c.billingExpanded || c.hasBillingData;
-    final requireBilling = c.hasBillingData || c.billingExpanded || widget.showValidation;
+    final requireBilling =
+        c.hasBillingData || c.billingExpanded || widget.showValidation;
     final completed = c.billingCompletedCount;
     final total = c.billingRequiredTotal;
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
+        color: Theme.of(context).brightness == Brightness.light
+            ? Colors.white
+            : null,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        boxShadow: Theme.of(context).brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : null,
       ),
       child: ExpansionTile(
         initiallyExpanded: initiallyExpanded,
@@ -78,11 +90,6 @@ class _BillingSectionState extends State<BillingSection> {
         childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
         children: [
           const SizedBox(height: 6),
-          BillingDocumentType(
-            value: c.billingDocType,
-            onChanged: (v) => setState(() => c.billingDocType = v),
-          ),
-          const SizedBox(height: 8),
           BillingLegalAndTax(
             c: c,
             requireBilling: requireBilling,
@@ -134,7 +141,7 @@ class _BillingStatusChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: complete ? cs.secondaryContainer : cs.errorContainer,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Text(
         l.billingProgressLabel(completed, total),

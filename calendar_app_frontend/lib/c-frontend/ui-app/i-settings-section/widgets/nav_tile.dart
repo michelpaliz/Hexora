@@ -9,6 +9,7 @@ class NavTile extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.danger = false,
+    this.iconBgColor,
   });
 
   final Widget leading;
@@ -17,6 +18,9 @@ class NavTile extends StatelessWidget {
   final VoidCallback? onTap;
   final bool danger;
 
+  /// Background color for the icon container. Defaults to a neutral tint.
+  final Color? iconBgColor;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -24,37 +28,55 @@ class NavTile extends StatelessWidget {
     final bodyM = theme.textTheme.bodyMedium!;
     final bodyS = theme.textTheme.bodySmall!;
 
+    final effectiveBg = iconBgColor ??
+        (danger
+            ? cs.errorContainer.withValues(alpha: 0.35)
+            : cs.surfaceContainerHighest.withValues(alpha: 0.6));
+
     final titleStyle = bodyM.copyWith(
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w600,
       color: danger ? cs.error : cs.onSurface,
     );
 
     final subtitleStyle = bodyS.copyWith(
-      color: danger ? cs.error : cs.onSurfaceVariant,
+      color: danger ? cs.error.withValues(alpha: 0.75) : cs.onSurfaceVariant,
       fontWeight: FontWeight.w500,
     );
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      mouseCursor:
+          onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      borderRadius: BorderRadius.circular(14),
+      hoverColor: (danger ? cs.error : cs.primary).withValues(alpha: 0.045),
+      splashColor: (danger ? cs.error : cs.primary).withValues(alpha: 0.08),
+      highlightColor: (danger ? cs.error : cs.primary).withValues(alpha: 0.04),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(
           children: [
-            leading,
-            const SizedBox(width: 12),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: effectiveBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(child: leading),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title (bodyMedium)
-                  Text(title,
-                      style: titleStyle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    title,
+                    style: titleStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   if (subtitle != null && subtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    // Subtitle (bodySmall)
+                    const SizedBox(height: 2),
                     Text(
                       subtitle!,
                       style: subtitleStyle,
@@ -66,7 +88,11 @@ class NavTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
           ],
         ),
       ),

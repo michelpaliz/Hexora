@@ -25,10 +25,10 @@ class WeatherForecastList extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       ),
       child: Column(
@@ -47,7 +47,10 @@ class WeatherForecastList extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     l.weatherForecastLoading,
-                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant, fontSize: 11),
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
@@ -65,7 +68,10 @@ class WeatherForecastList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text(
                 l.weatherForecastEmpty,
-                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant, fontSize: 11),
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                ),
               ),
             )
           else
@@ -73,7 +79,10 @@ class WeatherForecastList extends StatelessWidget {
               children: [
                 for (int i = 0; i < days.take(3).length; i++) ...[
                   if (i > 0)
-                    Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                    Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.15),
+                    ),
                   _WeatherForecastRow(day: days[i]),
                 ],
               ],
@@ -96,17 +105,19 @@ class _WeatherForecastRow extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final localeTag = Localizations.localeOf(context).toLanguageTag();
     final label = DateFormat('EEE dd', localeTag).format(day.date);
-    final range = '${day.maxTemp.toStringAsFixed(0)}°/${day.minTemp.toStringAsFixed(0)}°';
-    final rain = '${day.rainProbability.toStringAsFixed(0)}% ${l.weatherForecastRainShort}';
+    final range =
+        '${day.maxTemp.toStringAsFixed(0)}°/${day.minTemp.toStringAsFixed(0)}°';
+    final rain =
+        '${day.rainProbability.toStringAsFixed(0)}% ${l.weatherForecastRainShort}';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
           Text(day.emoji, style: const TextStyle(fontSize: 15)),
           const SizedBox(width: 6),
           SizedBox(
-            width: 52,
+            width: 58,
             child: Text(
               label,
               style: t.bodySmall.copyWith(

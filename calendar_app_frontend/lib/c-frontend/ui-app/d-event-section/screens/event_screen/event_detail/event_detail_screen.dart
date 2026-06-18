@@ -20,6 +20,7 @@ class EventDetailScreen extends StatefulWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDuplicate;
   final VoidCallback? onShare;
+  final VoidCallback? onDelete;
 
   const EventDetailScreen({
     super.key,
@@ -29,6 +30,7 @@ class EventDetailScreen extends StatefulWidget {
     this.onEdit,
     this.onDuplicate,
     this.onShare,
+    this.onDelete,
   });
 
   @override
@@ -396,7 +398,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ],
 
                 // ── Actions ──
-                if (widget.onEdit != null || widget.onDuplicate != null) ...[
+                if (widget.onEdit != null ||
+                    widget.onDuplicate != null ||
+                    widget.onDelete != null) ...[
                   const SizedBox(height: 20),
                   _divider(cs),
                   const SizedBox(height: 14),
@@ -406,17 +410,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         Expanded(
                           child: FilledButton.icon(
                             onPressed: widget.onEdit,
-                            icon:
-                                const Icon(Icons.edit_outlined, size: 15),
+                            icon: const Icon(Icons.edit_outlined, size: 15),
                             label: Text(
                               l.editAction,
                               style: typo.caption.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: cs.onPrimary,
+                                color: Colors.white,
                               ),
                             ),
                             style: FilledButton.styleFrom(
                               backgroundColor: cs.primary,
+                              foregroundColor: Colors.white,
                               padding:
                                   const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
@@ -453,6 +457,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ),
                           ),
                         ),
+                      if (widget.onDelete != null &&
+                          (widget.onEdit != null ||
+                              widget.onDuplicate != null))
+                        const SizedBox(width: 10),
+                      if (widget.onDelete != null)
+                        _DeleteButton(onDelete: widget.onDelete!),
                     ],
                   ),
                 ],
@@ -563,5 +573,103 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       return null;
     }
     return at;
+  }
+}
+
+// ── Delete button with built-in confirmation dialog ───────────────────────────
+
+class _DeleteButton extends StatelessWidget {
+  const _DeleteButton({required this.onDelete});
+
+  final VoidCallback onDelete;
+
+  Future<void> _confirm(BuildContext context) async {
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final cs = Theme.of(context).colorScheme;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: cs.errorContainer.withValues(alpha: 0.35),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.delete_outline_rounded,
+              size: 24, color: cs.error),
+        ),
+        title: Text(
+          isSpanish ? 'Eliminar evento' : 'Delete event',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+        ),
+        content: Text(
+          isSpanish
+              ? '¿Seguro que quieres eliminar este evento? Esta acción no se puede deshacer.'
+              : 'Are you sure you want to delete this event? This cannot be undone.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding:
+            const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: Text(isSpanish ? 'Cancelar' : 'Cancel'),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: Text(isSpanish ? 'Eliminar' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) onDelete();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return OutlinedButton.icon(
+      onPressed: () => _confirm(context),
+      icon: Icon(Icons.delete_outline_rounded, size: 15, color: cs.error),
+      label: Text(
+        Localizations.localeOf(context).languageCode == 'es'
+            ? 'Eliminar'
+            : 'Delete',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: cs.error,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: cs.error.withValues(alpha: 0.45)),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 }

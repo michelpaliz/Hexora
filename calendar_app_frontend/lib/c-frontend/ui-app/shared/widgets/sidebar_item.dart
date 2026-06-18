@@ -37,6 +37,11 @@ class _SidebarItemState extends State<SidebarItem> {
 
     final fg = widget.isSelected ? activeColor : inactiveColor;
     final showBg = widget.isSelected || _hovering;
+    final borderColor = widget.isSelected
+        ? activeColor.withValues(alpha: 0.26)
+        : (_hovering
+            ? activeColor.withValues(alpha: 0.14)
+            : Colors.transparent);
 
     final inner = MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
@@ -48,9 +53,11 @@ class _SidebarItemState extends State<SidebarItem> {
           curve: Curves.easeOut,
           height: 44,
           decoration: BoxDecoration(
-            color:
-                showBg ? activeColor.withValues(alpha: 0.08) : Colors.transparent,
+            color: showBg
+                ? activeColor.withValues(alpha: widget.isSelected ? 0.1 : 0.06)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor, width: 1),
           ),
           child: Row(
             children: [

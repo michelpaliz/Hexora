@@ -267,6 +267,39 @@ class HttpGroupApiClient implements IGroupApiClient {
   }
 
   @override
+  Future<Map<String, dynamic>> getGroupPermissions(
+      String groupId, String token) async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/$groupId/permissions'),
+      headers: authHeaders(token),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    if (res.statusCode == 404) throw NotFoundException('Group $groupId not found');
+    throw HttpFailure(res.statusCode, res.body);
+  }
+
+  @override
+  Future<Map<String, dynamic>> getMemberRoleHistory(
+    String groupId,
+    String userId,
+    String token,
+  ) async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/$groupId/members/$userId/role-history'),
+      headers: authHeaders(token),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    if (res.statusCode == 404) {
+      throw NotFoundException('Member $userId not found in group $groupId');
+    }
+    throw HttpFailure(res.statusCode, res.body);
+  }
+
+  @override
   Future<List<String>> getGroupRoles(String token) async {
     final res = await _client.get(
       Uri.parse('$baseUrl/roles'),

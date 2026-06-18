@@ -32,6 +32,7 @@ abstract class IMailApiClient {
     required String token,
     int limit = 25,
     String? cursor,
+    String? query,
   });
 
   Future<MailThreadDetail> getThread({

@@ -124,7 +124,15 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
             // ── Header: avatar + name + status badge ──
             Row(
               children: [
-                AvatarUtils.profileAvatar(context, user.photoUrl, radius: 28),
+                GestureDetector(
+                  onTap: () => showDialog<void>(
+                    context: context,
+                    barrierColor: Colors.black.withValues(alpha: 0.72),
+                    builder: (_) => UserAvatarViewerDialog(user: user),
+                  ),
+                  child: AvatarUtils.profileAvatar(context, user.photoUrl,
+                      radius: 28),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -201,6 +209,12 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
               _buildMembershipCard(context, user),
             ],
 
+            // ── Role history (lazy) ──
+            if (_roleHistoryFuture != null) ...[
+              const SizedBox(height: 10),
+              _buildRoleHistorySection(context),
+            ],
+
             const SizedBox(height: 12),
             Divider(
               height: 1,
@@ -249,6 +263,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
               )
             else
               _buildRoleReadOnly(context, targetRole),
+            _buildRoleDescriptionFromPermissions(context, targetRole),
 
             if (canRemove) ...[
               const SizedBox(height: 16),
@@ -363,7 +378,8 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Icon(icon, size: 13, color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
+          Icon(icon,
+              size: 13, color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
@@ -498,12 +514,13 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
     final t = AppTypography.of(context);
 
     // Try to find an accepted invitation for join date
-    final acceptedInv = widget.membersVM.invitations.cast<Invitation?>().firstWhere(
-          (i) =>
-              (i!.userId == user.id || i.email == user.email) &&
-              i.status == InvitationStatus.accepted,
-          orElse: () => null,
-        );
+    final acceptedInv =
+        widget.membersVM.invitations.cast<Invitation?>().firstWhere(
+              (i) =>
+                  (i!.userId == user.id || i.email == user.email) &&
+                  i.status == InvitationStatus.accepted,
+              orElse: () => null,
+            );
 
     return Container(
       width: double.infinity,
@@ -679,6 +696,100 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  // ── Role history section ──
+  Widget _buildRoleHistorySection(BuildContext context) {
+    return FutureBuilder<List<RoleHistoryEntry>>(
+      future: _roleHistoryFuture,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink(); // silent load — no spinner
+        }
+        final entries = snap.data;
+        if (entries == null || entries.isEmpty) return const SizedBox.shrink();
+
+        final cs = Theme.of(context).colorScheme;
+        final t = AppTypography.of(context);
+
+        // Newest first
+        final sorted = [...entries]
+          ..sort((a, b) => b.assignedAt.compareTo(a.assignedAt));
+
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 560),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.18),
+              ),
+            ),
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.history_rounded,
+                      size: 13,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Historial de roles',
+                      style: t.caption.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                for (int i = 0; i < sorted.length; i++)
+                  _buildHistoryRow(context, sorted[i], isLatest: i == 0),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHistoryRow(
+    BuildContext context,
+    RoleHistoryEntry entry, {
+    required bool isLatest,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final role = GroupRole.fromWire(entry.role);
+    final color = isLatest ? role.roleChipColor(cs) : cs.onSurfaceVariant;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          isLatest ? Icons.circle : Icons.circle_outlined,
+          size: 7,
+          color: color.withValues(alpha: isLatest ? 1.0 : 0.55),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '${roleLabelOf(context, role)} · desde ${_formatDate(entry.assignedAt)}',
+          style: t.caption.copyWith(
+            fontWeight: isLatest ? FontWeight.w800 : FontWeight.w600,
+            color: color,
+            fontSize: 11,
+          ),
+        ),
       ],
     );
   }

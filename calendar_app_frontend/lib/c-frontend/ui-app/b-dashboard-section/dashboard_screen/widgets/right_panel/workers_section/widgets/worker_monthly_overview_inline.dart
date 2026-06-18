@@ -104,90 +104,100 @@ class _WorkerMonthlyOverviewInlineState
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final isSpanish =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
     final locale = Localizations.localeOf(context).toString();
     return Column(
       children: [
         Expanded(
-          child: FolderPanel(
-            onBack: widget.onBack,
-            title: AppLocalizations.of(context)!.workersLabel,
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    children: [
-                      YearSwitcher(
-                        year: _year,
-                        onYearChanged: (newYear) {
-                          setState(() => _year = newYear);
-                          _loadAllMonths();
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: _loading
-                            ? const Center(child: CircularProgressIndicator())
-                            : (kIsWeb
-                                ? MonthList(
-                                    year: _year,
-                                    locale: locale,
-                                    selectedMonth: _selectedMonth,
-                                    monthlyTotals: _monthlyTotals,
-                                    onTapMonth: (month) =>
-                                        setState(() => _selectedMonth = month),
-                                    subtitleBuilder: (totals) {
-                                      final hours =
-                                          totals?['totalHours'] ?? '0.00';
-                                      final pay = totals?['totalPay'] ?? '0.00';
-                                      final curr = totals?['currency'] ?? '';
-                                      return l.totalHoursAndPayFormat(
-                                        hours.toString(),
-                                        '$pay $curr',
-                                      );
-                                    },
-                                  )
-                                : MonthGrid(
-                                    year: _year,
-                                    selectedMonth: _selectedMonth,
-                                    monthlyTotals: _monthlyTotals,
-                                    onTapMonth: (month) =>
-                                        setState(() => _selectedMonth = month),
-                                    monthNameBuilder: (month) {
-                                      return DateFormat.MMMM(locale)
-                                          .format(DateTime(_year, month, 1))
-                                          .capitalize();
-                                    },
-                                    subtitleBuilder: (totals) {
-                                      final hours =
-                                          totals?['totalHours'] ?? '0.00';
-                                      final pay = totals?['totalPay'] ?? '0.00';
-                                      final curr = totals?['currency'] ?? '';
-                                      return l.totalHoursAndPayFormat(
-                                        hours.toString(),
-                                        '$pay $curr',
-                                      );
-                                    },
-                                  )),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 4,
-                  child: WorkerTimeTrackingScreen(
-                    key: ValueKey(
-                      '${widget.worker.id}-${_year}-${_selectedMonth}',
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: FolderPanel(
+              onBack: widget.onBack,
+              title: isSpanish ? 'Horas' : 'Hours',
+              contentTopPadding: 38,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      children: [
+                        YearSwitcher(
+                          year: _year,
+                          onYearChanged: (newYear) {
+                            setState(() => _year = newYear);
+                            _loadAllMonths();
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: _loading
+                              ? const Center(child: CircularProgressIndicator())
+                              : (kIsWeb
+                                  ? MonthList(
+                                      year: _year,
+                                      locale: locale,
+                                      selectedMonth: _selectedMonth,
+                                      monthlyTotals: _monthlyTotals,
+                                      onTapMonth: (month) =>
+                                          setState(() => _selectedMonth = month),
+                                      subtitleBuilder: (totals) {
+                                        final hours =
+                                            totals?['totalHours'] ?? '0.00';
+                                        final pay =
+                                            totals?['totalPay'] ?? '0.00';
+                                        final curr =
+                                            totals?['currency'] ?? '';
+                                        return l.totalHoursAndPayFormat(
+                                          hours.toString(),
+                                          '$pay $curr',
+                                        );
+                                      },
+                                    )
+                                  : MonthGrid(
+                                      year: _year,
+                                      selectedMonth: _selectedMonth,
+                                      monthlyTotals: _monthlyTotals,
+                                      onTapMonth: (month) =>
+                                          setState(() => _selectedMonth = month),
+                                      monthNameBuilder: (month) {
+                                        return DateFormat.MMMM(locale)
+                                            .format(DateTime(_year, month, 1))
+                                            .capitalize();
+                                      },
+                                      subtitleBuilder: (totals) {
+                                        final hours =
+                                            totals?['totalHours'] ?? '0.00';
+                                        final pay =
+                                            totals?['totalPay'] ?? '0.00';
+                                        final curr =
+                                            totals?['currency'] ?? '';
+                                        return l.totalHoursAndPayFormat(
+                                          hours.toString(),
+                                          '$pay $curr',
+                                        );
+                                      },
+                                    )),
+                        ),
+                      ],
                     ),
-                    group: widget.group,
-                    worker: widget.worker,
-                    initialYear: _year,
-                    initialMonth: _selectedMonth,
-                    embedded: true,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 4,
+                    child: WorkerTimeTrackingScreen(
+                      key: ValueKey(
+                        '${widget.worker.id}-$_year-$_selectedMonth',
+                      ),
+                      group: widget.group,
+                      worker: widget.worker,
+                      initialYear: _year,
+                      initialMonth: _selectedMonth,
+                      embedded: true,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

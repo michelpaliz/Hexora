@@ -22,5 +22,10 @@ abstract class AuthRepository {
     String newPassword,
     String confirmPassword,
   );
+  Future<void> forgotPassword(String email);
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  });
   Future<String?> getToken();
 }

@@ -12,6 +12,7 @@ class WorkersFormPanel extends StatelessWidget {
   final ITimeTrackingRepository repo;
   final Future<String> Function() getToken;
   final Worker? selectedWorker;
+  final List<Worker> allWorkers;
   final void Function(bool created, Worker savedWorker) onSaved;
   final TabController tabController;
   final bool enableAddHoursTab;
@@ -22,6 +23,7 @@ class WorkersFormPanel extends StatelessWidget {
     required this.repo,
     required this.getToken,
     required this.selectedWorker,
+    required this.allWorkers,
     required this.onSaved,
     required this.tabController,
     this.enableAddHoursTab = false,
@@ -119,8 +121,12 @@ class WorkersFormPanel extends StatelessWidget {
                             ),
                           )
                         : CreateTimeEntryScreen(
+                            key: ValueKey('add-hours-${selectedWorker!.id}'),
                             group: group,
-                            workers: [selectedWorker!],
+                            workers: allWorkers.isNotEmpty
+                                ? allWorkers
+                                : [selectedWorker!],
+                            initialSelectedIds: {selectedWorker!.id},
                             embedded: true,
                           ),
                 ],

@@ -38,7 +38,7 @@ class InvoiceActionCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Actions',
+              l.invoiceActionsTitle,
               style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
@@ -53,7 +53,7 @@ class InvoiceActionCard extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.check_circle_outline),
-                label: Text(issuing ? l.saving : 'Issue invoice'),
+                label: Text(issuing ? l.saving : l.issueInvoice),
               ),
             ),
             const SizedBox(height: 10),
@@ -68,7 +68,7 @@ class InvoiceActionCard extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.save_outlined),
-                label: Text(saving ? l.saving : 'Save draft'),
+                label: Text(saving ? l.saving : l.saveDraft),
               ),
             ),
             const SizedBox(height: 10),
@@ -77,7 +77,7 @@ class InvoiceActionCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: canPreview ? onPreviewPdf : null,
                 icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('PDF preview'),
+                label: Text(l.invoicePdfPreviewTitle),
               ),
             ),
           ],

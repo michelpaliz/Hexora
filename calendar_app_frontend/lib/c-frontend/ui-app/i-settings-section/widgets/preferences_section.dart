@@ -27,30 +27,45 @@ class PreferencesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    // Amber-ish for dark mode toggle
+    const darkModeColor = Color(0xFFF59E0B);
 
     return Column(
       children: [
-        // SwitchTile should render title with bodyMedium internally
         SwitchTile(
-          leading: const Icon(Icons.dark_mode_outlined),
+          leading: Icon(
+            isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+            size: 18,
+            color: darkModeColor,
+          ),
+          iconBgColor: darkModeColor.withValues(alpha: 0.12),
           title: l.darkMode,
           value: isDark,
           onChanged: (_) => onToggleDark(),
         ),
-        const Divider(height: 0),
+        Divider(
+            height: 0,
+            indent: 63,
+            color: cs.outlineVariant.withValues(alpha: 0.4)),
         SwitchTile(
-          leading: const Icon(Icons.sync_rounded),
+          leading: Icon(Icons.sync_rounded, size: 18, color: cs.secondary),
+          iconBgColor: cs.secondary.withValues(alpha: 0.12),
           title: l.autoStatementImportTitle,
           subtitle: l.autoStatementImportHelper,
           value: autoStatementImportEnabled,
           enabled: !autoStatementImportBusy,
           onChanged: onToggleAutoStatementImport,
         ),
-        const Divider(height: 0),
-        // NavTile renders: title → bodyMedium, subtitle → bodySmall
+        Divider(
+            height: 0,
+            indent: 63,
+            color: cs.outlineVariant.withValues(alpha: 0.4)),
         NavTile(
-          leading: const Icon(Icons.language_rounded),
-          title: l.language,
+          leading: Icon(Icons.language_rounded, size: 18, color: cs.tertiary),
+          iconBgColor: cs.tertiary.withValues(alpha: 0.12),
+          title: isSpanish ? 'Idioma' : 'Language',
           subtitle: languageName,
           onTap: onChangeLanguage,
         ),

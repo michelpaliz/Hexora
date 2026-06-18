@@ -62,10 +62,17 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
     final confirmMismatch = _confirmController.text.isNotEmpty &&
         _newPassController.text.isNotEmpty &&
         _confirmController.text != _newPassController.text;
+    final sameAsCurrent = _currentController.text.isNotEmpty &&
+        _newPassController.text.isNotEmpty &&
+        _currentController.text == _newPassController.text;
+    final newTooShort = _newPassController.text.isNotEmpty &&
+        _newPassController.text.length < 8;
     final canSave = _currentController.text.isNotEmpty &&
         _newPassController.text.isNotEmpty &&
         _confirmController.text.isNotEmpty &&
-        !confirmMismatch;
+        !confirmMismatch &&
+        !sameAsCurrent &&
+        !newTooShort;
 
     OutlineInputBorder inputBorder(Color color, [double width = 1]) =>
         OutlineInputBorder(
@@ -171,6 +178,11 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
               onToggleVisibility: () =>
                   setState(() => _newObscured = !_newObscured),
               helper: l.passwordHint,
+              error: newTooShort
+                  ? 'New password must be at least 8 characters'
+                  : (sameAsCurrent
+                      ? 'New password must be different from current password'
+                      : null),
             ),
             const SizedBox(height: 16),
             passwordField(

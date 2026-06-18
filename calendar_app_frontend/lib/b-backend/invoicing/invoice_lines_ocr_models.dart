@@ -8,6 +8,11 @@ class OcrExtractedLineDraft {
   final double lineTax;
   final double lineTotal;
   final String sourceText;
+  final String? conceptTitle;
+  final List<String>? conceptItems;
+  final String? serviceDate;
+  final bool? isCompositeConcept;
+  final String? parseMethod;
 
   const OcrExtractedLineDraft({
     required this.position,
@@ -19,6 +24,11 @@ class OcrExtractedLineDraft {
     required this.lineTax,
     required this.lineTotal,
     required this.sourceText,
+    this.conceptTitle,
+    this.conceptItems,
+    this.serviceDate,
+    this.isCompositeConcept,
+    this.parseMethod,
   });
 
   OcrExtractedLineDraft copyWith({
@@ -31,6 +41,11 @@ class OcrExtractedLineDraft {
     double? lineTax,
     double? lineTotal,
     String? sourceText,
+    String? conceptTitle,
+    List<String>? conceptItems,
+    String? serviceDate,
+    bool? isCompositeConcept,
+    String? parseMethod,
   }) {
     return OcrExtractedLineDraft(
       position: position ?? this.position,
@@ -42,6 +57,11 @@ class OcrExtractedLineDraft {
       lineTax: lineTax ?? this.lineTax,
       lineTotal: lineTotal ?? this.lineTotal,
       sourceText: sourceText ?? this.sourceText,
+      conceptTitle: conceptTitle ?? this.conceptTitle,
+      conceptItems: conceptItems ?? this.conceptItems,
+      serviceDate: serviceDate ?? this.serviceDate,
+      isCompositeConcept: isCompositeConcept ?? this.isCompositeConcept,
+      parseMethod: parseMethod ?? this.parseMethod,
     );
   }
 
@@ -55,6 +75,12 @@ class OcrExtractedLineDraft {
         'lineTax': lineTax,
         'lineTotal': lineTotal,
         'sourceText': sourceText,
+        if (conceptTitle != null) 'conceptTitle': conceptTitle,
+        if (conceptItems != null) 'conceptItems': conceptItems,
+        if (serviceDate != null) 'serviceDate': serviceDate,
+        if (isCompositeConcept != null)
+          'isCompositeConcept': isCompositeConcept,
+        if (parseMethod != null) 'parseMethod': parseMethod,
       };
 }
 

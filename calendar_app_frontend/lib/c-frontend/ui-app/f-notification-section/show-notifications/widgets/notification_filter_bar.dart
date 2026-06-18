@@ -17,12 +17,9 @@ class NotificationFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final manager = BroadCategoryManager();
-
     // Build set of used categories (from incoming notifications)
     final usedCats = notifications
-        .map((ntf) => manager.categoryMapping[ntf.category])
-        .whereType<BroadCategory>()
+        .map(resolveBroadCategoryForNotification)
         .toSet()
         .toList()
       ..sort((a, b) =>
@@ -32,8 +29,7 @@ class NotificationFilterBar extends StatelessWidget {
     final counts = <BroadCategory, int>{};
     for (final cat in usedCats) {
       counts[cat] = notifications.where((ntf) {
-        final mapped = manager.categoryMapping[ntf.category];
-        return mapped == cat;
+        return resolveBroadCategoryForNotification(ntf) == cat;
       }).length;
     }
 
@@ -99,12 +95,12 @@ class _FilterPillState extends State<_FilterPill> {
     final scheme = Theme.of(context).colorScheme;
     final selectedBg = scheme.primary;
     final selectedFg = scheme.onPrimary;
-    final normalBg = scheme.surface.withOpacity(0.9);
+    final normalBg = scheme.surface.withValues(alpha: 0.9);
     final normalFg = scheme.onSurface;
 
     final bg = widget.selected
         ? selectedBg
-        : (_hovering ? normalBg.withOpacity(0.95) : normalBg);
+        : (_hovering ? normalBg.withValues(alpha: 0.95) : normalBg);
     final fg = widget.selected ? selectedFg : normalFg;
 
     return MouseRegion(
@@ -123,12 +119,12 @@ class _FilterPillState extends State<_FilterPill> {
             border: Border.all(
               color: widget.selected
                   ? selectedBg
-                  : scheme.outlineVariant.withOpacity(0.25),
+                  : scheme.outlineVariant.withValues(alpha: 0.25),
             ),
             boxShadow: widget.selected
                 ? [
                     BoxShadow(
-                      color: scheme.primary.withOpacity(0.25),
+                      color: scheme.primary.withValues(alpha: 0.25),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -159,8 +155,8 @@ class _FilterPillState extends State<_FilterPill> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: widget.selected
-                        ? selectedFg.withOpacity(0.15)
-                        : scheme.primary.withOpacity(0.12),
+                        ? selectedFg.withValues(alpha: 0.15)
+                        : scheme.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(

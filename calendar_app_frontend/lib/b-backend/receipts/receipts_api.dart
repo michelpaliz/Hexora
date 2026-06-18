@@ -158,10 +158,38 @@ class ReceiptsApi {
       _u('/$id/issue'),
       headers: _headers(),
     );
-    return _decode<Receipt>(r, (j) {
-      if (j is Map<String, dynamic>) return Receipt.fromJson(j);
-      throw Exception('Unexpected receipt payload');
-    });
+    final ok = r.statusCode >= 200 && r.statusCode < 300;
+    dynamic body;
+    if (r.body.isNotEmpty) {
+      try {
+        body = jsonDecode(r.body);
+      } catch (_) {
+        body = r.body;
+      }
+    }
+    if (!ok) {
+      return _decode<Receipt>(r, (_) => throw Exception('Unexpected receipt payload'));
+    }
+    if (body is Map<String, dynamic>) {
+      if (body.containsKey('_id') || body.containsKey('id')) {
+        return Receipt.fromJson(body);
+      }
+      for (final key in const ['receipt', 'data', 'item']) {
+        final nested = body[key];
+        if (nested is Map<String, dynamic>) {
+          return Receipt.fromJson(nested);
+        }
+        if (nested is Map) {
+          return Receipt.fromJson(Map<String, dynamic>.from(nested));
+        }
+      }
+    }
+    if (r.body.trim().isEmpty) {
+      // Some deployments acknowledge issue with 200/204 and no payload.
+      // In that case, load the updated receipt explicitly.
+      return getById(id);
+    }
+    throw Exception('Unexpected receipt payload');
   }
 
   Future<http.Response> previewPdf(String id) async {

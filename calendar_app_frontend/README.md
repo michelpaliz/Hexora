@@ -69,7 +69,7 @@
 * **theme/**: theme management and persistence
 
 > **Purpose:** Central state hub for events, groups, notifications, users, and settings.
-
+                                                   
 ---
 
 ### **lib/e-drawer-style-menu/**

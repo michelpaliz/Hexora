@@ -1,16 +1,17 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';
 
 class PdfInlinePreview extends StatelessWidget {
   const PdfInlinePreview({
     super.key,
     required this.bytes,
     this.height = 420,
+    this.interactive = true,
   });
 
   final Uint8List bytes;
   final double height;
+  final bool interactive;
 
   @override
   Widget build(BuildContext context) {

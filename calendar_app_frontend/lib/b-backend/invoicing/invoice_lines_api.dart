@@ -155,8 +155,8 @@ class InvoiceLinesApi {
   }
 
   Future<List<InvoiceLine>> list(String invoiceId) async {
-    final r =
-        await AuthenticatedHttpClient.get(_u(invoiceId), headers: _jsonHeaders());
+    final r = await AuthenticatedHttpClient.get(_u(invoiceId),
+        headers: _jsonHeaders());
     return _decode<List<InvoiceLine>>(r, (j) {
       if (j is! List) throw Exception('Unexpected invoice lines payload');
       return j
@@ -167,13 +167,9 @@ class InvoiceLinesApi {
   }
 
   Future<InvoiceLine> create(String invoiceId, InvoiceLine line) async {
-    final body = {
-      'position': line.position,
-      'description': line.description,
-      'quantity': line.quantity,
-      'unitPrice': line.unitPrice,
-      'taxRate': line.taxRate,
-    };
+    final body = line.toJson()
+      ..remove('id')
+      ..remove('invoiceId');
     final r = await AuthenticatedHttpClient.post(
       _u(invoiceId),
       headers: _jsonHeaders(),

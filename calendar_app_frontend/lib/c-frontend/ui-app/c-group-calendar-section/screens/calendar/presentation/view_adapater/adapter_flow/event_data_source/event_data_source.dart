@@ -46,4 +46,19 @@ class EventDataSource extends sf.CalendarDataSource {
 
   @override
   bool isAllDay(int index) => _items[index].allDay;
+
+  @override
+  Object? convertAppointmentToObject(
+    Object? customData,
+    sf.Appointment appointment,
+  ) {
+    if (customData is! Event) return customData;
+    return customData.copyWith(
+      startDate: appointment.startTime,
+      endDate: appointment.endTime,
+      title: appointment.subject,
+      localization: appointment.location,
+      allDay: appointment.isAllDay,
+    );
+  }
 }

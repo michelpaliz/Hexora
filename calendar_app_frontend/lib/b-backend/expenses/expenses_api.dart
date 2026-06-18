@@ -30,13 +30,31 @@ class ExpensesApiException implements Exception {
   }
 }
 
+class ExpenseBatchIncidentExport {
+  final Uint8List bytes;
+  final String fileName;
+  final String contentType;
+
+  const ExpenseBatchIncidentExport({
+    required this.bytes,
+    required this.fileName,
+    required this.contentType,
+  });
+}
+
 class ExpensesApi {
   final String _base = ApiConstants.baseUrl.endsWith('/api')
       ? '${ApiConstants.baseUrl}/expenses'
       : '${ApiConstants.baseUrl}/api/expenses';
+  final String _apiRoot = ApiConstants.baseUrl.endsWith('/api')
+      ? ApiConstants.baseUrl
+      : '${ApiConstants.baseUrl}/api';
 
   Uri _u([String path = '', Map<String, String>? query]) =>
       Uri.parse('$_base$path').replace(queryParameters: query);
+
+  Uri _apiUri([String path = '', Map<String, String>? query]) =>
+      Uri.parse('$_apiRoot$path').replace(queryParameters: query);
 
   MediaType _mediaTypeForFileName(String? fileName) {
     final lower = (fileName ?? '').toLowerCase().trim();
@@ -46,7 +64,9 @@ class ExpensesApi {
     if (lower.endsWith('.png')) {
       return MediaType('image', 'png');
     }
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+    if (lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.jpe')) {
       return MediaType('image', 'jpeg');
     }
     if (lower.endsWith('.webp')) {
@@ -58,31 +78,34 @@ class ExpensesApi {
     return MediaType('application', 'octet-stream');
   }
 
-  static const List<String> _batchFileFieldCandidates = <String>[
-    'files',
-    'documents',
-    'invoiceFiles',
-  ];
-
-  bool _shouldRetryBatchWithAlternateField(ExpensesApiException e) {
-    final lowerMsg = e.message.toLowerCase();
-    final lowerBody = (e.responseBody ?? '').toLowerCase();
-    final joined = '$lowerMsg\n$lowerBody';
-    return joined.contains('failed to extract one or more files') ||
-        joined.contains('unsupported mime type') ||
-        joined.contains("application/octet-stream") ||
-        joined.contains('no files') ||
-        joined.contains('file is required') ||
-        joined.contains('missing file');
+  String? _filenameFromContentDisposition(String? value) {
+    final header = value?.trim() ?? '';
+    if (header.isEmpty) return null;
+    final encodedMatch = RegExp(
+      r'''filename\*=UTF-8''([^;]+)''',
+      caseSensitive: false,
+    ).firstMatch(header);
+    if (encodedMatch != null) {
+      final encoded = encodedMatch.group(1)?.trim();
+      if (encoded != null && encoded.isNotEmpty) {
+        return Uri.decodeComponent(encoded.replaceAll('"', ''));
+      }
+    }
+    final quotedMatch = RegExp(
+      r'''filename="?([^";]+)"?''',
+      caseSensitive: false,
+    ).firstMatch(header);
+    final fileName = quotedMatch?.group(1)?.trim();
+    return (fileName == null || fileName.isEmpty) ? null : fileName;
   }
 
   Future<Map<String, dynamic>> _sendBatchMultipartRequest({
     required String endpoint,
     required List<Uint8List> documentFilesBytes,
     required List<String> documentFileNames,
-    required String fileFieldName,
     String? groupId,
     Map<String, dynamic>? payload,
+    Map<String, String>? extraFields,
   }) async {
     final uri = _u(endpoint);
     final req = http.MultipartRequest('POST', uri);
@@ -94,6 +117,13 @@ class ExpensesApi {
     if (trimmedGroupId.isNotEmpty) {
       req.fields['groupId'] = trimmedGroupId;
     }
+    if (extraFields != null) {
+      for (final entry in extraFields.entries) {
+        final value = entry.value.trim();
+        if (value.isEmpty) continue;
+        req.fields[entry.key] = value;
+      }
+    }
 
     for (var i = 0; i < documentFilesBytes.length; i++) {
       final bytes = documentFilesBytes[i];
@@ -102,7 +132,7 @@ class ExpensesApi {
           : documentFileNames[i].trim();
       req.files.add(
         http.MultipartFile.fromBytes(
-          fileFieldName,
+          'documents',
           bytes,
           filename: name,
           contentType: _mediaTypeForFileName(name),
@@ -188,6 +218,16 @@ class ExpensesApi {
     String? statementEntryId,
     String? providerId,
     List<Map<String, dynamic>>? lines,
+    String? expenseType,
+    Map<String, dynamic>? advancePayment,
+    Map<String, dynamic>? finalSettlement,
+    Map<String, dynamic>? withholding,
+    String? discountAmount,
+    String? discountPercent,
+    String? subtotal,
+    List<Map<String, dynamic>>? vatBreakdown,
+    bool? useSummaryTotals,
+    String? taxSource,
   }) async {
     final uri = _u();
     final req = http.MultipartRequest('POST', uri);
@@ -220,6 +260,9 @@ class ExpensesApi {
     if (taxTotal != null && taxTotal.isNotEmpty) {
       req.fields['taxTotal'] = taxTotal;
     }
+    if (subtotal != null && subtotal.isNotEmpty) {
+      req.fields['subtotal'] = subtotal;
+    }
     if (currency != null && currency.isNotEmpty) {
       req.fields['currency'] = currency;
     }
@@ -235,6 +278,42 @@ class ExpensesApi {
     if (providerId != null && providerId.isNotEmpty) {
       req.fields['providerId'] = providerId;
     }
+    if (expenseType != null && expenseType.isNotEmpty) {
+      req.fields['expenseType'] = expenseType;
+    }
+    if (advancePayment != null && advancePayment.isNotEmpty) {
+      for (final entry in advancePayment.entries) {
+        final value = entry.value;
+        if (value == null) continue;
+        req.fields['advancePayment[${entry.key}]'] = value.toString();
+      }
+    }
+    if (finalSettlement != null && finalSettlement.isNotEmpty) {
+      for (final entry in finalSettlement.entries) {
+        final value = entry.value;
+        if (value == null) continue;
+        req.fields['finalSettlement[${entry.key}]'] = value.toString();
+      }
+    }
+    if (withholding != null && withholding.isNotEmpty) {
+      for (final entry in withholding.entries) {
+        final value = entry.value;
+        if (value == null) continue;
+        req.fields['withholding[${entry.key}]'] = value.toString();
+      }
+    }
+    if (discountAmount != null && discountAmount.isNotEmpty) {
+      req.fields['discountAmount'] = discountAmount;
+    }
+    if (discountPercent != null && discountPercent.isNotEmpty) {
+      req.fields['discountPercent'] = discountPercent;
+    }
+    if (useSummaryTotals != null) {
+      req.fields['useSummaryTotals'] = useSummaryTotals ? 'true' : 'false';
+    }
+    if (taxSource != null && taxSource.isNotEmpty) {
+      req.fields['taxSource'] = taxSource;
+    }
     if (lines != null && lines.isNotEmpty) {
       for (var i = 0; i < lines.length; i++) {
         final line = lines[i];
@@ -243,6 +322,16 @@ class ExpensesApi {
           final value = entry.value;
           if (value == null) continue;
           req.fields['lines[$i][$key]'] = value.toString();
+        }
+      }
+    }
+    if (vatBreakdown != null && vatBreakdown.isNotEmpty) {
+      for (var i = 0; i < vatBreakdown.length; i++) {
+        final row = vatBreakdown[i];
+        for (final entry in row.entries) {
+          final value = entry.value;
+          if (value == null) continue;
+          req.fields['vatBreakdown[$i][${entry.key}]'] = value.toString();
         }
       }
     }
@@ -305,6 +394,51 @@ class ExpensesApi {
     );
   }
 
+  Future<List<Map<String, dynamic>>> listAll({
+    int pageSize = 100,
+    String? groupId,
+    String? providerId,
+    String? clientId,
+    int maxPages = 100,
+  }) async {
+    final safePageSize = pageSize <= 0 ? 100 : pageSize;
+    final safeMaxPages = maxPages <= 0 ? 100 : maxPages;
+    final all = <Map<String, dynamic>>[];
+    final seenIds = <String>{};
+
+    for (var page = 1; page <= safeMaxPages; page++) {
+      final items = await list(
+        page: page,
+        size: safePageSize,
+        groupId: groupId,
+        providerId: providerId,
+        clientId: clientId,
+      );
+      if (items.isEmpty) {
+        break;
+      }
+
+      var addedThisPage = 0;
+      for (final item in items) {
+        final id = (item['id'] ?? item['_id'] ?? item['expenseId'] ?? '')
+            .toString()
+            .trim();
+        if (id.isNotEmpty) {
+          if (!seenIds.add(id)) continue;
+        }
+        all.add(item);
+        addedThisPage++;
+      }
+
+      // Safety valve in case the backend repeats the same page payload.
+      if (addedThisPage == 0 || items.length < safePageSize) {
+        break;
+      }
+    }
+
+    return all;
+  }
+
   Future<Map<String, dynamic>> updateExpense({
     required String id,
     required Map<String, dynamic> payload,
@@ -324,6 +458,152 @@ class ExpensesApi {
     );
   }
 
+  Future<Map<String, dynamic>> reprocessExpenseOcr({
+    required String expenseId,
+    required String groupId,
+    bool apply = false,
+  }) async {
+    final trimmedExpenseId = expenseId.trim();
+    final trimmedGroupId = groupId.trim();
+    if (trimmedExpenseId.isEmpty) {
+      throw ArgumentError('expenseId is required');
+    }
+    if (trimmedGroupId.isEmpty) {
+      throw ArgumentError('groupId is required');
+    }
+    final uri = _u('/${Uri.encodeComponent(trimmedExpenseId)}/reprocess-ocr');
+    final r = await AuthenticatedHttpClient.post(
+      uri,
+      headers: await _headers(),
+      body: jsonEncode({
+        'groupId': trimmedGroupId,
+        'apply': apply,
+      }),
+    );
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> startBulkExpenseOcrReprocess({
+    required String groupId,
+    required List<String> expenseIds,
+    String reason = 'zero_vat_review',
+    bool apply = false,
+  }) async {
+    final trimmedGroupId = groupId.trim();
+    final normalizedIds = expenseIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (trimmedGroupId.isEmpty) {
+      throw ArgumentError('groupId is required');
+    }
+    if (normalizedIds.isEmpty) {
+      throw ArgumentError('expenseIds cannot be empty');
+    }
+    final uri = _u('/reprocess-ocr/bulk');
+    final r = await AuthenticatedHttpClient.post(
+      uri,
+      headers: await _headers(),
+      body: jsonEncode({
+        'groupId': trimmedGroupId,
+        'expenseIds': normalizedIds,
+        'reason': reason,
+        'apply': apply,
+      }),
+    );
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> getExpenseOcrReprocessJob({
+    required String jobId,
+    required String groupId,
+  }) async {
+    final trimmedJobId = jobId.trim();
+    final trimmedGroupId = groupId.trim();
+    if (trimmedJobId.isEmpty) {
+      throw ArgumentError('jobId is required');
+    }
+    if (trimmedGroupId.isEmpty) {
+      throw ArgumentError('groupId is required');
+    }
+    final uri = _u(
+      '/reprocess-ocr/jobs/${Uri.encodeComponent(trimmedJobId)}',
+      {'groupId': trimmedGroupId},
+    );
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> applyExpenseOcrReprocessSuggestions({
+    required String groupId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final trimmedGroupId = groupId.trim();
+    if (trimmedGroupId.isEmpty) {
+      throw ArgumentError('groupId is required');
+    }
+    if (items.isEmpty) {
+      throw ArgumentError('items cannot be empty');
+    }
+    final uri = _u('/reprocess-ocr/apply');
+    final r = await AuthenticatedHttpClient.post(
+      uri,
+      headers: await _headers(),
+      body: jsonEncode({
+        'groupId': trimmedGroupId,
+        'items': items,
+      }),
+    );
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> fetchExpenseOcrReprocessCandidates({
+    required String groupId,
+    String reason = 'zero_vat_review',
+  }) async {
+    final trimmedGroupId = groupId.trim();
+    if (trimmedGroupId.isEmpty) {
+      throw ArgumentError('groupId is required');
+    }
+    final uri = _u('/reprocess-ocr/candidates', {
+      'groupId': trimmedGroupId,
+      'reason': reason,
+    });
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
   Future<void> deleteExpense(String id) async {
     final uri = _u('/$id');
     final r =
@@ -336,30 +616,51 @@ class ExpensesApi {
     );
   }
 
-  Future<void> linkExpense({
+  Future<Map<String, dynamic>> linkExpense({
     required String expenseId,
     required String entryId,
+  }) {
+    return linkExpenses(
+      entryId: entryId,
+      expenseIds: <String>[expenseId],
+    );
+  }
+
+  Future<Map<String, dynamic>> linkExpenses({
+    required String entryId,
+    required List<String> expenseIds,
   }) async {
+    final normalizedExpenseIds = expenseIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    if (normalizedExpenseIds.isEmpty) {
+      throw ArgumentError('expenseIds cannot be empty');
+    }
     final uri = _u('/link');
     final r = await AuthenticatedHttpClient.post(
       uri,
       headers: await _headers(),
       body: jsonEncode({
-        'expenseId': expenseId,
         'entryId': entryId,
+        'expenseIds': normalizedExpenseIds,
       }),
     );
-    _decode<void>(
+    return _decode<Map<String, dynamic>>(
       r,
       url: uri,
       method: 'POST',
-      map: (_) {},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 
   Future<Map<String, dynamic>> getImportJsonPromptTemplate() async {
     final uri = _u('/import-json/prompt-template');
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    final r = await http.get(
+      uri,
+      headers: await AuthenticatedHttpClient.authorizedHeaders(),
+    );
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,
@@ -456,31 +757,13 @@ class ExpensesApi {
       );
     }
 
-    ExpensesApiException? lastException;
-    for (final field in _batchFileFieldCandidates) {
-      try {
-        return await _sendBatchMultipartRequest(
-          endpoint: '/import-json-batch',
-          documentFilesBytes: documentFilesBytes,
-          documentFileNames: documentFileNames,
-          fileFieldName: field,
-          groupId: groupId,
-          payload: payload,
-        );
-      } on ExpensesApiException catch (e) {
-        lastException = e;
-        if (!_shouldRetryBatchWithAlternateField(e) ||
-            field == _batchFileFieldCandidates.last) {
-          rethrow;
-        }
-        if (kDebugMode) {
-          debugPrint(
-            'Retrying import-json-batch with alternate file field after failure on "$field".',
-          );
-        }
-      }
-    }
-    throw lastException!;
+    return _sendBatchMultipartRequest(
+      endpoint: '/import-json-batch',
+      documentFilesBytes: documentFilesBytes,
+      documentFileNames: documentFileNames,
+      groupId: groupId,
+      payload: payload,
+    );
   }
 
   Future<Map<String, dynamic>> generateBatchJsonWithAi({
@@ -495,30 +778,189 @@ class ExpensesApi {
       );
     }
 
-    ExpensesApiException? lastException;
-    for (final field in _batchFileFieldCandidates) {
-      try {
-        return await _sendBatchMultipartRequest(
-          endpoint: '/import-json-batch/generate-with-ai',
-          documentFilesBytes: documentFilesBytes,
-          documentFileNames: documentFileNames,
-          fileFieldName: field,
-          groupId: groupId,
-        );
-      } on ExpensesApiException catch (e) {
-        lastException = e;
-        if (!_shouldRetryBatchWithAlternateField(e) ||
-            field == _batchFileFieldCandidates.last) {
-          rethrow;
-        }
-        if (kDebugMode) {
-          debugPrint(
-            'Retrying generate-with-ai with alternate file field after failure on "$field".',
-          );
-        }
-      }
+    return _sendBatchMultipartRequest(
+      endpoint: '/import-json-batch/generate-with-ai',
+      documentFilesBytes: documentFilesBytes,
+      documentFileNames: documentFileNames,
+      groupId: groupId,
+    );
+  }
+
+  Future<Map<String, dynamic>> startBatchAiImportJob({
+    required List<Uint8List> documentFilesBytes,
+    required List<String> documentFileNames,
+    String? groupId,
+    String? currency,
+  }) async {
+    if (documentFilesBytes.isEmpty ||
+        documentFilesBytes.length != documentFileNames.length) {
+      throw ArgumentError(
+        'documentFilesBytes/documentFileNames must be non-empty and have same length',
+      );
     }
-    throw lastException!;
+
+    return _sendBatchMultipartRequest(
+      endpoint: '/import-json-batch/generate-with-ai/start',
+      documentFilesBytes: documentFilesBytes,
+      documentFileNames: documentFileNames,
+      groupId: groupId,
+      extraFields: {
+        if ((currency ?? '').trim().isNotEmpty) 'currency': currency!.trim(),
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> startBatchExpensePreviewJob({
+    required List<Uint8List> documentFilesBytes,
+    required List<String> documentFileNames,
+    String? groupId,
+    String? currency,
+  }) async {
+    if (documentFilesBytes.isEmpty ||
+        documentFilesBytes.length != documentFileNames.length) {
+      throw ArgumentError(
+        'documentFilesBytes/documentFileNames must be non-empty and have same length',
+      );
+    }
+
+    return _sendBatchMultipartRequest(
+      endpoint: '/import-json-batch/preview/start',
+      documentFilesBytes: documentFilesBytes,
+      documentFileNames: documentFileNames,
+      groupId: groupId,
+      extraFields: {
+        if ((currency ?? '').trim().isNotEmpty) 'currency': currency!.trim(),
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> getBatchAiImportJobStatus(String jobId) async {
+    final trimmedJobId = jobId.trim();
+    if (trimmedJobId.isEmpty) {
+      throw ArgumentError('jobId is required');
+    }
+    final uri = _u('/import-json-batch/jobs/$trimmedJobId');
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> getBatchAiImportJobResult(String jobId) async {
+    final trimmedJobId = jobId.trim();
+    if (trimmedJobId.isEmpty) {
+      throw ArgumentError('jobId is required');
+    }
+    final uri = _u('/import-json-batch/jobs/$trimmedJobId/result');
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> getBatchExpensePreviewJobStatus(
+      String jobId) async {
+    final trimmedJobId = jobId.trim();
+    if (trimmedJobId.isEmpty) {
+      throw ArgumentError('jobId is required');
+    }
+    final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId');
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> getBatchExpensePreviewJobResult(
+      String jobId) async {
+    final trimmedJobId = jobId.trim();
+    if (trimmedJobId.isEmpty) {
+      throw ArgumentError('jobId is required');
+    }
+    final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId/result');
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> confirmBatchExpenseImports({
+    required String groupId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final trimmedGroupId = groupId.trim();
+    if (trimmedGroupId.isEmpty) {
+      throw ArgumentError('groupId is required');
+    }
+    if (items.isEmpty) {
+      throw ArgumentError('items cannot be empty');
+    }
+    final uri = _u('/import-json-batch/confirm');
+    final r = await AuthenticatedHttpClient.post(
+      uri,
+      headers: await _headers(),
+      body: jsonEncode({
+        'groupId': trimmedGroupId,
+        'items': items,
+      }),
+    );
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<ExpenseBatchIncidentExport> downloadBatchIncidentExport(
+    String batchId,
+  ) async {
+    final trimmedBatchId = batchId.trim();
+    if (trimmedBatchId.isEmpty) {
+      throw ArgumentError('batchId is required');
+    }
+    final encodedBatchId = Uri.encodeComponent(trimmedBatchId);
+    final uri = _apiUri('/import-batches/$encodedBatchId/failed-export');
+    final r = await AuthenticatedHttpClient.get(
+      uri,
+      headers: await _headers(json: false),
+    );
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      throw ExpensesApiException(
+        statusCode: r.statusCode,
+        message: 'Could not generate incident export.',
+        url: uri,
+        method: 'GET',
+        responseBody: r.body.isEmpty ? null : r.body,
+      );
+    }
+    final contentDisposition =
+        r.headers['content-disposition'] ?? r.headers['Content-Disposition'];
+    final fileName = _filenameFromContentDisposition(contentDisposition) ??
+        'importacion-incidencias-$trimmedBatchId.xlsx';
+    return ExpenseBatchIncidentExport(
+      bytes: r.bodyBytes,
+      fileName: fileName,
+      contentType: r.headers['content-type'] ??
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
   }
 
   Future<Map<String, dynamic>> fetchExpense(String id) async {
@@ -581,6 +1023,124 @@ class ExpensesApi {
         }
         return <Map<String, dynamic>>[];
       },
+    );
+  }
+
+  Future<Map<String, dynamic>> summaryTotals({
+    required String groupId,
+    String? providerId,
+    String? clientId,
+    String? from,
+    String? to,
+    String? currency,
+  }) async {
+    final params = <String, String>{
+      'groupId': groupId.trim(),
+      if ((providerId ?? '').trim().isNotEmpty)
+        'providerId': providerId!.trim(),
+      if ((clientId ?? '').trim().isNotEmpty) 'clientId': clientId!.trim(),
+      if ((from ?? '').trim().isNotEmpty) 'from': from!.trim(),
+      if ((to ?? '').trim().isNotEmpty) 'to': to!.trim(),
+      if ((currency ?? '').trim().isNotEmpty) 'currency': currency!.trim(),
+    };
+    final uri = _u('/summary-totals', params);
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> getVatAudit({
+    required String groupId,
+    String? providerId,
+    String? clientId,
+    String? from,
+    String? to,
+    String? currency,
+  }) async {
+    final params = <String, String>{
+      'groupId': groupId.trim(),
+      if ((providerId ?? '').trim().isNotEmpty)
+        'providerId': providerId!.trim(),
+      if ((clientId ?? '').trim().isNotEmpty) 'clientId': clientId!.trim(),
+      if ((from ?? '').trim().isNotEmpty) 'from': from!.trim(),
+      if ((to ?? '').trim().isNotEmpty) 'to': to!.trim(),
+      if ((currency ?? '').trim().isNotEmpty) 'currency': currency!.trim(),
+    };
+    final uri = _u('/vat-audit', params);
+    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    if (kDebugMode) {
+      debugPrint(
+        '[ExpensesApi] vat-audit status=${r.statusCode} '
+        'count=${r.body.length > 300 ? "${r.body.substring(0, 300)}…" : r.body}',
+      );
+    }
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<http.Response> exportVatAuditExcel({
+    required String groupId,
+    String? providerId,
+    String? clientId,
+    String? from,
+    String? to,
+    String? currency,
+  }) async {
+    final params = <String, String>{
+      'groupId': groupId.trim(),
+      if ((providerId ?? '').trim().isNotEmpty)
+        'providerId': providerId!.trim(),
+      if ((clientId ?? '').trim().isNotEmpty) 'clientId': clientId!.trim(),
+      if ((from ?? '').trim().isNotEmpty) 'from': from!.trim(),
+      if ((to ?? '').trim().isNotEmpty) 'to': to!.trim(),
+      if ((currency ?? '').trim().isNotEmpty) 'currency': currency!.trim(),
+    };
+    final uri = _u('/vat-audit/export.xlsx', params);
+    final response = await AuthenticatedHttpClient.get(uri,
+        headers: await _headers(json: false));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _decode<Map<String, dynamic>>(
+        response,
+        url: uri,
+        method: 'GET',
+        map: (j) =>
+            (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      );
+    }
+    return response;
+  }
+
+  Future<Map<String, dynamic>> patchSuspicionReview(
+    String expenseId, {
+    required String status,
+    String? notes,
+  }) async {
+    final uri = _u('/$expenseId/suspicion-review');
+    final body = <String, dynamic>{'status': status};
+    if (notes != null && notes.trim().isNotEmpty) {
+      body['notes'] = notes.trim();
+    }
+    final r = await AuthenticatedHttpClient.patch(
+      uri,
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'PATCH',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 }

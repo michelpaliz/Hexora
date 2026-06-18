@@ -38,6 +38,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   Service? _editingService;
   bool _creatingService = false;
   String? _propertyKindFilter;
+  bool _missingCurrentMonthInvoiceOnly = false;
 
   @override
   void initState() {
@@ -59,8 +60,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       _errClients = null;
     });
     try {
-      final data =
-          await _clientsApi.list(groupId: widget.group.id, active: null);
+      final data = await _clientsApi.list(
+        groupId: widget.group.id,
+        active: null,
+        includeCurrentMonthInvoiceFlag: true,
+      );
       setState(() => _clients = data);
     } catch (e) {
       setState(() => _errClients = e.toString());
@@ -370,8 +374,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       controller: _tab,
       dividerColor: Colors.transparent,
       splashFactory: NoSplash.splashFactory,
-      overlayColor:
-          WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
+      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
       indicatorSize: TabBarIndicatorSize.tab,
       indicator: BoxDecoration(
         color: cs.primaryContainer,
@@ -428,6 +431,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                   loading: _loadingClients,
                   error: _errClients,
                   onRefresh: _loadClients,
+                  missingCurrentMonthInvoiceOnly:
+                      _missingCurrentMonthInvoiceOnly,
+                  onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(
+                    () => _missingCurrentMonthInvoiceOnly = value,
+                  ),
                   showInlineCTA: true,
                   onAddTap: _openAddClientSheet,
                   showInactive: _showInactiveClients,
@@ -479,7 +487,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     final Color primary = cs.primary;
     final Color selectedText = ThemeColors.contrastOn(primary);
     final Color unselectedText =
-        ThemeColors.textPrimary(context).withOpacity(0.7);
+        ThemeColors.textPrimary(context).withValues(alpha: 0.7);
     final Color trackBg = ThemeColors.cardBg(context);
 
     // Optional: show counts in tab labels for quick context
@@ -511,7 +519,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
               decoration: BoxDecoration(
                 color: trackBg,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.onSurface.withOpacity(0.06)),
+                border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
               ),
               child: TabBar(
                 controller: _tab,
@@ -551,6 +559,10 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                 loading: _loadingClients,
                 error: _errClients,
                 onRefresh: _loadClients,
+                missingCurrentMonthInvoiceOnly: _missingCurrentMonthInvoiceOnly,
+                onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(
+                  () => _missingCurrentMonthInvoiceOnly = value,
+                ),
                 showInlineCTA: true,
                 onAddTap: () =>
                     useSidePanel ? _startAddClient() : _openAddClientSheet(),
@@ -646,10 +658,12 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
               Container(
                 width: panelWidth,
                 decoration: BoxDecoration(
-                  color: cs.surface,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? Colors.white
+                      : cs.surface,
                   border: Border(
                     left: BorderSide(
-                      color: cs.outlineVariant.withOpacity(0.4),
+                      color: cs.outlineVariant.withValues(alpha: 0.4),
                     ),
                   ),
                 ),

@@ -98,20 +98,18 @@ class _PendingDraftsList extends StatelessWidget {
                     final action = await showDialog<String>(
                       context: context,
                       builder: (_) => AlertDialog(
-                        title: const Text('Download Draft PDF'),
-                        content: const Text(
-                          'Generate a PDF preview of this draft invoice.',
-                        ),
+                        title: Text(l.invoiceDraftPdfDialogTitle),
+                        content: Text(l.invoiceDraftPdfDialogContent),
                         actions: [
                           TextButton(
                             onPressed: () =>
                                 Navigator.of(context).pop('preview'),
-                            child: const Text('Preview in Browser'),
+                            child: Text(l.invoiceDraftPreviewInBrowser),
                           ),
                           FilledButton(
                             onPressed: () =>
                                 Navigator.of(context).pop('download'),
-                            child: const Text('Download PDF'),
+                            child: Text(l.invoiceDraftDownloadPdf),
                           ),
                         ],
                       ),

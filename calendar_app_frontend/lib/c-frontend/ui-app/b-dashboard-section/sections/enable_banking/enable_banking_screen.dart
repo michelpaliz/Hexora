@@ -11,6 +11,7 @@ import 'enable_banking_link_store.dart';
 import 'statements/all_data/mobile/statements_mobile_view.dart';
 import 'statements/all_data/statements_all_data_tab.dart';
 import 'statements/analytics/mobile/statements_analytics_mobile.dart';
+import 'statements/analytics/statements_analytics_copy.dart';
 import 'statements/analytics/statements_analytics_controller.dart';
 import 'statements/analytics/statements_analytics_view.dart';
 import 'statements/statements_controller.dart';
@@ -43,7 +44,9 @@ class EnableBankingScreen extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => StatementsController(groupId: group?.id),
         ),
-        ChangeNotifierProvider(create: (_) => StatementsAnalyticsController()),
+        ChangeNotifierProvider(
+          create: (_) => StatementsAnalyticsController(groupId: group?.id),
+        ),
       ],
       child: _EnableBankingView(group: group, embedded: embedded),
     );
@@ -68,11 +71,13 @@ class _EnableBankingViewState extends State<_EnableBankingView>
   bool _didInit = false;
   EnableBankingMenu _selectedMenu = EnableBankingMenu.allData;
   late final TabController _mobileTabController;
+  // null = auto (collapses when width < 1100), true/false = user override
+  bool? _sidebarCollapsedManual;
 
   // Mobile shows only these two tabs
   static const _mobileTabs = [
     EnableBankingMenu.allData,
-    EnableBankingMenu.analytics,
+    EnableBankingMenu.analyticsOverview,
   ];
 
   @override
@@ -113,8 +118,44 @@ class _EnableBankingViewState extends State<_EnableBankingView>
         return 'Bank';
       case EnableBankingMenu.allData:
         return isSpanish ? 'Movimientos' : l.statementsAllDataTitle;
-      case EnableBankingMenu.analytics:
-        return isSpanish ? 'Analiticas' : l.statementsAnalyticsTitle;
+      case EnableBankingMenu.analyticsOverview:
+        return isSpanish ? 'Analiticas · Resumen' : l.statementsAnalyticsTitle;
+      case EnableBankingMenu.analyticsSplit:
+        return isSpanish
+            ? 'Analiticas · ${StatementsAnalyticsCopy.splitTitle(context)}'
+            : StatementsAnalyticsCopy.splitTitle(context);
+      case EnableBankingMenu.analyticsVolume:
+        return isSpanish
+            ? 'Analiticas · ${StatementsAnalyticsCopy.volumeTitle(context)}'
+            : StatementsAnalyticsCopy.volumeTitle(context);
+      case EnableBankingMenu.analyticsTicket:
+        return isSpanish
+            ? 'Analiticas · ${StatementsAnalyticsCopy.ticketTitle(context)}'
+            : StatementsAnalyticsCopy.ticketTitle(context);
+      case EnableBankingMenu.analyticsLinked:
+        return isSpanish
+            ? 'Analiticas · ${StatementsAnalyticsCopy.linkedTitle(context)}'
+            : StatementsAnalyticsCopy.linkedTitle(context);
+      case EnableBankingMenu.analyticsActivity:
+        return isSpanish
+            ? 'Analiticas · ${StatementsAnalyticsCopy.activityTitle(context)}'
+            : StatementsAnalyticsCopy.activityTitle(context);
+      case EnableBankingMenu.analyticsStatus:
+        return isSpanish
+            ? 'Analiticas · ${StatementsAnalyticsCopy.statusTitle(context)}'
+            : StatementsAnalyticsCopy.statusTitle(context);
+      case EnableBankingMenu.analyticsTrends:
+        return isSpanish
+            ? 'Analiticas · Tendencias'
+            : l.statementsAnalyticsTrends;
+      case EnableBankingMenu.analyticsTopMerchants:
+        return isSpanish
+            ? 'Analiticas · Top comercios'
+            : l.statementsAnalyticsTopMerchants;
+      case EnableBankingMenu.analyticsComparison:
+        return isSpanish
+            ? 'Analiticas · Comparacion'
+            : l.statementsAnalyticsCompareTitle;
     }
   }
 
@@ -220,10 +261,19 @@ class _EnableBankingViewState extends State<_EnableBankingView>
             ? const StatementsMobileView()
             : const StatementsAllDataTab();
 
-      case EnableBankingMenu.analytics:
+      case EnableBankingMenu.analyticsOverview:
+      case EnableBankingMenu.analyticsSplit:
+      case EnableBankingMenu.analyticsVolume:
+      case EnableBankingMenu.analyticsTicket:
+      case EnableBankingMenu.analyticsLinked:
+      case EnableBankingMenu.analyticsActivity:
+      case EnableBankingMenu.analyticsStatus:
+      case EnableBankingMenu.analyticsTrends:
+      case EnableBankingMenu.analyticsTopMerchants:
+      case EnableBankingMenu.analyticsComparison:
         return isMobile
             ? const StatementsMobileAnalyticsView()
-            : const StatementsAnalyticsView();
+            : StatementsAnalyticsView(section: forMenu ?? _selectedMenu);
 
       case EnableBankingMenu.banking:
         return const BankingTab();
@@ -240,7 +290,8 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     // ── Mobile layout ─────────────────────────────────────────────────────────
     if (isMobile) {
       final mobileMenu = _mobileTabs[_mobileTabController.index];
-      final body = _buildContentArea(context, l, forMenu: mobileMenu, isMobile: true);
+      final body =
+          _buildContentArea(context, l, forMenu: mobileMenu, isMobile: true);
 
       final cs = Theme.of(context).colorScheme;
       final t = AppTypography.of(context);
@@ -259,7 +310,8 @@ class _EnableBankingViewState extends State<_EnableBankingView>
         labelColor: cs.onPrimaryContainer,
         unselectedLabelColor: cs.onSurfaceVariant,
         labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-        unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+        unselectedLabelStyle:
+            t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
         tabs: [
           Tab(
             height: 36,
@@ -341,19 +393,25 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     }
 
     // ── Wide / desktop layout ─────────────────────────────────────────────────
-    final desktopContent = Row(
-      children: [
-        const SizedBox(width: 12),
-        EnableBankingLeftNav(
-          selected: _selectedMenu,
-          onSelect: (menu) => setState(() => _selectedMenu = menu),
-          collapsed: false,
-          onToggleCollapse: () {},
-        ),
-        const SizedBox(width: 16),
-        Expanded(child: _buildContentArea(context, l, isMobile: false)),
-        const SizedBox(width: 12),
-      ],
+    final desktopContent = LayoutBuilder(
+      builder: (context, constraints) {
+        final autoCollapse = constraints.maxWidth < 1100;
+        final collapsed = _sidebarCollapsedManual ?? autoCollapse;
+        return Row(
+          children: [
+            EnableBankingLeftNav(
+              selected: _selectedMenu,
+              onSelect: (menu) => setState(() => _selectedMenu = menu),
+              collapsed: collapsed,
+              onToggleCollapse: () =>
+                  setState(() => _sidebarCollapsedManual = !collapsed),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: _buildContentArea(context, l, isMobile: false)),
+            const SizedBox(width: 12),
+          ],
+        );
+      },
     );
 
     if (widget.embedded) return desktopContent;

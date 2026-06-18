@@ -11,14 +11,28 @@ class GroupInvoicesSectionLabel extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Text(
-        label.toUpperCase(),
-        style: t.bodySmall.copyWith(
-          color: cs.onSurfaceVariant,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-        ),
+      padding: const EdgeInsets.fromLTRB(8, 12, 6, 5),
+      child: Row(
+        children: [
+          Container(
+            width: 14,
+            height: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.28),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              label.toUpperCase(),
+              style: t.caption.copyWith(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.62),
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.38,
+                fontSize: 10,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

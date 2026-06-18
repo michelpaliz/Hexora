@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 // Domains
 import 'package:hexora/a-models/group_model/group/group.dart';
@@ -6,6 +7,8 @@ import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/show-groups/group_screen/widgets/group_card_tile.dart';
 // i18n / theme
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -161,6 +164,74 @@ class _GroupListSectionState extends State<GroupListSection> {
     );
 
     if (widget.fullPage) {
+      final isWide = kIsWeb || MediaQuery.of(context).size.width >= 900;
+      final t = AppTypography.of(context);
+
+      if (isWide) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: ThemeColors.cardBg(context),
+              margin: const EdgeInsets.symmetric(vertical: 24),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header bar
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.06),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outlineVariant
+                                .withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.groups_rounded,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              loc.groups,
+                              style: t.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color:
+                                    Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          const InfoHelpButton(),
+                        ],
+                      ),
+                    ),
+                    // Body (search + list)
+                    Expanded(child: body),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
       return Scaffold(
         appBar: AppBar(
           title: Text(

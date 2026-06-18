@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
@@ -98,14 +99,44 @@ class GroupInvoicesController extends ChangeNotifier {
     return _s.drafts.where((inv) => inv.clientId == c.id).toList();
   }
 
+  static const _invoiceChronologyErrorMessage =
+      'Esta factura tiene una fecha anterior a la última factura emitida. '
+      'Para mantener la numeración cronológica, debes emitir primero las '
+      'facturas de fechas anteriores o corregir la fecha.';
+
+  DateTime? _invoiceChronologyDate(Invoice invoice) {
+    return invoice.issueDate ?? invoice.occurrenceDate ?? invoice.registeredAt;
+  }
+
+  DateTime? _latestIssuedInvoiceDate() {
+    DateTime? latest;
+    for (final invoice in _s.invoices) {
+      final date = _invoiceChronologyDate(invoice);
+      if (date == null) continue;
+      if (latest == null || date.isAfter(latest)) latest = date;
+    }
+    return latest;
+  }
+
+  bool _isBeforeCalendarDay(DateTime value, DateTime limit) {
+    final valueDay = DateTime(value.year, value.month, value.day);
+    final limitDay = DateTime(limit.year, limit.month, limit.day);
+    return valueDay.isBefore(limitDay);
+  }
+
+  bool _canIssueInvoiceByDate(Invoice invoice) {
+    final selectedDate = _invoiceChronologyDate(invoice);
+    final latestIssuedDate = _latestIssuedInvoiceDate();
+    if (selectedDate == null || latestIssuedDate == null) return true;
+    return !_isBeforeCalendarDay(selectedDate, latestIssuedDate);
+  }
+
   // --- actions ---
   Future<void> openCreateInvoice(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
 
     if (_s.clients.isEmpty || _s.selectedClient == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.noClientsYet)),
-      );
+      showInfoSnack(context, l.noClientsYet);
       return;
     }
 
@@ -128,9 +159,7 @@ class GroupInvoicesController extends ChangeNotifier {
     if (_s.clients.isEmpty) return;
     if (draft.id.trim().isEmpty) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Draft is missing an id')),
-      );
+      showErrorSnack(context, 'Draft is missing an id');
       return;
     }
     try {
@@ -157,13 +186,9 @@ class GroupInvoicesController extends ChangeNotifier {
       }
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Could not open draft: ${e.toString().replaceFirst('Exception: ', '')}',
-          ),
-        ),
-      );
+      final l = AppLocalizations.of(context)!;
+      final reason = e.toString().replaceFirst('Exception: ', '').trim();
+      showErrorSnack(context, l.invoiceDraftOpenFailed(reason));
     }
   }
 
@@ -184,9 +209,7 @@ class GroupInvoicesController extends ChangeNotifier {
       if (updated != null && context.mounted) {
         _set(_s.copyWith(billingProfile: updated));
         final l = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.billingProfileSaved)),
-        );
+        showSuccessSnack(context, l.billingProfileSaved);
       }
     } finally {
       if (context.mounted) _set(_s.copyWith(busyProfile: false));
@@ -220,9 +243,7 @@ class GroupInvoicesController extends ChangeNotifier {
       );
 
       final l = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.clientUpdatedWithName(updated.name))),
-      );
+      showSuccessSnack(context, l.clientUpdatedWithName(updated.name));
     }
   }
 
@@ -277,17 +298,85 @@ class GroupInvoicesController extends ChangeNotifier {
           drafts: nextDrafts,
           selectedInvoice: nextSelected));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invoice removed')),
-      );
+      final l = AppLocalizations.of(context)!;
+      showSuccessSnack(context, l.groupInvoicesRemovedSnack);
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Could not remove invoice: ${e.toString().replaceFirst('Exception: ', '')}',
-          ),
-        ),
+      final l = AppLocalizations.of(context)!;
+      final reason = e.toString().replaceFirst('Exception: ', '').trim();
+      showErrorSnack(context, l.groupInvoicesRemoveFailedSnack(reason));
+    }
+  }
+
+  Future<void> issueAllDrafts(
+    BuildContext context,
+    List<Invoice> drafts,
+  ) async {
+    int issued = 0;
+    int failed = 0;
+    final errors = <String>[];
+
+    for (final draft in drafts) {
+      if (!context.mounted) break;
+      try {
+        if (!_canIssueInvoiceByDate(draft)) {
+          throw Exception(_invoiceChronologyErrorMessage);
+        }
+        final updated = await _invoicesApi.issue(draft.id);
+        issued++;
+        // Move from drafts to invoices in local state
+        final nextDrafts = _s.drafts.where((d) => d.id != draft.id).toList();
+        final nextInvoices = [..._s.invoices, updated];
+        final nextSelected =
+            _s.selectedInvoice?.id == draft.id ? updated : _s.selectedInvoice;
+        _set(_s.copyWith(
+          drafts: nextDrafts,
+          invoices: nextInvoices,
+          selectedInvoice: nextSelected,
+        ));
+      } catch (e) {
+        failed++;
+        final msg = e.toString().replaceFirst('Exception: ', '').trim();
+        errors.add(
+            '${draft.invoiceNumber.isNotEmpty ? draft.invoiceNumber : draft.id}: $msg');
+      }
+    }
+
+    if (!context.mounted) return;
+
+    final l = AppLocalizations.of(context)!;
+    if (failed == 0) {
+      showSuccessSnack(
+          context, l.invoiceBatchIssueSuccessSnack(issued.toString()));
+    } else {
+      showInfoSnack(
+        context,
+        l.invoiceBatchIssuePartialSnack(issued.toString(), failed.toString()),
+        action: errors.isNotEmpty
+            ? SnackBarAction(
+                label: l.details,
+                onPressed: () {
+                  if (!context.mounted) return;
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: Text(l.invoiceBatchIssueErrorsTitle),
+                      content: SingleChildScrollView(
+                        child: Text(errors.join('\n')),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text(
+                            MaterialLocalizations.of(context).closeButtonLabel,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              )
+            : null,
       );
     }
   }

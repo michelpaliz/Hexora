@@ -201,11 +201,13 @@ class MailApiClient implements IMailApiClient {
     required String token,
     int limit = 25,
     String? cursor,
+    String? query,
   }) async {
     final params = <String, String>{
       'folder': folder,
       'limit': '$limit',
       if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+      if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
     };
     final r = await AuthenticatedHttpClient.get(
       _u('/threads', params),

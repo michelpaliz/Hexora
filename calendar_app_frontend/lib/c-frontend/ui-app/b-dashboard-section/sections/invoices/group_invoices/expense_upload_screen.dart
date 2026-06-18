@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dropzone/flutter_dropzone.dart';
+import 'package:flutter_dropzone_platform_interface/flutter_dropzone_platform_interface.dart'
+    show FlutterDropzonePlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/b-backend/expenses/expenses_api.dart';
@@ -11,6 +15,11 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_ops/form_helpers.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_ops/provider_operations.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_sections.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload/form_sections/expense_settlement_fields.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/prompt_clipboard_helper.dart';
+import 'package:hexora/c-frontend/ui-app/shared/jobs/ocr_import_job_mapping_store.dart';
+import 'package:hexora/c-frontend/ui-app/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -46,6 +55,325 @@ class ExpenseUploadScreen extends StatefulWidget {
   State<ExpenseUploadScreen> createState() => ExpenseUploadScreenState();
 }
 
+class _ExpenseBatchJobSnapshot {
+  final String jobId;
+  final String? backgroundJobId;
+  final Map<String, dynamic>? status;
+  final Map<String, dynamic>? result;
+
+  const _ExpenseBatchJobSnapshot({
+    required this.jobId,
+    this.backgroundJobId,
+    this.status,
+    this.result,
+  });
+}
+
+class _ExpenseBatchPreviewItem {
+  final String id;
+  final String tempId;
+  final String fileName;
+  String status;
+  Map<String, dynamic> prediction;
+  final Map<String, dynamic> confidence;
+  final List<String> warnings;
+  final Map<String, dynamic> duplicate;
+  final String? error;
+  bool selected;
+  bool reviewed = false;
+
+  _ExpenseBatchPreviewItem({
+    required this.id,
+    required this.tempId,
+    required this.fileName,
+    required this.status,
+    required this.prediction,
+    required this.confidence,
+    required this.warnings,
+    required this.duplicate,
+    this.error,
+    required this.selected,
+  });
+
+  bool get isDuplicate =>
+      status == 'duplicate' || duplicate['isDuplicate'] == true;
+  bool get isFailed => status == 'failed';
+  bool get canSelect => !isDuplicate && !isFailed;
+  bool get needsReview => status == 'needs_review';
+
+  factory _ExpenseBatchPreviewItem.fromMap(
+    Map<String, dynamic> raw,
+    int index,
+  ) {
+    final status = _batchJobText(raw['status']).toLowerCase();
+    final duplicate = raw['duplicate'] is Map
+        ? Map<String, dynamic>.from(raw['duplicate'] as Map)
+        : <String, dynamic>{};
+    final tempId = _batchJobText(raw['tempId']);
+    final fileName = _batchJobFirstText([
+      raw['fileName'],
+      raw['sourceDocument'] is Map
+          ? (raw['sourceDocument'] as Map)['fileName']
+          : null,
+      'Documento ${index + 1}',
+    ]);
+    final isDuplicate =
+        status == 'duplicate' || duplicate['isDuplicate'] == true;
+    final isFailed = status == 'failed';
+    return _ExpenseBatchPreviewItem(
+      id: tempId.isNotEmpty ? tempId : '${fileName}_$index',
+      tempId: tempId,
+      fileName: fileName,
+      status: status.isEmpty ? 'needs_review' : status,
+      prediction: raw['prediction'] is Map
+          ? Map<String, dynamic>.from(raw['prediction'] as Map)
+          : <String, dynamic>{},
+      confidence: raw['confidence'] is Map
+          ? Map<String, dynamic>.from(raw['confidence'] as Map)
+          : <String, dynamic>{},
+      warnings: _expenseBatchStringList(raw['warnings']),
+      duplicate: duplicate,
+      error: _batchJobFirstText([raw['error'], raw['message'], raw['reason']]),
+      selected: status == 'ready' && !isDuplicate && !isFailed,
+    );
+  }
+}
+
+enum _ExpenseDocumentTotalField {
+  base,
+  tax,
+  total,
+}
+
+String _batchJobText(dynamic value) => value?.toString().trim() ?? '';
+
+String _batchJobFirstText(Iterable<dynamic> values) {
+  for (final value in values) {
+    final text = _batchJobText(value);
+    if (text.isNotEmpty) return text;
+  }
+  return '';
+}
+
+int _batchJobInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(_batchJobText(value)) ?? 0;
+}
+
+double _batchJobDouble(dynamic value) {
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  return double.tryParse(_batchJobText(value)) ?? 0;
+}
+
+bool _isIncidentStatus(String status) {
+  return const {
+    'failed',
+    'needs_review',
+    'duplicate',
+    'duplicated',
+    'skipped',
+    'validation_error',
+  }.contains(status.trim().toLowerCase());
+}
+
+bool _hasIncidentItems(
+  Iterable<_ExpenseBatchPreviewItem> items, {
+  int skippedCount = 0,
+  int duplicateCount = 0,
+  int failedCount = 0,
+  int warningCount = 0,
+}) {
+  return items.any((item) => _isIncidentStatus(item.status)) ||
+      skippedCount > 0 ||
+      duplicateCount > 0 ||
+      failedCount > 0 ||
+      warningCount > 0;
+}
+
+List<String> _expenseBatchStringList(dynamic value) {
+  if (value is List) {
+    return value
+        .map((entry) => _batchJobText(entry))
+        .where((entry) => entry.isNotEmpty)
+        .toList(growable: false);
+  }
+  final text = _batchJobText(value);
+  return text.isEmpty ? <String>[] : <String>[text];
+}
+
+List<_ExpenseBatchPreviewItem> _expenseBatchPreviewItemsFromPayload(
+  Map<String, dynamic>? payload,
+) {
+  final rawItems = payload?['items'];
+  if (rawItems is! List) return <_ExpenseBatchPreviewItem>[];
+  return [
+    for (var index = 0; index < rawItems.length; index++)
+      if (rawItems[index] is Map)
+        _ExpenseBatchPreviewItem.fromMap(
+          Map<String, dynamic>.from(rawItems[index] as Map),
+          index,
+        ),
+  ];
+}
+
+String _expenseBatchJobStatusFromPayload(Map<String, dynamic>? payload) {
+  final status = _batchJobText(payload?['status']).toLowerCase();
+  if (status.isEmpty) return 'idle';
+  return status;
+}
+
+bool _isExpenseBatchJobTerminal(String? status) =>
+    status == 'completed' ||
+    status == 'failed' ||
+    status == 'needs_review' ||
+    status == 'cancelled';
+
+String _expenseBatchJobMessageFromPayload(Map<String, dynamic>? payload) {
+  if (payload == null) return '';
+  return _batchJobFirstText([
+    payload['message'],
+    payload['detail'],
+    payload['currentStep'],
+    payload['status'],
+  ]);
+}
+
+String _expenseBatchJobUiMessage(Map<String, dynamic>? payload) {
+  final status = _expenseBatchJobStatusFromPayload(payload);
+  final backendMessage = _expenseBatchJobMessageFromPayload(payload);
+  final processedFiles = _batchJobInt(payload?['processedFiles']);
+  final totalFiles = _batchJobInt(payload?['totalFiles']);
+
+  switch (status) {
+    case 'queued':
+      return backendMessage.isNotEmpty
+          ? backendMessage
+          : 'Importacion en cola. Puedes salir de esta pantalla mientras se procesa el lote.';
+    case 'processing':
+      final prefix = (processedFiles > 0 && totalFiles > 0)
+          ? 'Procesando $processedFiles de $totalFiles archivos.'
+          : 'Procesando lote de gastos.';
+      if (backendMessage.isNotEmpty) {
+        return '$prefix $backendMessage';
+      }
+      return '$prefix Puedes salir de esta pantalla mientras se completa la importacion.';
+    case 'completed':
+      return backendMessage.isNotEmpty
+          ? backendMessage
+          : 'Importacion completada.';
+    case 'failed':
+      return backendMessage.isNotEmpty
+          ? backendMessage
+          : 'Importacion fallida.';
+    default:
+      return backendMessage.isNotEmpty
+          ? backendMessage
+          : 'Esperando importacion...';
+  }
+}
+
+List<String> _expenseBatchIssuesFromPayload(Map<String, dynamic>? payload) {
+  if (payload == null) return const <String>[];
+  final issues = <String>[];
+
+  void append(dynamic entry, {String? fallbackReason}) {
+    if (entry == null) return;
+    if (entry is String) {
+      final text = entry.trim();
+      if (text.isNotEmpty) issues.add(text);
+      return;
+    }
+    if (entry is Map) {
+      final map = Map<String, dynamic>.from(entry);
+      final fileName = _batchJobFirstText([
+        map['fileName'],
+        map['filename'],
+        map['name'],
+        map['documentName'],
+        map['document'],
+      ]);
+      final reason = _batchJobFirstText([
+        map['reason'],
+        map['message'],
+        map['error'],
+        map['detail'],
+        fallbackReason,
+      ]);
+      if (fileName.isNotEmpty && reason.isNotEmpty) {
+        issues.add('$fileName - $reason');
+      } else if (fileName.isNotEmpty) {
+        issues.add(fileName);
+      } else if (reason.isNotEmpty) {
+        issues.add(reason);
+      }
+    }
+  }
+
+  void appendList(dynamic raw, {String? fallbackReason}) {
+    if (raw is List) {
+      for (final entry in raw) {
+        append(entry, fallbackReason: fallbackReason);
+      }
+    }
+  }
+
+  appendList(payload['errors'], fallbackReason: 'Error');
+  appendList(payload['issues'], fallbackReason: 'Incidencia');
+  appendList(payload['warnings'], fallbackReason: 'Advertencia');
+  appendList(payload['failedFiles'], fallbackReason: 'No se pudo importar');
+  appendList(payload['skippedFiles'], fallbackReason: 'Se omitio del lote');
+  appendList(payload['files']);
+
+  return issues.toSet().toList();
+}
+
+Map<String, String> _expenseBatchFileIssueMapFromPayload(
+  Map<String, dynamic>? payload,
+) {
+  if (payload == null) return const <String, String>{};
+  final issuesByFile = <String, String>{};
+
+  void append(dynamic entry, {String? fallbackReason}) {
+    if (entry is! Map) return;
+    final map = Map<String, dynamic>.from(entry);
+    final fileName = _batchJobFirstText([
+      map['fileName'],
+      map['filename'],
+      map['name'],
+      map['documentName'],
+      map['document'],
+    ]);
+    if (fileName.isEmpty) return;
+    final reason = _batchJobFirstText([
+      map['reason'],
+      map['message'],
+      map['error'],
+      map['detail'],
+      fallbackReason,
+    ]);
+    issuesByFile[fileName.toLowerCase().trim()] =
+        reason.isEmpty ? 'Con incidencia' : reason;
+  }
+
+  void appendList(dynamic raw, {String? fallbackReason}) {
+    if (raw is List) {
+      for (final entry in raw) {
+        append(entry, fallbackReason: fallbackReason);
+      }
+    }
+  }
+
+  appendList(payload['failedFiles'], fallbackReason: 'No se pudo importar');
+  appendList(payload['skippedFiles'], fallbackReason: 'Se omitio del lote');
+  appendList(payload['errors'], fallbackReason: 'Error');
+  appendList(payload['issues'], fallbackReason: 'Incidencia');
+  appendList(payload['files']);
+
+  return issuesByFile;
+}
+
 abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     with
         TickerProviderStateMixin,
@@ -57,6 +385,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   // Form controllers
   final _vendorController = TextEditingController();
   final _issueDateController = TextEditingController();
+  final _baseTotalController = TextEditingController();
   final _totalController = TextEditingController();
   final _vendorTaxIdController = TextEditingController();
   final _invoiceNumberController = TextEditingController();
@@ -70,6 +399,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   final _jsonGroupIdOverrideController = TextEditingController();
   final _jsonStatementEntryController = TextEditingController();
   final _jsonClientController = TextEditingController();
+  final _jsonBaseController = TextEditingController();
+  final _jsonTaxController = TextEditingController();
+  final _jsonTotalController = TextEditingController();
   final _batchJsonController = TextEditingController();
 
   // Provider form controllers
@@ -105,8 +437,18 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
 
   // Expense state
   final List<ExpenseLineDraft> _lines = [];
+  final _manualSettlement = ExpenseSettlementDraft();
+  final _manualDocumentDiscount = ExpenseDocumentDiscountDraft();
+  final _manualWithholding = ExpenseWithholdingDraft();
+  final _jsonSettlement = ExpenseSettlementDraft();
+  final _jsonDocumentDiscount = ExpenseDocumentDiscountDraft();
+  bool _manualUseSummaryTotals = false;
+  bool _jsonUseSummaryTotals = false;
+  bool _syncingManualSummaryTotals = false;
+  bool _syncingJsonSummaryTotals = false;
   List<Map<String, dynamic>>? _vatBreakdown;
   Map<String, String>? _selectedRecentExpense;
+  String? _pendingAutoEditExpenseId;
   bool _loadingPreview = false;
   String? _previewError;
   Uint8List? _jsonInvoiceFileBytes;
@@ -117,18 +459,36 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   bool _jsonPromptLoading = false;
   String? _jsonError;
   bool _jsonAdvancedExpanded = false;
+  int _jsonImportStep = 0;
   String? _jsonPromptMessage;
   String? _jsonPromptText;
   List<Uint8List> _batchDocumentBytes = [];
   List<String> _batchDocumentNames = [];
   bool _batchSubmitting = false;
   bool _batchGeneratingJson = false;
+  bool _batchStartingJob = false;
+  bool _batchExportingIncidents = false;
+  bool _batchPollingInFlight = false;
+  bool _batchResultLoading = false;
   String? _batchError;
+  List<String> _batchSkippedDetails = [];
   String? _batchVerifyMessage;
   int _batchDetectedInvoices = 0;
+  int _batchFileFilterIndex = 0;
+  bool _batchErrorsExpanded = false;
+  bool _batchSummaryCollapsed = true;
+  String? _batchJobId;
+  String? _batchBackgroundJobId;
+  Map<String, dynamic>? _batchJobStatus;
+  Map<String, dynamic>? _batchJobResult;
+  Map<String, dynamic>? _batchConfirmResult;
+  List<_ExpenseBatchPreviewItem> _batchPreviewItems = [];
+  Timer? _batchJobPollTimer;
 
-  static const int _maxBatchDocuments = 100;
+  static const int _maxBatchDocuments = 200;
   static const int _maxBatchFileSizeBytes = 10 * 1024 * 1024;
+  static final Map<String, _ExpenseBatchJobSnapshot> _batchJobCacheByGroup =
+      <String, _ExpenseBatchJobSnapshot>{};
 
   // Mixin implementations for ProviderOperationsMixin
   @override
@@ -212,6 +572,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   @override
   set previewError(String? value) => _previewError = value;
 
+  List<String> get batchSkippedDetails => _batchSkippedDetails;
+
   @override
   void initState() {
     super.initState();
@@ -234,6 +596,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     'pdf',
     'jpg',
     'jpeg',
+    'jpe',
     'png',
     'webp',
   };
@@ -249,7 +612,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   String _inferMimeTypeFromFileName(String fileName) {
     final lc = fileName.toLowerCase();
     if (lc.endsWith('.pdf')) return 'application/pdf';
-    if (lc.endsWith('.jpg') || lc.endsWith('.jpeg')) return 'image/jpeg';
+    if (lc.endsWith('.jpg') || lc.endsWith('.jpeg') || lc.endsWith('.jpe')) {
+      return 'image/jpeg';
+    }
     if (lc.endsWith('.png')) return 'image/png';
     if (lc.endsWith('.webp')) return 'image/webp';
     return 'application/octet-stream';
@@ -268,7 +633,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     String emptyMessage =
         'Invoice file/photo is required and must be linked to the expense.',
     String unsupportedTypeMessage =
-        'Unsupported file type. Use PDF, JPG, PNG, or WEBP.',
+        'Unsupported file type. Use PDF, JPG/JPEG/JPE, PNG, or WEBP.',
     String Function(String fileName, int fileSize, int maxSize)?
         tooLargeMessageBuilder,
   }) {
@@ -339,6 +704,115 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     _importTabs.index = initialIndex.clamp(0, 2);
   }
 
+  String _batchJobCacheKey() {
+    final resolved = resolveGroupId().trim();
+    if (resolved.isNotEmpty) return resolved;
+    return widget.groupId.trim();
+  }
+
+  bool get _hasTrackedBatchJob => (_batchJobId ?? '').trim().isNotEmpty;
+
+  bool get _hasRunningBatchJob =>
+      _hasTrackedBatchJob &&
+      !_isExpenseBatchJobTerminal(
+        _expenseBatchJobStatusFromPayload(_batchJobStatus),
+      );
+
+  void _cacheBatchJobSnapshot() {
+    final key = _batchJobCacheKey();
+    if (key.isEmpty) return;
+    final jobId = (_batchJobId ?? '').trim();
+    if (jobId.isEmpty) {
+      _batchJobCacheByGroup.remove(key);
+      return;
+    }
+    _batchJobCacheByGroup[key] = _ExpenseBatchJobSnapshot(
+      jobId: jobId,
+      backgroundJobId: (_batchBackgroundJobId ?? '').trim().isEmpty
+          ? null
+          : _batchBackgroundJobId!.trim(),
+      status: _batchJobStatus == null
+          ? null
+          : Map<String, dynamic>.from(_batchJobStatus!),
+      result: _batchJobResult == null
+          ? null
+          : Map<String, dynamic>.from(_batchJobResult!),
+    );
+  }
+
+  bool _restoreCachedBatchJobSnapshot() {
+    final key = _batchJobCacheKey();
+    if (key.isEmpty) return false;
+    final snapshot = _batchJobCacheByGroup[key];
+    if (snapshot == null) return false;
+    _batchJobId = snapshot.jobId;
+    _batchBackgroundJobId = snapshot.backgroundJobId;
+    _batchJobStatus = snapshot.status == null
+        ? null
+        : Map<String, dynamic>.from(snapshot.status!);
+    _batchJobResult = snapshot.result == null
+        ? null
+        : Map<String, dynamic>.from(snapshot.result!);
+    _batchPreviewItems = _expenseBatchPreviewItemsFromPayload(_batchJobResult);
+    return true;
+  }
+
+  void _clearBatchJobSnapshotCache() {
+    final key = _batchJobCacheKey();
+    if (key.isEmpty) return;
+    _batchJobCacheByGroup.remove(key);
+  }
+
+  Future<void> _persistBatchJobMapping() async {
+    final previewJobId = (_batchJobId ?? '').trim();
+    final backgroundJobId = (_batchBackgroundJobId ?? '').trim();
+    if (previewJobId.isEmpty || backgroundJobId.isEmpty) return;
+    await OcrImportJobMappingStore.instance.upsert(
+      OcrImportJobMapping(
+        previewJobId: previewJobId,
+        backgroundJobId: backgroundJobId,
+        startedAt: DateTime.now(),
+        type: 'OCR_IMPORT',
+      ),
+    );
+  }
+
+  Future<bool> _restorePersistedBatchJobMapping() async {
+    final jobs = await OcrImportJobMappingStore.instance.loadAll();
+    if (jobs.isEmpty) return false;
+    final latest = jobs.firstWhere(
+      (entry) => entry.type == 'OCR_IMPORT',
+      orElse: () => jobs.first,
+    );
+    _batchJobId = latest.previewJobId;
+    _batchBackgroundJobId = latest.backgroundJobId;
+    OcrImportJobsStore.instance.trackStartedJob(
+      backgroundJobId: latest.backgroundJobId,
+      totalFiles: _batchDocumentNames.length,
+    );
+    return true;
+  }
+
+  void _resetBatchJobTracking(
+      {bool clearResult = true, bool clearCache = true}) {
+    _batchJobPollTimer?.cancel();
+    _batchJobPollTimer = null;
+    _batchPollingInFlight = false;
+    _batchStartingJob = false;
+    _batchJobId = null;
+    _batchBackgroundJobId = null;
+    _batchJobStatus = null;
+    if (clearResult) {
+      _batchJobResult = null;
+      _batchConfirmResult = null;
+      _batchPreviewItems = [];
+    }
+    _batchResultLoading = false;
+    if (clearCache) {
+      _clearBatchJobSnapshotCache();
+    }
+  }
+
   @override
   void reassemble() {
     super.reassemble();
@@ -363,8 +837,34 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     }
   }
 
+  void openExpenseEditorById(String expenseId) {
+    final trimmedId = expenseId.trim();
+    if (trimmedId.isEmpty) return;
+
+    _pendingAutoEditExpenseId = trimmedId;
+    _selectedRecentExpense = <String, String>{'id': trimmedId};
+
+    if (_tabs.index != 0) {
+      _tabs.index = 0;
+    }
+
+    final matched = _recentUploads.cast<Map<String, String>?>().firstWhere(
+          (item) => (item?['id'] ?? '').trim() == trimmedId,
+          orElse: () => null,
+        );
+
+    if (matched != null) {
+      selectRecentExpense(matched);
+      return;
+    }
+
+    setState(() {});
+    unawaited(loadRecentUploads());
+  }
+
   @override
   void dispose() {
+    _batchJobPollTimer?.cancel();
     _tabs.dispose();
     _importTabs.dispose();
     for (final line in _lines) {
@@ -372,6 +872,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     }
     _vendorController.dispose();
     _issueDateController.dispose();
+    _baseTotalController.dispose();
     _totalController.dispose();
     _vendorTaxIdController.dispose();
     _invoiceNumberController.dispose();
@@ -385,6 +886,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     _jsonGroupIdOverrideController.dispose();
     _jsonStatementEntryController.dispose();
     _jsonClientController.dispose();
+    _jsonBaseController.dispose();
+    _jsonTaxController.dispose();
+    _jsonTotalController.dispose();
     _batchJsonController.dispose();
     _providerNameController.dispose();
     _providerTaxIdController.dispose();
@@ -397,6 +901,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     _providerProvinceController.dispose();
     _providerPostalCodeController.dispose();
     _providerCountryController.dispose();
+    _manualSettlement.dispose();
+    _manualDocumentDiscount.dispose();
+    _manualWithholding.dispose();
+    _jsonSettlement.dispose();
+    _jsonDocumentDiscount.dispose();
     super.dispose();
   }
 
@@ -437,31 +946,399 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     setState(() {});
   }
 
-  String _computeTotalFromLines() {
-    final total = _lines.fold<double>(0, (sum, line) => sum + line.total);
-    return total.toStringAsFixed(2);
-  }
-
   double _linesSubtotal() =>
       _lines.fold<double>(0, (sum, line) => sum + line.subtotal);
 
   double _linesTax() =>
       _lines.fold<double>(0, (sum, line) => sum + line.taxAmount);
 
+  double? _parseControllerAmount(TextEditingController controller) {
+    return ExpenseFormHelpers.parseAmount(controller.text);
+  }
+
+  void _setFormattedAmount(
+    TextEditingController controller,
+    double value,
+  ) {
+    final formatted = value.toStringAsFixed(2);
+    if (controller.text != formatted) {
+      controller.text = formatted;
+    }
+  }
+
+  void _syncSummaryControllers({
+    required TextEditingController baseController,
+    required TextEditingController taxController,
+    required TextEditingController totalController,
+    required _ExpenseDocumentTotalField changedField,
+    required bool Function() isSyncing,
+    required void Function(bool value) setSyncing,
+  }) {
+    if (isSyncing()) return;
+    final base = _parseControllerAmount(baseController);
+    final tax = _parseControllerAmount(taxController) ?? 0;
+    final total = _parseControllerAmount(totalController);
+
+    setSyncing(true);
+    if (changedField == _ExpenseDocumentTotalField.total ||
+        (changedField == _ExpenseDocumentTotalField.tax &&
+            (base == null || base < 0) &&
+            total != null)) {
+      if (total != null) {
+        _setFormattedAmount(
+          baseController,
+          (total - tax).clamp(0, double.infinity).toDouble(),
+        );
+      }
+    } else if (base != null) {
+      _setFormattedAmount(
+        totalController,
+        (base + tax).clamp(0, double.infinity).toDouble(),
+      );
+    }
+    setSyncing(false);
+  }
+
+  void _syncManualSummaryControllers(_ExpenseDocumentTotalField changedField) {
+    if (!_manualUseSummaryTotals && _lines.isNotEmpty) return;
+    _syncSummaryControllers(
+      baseController: _baseTotalController,
+      taxController: _taxTotalController,
+      totalController: _totalController,
+      changedField: changedField,
+      isSyncing: () => _syncingManualSummaryTotals,
+      setSyncing: (value) => _syncingManualSummaryTotals = value,
+    );
+  }
+
+  void _syncJsonSummaryControllers(_ExpenseDocumentTotalField changedField) {
+    _syncSummaryControllers(
+      baseController: _jsonBaseController,
+      taxController: _jsonTaxController,
+      totalController: _jsonTotalController,
+      changedField: changedField,
+      isSyncing: () => _syncingJsonSummaryTotals,
+      setSyncing: (value) => _syncingJsonSummaryTotals = value,
+    );
+  }
+
+  ExpenseDocumentDiscountPreview? _previewDiscountFromSummaryControllers({
+    required ExpenseDocumentDiscountDraft draft,
+    required TextEditingController baseController,
+    required TextEditingController taxController,
+  }) {
+    final finalBase = _parseControllerAmount(baseController);
+    final finalTax = _parseControllerAmount(taxController) ?? 0;
+    if (finalBase == null) return null;
+    final grossBase = draft.grossBaseFromFinal(finalBase);
+    final grossTax = draft.grossTaxFromFinal(
+      finalBase: finalBase,
+      finalTax: finalTax,
+    );
+    return _previewDocumentDiscount(
+      draft: draft,
+      subtotalBeforeDiscount: grossBase,
+      taxBeforeDiscount: grossTax,
+    );
+  }
+
+  void _applyManualSummaryControllersFromLines(
+    ExpenseDocumentDiscountPreview preview,
+  ) {
+    _syncingManualSummaryTotals = true;
+    _setFormattedAmount(
+      _baseTotalController,
+      preview.taxableBase,
+    );
+    _setFormattedAmount(
+      _taxTotalController,
+      preview.tax,
+    );
+    _setFormattedAmount(
+      _totalController,
+      preview.total,
+    );
+    _syncingManualSummaryTotals = false;
+  }
+
+  void _loadJsonSummaryControllersFromExpense(
+    Map<String, dynamic> expense, {
+    bool allowAutoMode = false,
+  }) {
+    final total = ExpenseFormHelpers.parseNum(expense['total']);
+    final tax = ExpenseFormHelpers.parseNum(
+          expense['taxTotal'] ?? expense['vatTotal'] ?? expense['tax'],
+        ) ??
+        0;
+    final subtotal = ExpenseFormHelpers.parseNum(expense['subtotal']);
+    final base = subtotal ??
+        (total == null ? null : (total - tax).clamp(0, double.infinity));
+
+    _syncingJsonSummaryTotals = true;
+    if (base != null) {
+      _setFormattedAmount(_jsonBaseController, base.toDouble());
+    }
+    if (ExpenseFormHelpers.parseNum(
+          expense['taxTotal'] ?? expense['vatTotal'] ?? expense['tax'],
+        ) !=
+        null) {
+      _setFormattedAmount(_jsonTaxController, tax.toDouble());
+    }
+    if (total != null) {
+      _setFormattedAmount(_jsonTotalController, total.toDouble());
+    }
+    _syncingJsonSummaryTotals = false;
+
+    if (!allowAutoMode) return;
+    final rawLines = expense['lines'] is List
+        ? expense['lines']
+        : expense['items'] is List
+            ? expense['items']
+            : null;
+    final lines = rawLines is List
+        ? rawLines
+            .whereType<Map>()
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList(growable: false)
+        : null;
+    final shouldUseSummary = ExpenseFormHelpers.shouldUseSummaryTotals(
+      expense: expense,
+      storedTotal: total?.toDouble(),
+      storedTax: tax.toDouble(),
+      lines: lines,
+    );
+    if (shouldUseSummary != _jsonUseSummaryTotals) {
+      _jsonUseSummaryTotals = shouldUseSummary;
+    }
+  }
+
+  void _tryLoadJsonSummaryControllersFromPayload(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return;
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is! Map) return;
+      final payload = Map<String, dynamic>.from(decoded);
+      final expense = payload['expense'] is Map
+          ? Map<String, dynamic>.from(payload['expense'] as Map)
+          : payload;
+      _loadJsonSummaryControllersFromExpense(
+        expense,
+        allowAutoMode: true,
+      );
+    } catch (_) {
+      // Ignore incomplete manual JSON while the user is still editing.
+    }
+  }
+
+  ExpenseDocumentDiscountPreview _previewDocumentDiscount({
+    required ExpenseDocumentDiscountDraft draft,
+    required double subtotalBeforeDiscount,
+    required double taxBeforeDiscount,
+  }) {
+    draft.syncDerivedFields(subtotalBeforeDiscount);
+    return draft.buildPreview(
+      subtotalBeforeDiscount: subtotalBeforeDiscount,
+      taxBeforeDiscount: taxBeforeDiscount,
+    );
+  }
+
+  ExpenseDocumentDiscountPreview? _manualDiscountPreview() {
+    if (_manualUseSummaryTotals) {
+      return _previewDiscountFromSummaryControllers(
+        draft: _manualDocumentDiscount,
+        baseController: _baseTotalController,
+        taxController: _taxTotalController,
+      );
+    }
+    if (_lines.isNotEmpty) {
+      return _previewDocumentDiscount(
+        draft: _manualDocumentDiscount,
+        subtotalBeforeDiscount: _linesSubtotal(),
+        taxBeforeDiscount: _linesTax(),
+      );
+    }
+    final total = ExpenseFormHelpers.parseAmount(_totalController.text);
+    final tax = ExpenseFormHelpers.parseAmount(_taxTotalController.text) ?? 0;
+    if (total == null) return null;
+    final finalBase = (total - tax).clamp(0, double.infinity).toDouble();
+    final grossBase = _manualDocumentDiscount.grossBaseFromFinal(finalBase);
+    final grossTax = _manualDocumentDiscount.grossTaxFromFinal(
+      finalBase: finalBase,
+      finalTax: tax,
+    );
+    return _previewDocumentDiscount(
+      draft: _manualDocumentDiscount,
+      subtotalBeforeDiscount: grossBase,
+      taxBeforeDiscount: grossTax,
+    );
+  }
+
+  ExpenseDocumentDiscountPreview? _jsonDiscountPreview() {
+    if (_jsonUseSummaryTotals) {
+      return _previewDiscountFromSummaryControllers(
+        draft: _jsonDocumentDiscount,
+        baseController: _jsonBaseController,
+        taxController: _jsonTaxController,
+      );
+    }
+    final raw = _jsonPayloadController.text.trim();
+    if (raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final payload = Map<String, dynamic>.from(decoded);
+      final expense = payload['expense'] is Map
+          ? Map<String, dynamic>.from(payload['expense'] as Map)
+          : payload;
+      final rawLines = expense['lines'] is List
+          ? expense['lines']
+          : payload['items'] is List
+              ? payload['items']
+              : expense['items'] is List
+                  ? expense['items']
+                  : null;
+      if (rawLines is List && rawLines.isNotEmpty) {
+        final lines = rawLines
+            .whereType<Map>()
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList(growable: false);
+        final summary = ExpenseFormHelpers.summarizeLines(lines);
+        final subtotal = (summary['subtotal'] as num?)?.toDouble() ?? 0;
+        final tax = (summary['tax'] as num?)?.toDouble() ?? 0;
+        return _previewDocumentDiscount(
+          draft: _jsonDocumentDiscount,
+          subtotalBeforeDiscount: subtotal,
+          taxBeforeDiscount: tax,
+        );
+      }
+      final total = ExpenseFormHelpers.parseNum(expense['total']);
+      final tax = ExpenseFormHelpers.parseNum(
+            expense['taxTotal'] ?? expense['vatTotal'] ?? expense['tax'],
+          ) ??
+          0;
+      if (total == null) return null;
+      final finalBase = (total - tax).clamp(0, double.infinity).toDouble();
+      final grossBase = _jsonDocumentDiscount.grossBaseFromFinal(finalBase);
+      final grossTax = _jsonDocumentDiscount.grossTaxFromFinal(
+        finalBase: finalBase,
+        finalTax: tax,
+      );
+      return _previewDocumentDiscount(
+        draft: _jsonDocumentDiscount,
+        subtotalBeforeDiscount: grossBase,
+        taxBeforeDiscount: grossTax,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _tryLoadJsonDocumentDiscountFromPayload(Map<String, dynamic> payload) {
+    if (_jsonDocumentDiscount.hasDiscount) return;
+    final expense = payload['expense'] is Map
+        ? Map<String, dynamic>.from(payload['expense'] as Map)
+        : payload;
+    final rawLines = expense['lines'] is List
+        ? expense['lines']
+        : payload['items'] is List
+            ? payload['items']
+            : expense['items'] is List
+                ? expense['items']
+                : null;
+    double? subtotalHint;
+    if (rawLines is List && rawLines.isNotEmpty) {
+      final lines = rawLines
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList(growable: false);
+      final summary = ExpenseFormHelpers.summarizeLines(lines);
+      subtotalHint = (summary['subtotal'] as num?)?.toDouble();
+    } else {
+      final total = ExpenseFormHelpers.parseNum(expense['total']);
+      final tax = ExpenseFormHelpers.parseNum(
+        expense['taxTotal'] ?? expense['vatTotal'] ?? expense['tax'],
+      );
+      if (total != null) {
+        final finalBase = (total - (tax ?? 0)).clamp(0, double.infinity);
+        subtotalHint = finalBase.toDouble();
+      }
+    }
+    _jsonDocumentDiscount.loadFromExpenseMap(
+      expense,
+      subtotalBeforeDiscountHint: subtotalHint,
+    );
+  }
+
+  List<ExpenseAdvanceOption> _buildAdvanceOptions({
+    String? providerId,
+    String? vendorName,
+    String? excludeExpenseId,
+  }) {
+    final normalizedProviderId = (providerId ?? '').trim().toLowerCase();
+    final normalizedVendor = (vendorName ?? '').trim().toLowerCase();
+    final excludedId = (excludeExpenseId ?? '').trim();
+    final options = <ExpenseAdvanceOption>[];
+
+    for (final item in _recentUploads) {
+      final type = ExpenseDocumentTypeX.fromApi(item['expenseType']);
+      if (!type.isAdvance) continue;
+
+      final itemId = (item['id'] ?? '').trim();
+      if (excludedId.isNotEmpty && itemId == excludedId) continue;
+
+      final itemProviderId = (item['providerId'] ?? '').trim().toLowerCase();
+      final itemVendor =
+          ((item['vendor'] ?? item['providerName'] ?? '')).trim().toLowerCase();
+
+      final matchesProvider = normalizedProviderId.isNotEmpty &&
+          itemProviderId == normalizedProviderId;
+      final matchesVendor = normalizedProviderId.isEmpty &&
+          normalizedVendor.isNotEmpty &&
+          itemVendor == normalizedVendor;
+
+      final canUse = normalizedProviderId.isEmpty && normalizedVendor.isEmpty
+          ? true
+          : (matchesProvider || matchesVendor);
+      if (!canUse) continue;
+
+      options.add(ExpenseAdvanceOption.fromRecentMap(item));
+    }
+
+    options.sort((a, b) {
+      final aDate = DateTime.tryParse(a.issueDate);
+      final bDate = DateTime.tryParse(b.issueDate);
+      if (aDate != null && bDate != null) {
+        return bDate.compareTo(aDate);
+      }
+      return b.issueDate.compareTo(a.issueDate);
+    });
+    return options;
+  }
+
   Future<void> _pickFile() async {
     final result = await ExpenseFormHelpers.pickFile();
     if (result == null) return;
+    await _acceptPickedExpenseFile(result.fileName, result.fileBytes);
+  }
+
+  Future<void> _acceptPickedExpenseFile(
+    String fileName,
+    Uint8List fileBytes,
+  ) async {
     final validationError = _validateInvoiceUploadFile(
-      fileName: result.fileName,
-      fileBytes: result.fileBytes,
+      fileName: fileName,
+      fileBytes: fileBytes,
     );
     if (validationError != null) {
+      if (!mounted) return;
       setState(() => _error = validationError);
       return;
     }
+    if (!mounted) return;
     setState(() {
-      _fileName = result.fileName;
-      _fileBytes = result.fileBytes;
+      _fileName = fileName;
+      _fileBytes = fileBytes;
       _error = null;
     });
   }
@@ -534,11 +1411,46 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       );
       return;
     }
+    if (_manualUseSummaryTotals) {
+      final summaryValidation = ExpenseFormHelpers.validateSummaryTotals(
+        base: _parseControllerAmount(_baseTotalController),
+        tax: _parseControllerAmount(_taxTotalController),
+        total: _parseControllerAmount(_totalController),
+      );
+      if (summaryValidation != null) {
+        setState(() => _error = summaryValidation);
+        return;
+      }
+    }
+    final settlementError = _manualSettlement.validate();
+    if (settlementError != null) {
+      setState(() => _error = settlementError);
+      return;
+    }
+    final discountPreview = _manualDiscountPreview();
+    final discountValidationBase = discountPreview?.subtotalBeforeDiscount ??
+        (() {
+          final total = ExpenseFormHelpers.parseAmount(_totalController.text);
+          final tax =
+              ExpenseFormHelpers.parseAmount(_taxTotalController.text) ?? 0;
+          if (total == null) return 0.0;
+          return (total - tax).clamp(0, double.infinity).toDouble();
+        })();
+    final discountError =
+        _manualDocumentDiscount.validate(discountValidationBase);
+    if (discountError != null) {
+      setState(() => _error = discountError);
+      return;
+    }
     for (final line in _lines) {
       if (line.descriptionController.text.trim().isEmpty ||
           line.quantity <= 0 ||
-          line.unitPrice <= 0 ||
-          line.taxRate < 0) {
+          line.baseUnitPrice <= 0 ||
+          line.taxRate < 0 ||
+          line.discountPercent < 0 ||
+          line.discountPercent > 100 ||
+          line.discountAmount < 0 ||
+          line.discountAmount > line.grossSubtotal + 0.0001) {
         setState(
           () => _error =
               AppLocalizations.of(context)!.expenseUploadLinesInvalidError,
@@ -566,6 +1478,19 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
           AppLocalizations.of(context)!.expenseUploadInvalidIssueDateError,
         );
       }
+      final expenseType = _manualSettlement.expenseType.apiValue;
+      final advancePayment = _manualSettlement.buildAdvancePaymentPayload();
+      final finalSettlement = _manualSettlement.buildFinalSettlementPayload();
+      final effectiveDiscountPreview =
+          discountPreview ?? _manualDiscountPreview();
+      final summaryBase = _parseControllerAmount(_baseTotalController);
+      final summaryTax = _parseControllerAmount(_taxTotalController);
+      final summaryVatBreakdown = _manualUseSummaryTotals
+          ? ExpenseFormHelpers.buildSummaryVatBreakdown(
+              base: summaryBase,
+              tax: summaryTax,
+            )
+          : null;
       final response = await _api.uploadExpense(
         bytes: _fileBytes!,
         filename: _fileName!,
@@ -593,8 +1518,43 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
         clientId: _clientIdController.text.trim().isEmpty
             ? null
             : _clientIdController.text.trim(),
-        lines: ExpenseFormHelpers.buildLinesPayload(_lines),
+        lines: _manualUseSummaryTotals
+            ? null
+            : ExpenseFormHelpers.buildLinesPayload(_lines),
         providerId: _selectedProviderId,
+        expenseType: expenseType,
+        advancePayment: advancePayment,
+        finalSettlement: finalSettlement,
+        discountAmount: effectiveDiscountPreview == null
+            ? (_manualDocumentDiscount.discountAmountController.text
+                    .trim()
+                    .isEmpty
+                ? null
+                : _manualDocumentDiscount.discountAmountController.text.trim())
+            : effectiveDiscountPreview.discountAmount.toStringAsFixed(2),
+        discountPercent: effectiveDiscountPreview == null
+            ? (_manualDocumentDiscount.discountPercentController.text
+                    .trim()
+                    .isEmpty
+                ? null
+                : _manualDocumentDiscount.discountPercentController.text.trim())
+            : effectiveDiscountPreview.discountPercent.toStringAsFixed(2),
+        withholding: () {
+          if (!_manualWithholding.enabled) return null;
+          final buf = <String, dynamic>{};
+          _manualWithholding.applyToExpensePayload(
+            buf,
+            taxableBase: double.tryParse(_baseTotalController.text.trim()) ?? 0,
+            grossTotal: double.tryParse(_totalController.text.trim()) ?? 0,
+          );
+          return buf['withholding'] as Map<String, dynamic>?;
+        }(),
+        subtotal: _manualUseSummaryTotals && summaryBase != null
+            ? summaryBase.toStringAsFixed(2)
+            : null,
+        vatBreakdown: summaryVatBreakdown,
+        useSummaryTotals: _manualUseSummaryTotals ? true : null,
+        taxSource: _manualUseSummaryTotals ? 'summary' : null,
       );
       if (!mounted) return;
       final breakdown = response['vatBreakdown'];
@@ -623,11 +1583,39 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       );
       final providerNameValue =
           selectedProvider['name']?.toString().trim() ?? '';
+      final createdLinesPayload = ExpenseFormHelpers.buildLinesPayload(
+            _lines,
+            useSummaryTotals: _manualUseSummaryTotals,
+          ) ??
+          const [];
+      final createdLinesSummary =
+          ExpenseFormHelpers.summarizeLines(createdLinesPayload);
+      final responseUseSummaryTotals =
+          ExpenseFormHelpers.shouldUseSummaryTotals(
+        expense: response,
+        storedTotal: ExpenseFormHelpers.parseNum(response['total'])?.toDouble(),
+        storedTax: ExpenseFormHelpers.parseNum(
+          response['taxTotal'] ?? response['vatTotal'] ?? response['tax'],
+        )?.toDouble(),
+        lines: response['lines'] is List
+            ? (response['lines'] as List)
+                .whereType<Map>()
+                .map((entry) => Map<String, dynamic>.from(entry))
+                .toList(growable: false)
+            : response['items'] is List
+                ? (response['items'] as List)
+                    .whereType<Map>()
+                    .map((entry) => Map<String, dynamic>.from(entry))
+                    .toList(growable: false)
+                : null,
+      );
       setState(() {
         _recentUploads.insert(0, {
           if (newId != null && newId.isNotEmpty) 'id': newId,
           'vendor': _vendorController.text.trim(),
           'total': _totalController.text.trim(),
+          'subtotal':
+              (response['subtotal'] ?? _baseTotalController.text).toString(),
           'date': _issueDateController.text.trim(),
           'file': _fileName ?? '',
           'providerId': _selectedProviderId ?? '',
@@ -638,8 +1626,95 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
             'currency': _currencyController.text.trim(),
           if (_taxTotalController.text.trim().isNotEmpty)
             'tax': _taxTotalController.text.trim(),
+          'taxSource': (response['taxSource'] ?? response['totalsSource'] ?? '')
+              .toString(),
+          'discountAmount': (response['discountAmount'] ??
+                  effectiveDiscountPreview?.discountAmount.toStringAsFixed(2) ??
+                  '')
+              .toString(),
+          'discountPercent': (response['discountPercent'] ??
+                  effectiveDiscountPreview?.discountPercent
+                      .toStringAsFixed(2) ??
+                  '')
+              .toString(),
+          'expenseType': (response['expenseType'] ?? expenseType).toString(),
+          if (response['advancePayment'] is Map) ...{
+            'advancePercent':
+                ((response['advancePayment'] as Map)['percent'] ?? '')
+                    .toString(),
+            'advanceProjectBaseAmount':
+                ((response['advancePayment'] as Map)['projectBaseAmount'] ?? '')
+                    .toString(),
+            'advanceTaxRate':
+                ((response['advancePayment'] as Map)['taxRate'] ?? '')
+                    .toString(),
+          } else if (advancePayment != null) ...{
+            'advancePercent': (advancePayment['percent'] ?? '').toString(),
+            'advanceProjectBaseAmount':
+                (advancePayment['projectBaseAmount'] ?? '').toString(),
+            'advanceTaxRate': (advancePayment['taxRate'] ?? '').toString(),
+          },
+          if (response['finalSettlement'] is Map) ...{
+            'finalAdvanceExpenseId':
+                ((response['finalSettlement'] as Map)['advanceExpenseId'] ?? '')
+                    .toString(),
+            'finalAdvanceInvoiceNumber':
+                ((response['finalSettlement'] as Map)['advanceInvoiceNumber'] ??
+                        '')
+                    .toString(),
+            'settlementDeductedBase':
+                ((response['finalSettlement'] as Map)['deductedBase'] ?? '')
+                    .toString(),
+            'settlementDeductedTax':
+                ((response['finalSettlement'] as Map)['deductedTax'] ?? '')
+                    .toString(),
+            'settlementDeductedTotal':
+                ((response['finalSettlement'] as Map)['deductedTotal'] ?? '')
+                    .toString(),
+            'settlementGrossBase':
+                ((response['finalSettlement'] as Map)['grossBase'] ?? '')
+                    .toString(),
+            'settlementGrossTax':
+                ((response['finalSettlement'] as Map)['grossTax'] ?? '')
+                    .toString(),
+            'settlementGrossTotal':
+                ((response['finalSettlement'] as Map)['grossTotal'] ?? '')
+                    .toString(),
+            'settlementRemainingBase':
+                ((response['finalSettlement'] as Map)['remainingBase'] ?? '')
+                    .toString(),
+            'settlementRemainingTax':
+                ((response['finalSettlement'] as Map)['remainingTax'] ?? '')
+                    .toString(),
+            'settlementRemainingTotal':
+                ((response['finalSettlement'] as Map)['remainingTotal'] ?? '')
+                    .toString(),
+          } else if (finalSettlement != null) ...{
+            'finalAdvanceExpenseId':
+                (finalSettlement['advanceExpenseId'] ?? '').toString(),
+          },
           if (_dueDateController.text.trim().isNotEmpty)
             'due': _dueDateController.text.trim(),
+          if ((createdLinesSummary['count'] as int? ?? 0) > 0)
+            'linesCount': (createdLinesSummary['count'] as int).toString(),
+          if ((createdLinesSummary['summary'] ?? '')
+              .toString()
+              .trim()
+              .isNotEmpty)
+            'linesSummary': (createdLinesSummary['summary'] ?? '').toString(),
+          'useSummaryTotals': responseUseSummaryTotals ? 'true' : 'false',
+          if (responseUseSummaryTotals)
+            'linesSubtotal':
+                (response['subtotal'] ?? _baseTotalController.text).toString()
+          else if (createdLinesSummary['subtotal'] is num)
+            'linesSubtotal':
+                (createdLinesSummary['subtotal'] as num).toStringAsFixed(2),
+          if (responseUseSummaryTotals)
+            'linesTotal':
+                (response['total'] ?? _totalController.text).toString()
+          else if (createdLinesSummary['total'] is num)
+            'linesTotal':
+                (createdLinesSummary['total'] as num).toStringAsFixed(2),
         });
         _selectedRecentExpense = _recentUploads.first;
       });
@@ -666,9 +1741,46 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     }
   }
 
-  Widget _buildJsonImportTab(AppLocalizations l);
-  Widget _buildBatchImportTab(AppLocalizations l);
+  Future<void> _previewSelectedUploadedFile() async {
+    final bytes = _fileBytes;
+    final fileName = _fileName;
+    if (bytes == null || fileName == null) return;
+    final lowerName = fileName.toLowerCase();
+    final isPdf = lowerName.endsWith('.pdf');
+    final isImage = lowerName.endsWith('.png') ||
+        lowerName.endsWith('.jpg') ||
+        lowerName.endsWith('.jpeg') ||
+        lowerName.endsWith('.jpe') ||
+        lowerName.endsWith('.webp');
+    if (isPdf) {
+      await _previewSelectedPdf();
+      return;
+    }
+    if (isImage) {
+      await showExpenseImagePreviewDialog(
+        context,
+        fileName: fileName,
+        fileBytes: bytes,
+      );
+    }
+  }
+
+  Widget _buildJsonImportTab(AppLocalizations l,
+      {bool showInlineControls = true});
+  Widget _buildBatchImportTab(AppLocalizations l,
+      {bool showInlineControls = true});
+  Widget _buildJsonStepRightContent(AppLocalizations l);
+  Future<void> pickJsonPayloadFile();
+  Future<void> pickJsonInvoiceFile();
+  Future<void> fetchExpenseJsonPrompt();
+  Future<void> copyPromptToClipboard();
+  Future<void> submitExpenseJsonImport();
   Future<void> pickBatchDocuments();
+  Future<void> applyBatchDocumentData(
+    List<({String fileName, Uint8List fileBytes})> files, {
+    required int selectedCount,
+  });
+  Future<void> submitBatchImport();
 
   @override
   Widget build(BuildContext context) {
@@ -699,60 +1811,167 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       onLinesChanged: () => setState(() {}),
     );
     final hasLines = _lines.isNotEmpty;
-    final computedTotal = hasLines ? _computeTotalFromLines() : '';
-    if (hasLines && computedTotal != _totalController.text) {
-      _totalController.text = computedTotal;
-    }
-    if (hasLines) {
-      final computedTax = _linesTax().toStringAsFixed(2);
-      if (computedTax != _taxTotalController.text) {
-        _taxTotalController.text = computedTax;
+    final manualDiscountPreview = _manualDiscountPreview();
+    if (!_manualUseSummaryTotals) {
+      if (hasLines && manualDiscountPreview != null) {
+        _applyManualSummaryControllersFromLines(manualDiscountPreview);
+      } else {
+        _syncManualSummaryControllers(_ExpenseDocumentTotalField.total);
       }
     }
-    final summarySubtotal = hasLines
-        ? ExpenseFormHelpers.formatAmount(_linesSubtotal())
-        : (() {
-            final total = ExpenseFormHelpers.parseAmount(_totalController.text);
-            final tax =
-                ExpenseFormHelpers.parseAmount(_taxTotalController.text);
-            if (total == null) return '-';
-            if (tax == null) return ExpenseFormHelpers.formatAmount(total);
-            return ExpenseFormHelpers.formatAmount(
-                (total - tax).clamp(0, double.infinity));
-          })();
-    final summaryTax = hasLines
-        ? ExpenseFormHelpers.formatAmount(_linesTax())
-        : ExpenseFormHelpers.formatAmount(
-            ExpenseFormHelpers.parseAmount(_taxTotalController.text));
-    final summaryTotal = hasLines
-        ? ExpenseFormHelpers.formatAmount(_linesSubtotal() + _linesTax())
-        : ExpenseFormHelpers.formatAmount(
-            ExpenseFormHelpers.parseAmount(_totalController.text));
+    final manualSummaryValidationError = _manualUseSummaryTotals
+        ? ExpenseFormHelpers.validateSummaryTotals(
+            base: _parseControllerAmount(_baseTotalController),
+            tax: _parseControllerAmount(_taxTotalController),
+            total: _parseControllerAmount(_totalController),
+          )
+        : null;
+    final summarySubtotal = manualDiscountPreview != null
+        ? ExpenseFormHelpers.formatAmount(
+            manualDiscountPreview.subtotalBeforeDiscount,
+          )
+        : _manualUseSummaryTotals
+            ? ExpenseFormHelpers.formatAmount(
+                _parseControllerAmount(_baseTotalController),
+              )
+            : hasLines
+                ? ExpenseFormHelpers.formatAmount(_linesSubtotal())
+                : (() {
+                    final total =
+                        ExpenseFormHelpers.parseAmount(_totalController.text);
+                    final tax = ExpenseFormHelpers.parseAmount(
+                        _taxTotalController.text);
+                    if (total == null) return '-';
+                    if (tax == null) {
+                      return ExpenseFormHelpers.formatAmount(total);
+                    }
+                    return ExpenseFormHelpers.formatAmount(
+                      (total - tax).clamp(0, double.infinity),
+                    );
+                  })();
+    final summaryDiscount = manualDiscountPreview != null &&
+            manualDiscountPreview.discountAmount > 0.0001
+        ? '${ExpenseFormHelpers.formatAmount(manualDiscountPreview.discountAmount)} · ${manualDiscountPreview.discountPercent.toStringAsFixed(2)}%'
+        : null;
+    final summaryDiscountedBase = manualDiscountPreview != null &&
+            manualDiscountPreview.discountAmount > 0.0001
+        ? ExpenseFormHelpers.formatAmount(manualDiscountPreview.taxableBase)
+        : null;
+    final summaryTax = manualDiscountPreview != null
+        ? ExpenseFormHelpers.formatAmount(manualDiscountPreview.tax)
+        : _manualUseSummaryTotals
+            ? ExpenseFormHelpers.formatAmount(
+                _parseControllerAmount(_taxTotalController),
+              )
+            : hasLines
+                ? ExpenseFormHelpers.formatAmount(_linesTax())
+                : ExpenseFormHelpers.formatAmount(
+                    ExpenseFormHelpers.parseAmount(_taxTotalController.text),
+                  );
+    final summaryTotal = manualDiscountPreview != null
+        ? ExpenseFormHelpers.formatAmount(manualDiscountPreview.total)
+        : _manualUseSummaryTotals
+            ? ExpenseFormHelpers.formatAmount(
+                _parseControllerAmount(_totalController),
+              )
+            : hasLines
+                ? ExpenseFormHelpers.formatAmount(
+                    _linesSubtotal() + _linesTax())
+                : ExpenseFormHelpers.formatAmount(
+                    ExpenseFormHelpers.parseAmount(_totalController.text),
+                  );
     final vatBreakdown = ExpenseVatBreakdownCard(
       breakdown: _vatBreakdown,
     );
     final summaryBar = ExpenseTotalsSummaryBar(
       subtotal: summarySubtotal,
+      discount: summaryDiscount,
+      discountedBase: summaryDiscountedBase,
       tax: summaryTax,
       total: summaryTotal,
     );
     final displayGroupId = resolveGroupId();
     final hasGroupSelected = displayGroupId.trim().isNotEmpty;
     final displayGroupName = _resolveGroupName();
+    final manualAdvanceOptions = _buildAdvanceOptions(
+      providerId: _selectedProviderId,
+      vendorName: _vendorController.text.trim(),
+    );
+    final manualSettlementFields = ExpenseSettlementFields(
+      settlement: _manualSettlement,
+      advanceOptions: manualAdvanceOptions,
+      enabled: !_submitting,
+      onTypeChanged: (type) => setState(() {
+        _manualSettlement.setExpenseType(type);
+      }),
+      onAdvanceExpenseChanged: (id) => setState(() {
+        _manualSettlement.selectedAdvanceExpenseId = id;
+      }),
+      onChanged: () => setState(() {}),
+    );
+    final manualDiscountFields = ExpenseDocumentDiscountFields(
+      discount: _manualDocumentDiscount,
+      enabled: !_submitting,
+      preview: manualDiscountPreview,
+      onChanged: () => setState(() {}),
+    );
+    final manualWithholdingFields = ExpenseDocumentWithholdingFields(
+      withholding: _manualWithholding,
+      enabled: !_submitting,
+      compactSummary: true,
+      preview: _manualWithholding.buildPreview(
+        taxableBase: double.tryParse(_baseTotalController.text.trim()) ?? 0,
+        grossTotal: double.tryParse(_totalController.text.trim()) ?? 0,
+      ),
+      onChanged: () => setState(() {}),
+    );
+    final manualTotalsFields = ExpenseDocumentTotalsFields(
+      baseController: _baseTotalController,
+      taxController: _taxTotalController,
+      totalController: _totalController,
+      enabled: !_submitting,
+      useSummaryTotals: _manualUseSummaryTotals,
+      lockToLines: hasLines,
+      validationError: manualSummaryValidationError,
+      onSummaryModeChanged: (value) => setState(() {
+        _manualUseSummaryTotals = value;
+        if (!_manualUseSummaryTotals &&
+            hasLines &&
+            manualDiscountPreview != null) {
+          _applyManualSummaryControllersFromLines(manualDiscountPreview);
+        } else if (_manualUseSummaryTotals) {
+          _syncManualSummaryControllers(_ExpenseDocumentTotalField.total);
+        }
+      }),
+      onBaseChanged: (_) {
+        _syncManualSummaryControllers(_ExpenseDocumentTotalField.base);
+        setState(() {});
+      },
+      onTaxChanged: (_) {
+        _syncManualSummaryControllers(_ExpenseDocumentTotalField.tax);
+        setState(() {});
+      },
+      onTotalChanged: (_) {
+        _syncManualSummaryControllers(_ExpenseDocumentTotalField.total);
+        setState(() {});
+      },
+    );
     final formFields = ExpenseFormFields(
       groupName: displayGroupName,
       groupId: displayGroupId,
       providerPicker: providerPicker,
       vendorController: _vendorController,
       issueDateController: _issueDateController,
-      totalController: _totalController,
       vendorTaxIdController: _vendorTaxIdController,
       invoiceNumberController: _invoiceNumberController,
       dueDateController: _dueDateController,
-      taxTotalController: _taxTotalController,
       currencyController: _currencyController,
       notesController: _notesController,
       clientIdController: _clientIdController,
+      settlementFields: manualSettlementFields,
+      discountFields: manualDiscountFields,
+      withholdingFields: manualWithholdingFields,
+      totalsFields: manualTotalsFields,
       linesEditor: linesEditor,
       vatBreakdown: vatBreakdown,
       summaryBar: summaryBar,
@@ -764,89 +1983,44 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       error: _error,
       submitting: _submitting,
       onSubmit: _submit,
-      canSubmit: hasGroupSelected,
+      canSubmit: hasGroupSelected &&
+          !(_manualSettlement.isFinal &&
+              (_manualSettlement.selectedAdvanceExpenseId ?? '')
+                  .trim()
+                  .isEmpty),
     );
     final uploadWorkspace = AnimatedBuilder(
       animation: _importTabs,
       builder: (context, _) => LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 920;
-          Widget centeredLeftPanel({
-            required Widget picker,
-            String? helperText,
-            List<String>? chips,
-          }) {
-            return LayoutBuilder(
-              builder: (context, leftConstraints) => SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints:
-                      BoxConstraints(minHeight: leftConstraints.maxHeight),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 640),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 12,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            picker,
-                            if ((helperText ?? '').isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                helperText!,
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                            if ((chips ?? const <String>[]).isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                alignment: WrapAlignment.center,
-                                children: (chips ?? const <String>[])
-                                    .map((name) => Chip(label: Text(name)))
-                                    .toList(),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+          Widget buildImportTabsHeader() => TabBar(
+                controller: _importTabs,
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: cs.primary.withValues(alpha: 0.14),
                 ),
-              ),
-            );
-          }
+                labelColor: cs.primary,
+                unselectedLabelColor: cs.onSurfaceVariant,
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                labelPadding: EdgeInsets.zero,
+                tabs: const [
+                  Tab(height: 34, text: 'Manual'),
+                  Tab(height: 34, text: 'JSON'),
+                  Tab(height: 34, text: 'Lote'),
+                ],
+              );
 
-          final importTabsHeader = TabBar(
-            controller: _importTabs,
-            dividerColor: Colors.transparent,
-            indicatorSize: TabBarIndicatorSize.tab,
-            indicator: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: cs.primary.withValues(alpha: 0.14),
-            ),
-            labelColor: cs.primary,
-            unselectedLabelColor: cs.onSurfaceVariant,
-            labelStyle: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-            labelPadding: EdgeInsets.zero,
-            tabs: const [
-              Tab(height: 34, text: 'Manual'),
-              Tab(height: 34, text: 'JSON'),
-              Tab(height: 34, text: 'Batch'),
-            ],
-          );
+          final importTabsHeader = buildImportTabsHeader();
           final manualWideTab = Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -854,42 +2028,6 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
               errorsAndSubmit,
             ],
           );
-          final batchLeftPicker = centeredLeftPanel(
-            picker: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ExpenseFilePickerCard(
-                  fileName: _batchDocumentNames.isNotEmpty
-                      ? _batchDocumentNames.first
-                      : null,
-                  fileBytes: _batchDocumentBytes.isNotEmpty
-                      ? _batchDocumentBytes.first
-                      : null,
-                  submitting: _batchSubmitting || _batchGeneratingJson,
-                  onPick: pickBatchDocuments,
-                  dropZoneHeight: 240,
-                ),
-                const SizedBox(height: 8),
-                FilledButton.tonalIcon(
-                  onPressed: (_batchSubmitting || _batchGeneratingJson)
-                      ? null
-                      : pickBatchDocuments,
-                  icon:
-                      const Icon(Icons.add_photo_alternate_outlined, size: 18),
-                  label: const Text('Seleccionar documentos'),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Los archivos cargados se muestran en el panel derecho.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                ),
-              ],
-            ),
-          );
-          final defaultLeftPicker = centeredLeftPanel(picker: filePicker);
           final manualCompactTab = SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -900,23 +2038,6 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                 errorsAndSubmit,
               ],
             ),
-          );
-          final editorPanel = Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              importTabsHeader,
-              const SizedBox(height: 8),
-              Expanded(
-                child: TabBarView(
-                  controller: _importTabs,
-                  children: [
-                    manualWideTab,
-                    _buildJsonImportTab(l),
-                    _buildBatchImportTab(l),
-                  ],
-                ),
-              ),
-            ],
           );
           if (!isWide) {
             return Column(
@@ -929,27 +2050,149 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                     controller: _importTabs,
                     children: [
                       manualCompactTab,
-                      _buildJsonImportTab(l),
-                      _buildBatchImportTab(l),
+                      _buildJsonImportTab(
+                        l,
+                        showInlineControls: true,
+                      ),
+                      _buildBatchImportTab(
+                        l,
+                        showInlineControls: true,
+                      ),
                     ],
                   ),
                 ),
               ],
             );
           }
-          final isBatchTab = _importTabs.index == 2;
+          final currentTab = _importTabs.index;
 
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          if (currentTab == 2) {
+            final batchJobStatus =
+                _expenseBatchJobStatusFromPayload(_batchJobStatus);
+            final batchJobActive = _hasRunningBatchJob || _batchStartingJob;
+            final batchJobCompleted =
+                _isExpenseBatchJobTerminal(batchJobStatus) &&
+                    batchJobStatus == 'completed';
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                buildImportTabsHeader(),
+                const SizedBox(height: 8),
+                _BatchCompactWorkflowIndicator(
+                  selectedCount: (() {
+                    final jobTotal =
+                        _batchJobInt(_batchJobStatus?['totalFiles']);
+                    if (jobTotal > 0) return jobTotal;
+                    return _batchDocumentNames.length;
+                  })(),
+                  maxDocuments:
+                      _ExpenseUploadScreenStateBase._maxBatchDocuments,
+                  totalBytes: _batchDocumentBytes.fold<int>(
+                    0,
+                    (sum, bytes) => sum + bytes.length,
+                  ),
+                  submitting: _batchSubmitting ||
+                      _batchGeneratingJson ||
+                      batchJobActive,
+                  hasGroupSelected: hasGroupSelected,
+                  canImport: !batchJobActive &&
+                      !_batchSubmitting &&
+                      !_batchGeneratingJson &&
+                      !batchJobCompleted &&
+                      hasGroupSelected &&
+                      _batchDocumentNames.isNotEmpty,
+                  jobActive: batchJobActive,
+                  jobCompleted: batchJobCompleted,
+                  jobFailed: batchJobStatus == 'failed',
+                  readyCount: _batchJobInt(_batchJobStatus?['readyCount']),
+                  reviewCount: _batchJobInt(_batchJobStatus?['warningCount']),
+                  duplicateCount:
+                      _batchJobInt(_batchJobStatus?['duplicateCount']),
+                  onPickDocuments: pickBatchDocuments,
+                  onImport: submitBatchImport,
+                  onClearSelection: _batchDocumentNames.isEmpty
+                      ? null
+                      : () => setState(() {
+                            _resetBatchJobTracking(
+                              clearResult: true,
+                              clearCache: true,
+                            );
+                            _batchDocumentBytes.clear();
+                            _batchDocumentNames.clear();
+                            _batchSkippedDetails.clear();
+                            _batchVerifyMessage = null;
+                            _batchError = null;
+                            _batchDetectedInvoices = 0;
+                            _batchFileFilterIndex = 0;
+                          }),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: _buildBatchImportTab(
+                    l,
+                    showInlineControls: false,
+                  ),
+                ),
+              ],
+            );
+          }
+
+          if (currentTab == 1) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                buildImportTabsHeader(),
+                const SizedBox(height: 8),
+                _JsonCompactWorkflowIndicator(
+                  submitting: _jsonSubmitting || _jsonPromptLoading,
+                  hasGroupSelected: hasGroupSelected,
+                  activeStep: _jsonImportStep,
+                  hasPayload: _jsonPayloadController.text.trim().isNotEmpty,
+                  hasInvoiceFile:
+                      (_jsonInvoiceFileName ?? '').trim().isNotEmpty,
+                  onStepTapped: (step) =>
+                      setState(() => _jsonImportStep = step),
+                  onImport: submitExpenseJsonImport,
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: _buildJsonStepRightContent(l),
+                ),
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                flex: 5,
-                child: isBatchTab ? batchLeftPicker : defaultLeftPicker,
+              buildImportTabsHeader(),
+              const SizedBox(height: 8),
+              _ManualCompactWorkflowIndicator(
+                fileName: _fileName,
+                fileBytes: _fileBytes,
+                submitting: _submitting,
+                hasGroupSelected: hasGroupSelected,
+                onPickFile: _pickFile,
+                onPreviewFile: (_fileName != null && _fileBytes != null)
+                    ? _previewSelectedUploadedFile
+                    : null,
+                previewCtaLabel: (() {
+                  final fileName = _fileName?.toLowerCase();
+                  if (fileName == null) return null;
+                  if (fileName.endsWith('.pdf')) return 'Abrir vista previa';
+                  if (fileName.endsWith('.png') ||
+                      fileName.endsWith('.jpg') ||
+                      fileName.endsWith('.jpeg') ||
+                      fileName.endsWith('.jpe') ||
+                      fileName.endsWith('.webp')) {
+                    return 'Ampliar imagen';
+                  }
+                  return null;
+                })(),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(height: 10),
               Expanded(
-                flex: 7,
-                child: editorPanel,
+                child: manualWideTab,
               ),
             ],
           );
@@ -1032,6 +2275,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                   recentUploads: _recentUploads,
                   onDeleteExpense: deleteRecentExpense,
                   selectedExpense: _selectedRecentExpense,
+                  autoEditExpenseId: _pendingAutoEditExpenseId,
+                  onAutoEditHandled: (id) {
+                    if (_pendingAutoEditExpenseId != id) return;
+                    setState(() => _pendingAutoEditExpenseId = null);
+                  },
                   previewLoading: _loadingPreview,
                   previewError: _previewError,
                   groupId: displayGroupId,
@@ -1096,6 +2344,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                       recentUploads: _recentUploads,
                       onDeleteExpense: deleteRecentExpense,
                       selectedExpense: _selectedRecentExpense,
+                      autoEditExpenseId: _pendingAutoEditExpenseId,
+                      onAutoEditHandled: (id) {
+                        if (_pendingAutoEditExpenseId != id) return;
+                        setState(() => _pendingAutoEditExpenseId = null);
+                      },
                       previewLoading: _loadingPreview,
                       previewError: _previewError,
                       groupId: displayGroupId,
@@ -1124,7 +2377,13 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
 }
 
 class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
-    with ExpenseUploadImportActionsSection, ExpenseUploadImportTabsSection {
+    with _ExpenseUploadImportActionsSection, _ExpenseUploadImportTabsSection {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_resumeCachedBatchJobIfNeeded());
+  }
+
   @override
   bool get jsonSubmitting => _jsonSubmitting;
   @override
@@ -1190,6 +2449,12 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   Future<void> pickBatchJsonFile() => _pickBatchJsonFile();
   @override
   Future<void> pickBatchDocuments() => _pickBatchDocuments();
+  @override
+  Future<void> applyBatchDocumentData(
+    List<({String fileName, Uint8List fileBytes})> files, {
+    required int selectedCount,
+  }) =>
+      _applyBatchDocuments(files, selectedCount: selectedCount);
   @override
   Future<void> generateBatchJsonWithAi() => _generateBatchJsonWithAi();
   @override

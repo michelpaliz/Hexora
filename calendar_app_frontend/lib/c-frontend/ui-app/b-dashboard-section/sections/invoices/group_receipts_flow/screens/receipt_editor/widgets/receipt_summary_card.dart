@@ -111,8 +111,8 @@ class ReceiptSummaryCard extends StatelessWidget {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: onIssue,
-                icon: const Icon(Icons.check_circle_outline),
-                label: Text(l.receiptIssueCta),
+                icon: const Icon(Icons.save_outlined),
+                label: Text(l.saveDraft),
               ),
             ),
             const SizedBox(height: 10),

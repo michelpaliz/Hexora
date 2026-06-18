@@ -74,8 +74,9 @@ ScheduleViewSettings buildScheduleSettings(
       ),
     );
 
-MonthViewSettings buildMonthSettings() => MonthViewSettings(
-      showAgenda: true,
+MonthViewSettings buildMonthSettings({bool showAgenda = true}) =>
+    MonthViewSettings(
+      showAgenda: showAgenda,
       agendaItemHeight: 48,
       dayFormat: 'EEE',
       appointmentDisplayMode: MonthAppointmentDisplayMode.none,

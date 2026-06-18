@@ -3,6 +3,11 @@ part of '../receipt_editor_wizard_screen.dart';
 // ignore_for_file: invalid_use_of_protected_member
 
 extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
+  void _releasePreviewSurface() {
+    _previewPdfBytes = null;
+    _previewError = null;
+  }
+
   Future<void> _pickIssueDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -12,11 +17,15 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       lastDate: DateTime(now.year + 3),
     );
     if (picked != null && mounted) {
-      setState(() => _issueDate = picked);
+      setState(() {
+        _issueDate = picked;
+        _markDraftDirty();
+      });
     }
   }
 
   void _close({required bool changed}) {
+    _releasePreviewSurface();
     final isEmbedded = widget.embedded == true;
     if (isEmbedded) {
       widget.onClose?.call(changed);
@@ -25,16 +34,58 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     Navigator.of(context).pop(changed);
   }
 
+  Future<void> _requestClose() async {
+    if (!_draftDirty || _savingDraft) {
+      _close(changed: _didPersist);
+      return;
+    }
+    final l = AppLocalizations.of(context)!;
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),
+        content: Text(
+          isEs
+              ? 'Puedes quedarte, salir sin guardar o guardar el borrador antes de salir.'
+              : 'You can stay, leave without saving, or save the draft before leaving.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('stay'),
+            child: Text(isEs ? 'Quedarme' : 'Stay'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('leave'),
+            child: Text(isEs ? 'Salir sin guardar' : 'Leave without saving'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop('save'),
+            child: Text(isEs ? 'Guardar y salir' : 'Save & leave'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || result == null || result == 'stay') return;
+    if (result == 'save') {
+      await _saveDraft(showSavedSnack: false);
+      if (!mounted || _draftDirty) return;
+    }
+    _close(changed: _didPersist);
+  }
+
   bool _validateCurrentStep() {
     final l = AppLocalizations.of(context)!;
+    if (widget.group.id.trim().isEmpty) {
+      showInfoSnack(context, l.fieldIsRequired);
+      return false;
+    }
     if (_step == 0 && !_hasClient) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l.receiptClientRequired)));
+      showInfoSnack(context, l.receiptClientRequired);
       return false;
     }
     if (_step == 1 && !_hasLines) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l.receiptLinesRequired)));
+      showInfoSnack(context, l.receiptLinesRequired);
       return false;
     }
     return true;
@@ -55,7 +106,12 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
         .toList(growable: false);
   }
 
-  Future<Receipt?> _saveDraft({bool showSavedSnack = true}) async {
+  Future<Receipt?> _saveDraft({
+    bool showSavedSnack = true,
+    String? successSnackMessage,
+    String? genericErrorMessage,
+    bool emitErrorSnack = true,
+  }) async {
     final l = AppLocalizations.of(context)!;
     if (!_hasClient || !_hasLines) {
       _validateCurrentStep();
@@ -68,7 +124,8 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       final payloadReceipt = Receipt(
         id: _draftReceipt?.id ?? '',
         groupId: widget.group.id,
-        clientId: _clientId!,
+        clientId: _useManualClient ? '' : _clientId!,
+        clientName: _useManualClient ? _clientNameCtrl.text.trim() : null,
         status: 'draft',
         issueDate: _issueDate,
         notes: _notesCtrl.text.trim(),
@@ -84,19 +141,39 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       setState(() {
         _draftReceipt = saved;
         _didPersist = true;
+        _markDraftSynced();
       });
       if (showSavedSnack) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.receiptDraftSavedSnack)),
+        showSuccessSnack(
+          context,
+          successSnackMessage ?? l.receiptDraftSavedSnackMessage,
+          title: l.receiptDraftSavedSnackTitle,
+          actionLabel: l.invoiceDraftSnackDismiss,
         );
       }
       return saved;
     } catch (e) {
       if (!mounted) return null;
-      final msg = e.toString().replaceFirst('Exception: ', '').trim();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg.isEmpty ? l.failedWithReason('') : msg)),
-      );
+      var msg = e.toString().replaceFirst('Exception: ', '').trim();
+      final lowerMsg = msg.toLowerCase();
+      if (lowerMsg.contains('e11000 duplicate key error') &&
+          lowerMsg.contains('receiptnumber') &&
+          lowerMsg.contains('null')) {
+        final isEs = Localizations.localeOf(context)
+            .languageCode
+            .toLowerCase()
+            .startsWith('es');
+        msg = isEs
+            ? 'Ya existe un recibo borrador sin numerar para este grupo. Revisa la lista de borradores de recibos.'
+            : 'An unnumbered draft receipt already exists for this group. Check the receipts drafts list.';
+      }
+      if (emitErrorSnack) {
+        showErrorSnack(
+          context,
+          msg.isEmpty ? (genericErrorMessage ?? l.failedWithReason('')) : msg,
+        );
+      }
+      setState(() => _draftSaveFailed = true);
       return null;
     } finally {
       if (mounted) setState(() => _savingDraft = false);
@@ -132,10 +209,33 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     await _loadDraftPreview(receiptId: draft.id);
   }
 
+  Future<void> _syncDraftForPreviewFromSummary() async {
+    final isSpanish =
+        Localizations.localeOf(context).languageCode.startsWith('es');
+    final successMessage = isSpanish
+        ? 'Resumen actualizado. La vista previa usara los datos mas recientes.'
+        : 'Summary updated. Preview will use the latest data.';
+    final errorMessage = isSpanish
+        ? 'No se pudo actualizar el borrador para la vista previa.'
+        : 'Could not update the draft for preview.';
+
+    await _saveDraft(
+      showSavedSnack: true,
+      successSnackMessage: successMessage,
+      genericErrorMessage: errorMessage,
+      emitErrorSnack: true,
+    );
+  }
+
   Future<void> _tryGoToStep(int targetStep) async {
     if (targetStep == _step) return;
     if (targetStep < _step) {
-      setState(() => _step = targetStep);
+      setState(() {
+        if (_step == 3) {
+          _releasePreviewSurface();
+        }
+        _step = targetStep;
+      });
       return;
     }
     if (targetStep > _step + 1) return;
@@ -144,67 +244,11 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       await _preparePreviewStep();
       if (!mounted) return;
     }
-    setState(() => _step = targetStep);
-  }
-
-  void _finishFlow() {
-    final l = AppLocalizations.of(context)!;
-    if (!_hasClient || !_hasLines) {
-      _validateCurrentStep();
-      return;
-    }
-
-    () async {
-      if (_issuing) return;
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text(l.receiptIssueConfirmTitle),
-          content: Text(l.receiptIssueConfirmMessage),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(l.receiptIssueCta),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true || !mounted) return;
-
-      setState(() => _issuing = true);
-      try {
-        final draft = await _saveDraft(showSavedSnack: false);
-        if (draft == null || !mounted) return;
-        final issued = await _receiptsApi.issue(draft.id);
-        if (!mounted) return;
-        setState(() {
-          _draftReceipt = issued;
-          _didPersist = true;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text(l.receiptIssueSuccessSnack(issued.receiptNumber ?? '')),
-          ),
-        );
-        _close(changed: true);
-      } catch (e) {
-        if (!mounted) return;
-        final msg = e.toString().replaceFirst('Exception: ', '').trim();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg.isEmpty ? l.receiptIssueFailed : msg)),
-        );
-      } finally {
-        if (mounted) setState(() => _issuing = false);
+    setState(() {
+      if (targetStep != 3) {
+        _releasePreviewSurface();
       }
-    }();
+      _step = targetStep;
+    });
   }
-
 }
-
-
-

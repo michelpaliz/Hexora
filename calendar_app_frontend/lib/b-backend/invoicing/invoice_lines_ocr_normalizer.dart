@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:hexora/a-models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_ocr_models.dart';
 
 double _finiteNum(dynamic value, double fallback) {
@@ -30,17 +31,30 @@ OcrExtractedLineDraft normalizeExtractedLine(
   dynamic raw,
   int index,
 ) {
-  final source = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+  final source =
+      raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
   final lineNumber = index + 1;
 
   final position = _finiteInt(source['position'], lineNumber);
 
   final rawDescription = (source['description'] ?? '').toString().trim();
-  final description = rawDescription.isEmpty ? 'Linea OCR $lineNumber' : rawDescription;
+  final description =
+      rawDescription.isEmpty ? 'Linea OCR $lineNumber' : rawDescription;
+  final rawConceptItems = source['conceptItems'];
+  final sku = cleanInvoiceText(source['sku']?.toString());
+  final conceptItems = cleanInvoiceConceptItems(
+    rawConceptItems is List
+        ? rawConceptItems.map((item) => item.toString()).toList()
+        : null,
+    staleSku: sku,
+  );
+  final conceptTitle = invoiceConceptTitleFrom(
+    conceptTitle: source['conceptTitle']?.toString(),
+    sku: sku,
+  );
 
   final quantity = math.max(_finiteNum(source['quantity'], 1), 1).toDouble();
-  final unitPrice =
-      math.max(_finiteNum(source['unitPrice'], 0), 0).toDouble();
+  final unitPrice = math.max(_finiteNum(source['unitPrice'], 0), 0).toDouble();
   final taxRate = math.max(_finiteNum(source['taxRate'], 21), 0).toDouble();
 
   final subtotal = quantity * unitPrice;
@@ -57,11 +71,22 @@ OcrExtractedLineDraft normalizeExtractedLine(
     lineTax: lineTax,
     lineTotal: total,
     sourceText: (source['sourceText'] ?? '').toString(),
+    conceptTitle: conceptTitle,
+    conceptItems: conceptItems,
+    serviceDate: cleanInvoiceServiceDate(source['serviceDate']),
+    isCompositeConcept: source['isCompositeConcept'] is bool
+        ? source['isCompositeConcept'] as bool
+        : (conceptItems?.length ?? 0) > 1
+            ? true
+            : null,
+    parseMethod: cleanInvoiceText(source['parseMethod']?.toString()),
   );
 }
 
 OcrExtractResponse normalizeExtractResponse(dynamic response) {
-  final map = response is Map ? Map<String, dynamic>.from(response) : <String, dynamic>{};
+  final map = response is Map
+      ? Map<String, dynamic>.from(response)
+      : <String, dynamic>{};
   final draftRaw = map['draftLines'] ?? map['lines'];
   final draftList = draftRaw is List ? draftRaw : const <dynamic>[];
   final normalizedLines = <OcrExtractedLineDraft>[];
@@ -109,9 +134,10 @@ OcrExtractResponse normalizeExtractResponse(dynamic response) {
     lineCount: normalizedLines.length,
     rawText: (map['rawText'] ?? '').toString(),
     warnings: warnings,
-    methodUsed: (map['methodUsed'] ?? map['method'] ?? '').toString().trim().isEmpty
-        ? null
-        : (map['methodUsed'] ?? map['method']).toString().trim(),
+    methodUsed:
+        (map['methodUsed'] ?? map['method'] ?? '').toString().trim().isEmpty
+            ? null
+            : (map['methodUsed'] ?? map['method']).toString().trim(),
     diagnostics: diagnostics,
   );
 }

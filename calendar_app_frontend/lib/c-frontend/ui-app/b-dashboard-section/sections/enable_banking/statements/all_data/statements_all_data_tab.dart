@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../widgets/folder_header_action_button.dart';
 import '../../widgets/folder_section_card.dart';
 import '../statements_controller.dart';
 import '../statements_formatters.dart';
@@ -30,6 +30,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   final TextEditingController _yearController = TextEditingController();
   final TextEditingController _fromController = TextEditingController();
   final TextEditingController _toController = TextEditingController();
+  final TextEditingController _clientProviderController =
+      TextEditingController();
   final List<int> _sizeOptions = const [50, 100, 200];
   final Set<String> _selectedIds = <String>{};
   final Map<String, String> _noProcedeReasonsByEntryId = <String, String>{};
@@ -40,24 +42,49 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   bool _filtersCollapsed = false;
   bool _isSoftDarkTable = false;
   bool _autoStatementImportLoading = false;
+  bool _exportingExcel = false;
   int _invoiceSortMode = 0; // 0=none, 1=asc, 2=desc
   static const _tableThemePrefKey = 'statements_table_soft_dark';
 
+  void _repairHotReloadState() {
+    final self = this as dynamic;
+    self._amountTypeFilter ??= 'all';
+    self._didLoad ??= false;
+    self._filtersCollapsed ??= false;
+    self._isSoftDarkTable ??= false;
+    self._autoStatementImportLoading ??= false;
+    self._exportingExcel ??= false;
+    self._invoiceSortMode ??= 0;
+  }
+
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void reassemble() {
+    _repairHotReloadState();
+    super.reassemble();
+  }
 
   @override
   void dispose() {
     _yearController.dispose();
     _fromController.dispose();
     _toController.dispose();
+    _clientProviderController.removeListener(_onClientProviderTyped);
+    _clientProviderController.dispose();
     super.dispose();
+  }
+
+  void _onClientProviderTyped() {
+    if (mounted) setState(() {});
   }
 
   @override
   void initState() {
     super.initState();
     _yearController.text = DateTime.now().year.toString();
+    _clientProviderController.addListener(_onClientProviderTyped);
     _loadTableThemePref();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _didLoad) return;
@@ -124,6 +151,63 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     return null;
   }
 
+  bool _entryMatchesDateFilters(Map<String, dynamic> entry) {
+    final year = _parseYear(_yearController.text);
+    final from = _parseDate(_fromController.text);
+    final to = _parseDate(_toController.text);
+    if (year == null && from == null && to == null) return true;
+    final date = _entryDate(entry);
+    if (date == null) return false;
+    final localDate = DateTime(date.year, date.month, date.day);
+    if (year != null && localDate.year != year) return false;
+    if (from != null) {
+      final start = DateTime(from.year, from.month, from.day);
+      if (localDate.isBefore(start)) return false;
+    }
+    if (to != null) {
+      final end = DateTime(to.year, to.month, to.day);
+      if (localDate.isAfter(end)) return false;
+    }
+    return true;
+  }
+
+  String _clientProviderLabel(
+    AppLocalizations l,
+    StatementsController s,
+    Map<String, dynamic> entry,
+  ) {
+    final label = StatementsSharedUtils.clientLabel(l, s, entry).trim();
+    if (label.isNotEmpty && label != '-') return label;
+    for (final key in const [
+      'providerName',
+      'provider',
+      'supplierName',
+      'merchantName',
+      'counterpartyName',
+      'counterparty',
+      'clientName',
+      'billingName',
+    ]) {
+      final value = entry[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  bool _entryMatchesClientProviderFilter(
+    AppLocalizations l,
+    StatementsController s,
+    Map<String, dynamic> entry,
+  ) {
+    final query = _clientProviderController.text.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    final label = _clientProviderLabel(l, s, entry).toLowerCase();
+    if (label.contains(query)) return true;
+    final description =
+        StatementsShared.entryText(entry, ['description']).trim().toLowerCase();
+    return description.contains(query);
+  }
+
   double? _parseAmountInput(String raw) {
     final normalized = raw.trim();
     if (normalized.isEmpty) return null;
@@ -156,6 +240,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       }
     }
 
+    var applied = false;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -296,6 +381,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                       _amountTypeFilter = localType;
                       _selectedIds.clear();
                     });
+                    applied = true;
                     Navigator.of(dialogContext).pop();
                   },
                   child: const Text('Aplicar'),
@@ -306,17 +392,25 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         );
       },
     );
+    if (applied && mounted) {
+      await _applyFilters(context.read<StatementsController>());
+    }
   }
 
   Future<void> _applyFilters(StatementsController s) async {
+    final from = _fromController.text.trim();
+    final to = _toController.text.trim();
     await s.loadAllEntries(
       year: _parseYear(_yearController.text),
-      dateFrom: _fromController.text.trim().isEmpty
-          ? null
-          : _fromController.text.trim(),
-      dateTo:
-          _toController.text.trim().isEmpty ? null : _toController.text.trim(),
+      dateFrom: from.isEmpty ? '' : from,
+      dateTo: to.isEmpty ? '' : to,
       page: 1,
+      amountType: _amountTypeFilter,
+      minAmount: _amountMinFilter,
+      maxAmount: _amountMaxFilter,
+      clientProviderQuery: _clientProviderController.text.trim(),
+      sort: 'date_desc',
+      applyAmountFilters: true,
     );
     _selectedIds.clear();
   }
@@ -325,14 +419,21 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     _yearController.text = DateTime.now().year.toString();
     _fromController.clear();
     _toController.clear();
+    _clientProviderController.clear();
     _amountMinFilter = null;
     _amountMaxFilter = null;
     _amountTypeFilter = 'all';
     await s.loadAllEntries(
       year: _parseYear(_yearController.text),
-      dateFrom: null,
-      dateTo: null,
+      dateFrom: '',
+      dateTo: '',
       page: 1,
+      amountType: 'all',
+      minAmount: null,
+      maxAmount: null,
+      clientProviderQuery: null,
+      sort: 'date_desc',
+      applyAmountFilters: true,
     );
     _selectedIds.clear();
   }
@@ -441,11 +542,25 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
           label: Text(
             '${l.statementsHeaderAmount} ($typeLabel): ${minLabel.isEmpty ? "-inf" : minLabel} - ${maxLabel.isEmpty ? "+inf" : maxLabel}',
           ),
-          onDeleted: () => setState(() {
+          onDeleted: () async {
             _amountMinFilter = null;
             _amountMaxFilter = null;
             _amountTypeFilter = 'all';
-          }),
+            await _applyFilters(s);
+          },
+        ),
+      );
+    }
+    if (_clientProviderController.text.trim().isNotEmpty) {
+      chips.add(
+        InputChip(
+          label: Text(
+            '${l.statementsHeaderClient} / Proveedor: ${_clientProviderController.text.trim()}',
+          ),
+          onDeleted: () async {
+            _clientProviderController.clear();
+            await _applyFilters(s);
+          },
         ),
       );
     }
@@ -487,8 +602,72 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       parts.add(
           '${l.statementsHeaderAmount} ($typeLabel): $minLabel .. $maxLabel');
     }
+    if (_clientProviderController.text.trim().isNotEmpty) {
+      parts.add(
+        '${l.statementsHeaderClient} / Proveedor: ${_clientProviderController.text.trim()}',
+      );
+    }
     if (parts.isEmpty) return l.statementsFiltersNone;
     return '${l.statementsFiltersActive}: ${parts.join(' · ')}';
+  }
+
+  String _fileNameFromHeaders(
+    Map<String, String> headers, {
+    required String fallback,
+  }) {
+    final raw =
+        headers['content-disposition'] ?? headers['Content-Disposition'];
+    if (raw != null && raw.isNotEmpty) {
+      final utf8Match =
+          RegExp(r"filename\*=UTF-8''([^;]+)", caseSensitive: false)
+              .firstMatch(raw);
+      if (utf8Match != null) {
+        final name = Uri.decodeComponent(utf8Match.group(1)!);
+        if (name.trim().isNotEmpty) return name.trim();
+      }
+      final match = RegExp(r'filename="?([^";]+)"?', caseSensitive: false)
+          .firstMatch(raw);
+      if (match != null) {
+        final name = match.group(1)?.trim() ?? '';
+        if (name.isNotEmpty) return name;
+      }
+    }
+    return fallback;
+  }
+
+  Future<void> _exportExcel(StatementsController s) async {
+    if (_exportingExcel) return;
+    setState(() => _exportingExcel = true);
+    try {
+      final response = await s.exportAllEntriesExcel(
+        year: _parseYear(_yearController.text),
+        dateFrom: _fromController.text.trim(),
+        dateTo: _toController.text.trim(),
+        amountType: _amountTypeFilter,
+        minAmount: _amountMinFilter,
+        maxAmount: _amountMaxFilter,
+        clientProviderQuery: _clientProviderController.text.trim(),
+        sort: s.allEntriesSort,
+      );
+      final fileName = _fileNameFromHeaders(
+        response.headers,
+        fallback: 'bank-transactions.xlsx',
+      );
+      await launchFileDownload(
+        response.bodyBytes,
+        fileName: fileName,
+        mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '').trim();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message.isEmpty ? 'Export failed' : message)),
+      );
+    } finally {
+      if (mounted) setState(() => _exportingExcel = false);
+    }
   }
 
   String? _resolveFreshnessBatchId(StatementsController s) {
@@ -512,13 +691,11 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         return null;
       }
 
-      final inv =
-          (pickFirstFromList(e['invoiceNumbers']) ??
-                  (e['invoiceNumber'] ?? e['invoice_number'])?.toString())
-              ?.trim();
-      final exp = (e['expenseNumber'] ?? e['expense_number'])
-          ?.toString()
-          .trim();
+      final inv = (pickFirstFromList(e['invoiceNumbers']) ??
+              (e['invoiceNumber'] ?? e['invoice_number'])?.toString())
+          ?.trim();
+      final exp =
+          (e['expenseNumber'] ?? e['expense_number'])?.toString().trim();
       if (inv != null && inv.isNotEmpty) return inv;
       if (exp != null && exp.isNotEmpty) return exp;
       return '';
@@ -907,6 +1084,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
 
   @override
   Widget build(BuildContext context) {
+    _repairHotReloadState();
     super.build(context);
     final s = context.watch<StatementsController>();
     final auth = context.watch<AuthProvider>();
@@ -917,33 +1095,51 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ? StatementsTableTheme.softDark(cs)
         : StatementsTableTheme.light(cs);
 
-    final amountFilteredEntries = s.allEntries.where((entry) {
-      if (_amountMinFilter == null &&
-          _amountMaxFilter == null &&
-          _amountTypeFilter == 'all') {
-        return true;
-      }
-      final parsed = StatementsFormatters.parseAmount(
-        StatementsShared.entryText(entry, ['amount']),
-      );
-      if (parsed == null) return false;
-      if (_amountTypeFilter == 'income' && parsed <= 0) return false;
-      if (_amountTypeFilter == 'expense' && parsed >= 0) return false;
-      if (_amountMinFilter != null && parsed < _amountMinFilter!) return false;
-      if (_amountMaxFilter != null && parsed > _amountMaxFilter!) return false;
-      return true;
-    }).toList(growable: false);
-    final totalPages = s.allEntriesSize == 0
-        ? 1
-        : (amountFilteredEntries.length / s.allEntriesSize)
-            .ceil()
-            .clamp(1, 9999);
-    final start = (s.allEntriesPage - 1) * s.allEntriesSize;
-    final end =
-        (start + s.allEntriesSize).clamp(0, amountFilteredEntries.length);
-    final visibleEntries = (start >= 0 && start < amountFilteredEntries.length)
-        ? amountFilteredEntries.sublist(start, end)
-        : const <Map<String, dynamic>>[];
+    final dateFilteredEntries = s.isUsingAggregatedEntriesPath
+        ? s.allEntries
+        : s.allEntries.where(_entryMatchesDateFilters).toList(growable: false);
+    final partyFilteredEntries = dateFilteredEntries
+        .where((entry) => _entryMatchesClientProviderFilter(l, s, entry))
+        .toList(growable: false);
+    final amountFilteredEntries = s.isUsingAggregatedEntriesPath
+        ? partyFilteredEntries
+        : partyFilteredEntries.where((entry) {
+            if (_amountMinFilter == null &&
+                _amountMaxFilter == null &&
+                _amountTypeFilter == 'all') {
+              return true;
+            }
+            final parsed = StatementsFormatters.parseAmount(
+              StatementsShared.entryText(entry, ['amount']),
+            );
+            if (parsed == null) return false;
+            if (_amountTypeFilter == 'income' && parsed <= 0) return false;
+            if (_amountTypeFilter == 'expense' && parsed >= 0) return false;
+            if (_amountMinFilter != null && parsed < _amountMinFilter!) {
+              return false;
+            }
+            if (_amountMaxFilter != null && parsed > _amountMaxFilter!) {
+              return false;
+            }
+            return true;
+          }).toList(growable: false);
+    final totalPages = s.isUsingAggregatedEntriesPath
+        ? s.allEntriesTotalPages
+        : (s.allEntriesSize == 0
+            ? 1
+            : (amountFilteredEntries.length / s.allEntriesSize)
+                .ceil()
+                .clamp(1, 9999));
+    final visibleEntries = s.isUsingAggregatedEntriesPath
+        ? amountFilteredEntries
+        : () {
+            final start = (s.allEntriesPage - 1) * s.allEntriesSize;
+            final end = (start + s.allEntriesSize)
+                .clamp(0, amountFilteredEntries.length);
+            return (start >= 0 && start < amountFilteredEntries.length)
+                ? amountFilteredEntries.sublist(start, end)
+                : const <Map<String, dynamic>>[];
+          }();
     final sortedEntries = [...visibleEntries]..sort((a, b) {
         if (_invoiceSortMode == 1) {
           return _compareInvoiceNumbers(a, b);
@@ -978,7 +1174,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final summaryText = [
       l.statementsAllDataSummaryTitle,
       '${l.statementsTotalAmount}: ${summary['totalAmount'] ?? ''}',
-      '${l.statementsTotalCount}: ${amountFilteredEntries.length}',
+      '${l.statementsTotalCount}: ${s.isUsingAggregatedEntriesPath ? s.allEntriesTotal : amountFilteredEntries.length}',
       '${l.statementsLastBalance}: ${summary['lastBalance'] ?? ''}',
       if ((summary['lastDate'] ?? '').isNotEmpty)
         l.statementsLastBalanceDate(summary['lastDate']!),
@@ -992,121 +1188,117 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final sizeIndex = _sizeIndexFor(s.allEntriesSize);
     final canDecSize = sizeIndex > 0;
     final canIncSize = sizeIndex < _sizeOptions.length - 1;
+    final canNextPage = s.isUsingAggregatedEntriesPath
+        ? ((s.allEntriesNextCursor != null &&
+                s.allEntriesNextCursor!.isNotEmpty) ||
+            s.allEntriesPage < totalPages)
+        : s.allEntriesPage < totalPages;
     final headerActions = <Widget>[
-      Tooltip(
-        message: infoTooltipText,
-        child: FolderHeaderActionButton(
-          onPressed: freshnessBatchId == null
-              ? null
-              : () => s.fetchBatchStatus(freshnessBatchId),
-          icon: Icon(
-            freshnessIsStale
+      _HeaderActionGroup(
+        children: [
+          _HeaderIconAction(
+            tooltip: infoTooltipText,
+            onPressed: freshnessBatchId == null
+                ? null
+                : () => s.fetchBatchStatus(freshnessBatchId),
+            icon: freshnessIsStale
                 ? Icons.warning_amber_outlined
                 : Icons.info_outline,
-            size: 18,
             color: freshnessIsStale ? cs.error : null,
           ),
-        ),
-      ),
-      Tooltip(
-        message: _isSoftDarkTable ? 'Tema claro' : 'Tema suave oscuro',
-        child: FolderHeaderActionButton(
-          onPressed: _toggleTableTheme,
-          icon: Icon(
-            _isSoftDarkTable
+          _HeaderIconAction(
+            tooltip: _isSoftDarkTable ? 'Tema claro' : 'Tema suave oscuro',
+            onPressed: _toggleTableTheme,
+            icon: _isSoftDarkTable
                 ? Icons.light_mode_outlined
                 : Icons.dark_mode_outlined,
-            size: 18,
           ),
-        ),
-      ),
-      Tooltip(
-        message: autoImportEnabled
-            ? '${l.autoStatementImportTitle}: ON\n${l.autoStatementImportHelper}'
-            : '${l.autoStatementImportTitle}: OFF\n${l.autoStatementImportHelper}',
-        child: FolderHeaderActionButton(
-          onPressed: _autoStatementImportLoading
-              ? null
-              : () => _toggleAutoStatementImport(!autoImportEnabled),
-          selected: autoImportEnabled,
-          icon: _autoStatementImportLoading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(
-                  autoImportEnabled
-                      ? Icons.sync_lock_outlined
-                      : Icons.sync_disabled_outlined,
-                  size: 18,
-                ),
-        ),
-      ),
-      Tooltip(
-        message: _filtersCollapsed
-            ? l.statementsPanelExpand
-            : l.statementsPanelCollapse,
-        child: FolderHeaderActionButton(
-          onPressed: () =>
-              setState(() => _filtersCollapsed = !_filtersCollapsed),
-          icon: Icon(
-            _filtersCollapsed ? Icons.unfold_more : Icons.unfold_less,
-            size: 18,
+          _HeaderIconAction(
+            tooltip: autoImportEnabled
+                ? '${l.autoStatementImportTitle}: ON\n${l.autoStatementImportHelper}'
+                : '${l.autoStatementImportTitle}: OFF\n${l.autoStatementImportHelper}',
+            onPressed: _autoStatementImportLoading
+                ? null
+                : () => _toggleAutoStatementImport(!autoImportEnabled),
+            icon: autoImportEnabled
+                ? Icons.sync_lock_outlined
+                : Icons.sync_disabled_outlined,
+            selected: autoImportEnabled,
+            loading: _autoStatementImportLoading,
           ),
-        ),
+          _HeaderIconAction(
+            tooltip: _filtersCollapsed
+                ? l.statementsPanelExpand
+                : l.statementsPanelCollapse,
+            onPressed: () =>
+                setState(() => _filtersCollapsed = !_filtersCollapsed),
+            icon: _filtersCollapsed ? Icons.unfold_more : Icons.unfold_less,
+          ),
+          _HeaderIconAction(
+            tooltip: l.refreshAction,
+            onPressed: s.loadingAllEntries ? null : s.loadAllEntries,
+            icon: Icons.refresh,
+          ),
+          _HeaderIconAction(
+            tooltip: 'Exportar Excel',
+            onPressed: _exportingExcel ? null : () => _exportExcel(s),
+            icon: Icons.table_view_outlined,
+            loading: _exportingExcel,
+          ),
+        ],
       ),
-      Tooltip(
-        message: l.refreshAction,
-        child: FolderHeaderActionButton(
-          onPressed: s.loadingAllEntries ? null : s.loadAllEntries,
-          icon: const Icon(Icons.refresh, size: 18),
-        ),
+      _HeaderActionGroup(
+        children: [
+          _HeaderIconAction(
+            tooltip: '${l.statementsPageSize}: ${s.allEntriesSize} (-)',
+            onPressed: canDecSize
+                ? () => s.loadAllEntries(
+                      size: _sizeOptions[sizeIndex - 1],
+                      page: 1,
+                    )
+                : null,
+            icon: Icons.remove_rounded,
+          ),
+          _HeaderPageSizeBadge(label: '${s.allEntriesSize}'),
+          _HeaderIconAction(
+            tooltip: '${l.statementsPageSize}: ${s.allEntriesSize} (+)',
+            onPressed: canIncSize
+                ? () => s.loadAllEntries(
+                      size: _sizeOptions[sizeIndex + 1],
+                      page: 1,
+                    )
+                : null,
+            icon: Icons.add_rounded,
+          ),
+        ],
       ),
-      Tooltip(
-        message: '${l.statementsPageSize}: ${s.allEntriesSize} (-)',
-        child: FolderHeaderActionButton(
-          onPressed: canDecSize
-              ? () =>
-                  s.loadAllEntries(size: _sizeOptions[sizeIndex - 1], page: 1)
-              : null,
-          icon: const Icon(Icons.remove_rounded, size: 18),
-        ),
-      ),
-      Tooltip(
-        message: '${l.statementsPageSize}: ${s.allEntriesSize} (+)',
-        child: FolderHeaderActionButton(
-          onPressed: canIncSize
-              ? () =>
-                  s.loadAllEntries(size: _sizeOptions[sizeIndex + 1], page: 1)
-              : null,
-          icon: const Icon(Icons.add_rounded, size: 18),
-        ),
-      ),
-      Tooltip(
-        message: l.statementsPageInfo(s.allEntriesPage, totalPages),
-        child: FolderHeaderActionButton(
-          onPressed: null,
-          icon: Text('${s.allEntriesPage}/$totalPages'),
-        ),
-      ),
-      Tooltip(
-        message: l.statementsPrevPage,
-        child: FolderHeaderActionButton(
-          onPressed: s.allEntriesPage > 1
-              ? () => s.loadAllEntries(page: s.allEntriesPage - 1)
-              : null,
-          icon: const Icon(Icons.chevron_left, size: 18),
-        ),
-      ),
-      Tooltip(
-        message: l.statementsNextPage,
-        child: FolderHeaderActionButton(
-          onPressed: s.allEntriesPage < totalPages
-              ? () => s.loadAllEntries(page: s.allEntriesPage + 1)
-              : null,
-          icon: const Icon(Icons.chevron_right, size: 18),
-        ),
+      _HeaderActionGroup(
+        children: [
+          _HeaderIconAction(
+            tooltip: l.statementsPrevPage,
+            onPressed: s.allEntriesPage > 1
+                ? () => s.loadAllEntries(page: s.allEntriesPage - 1)
+                : null,
+            icon: Icons.chevron_left,
+          ),
+          _HeaderPageBadge(
+            tooltip: l.statementsPageInfo(s.allEntriesPage, totalPages),
+            page: s.allEntriesPage,
+            totalPages: totalPages,
+          ),
+          _HeaderIconAction(
+            tooltip: l.statementsNextPage,
+            onPressed: canNextPage
+                ? () => s.loadAllEntries(
+                      page: s.allEntriesPage + 1,
+                      cursor: s.isUsingAggregatedEntriesPath
+                          ? s.allEntriesNextCursor
+                          : null,
+                    )
+                : null,
+            icon: Icons.chevron_right,
+          ),
+        ],
       ),
     ];
 
@@ -1119,7 +1311,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
           leftTabOffset: 0,
           rightTabOffset: 0,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 26, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1177,8 +1369,12 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                                       yearController: _yearController,
                                       fromController: _fromController,
                                       toController: _toController,
+                                      clientProviderController:
+                                          _clientProviderController,
                                       onApply: () => _applyFilters(s),
                                       onClear: () => _clearFilters(s),
+                                      onClientProviderClear: () =>
+                                          _applyFilters(s),
                                       onPickFrom: () => _pickFromDate(s),
                                       onPickTo: () => _pickToDate(s),
                                       onPickRange: () => _pickRange(s),
@@ -1211,7 +1407,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                   onClear: () => setState(_selectedIds.clear),
                 ),
                 if (_selectedIds.isNotEmpty) const SizedBox(height: 12),
-                if (s.loadingAllEntries)
+                if (s.loadingAllEntries && s.allEntries.isEmpty)
                   const StatementsAllDataSkeleton()
                 else if (s.allEntriesError != null)
                   Text(s.allEntriesError!, style: TextStyle(color: cs.error))
@@ -1306,6 +1502,153 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
           ),
         ),
       ],
+    );
+  }
+}
+
+class _HeaderActionGroup extends StatelessWidget {
+  const _HeaderActionGroup({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.36),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.42)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
+    );
+  }
+}
+
+class _HeaderIconAction extends StatelessWidget {
+  const _HeaderIconAction({
+    required this.tooltip,
+    required this.onPressed,
+    required this.icon,
+    this.selected = false,
+    this.loading = false,
+    this.color,
+  });
+
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final IconData icon;
+  final bool selected;
+  final bool loading;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fg = color ?? (selected ? cs.onPrimary : cs.onSurfaceVariant);
+    return Tooltip(
+      message: tooltip,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 1),
+        child: IconButton(
+          onPressed: loading ? null : onPressed,
+          icon: loading
+              ? const SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(icon, size: 17),
+          style: IconButton.styleFrom(
+            minimumSize: const Size(30, 30),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            foregroundColor: fg,
+            disabledForegroundColor: fg.withValues(alpha: 0.35),
+            backgroundColor: selected ? cs.primary : Colors.transparent,
+            disabledBackgroundColor: Colors.transparent,
+            shape: const CircleBorder(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderPageSizeBadge extends StatelessWidget {
+  const _HeaderPageSizeBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: cs.surface.withValues(alpha: 0.68),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.of(context).bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+      ),
+    );
+  }
+}
+
+class _HeaderPageBadge extends StatelessWidget {
+  const _HeaderPageBadge({
+    required this.tooltip,
+    required this.page,
+    required this.totalPages,
+  });
+
+  final String tooltip;
+  final int page;
+  final int totalPages;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final typography = AppTypography.of(context);
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: cs.primaryContainer.withValues(alpha: 0.26),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: cs.primary.withValues(alpha: 0.28)),
+        ),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '$page',
+                style: typography.bodySmall.copyWith(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              TextSpan(
+                text: ' / $totalPages',
+                style: typography.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

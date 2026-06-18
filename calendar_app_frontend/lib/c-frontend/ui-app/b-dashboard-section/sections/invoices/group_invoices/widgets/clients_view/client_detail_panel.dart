@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
+import 'package:intl/intl.dart';
 import '../invoice_row_item.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/clients_view/billing_verification_card.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/clients_view/quick_assignment_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/date_range_filter_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
-import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'client_invoice_stats_card.dart';
+import 'client_contracts_tab.dart';
+import 'client_receipts_tab.dart';
 
 class ClientDetailPanel extends StatefulWidget {
+  final String groupId;
   final List<GroupClient> clients;
   final GroupClient? selectedClient;
   final List<Invoice> issuedInvoices;
@@ -19,18 +21,21 @@ class ClientDetailPanel extends StatefulWidget {
   final List<String> entityOptions;
   final List<String> propertyOptions;
   final bool assignBusy;
+  final int initialTabIndex;
 
   final VoidCallback onEditSelectedClient;
   final VoidCallback onCreateInvoice;
   final VoidCallback onCreateReceipt;
   final ValueChanged<Invoice> onOpenInvoiceDetail;
   final ValueChanged<Invoice> onDeleteInvoice;
+  final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
 
   final Future<void> Function({String? entityType, String? propertyKind})
       onApplyClassification;
 
   const ClientDetailPanel({
     super.key,
+    required this.groupId,
     required this.clients,
     required this.selectedClient,
     required this.issuedInvoices,
@@ -38,11 +43,13 @@ class ClientDetailPanel extends StatefulWidget {
     required this.entityOptions,
     required this.propertyOptions,
     required this.assignBusy,
+    this.initialTabIndex = 0,
     required this.onEditSelectedClient,
     required this.onCreateInvoice,
     required this.onCreateReceipt,
     required this.onOpenInvoiceDetail,
     required this.onDeleteInvoice,
+    required this.onDownloadVisibleInvoices,
     required this.onApplyClassification,
   });
 
@@ -51,6 +58,9 @@ class ClientDetailPanel extends StatefulWidget {
 }
 
 class _ClientDetailPanelState extends State<ClientDetailPanel> {
+  int _contractsCount = 0;
+  int _receiptsCount = 0;
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -71,14 +81,19 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               ),
             )
           : DefaultTabController(
-              length: 2,
+              key: ValueKey(
+                'client-detail-${widget.selectedClient!.id}-${widget.initialTabIndex}',
+              ),
+              length: 4,
+              initialIndex: widget.initialTabIndex.clamp(0, 3),
               child: Column(
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
                     child: _ClientTabs(
                       invoicesCount: widget.issuedInvoices.length,
-                      draftsCount: widget.draftInvoices.length,
+                      contractsCount: _contractsCount,
+                      receiptsCount: _receiptsCount,
                     ),
                   ),
                   Expanded(
@@ -93,16 +108,28 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                           fallbackClient: widget.selectedClient!,
                           onTap: widget.onOpenInvoiceDetail,
                           onDelete: null,
+                          onDownloadVisibleInvoices:
+                              widget.onDownloadVisibleInvoices,
                         ),
-                        _InvoiceList(
-                          emptyTitle: l.groupInvoicesDraftInvoicesTitle,
-                          emptySubtitle: l.noInvoicesYetSubtitle,
-                          icon: Icons.drafts_outlined,
-                          invoices: widget.draftInvoices,
-                          clients: widget.clients,
-                          fallbackClient: widget.selectedClient!,
-                          onTap: widget.onOpenInvoiceDetail,
-                          onDelete: widget.onDeleteInvoice,
+                        ClientReceiptsTab(
+                          key:
+                              ValueKey('receipts-${widget.selectedClient!.id}'),
+                          groupId: widget.groupId,
+                          client: widget.selectedClient!,
+                          onCountChanged: (count) =>
+                              setState(() => _receiptsCount = count),
+                        ),
+                        ClientContractsTab(
+                          key: ValueKey(
+                              'contracts-${widget.selectedClient!.id}'),
+                          client: widget.selectedClient!,
+                          onCountChanged: (count) =>
+                              setState(() => _contractsCount = count),
+                        ),
+                        ClientInvoiceStatsCard(
+                          key: ValueKey(
+                              'invoice-stats-${widget.selectedClient!.id}'),
+                          client: widget.selectedClient!,
                         ),
                       ],
                     ),
@@ -114,217 +141,15 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
   }
 }
 
-class _Header extends StatelessWidget {
-  final String clientName;
-  final String entityType;
-  final String propertyKind;
-  final bool expanded;
-  final VoidCallback onToggleExpanded;
-  final VoidCallback onEdit;
-  final VoidCallback onCreateInvoice;
-  final VoidCallback onCreateReceipt;
-
-  const _Header({
-    required this.clientName,
-    required this.entityType,
-    required this.propertyKind,
-    required this.expanded,
-    required this.onToggleExpanded,
-    required this.onEdit,
-    required this.onCreateInvoice,
-    required this.onCreateReceipt,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-
-    final chips = <Widget>[];
-    if (entityType.isNotEmpty) {
-      chips.add(_MiniChip(label: entityType));
-    }
-    if (propertyKind.isNotEmpty) {
-      chips.add(_MiniChip(label: propertyKind));
-    }
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onToggleExpanded,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: cs.primaryContainer,
-                  child: Text(
-                    clientName.trim().isEmpty
-                        ? '?'
-                        : clientName.trim().substring(0, 1).toUpperCase(),
-                    style: t.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        clientName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.titleLarge.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: ThemeColors.textPrimary(context),
-                        ),
-                      ),
-                      if (chips.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Wrap(spacing: 6, runSpacing: 6, children: chips),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Tooltip(
-                  message: expanded
-                      ? l.clientDetailsCollapseTooltip
-                      : l.clientDetailsExpandTooltip,
-                  child: Icon(
-                    expanded ? Icons.expand_less : Icons.expand_more,
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 640;
-
-                final editBtn = OutlinedButton.icon(
-                  icon: const Icon(Icons.edit_outlined),
-                  label: Text(l.edit),
-                  onPressed: onEdit,
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: cs.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                  ),
-                );
-
-                final invoiceBtn = FilledButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: Text(l.createInvoiceCta),
-                  onPressed: onCreateInvoice,
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                  ),
-                );
-
-                final receiptBtn = FilledButton.tonalIcon(
-                  icon: const Icon(Icons.description_outlined),
-                  label: Text(l.createReceiptCta),
-                  onPressed: onCreateReceipt,
-                  style: FilledButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                  ),
-                );
-
-                if (!compact) {
-                  return Row(
-                    children: [
-                      Expanded(child: editBtn),
-                      const SizedBox(width: 10),
-                      Expanded(child: invoiceBtn),
-                      const SizedBox(width: 10),
-                      Expanded(child: receiptBtn),
-                    ],
-                  );
-                }
-
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: editBtn),
-                        const SizedBox(width: 10),
-                        Expanded(child: invoiceBtn),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(width: double.infinity, child: receiptBtn),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MiniChip extends StatelessWidget {
-  final String label;
-  const _MiniChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        label,
-        style: t.bodySmall.copyWith(
-          color: cs.onSurfaceVariant,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
 class _ClientTabs extends StatelessWidget {
   final int invoicesCount;
-  final int draftsCount;
+  final int receiptsCount;
+  final int contractsCount;
 
   const _ClientTabs({
     required this.invoicesCount,
-    required this.draftsCount,
+    required this.receiptsCount,
+    required this.contractsCount,
   });
 
   @override
@@ -332,79 +157,97 @@ class _ClientTabs extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
 
-    return TabBar(
-      dividerColor: Colors.transparent,
-      splashFactory: NoSplash.splashFactory,
-      overlayColor: WidgetStatePropertyAll(
-        cs.primary.withValues(alpha: 0.08),
-      ),
-      indicatorSize: TabBarIndicatorSize.tab,
-      indicator: BoxDecoration(
-        color: cs.primaryContainer,
+    Widget tab({
+      required IconData icon,
+      required String label,
+      int? count,
+    }) {
+      return Tab(
+        height: 40,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15),
+              const SizedBox(width: 6),
+              Text(label),
+              if (count != null) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
       ),
-      labelColor: cs.onPrimaryContainer,
-      unselectedLabelColor: cs.onSurfaceVariant,
-      labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-      unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-      indicatorPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
-      labelPadding: EdgeInsets.zero,
-      tabs: [
-        Tab(text: l.groupInvoicesTabInvoices(invoicesCount)),
-        Tab(text: l.groupInvoicesTabDrafts(draftsCount)),
-      ],
-    );
-  }
-}
-
-class _QuickAssignAndBilling extends StatelessWidget {
-  final List<GroupClient> clients;
-  final GroupClient selectedClient;
-  final List<String> entityOptions;
-  final List<String> propertyOptions;
-  final bool assignBusy;
-  final Future<void> Function({String? entityType, String? propertyKind})
-      onApplyClassification;
-  final VoidCallback onEditClient;
-
-  const _QuickAssignAndBilling({
-    required this.clients,
-    required this.selectedClient,
-    required this.entityOptions,
-    required this.propertyOptions,
-    required this.assignBusy,
-    required this.onApplyClassification,
-    required this.onEditClient,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        QuickAssignmentCard(
-          client: selectedClient,
-          entityOptions: entityOptions,
-          propertyOptions: propertyOptions,
-          busy: assignBusy,
-          onApplyClassification: onApplyClassification,
+      padding: const EdgeInsets.all(3),
+      child: TabBar(
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        dividerColor: Colors.transparent,
+        splashFactory: NoSplash.splashFactory,
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: cs.primaryContainer,
+          borderRadius: BorderRadius.circular(999),
+          boxShadow: [
+            BoxShadow(
+              color: cs.primary.withValues(alpha: 0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
-        if (entityOptions.isNotEmpty || propertyOptions.isNotEmpty)
-          const SizedBox(height: 12),
-        BillingVerificationCard(
-          client: selectedClient,
-          onEdit: onEditClient,
-        ),
-        const SizedBox(height: 2),
-        Text(
-          AppLocalizations.of(context)!.billingDetailsSubtitle,
-          style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-        ),
-      ],
+        labelColor: cs.onPrimaryContainer,
+        unselectedLabelColor: cs.onSurfaceVariant,
+        labelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+        unselectedLabelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+        indicatorPadding: EdgeInsets.zero,
+        labelPadding: EdgeInsets.zero,
+        tabs: [
+          tab(
+            icon: Icons.receipt_long_outlined,
+            label: l.groupInvoicesTabInvoices(invoicesCount),
+          ),
+          tab(
+            icon: Icons.description_outlined,
+            label: '${l.receiptsTitle} ($receiptsCount)',
+          ),
+          tab(
+            icon: Icons.folder_outlined,
+            label: '${l.contractsTitle} ($contractsCount)',
+          ),
+          tab(
+            icon: Icons.insights_outlined,
+            label: isSpanish ? 'Grafico' : 'Graph',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -418,6 +261,7 @@ class _InvoiceList extends StatefulWidget {
   final GroupClient fallbackClient;
   final ValueChanged<Invoice> onTap;
   final ValueChanged<Invoice>? onDelete;
+  final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
 
   const _InvoiceList({
     required this.emptyTitle,
@@ -428,6 +272,7 @@ class _InvoiceList extends StatefulWidget {
     required this.fallbackClient,
     required this.onTap,
     required this.onDelete,
+    required this.onDownloadVisibleInvoices,
   });
 
   @override
@@ -439,6 +284,7 @@ class _InvoiceListState extends State<_InvoiceList> {
   DateTime? _toDate;
   DateQuickRange _quickRange = DateQuickRange.none;
   bool _filtersExpanded = false;
+  bool _downloadingVisible = false;
 
   DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
   DateTime _endOfDay(DateTime d) =>
@@ -501,11 +347,22 @@ class _InvoiceListState extends State<_InvoiceList> {
     });
   }
 
+  Future<void> _downloadVisible(List<Invoice> invoices) async {
+    if (_downloadingVisible || invoices.isEmpty) return;
+    setState(() => _downloadingVisible = true);
+    try {
+      await widget.onDownloadVisibleInvoices(invoices);
+    } finally {
+      if (mounted) setState(() => _downloadingVisible = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final hasFilter = _fromDate != null || _toDate != null;
     final filtered = widget.invoices.where((inv) {
       final date = _invoiceDate(inv);
@@ -530,7 +387,70 @@ class _InvoiceListState extends State<_InvoiceList> {
             expanded: _filtersExpanded,
             fromDate: _fromDate,
             toDate: _toDate,
-            showLabel: false,
+            showLabel: true,
+            labelActions: [
+              Tooltip(
+                message: filtered.isEmpty
+                    ? l.noInvoicesYet
+                    : isSpanish
+                        ? 'Descargar las facturas visibles (${filtered.length})'
+                        : 'Download visible invoices (${filtered.length})',
+                child: InkWell(
+                  onTap: filtered.isEmpty || _downloadingVisible
+                      ? null
+                      : () => _downloadVisible(filtered),
+                  borderRadius: BorderRadius.circular(999),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.surface.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_downloadingVisible)
+                          SizedBox(
+                            width: 13,
+                            height: 13,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          )
+                        else
+                          Icon(
+                            Icons.folder_zip_outlined,
+                            size: 14,
+                            color: filtered.isEmpty
+                                ? cs.onSurfaceVariant.withValues(alpha: 0.35)
+                                : cs.onSurfaceVariant,
+                          ),
+                        const SizedBox(width: 6),
+                        Text(
+                          isSpanish
+                              ? 'ZIP visibles (${filtered.length})'
+                              : 'Visible ZIP (${filtered.length})',
+                          style: t.bodySmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: filtered.isEmpty
+                                ? cs.onSurfaceVariant.withValues(alpha: 0.35)
+                                : cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
             onToggleExpanded: () =>
                 setState(() => _filtersExpanded = !_filtersExpanded),
             onClear: () => setState(() {
@@ -563,63 +483,127 @@ class _InvoiceListState extends State<_InvoiceList> {
                       subtitle: widget.emptySubtitle,
                     ),
                   )
-                : ListView.separated(
-                    padding: EdgeInsets.zero,
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) {
-                      final inv = filtered[i];
-                      final client = widget.clients.firstWhere(
-                        (c) => c.id == inv.clientId,
-                        orElse: () => widget.fallbackClient,
-                      );
-
-                      return InvoiceListItem(
-                        invoice: inv,
-                        client: client,
-                        onTap: () => widget.onTap(inv),
-                        onDelete: widget.onDelete == null
-                            ? null
-                            : () => widget.onDelete!(inv),
-                      );
-                    },
-                  ),
+                : _buildGroupedList(context, filtered),
           ),
         ],
       ),
     );
   }
-}
 
-class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-  _TabBarHeaderDelegate({required this.child});
+  /// Builds a flat list of month-header + invoice items, injecting a
+  /// [_MonthSeparator] whenever the month/year changes between invoices.
+  Widget _buildGroupedList(BuildContext context, List<Invoice> invoices) {
+    final l = AppLocalizations.of(context)!;
 
-  @override
-  double get minExtent => 52;
+    // Build flat items: alternating _MonthKey (headers) and Invoice
+    final items = <Object>[];
+    String? lastKey;
 
-  @override
-  double get maxExtent => 52;
+    for (final inv in invoices) {
+      final date = _invoiceDate(inv);
+      final key = date == null
+          ? null
+          : '${date.year}-${date.month.toString().padLeft(2, '0')}';
 
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-        child: child,
-      ),
+      if (key != null && key != lastKey) {
+        items.add(_MonthKey(date!, l.localeName));
+        lastKey = key;
+      }
+      items.add(inv);
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: items.length,
+      itemBuilder: (_, i) {
+        final item = items[i];
+        if (item is _MonthKey) {
+          return Padding(
+            padding: EdgeInsets.only(
+              top: i == 0 ? 0 : 12,
+              bottom: 6,
+            ),
+            child: _MonthSeparator(label: item.label),
+          );
+        }
+        final inv = item as Invoice;
+        final client = widget.clients.firstWhere(
+          (c) => c.id == inv.clientId,
+          orElse: () => widget.fallbackClient,
+        );
+        final isLast = i == items.length - 1 || items[i + 1] is _MonthKey;
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
+          child: InvoiceListItem(
+            invoice: inv,
+            client: client,
+            onTap: () => widget.onTap(inv),
+            onDelete:
+                widget.onDelete == null ? null : () => widget.onDelete!(inv),
+          ),
+        );
+      },
     );
   }
-
-  @override
-  bool shouldRebuild(covariant _TabBarHeaderDelegate oldDelegate) =>
-      oldDelegate.child != child;
 }
 
+/// Lightweight data holder for a month-group header.
+class _MonthKey {
+  final String label;
+  _MonthKey(DateTime date, String locale) : label = _formatMonth(date, locale);
 
+  static String _formatMonth(DateTime date, String locale) {
+    final formatter = DateFormat.yMMMM(locale);
+    final raw = formatter.format(date);
+    return raw[0].toUpperCase() + raw.substring(1);
+  }
+}
 
+/// A centered month/year divider: ── January 2026 ──
+class _MonthSeparator extends StatelessWidget {
+  const _MonthSeparator({required this.label});
 
+  final String label;
 
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Divider(
+            color: cs.outlineVariant.withValues(alpha: 0.35),
+            height: 1,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Text(
+            label,
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Divider(
+            color: cs.outlineVariant.withValues(alpha: 0.35),
+            height: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -30,8 +30,12 @@ class InvoiceLinkDialog {
 
     // Extract current values from entry
     final currentInvoiceId = expenseOnly
-        ? (entry['expenseDocumentId'] ?? entry['expense_document_id'] ?? entry['expenseDocument'])?.toString()
-        : (entry['invoiceId'] ?? entry['invoice_id'] ?? entry['invoice'])?.toString();
+        ? (entry['expenseDocumentId'] ??
+                entry['expense_document_id'] ??
+                entry['expenseDocument'])
+            ?.toString()
+        : (entry['invoiceId'] ?? entry['invoice_id'] ?? entry['invoice'])
+            ?.toString();
     final currentInvoiceIds = expenseOnly
         ? const <String>[]
         : () {
@@ -43,15 +47,18 @@ class InvoiceLinkDialog {
                   .toList(growable: false);
               if (ids.isNotEmpty) return ids;
             }
-            final single = (entry['invoiceId'] ?? entry['invoice_id'] ?? entry['invoice'])
-                ?.toString()
-                .trim();
+            final single =
+                (entry['invoiceId'] ?? entry['invoice_id'] ?? entry['invoice'])
+                    ?.toString()
+                    .trim();
             return (single != null && single.isNotEmpty)
                 ? <String>[single]
                 : const <String>[];
           }();
     final currentClientId = entry['clientId']?.toString();
-    final currentProviderId = (entry['providerId'] ?? entry['provider_id'] ?? entry['provider'])?.toString();
+    final currentProviderId =
+        (entry['providerId'] ?? entry['provider_id'] ?? entry['provider'])
+            ?.toString();
 
     // Prepare clients list
     final pickerClients = s.clients
@@ -81,7 +88,11 @@ class InvoiceLinkDialog {
             final l = AppLocalizations.of(dialogContext)!;
             final cs = Theme.of(dialogContext).colorScheme;
             final screenWidth = MediaQuery.of(dialogContext).size.width;
-            final dialogWidth = screenWidth < 1100 ? screenWidth * 0.98 : 1040.0;
+            final screenHeight = MediaQuery.of(dialogContext).size.height;
+            final dialogWidth =
+                screenWidth < 1100 ? screenWidth * 0.98 : 1040.0;
+            final dialogHeight =
+                (screenHeight * 0.78).clamp(420.0, 720.0).toDouble();
             final stacked = dialogWidth < 860;
 
             // Create steps builder
@@ -118,7 +129,9 @@ class InvoiceLinkDialog {
                 isActive: currentStep == 1,
                 state: currentStep > 1
                     ? StepState.complete
-                    : (currentStep == 1 ? StepState.editing : StepState.indexed),
+                    : (currentStep == 1
+                        ? StepState.editing
+                        : StepState.indexed),
               ),
               Step(
                 title: const Text('Vista previa'),
@@ -145,9 +158,10 @@ class InvoiceLinkDialog {
               backgroundColor: cs.surface,
               surfaceTintColor: Colors.transparent,
               actionsAlignment: MainAxisAlignment.spaceBetween,
-              title: const Text('Vincular factura'),
+              title: const Center(child: Text('Vincular factura')),
               content: SizedBox(
                 width: dialogWidth,
+                height: dialogHeight,
                 child: stacked
                     ? _buildStackedLayout(
                         dialogContext,
@@ -213,7 +227,8 @@ class InvoiceLinkDialog {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          InvoiceLinkSummary.build(context, entry, state, expenseOnly, s, l, cs),
+          InvoiceLinkSummary.build(
+              context, entry, state, expenseOnly, s, l, cs),
           const SizedBox(height: 12),
           WizardStepsHeader(
             steps: steps,
@@ -229,7 +244,8 @@ class InvoiceLinkDialog {
               });
             },
           ),
-          _buildStepContent(currentStep, stepsBuilder, expenseOnly, () => setState(() {})),
+          _buildStepContent(
+              currentStep, stepsBuilder, expenseOnly, () => setState(() {})),
         ],
       ),
     );
@@ -254,7 +270,8 @@ class InvoiceLinkDialog {
       children: [
         Expanded(
           flex: 4,
-          child: InvoiceLinkSummary.build(context, entry, state, expenseOnly, s, l, cs),
+          child: InvoiceLinkSummary.build(
+              context, entry, state, expenseOnly, s, l, cs),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -277,7 +294,17 @@ class InvoiceLinkDialog {
                   });
                 },
               ),
-              _buildStepContent(currentStep, stepsBuilder, expenseOnly, () => setState(() {})),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _buildStepContent(
+                    currentStep,
+                    stepsBuilder,
+                    expenseOnly,
+                    () => setState(() {}),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -292,30 +319,21 @@ class InvoiceLinkDialog {
     VoidCallback onStateChanged,
   ) {
     if (currentStep == 0) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: expenseOnly
-            ? stepsBuilder.buildProviderSelector(onStateChanged)
-            : stepsBuilder.buildClientSelector(onStateChanged),
-      );
+      return expenseOnly
+          ? stepsBuilder.buildProviderSelector(onStateChanged)
+          : stepsBuilder.buildClientSelector(onStateChanged);
     } else if (currentStep == 1) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: expenseOnly
-            ? stepsBuilder.buildExpenseSelector(onStateChanged)
-            : stepsBuilder.buildInvoiceSelector(onStateChanged),
-      );
+      return expenseOnly
+          ? stepsBuilder.buildExpenseSelector(onStateChanged)
+          : stepsBuilder.buildInvoiceSelector(onStateChanged);
     } else {
-      return Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: InvoiceLinkConfirmation.build(
-          stepsBuilder.context,
-          stepsBuilder.state,
-          expenseOnly,
-          stepsBuilder.l,
-          stepsBuilder.cs,
-          onStateChanged,
-        ),
+      return InvoiceLinkConfirmation.build(
+        stepsBuilder.context,
+        stepsBuilder.state,
+        expenseOnly,
+        stepsBuilder.l,
+        stepsBuilder.cs,
+        onStateChanged,
       );
     }
   }
@@ -332,6 +350,60 @@ class InvoiceLinkDialog {
   ) {
     final currentStep = state.visibleStep;
     final maxAllowedStep = state.getMaxAllowedStep(expenseOnly);
+
+    String? selectedCounterpartyName() {
+      if (expenseOnly) {
+        final selectedExpense = state.getSelectedExpense();
+        final expenseName = (selectedExpense?['providerName'] ??
+                selectedExpense?['provider'] ??
+                selectedExpense?['vendorName'] ??
+                selectedExpense?['vendor'])
+            ?.toString()
+            .trim();
+        if (expenseName != null && expenseName.isNotEmpty) {
+          return expenseName;
+        }
+        final providerId = state.selectedProviderId?.trim() ?? '';
+        if (providerId.isEmpty) return null;
+        final provider = state.providers.firstWhere(
+          (p) =>
+              p['id']?.toString() == providerId ||
+              p['_id']?.toString() == providerId,
+          orElse: () => const <String, dynamic>{},
+        );
+        final providerName = (provider['name'] ??
+                provider['providerName'] ??
+                provider['vendorName'])
+            ?.toString()
+            .trim();
+        return providerName != null && providerName.isNotEmpty
+            ? providerName
+            : null;
+      }
+
+      final selectedInvoice = state.getSelectedInvoice();
+      final invoiceName =
+          selectedInvoice?.billingName?.trim().isNotEmpty == true
+              ? selectedInvoice!.billingName!.trim()
+              : selectedInvoice?.clientSnapshot?.legalName?.trim();
+      if (invoiceName != null && invoiceName.isNotEmpty) {
+        return invoiceName;
+      }
+      final clientId = state.selectedClientId?.trim() ?? '';
+      if (clientId.isEmpty) return null;
+      final client = s.clients.firstWhere(
+        (c) =>
+            c['id']?.toString() == clientId || c['_id']?.toString() == clientId,
+        orElse: () => const <String, dynamic>{},
+      );
+      final clientName = (client['name'] ??
+              ((client['billing'] is Map)
+                  ? (client['billing'] as Map)['legalName']
+                  : null))
+          ?.toString()
+          .trim();
+      return clientName != null && clientName.isNotEmpty ? clientName : null;
+    }
 
     // ── Left action ─────────────────────────────────────────────────────────
     final Widget leftAction;
@@ -392,18 +464,21 @@ class InvoiceLinkDialog {
                   ...state.selectedInvoiceIds,
                   ...manualIds,
                 }.toList(growable: false);
+                final counterpartyName = selectedCounterpartyName();
                 if (!expenseOnly && state.selectedClientId != currentClientId) {
                   await s.linkClient(
                       entryId: entryId, clientId: state.selectedClientId);
                 }
                 final outcome = await s.linkInvoice(
                   entryId: entryId,
-                  invoiceId: expenseOnly ? (value.isEmpty ? null : value) : null,
+                  invoiceId:
+                      expenseOnly ? (value.isEmpty ? null : value) : null,
                   invoiceIds: expenseOnly ? null : selectedIds,
                   invoiceDisplayNumber:
                       selectedInvoice?.invoiceNumber.trim().isNotEmpty == true
                           ? selectedInvoice!.invoiceNumber.trim()
                           : null,
+                  counterpartyName: counterpartyName,
                   expenseOnly: expenseOnly,
                 );
                 if (!dialogContext.mounted) return;
@@ -493,7 +568,8 @@ class InvoiceLinkDialog {
   ) {
     // Load invoices for selected client
     if ((state.selectedClientId?.trim().isNotEmpty ?? false) &&
-        !state.invoiceCacheByClient.containsKey(state.selectedClientId!.trim()) &&
+        !state.invoiceCacheByClient
+            .containsKey(state.selectedClientId!.trim()) &&
         !state.loadingInvoices) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!dialogContext.mounted) return;
@@ -504,11 +580,13 @@ class InvoiceLinkDialog {
     // Load expenses for selected provider
     if (expenseOnly &&
         (state.selectedProviderId?.trim().isNotEmpty ?? false) &&
-        !state.expenseCacheByProvider.containsKey((state.selectedProviderId ?? '').trim()) &&
+        !state.expenseCacheByProvider
+            .containsKey((state.selectedProviderId ?? '').trim()) &&
         !state.loadingExpenses) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!dialogContext.mounted) return;
-        _loadExpensesForProvider(dialogContext, state, s, expensesApi, setState);
+        _loadExpensesForProvider(
+            dialogContext, state, s, expensesApi, setState);
       });
     }
 
@@ -544,7 +622,8 @@ class InvoiceLinkDialog {
     } catch (e) {
       if (!dialogContext.mounted) return;
       setState(() {
-        state.providersError = e.toString().replaceFirst('Exception: ', '').trim();
+        state.providersError =
+            e.toString().replaceFirst('Exception: ', '').trim();
       });
     } finally {
       if (dialogContext.mounted) {
@@ -561,7 +640,9 @@ class InvoiceLinkDialog {
     StateSetter setState,
   ) async {
     final clientId = state.selectedClientId?.trim() ?? '';
-    if (clientId.isEmpty || state.invoiceCacheByClient.containsKey(clientId)) return;
+    if (clientId.isEmpty || state.invoiceCacheByClient.containsKey(clientId)) {
+      return;
+    }
 
     final groupId = s.groupId;
     if (groupId == null || groupId.trim().isEmpty) {
@@ -583,11 +664,13 @@ class InvoiceLinkDialog {
       }
       if (!dialogContext.mounted) return;
       setState(() {
-        state.invoiceCacheByClient[clientId] = merged.values.toList(growable: false);
+        state.invoiceCacheByClient[clientId] =
+            merged.values.toList(growable: false);
       });
     } catch (e) {
       if (!dialogContext.mounted) return;
-      setState(() => state.invoicesError = e.toString().replaceFirst('Exception: ', '').trim());
+      setState(() => state.invoicesError =
+          e.toString().replaceFirst('Exception: ', '').trim());
     } finally {
       if (dialogContext.mounted) {
         setState(() => state.loadingInvoices = false);
@@ -603,7 +686,10 @@ class InvoiceLinkDialog {
     StateSetter setState,
   ) async {
     final providerId = state.selectedProviderId?.trim() ?? '';
-    if (providerId.isEmpty || state.expenseCacheByProvider.containsKey(providerId)) return;
+    if (providerId.isEmpty ||
+        state.expenseCacheByProvider.containsKey(providerId)) {
+      return;
+    }
 
     final groupId = s.groupId;
     if (groupId == null || groupId.trim().isEmpty) {
@@ -615,12 +701,16 @@ class InvoiceLinkDialog {
       state.expensesError = null;
     });
     try {
-      final list = await expensesApi.list(groupId: groupId, providerId: providerId, size: 100);
+      final list = await expensesApi.listAll(
+        groupId: groupId,
+        providerId: providerId,
+      );
       if (!dialogContext.mounted) return;
       setState(() => state.expenseCacheByProvider[providerId] = list);
     } catch (e) {
       if (!dialogContext.mounted) return;
-      setState(() => state.expensesError = e.toString().replaceFirst('Exception: ', '').trim());
+      setState(() => state.expensesError =
+          e.toString().replaceFirst('Exception: ', '').trim());
     } finally {
       if (dialogContext.mounted) {
         setState(() => state.loadingExpenses = false);

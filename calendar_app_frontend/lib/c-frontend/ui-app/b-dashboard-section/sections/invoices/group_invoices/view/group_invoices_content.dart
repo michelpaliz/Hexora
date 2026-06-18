@@ -20,40 +20,36 @@ class _GroupInvoicesContent extends StatelessWidget {
     if (!showInlineEditor) {
       return _buildContent(context);
     }
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: IgnorePointer(
-            ignoring: true,
-            child: _buildContent(context),
-          ),
-        ),
-        Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              FocusManager.instance.primaryFocus?.unfocus();
-            },
-            child: InvoiceEditorScreen(
-              key: state._invoiceEditorKey,
-              group: state.widget.group,
-              clients: state._clients,
-              initialClientId: state._invoiceEditorClientId,
-              initialInvoice: state._invoiceEditorInvoice,
-              embedded: true,
-              onDataChanged: null,
-              onClose: (changed) =>
-                  state._closeInlineInvoiceEditor(changed: changed),
-            ),
-          ),
-        ),
-      ],
+    return InvoiceEditorScreen(
+      key: ValueKey(
+        'inline-invoice-editor-${state._invoiceEditorSession}-${state._invoiceEditorInvoice?.id ?? 'new'}-${state._invoiceEditorClientId ?? 'none'}',
+      ),
+      group: state.widget.group,
+      clients: state._clients,
+      initialClientId: state._invoiceEditorClientId,
+      initialInvoice: state._invoiceEditorInvoice,
+      embedded: true,
+      onDataChanged: null,
+      onUnsavedStateChanged: (dirty) =>
+          state._inlineInvoiceEditorUnsaved = dirty,
+      onClose: (changed) => state._closeInlineInvoiceEditor(changed: changed),
     );
   }
 
   Widget _buildContent(BuildContext context) {
+    if (menu == 'client_invoice_stats') {
+      return ClientInvoiceComparisonView(
+        key: const ValueKey('group-invoices-client-invoice-stats'),
+        clients: state._clients,
+        selectedClient: state._selectedClient,
+        onSelectClient: (client) =>
+            state.setState(() => state._selectedClient = client),
+      );
+    }
+
     if (menu == 'clients' || menu == 'clients_flow') {
       return GroupInvoicesClientsView(
+        key: ValueKey('group-invoices-clients-$menu'),
         groupId: state.widget.group.id,
         clients: state._clients,
         selectedClient: state._selectedClient,
@@ -69,6 +65,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         },
         onOpenInvoiceDetail: state._openInvoiceDetail,
         onDeleteInvoice: state._deleteInvoice,
+        onDownloadVisibleInvoices: state._downloadVisibleInvoicesPdfs,
         onUpdateClientClassification: state._updateClientClassification,
       );
     }
@@ -106,16 +103,23 @@ class _GroupInvoicesContent extends StatelessWidget {
         onDownloadPdf: state._downloadReceiptPdf,
         onImportJson: state._openReceiptJsonImportDialog,
         onLoadInlinePdf: state._loadReceiptInlinePdfBytes,
+        disableDetailPreviewInteraction:
+            state._disableReceiptPreviewInteraction,
       );
     }
 
     if (state._selectedMenu == 'receipt_editor') {
       return ReceiptEditorWizardScreen(
+        key: ValueKey(
+          'inline-receipt-editor-${state._receiptEditorSession}-${state._receiptEditorReceipt?.id ?? 'new'}-${state._receiptEditorClientId ?? 'none'}',
+        ),
         group: state.widget.group,
         clients: state._clients,
         initialClientId: state._receiptEditorClientId,
         initialReceipt: state._receiptEditorReceipt,
         embedded: true,
+        onUnsavedStateChanged: (dirty) =>
+            state._inlineReceiptEditorUnsaved = dirty,
         onClose: (changed) => state._closeInlineReceiptEditor(changed: changed),
       );
     }
@@ -171,20 +175,80 @@ class _GroupInvoicesContent extends StatelessWidget {
       );
     }
 
+    if (state._selectedMenu == 'expenses_suspects') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: ExpenseVatAuditView(
+          key: const ValueKey('expenses_suspects'),
+          groupId: state.widget.group.id,
+          onEditExpense: (expenseId) async =>
+              state._openExpenseForEdit(expenseId),
+        ),
+      );
+    }
+
+    if (state._selectedMenu == 'invoices_suspects') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: InvoiceVatAuditView(
+          key: const ValueKey('invoices_suspects'),
+          groupId: state.widget.group.id,
+          clients: state._clients,
+          onEditInvoice: state._openInvoiceFromBudgetConversion,
+        ),
+      );
+    }
+
+    if (state._selectedMenu == 'invoices_accountant_compare') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: InvoiceAccountantCompareView(
+          key: const ValueKey('invoices_accountant_compare'),
+          groupId: state.widget.group.id,
+          clients: state._clients,
+          onEditInvoice: state._openInvoiceFromBudgetConversion,
+        ),
+      );
+    }
+
     if (state._selectedMenu == 'budgets_list') {
       return GroupInvoicesBudgetsView(
+        key: ValueKey('group-invoices-budgets-list-${state.widget.group.id}'),
         groupId: state.widget.group.id,
         clients: state._clients,
         mode: GroupInvoicesBudgetsMode.list,
+        initialSelectedBudgetId: state.widget.initialBudgetId,
         onOpenInvoiceId: state._openInvoiceFromBudgetConversion,
+        onEditDraftBudget: state._openDraftBudgetEditor,
       );
     }
 
     if (state._selectedMenu == 'budgets_new') {
+      final editorBudgetId =
+          state._budgetEditorBudgetId ?? state.widget.initialBudgetId;
       return GroupInvoicesBudgetsView(
+        key: ValueKey(
+          'group-invoices-budgets-create-${state.widget.group.id}-${editorBudgetId ?? 'new'}',
+        ),
         groupId: state.widget.group.id,
         clients: state._clients,
         mode: GroupInvoicesBudgetsMode.create,
+        initialSelectedBudgetId: editorBudgetId,
+        onUnsavedStateChanged: (dirty) => state._budgetEditorUnsaved = dirty,
+        onExitEditor:
+            editorBudgetId == null ? null : state._closeBudgetEditorToList,
+      );
+    }
+
+    if (state._selectedMenu == 'budgets_convert') {
+      return PresupuestoInvoiceConversionView(
+        key: ValueKey(
+          'presupuesto-conversion-${state.widget.group.id}-${state.widget.initialBudgetId ?? ''}',
+        ),
+        groupId: state.widget.group.id,
+        clients: state._clients,
+        initialSelectedBudgetId: state.widget.initialBudgetId,
+        onOpenInvoiceId: state._openInvoiceFromBudgetConversion,
       );
     }
 
@@ -249,16 +313,19 @@ class _GroupInvoicesContent extends StatelessWidget {
         onDeleteInvoice: state._deleteInvoice,
         onEditDraft: state._openEditDraft,
         onIssueDraft: state._issueInvoice,
+        onIssueAllDrafts: state._issueAllDraftInvoices,
         onCreateInvoice: state._openCreateInvoice,
         onRefresh: state._refreshInvoiceListsOnly,
         sortState: state._effectiveInvoiceSortState,
         onSortBySelected: state._handleInvoiceSortBySelected,
         sortLoading: state._effectiveSortingInvoices,
+        issueAllDraftsLoading: state._issuingAllDrafts == true,
         initialTabIndex: 0,
         onOpenRecurringSeries: (seriesId) => state.setState(() {
           state._recurringSeriesToOpen = seriesId;
           state._selectedMenu = 'recurring';
         }),
+        onIssuedDateFilterChanged: state._updateIssuedInvoiceDateFilter,
       );
     }
 
@@ -283,16 +350,20 @@ class _GroupInvoicesContent extends StatelessWidget {
         onDeleteInvoice: state._deleteInvoice,
         onEditDraft: state._openEditDraft,
         onIssueDraft: state._issueInvoice,
+        onIssueAllDrafts: state._issueAllDraftInvoices,
         onCreateInvoice: state._openCreateInvoice,
         onRefresh: state._refreshInvoiceListsOnly,
         sortState: state._effectiveInvoiceSortState,
         onSortBySelected: state._handleInvoiceSortBySelected,
         sortLoading: state._effectiveSortingInvoices,
+        issueAllDraftsLoading: state._issuingAllDrafts == true,
         initialTabIndex: 1,
         onOpenRecurringSeries: (seriesId) => state.setState(() {
           state._recurringSeriesToOpen = seriesId;
           state._selectedMenu = 'recurring';
         }),
+        onIssuedDateFilterChanged: state._updateIssuedInvoiceDateFilter,
+        onDownloadFiltered: state._downloadFilteredInvoices,
       );
     }
 
@@ -308,15 +379,19 @@ class _GroupInvoicesContent extends StatelessWidget {
       onDeleteInvoice: state._deleteInvoice,
       onEditDraft: state._openEditDraft,
       onIssueDraft: state._issueInvoice,
+      onIssueAllDrafts: state._issueAllDraftInvoices,
       onCreateInvoice: state._openCreateInvoice,
       onRefresh: state._refreshInvoiceListsOnly,
       sortState: state._effectiveInvoiceSortState,
       onSortBySelected: state._handleInvoiceSortBySelected,
       sortLoading: state._effectiveSortingInvoices,
+      issueAllDraftsLoading: state._issuingAllDrafts == true,
       onOpenRecurringSeries: (seriesId) => state.setState(() {
         state._recurringSeriesToOpen = seriesId;
         state._selectedMenu = 'recurring';
       }),
+      onIssuedDateFilterChanged: state._updateIssuedInvoiceDateFilter,
+      onDownloadFiltered: state._downloadFilteredInvoices,
     );
   }
 }

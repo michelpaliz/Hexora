@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 
 class InsightsInlinePanel extends StatefulWidget {
   final Group group;
+
   const InsightsInlinePanel({super.key, required this.group});
 
   @override
@@ -75,7 +76,7 @@ class _InsightsInlinePanelState extends State<InsightsInlinePanel> {
     }
     return DateTimeRange(
       start: start,
-      end: today.add(const Duration(days: 1)),
+      end: today,
     );
   }
 
@@ -139,7 +140,6 @@ class _InsightsInlinePanelState extends State<InsightsInlinePanel> {
           s.id: (s.name?.trim().isNotEmpty == true ? s.name!.trim() : s.id),
       };
 
-      // Aggregate minutes
       final minutesByDay = <DateTime, int>{};
       final minutesByDimension = <String, int>{};
       for (final raw in onlyThisGroup) {
@@ -170,7 +170,7 @@ class _InsightsInlinePanelState extends State<InsightsInlinePanel> {
         _serviceNames = serviceNames;
         _minutesByDayLabel = {
           for (final e in minutesByDay.entries)
-            DateFormat.MMMd(locale).format(e.key): e.value
+            DateFormat.MMMd(locale).format(e.key): e.value,
         };
         _minutesByDimension = _applyLabels(minutesByDimension);
         _loading = false;
@@ -206,11 +206,337 @@ class _InsightsInlinePanelState extends State<InsightsInlinePanel> {
     _load();
   }
 
+  String _formatMinutesLabel(int minutes) {
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h == 0) return '${m}m';
+    if (m == 0) return '${h}h';
+    return '${h}h ${m}m';
+  }
+
+  Widget _summaryStatCard({
+    required ColorScheme cs,
+    required TextTheme tt,
+    required IconData icon,
+    required String label,
+    required String value,
+    Color? accent,
+    double? progress,
+  }) {
+    final tone = accent ?? cs.primary;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.22),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left accent stripe
+              Container(
+                width: 4,
+                color: tone.withValues(alpha: 0.7),
+              ),
+              // Content
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 11),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: tone.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(icon, size: 17, color: tone),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.bodySmall?.copyWith(
+                                fontSize: 11,
+                                color: cs.onSurfaceVariant
+                                    .withValues(alpha: 0.8),
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.1,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              value,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                                color: cs.onSurface,
+                                height: 1.1,
+                              ),
+                            ),
+                            if (progress != null) ...[
+                              const SizedBox(height: 5),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(999),
+                                child: LinearProgressIndicator(
+                                  value: progress.clamp(0.0, 1.0),
+                                  minHeight: 3,
+                                  backgroundColor: cs.outlineVariant
+                                      .withValues(alpha: 0.25),
+                                  valueColor:
+                                      AlwaysStoppedAnimation(tone),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryPanel(
+    BuildContext context, {
+    required ColorScheme cs,
+    required TextTheme tt,
+    required int totalMinutes,
+    required int trackedDays,
+    required String averageLabel,
+    required String topBucketLabel,
+    required String topBucketValue,
+    required int topBucketMinutes,
+  }) {
+    final isEs =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+    final topProgress = totalMinutes == 0
+        ? 0.0
+        : topBucketMinutes / totalMinutes;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header with gradient accent strip
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  cs.primaryContainer.withValues(alpha: 0.35),
+                  cs.surface,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              border: Border(
+                bottom: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.2),
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.insights_rounded,
+                    size: 16,
+                    color: cs.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isEs ? 'Resumen del periodo' : 'Period summary',
+                        style: tt.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      Text(
+                        isEs
+                            ? 'Carga y distribución del trabajo'
+                            : 'Workload & distribution',
+                        style: tt.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Stat cards
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                _summaryStatCard(
+                  cs: cs,
+                  tt: tt,
+                  icon: Icons.schedule_rounded,
+                  label: isEs ? 'Tiempo total' : 'Total time',
+                  value: _formatMinutesLabel(totalMinutes),
+                ),
+                const SizedBox(height: 8),
+                _summaryStatCard(
+                  cs: cs,
+                  tt: tt,
+                  icon: Icons.today_rounded,
+                  label: isEs ? 'Días con actividad' : 'Active days',
+                  value: '$trackedDays',
+                  accent: cs.secondary,
+                ),
+                const SizedBox(height: 8),
+                _summaryStatCard(
+                  cs: cs,
+                  tt: tt,
+                  icon: Icons.auto_graph_rounded,
+                  label: isEs ? 'Promedio diario' : 'Daily average',
+                  value: averageLabel,
+                  accent: cs.tertiary,
+                ),
+                const SizedBox(height: 8),
+                _summaryStatCard(
+                  cs: cs,
+                  tt: tt,
+                  icon: _dimension == Dimension.clients
+                      ? Icons.people_alt_outlined
+                      : Icons.build_circle_outlined,
+                  label: isEs
+                      ? (_dimension == Dimension.clients
+                          ? 'Cliente destacado'
+                          : 'Servicio destacado')
+                      : (_dimension == Dimension.clients
+                          ? 'Top client'
+                          : 'Top service'),
+                  value: topBucketLabel.isEmpty
+                      ? (isEs ? 'Sin datos' : 'No data')
+                      : '$topBucketLabel · $topBucketValue',
+                  accent: const Color(0xFFE8A23A),
+                  progress: topBucketLabel.isEmpty ? null : topProgress,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolbarCard(
+    BuildContext context, {
+    required ColorScheme cs,
+    required bool showPastHint,
+  }) {
+    final l = AppLocalizations.of(context)!;
+    final tt = Theme.of(context).textTheme;
+    final isEs = l.localeName.startsWith('es');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: DimensionTabs(
+              value: _dimension,
+              onChanged: _onDimensionChanged,
+            ),
+          ),
+          if (showPastHint) ...[
+            const SizedBox(width: 16),
+            Flexible(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isEs
+                            ? 'Mostrando solo datos futuros.'
+                            : 'Showing only future data.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
 
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -233,55 +559,139 @@ class _InsightsInlinePanelState extends State<InsightsInlinePanel> {
 
     final timeByDayLabel =
         l.localeName.startsWith('es') ? 'Tiempo por día' : 'Time by day';
+    final range = _resolveRange(DateTime.now());
+    final rangeText =
+        '${DateFormat.yMMMd().format(range.start)} – ${DateFormat.yMMMd().format(range.end)}';
+    final totalMinutes = _minutesByDayLabel.values.fold<int>(0, (a, b) => a + b);
+    final trackedDays = _minutesByDayLabel.values.where((m) => m > 0).length;
+    final averageLabel = trackedDays == 0
+        ? '0m'
+        : _formatMinutesLabel((totalMinutes / trackedDays).round());
+    final sortedDimensionEntries = _minutesByDimension.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final topBucket =
+        sortedDimensionEntries.isEmpty ? null : sortedDimensionEntries.first;
+
+    final filterCard = InsightsFiltersSection(
+      preset: _preset,
+      onPresetChanged: _onPresetChange,
+      onPickCustom: () async {
+        final now = DateTime.now();
+        final initialRange = _resolveRange(now);
+        final picked = await showDateRangePicker(
+          context: context,
+          firstDate: DateTime(now.year - 3),
+          lastDate: DateTime(now.year, now.month, now.day),
+          initialDateRange: initialRange,
+        );
+        _onCustomRange(picked);
+      },
+      rangeText: rangeText,
+    );
+
+    final toolbarCard = _buildToolbarCard(
+      context,
+      cs: cs,
+      showPastHint: _preset != RangePreset.custom,
+    );
+
+    final dayCard = InsightsBarsCard(
+      title: timeByDayLabel,
+      minutesByKey: _minutesByDayLabel,
+    );
+    final dimensionCard = InsightsBarsCard(
+      title: _dimension == Dimension.clients ? l.timeByClient : l.timeByService,
+      minutesByKey: _minutesByDimension,
+    );
+
     return Padding(
       padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InsightsFiltersSection(
-            preset: _preset,
-            onPresetChanged: _onPresetChange,
-            onPickCustom: () async {
-              final now = DateTime.now();
-              final initialRange = _resolveRange(now);
-              final picked = await showDateRangePicker(
-                context: context,
-                firstDate: DateTime(now.year - 3),
-                lastDate: DateTime(now.year, now.month, now.day),
-                initialDateRange: initialRange,
-              );
-              _onCustomRange(picked);
-            },
-            rangeText:
-                '${DateFormat.yMMMd().format(_resolveRange(DateTime.now()).start)} – ${DateFormat.yMMMd().format(_resolveRange(DateTime.now()).end)}',
-          ),
-          const SizedBox(height: 12),
-          DimensionTabs(
-            value: _dimension,
-            onChanged: _onDimensionChanged,
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth >= 1180;
+
+          if (isDesktop) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_preset != RangePreset.custom) const InsightsPastDataHint(),
-                const SizedBox(height: 12),
-                InsightsBarsCard(
-                  title: timeByDayLabel,
-                  minutesByKey: _minutesByDayLabel,
+                Expanded(
+                  flex: 8,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      toolbarCard,
+                      const SizedBox(height: 16),
+                      filterCard,
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: dayCard),
+                            const SizedBox(width: 16),
+                            Expanded(child: dimensionCard),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                InsightsBarsCard(
-                  title: _dimension == Dimension.clients
-                      ? l.timeByClient
-                      : l.timeByService,
-                  minutesByKey: _minutesByDimension,
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 370,
+                  child: _buildSummaryPanel(
+                    context,
+                    cs: cs,
+                    tt: tt,
+                    totalMinutes: totalMinutes,
+                    trackedDays: trackedDays,
+                    averageLabel: averageLabel,
+                    topBucketLabel: topBucket?.key ?? '',
+                    topBucketValue: topBucket == null
+                        ? ''
+                        : _formatMinutesLabel(topBucket.value),
+                    topBucketMinutes: topBucket?.value ?? 0,
+                  ),
                 ),
               ],
-            ),
-          ),
-        ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              filterCard,
+              const SizedBox(height: 12),
+              _buildSummaryPanel(
+                context,
+                cs: cs,
+                tt: tt,
+                totalMinutes: totalMinutes,
+                trackedDays: trackedDays,
+                averageLabel: averageLabel,
+                topBucketLabel: topBucket?.key ?? '',
+                topBucketValue:
+                    topBucket == null ? '' : _formatMinutesLabel(topBucket.value),
+                topBucketMinutes: topBucket?.value ?? 0,
+              ),
+              const SizedBox(height: 12),
+              toolbarCard,
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    if (_preset != RangePreset.custom) const InsightsPastDataHint(),
+                    const SizedBox(height: 12),
+                    dayCard,
+                    const SizedBox(height: 16),
+                    dimensionCard,
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -129,6 +129,36 @@ class EventRepository implements IEventRepository {
   }
 
   @override
+  Future<Event> createTask({
+    required String groupId,
+    required String title,
+    String? note,
+    required DateTime dueAt,
+    int? reminderTime,
+    List<String>? recipients,
+    bool notifyOwner = true,
+  }) {
+    return _queue(groupId, () async {
+      final token = await _token();
+      final created = await _api.createTask(
+        groupId: groupId,
+        title: title,
+        note: note,
+        dueAt: dueAt,
+        reminderTime: reminderTime,
+        recipients: recipients,
+        notifyOwner: notifyOwner,
+        token: token,
+      );
+      final cid = _gidOf(created);
+      if (cid != null) {
+        _applyOrBuffer(cid, (list) => list.add(created));
+      }
+      return created;
+    });
+  }
+
+  @override
   Future<Event> getEventById(String id) async =>
       _api.getEventById(id, await _token());
 
@@ -198,6 +228,25 @@ class EventRepository implements IEventRepository {
     // Keep this API call as-is to preserve your current domain usage pattern.
     final token = await _token();
     return _api.getEventsByGroupId(groupId, token);
+  }
+
+  @override
+  Future<List<Event>> getTasks({
+    required String groupId,
+    String? status,
+    bool mine = false,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final token = await _token();
+    return _api.getTasks(
+      groupId: groupId,
+      status: status,
+      mine: mine,
+      from: from,
+      to: to,
+      token: token,
+    );
   }
 
   // ---- Socket hooks (repo keeps cache in sync) ------------------------------

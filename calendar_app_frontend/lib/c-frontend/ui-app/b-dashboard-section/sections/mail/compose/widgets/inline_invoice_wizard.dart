@@ -226,6 +226,24 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
   String _fmtDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year % 100}';
 
+  String _fmtAmount(num? value) {
+    if (value == null) return '-';
+    return value.toStringAsFixed(2).replaceAll('.', ',');
+  }
+
+  num? _presupuestoTotal(Map<String, dynamic> item) {
+    final direct = item['total'];
+    if (direct is num) return direct;
+    if (direct != null) return num.tryParse(direct.toString());
+    final totals = item['totals'];
+    if (totals is Map) {
+      final nested = totals['total'];
+      if (nested is num) return nested;
+      if (nested != null) return num.tryParse(nested.toString());
+    }
+    return null;
+  }
+
   String _localizedStatusLabel(AppLocalizations l, String? statusRaw) {
     final status = (statusRaw ?? '').trim().toLowerCase();
     if (status.isEmpty || status.contains('draft')) return l.statusDraft;
@@ -374,13 +392,13 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
   Widget _statusPill(String label, ColorScheme cs) {
     final low = label.toLowerCase();
     final isIssued = low.contains('emitida') || low.contains('issued');
-    final color = isIssued ? const Color(0xFF2E7D32) : cs.onSurfaceVariant;
+    final color = isIssued ? cs.tertiary : cs.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(
         label,
@@ -413,12 +431,13 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color:
-                selected ? cs.primaryContainer.withValues(alpha: 0.28) : null,
+            color: selected
+                ? cs.primaryContainer.withValues(alpha: 0.45)
+                : cs.surfaceContainerLow,
             border: Border.all(
               color: selected
-                  ? cs.primary
-                  : cs.outlineVariant.withValues(alpha: 0.55),
+                  ? cs.primary.withValues(alpha: 0.8)
+                  : cs.outlineVariant.withValues(alpha: 0.4),
               width: selected ? 1.5 : 1.0,
             ),
           ),
@@ -481,7 +500,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                         : Icons.mail_outline_rounded,
                     size: 14,
                     color: isSent
-                        ? const Color(0xFF2E7D32)
+                        ? cs.tertiary
                         : cs.onSurfaceVariant.withValues(alpha: 0.4),
                   ),
                 ),
@@ -510,9 +529,9 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     required List<Map<String, dynamic>> presupuestos,
     required ColorScheme cs,
   }) {
-    const invoiceColor = Color(0xFF1565C0);
-    const receiptColor = Color(0xFF6A3AB5);
-    const budgetColor = Color(0xFF00695C);
+    final invoiceColor = cs.primary;
+    final receiptColor = cs.tertiary;
+    final budgetColor = cs.secondary;
     final chips = <Widget>[
       if (invoices.isNotEmpty)
         _summaryChip(
@@ -604,6 +623,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     required String number,
     required String statusLabel,
     required ColorScheme cs,
+    num? amount,
     VoidCallback? onPreview,
     bool? isSent,
   }) {
@@ -626,18 +646,40 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    number,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          number,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _statusPill(statusLabel, cs),
+                      if (amount != null) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            _fmtAmount(amount),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: cs.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  _statusPill(statusLabel, cs),
                 ],
               ),
             ),
@@ -757,46 +799,91 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     }).toList(growable: false);
 
     Widget stepHeader() {
-      final labels = [
+      final steps = [
         l.invoiceBillToLabel,
         l.mailComposeInvoiceIdsLabel,
         l.preview,
       ];
-      return Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: List.generate(labels.length, (index) {
-          final active = _step == index;
-          final complete = index < _step;
-          final canTap = index <= _step || index == _step + 1;
-          return InkWell(
-            borderRadius: BorderRadius.circular(999),
-            onTap: !canTap ? null : () => _tryGoToStep(index, l),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                color: complete
-                    ? cs.primaryContainer
-                    : active
-                        ? cs.secondaryContainer
-                        : cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                border: Border.all(
-                  color: active || complete
-                      ? cs.primary
-                      : cs.outlineVariant.withValues(alpha: 0.5),
+      // Build interleaved list: step — connector — step — connector — step
+      final items = <Widget>[];
+      for (var i = 0; i < steps.length; i++) {
+        final active = _step == i;
+        final complete = i < _step;
+        final canTap = i <= _step || i == _step + 1;
+        items.add(
+          GestureDetector(
+            onTap: canTap ? () => _tryGoToStep(i, l) : null,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: (active || complete)
+                        ? cs.primary
+                        : cs.surfaceContainerHighest,
+                    border: Border.all(
+                      color: (active || complete)
+                          ? cs.primary
+                          : cs.outlineVariant.withValues(alpha: 0.5),
+                      width: active ? 2 : 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: complete
+                        ? Icon(Icons.check_rounded,
+                            size: 14, color: cs.onPrimary)
+                        : Text(
+                            '${i + 1}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: active
+                                  ? cs.onPrimary
+                                  : cs.onSurfaceVariant,
+                            ),
+                          ),
+                  ),
                 ),
-              ),
-              child: Text(
-                labels[index],
-                style: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: canTap ? null : cs.onSurfaceVariant,
+                const SizedBox(height: 4),
+                Text(
+                  steps[i],
+                  style: t.bodySmall.copyWith(
+                    fontSize: 10,
+                    fontWeight:
+                        active ? FontWeight.w700 : FontWeight.w500,
+                    color: active
+                        ? cs.primary
+                        : complete
+                            ? cs.onSurface
+                            : cs.onSurfaceVariant,
+                  ),
                 ),
+              ],
+            ),
+          ),
+        );
+        if (i < steps.length - 1) {
+          final lineComplete = i < _step;
+          items.add(
+            Expanded(
+              child: Container(
+                height: 1.5,
+                margin: const EdgeInsets.only(bottom: 18),
+                color: lineComplete
+                    ? cs.primary.withValues(alpha: 0.6)
+                    : cs.outlineVariant.withValues(alpha: 0.35),
               ),
             ),
           );
-        }),
+        }
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: items,
       );
     }
 
@@ -859,65 +946,91 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_selectedClient != null) ...[
-              Row(
-                children: [
-                  Icon(Icons.person_outline_rounded,
-                      size: 13, color: cs.primary),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      _selectedClient!.name,
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: cs.primary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-            ],
-            // ── Date filter chips ─────────────────────────────────────────────
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final f in _DateFilter.values)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(
-                        label: Text(switch (f) {
-                          _DateFilter.all => 'Todos',
-                          _DateFilter.thisMonth => 'Este mes',
-                          _DateFilter.thisYear => 'Este año',
-                        }),
-                        selected: _dateFilter == f,
-                        onSelected: (_) =>
-                            setState(() => _dateFilter = f),
-                        visualDensity: VisualDensity.compact,
-                        labelStyle: const TextStyle(fontSize: 11),
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        showCheckmark: false,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
+            // ── Search ───────────────────────────────────────────────────────
             TextField(
               controller: _invoiceSearchCtrl,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 isDense: true,
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search, size: 18),
                 hintText: l.mailComposeInvoiceIdsHint,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.5)),
                 ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.5)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      BorderSide(color: cs.primary, width: 1.3),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 8),
+                filled: true,
+                fillColor: cs.surfaceContainerLow,
               ),
+            ),
+            const SizedBox(height: 8),
+            // ── Client + date filter chips on same row ────────────────────────
+            Row(
+              children: [
+                if (_selectedClient != null) ...[
+                  Icon(Icons.person_outline_rounded,
+                      size: 13, color: cs.primary),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      _selectedClient!.name,
+                      style: t.bodySmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 14,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    color: cs.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ],
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final f in _DateFilter.values)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: ChoiceChip(
+                              label: Text(switch (f) {
+                                _DateFilter.all => 'Todos',
+                                _DateFilter.thisMonth => 'Este mes',
+                                _DateFilter.thisYear => 'Este año',
+                              }),
+                              selected: _dateFilter == f,
+                              onSelected: (_) =>
+                                  setState(() => _dateFilter = f),
+                              visualDensity: VisualDensity.compact,
+                              labelStyle: const TextStyle(fontSize: 11),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4),
+                              showCheckmark: false,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             // ── Count badge ──────────────────────────────────────────────────
@@ -1156,6 +1269,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                             statusLabel:
                                 _localizedStatusLabel(l, invoice.status),
                             cs: cs,
+                            amount: invoice.total,
                             isSent: invoice.sentAt != null,
                             onPreview: () => _openInvoicePdfPreview(invoice),
                           ),
@@ -1173,6 +1287,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                             statusLabel:
                                 _localizedStatusLabel(l, receipt.status),
                             cs: cs,
+                            amount: receipt.total,
                             onPreview: () => _openReceiptPdfPreview(receipt),
                           ),
                         ),
@@ -1187,6 +1302,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                             number: number.isEmpty ? id : number,
                             statusLabel: _presupuestoStatus(item),
                             cs: cs,
+                            amount: _presupuestoTotal(item),
                             onPreview: id.isEmpty
                                 ? null
                                 : () => widget.state
@@ -1203,10 +1319,11 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
 
     return Container(
       decoration: BoxDecoration(
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1216,8 +1333,16 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
           const SizedBox(height: 8),
           Row(
             children: [
-              TextButton(
+              OutlinedButton(
                 onPressed: _step == 0 ? null : () => setState(() => _step -= 1),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: cs.onSurface,
+                  side: BorderSide(
+                    color: _step == 0
+                        ? cs.outlineVariant.withValues(alpha: 0.4)
+                        : cs.outlineVariant,
+                  ),
+                ),
                 child:
                     Text(MaterialLocalizations.of(context).backButtonTooltip),
               ),

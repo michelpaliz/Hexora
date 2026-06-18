@@ -34,13 +34,12 @@ class InvoiceEditorMobileScreen extends StatefulWidget {
       _InvoiceEditorMobileScreenState();
 }
 
-class _InvoiceEditorMobileScreenState
-    extends State<InvoiceEditorMobileScreen> {
+class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
   late final InvoiceEditorController _c;
   int _step = 0;
   bool _changed = false;
 
-  static const _totalSteps = 6;
+  static const _totalSteps = 4;
 
   // ── lifecycle ──────────────────────────────────────────────────────────────
 
@@ -72,8 +71,8 @@ class _InvoiceEditorMobileScreenState
   void _goTo(int step) {
     final s = step.clamp(0, _totalSteps - 1);
     setState(() => _step = s);
-    // Auto-trigger PDF preview when entering step 4 (mirrors desktop behaviour)
-    if (s == 4) {
+    // Auto-trigger PDF preview when entering the preview step.
+    if (s == 3) {
       final canPreview = _c.clientId != null &&
           _c.invoiceDate.value != null &&
           _c.hasBillableEntries &&
@@ -91,31 +90,28 @@ class _InvoiceEditorMobileScreenState
   bool get _canAdvance {
     final invoiceDate = _c.invoiceDate.value;
     final dueDate = _c.dueDate.value;
-    final invalidDates = invoiceDate != null &&
-        dueDate != null &&
-        dueDate.isBefore(invoiceDate);
+    final invalidDates =
+        invoiceDate != null && dueDate != null && dueDate.isBefore(invoiceDate);
     return switch (_step) {
       0 => _c.clientId != null,
       1 => invoiceDate != null && !invalidDates,
-      2 => _c.hasBillableEntries,
-      3 => _c.savedInvoice != null,
-      4 => _c.previewedPdf,
+      2 => _c.savedInvoice != null,
+      3 => _c.previewedPdf,
       _ => false,
     };
   }
 
-  bool get _canIssue {
+  bool get _canCompleteDraft {
     final invoiceDate = _c.invoiceDate.value;
     final dueDate = _c.dueDate.value;
     final datesComplete = invoiceDate != null;
-    final invalidDates = invoiceDate != null &&
-        dueDate != null &&
-        dueDate.isBefore(invoiceDate);
+    final invalidDates =
+        invoiceDate != null && dueDate != null && dueDate.isBefore(invoiceDate);
     final step1Complete = _c.clientId != null &&
         datesComplete &&
         _c.hasBillableEntries &&
         !invalidDates;
-    return !_c.issuing && step1Complete && _c.previewedPdf;
+    return !_c.saving && step1Complete && _c.previewedPdf;
   }
 
   // ── step labels ────────────────────────────────────────────────────────────
@@ -124,26 +120,55 @@ class _InvoiceEditorMobileScreenState
         0 => l.invoiceCustomerTitle,
         1 => l.invoiceDatesTitle,
         2 => l.invoiceLinesTitle,
-        3 => l.invoiceTotalsTitle,
-        4 => l.invoiceStepPreviewShort,
-        _ => l.invoiceStepIssueShort,
+        3 => l.invoiceStepPreviewShort,
+        _ => l.invoiceStepPreviewShort,
       };
 
-  List<String> _mobileStepLabels(bool isSpanish) => isSpanish
-      ? const ['Cliente', 'Fechas', 'Líneas', 'Totales', 'Vista previa', 'Emitir']
-      : const ['Client', 'Dates', 'Lines', 'Totals', 'Preview', 'Issue'];
+  List<String> _mobileVisibleStepLabels(AppLocalizations l) => [
+        l.invoiceStepClientShort,
+        l.invoiceDatesTitle,
+        l.invoiceStepLinesShort,
+        l.invoiceStepPreviewShort,
+      ];
+
+  // ignore: unused_element
+  List<String> _mobileStepLabels(AppLocalizations l) => [
+        l.invoiceStepClientShort,
+        l.invoiceDatesTitle,
+        l.invoiceStepLinesShort,
+        l.invoiceStepPreviewShort,
+        l.invoiceStepDraftShort,
+      ];
+
+  String _draftCompletionReason(AppLocalizations l) {
+    if (!_c.previewedPdf) {
+      return l.invoiceReviewPdfBeforeDraft;
+    }
+    if (_c.clientId == null) return l.invoicePreviewNeedsClient;
+    if (_c.invoiceDate.value == null) return l.invoicePreviewNeedsDate;
+    if (!_c.hasBillableEntries) return l.invoicePreviewNeedsLines;
+
+    final dueDate = _c.dueDate.value;
+    final invoiceDate = _c.invoiceDate.value;
+    final invalidDates =
+        invoiceDate != null && dueDate != null && dueDate.isBefore(invoiceDate);
+    if (invalidDates) return l.invoicePreviewInvalidDates;
+    return '';
+  }
 
   Widget _buildCompactStepFlowBar(BuildContext context, bool isSpanish) {
+    final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final labels = _mobileStepLabels(isSpanish);
+    final labels = _mobileVisibleStepLabels(l);
 
     Widget connector(bool active) => Container(
           width: 18,
           height: 2,
           margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
-            color: active ? cs.primary : cs.outlineVariant.withValues(alpha: 0.7),
+            color:
+                active ? cs.primary : cs.outlineVariant.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(99),
           ),
         );
@@ -220,6 +245,9 @@ class _InvoiceEditorMobileScreenState
         clients: widget.clients,
         selectedClientId: _c.clientId,
         onClientChanged: _c.setClientId,
+        useDefaultPropertyKind: false,
+        showAdvancedFilters: false,
+        maxListHeight: 520,
       ),
     );
   }
@@ -262,143 +290,6 @@ class _InvoiceEditorMobileScreenState
     );
   }
 
-  Widget _buildTotalsStep() {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final fmt = NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
-
-    final rawSubtotal = _c.rawSubtotal;
-    final discountAmount = _c.effectiveDiscountAmount;
-    final baseAfterDiscount = _c.subtotalAfterDiscount;
-    final taxAfterDiscount = _c.taxAfterDiscount;
-    final total = _c.total;
-    final showDiscount = discountAmount > 0;
-
-    Widget row(String label, String value, {bool bold = false}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: t.bodySmall.copyWith(
-                    color: bold ? cs.onSurface : cs.onSurfaceVariant,
-                    fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-              ),
-              Text(
-                value,
-                style: t.bodySmall.copyWith(
-                  fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        );
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── discount ──────────────────────────────────────────────────────
-          _DiscountEditorSection(controller: _c),
-          const SizedBox(height: 12),
-
-          // ── totals card ───────────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.invoiceTotalsTitle,
-                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 10),
-                if (showDiscount)
-                  row('Total parcial', fmt.format(rawSubtotal).trim()),
-                if (showDiscount)
-                  row('Descuento', '-${fmt.format(discountAmount).trim()}'),
-                if (showDiscount)
-                  row('Base imponible', fmt.format(baseAfterDiscount).trim()),
-                row('IVA', fmt.format(taxAfterDiscount).trim()),
-                Divider(
-                    height: 20, color: cs.outlineVariant.withValues(alpha: 0.5)),
-                row(l.invoiceTotalLabel, fmt.format(total).trim(), bold: true),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // ── save draft section ────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _c.confirmSaveDraft,
-                      onChanged: (v) =>
-                          _c.setConfirmSaveDraft(v ?? false),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        l.invoicePreviewNeedsDraft,
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.tonalIcon(
-                    onPressed: _c.confirmSaveDraft && !_c.saving
-                        ? () => _c.handleSaveDraft(context)
-                        : null,
-                    icon: _c.saving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_outlined),
-                    label: Text(
-                      _c.saving ? l.savingLabel : l.invoiceSaveDraftCta,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPreviewStep() {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
@@ -423,8 +314,7 @@ class _InvoiceEditorMobileScreenState
                   _c.savedInvoice != null
                       ? l.invoicePreviewNeedsLines
                       : l.invoicePreviewNeedsDraft,
-                  style: t.bodyMedium
-                      .copyWith(color: cs.onSurfaceVariant),
+                  style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -440,9 +330,7 @@ class _InvoiceEditorMobileScreenState
               child: IconButton(
                 tooltip: l.refreshAction,
                 icon: const Icon(Icons.refresh),
-                onPressed: _c.previewing
-                    ? null
-                    : () => _c.previewPdf(context),
+                onPressed: _c.previewing ? null : () => _c.previewPdf(context),
               ),
             ),
             PdfInlinePreview(bytes: previewBytes, height: 480),
@@ -452,7 +340,8 @@ class _InvoiceEditorMobileScreenState
     );
   }
 
-  Widget _buildIssueStep() {
+  // ignore: unused_element
+  Widget _buildDraftStep() {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
@@ -488,8 +377,8 @@ class _InvoiceEditorMobileScreenState
             decoration: BoxDecoration(
               color: cs.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.35)),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -505,8 +394,7 @@ class _InvoiceEditorMobileScreenState
                 if (invoiceDate != null)
                   _SummaryRow(
                     label: l.invoiceDateLabel,
-                    value:
-                        DateFormat.yMMMd(l.localeName).format(invoiceDate),
+                    value: DateFormat.yMMMd(l.localeName).format(invoiceDate),
                   ),
                 if (dueDate != null)
                   _SummaryRow(
@@ -524,13 +412,18 @@ class _InvoiceEditorMobileScreenState
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _canIssue ? () => _c.issue(context) : null,
+              onPressed: _canCompleteDraft
+                  ? () => _c.handleSaveDraft(
+                        context,
+                        confirmIfEditing: false,
+                      )
+                  : null,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: _canIssue ? 3 : 0,
+                elevation: _canCompleteDraft ? 3 : 0,
                 shadowColor: cs.primary.withValues(alpha: 0.35),
               ),
-              icon: _c.issuing
+              icon: _c.saving
                   ? const SizedBox(
                       width: 16,
                       height: 16,
@@ -539,24 +432,16 @@ class _InvoiceEditorMobileScreenState
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(Icons.check_circle_outline),
+                  : const Icon(Icons.save_outlined),
               label: Text(
-                _c.issuing ? l.invoiceIssuingLabel : l.invoiceIssueCta,
+                _c.saving ? l.savingLabel : l.invoiceSaveDraftCta,
               ),
             ),
           ),
-          if (!_canIssue) ...[
+          if (!_canCompleteDraft) ...[
             const SizedBox(height: 8),
             Text(
-              !_c.previewedPdf
-                  ? l.invoiceIssueNeedsPreview
-                  : _c.clientId == null
-                      ? l.invoicePreviewNeedsClient
-                      : _c.invoiceDate.value == null
-                          ? l.invoicePreviewNeedsDate
-                          : !_c.hasBillableEntries
-                              ? l.invoicePreviewNeedsLines
-                              : '',
+              _draftCompletionReason(l),
               style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
@@ -573,9 +458,7 @@ class _InvoiceEditorMobileScreenState
       0 => _buildClientStep(),
       1 => _buildDatesStep(),
       2 => _buildLinesStep(),
-      3 => _buildTotalsStep(),
-      4 => _buildPreviewStep(),
-      _ => _buildIssueStep(),
+      _ => _buildPreviewStep(),
     };
   }
 
@@ -625,9 +508,8 @@ class _InvoiceEditorMobileScreenState
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: TextButton(
-                      onPressed: _c.saving
-                          ? null
-                          : () => _c.handleSaveDraft(context),
+                      onPressed:
+                          _c.saving ? null : () => _c.handleSaveDraft(context),
                       child: _c.saving
                           ? const SizedBox(
                               width: 16,
@@ -635,7 +517,7 @@ class _InvoiceEditorMobileScreenState
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(
-                              isSpanish ? 'Borrador' : 'Draft',
+                              l.invoiceStepDraftShort,
                               style: t.bodySmall.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: cs.primary,
@@ -690,7 +572,7 @@ class _InvoiceEditorMobileScreenState
                       OutlinedButton.icon(
                         onPressed: () => _goTo(_step - 1),
                         icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                        label: Text(isSpanish ? 'Atrás' : 'Back'),
+                        label: Text(l.back),
                         style: OutlinedButton.styleFrom(
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.symmetric(
@@ -713,13 +595,12 @@ class _InvoiceEditorMobileScreenState
                       ),
                     ),
 
-                    // Next / Issue
+                    // Next / Save draft
                     if (_step < _totalSteps - 1)
                       FilledButton.icon(
-                        onPressed:
-                            _canAdvance ? () => _goTo(_step + 1) : null,
+                        onPressed: _canAdvance ? () => _goTo(_step + 1) : null,
                         icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                        label: Text(isSpanish ? 'Siguiente' : 'Next'),
+                        label: Text(l.next),
                         style: FilledButton.styleFrom(
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.symmetric(
@@ -728,9 +609,13 @@ class _InvoiceEditorMobileScreenState
                       )
                     else
                       FilledButton.icon(
-                        onPressed:
-                            _canIssue ? () => _c.issue(context) : null,
-                        icon: _c.issuing
+                        onPressed: _canCompleteDraft
+                            ? () => _c.handleSaveDraft(
+                                  context,
+                                  confirmIfEditing: false,
+                                )
+                            : null,
+                        icon: _c.saving
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
@@ -739,12 +624,9 @@ class _InvoiceEditorMobileScreenState
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(Icons.check_circle_outline,
-                                size: 18),
+                            : const Icon(Icons.save_outlined, size: 18),
                         label: Text(
-                          _c.issuing
-                              ? l.invoiceIssuingLabel
-                              : l.invoiceIssueCta,
+                          _c.saving ? l.savingLabel : l.invoiceSaveDraftCta,
                         ),
                         style: FilledButton.styleFrom(
                           visualDensity: VisualDensity.compact,
@@ -781,8 +663,8 @@ class _SummaryRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: t.bodySmall
-                  .copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
+              style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(width: 12),
@@ -801,112 +683,163 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _DiscountEditorSection extends StatelessWidget {
   final InvoiceEditorController controller;
   const _DiscountEditorSection({required this.controller});
+
+  Widget _modeBtn(
+    BuildContext context, {
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    bool isFirst = false,
+    bool isLast = false,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: selected
+                ? cs.primaryContainer.withValues(alpha: 0.55)
+                : Colors.transparent,
+            borderRadius: BorderRadius.horizontal(
+              left: isFirst ? const Radius.circular(7) : Radius.zero,
+              right: isLast ? const Radius.circular(7) : Radius.zero,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                Icon(Icons.check_rounded, size: 11, color: cs.primary),
+                const SizedBox(width: 3),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final readOnly = controller.discountReadOnly;
+    final usePercent = controller.useDiscountPercent;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Descuento',
-            style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('Importe fijo (€)'),
-                selected: !controller.useDiscountPercent,
-                onSelected: readOnly
-                    ? null
-                    : (_) => controller.setDiscountModePercent(false),
-              ),
-              ChoiceChip(
-                label: const Text('Porcentaje (%)'),
-                selected: controller.useDiscountPercent,
-                onSelected: readOnly
-                    ? null
-                    : (_) => controller.setDiscountModePercent(true),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+          // Header: label + compact mode toggle
           Row(
             children: [
-              Expanded(
-                child: TextFormField(
-                  controller: controller.discountAmountCtrl,
-                  enabled: !readOnly && !controller.useDiscountPercent,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true),
-                  validator: (raw) {
-                    if (controller.useDiscountPercent) return null;
-                    final text = (raw ?? '').trim();
-                    if (text.isEmpty) return null;
-                    final parsed =
-                        num.tryParse(text.replaceAll(',', '.'));
-                    if (parsed == null) return 'Importe inválido';
-                    if (parsed < 0) return 'Debe ser ≥ 0';
-                    return null;
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Importe (€)',
-                    hintText: '0.00',
-                    isDense: true,
-                  ),
-                  onChanged: controller.setDiscountAmountText,
+              Text(
+                'Descuento',
+                style: t.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  controller: controller.discountPercentCtrl,
-                  enabled: !readOnly && controller.useDiscountPercent,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true),
-                  validator: (raw) {
-                    if (!controller.useDiscountPercent) return null;
-                    final text = (raw ?? '').trim();
-                    if (text.isEmpty) return null;
-                    final parsed =
-                        num.tryParse(text.replaceAll(',', '.'));
-                    if (parsed == null) return 'Porcentaje inválido';
-                    if (parsed < 0 || parsed > 100) return '0 – 100';
-                    return null;
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Porcentaje (%)',
-                    hintText: '0.00',
-                    isDense: true,
+              const Spacer(),
+              if (!readOnly)
+                Container(
+                  height: 28,
+                  width: 148,
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.35)),
                   ),
-                  onChanged: controller.setDiscountPercentText,
+                  child: Row(
+                    children: [
+                      _modeBtn(
+                        context,
+                        label: 'Importe €',
+                        selected: !usePercent,
+                        isFirst: true,
+                        onTap: () => controller.setDiscountModePercent(false),
+                      ),
+                      Container(
+                          width: 1,
+                          color: cs.outlineVariant.withValues(alpha: 0.35)),
+                      _modeBtn(
+                        context,
+                        label: 'Porcentaje %',
+                        selected: usePercent,
+                        isLast: true,
+                        onTap: () => controller.setDiscountModePercent(true),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+          // Only the active input field
+          SizedBox(
+            width: 160,
+            child: TextFormField(
+              controller: usePercent
+                  ? controller.discountPercentCtrl
+                  : controller.discountAmountCtrl,
+              enabled: !readOnly,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              validator: (raw) {
+                final text = (raw ?? '').trim();
+                if (text.isEmpty) return null;
+                final parsed = num.tryParse(text.replaceAll(',', '.'));
+                if (parsed == null) {
+                  return usePercent
+                      ? 'Porcentaje inválido'
+                      : 'Importe inválido';
+                }
+                if (parsed < 0) return 'Debe ser ≥ 0';
+                if (usePercent && parsed > 100) return '0 – 100';
+                return null;
+              },
+              decoration: InputDecoration(
+                labelText: usePercent ? 'Porcentaje (%)' : 'Importe (€)',
+                hintText: '0.00',
+                isDense: true,
+                border: const OutlineInputBorder(),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              ),
+              onChanged: usePercent
+                  ? controller.setDiscountPercentText
+                  : controller.setDiscountAmountText,
+            ),
+          ),
+          const SizedBox(height: 6),
           Text(
-            'El descuento se aplica antes de IVA.',
+            'Se aplica antes de IVA.',
             style: t.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+              fontSize: 11,
             ),
           ),
         ],

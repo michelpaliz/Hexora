@@ -4,8 +4,10 @@ import 'dart:developer' as devtools show log;
 import 'dart:io';
 
 import 'package:hexora/a-models/group_model/calendar/calendar.dart';
+import 'package:hexora/a-models/group_model/permissions/group_permissions_response.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
+import 'package:hexora/a-models/group_model/group/role_meta.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/blobUploader/blobServer.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
@@ -231,6 +233,12 @@ class GroupRepository implements IGroupRepository {
   }
 
   @override
+  Future<GroupPermissionsResponse> getGroupPermissions(String groupId) async {
+    final raw = await _api.getGroupPermissions(groupId, await _token());
+    return GroupPermissionsResponse.fromJson(raw);
+  }
+
+  @override
   Future<void> sendGroupInvitation({
     required String groupId,
     required String userId,
@@ -242,6 +250,20 @@ class GroupRepository implements IGroupRepository {
       roleWire: roleWire,
       token: await _token(),
     );
+  }
+
+  @override
+  Future<List<RoleHistoryEntry>> getMemberRoleHistory(
+    String groupId,
+    String userId,
+  ) async {
+    final raw =
+        await _api.getMemberRoleHistory(groupId, userId, await _token());
+    final list = raw['history'] as List<dynamic>? ?? [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(RoleHistoryEntry.fromJson)
+        .toList();
   }
 
   // ── Media ──────────────────────────────────────────────────────────────────

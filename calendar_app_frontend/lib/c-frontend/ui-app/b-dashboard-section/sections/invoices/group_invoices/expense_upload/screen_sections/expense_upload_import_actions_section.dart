@@ -1,17 +1,93 @@
 part of '../../expense_upload_screen.dart';
 
-mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
+mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
+  List<String> _duplicateBatchNames(List<String> names) {
+    final counts = <String, int>{};
+    final originals = <String, String>{};
+    for (final raw in names) {
+      final trimmed = raw.trim();
+      if (trimmed.isEmpty) continue;
+      final key = trimmed.toLowerCase();
+      counts[key] = (counts[key] ?? 0) + 1;
+      originals.putIfAbsent(key, () => trimmed);
+    }
+    return counts.entries
+        .where((entry) => entry.value > 1)
+        .map((entry) => originals[entry.key] ?? entry.key)
+        .toList()
+      ..sort();
+  }
+
   String _friendlyNetworkError(Object error) {
     final raw = error.toString();
     final lower = raw.toLowerCase();
-    final looksLikeCors = lower.contains('failed to fetch') ||
-        lower.contains('xmlhttprequest error') ||
-        lower.contains('blocked by cors') ||
-        lower.contains('access-control-allow-origin');
-    if (looksLikeCors) {
-      return 'La petición fue bloqueada por CORS. El backend debe permitir este origen y responder OPTIONS para /api/expenses/import-json-batch/*.';
+    final explicitCors = lower.contains('blocked by cors') ||
+        lower.contains('access-control-allow-origin') ||
+        lower.contains('cors');
+    final looksLikeFetchFailure = lower.contains('failed to fetch') ||
+        lower.contains('xmlhttprequest error');
+    final gatewayFailure = lower.contains('502') ||
+        lower.contains('bad gateway') ||
+        lower.contains('504') ||
+        lower.contains('gateway timeout');
+    if (explicitCors) {
+      return 'La peticiÃ³n fue bloqueada por CORS. El backend debe permitir este origen y responder OPTIONS para /api/expenses/import-json-batch/*.';
+    }
+    if (gatewayFailure) {
+      return 'El servidor o proxy devolviÃƒÂ³ un 502/504 mientras procesaba el lote. Esto suele indicar que la generaciÃƒÂ³n AI tarda demasiado para este volumen. Prueba con lotes mÃƒÂ¡s pequeÃƒÂ±os (20-30 archivos) o aumenta el timeout del gateway.';
+    }
+    if (looksLikeFetchFailure) {
+      return 'La peticiÃƒÂ³n no devolviÃƒÂ³ una respuesta utilizable. Puede ser CORS, un corte de red o un timeout del proxy/backend durante la generaciÃƒÂ³n AI del lote.';
     }
     return raw;
+  }
+
+  Future<void> _acceptJsonInvoiceFile(
+    String fileName,
+    Uint8List fileBytes,
+  ) async {
+    final validationError = _validateInvoiceUploadFile(
+      fileName: fileName,
+      fileBytes: fileBytes,
+    );
+    if (validationError != null) {
+      if (!mounted) return;
+      setState(() => _jsonError = validationError);
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _jsonInvoiceFileBytes = fileBytes;
+      _jsonInvoiceFileName = fileName;
+      _jsonError = null;
+    });
+  }
+
+  Future<void> _acceptJsonPayloadFile(
+    String fileName,
+    Uint8List fileBytes,
+  ) async {
+    try {
+      final text = utf8.decode(fileBytes);
+      final decoded = jsonDecode(text);
+      if (decoded is! Map) {
+        throw const FormatException('Invalid JSON');
+      }
+      _tryLoadJsonDocumentDiscountFromPayload(
+        Map<String, dynamic>.from(decoded),
+      );
+      _tryLoadJsonSummaryControllersFromPayload(text);
+      if (!mounted) return;
+      setState(() {
+        _jsonFileBytes = fileBytes;
+        _jsonFileName = fileName;
+        _jsonPayloadController.text = text;
+        _jsonError = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _jsonError = 'Invalid JSON');
+    }
   }
 
   Future<void> _pickJsonInvoiceFile() async {
@@ -19,7 +95,7 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       allowMultiple: false,
       withData: true,
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'jpe', 'png', 'webp'],
     );
     final file =
         (picked?.files.isNotEmpty ?? false) ? picked!.files.first : null;
@@ -30,19 +106,7 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       );
       return;
     }
-    final validationError = _validateInvoiceUploadFile(
-      fileName: file.name,
-      fileBytes: file.bytes!,
-    );
-    if (validationError != null) {
-      setState(() => _jsonError = validationError);
-      return;
-    }
-    setState(() {
-      _jsonInvoiceFileBytes = file.bytes!;
-      _jsonInvoiceFileName = file.name;
-      _jsonError = null;
-    });
+    await _acceptJsonInvoiceFile(file.name, file.bytes!);
   }
 
   Future<void> _pickJsonPayloadFile() async {
@@ -55,18 +119,7 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     final file =
         (picked?.files.isNotEmpty ?? false) ? picked!.files.first : null;
     if (file == null || file.bytes == null || file.bytes!.isEmpty) return;
-    try {
-      final text = utf8.decode(file.bytes!);
-      jsonDecode(text);
-      setState(() {
-        _jsonFileBytes = file.bytes!;
-        _jsonFileName = file.name;
-        _jsonPayloadController.text = text;
-        _jsonError = null;
-      });
-    } catch (_) {
-      setState(() => _jsonError = 'Invalid JSON');
-    }
+    await _acceptJsonPayloadFile(file.name, file.bytes!);
   }
 
   Future<void> _fetchExpenseJsonPrompt() async {
@@ -90,12 +143,10 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       });
     } on ExpensesApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      showSafeSnackBar(context, SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      showSafeSnackBar(context, SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) {
         setState(() => _jsonPromptLoading = false);
@@ -137,59 +188,98 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       allowMultiple: true,
       withData: true,
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'jpe', 'png', 'webp'],
     );
     final files = picked?.files ?? const <PlatformFile>[];
     if (files.isEmpty) return;
+    await _applyBatchDocuments(
+      [
+        for (final file in files)
+          if (file.bytes != null)
+            (
+              fileName: file.name,
+              fileBytes: file.bytes!,
+            ),
+      ],
+      selectedCount: files.length,
+    );
+  }
+
+  Future<void> _applyBatchDocuments(
+    List<({String fileName, Uint8List fileBytes})> files, {
+    required int selectedCount,
+  }) async {
+    if (files.isEmpty) return;
+    _resetBatchJobTracking(clearResult: true, clearCache: true);
 
     const maxDocs = _ExpenseUploadScreenStateBase._maxBatchDocuments;
-    final selectedTooMany = files.length > maxDocs;
+    final selectedTooMany = selectedCount > maxDocs;
     final filesToProcess =
         selectedTooMany ? files.take(maxDocs).toList() : files;
 
     final bytes = <Uint8List>[];
     final names = <String>[];
+    final skippedDetails = <String>[];
     var skippedCount = 0;
 
-    for (final f in filesToProcess) {
-      final b = f.bytes;
-      if (b == null) {
-        skippedCount++;
-        continue;
+    if (selectedTooMany) {
+      final overflowCount = selectedCount - maxDocs;
+      skippedDetails.add(
+        'Se ignoraron $overflowCount archivo(s) por exceder el lÃ­mite de $maxDocs.',
+      );
+      for (final extra in files.skip(maxDocs).take(6)) {
+        skippedDetails
+            .add('${extra.fileName} â€” excede el lÃ­mite de selecciÃ³n.');
       }
+    }
+
+    for (final file in filesToProcess) {
       final validationError = _validateInvoiceUploadFile(
-        fileName: f.name,
-        fileBytes: b,
+        fileName: file.fileName,
+        fileBytes: file.fileBytes,
         maxSizeBytes: _ExpenseUploadScreenStateBase._maxBatchFileSizeBytes,
         emptyMessage: 'Falta archivo/documento para una o mas facturas.',
         unsupportedTypeMessage:
-            'Formato de archivo no soportado (PDF/JPG/JPEG/PNG/WEBP).',
+            'Formato de archivo no soportado (PDF/JPG/JPEG/JPE/PNG/WEBP).',
         tooLargeMessageBuilder: (fileName, _, __) =>
             'File "$fileName" exceeds 10MB. Max file size is 10MB.',
       );
       if (validationError != null) {
         skippedCount++;
+        skippedDetails.add('${file.fileName} â€” $validationError');
         continue;
       }
-      bytes.add(b);
-      names.add(f.name);
+      bytes.add(file.fileBytes);
+      names.add(file.fileName);
+    }
+
+    final duplicateNames = _duplicateBatchNames(names);
+    if (duplicateNames.isNotEmpty) {
+      skippedDetails.add(
+        'Nombres duplicados detectados: ${duplicateNames.take(6).join(', ')}'
+        '${duplicateNames.length > 6 ? 'â€¦' : ''}. RenÃ³mbralos para evitar cruces al enlazar.',
+      );
     }
 
     if (bytes.isEmpty) {
-      setState(
-        () => _batchError =
-            'No valid files were loaded. Verify type/size and try again.',
-      );
+      if (!mounted) return;
+      setState(() {
+        _batchSkippedDetails = skippedDetails;
+        _batchError =
+            'No valid files were loaded. Verify type/size and try again.';
+      });
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _batchDocumentBytes = bytes;
       _batchDocumentNames = names;
+      _batchSkippedDetails = skippedDetails;
       if (selectedTooMany || skippedCount > 0) {
         final warnings = <String>[
           if (selectedTooMany)
-            'Selected ${files.length}; only first $maxDocs were loaded.',
+            'Selected $selectedCount; only first $maxDocs were loaded.',
           if (skippedCount > 0) '$skippedCount file(s) were skipped.',
         ];
         _batchError = warnings.join(' ');
@@ -201,74 +291,7 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
   }
 
   Future<void> _generateBatchJsonWithAi() async {
-    if (_batchGeneratingJson || _batchSubmitting) return;
-    final groupId = resolveGroupId().trim();
-    if (groupId.isEmpty) {
-      setState(
-          () => _batchError = 'Debes seleccionar un grupo antes de importar.');
-      return;
-    }
-    if (_batchDocumentBytes.isEmpty || _batchDocumentNames.isEmpty) {
-      setState(() => _batchError = 'Upload at least 1 document first.');
-      return;
-    }
-    if (_batchDocumentBytes.length >
-        _ExpenseUploadScreenStateBase._maxBatchDocuments) {
-      setState(
-        () => _batchError =
-            'Maximum ${_ExpenseUploadScreenStateBase._maxBatchDocuments} files.',
-      );
-      return;
-    }
-
-    setState(() {
-      _batchGeneratingJson = true;
-      _batchError = null;
-    });
-
-    try {
-      final response = await _api.generateBatchJsonWithAi(
-        documentFilesBytes: _batchDocumentBytes,
-        documentFileNames: _batchDocumentNames,
-        groupId: groupId,
-      );
-      final payload = response['payload'] ??
-          response['json'] ??
-          response['data'] ??
-          response['result'];
-      if (payload == null) {
-        setState(() => _batchError = 'AI did not return a valid JSON payload.');
-        return;
-      }
-      final text = payload is String
-          ? payload
-          : const JsonEncoder.withIndent('  ').convert(payload);
-      final decoded = jsonDecode(text);
-      if (decoded is! Map) {
-        setState(() => _batchError = 'AI output must be a JSON object.');
-        return;
-      }
-      final invoices =
-          _extractBatchInvoices(Map<String, dynamic>.from(decoded));
-      setState(() {
-        _batchJsonController.text = text;
-        _batchDetectedInvoices = invoices.length;
-        _batchVerifyMessage = null;
-      });
-    } on ExpensesApiException catch (e) {
-      var message = e.message;
-      if (e.statusCode == 413) {
-        message =
-            'Upload is too large for the server limit (413). Reduce total files/size or contact support to increase upload limit.';
-      }
-      setState(() => _batchError = message);
-    } catch (e) {
-      setState(() => _batchError = _friendlyNetworkError(e));
-    } finally {
-      if (mounted) {
-        setState(() => _batchGeneratingJson = false);
-      }
-    }
+    await _submitBatchImport();
   }
 
   List<Map<String, dynamic>> _extractBatchInvoices(
@@ -319,7 +342,7 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       return false;
     }
     if (uploadedFileNames.isEmpty) {
-      _batchVerifyMessage = 'Falta archivo/documento para una o más facturas.';
+      _batchVerifyMessage = 'Falta archivo/documento para una o mÃ¡s facturas.';
       return false;
     }
 
@@ -335,12 +358,23 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         .where((e) => e.isNotEmpty)
         .toSet();
 
+    final duplicateNames = _duplicateBatchNames(uploadedFileNames);
+    if (duplicateNames.isNotEmpty) {
+      _batchVerifyMessage =
+          'Hay nombres de archivo duplicados en la selecciÃ³n: '
+          '${duplicateNames.take(6).join(', ')}${duplicateNames.length > 6 ? 'â€¦' : ''}. '
+          'RenÃ³mbralos antes de importar para enlazar cada gasto correctamente.';
+      return false;
+    }
+
     if (hasNamesForAll) {
       final missing =
           expectedNames.where((n) => !uploaded.contains(n)).toList();
       if (missing.isNotEmpty) {
         _batchVerifyMessage =
-            'No se pudo enlazar todos los documentos con las facturas del JSON.';
+            'No se pudo enlazar todos los documentos con las facturas del JSON. '
+            'Faltan coincidencias para: ${missing.take(6).join(', ')}'
+            '${missing.length > 6 ? 'â€¦' : ''}.';
         return false;
       }
       _batchVerifyMessage = 'Enlace verificado por nombre.';
@@ -349,7 +383,7 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
 
     if (uploadedFileNames.length == invoices.length) {
       _batchVerifyMessage =
-          'Enlace verificado por orden (fallback: mismo número de archivos y facturas).';
+          'Enlace verificado por orden (fallback: mismo nÃºmero de archivos y facturas).';
       return true;
     }
 
@@ -379,7 +413,8 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     return true;
   }
 
-  Future<void> _submitBatchImport() async {
+  // ignore: unused_element
+  Future<void> _submitBatchImportLegacy() async {
     if (_batchSubmitting || _batchGeneratingJson) return;
     final attemptId = 'expbatch_${DateTime.now().microsecondsSinceEpoch}';
     final groupId = resolveGroupId().trim();
@@ -417,6 +452,7 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
             generated['data'] ??
             generated['result'];
         if (payloadRaw == null) {
+          if (!mounted) return;
           setState(
               () => _batchError = 'AI did not return a valid JSON payload.');
           return;
@@ -426,6 +462,7 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
             : const JsonEncoder.withIndent('  ').convert(payloadRaw);
         final decoded = jsonDecode(generatedText);
         if (decoded is! Map) {
+          if (!mounted) return;
           setState(() => _batchError = 'AI output must be a JSON object.');
           return;
         }
@@ -434,9 +471,11 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         _batchJsonController.text = generatedText;
         _batchDetectedInvoices = invoices.length;
       } on ExpensesApiException catch (e) {
+        if (!mounted) return;
         setState(() => _batchError = e.message);
         return;
       } catch (e) {
+        if (!mounted) return;
         setState(() => _batchError = _friendlyNetworkError(e));
         return;
       } finally {
@@ -505,18 +544,30 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Importación batch completada.')),
+      showSafeSnackBar(
+        context,
+        const SnackBar(content: Text('ImportaciÃ³n batch completada.')),
       );
       await loadRecentUploads();
       if (!mounted) return;
-      widget.onUploaded?.call();
+      final importedFilesCountBeforeRefresh = _batchDocumentNames.length;
       setState(() {
         _batchJsonController.clear();
         _batchDocumentBytes = [];
         _batchDocumentNames = [];
         _batchDetectedInvoices = 0;
-        _batchVerifyMessage = null;
+        _batchVerifyMessage = 'ImportaciÃ³n completada. Recargando resumen...';
+      });
+      widget.onUploaded?.call();
+      if (!mounted) return;
+      final importedFilesCount = importedFilesCountBeforeRefresh;
+      setState(() {
+        _batchVerifyMessage =
+            'Ãšltima importaciÃ³n completada correctamente ($importedFilesCount archivo${importedFilesCount == 1 ? '' : 's'}).';
+        _batchSkippedDetails = [];
+        _batchError = null;
+        _batchFileFilterIndex = 0;
+        _batchErrorsExpanded = false;
       });
     } on ExpensesApiException catch (e) {
       var message = e.message;
@@ -524,18 +575,30 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         final lower = e.message.toLowerCase();
         if (lower.contains('groupid')) {
           message = 'Debes seleccionar un grupo antes de importar.';
-        } else {
-          message =
-              'No se pudo enlazar todos los documentos con las facturas del JSON.';
+        } else if (lower.contains('unexpected file field')) {
+          message = 'El servidor rechazÃ³ el formato del lote: ${e.message} '
+              'Archivos seleccionados: ${_batchDocumentNames.length}.';
         }
       } else if (e.statusCode == 413) {
         message =
             'Upload is too large for the server limit (413). Reduce total files/size or contact support to increase upload limit.';
+      } else if (e.statusCode == 502 || e.statusCode == 504) {
+        message =
+            'El servidor devolviÃƒÂ³ un ${e.statusCode} durante la importaciÃƒÂ³n batch. Esto suele significar que el lote tardÃƒÂ³ demasiado para el proxy/gateway. Prueba con lotes mÃƒÂ¡s pequeÃƒÂ±os (20-30 archivos).';
       } else if (e.statusCode == 500) {
         message = 'Error al importar. Intenta de nuevo.';
       }
       if (!mounted) return;
-      setState(() => _batchError = message);
+      setState(() {
+        _batchError = message;
+        if (_batchSkippedDetails.isEmpty && _batchDocumentNames.isNotEmpty) {
+          _batchSkippedDetails = [
+            'Archivos seleccionados en el lote: ${_batchDocumentNames.length}.',
+            'Primeros archivos: ${_batchDocumentNames.take(6).join(', ')}'
+                '${_batchDocumentNames.length > 6 ? 'â€¦' : ''}.',
+          ];
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _batchError = _friendlyNetworkError(e));
@@ -544,13 +607,454 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     }
   }
 
+  String _describeBatchJobState(Map<String, dynamic>? payload) {
+    return _expenseBatchJobUiMessage(payload);
+  }
+
+  void _syncBatchIssues({
+    Map<String, dynamic>? statusPayload,
+    Map<String, dynamic>? resultPayload,
+  }) {
+    _batchSkippedDetails = <String>{
+      ...batchSkippedDetails,
+      ..._expenseBatchIssuesFromPayload(statusPayload),
+      ..._expenseBatchIssuesFromPayload(resultPayload),
+    }.toList();
+  }
+
+  void _stopBatchJobPolling() {
+    _batchJobPollTimer?.cancel();
+    _batchJobPollTimer = null;
+    _batchPollingInFlight = false;
+  }
+
+  void _startBatchJobPolling() {
+    if ((_batchJobId ?? '').trim().isEmpty) return;
+    _stopBatchJobPolling();
+    _pollBatchJobStatus();
+    _batchJobPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _pollBatchJobStatus();
+    });
+  }
+
+  Future<void> _fetchBatchJobResult({bool silent = false}) async {
+    final jobId = (_batchJobId ?? '').trim();
+    if (jobId.isEmpty || _batchResultLoading) return;
+    _batchResultLoading = true;
+    try {
+      final result = await _api.getBatchExpensePreviewJobResult(jobId);
+      if (!mounted) return;
+      setState(() {
+        _batchJobResult = result;
+        _batchPreviewItems = _expenseBatchPreviewItemsFromPayload(result);
+        _syncBatchIssues(resultPayload: result);
+        _batchErrorsExpanded = false;
+      });
+      _cacheBatchJobSnapshot();
+    } on ExpensesApiException catch (e) {
+      if (!mounted || silent) return;
+      setState(() {
+        _batchError =
+            'El analisis termino, pero no se pudieron cargar los detalles. ${e.message}';
+      });
+    } catch (e) {
+      if (!mounted || silent) return;
+      setState(() {
+        _batchError =
+            'El analisis termino, pero no se pudieron cargar los detalles. ${_friendlyNetworkError(e)}';
+      });
+    } finally {
+      _batchResultLoading = false;
+    }
+  }
+
+  Future<void> _handleCompletedBatchJob(
+      Map<String, dynamic> statusPayload) async {
+    await _fetchBatchJobResult(silent: true);
+    if (!mounted) return;
+
+    final readyCount = _batchJobInt(statusPayload['readyCount']);
+    final warningCount = _batchJobInt(statusPayload['warningCount']);
+    final duplicateCount = _batchJobInt(statusPayload['duplicateCount']);
+    final failedCount = _batchJobInt(statusPayload['failedCount']);
+    final message = _batchJobFirstText([
+      statusPayload['message'],
+      'Previsualizacion lista. Revisa y confirma los gastos seleccionados.',
+    ]);
+
+    setState(() {
+      _batchSubmitting = false;
+      _batchStartingJob = false;
+      _batchError = null;
+      _batchVerifyMessage = message;
+      _syncBatchIssues(
+        statusPayload: statusPayload,
+        resultPayload: _batchJobResult,
+      );
+      _batchErrorsExpanded = false;
+    });
+    _cacheBatchJobSnapshot();
+
+    if (mounted) {
+      showSafeSnackBar(
+        context,
+        SnackBar(
+          content: Text(
+            'Analisis listo. Preparados: $readyCount · Revision: $warningCount · Duplicados: $duplicateCount · Fallidos: $failedCount',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleFailedBatchJob(Map<String, dynamic> statusPayload) async {
+    await _fetchBatchJobResult(silent: true);
+    if (!mounted) return;
+
+    final issues = <String>{
+      ..._expenseBatchIssuesFromPayload(statusPayload),
+      ..._expenseBatchIssuesFromPayload(_batchJobResult),
+    }.toList();
+    final fallbackMessage = _describeBatchJobState(statusPayload);
+    final errorMessage = issues.isNotEmpty ? issues.first : fallbackMessage;
+
+    setState(() {
+      _batchSubmitting = false;
+      _batchStartingJob = false;
+      _batchError = errorMessage;
+      _batchVerifyMessage = fallbackMessage;
+      _batchSkippedDetails = issues;
+      _batchErrorsExpanded = false;
+    });
+    _cacheBatchJobSnapshot();
+  }
+
+  Future<void> _pollBatchJobStatus() async {
+    final jobId = (_batchJobId ?? '').trim();
+    if (jobId.isEmpty || _batchPollingInFlight) return;
+
+    _batchPollingInFlight = true;
+    try {
+      final statusPayload = await _api.getBatchExpensePreviewJobStatus(jobId);
+      if (!mounted) return;
+
+      final normalizedStatus = _expenseBatchJobStatusFromPayload(statusPayload);
+      final message = _describeBatchJobState(statusPayload);
+
+      setState(() {
+        _batchJobStatus = statusPayload;
+        _batchVerifyMessage = message;
+        _syncBatchIssues(statusPayload: statusPayload);
+        if (!_isExpenseBatchJobTerminal(normalizedStatus)) {
+          _batchError = null;
+        }
+      });
+      _cacheBatchJobSnapshot();
+
+      if (_isExpenseBatchJobTerminal(normalizedStatus)) {
+        _stopBatchJobPolling();
+        if (normalizedStatus == 'completed') {
+          await _handleCompletedBatchJob(statusPayload);
+        } else {
+          await _handleFailedBatchJob(statusPayload);
+        }
+      }
+    } on ExpensesApiException catch (e) {
+      if (!mounted) return;
+      final activeStatus = _expenseBatchJobStatusFromPayload(_batchJobStatus);
+      if (_isExpenseBatchJobTerminal(activeStatus)) return;
+      setState(() {
+        _batchError =
+            'No se pudo actualizar el progreso del lote. ${e.message}';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final activeStatus = _expenseBatchJobStatusFromPayload(_batchJobStatus);
+      if (_isExpenseBatchJobTerminal(activeStatus)) return;
+      setState(() {
+        _batchError =
+            'No se pudo actualizar el progreso del lote. ${_friendlyNetworkError(e)}';
+      });
+    } finally {
+      _batchPollingInFlight = false;
+    }
+  }
+
+  Future<void> _resumeCachedBatchJobIfNeeded() async {
+    if (_hasTrackedBatchJob) {
+      if (_hasRunningBatchJob) {
+        _startBatchJobPolling();
+      }
+      return;
+    }
+    final restored = _restoreCachedBatchJobSnapshot();
+    if (!restored) {
+      final persisted = await _restorePersistedBatchJobMapping();
+      if (!persisted || !mounted) return;
+    }
+    final restoredStatus = _expenseBatchJobStatusFromPayload(_batchJobStatus);
+    _batchVerifyMessage = _describeBatchJobState(_batchJobStatus);
+    _syncBatchIssues(
+      statusPayload: _batchJobStatus,
+      resultPayload: _batchJobResult,
+    );
+    if (_isExpenseBatchJobTerminal(restoredStatus)) return;
+    _startBatchJobPolling();
+  }
+
+  Future<void> _submitBatchImport() async {
+    if (_batchSubmitting || _batchGeneratingJson || _batchStartingJob) return;
+    final attemptId = 'expbatch_${DateTime.now().microsecondsSinceEpoch}';
+    final groupId = resolveGroupId().trim();
+    if (groupId.isEmpty) {
+      _logExpenseAttempt(
+        route: 'import_batch',
+        attemptId: attemptId,
+        hasGroupId: false,
+        groupId: '',
+        blockedByValidation: true,
+        detail: 'missing_group_id',
+      );
+      setState(
+          () => _batchError = 'Debes seleccionar un grupo antes de importar.');
+      return;
+    }
+
+    if (_batchDocumentBytes.isEmpty || _batchDocumentNames.isEmpty) {
+      setState(() => _batchError = 'Upload at least 1 document first.');
+      return;
+    }
+
+    if (_hasRunningBatchJob) {
+      setState(() {
+        _batchError =
+            'Ya hay un lote en proceso. Puedes salir de esta pantalla mientras se completa el analisis.';
+      });
+      return;
+    }
+
+    _resetBatchJobTracking(clearResult: true, clearCache: true);
+    setState(() {
+      _batchSubmitting = true;
+      _batchStartingJob = true;
+      _batchError = null;
+      _batchVerifyMessage = 'Subiendo documentos...';
+      _batchErrorsExpanded = false;
+    });
+    _logExpenseAttempt(
+      route: 'import_batch',
+      attemptId: attemptId,
+      hasGroupId: true,
+      groupId: groupId,
+      blockedByValidation: false,
+    );
+    try {
+      final currency = _currencyController.text.trim();
+      final response = await _api.startBatchExpensePreviewJob(
+        documentFilesBytes: _batchDocumentBytes,
+        documentFileNames: _batchDocumentNames,
+        groupId: groupId,
+        currency: currency.isEmpty ? null : currency,
+      );
+      final jobId = _batchJobText(response['jobId']);
+      final backgroundJobId = _batchJobText(response['backgroundJobId']);
+      if (jobId.isEmpty) {
+        throw Exception('El backend no devolvio un jobId valido.');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _batchJobId = jobId;
+        _batchBackgroundJobId =
+            backgroundJobId.isEmpty ? _batchBackgroundJobId : backgroundJobId;
+        _batchJobStatus = Map<String, dynamic>.from(response);
+        _batchVerifyMessage =
+            'Procesando en segundo plano. Puedes salir de esta pantalla.';
+        _batchSubmitting = false;
+        _batchStartingJob = false;
+      });
+      _cacheBatchJobSnapshot();
+      await _persistBatchJobMapping();
+      if (backgroundJobId.isNotEmpty) {
+        OcrImportJobsStore.instance.trackStartedJob(
+          backgroundJobId: backgroundJobId,
+          totalFiles: _batchDocumentNames.length,
+        );
+      }
+      _startBatchJobPolling();
+      if (!mounted) return;
+      showSafeSnackBar(
+        context,
+        const SnackBar(
+          content: Text(
+            'Tus documentos se estan procesando en segundo plano. Puedes salir de esta pantalla y te avisaremos cuando esten listos.',
+          ),
+        ),
+      );
+    } on ExpensesApiException catch (e) {
+      var message = e.message;
+      if (e.statusCode == 400) {
+        final lower = e.message.toLowerCase();
+        if (lower.contains('groupid')) {
+          message = 'Debes seleccionar un grupo antes de importar.';
+        }
+      } else if (e.statusCode == 413) {
+        message =
+            'Upload is too large for the server limit (413). Reduce total files/size or contact support to increase upload limit.';
+      } else if (e.statusCode == 502 || e.statusCode == 504) {
+        message =
+            'El servidor devolvio un ${e.statusCode} al iniciar el lote. Prueba con menos archivos o revisa el timeout del gateway.';
+      } else if (e.statusCode == 500) {
+        message = 'Error al iniciar el analisis. Intenta de nuevo.';
+      }
+      if (!mounted) return;
+      setState(() {
+        _batchError = message;
+        _batchVerifyMessage = 'No se pudo iniciar el analisis del lote.';
+        if (_batchSkippedDetails.isEmpty && _batchDocumentNames.isNotEmpty) {
+          _batchSkippedDetails = [
+            'Archivos seleccionados en el lote: ${_batchDocumentNames.length}.',
+            'Primeros archivos: ${_batchDocumentNames.take(6).join(', ')}'
+                '${_batchDocumentNames.length > 6 ? '...' : ''}.',
+          ];
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _batchError = _friendlyNetworkError(e);
+        _batchVerifyMessage = 'No se pudo iniciar el analisis del lote.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _batchSubmitting = false;
+          _batchStartingJob = false;
+        });
+      }
+    }
+  }
+
+  Future<void> confirmBatchPreviewImport() async {
+    if (_batchSubmitting || _batchGeneratingJson || _batchStartingJob) return;
+    final groupId = resolveGroupId().trim();
+    if (groupId.isEmpty) {
+      setState(
+          () => _batchError = 'Debes seleccionar un grupo antes de importar.');
+      return;
+    }
+
+    final selected = _batchPreviewItems
+        .where((item) => item.selected && item.canSelect)
+        .toList(growable: false);
+    if (selected.isEmpty) {
+      setState(() {
+        _batchError =
+            'Selecciona al menos un gasto listo para importar. Los duplicados y fallidos se omiten por seguridad.';
+      });
+      return;
+    }
+
+    setState(() {
+      _batchSubmitting = true;
+      _batchError = null;
+      _batchVerifyMessage = 'Importando gastos seleccionados...';
+    });
+
+    try {
+      final response = await _api.confirmBatchExpenseImports(
+        groupId: groupId,
+        items: [
+          for (final item in selected)
+            {
+              'tempId': item.tempId,
+              'fileName': item.fileName,
+              'prediction': Map<String, dynamic>.from(item.prediction),
+              'confirm': true,
+            },
+        ],
+      );
+      if (!mounted) return;
+      final importedCount = _batchJobInt(response['importedCount']);
+      final skippedCount = _batchJobInt(response['skippedCount']);
+      final duplicateCount = _batchJobInt(response['duplicateCount']);
+      setState(() {
+        _batchSubmitting = false;
+        _batchConfirmResult = response;
+        _batchVerifyMessage =
+            'Importacion confirmada. Importados: $importedCount Â· Omitidos: $skippedCount Â· Duplicados: $duplicateCount';
+      });
+      await loadRecentUploads();
+      if (!mounted) return;
+      widget.onUploaded?.call();
+      showSafeSnackBar(
+        context,
+        SnackBar(
+          content:
+              Text('Importados: $importedCount Â· Omitidos: $skippedCount'),
+        ),
+      );
+    } on ExpensesApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _batchSubmitting = false;
+        _batchError = e.message;
+        _batchVerifyMessage = 'No se pudieron importar los seleccionados.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _batchSubmitting = false;
+        _batchError = _friendlyNetworkError(e);
+        _batchVerifyMessage = 'No se pudieron importar los seleccionados.';
+      });
+    }
+  }
+
+  Future<void> exportBatchIncidentExcel() async {
+    final batchId = (_batchJobId ?? '').trim();
+    if (_batchExportingIncidents || batchId.isEmpty) return;
+    setState(() {
+      _batchExportingIncidents = true;
+      _batchError = null;
+    });
+    try {
+      final export = await _api.downloadBatchIncidentExport(batchId);
+      await launchFileDownload(
+        export.bytes,
+        fileName: export.fileName,
+        mimeType: export.contentType,
+      );
+      if (!mounted) return;
+      showSafeSnackBar(
+        context,
+        const SnackBar(content: Text('Excel de incidencias descargado.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      showSafeSnackBar(
+        context,
+        const SnackBar(
+          content: Text('No se pudo generar el Excel de incidencias.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _batchExportingIncidents = false;
+        });
+      }
+    }
+  }
+
   Future<void> _copyPromptToClipboard() async {
     final text = (_jsonPromptText ?? '').trim();
     if (text.isEmpty) return;
-    await Clipboard.setData(ClipboardData(text: text));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Prompt copied')));
+    await copyTextWithManualFallbackDialog(
+      context,
+      text: text,
+      successMessage: 'Prompt copied',
+    );
   }
 
   Future<void> _submitExpenseJsonImport() async {
@@ -639,19 +1143,87 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         lines.add({
           'description': item['description']?.toString() ?? '',
           'quantity': item['quantity'] ?? 1,
-          'unitPrice': item['unitPrice'] ??
+          'baseUnitPrice': item['baseUnitPrice'] ??
+              item['base_unit_price'] ??
+              item['unitPrice'] ??
               item['unit_price'] ??
               item['price'] ??
               item['total'] ??
               0,
-          'taxRate': item['taxRate'] ?? item['tax_rate'] ?? 21,
+          'discountAmount':
+              item['discountAmount'] ?? item['discount_amount'] ?? 0,
+          'discountPercent':
+              item['discountPercent'] ?? item['discount_percent'] ?? 0,
+          'taxRate':
+              item['taxRate'] ?? item['vatRate'] ?? item['tax_rate'] ?? 21,
+          if (item['lineSubtotal'] != null)
+            'lineSubtotal': item['lineSubtotal'],
+          if (item['lineTax'] != null) 'lineTax': item['lineTax'],
           if (item['total'] != null) 'lineTotal': item['total'],
+          if (item['lineTotal'] != null) 'lineTotal': item['lineTotal'],
         });
       }
       if (lines.isNotEmpty) {
         expense['lines'] = lines;
       }
     }
+
+    _jsonSettlement.applyToExpensePayload(expense);
+    final settlementError = _jsonSettlement.validate();
+    if (settlementError != null) {
+      setState(() => _jsonError = settlementError);
+      return;
+    }
+    if (_jsonUseSummaryTotals) {
+      final summaryBase = _parseControllerAmount(_jsonBaseController);
+      final summaryTax = _parseControllerAmount(_jsonTaxController);
+      final summaryTotal = _parseControllerAmount(_jsonTotalController);
+      final summaryValidation = ExpenseFormHelpers.validateSummaryTotals(
+        base: summaryBase,
+        tax: summaryTax,
+        total: summaryTotal,
+      );
+      if (summaryValidation != null) {
+        setState(() => _jsonError = summaryValidation);
+        return;
+      }
+      if (summaryBase != null) {
+        expense['subtotal'] = double.parse(summaryBase.toStringAsFixed(2));
+      }
+      if (summaryTax != null) {
+        expense['taxTotal'] = double.parse(summaryTax.toStringAsFixed(2));
+      }
+      if (summaryTotal != null) {
+        expense['total'] = double.parse(summaryTotal.toStringAsFixed(2));
+      }
+      final summaryVatBreakdown = ExpenseFormHelpers.buildSummaryVatBreakdown(
+        base: summaryBase,
+        tax: summaryTax,
+      );
+      if (summaryVatBreakdown != null) {
+        expense['vatBreakdown'] = summaryVatBreakdown;
+      }
+      expense['useSummaryTotals'] = true;
+      expense['taxSource'] = 'summary';
+      expense.remove('lines');
+    }
+    final discountPreview = _jsonDiscountPreview();
+    final discountValidationBase = discountPreview?.subtotalBeforeDiscount ??
+        (() {
+          final total = ExpenseFormHelpers.parseNum(expense['total']);
+          final tax = ExpenseFormHelpers.parseNum(
+            expense['taxTotal'] ?? expense['vatTotal'] ?? expense['tax'],
+          );
+          if (total == null) return 0.0;
+          return (total - (tax ?? 0)).clamp(0, double.infinity).toDouble();
+        })();
+    final discountError =
+        _jsonDocumentDiscount.validate(discountValidationBase);
+    if (discountError != null) {
+      setState(() => _jsonError = discountError);
+      return;
+    }
+    _jsonDocumentDiscount.applyToExpensePayload(expense);
 
     if ((payload['providerMode']?.toString().trim().isEmpty ?? true) &&
         (payload['providerId']?.toString().trim().isEmpty ?? true)) {
@@ -923,7 +1495,8 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         hadBlobName: hasBlob,
         fileLinked: true,
       );
-      ScaffoldMessenger.of(context).showSnackBar(
+      showSafeSnackBar(
+        context,
         SnackBar(
           content: Text(
             'Gasto importado: $importedId',
@@ -934,15 +1507,18 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       if (!mounted) return;
       widget.onUploaded?.call();
       setState(() {
-        final localState = <String, String>{
-          'id': importedId,
-          'invoiceBlobName': responseBlobName,
-          'fileLinked': responseFileLinked.toString(),
-        };
-        if (responseBlobUrl.isNotEmpty) {
-          localState['invoiceBlobUrl'] = responseBlobUrl;
-        }
-        selectedRecentExpense = localState;
+        selectedRecentExpense =
+            recentUploads.cast<Map<String, String>?>().firstWhere(
+                      (item) => (item?['id'] ?? '').trim() == importedId,
+                      orElse: () => null,
+                    ) ??
+                <String, String>{
+                  'id': importedId,
+                  'invoiceBlobName': responseBlobName,
+                  'fileLinked': responseFileLinked.toString(),
+                  if (responseBlobUrl.isNotEmpty)
+                    'invoiceBlobUrl': responseBlobUrl,
+                };
         _jsonPayloadController.clear();
         _jsonInvoiceFileBytes = null;
         _jsonInvoiceFileName = null;
@@ -952,7 +1528,17 @@ mixin ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         _jsonGroupIdOverrideController.clear();
         _jsonStatementEntryController.clear();
         _jsonClientController.clear();
+        _jsonBaseController.clear();
+        _jsonTaxController.clear();
+        _jsonTotalController.clear();
+        _jsonUseSummaryTotals = false;
         _jsonAdvancedExpanded = false;
+        _jsonSettlement.setExpenseType(ExpenseDocumentType.standard);
+        _jsonSettlement.advancePercentController.clear();
+        _jsonSettlement.projectBaseAmountController.clear();
+        _jsonSettlement.advanceTaxRateController.clear();
+        _jsonSettlement.selectedAdvanceExpenseId = null;
+        _jsonDocumentDiscount.clear();
       });
       _tabs.index = 0;
     } on ExpensesApiException catch (e) {

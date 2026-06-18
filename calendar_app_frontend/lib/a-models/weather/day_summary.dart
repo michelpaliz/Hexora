@@ -4,6 +4,8 @@ class DaySummary {
   final String summary; // e.g. "Sunny"
   final String emoji; // e.g. "🌞"
   final String grade; // e.g. "A", "B", "C", "D"
+  final double? tempMax;
+  final double? tempMin;
   final bool isTooHot;
   final bool isTooCold;
 
@@ -11,6 +13,8 @@ class DaySummary {
     required this.summary,
     required this.emoji,
     required this.grade,
+    this.tempMax,
+    this.tempMin,
     required this.isTooHot,
     required this.isTooCold,
   });
@@ -82,6 +86,8 @@ DaySummary mapToDaySummary({
     summary: summary,
     emoji: emoji,
     grade: grade,
+    tempMax: tempMax,
+    tempMin: tempMin,
     isTooHot: isTooHot,
     isTooCold: isTooCold,
   );

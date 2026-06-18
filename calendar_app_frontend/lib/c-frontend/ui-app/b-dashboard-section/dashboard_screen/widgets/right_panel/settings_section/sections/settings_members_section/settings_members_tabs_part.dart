@@ -9,21 +9,31 @@ extension _SettingsMembersTabsPart on _SettingsMembersSectionState {
         label: l.membersTitle,
         count: widget.membersVM.totalAccepted,
         icon: Icons.people_rounded,
-      ),
-      _TabDef(
-        label: l.statusPending,
-        count: widget.membersVM.totalPending,
-        icon: Icons.hourglass_empty_rounded,
-      ),
-      _TabDef(
-        label: l.statusNotAccepted,
-        count: widget.membersVM.totalNotAccepted,
-        icon: Icons.cancel_outlined,
+        tabIndex: 0,
       ),
       _TabDef(
         label: l.tabAddUsers,
         count: null,
         icon: Icons.person_add_rounded,
+        tabIndex: 3,
+      ),
+      _TabDef(
+        label: l.statusPending,
+        count: widget.membersVM.totalPending,
+        icon: Icons.hourglass_empty_rounded,
+        tabIndex: 1,
+      ),
+      _TabDef(
+        label: l.statusNotAccepted,
+        count: widget.membersVM.totalNotAccepted,
+        icon: Icons.cancel_outlined,
+        tabIndex: 2,
+      ),
+      _TabDef(
+        label: l.rolesTabLabel,
+        count: null,
+        icon: Icons.shield_outlined,
+        tabIndex: 4,
       ),
     ];
 
@@ -33,22 +43,22 @@ extension _SettingsMembersTabsPart on _SettingsMembersSectionState {
         children: [
           for (int i = 0; i < tabs.length; i++) ...[
             if (i > 0) const SizedBox(width: 6),
-            _buildChip(context, tabs[i], i),
+            _buildChip(context, tabs[i]),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildChip(BuildContext context, _TabDef tab, int index) {
+  Widget _buildChip(BuildContext context, _TabDef tab) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final selected = _selectedTab == index;
+    final selected = _selectedTab == tab.tabIndex;
 
     return InkWell(
       onTap: () => _updateUi(() {
-        _selectedTab = index;
-        if (index == 3) {
+        _selectedTab = tab.tabIndex;
+        if (tab.tabIndex >= 3) {
           _selectedMember = null;
           _selectedUser = null;
         }

@@ -13,13 +13,15 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/he
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/enable_banking_callback_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/enable_banking_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/statements/analytics/statements_analytics_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/graphs/group_insights_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/screen/group_members_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/notifications/group_notifications_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/services_clients_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/expense_ocr_reprocess_results_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/recurring_invoices_screen.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/workers_hub_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/create_worker/form/create_worker_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
@@ -34,6 +36,7 @@ import 'package:hexora/c-frontend/ui-app/d-event-section/screens/event_screen/ev
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/download_app/download_app_view.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/forgot_password.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/login/form/login_view.dart';
+import 'package:hexora/c-frontend/ui-app/e-log-user-section/reset_password/reset_password_screen.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/register/ui/register_view.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/verify_email/verify_email_view.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/verify_email/verify_success_view.dart';
@@ -45,9 +48,11 @@ import 'package:hexora/c-frontend/ui-app/i-settings-section/screens/settings.dar
 
 final Map<String, WidgetBuilder> routes = {
   AppRoutes.settings: (context) => const Settings(),
-  AppRoutes.loginRoute: (context) => LoginView(),
+  AppRoutes.loginRoute: (context) => const LoginView(),
   AppRoutes.registerRoute: (context) => const RegisterView(),
-  AppRoutes.passwordRecoveryRoute: (context) => ForgotPasswordForm(),
+  AppRoutes.forgotPasswordRoute: (context) => const ForgotPasswordScreen(),
+  AppRoutes.resetPasswordRoute: (context) => const ResetPasswordScreen(),
+  AppRoutes.passwordRecoveryRoute: (context) => const ForgotPasswordScreen(),
   AppRoutes.verifyEmailRoute: (context) => const VerifyEmailView(),
   AppRoutes.verifyEmailSuccessRoute: (context) =>
       const VerifyEmailSuccessView(),
@@ -75,19 +80,39 @@ final Map<String, WidgetBuilder> routes = {
 
   AppRoutes.editEvent: (context) {
     final event = ModalRoute.of(context)?.settings.arguments as Event?;
-    return event != null ? EditEventScreen(event: event) : SizedBox.shrink();
+    return event != null
+        ? EditEventScreen(event: event)
+        : const SizedBox.shrink();
   },
 
-  AppRoutes.createGroupData: (context) => CreateGroupData(),
+  AppRoutes.createGroupData: (context) => const CreateGroupData(),
   AppRoutes.showNotifications: (context) {
     final user = ModalRoute.of(context)?.settings.arguments as User?;
-    return user != null ? ShowNotifications(user: user) : SizedBox.shrink();
+    return user != null
+        ? ShowNotifications(user: user)
+        : const SizedBox.shrink();
   },
   AppRoutes.groupNotifications: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     return group != null
         ? GroupNotificationsScreen(group: group)
         : const SizedBox.shrink();
+  },
+  AppRoutes.expenseOcrReprocessResults: (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is ExpenseOcrReprocessResultsArgs) {
+      return ExpenseOcrReprocessResultsScreen(
+        groupId: args.groupId,
+        jobId: args.jobId,
+      );
+    }
+    if (args is Map) {
+      final groupId = (args['groupId'] ?? '').toString();
+      final jobId = (args['jobId'] ?? '').toString();
+      if (groupId.isEmpty || jobId.isEmpty) return const SizedBox.shrink();
+      return ExpenseOcrReprocessResultsScreen(groupId: groupId, jobId: jobId);
+    }
+    return const SizedBox.shrink();
   },
   AppRoutes.groupCalendar: (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
@@ -101,35 +126,93 @@ final Map<String, WidgetBuilder> routes = {
   },
   AppRoutes.eventDetail: (context) {
     final event = ModalRoute.of(context)?.settings.arguments as Event?;
-    return event != null ? EventDetailScreen(event: event) : SizedBox.shrink();
+    return event != null
+        ? EventDetailScreen(event: event)
+        : const SizedBox.shrink();
   },
   AppRoutes.editGroupData: (context) {
     final args =
         ModalRoute.of(context)?.settings.arguments as EditGroupArguments;
     return EditGroupData(group: args.group, users: args.users);
   },
-  AppRoutes.homePage: (context) => HomePage(),
+  AppRoutes.homePage: (context) => const HomePage(),
   AppRoutes.groupSettings: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    return group != null ? GroupSettings(group: group) : SizedBox.shrink();
+    return group != null
+        ? GroupSettings(group: group)
+        : const SizedBox.shrink();
   },
   AppRoutes.groupServicesClients: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     if (group == null) return const SizedBox.shrink();
     return ServicesClientsScreen(group: group);
   },
+  AppRoutes.groupIncome: (context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    Group? group;
+    String? initialMenu;
+    String? initialInvoiceId;
+    String? initialReceiptId;
+    String? initialBudgetId;
+    if (args is Group) {
+      group = args;
+    } else if (args is GroupInvoicesRouteArgs) {
+      group = args.group;
+      initialMenu = args.initialMenu;
+      initialInvoiceId = args.initialInvoiceId;
+      initialReceiptId = args.initialReceiptId;
+      initialBudgetId = args.initialBudgetId;
+    } else if (args is Map) {
+      group = args['group'] as Group?;
+      initialMenu = args['initialMenu']?.toString();
+      initialInvoiceId = args['initialInvoiceId']?.toString();
+      initialReceiptId = args['initialReceiptId']?.toString();
+      initialBudgetId = args['initialBudgetId']?.toString();
+    }
+    if (group == null) return const SizedBox.shrink();
+    return GroupInvoicesScreen(
+      group: group,
+      initialMenu: initialMenu,
+      initialInvoiceId: initialInvoiceId,
+      initialReceiptId: initialReceiptId,
+      initialBudgetId: initialBudgetId,
+    );
+  },
   AppRoutes.groupInvoices: (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
     Group? group;
     String? initialMenu;
+    String? initialInvoiceId;
+    String? initialReceiptId;
+    String? initialBudgetId;
     if (args is Group) {
       group = args;
+    } else if (args is GroupInvoicesRouteArgs) {
+      group = args.group;
+      initialMenu = args.initialMenu;
+      initialInvoiceId = args.initialInvoiceId;
+      initialReceiptId = args.initialReceiptId;
+      initialBudgetId = args.initialBudgetId;
     } else if (args is Map) {
       group = args['group'] as Group?;
       initialMenu = args['initialMenu']?.toString();
+      initialInvoiceId = args['initialInvoiceId']?.toString();
+      initialReceiptId = args['initialReceiptId']?.toString();
+      initialBudgetId = args['initialBudgetId']?.toString();
     }
     if (group == null) return const SizedBox.shrink();
-    return GroupInvoicesScreen(group: group, initialMenu: initialMenu);
+    return GroupInvoicesScreen(
+      group: group,
+      initialMenu: initialMenu,
+      initialInvoiceId: initialInvoiceId,
+      initialReceiptId: initialReceiptId,
+      initialBudgetId: initialBudgetId,
+    );
+  },
+  AppRoutes.groupExpenses: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    if (group == null) return const SizedBox.shrink();
+    return GastosModuleScreen(group: group);
   },
   AppRoutes.recurringInvoices: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
@@ -152,7 +235,7 @@ final Map<String, WidgetBuilder> routes = {
   AppRoutes.groupTimeTracking: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     if (group == null) return const SizedBox.shrink();
-    return GroupTimeTrackingScreen(group: group);
+    return WorkersHubScreen(group: group);
   },
   AppRoutes.headerSection: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;

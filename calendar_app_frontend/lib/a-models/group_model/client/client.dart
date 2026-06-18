@@ -1,5 +1,6 @@
-/// models/client.dart
+// models/client.dart
 import 'package:hexora/a-models/invoice/client_billing.dart';
+
 class GroupClient {
   String id;
   String name;
@@ -18,6 +19,10 @@ class GroupClient {
   bool isActive;
   Map<String, dynamic>? meta;
   ClientBilling? billing;
+  bool? hasCurrentMonthInvoice;
+  bool? missingCurrentMonthInvoice;
+  int? currentMonthInvoiceCount;
+  DateTime? lastCurrentMonthInvoiceAt;
 
   // Optional timestamps if your API returns them (Mongoose timestamps: true)
   DateTime? createdAt;
@@ -34,6 +39,10 @@ class GroupClient {
     this.isActive = true,
     this.meta,
     this.billing,
+    this.hasCurrentMonthInvoice,
+    this.missingCurrentMonthInvoice,
+    this.currentMonthInvoiceCount,
+    this.lastCurrentMonthInvoiceAt,
     this.createdAt,
     this.updatedAt,
   });
@@ -49,6 +58,10 @@ class GroupClient {
     bool? isActive,
     Map<String, dynamic>? meta,
     ClientBilling? billing,
+    bool? hasCurrentMonthInvoice,
+    bool? missingCurrentMonthInvoice,
+    int? currentMonthInvoiceCount,
+    DateTime? lastCurrentMonthInvoiceAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -63,6 +76,14 @@ class GroupClient {
       isActive: isActive ?? this.isActive,
       meta: meta ?? this.meta,
       billing: billing ?? this.billing,
+      hasCurrentMonthInvoice:
+          hasCurrentMonthInvoice ?? this.hasCurrentMonthInvoice,
+      missingCurrentMonthInvoice:
+          missingCurrentMonthInvoice ?? this.missingCurrentMonthInvoice,
+      currentMonthInvoiceCount:
+          currentMonthInvoiceCount ?? this.currentMonthInvoiceCount,
+      lastCurrentMonthInvoiceAt:
+          lastCurrentMonthInvoiceAt ?? this.lastCurrentMonthInvoiceAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -81,6 +102,15 @@ class GroupClient {
         'isActive': isActive,
         if (meta != null) 'meta': meta,
         if (billing != null) 'billing': billing!.toJson(),
+        if (hasCurrentMonthInvoice != null)
+          'hasCurrentMonthInvoice': hasCurrentMonthInvoice,
+        if (missingCurrentMonthInvoice != null)
+          'missingCurrentMonthInvoice': missingCurrentMonthInvoice,
+        if (currentMonthInvoiceCount != null)
+          'currentMonthInvoiceCount': currentMonthInvoiceCount,
+        if (lastCurrentMonthInvoiceAt != null)
+          'lastCurrentMonthInvoiceAt':
+              lastCurrentMonthInvoiceAt!.toUtc().toIso8601String(),
         if (createdAt != null)
           'createdAt': createdAt!.toUtc().toIso8601String(),
         if (updatedAt != null)
@@ -103,12 +133,39 @@ class GroupClient {
       meta: (json['meta'] as Map?)?.cast<String, dynamic>(),
       billing:
           billingJson != null ? ClientBilling.fromJson(billingJson) : null,
+      hasCurrentMonthInvoice:
+          _parseBool(json['hasCurrentMonthInvoice'] ?? json['has_current_month_invoice']),
+      missingCurrentMonthInvoice: _parseBool(
+        json['missingCurrentMonthInvoice'] ??
+            json['missing_current_month_invoice'],
+      ),
+      currentMonthInvoiceCount: _parseInt(
+        json['currentMonthInvoiceCount'] ??
+            json['current_month_invoice_count'],
+      ),
+      lastCurrentMonthInvoiceAt: _parseDate(
+        json['lastCurrentMonthInvoiceAt'] ??
+            json['last_current_month_invoice_at'],
+      ),
       createdAt:
-          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+          _parseDate(json['createdAt']),
       updatedAt:
-          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+          _parseDate(json['updatedAt']),
     );
   }
+
+  bool get hasCurrentMonthInvoiceFlagData =>
+      hasCurrentMonthInvoice != null ||
+      missingCurrentMonthInvoice != null ||
+      currentMonthInvoiceCount != null ||
+      lastCurrentMonthInvoiceAt != null;
+
+  bool get isMissingCurrentMonthInvoice => missingCurrentMonthInvoice == true;
+
+  bool get hasIssuedInvoiceThisMonth =>
+      hasCurrentMonthInvoice == true ||
+      (currentMonthInvoiceCount ?? 0) > 0 ||
+      lastCurrentMonthInvoiceAt != null;
 
   @override
   String toString() =>
@@ -130,4 +187,32 @@ class GroupClient {
       (groupId?.hashCode ?? 0) ^
       (entityType?.hashCode ?? 0) ^
       (propertyKind?.hashCode ?? 0);
+}
+
+bool? _parseBool(dynamic value) {
+  if (value == null) return null;
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final normalized = value.toString().trim().toLowerCase();
+  if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+    return true;
+  }
+  if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+    return false;
+  }
+  return null;
+}
+
+int? _parseInt(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString().trim());
+}
+
+DateTime? _parseDate(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  final raw = value.toString().trim();
+  if (raw.isEmpty) return null;
+  return DateTime.tryParse(raw);
 }

@@ -24,11 +24,13 @@ import 'package:provider/provider.dart';
 class EditEventScreen extends StatefulWidget {
   final Event event;
   final bool embedded;
+  final VoidCallback? onSaved;
 
   const EditEventScreen({
     super.key,
     required this.event,
     this.embedded = false,
+    this.onSaved,
   });
 
   @override
@@ -83,6 +85,15 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
 
     recomputeValidity();
     if (mounted) setState(() {});
+  }
+
+  @override
+  void afterSave() {
+    if (widget.onSaved != null) {
+      widget.onSaved!.call();
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   @override

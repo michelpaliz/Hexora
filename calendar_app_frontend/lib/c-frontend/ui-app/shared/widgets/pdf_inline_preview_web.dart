@@ -10,10 +10,12 @@ class PdfInlinePreview extends StatefulWidget {
     super.key,
     required this.bytes,
     this.height = 420,
+    this.interactive = true,
   });
 
   final Uint8List bytes;
   final double height;
+  final bool interactive;
 
   @override
   State<PdfInlinePreview> createState() => _PdfInlinePreviewState();
@@ -31,7 +33,8 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
     _element = html.IFrameElement()
       ..style.border = '0'
       ..style.width = '100%'
-      ..style.height = '100%';
+      ..style.height = '100%'
+      ..style.pointerEvents = widget.interactive ? 'auto' : 'none';
     _setUrl(widget.bytes);
 
     ui.platformViewRegistry.registerViewFactory(
@@ -46,6 +49,9 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
     if (oldWidget.bytes != widget.bytes) {
       _setUrl(widget.bytes);
     }
+    if (oldWidget.interactive != widget.interactive) {
+      _element.style.pointerEvents = widget.interactive ? 'auto' : 'none';
+    }
   }
 
   void _setUrl(Uint8List bytes) {
@@ -54,7 +60,7 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
     }
     final blob = html.Blob([bytes], 'application/pdf');
     _url = html.Url.createObjectUrlFromBlob(blob);
-    _element.src = _url!;
+    _element.src = '${_url!}#toolbar=1&navpanes=0&pagemode=none&view=FitH';
   }
 
   @override
@@ -62,6 +68,8 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
     if (_url != null) {
       html.Url.revokeObjectUrl(_url!);
     }
+    _element.src = 'about:blank';
+    _element.remove();
     super.dispose();
   }
 

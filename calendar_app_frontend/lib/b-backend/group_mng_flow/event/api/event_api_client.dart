@@ -21,6 +21,7 @@ class EventApiClient implements IEventApiClient {
   final RecurrenceRuleApiClient _ruleService;
 
   final String baseUrl = '${ApiConstants.baseUrl}/events';
+  final String tasksUrl = '${ApiConstants.baseUrl}/events/tasks';
 
   Map<String, String> _authHeaders(String token) => {
         'Content-Type': 'application/json; charset=UTF-8',
@@ -69,6 +70,39 @@ class EventApiClient implements IEventApiClient {
       devtools.log('[EXCEPTION] Create error: $error');
       rethrow;
     }
+  }
+
+  @override
+  Future<Event> createTask({
+    required String groupId,
+    required String title,
+    String? note,
+    required DateTime dueAt,
+    int? reminderTime,
+    List<String>? recipients,
+    bool notifyOwner = true,
+    required String token,
+  }) async {
+    final res = await AuthenticatedHttpClient.post(
+      Uri.parse(tasksUrl),
+      headers: _authHeaders(token),
+      body: jsonEncode({
+        'groupId': groupId,
+        'title': title,
+        'note': note,
+        'dueAt': dueAt.toUtc().toIso8601String(),
+        'reminderTime': reminderTime ?? 0,
+        'recipients': recipients ?? const <String>[],
+        'notifyOwner': notifyOwner,
+      }),
+      client: _client,
+    );
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return Event.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    }
+
+    throw Exception('Failed to create task: ${res.body}');
   }
 
   @override
@@ -151,12 +185,11 @@ class EventApiClient implements IEventApiClient {
     required bool isDone,
     required String token,
   }) async {
-    final res = await AuthenticatedHttpClient.put(
-      Uri.parse('$baseUrl/${baseId(eventId)}'),
+    final res = await AuthenticatedHttpClient.patch(
+      Uri.parse('$baseUrl/${baseId(eventId)}/done'),
       headers: _authHeaders(token),
       body: jsonEncode({
         'isDone': isDone,
-        'completedAt': isDone ? DateTime.now().toUtc().toIso8601String() : null,
       }),
       client: _client,
     );
@@ -182,5 +215,47 @@ class EventApiClient implements IEventApiClient {
     } else {
       throw Exception('Failed to fetch events for group $groupId');
     }
+  }
+
+  @override
+  Future<List<Event>> getTasks({
+    required String groupId,
+    String? status,
+    bool mine = false,
+    DateTime? from,
+    DateTime? to,
+    required String token,
+  }) async {
+    final params = <String, String>{
+      'groupId': groupId,
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (mine) 'mine': 'true',
+      if (from != null) 'from': from.toUtc().toIso8601String(),
+      if (to != null) 'to': to.toUtc().toIso8601String(),
+    };
+
+    final uri = Uri.parse(tasksUrl).replace(queryParameters: params);
+    final res = await AuthenticatedHttpClient.get(
+      uri,
+      headers: _authHeaders(token),
+      client: _client,
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to fetch tasks: ${res.body}');
+    }
+
+    final decoded = jsonDecode(res.body);
+    final rawList = decoded is List
+        ? decoded
+        : (decoded is Map<String, dynamic>
+            ? (decoded['tasks'] ?? decoded['items'] ?? decoded['rows'] ?? [])
+            : []);
+
+    return List<Event>.from(
+      (rawList as List).map(
+        (item) => Event.fromJson((item as Map).cast<String, dynamic>()),
+      ),
+    );
   }
 }

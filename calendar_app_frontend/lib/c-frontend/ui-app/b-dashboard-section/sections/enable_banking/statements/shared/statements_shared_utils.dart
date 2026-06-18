@@ -15,17 +15,45 @@ class StatementsSharedUtils {
     return '';
   }
 
-  /// Get client label from entry
+  static const List<String> _counterpartyNameKeys = [
+    'clientName',
+    'client_name',
+    'client',
+    'providerName',
+    'provider_name',
+    'provider',
+    'vendorName',
+    'vendor_name',
+    'vendor',
+    'counterpartyName',
+    'counterparty_name',
+  ];
+
+  /// Get client/provider label from entry
   static String clientLabel(
     AppLocalizations l,
     StatementsController s,
     Map<String, dynamic> entry,
   ) {
-    // 1. Check entry-level name fields
-    final directName = entryText(entry, ['clientName', 'client_name']);
+    // 1. Check entry-level counterparty fields first.
+    final directName = entryText(entry, _counterpartyNameKeys);
     if (directName.isNotEmpty) return directName;
 
-    // 2. Resolve via clientId → clients list
+    // 2. Try linked document payloads when present.
+    for (final nestedKey in const [
+      'invoice',
+      'expense',
+      'linkedInvoice',
+      'linkedExpense',
+    ]) {
+      final nested = entry[nestedKey];
+      if (nested is Map<String, dynamic>) {
+        final nestedName = entryText(nested, _counterpartyNameKeys);
+        if (nestedName.isNotEmpty) return nestedName;
+      }
+    }
+
+    // 3. Resolve via clientId -> clients list.
     final clientId = entry['clientId']?.toString();
     if (clientId == null || clientId.trim().isEmpty) {
       return l.statementsUnlinked;
@@ -44,7 +72,7 @@ class StatementsSharedUtils {
       if (legal != null && legal.isNotEmpty) return legal;
     }
 
-    // 3. Friendly fallback instead of raw ObjectId
+    // 4. Friendly fallback instead of raw ObjectId.
     return l.statementsHeaderClient;
   }
 }

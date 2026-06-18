@@ -50,4 +50,12 @@ abstract class IGroupApiClient {
     required String roleWire,
     required String token,
   });
+
+  /// Fetch role + permission definitions for a group.
+  Future<Map<String, dynamic>> getGroupPermissions(
+      String groupId, String token);
+
+  /// Fetch the full role-change history for a group member.
+  Future<Map<String, dynamic>> getMemberRoleHistory(
+      String groupId, String userId, String token);
 }

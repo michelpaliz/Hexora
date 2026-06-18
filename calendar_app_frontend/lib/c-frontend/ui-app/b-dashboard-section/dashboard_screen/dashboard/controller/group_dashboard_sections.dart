@@ -10,6 +10,9 @@ class Sections {
   static const profile = 'profile';
   static const editGroup = 'editGroup';
   static const invoices = 'invoices';
+  static const expenses = 'expenses';
   static const emails = 'emails';
+  static const chat = 'chat';
   static const enableBanking = 'enableBanking';
+  static const telegram = 'telegram';
 }

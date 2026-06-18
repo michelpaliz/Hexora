@@ -1,3 +1,5 @@
+import 'package:hexora/a-models/invoice/invoice_concept_utils.dart';
+
 class InvoiceBlockType {
   static const String item = 'item';
   static const String date = 'date';
@@ -6,6 +8,7 @@ class InvoiceBlockType {
   static const String divider = 'divider';
   static const String note = 'note';
   static const String checklist = 'checklist';
+  static const String worker = 'worker';
 }
 
 class InvoiceChecklistItem {
@@ -43,10 +46,15 @@ class InvoiceChecklistItem {
 class InvoiceBlock {
   final String type;
   final String? sku;
+  final List<String>? conceptItems;
+  final String? conceptTitle;
+  final String? serviceDate;
+  final bool? isCompositeConcept;
   final String? description;
   final num? qty;
   final String? unit;
   final num? unitPrice;
+  final num? discountRate;
   final num? taxRate;
   final int? level;
   final bool? isBillable;
@@ -62,10 +70,15 @@ class InvoiceBlock {
   const InvoiceBlock({
     required this.type,
     this.sku,
+    this.conceptItems,
+    this.conceptTitle,
+    this.serviceDate,
+    this.isCompositeConcept,
     this.description,
     this.qty,
     this.unit,
     this.unitPrice,
+    this.discountRate,
     this.taxRate,
     this.level,
     this.isBillable,
@@ -82,10 +95,15 @@ class InvoiceBlock {
   InvoiceBlock copyWith({
     String? type,
     String? sku,
+    List<String>? conceptItems,
+    String? conceptTitle,
+    String? serviceDate,
+    bool? isCompositeConcept,
     String? description,
     num? qty,
     String? unit,
     num? unitPrice,
+    num? discountRate,
     num? taxRate,
     int? level,
     bool? isBillable,
@@ -101,10 +119,15 @@ class InvoiceBlock {
     return InvoiceBlock(
       type: type ?? this.type,
       sku: sku ?? this.sku,
+      conceptItems: conceptItems ?? this.conceptItems,
+      conceptTitle: conceptTitle ?? this.conceptTitle,
+      serviceDate: serviceDate ?? this.serviceDate,
+      isCompositeConcept: isCompositeConcept ?? this.isCompositeConcept,
       description: description ?? this.description,
       qty: qty ?? this.qty,
       unit: unit ?? this.unit,
       unitPrice: unitPrice ?? this.unitPrice,
+      discountRate: discountRate ?? this.discountRate,
       taxRate: taxRate ?? this.taxRate,
       level: level ?? this.level,
       isBillable: isBillable ?? this.isBillable,
@@ -121,14 +144,28 @@ class InvoiceBlock {
 
   factory InvoiceBlock.fromJson(Map<String, dynamic> json) {
     final itemsJson = json['items'];
+    final rawConceptItems = json['conceptItems'];
     final rawFormatted = json['formatted'];
     return InvoiceBlock(
       type: (json['type'] ?? '').toString(),
       sku: json['sku']?.toString(),
+      conceptItems: rawConceptItems is List
+          ? rawConceptItems.map((item) => item.toString()).toList()
+          : null,
+      conceptTitle: json['conceptTitle']?.toString(),
+      serviceDate: cleanInvoiceServiceDate(json['serviceDate']),
+      isCompositeConcept: json['isCompositeConcept'] is bool
+          ? json['isCompositeConcept'] as bool
+          : null,
       description: json['description']?.toString(),
       qty: json['qty'] is num ? json['qty'] as num : null,
       unit: json['unit']?.toString(),
       unitPrice: json['unitPrice'] is num ? json['unitPrice'] as num : null,
+      discountRate: json['discountRate'] is num
+          ? json['discountRate'] as num
+          : json['discountPercent'] is num
+              ? json['discountPercent'] as num
+              : null,
       taxRate: json['taxRate'] is num ? json['taxRate'] as num : null,
       level: json['level'] is num ? (json['level'] as num).toInt() : null,
       isBillable:
@@ -152,19 +189,36 @@ class InvoiceBlock {
   }
 
   Map<String, dynamic> toJson() {
-    String? clean(String? v) => v?.trim().isEmpty ?? true ? null : v?.trim();
+    final cleanSku = cleanInvoiceText(sku);
+    final title = invoiceConceptTitleFrom(
+      conceptTitle: conceptTitle,
+      sku: cleanSku,
+    );
+    final conceptItemsPayload =
+        cleanInvoiceConceptItems(conceptItems, staleSku: cleanSku);
+    final date = cleanInvoiceServiceDate(serviceDate);
     return {
       'type': type,
-      if (clean(sku) != null) 'sku': clean(sku),
-      if (clean(description) != null) 'description': clean(description),
+      if (cleanSku != null && isInvoiceUnitCode(cleanSku)) 'sku': cleanSku,
+      if (conceptItemsPayload != null) 'conceptItems': conceptItemsPayload,
+      if (title != null) 'conceptTitle': title,
+      if (date != null) 'serviceDate': date,
+      if (isCompositeConcept != null)
+        'isCompositeConcept': isCompositeConcept
+      else if (conceptItemsPayload != null && conceptItemsPayload.length > 1)
+        'isCompositeConcept': true,
+      if (cleanInvoiceText(description) != null)
+        'description': cleanInvoiceDescription(description!, date),
       if (qty != null) 'qty': qty,
-      if (clean(unit) != null) 'unit': clean(unit),
+      if (cleanInvoiceText(unit) != null) 'unit': cleanInvoiceText(unit),
       if (unitPrice != null) 'unitPrice': unitPrice,
+      if (discountRate != null) 'discountRate': discountRate,
       if (taxRate != null) 'taxRate': taxRate,
       if (level != null) 'level': level,
       if (isBillable != null) 'isBillable': isBillable,
-      if (clean(title) != null) 'title': clean(title),
-      if (clean(text) != null) 'text': clean(text),
+      if (cleanInvoiceText(this.title) != null)
+        'title': cleanInvoiceText(this.title),
+      if (cleanInvoiceText(text) != null) 'text': cleanInvoiceText(text),
       if (items != null) 'items': items!.map((item) => item.toJson()).toList(),
       if (lineSubtotal != null) 'lineSubtotal': lineSubtotal,
       if (lineTax != null) 'lineTax': lineTax,

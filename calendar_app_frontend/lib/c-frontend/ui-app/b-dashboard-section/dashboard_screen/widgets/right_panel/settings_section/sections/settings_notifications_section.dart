@@ -76,12 +76,14 @@ class _SettingsNotificationsSectionState
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: FolderSectionCard(
         label: l.notifications,
         leftTabOffset: 0,
+        backgroundColor: isLight ? Colors.white : null,
         actions: [
           if (widget.onRefresh != null)
             IconButton(

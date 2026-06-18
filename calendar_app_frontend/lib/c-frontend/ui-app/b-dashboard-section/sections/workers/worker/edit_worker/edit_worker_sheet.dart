@@ -76,7 +76,7 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
         status: _status,
       );
 
-      await widget.repo.updateWorker(
+      final savedWorker = await widget.repo.updateWorker(
         widget.group.id,
         widget.worker.id,
         updatedWorker,
@@ -87,7 +87,7 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.workerUpdated)),
       );
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(savedWorker);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

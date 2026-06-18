@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/b-backend/invoicing/billing_profile_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/billing_profile_sheet/billing_profile_sheet_form.dart';
+import 'package:hexora/c-frontend/utils/address/spain_postal_code_autofill.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class BillingProfileSheet extends StatefulWidget {
@@ -40,6 +41,21 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
   bool _saving = false;
   bool _logoBusy = false;
   bool _hasChanges = false;
+
+  void _applyPostalAutofill() {
+    final autofill = inferSpainPostalAutofill(
+      postalCode: _postal.text,
+      currentCountry: _country.text,
+    );
+    if (autofill == null) return;
+
+    if (_province.text.trim() != autofill.province) {
+      _province.text = autofill.province;
+    }
+    if (_country.text.trim().isEmpty) {
+      _country.text = autofill.country;
+    }
+  }
 
   @override
   void initState() {
@@ -80,6 +96,8 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
     ]) {
       c.addListener(_recomputeDirty);
     }
+    _postal.addListener(_applyPostalAutofill);
+    _applyPostalAutofill();
     _recomputeDirty();
   }
 
@@ -141,6 +159,7 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
     _extra.dispose();
     _city.dispose();
     _province.dispose();
+    _postal.removeListener(_applyPostalAutofill);
     _postal.dispose();
     _country.dispose();
     _email.dispose();
@@ -164,6 +183,7 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             Future<void> pickFile() async {
+              setDialogState(() => error = null);
               final result = await FilePicker.platform.pickFiles(
                 allowMultiple: false,
                 withData: true,
@@ -172,9 +192,20 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
               );
               final file = result?.files.single;
               if (file == null) return;
-              final tooLarge = file.size > 5 * 1024 * 1024;
+              // Temporary debug logging
+              debugPrint(
+                '[logo-upload] name: ${file.name} | ext: ${file.extension} | size: ${file.size}',
+              );
+              // Extension-based type check (PlatformFile has no MIME type property)
+              final ext = (file.extension?.toLowerCase().trim().isNotEmpty == true
+                      ? file.extension!
+                      : file.name.split('.').last)
+                  .toLowerCase()
+                  .trim();
+              final validType = const ['png', 'jpg', 'jpeg'].contains(ext);
+              final tooLarge = file.size > 15 * 1024 * 1024;
               setDialogState(() {
-                if (tooLarge) {
+                if (!validType || tooLarge) {
                   error = l.billingLogoUploadError;
                   selected = null;
                 } else {

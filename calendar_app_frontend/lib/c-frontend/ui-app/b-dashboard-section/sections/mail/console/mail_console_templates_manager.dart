@@ -189,8 +189,17 @@ class _TemplatesManagerPanel extends StatelessWidget {
                   icon: const Icon(Icons.add),
                   label: const Text('New'),
                 ),
+                OutlinedButton.icon(
+                  onPressed: state._templateSaving
+                      ? null
+                      : state._applyHexoraTemplatePreset,
+                  icon: const Icon(Icons.auto_awesome_outlined),
+                  label: const Text('Use Hexora template'),
+                ),
                 FilledButton.icon(
-                  onPressed: state._templateSaving ? null : state._saveTemplate,
+                  onPressed: state._templateSaving
+                      ? null
+                      : _asyncCallback(state._saveTemplate),
                   icon: state._templateSaving
                       ? const SizedBox(
                           height: 14,
@@ -201,20 +210,23 @@ class _TemplatesManagerPanel extends StatelessWidget {
                   label: Text(l.saveDraft),
                 ),
                 FilledButton.tonalIcon(
-                  onPressed:
-                      state._templateSaving ? null : state._setDefaultTemplate,
+                  onPressed: state._templateSaving
+                      ? null
+                      : _asyncCallback(state._setDefaultTemplate),
                   icon: const Icon(Icons.star_outline),
                   label: const Text('Set default'),
                 ),
                 OutlinedButton.icon(
-                  onPressed:
-                      state._templateDeleting ? null : state._deleteTemplate,
+                  onPressed: state._templateDeleting
+                      ? null
+                      : _asyncCallback(state._deleteTemplate),
                   icon: const Icon(Icons.delete_outline),
                   label: Text(l.remove),
                 ),
                 TextButton.icon(
-                  onPressed:
-                      state._templatesLoading ? null : state._loadTemplates,
+                  onPressed: state._templatesLoading
+                      ? null
+                      : _asyncCallback(state._loadTemplates),
                   icon: const Icon(Icons.refresh),
                   label: Text(l.refreshAction),
                 ),

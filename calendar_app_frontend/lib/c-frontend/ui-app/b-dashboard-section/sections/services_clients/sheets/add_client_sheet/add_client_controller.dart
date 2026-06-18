@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/client_billing.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
+import 'package:hexora/c-frontend/utils/address/spain_postal_code_autofill.dart';
 import 'dart:developer' as devtools show log;
 
 class AddClientController {
@@ -79,6 +80,8 @@ class AddClientController {
       billingEmail.text = c.email ?? '';
       billingPhone.text = c.phone ?? '';
     }
+
+    autofillBillingAddressFromPostalCode();
   }
 
   ClientBilling? billingFromInputs({bool includeNulls = false}) {
@@ -108,6 +111,7 @@ class AddClientController {
 
   static const List<String> billingRequiredKeys = [
     'billingTaxId',
+    'billingCountry',
   ];
 
   int get billingRequiredTotal => billingRequiredKeys.length;
@@ -145,6 +149,21 @@ class AddClientController {
 
   void markTouched(String key) {
     _touched[key] = true;
+  }
+
+  void autofillBillingAddressFromPostalCode() {
+    final autofill = inferSpainPostalAutofill(
+      postalCode: billingPostal.text,
+      currentCountry: billingCountry.text,
+    );
+    if (autofill == null) return;
+
+    if (billingProvince.text.trim() != autofill.province) {
+      billingProvince.text = autofill.province;
+    }
+    if (billingCountry.text.trim().isEmpty) {
+      billingCountry.text = autofill.country;
+    }
   }
 
   bool shouldShowError(String key, bool force) =>

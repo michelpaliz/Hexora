@@ -17,6 +17,8 @@ class GroupInvoicesClientsView extends StatefulWidget {
   final VoidCallback onEditSelectedClient;
   final ValueChanged<Invoice> onOpenInvoiceDetail;
   final ValueChanged<Invoice> onDeleteInvoice;
+  final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
+  final int initialDetailTabIndex;
   final Future<void> Function(
     GroupClient client, {
     String? entityType,
@@ -36,6 +38,8 @@ class GroupInvoicesClientsView extends StatefulWidget {
     required this.onEditSelectedClient,
     required this.onOpenInvoiceDetail,
     required this.onDeleteInvoice,
+    required this.onDownloadVisibleInvoices,
+    this.initialDetailTabIndex = 0,
     required this.onUpdateClientClassification,
   });
 
@@ -49,6 +53,7 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
   String? _propertyFilter;
   bool _assignBusy = false;
   bool _hideInactive = true;
+  bool _missingCurrentMonthInvoiceOnly = false;
   final TextEditingController _search = TextEditingController();
 
   List<String> _savedEntityTypes = const [];
@@ -105,6 +110,10 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
 
   bool _matchesFilters(GroupClient c) {
     if (_hideInactive && !c.isActive) return false;
+    if (_missingCurrentMonthInvoiceOnly &&
+        c.missingCurrentMonthInvoice != true) {
+      return false;
+    }
 
     final q = _search.text.trim().toLowerCase();
     if (q.isNotEmpty) {
@@ -128,6 +137,7 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
     setState(() {
       _entityFilter = null;
       _propertyFilter = null;
+      _missingCurrentMonthInvoiceOnly = false;
     });
   }
 
@@ -183,6 +193,12 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                     hideInactive: _hideInactive,
                     onToggleHideInactive: () =>
                         setState(() => _hideInactive = !_hideInactive),
+                    missingCurrentMonthInvoiceOnly:
+                        _missingCurrentMonthInvoiceOnly,
+                    onToggleMissingCurrentMonthInvoiceOnly: (value) =>
+                        setState(() {
+                      _missingCurrentMonthInvoiceOnly = value;
+                    }),
                     searchController: _search,
                     onSearchChanged: () => setState(() {}),
                     entityFilter: _entityFilter,
@@ -207,6 +223,7 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                 Expanded(
                   flex: 3,
                   child: ClientDetailPanel(
+                    groupId: widget.groupId,
                     clients: widget.clients,
                     selectedClient: widget.selectedClient,
                     issuedInvoices: widget.issuedInvoices,
@@ -214,11 +231,13 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                     entityOptions: entityOptions,
                     propertyOptions: propertyOptions,
                     assignBusy: _assignBusy,
+                    initialTabIndex: widget.initialDetailTabIndex,
                     onEditSelectedClient: widget.onEditSelectedClient,
                     onCreateInvoice: widget.onCreateInvoice,
                     onCreateReceipt: widget.onCreateReceipt,
                     onOpenInvoiceDetail: widget.onOpenInvoiceDetail,
                     onDeleteInvoice: widget.onDeleteInvoice,
+                    onDownloadVisibleInvoices: widget.onDownloadVisibleInvoices,
                     onApplyClassification: ({
                       String? entityType,
                       String? propertyKind,

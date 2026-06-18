@@ -123,10 +123,18 @@ class TimeEntryCard extends StatelessWidget {
           );
           if (updated == true) onUpdated?.call();
         },
-        child: Card(
-          margin: const EdgeInsets.only(bottom: 10),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: Theme.of(context)
+                  .colorScheme
+                  .outlineVariant
+                  .withValues(alpha: 0.22),
+            ),
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(

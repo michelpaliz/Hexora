@@ -21,6 +21,95 @@ class PresupuestosApiException implements Exception {
   String toString() => 'Exception: $message';
 }
 
+class CreateAdvanceInvoiceConfig {
+  final double percent;
+  final double? projectBaseAmount;
+  final double? taxRate;
+  final String? description;
+
+  const CreateAdvanceInvoiceConfig({
+    required this.percent,
+    this.projectBaseAmount,
+    this.taxRate,
+    this.description,
+  });
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'percent': percent,
+        if (projectBaseAmount != null) 'projectBaseAmount': projectBaseAmount,
+        if (taxRate != null) 'taxRate': taxRate,
+        if ((description ?? '').trim().isNotEmpty) 'description': description,
+      };
+}
+
+class CreateAdvanceInvoiceFromPresupuestoRequest {
+  final CreateAdvanceInvoiceConfig advanceConfig;
+  final String? notes;
+
+  const CreateAdvanceInvoiceFromPresupuestoRequest({
+    required this.advanceConfig,
+    this.notes,
+  });
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'advanceConfig': advanceConfig.toJson(),
+        if ((notes ?? '').trim().isNotEmpty) 'notes': notes!.trim(),
+      };
+}
+
+class CreateFinalInvoiceFromPresupuestoRequest {
+  final String? advanceInvoiceId;
+  final String? notes;
+
+  const CreateFinalInvoiceFromPresupuestoRequest({
+    this.advanceInvoiceId,
+    this.notes,
+  });
+
+  Map<String, dynamic> toJson() {
+    final payload = <String, dynamic>{};
+    final trimmed = advanceInvoiceId?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      payload['advanceInvoiceId'] = trimmed;
+    }
+    final trimmedNotes = notes?.trim();
+    if (trimmedNotes != null && trimmedNotes.isNotEmpty) {
+      payload['notes'] = trimmedNotes;
+    }
+    return payload;
+  }
+}
+
+class PresupuestoCreateInvoiceResponse {
+  final bool ok;
+  final String? invoiceType;
+  final String? presupuestoId;
+  final String? invoiceId;
+  final Map<String, dynamic>? invoice;
+  final Map<String, dynamic> raw;
+
+  const PresupuestoCreateInvoiceResponse({
+    required this.ok,
+    this.invoiceType,
+    this.presupuestoId,
+    this.invoiceId,
+    this.invoice,
+    required this.raw,
+  });
+
+  factory PresupuestoCreateInvoiceResponse.fromJson(Map<String, dynamic> json) {
+    final invoice = json['invoice'];
+    return PresupuestoCreateInvoiceResponse(
+      ok: json['ok'] == true,
+      invoiceType: json['invoiceType']?.toString(),
+      presupuestoId: json['presupuestoId']?.toString(),
+      invoiceId: json['invoiceId']?.toString(),
+      invoice: invoice is Map ? Map<String, dynamic>.from(invoice) : null,
+      raw: Map<String, dynamic>.from(json),
+    );
+  }
+}
+
 class PresupuestosApi {
   final String _base = '${ApiConstants.baseUrl}/presupuestos';
 
@@ -29,6 +118,12 @@ class PresupuestosApi {
       };
 
   Uri _u([String path = '']) => Uri.parse('$_base$path');
+
+  Uri buildCreateAdvanceInvoiceUri(String presupuestoId) =>
+      _u('/${presupuestoId.trim()}/create-advance-invoice');
+
+  Uri buildCreateFinalInvoiceUri(String presupuestoId) =>
+      _u('/${presupuestoId.trim()}/create-final-invoice');
 
   Uri buildListByGroupUri(
     String groupId, {
@@ -127,6 +222,10 @@ class PresupuestosApi {
     required String groupId,
     String? clientId,
     String? clientName,
+    String? addressStreet,
+    String? addressCity,
+    String? addressPostalCode,
+    Map<String, dynamic>? clientSnapshot,
     List<Map<String, dynamic>>? lines,
     List<Map<String, dynamic>>? blocks,
   }) async {
@@ -136,11 +235,88 @@ class PresupuestosApi {
         'clientId': clientId.trim(),
       if (clientName != null && clientName.trim().isNotEmpty)
         'clientName': clientName.trim(),
+      if (addressStreet != null && addressStreet.trim().isNotEmpty)
+        'addressStreet': addressStreet.trim(),
+      if (addressCity != null && addressCity.trim().isNotEmpty)
+        'addressCity': addressCity.trim(),
+      if (addressPostalCode != null && addressPostalCode.trim().isNotEmpty)
+        'addressPostalCode': addressPostalCode.trim(),
+      if (clientSnapshot != null) 'clientSnapshot': clientSnapshot,
       if (lines != null && lines.isNotEmpty) 'lines': lines,
       if (blocks != null && blocks.isNotEmpty) 'blocks': blocks,
     };
     final r = await AuthenticatedHttpClient.post(
       _u(),
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> updateDraft({
+    required String id,
+    String? clientId,
+    String? clientName,
+    String? addressStreet,
+    String? addressCity,
+    String? addressPostalCode,
+    Map<String, dynamic>? clientSnapshot,
+    String? issueDate,
+    String? notes,
+    String? currency,
+    List<Map<String, dynamic>>? lines,
+    List<Map<String, dynamic>>? blocks,
+    Map<String, dynamic>? totals,
+  }) async {
+    final payload = <String, dynamic>{
+      if (clientId != null && clientId.trim().isNotEmpty)
+        'clientId': clientId.trim(),
+      if (clientName != null && clientName.trim().isNotEmpty)
+        'clientName': clientName.trim(),
+      if (addressStreet != null && addressStreet.trim().isNotEmpty)
+        'addressStreet': addressStreet.trim(),
+      if (addressCity != null && addressCity.trim().isNotEmpty)
+        'addressCity': addressCity.trim(),
+      if (addressPostalCode != null && addressPostalCode.trim().isNotEmpty)
+        'addressPostalCode': addressPostalCode.trim(),
+      if (clientSnapshot != null) 'clientSnapshot': clientSnapshot,
+      if (issueDate != null && issueDate.trim().isNotEmpty)
+        'issueDate': issueDate.trim(),
+      if (notes != null) 'notes': notes,
+      if (currency != null && currency.trim().isNotEmpty)
+        'currency': currency.trim(),
+      if (lines != null) 'lines': lines,
+      if (blocks != null) 'blocks': blocks,
+      if (totals != null) 'totals': totals,
+    };
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/$id/draft'),
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> updateIssued({
+    required String id,
+    List<Map<String, dynamic>>? blocks,
+    String? notes,
+    String? currency,
+    Map<String, dynamic>? clientSnapshot,
+    Map<String, dynamic>? issuerSnapshot,
+    required String reason,
+  }) async {
+    final payload = <String, dynamic>{
+      if (blocks != null) 'blocks': blocks,
+      if (notes != null) 'notes': notes,
+      if (currency != null && currency.trim().isNotEmpty)
+        'currency': currency.trim(),
+      if (clientSnapshot != null) 'clientSnapshot': clientSnapshot,
+      if (issuerSnapshot != null) 'issuerSnapshot': issuerSnapshot,
+      'reason': reason.trim(),
+    };
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/$id/issued'),
       headers: _headers(),
       body: jsonEncode(payload),
     );
@@ -177,6 +353,31 @@ class PresupuestosApi {
       headers: _headers(),
     );
     return _decodeMap(r);
+  }
+
+  Future<PresupuestoCreateInvoiceResponse> createAdvanceInvoiceFromPresupuesto(
+    String presupuestoId, {
+    required CreateAdvanceInvoiceFromPresupuestoRequest payload,
+  }) async {
+    final r = await AuthenticatedHttpClient.post(
+      buildCreateAdvanceInvoiceUri(presupuestoId),
+      headers: _headers(),
+      body: jsonEncode(payload.toJson()),
+    );
+    return PresupuestoCreateInvoiceResponse.fromJson(_decodeMap(r));
+  }
+
+  Future<PresupuestoCreateInvoiceResponse> createFinalInvoiceFromPresupuesto(
+    String presupuestoId, {
+    CreateFinalInvoiceFromPresupuestoRequest payload =
+        const CreateFinalInvoiceFromPresupuestoRequest(),
+  }) async {
+    final r = await AuthenticatedHttpClient.post(
+      buildCreateFinalInvoiceUri(presupuestoId),
+      headers: _headers(),
+      body: jsonEncode(payload.toJson()),
+    );
+    return PresupuestoCreateInvoiceResponse.fromJson(_decodeMap(r));
   }
 
   Future<List<Map<String, dynamic>>> listByGroup({
@@ -250,6 +451,25 @@ class PresupuestosApi {
   Future<Map<String, dynamic>> getById(String id) async {
     final r =
         await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> listSnapshots(String id) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/${id.trim()}/snapshots'),
+      headers: _headers(),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> getSnapshot({
+    required String id,
+    required String snapshotId,
+  }) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/${id.trim()}/snapshots/${snapshotId.trim()}'),
+      headers: _headers(),
+    );
     return _decodeMap(r);
   }
 

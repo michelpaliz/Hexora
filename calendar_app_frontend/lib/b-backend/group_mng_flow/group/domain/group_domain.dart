@@ -66,7 +66,7 @@ class GroupDomain extends ChangeNotifier {
 
   // ── Current group selection ────────────────────────────────────────────────
   set currentGroup(Group? group) {
-    if (_currentGroup?.id == group?.id) return;
+    if (identical(_currentGroup, group)) return;
     _currentGroup = group;
 
     if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {

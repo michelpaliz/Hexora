@@ -1,0 +1,228 @@
+{
+  "version": "1.0.0",
+  "producer": "Java AppCAT CLI",
+  "metadata": {
+    "analysisStartTime": "2026-03-21T11:18:07.7111832Z",
+    "analysisEndTime": "2026-03-21T11:21:52.108359Z",
+    "status": "completed",
+    "privacyMode": "Protected",
+    "privacyModeHelpUrl": "https://aka.ms/appcat-privacy-mode",
+    "targetIds": [
+      "azure-aks",
+      "azure-appservice",
+      "azure-container-apps"
+    ],
+    "targetDisplayNames": [
+      "Azure Kubernetes Service",
+      "Azure App Service",
+      "Azure Container Apps"
+    ],
+    "capabilities": [],
+    "os": [],
+    "id": "20260321121807",
+    "name": "Report_20260321121807",
+    "domains": [
+      "cloud-readiness",
+      "java-upgrade"
+    ],
+    "mode": "issue-only"
+  },
+  "summary": {
+    "totalProjects": 1,
+    "totalIssues": 3,
+    "totalIncidents": 4,
+    "totalEffort": 16,
+    "charts": {
+      "severity": {
+        "mandatory": 3,
+        "optional": 1,
+        "potential": 0,
+        "information": 0
+      },
+      "category": {
+        "containerization": 1,
+        "java-version-upgrade": 2,
+        "remote-communication": 1
+      }
+    },
+    "security": {}
+  },
+  "projects": [
+    {
+      "path": ".",
+      "issues": 3,
+      "storyPoints": 16,
+      "properties": {
+        "appName": "calendar_app_frontend",
+        "jdkVersion": "Unknown",
+        "frameworks": null,
+        "languages": [
+          "Java"
+        ],
+        "tools": null
+      },
+      "incidents": [
+        {
+          "ruleId": "azure-java-version-02000",
+          "incidentId": "210d2c80-00a2-426e-9ede-a9b5cb23b80d",
+          "location": "android/app/build.gradle.kts",
+          "locationKind": "File",
+          "line": 13,
+          "column": 0,
+          "targets": {
+            "azure-aks": {
+              "effort": 5,
+              "severity": "mandatory"
+            },
+            "azure-appservice": {
+              "effort": 5,
+              "severity": "mandatory"
+            },
+            "azure-container-apps": {
+              "effort": 5,
+              "severity": "mandatory"
+            }
+          },
+          "labels": [
+            "type=violation",
+            "ruleset=azure/springboot"
+          ]
+        },
+        {
+          "ruleId": "azure-java-version-02000",
+          "incidentId": "49280d7d-a1c2-4a71-a2bf-cd65eee625f6",
+          "location": "android/app/build.gradle.kts",
+          "locationKind": "File",
+          "line": 14,
+          "column": 0,
+          "targets": {
+            "azure-aks": {
+              "effort": 5,
+              "severity": "mandatory"
+            },
+            "azure-appservice": {
+              "effort": 5,
+              "severity": "mandatory"
+            },
+            "azure-container-apps": {
+              "effort": 5,
+              "severity": "mandatory"
+            }
+          },
+          "labels": [
+            "type=violation",
+            "ruleset=azure/springboot"
+          ]
+        },
+        {
+          "ruleId": "hardcoded-urls-00001",
+          "incidentId": "cae07272-c4d1-40eb-a296-1b73f1c49ed5",
+          "location": "devtools_options.yaml",
+          "locationKind": "File",
+          "line": 2,
+          "column": 0,
+          "targets": {
+            "azure-aks": {
+              "effort": 3,
+              "severity": "optional"
+            },
+            "azure-appservice": {
+              "effort": 3,
+              "severity": "optional"
+            },
+            "azure-container-apps": {
+              "effort": 3,
+              "severity": "optional"
+            }
+          },
+          "labels": [
+            "type=violation",
+            "ruleset=cloud-readiness"
+          ]
+        },
+        {
+          "ruleId": "dockerfile-00000",
+          "incidentId": "2678204d-d92a-4f52-b595-156f89b3fcf3",
+          "location": "",
+          "locationKind": "",
+          "targets": {
+            "azure-aks": {
+              "effort": 3,
+              "severity": "mandatory"
+            },
+            "azure-container-apps": {
+              "effort": 3,
+              "severity": "mandatory"
+            }
+          },
+          "labels": [
+            "type=violation",
+            "ruleset=cloud-readiness"
+          ]
+        }
+      ]
+    }
+  ],
+  "rules": {
+    "azure-java-version-02000": {
+      "id": "azure-java-version-02000",
+      "description": "The application is using an old Java version. It is strongly recommended to plan and execute a migration strategy to upgrade your application to the latest stable Java version.\nOlder Java versions may have known security vulnerabilities that can expose your application and infrastructure to potential attacks. Migrating to a supported version ensures that you benefit from the latest security patches and updates.",
+      "title": "Legacy Java version",
+      "severity": "mandatory",
+      "effort": 5,
+      "labels": [
+        "target=azure-appservice",
+        "target=azure-aks",
+        "target=azure-container-apps",
+        "source",
+        "domain=java-upgrade",
+        "category=java-version-upgrade",
+        "version",
+        "os=windows",
+        "os=linux"
+      ]
+    },
+    "dockerfile-00000": {
+      "id": "dockerfile-00000",
+      "description": "No Dockerfile was found in the project. This suggests the application may not yet be containerized. \nConsider creating a Dockerfile to enable container-based replatforming to Azure services such as Azure Container Apps or AKS.",
+      "title": "No Dockerfile found",
+      "severity": "mandatory",
+      "effort": 3,
+      "links": [
+        {
+          "url": "https://www.baeldung.com/java-dockerize-app",
+          "title": "Dockerizing a Java Application"
+        }
+      ],
+      "labels": [
+        "target=azure-aks",
+        "target=azure-container-apps",
+        "capability=containerization",
+        "source",
+        "domain=cloud-readiness",
+        "category=containerization",
+        "containerization",
+        "os=windows",
+        "os=linux"
+      ]
+    },
+    "hardcoded-urls-00001": {
+      "id": "hardcoded-urls-00001",
+      "description": "This patterns verifies in source code and configuration files the presence of hardcoded URLs using the HTTP protocol (HTTP/HTTPS). This URL would need to be replaced by the new resource's URL during the Cloud migration, if any change occured.",
+      "title": "Avoid using hardcoded URLs (HTTP protocol) in source code",
+      "severity": "optional",
+      "effort": 3,
+      "labels": [
+        "target=azure-aks",
+        "target=azure-container-apps",
+        "target=azure-appservice",
+        "source",
+        "domain=cloud-readiness",
+        "category=remote-communication",
+        "os=windows",
+        "os=linux"
+      ]
+    }
+  },
+  "security": []
+}

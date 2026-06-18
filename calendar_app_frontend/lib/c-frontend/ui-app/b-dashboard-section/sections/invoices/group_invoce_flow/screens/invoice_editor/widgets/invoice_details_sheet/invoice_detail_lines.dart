@@ -10,7 +10,11 @@ class InvoiceDetailLines extends StatelessWidget {
   final String? error;
   final List<InvoiceLine> lines;
   final Future<void> Function() onRefresh;
-  final String totalLabel;
+  final num? subtotal;
+  final num? taxTotal;
+  final num? total;
+  final num? discountAmount;
+  final num? discountPercent;
 
   const InvoiceDetailLines({
     super.key,
@@ -18,7 +22,11 @@ class InvoiceDetailLines extends StatelessWidget {
     required this.error,
     required this.lines,
     required this.onRefresh,
-    required this.totalLabel,
+    this.subtotal,
+    this.taxTotal,
+    this.total,
+    this.discountAmount,
+    this.discountPercent,
   });
 
   @override
@@ -35,10 +43,25 @@ class InvoiceDetailLines extends StatelessWidget {
     num lineTotal(InvoiceLine line) =>
         line.lineTotal ?? (lineSubtotal(line) + lineTax(line));
 
-    final subtotal =
+    final linesSubtotal =
         lines.fold<num>(0, (sum, line) => sum + lineSubtotal(line));
-    final taxTotal = lines.fold<num>(0, (sum, line) => sum + lineTax(line));
-    final total = lines.fold<num>(0, (sum, line) => sum + lineTotal(line));
+    final linesTaxTotal = lines.fold<num>(0, (sum, line) => sum + lineTax(line));
+    final linesTotal = lines.fold<num>(0, (sum, line) => sum + lineTotal(line));
+
+    final discountByAmount = (discountAmount ?? 0).toDouble();
+    final discountByPercent =
+        discountByAmount <= 0 && (discountPercent ?? 0) > 0
+            ? (linesSubtotal.toDouble() * (discountPercent!.toDouble() / 100))
+            : 0.0;
+    final effectiveDiscount = (discountByAmount > 0 ? discountByAmount : discountByPercent)
+        .clamp(0, linesSubtotal.toDouble());
+
+    final effectiveSubtotal = subtotal ?? (linesSubtotal - effectiveDiscount);
+    final effectiveTaxTotal = taxTotal ?? linesTaxTotal;
+    final effectiveTotal = total ?? linesTotal;
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final partialSubtotalLabel = isEs ? 'Total parcial' : 'Partial subtotal';
+    final discountLabel = isEs ? 'Descuento' : 'Discount';
 
     TextStyle amountStyle({bool strong = false}) {
       return t.bodySmall.copyWith(
@@ -133,12 +156,24 @@ class InvoiceDetailLines extends StatelessWidget {
                     children: [
                       totalsRow(
                         label: l.invoiceSubtotalLabel,
-                        value: money.format(subtotal),
+                        value: money.format(effectiveSubtotal),
                       ),
+                      if (effectiveDiscount > 0) ...[
+                        const SizedBox(height: 3),
+                        totalsRow(
+                          label: partialSubtotalLabel,
+                          value: money.format(linesSubtotal),
+                        ),
+                        const SizedBox(height: 3),
+                        totalsRow(
+                          label: discountLabel,
+                          value: '-${money.format(effectiveDiscount)}',
+                        ),
+                      ],
                       const SizedBox(height: 3),
                       totalsRow(
                         label: l.invoiceTaxLabel,
-                        value: money.format(taxTotal),
+                        value: money.format(effectiveTaxTotal),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -153,7 +188,7 @@ class InvoiceDetailLines extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            money.format(total),
+                            money.format(effectiveTotal),
                             style: amountStyle(strong: true).copyWith(
                               fontSize: 16,
                             ),

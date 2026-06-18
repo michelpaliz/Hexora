@@ -10,9 +10,12 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/role_info/
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/upcoming_events/group_upcoming_events.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+
+import '../dashboard/controller/group_dashboard_sections.dart';
 
 class GroupDashboardBodyMember extends StatelessWidget {
   const GroupDashboardBodyMember({
@@ -32,11 +35,14 @@ class GroupDashboardBodyMember extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
     final sectionTitle = t.bodyLarge.copyWith(fontWeight: FontWeight.w800);
-    Theme.of(context).textTheme.titleMedium?.copyWith(
+    final tileTitle = Theme.of(context).textTheme.titleMedium?.copyWith(
           color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.w800,
         );
+    final tileSub = t.bodySmall;
+    final tileBg = ThemeColors.listTileBg(context);
 
     return Column(
       children: [
@@ -65,6 +71,37 @@ class GroupDashboardBodyMember extends StatelessWidget {
                 group: group,
                 description: l.businessHoursMemberSubtitle,
               ),
+              const SizedBox(height: 20),
+              SectionHeader(title: l.calendarTitle, textStyle: sectionTitle),
+              Card(
+                color: tileBg,
+                child: ListTile(
+                  leading: const Icon(Icons.calendar_month_rounded),
+                  title: Text(l.calendarTitle, style: tileTitle),
+                  subtitle: Text(
+                    group.hasCalendar ? l.goToCalendar : l.noCalendarWarning,
+                    style: tileSub,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => context
+                      .read<GroupDashboardState>()
+                      .openSection(Sections.calendar),
+                ),
+              ),
+              if (!group.hasCalendar) ...[
+                const SizedBox(height: 8),
+                Card(
+                  color: cs.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      l.noCalendarWarning,
+                      style: t.bodyMedium.copyWith(color: cs.onErrorContainer),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               SectionHeader(
                 title: l.sectionEvents,

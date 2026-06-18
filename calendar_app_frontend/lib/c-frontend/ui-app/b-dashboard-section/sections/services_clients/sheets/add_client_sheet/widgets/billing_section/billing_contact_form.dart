@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/utils/validation/email_validator.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -57,8 +58,9 @@ class BillingContactForm extends StatelessWidget {
                     (v == null || v.trim().isEmpty)) {
                   return l.fieldIsRequired;
                 }
-                if (v == null || v.isEmpty) return null;
-                final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v);
+                final txt = (v ?? '').trim();
+                if (txt.isEmpty) return null;
+                final ok = isLikelyValidEmail(txt);
                 return ok ? null : l.invalidEmail;
               },
             ),

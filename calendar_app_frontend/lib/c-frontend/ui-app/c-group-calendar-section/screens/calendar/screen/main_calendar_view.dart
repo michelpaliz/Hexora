@@ -3,26 +3,32 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/weather/day_summary.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/services_section/right_panel_insights_inline.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/business_hours/edit_business_hours_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/coordinator/calendar_screen_coordinator.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_side_menu.dart';
+import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_tasks_screen.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_tabs.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_topbar.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/refresh_button.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/add_event_cta.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/group_permissions_helper.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/presence_status_strip.dart';
+import 'package:hexora/c-frontend/ui-app/d-event-section/utils/color_manager.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/edit_screen/screen/edit_event_screen.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/agenda_screen.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
 import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
+import 'package:hexora/c-frontend/utils/image/user_image/widgets/pulsing_ring_avatar.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
+import 'package:hexora/c-frontend/utils/weather/weather_summary_localizer.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -73,7 +79,6 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   bool _weatherIconsEnabled = true;
   String? _selectedUserFilter;
   _SidePanelView _panelView = _SidePanelView.upcoming;
-  bool _rightCollapsed = false;
   bool _leftCollapsed = false;
   final ValueNotifier<bool> _leftCollapsedNotifier = ValueNotifier(false);
   bool _canAddEvents = false;
@@ -214,10 +219,6 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     setState(() => _panelView = view);
   }
 
-  void _toggleRightPanel() {
-    setState(() => _rightCollapsed = !_rightCollapsed);
-  }
-
   void _toggleLeftPanel() {
     setState(() => _leftCollapsed = !_leftCollapsed);
     _leftCollapsedNotifier.value = _leftCollapsed;
@@ -246,6 +247,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         break;
       case 'mini_calendar':
         _setPanelView(_SidePanelView.miniCalendar);
+        break;
+      case 'tasks':
         break;
     }
   }
@@ -283,8 +286,35 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   }
 
   void _syncInlineEditHandler() {
+    final isWide = MediaQuery.of(context).size.width >= 1000;
     _c.setInlineEditHandler(
-      widget.embedded && kIsWeb ? _openViewEventInline : null,
+      kIsWeb && isWide ? _openViewEventInline : null,
+    );
+  }
+
+  Future<void> _editBusinessHours(Group group) async {
+    final l = AppLocalizations.of(context)!;
+    final hours = await showBusinessHoursDialog(
+      context,
+      initial: group.businessHours,
+    );
+    if (hours == null || !mounted) return;
+
+    final domain = context.read<GroupDomain>();
+    final updated = await domain.setBusinessHours(
+      groupId: group.id,
+      hours: hours,
+    );
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          updated != null
+              ? l.businessHoursUpdateSuccess
+              : l.businessHoursUpdateError,
+        ),
+      ),
     );
   }
 
@@ -331,6 +361,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
         final canAddEvents =
             GroupPermissionHelper.canAddEvents(currentUser, currentGroup);
+        final canEditBusinessHours =
+            GroupPermissionHelper.canEditGroup(currentUser, currentGroup);
         if (canAddEvents != _canAddEvents) {
           _canAddEvents = canAddEvents;
           WidgetsBinding.instance.addPostFrameCallback((_) => _emitActions());
@@ -434,13 +466,17 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                         width: 1.8,
                       ),
                     ),
-                    child: CircleAvatar(
+                    child: PulsingRingAvatar(
                       radius: 12,
-                      backgroundColor: cs.surfaceContainerHighest,
-                      backgroundImage: AvatarUtils.profileImageProvider(
+                      image: AvatarUtils.profileImageProvider(
                         user.photoUrl,
                         assetFallback: 'assets/images/default_profile.png',
                       ),
+                      isOnline: user.isOnline,
+                      onlineColor: isSelected ? cs.primary : cs.secondary,
+                      offlineBorderColor:
+                          cs.outlineVariant.withValues(alpha: 0.55),
+                      backgroundColor: cs.surfaceContainerHighest,
                     ),
                   ),
                 ),
@@ -538,9 +574,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         Widget calendarSidebar() {
           return CalendarSideMenu(
             group: currentGroup,
-            collapsed: false,
-            showCollapseToggle: false,
-            onToggleCollapse: () {},
+            collapsed: _leftCollapsed,
+            showCollapseToggle: true,
+            onToggleCollapse: _toggleLeftPanel,
             viewsExpanded: _viewsExpanded,
             eventsExpanded: _eventsExpanded,
             insightsExpanded: _insightsExpanded,
@@ -554,37 +590,712 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             onMenuChanged: _onSideMenuChanged,
             onAddEvent: canAddEvents ? () => _openAddEvent(currentGroup) : null,
             canAddEvents: canAddEvents,
+            canEditBusinessHours: canEditBusinessHours,
+            onEditBusinessHours: canEditBusinessHours
+                ? () => _editBusinessHours(currentGroup)
+                : null,
             upcomingCount: 0, // TODO: Get actual count from events
             completedCount: 0, // TODO: Get actual count from completed events
           );
         }
 
         Widget miniCalendarPanel() {
-          return SizedBox(
-            width: 360,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Card(
-                elevation: 0,
-                color: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                  child: _c.calendarUI?.buildCalendar(
-                        context,
-                        forcedViewMode: 'month',
-                      ) ??
-                      Center(
-                        child: Text(
-                          loc.noGroupAvailable,
-                          style: typo.bodyMedium.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
+          final calendarUI = _c.calendarUI;
+          if (calendarUI == null) {
+            return Center(
+              child: Text(
+                loc.noGroupAvailable,
+                style: typo.bodyMedium.copyWith(
+                  color: cs.onSurfaceVariant,
                 ),
               ),
-            ),
+            );
+          }
+
+          Widget miniPanelShell({
+            required String title,
+            required Widget child,
+            Widget? trailing,
+          }) {
+            return Container(
+              decoration: BoxDecoration(
+                color: cs.surface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: typo.bodyLarge.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                        ),
+                        if (trailing != null) trailing,
+                      ],
+                    ),
+                  ),
+                  Expanded(child: child),
+                ],
+              ),
+            );
+          }
+
+          Widget miniCalendarDetailPanel() {
+            switch (_panelView) {
+              case _SidePanelView.viewEvent:
+                if (_viewingEvent == null) break;
+                return EventDetailScreen(
+                  event: _viewingEvent!,
+                  onEdit: () => _openEditEventInline(_viewingEvent!),
+                  onDelete: () async {
+                    final ev = _viewingEvent!;
+                    await _c.actionManager?.removeEvent(ev, true);
+                    if (!mounted) return;
+                    setState(() {
+                      _viewingEvent = null;
+                      _editingEvent = null;
+                      _panelView = _SidePanelView.miniCalendar;
+                    });
+                  },
+                );
+              case _SidePanelView.editEvent:
+                if (_editingEvent == null) break;
+                return Provider<EventDomain>.value(
+                  value: context.read<EventDomain>(),
+                  child: EditEventScreen(
+                    event: _editingEvent!,
+                    embedded: true,
+                    onSaved: () async {
+                      await _refreshCalendarOnly();
+                      if (!mounted) return;
+                      setState(() {
+                        _viewingEvent = _editingEvent;
+                        _editingEvent = null;
+                        _panelView = _SidePanelView.viewEvent;
+                      });
+                    },
+                  ),
+                );
+              case _SidePanelView.addEvent:
+                return AddEventScreen(
+                  group: currentGroup,
+                  embedded: true,
+                  initialStartDate: _pendingAddEventStart,
+                  initialEndDate: _pendingAddEventEnd,
+                  onCreated: () async {
+                    await _refreshCalendarOnly();
+                    if (!mounted) return;
+                    setState(() {
+                      _panelView = _SidePanelView.miniCalendar;
+                    });
+                  },
+                );
+              default:
+                break;
+            }
+
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.event_note_rounded,
+                      size: 42,
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Selecciona un evento',
+                      style: typo.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'El detalle y la edicion se mostraran en este panel.',
+                      textAlign: TextAlign.center,
+                      style: typo.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          String miniCalendarDetailTitle() {
+            switch (_panelView) {
+              case _SidePanelView.editEvent:
+                return loc.edit;
+              case _SidePanelView.addEvent:
+                return loc.addEvent;
+              case _SidePanelView.viewEvent:
+                return loc.details;
+              default:
+                return loc.details;
+            }
+          }
+
+          Widget miniCalendarEventList() {
+            return ValueListenableBuilder<DateTime>(
+              valueListenable: calendarUI.selectedDateNotifier,
+              builder: (context, selectedDate, _) {
+                return ValueListenableBuilder<List<Event>>(
+                  valueListenable: calendarUI.dailyEventsNotifier,
+                  builder: (context, eventsForDay, __) {
+                    final l10n = MaterialLocalizations.of(context);
+                    final isToday = DateUtils.isSameDay(
+                      selectedDate,
+                      DateTime.now(),
+                    );
+                    final isSpanish =
+                        Localizations.localeOf(context).languageCode == 'es';
+
+                    // ── Event list panel ──────────────────────────────
+                    return ValueListenableBuilder<Map<DateTime, DaySummary>>(
+                      valueListenable: calendarUI.weatherForecastNotifier,
+                      builder: (context, weatherForecast, ___) {
+                        final selectedDayKey = DateTime(
+                          selectedDate.year,
+                          selectedDate.month,
+                          selectedDate.day,
+                        );
+                        final weatherSummary = _weatherIconsEnabled
+                            ? weatherForecast[selectedDayKey]
+                            : null;
+
+                        // ── Compact inline weather (secondary info) ────
+                        Widget weatherInlineLine() {
+                          if (weatherSummary == null) {
+                            return const SizedBox.shrink();
+                          }
+                          final s = weatherSummary;
+                          final tempMax = s.tempMax?.round();
+                          final tempMin = s.tempMin?.round();
+                          final tempRange = tempMax == null
+                              ? null
+                              : tempMin == null
+                                  ? '$tempMax°'
+                                  : '$tempMin° / $tempMax°';
+                          return Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                s.emoji,
+                                style: const TextStyle(fontSize: 13, height: 1),
+                              ),
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: Text(
+                                  [
+                                    localizeWeatherSummary(loc, s.summary),
+                                    if (tempRange != null) tempRange,
+                                  ].join(' · '),
+                                  style: typo.caption.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        // ── Empty workspace with CTAs ──────────────────
+                        Widget emptyDayWorkspace() {
+                          return Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 300),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 52,
+                                    height: 52,
+                                    decoration: BoxDecoration(
+                                      color: cs.primary.withValues(alpha: 0.09),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Icon(
+                                      Icons.calendar_today_outlined,
+                                      size: 26,
+                                      color: cs.primary.withValues(alpha: 0.65),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    isSpanish
+                                        ? 'No hay eventos para este día'
+                                        : 'No events for this day',
+                                    textAlign: TextAlign.center,
+                                    style: typo.bodyLarge.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: cs.onSurface,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    isSpanish
+                                        ? 'Organiza tu jornada creando un evento o recordatorio.'
+                                        : 'Plan your day by creating an event or reminder.',
+                                    textAlign: TextAlign.center,
+                                    style: typo.bodySmall.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  if (canAddEvents) ...[
+                                    const SizedBox(height: 24),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: FilledButton.icon(
+                                        onPressed: () =>
+                                            _openAddEventForSlot(selectedDate),
+                                        icon: const Icon(Icons.add_rounded,
+                                            size: 16),
+                                        label: Text(
+                                          isSpanish
+                                              ? 'Crear evento'
+                                              : 'Create event',
+                                          style: typo.bodySmall.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: cs.onPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () =>
+                                            _openAddEventForSlot(selectedDate),
+                                        icon: const Icon(
+                                            Icons.notifications_outlined,
+                                            size: 16),
+                                        label: Text(
+                                          isSpanish
+                                              ? 'Crear recordatorio'
+                                              : 'Create reminder',
+                                          style: typo.bodySmall.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: cs.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── Day header ─────────────────────────────────
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      // Large day number
+                                      AnimatedDefaultTextStyle(
+                                        duration:
+                                            const Duration(milliseconds: 220),
+                                        style: typo.titleLarge.copyWith(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 36,
+                                          color: isToday
+                                              ? cs.primary
+                                              : cs.onSurface,
+                                          height: 1,
+                                        ),
+                                        child:
+                                            Text(selectedDate.day.toString()),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              l10n.formatMediumDate(
+                                                  selectedDate),
+                                              style: typo.bodyLarge.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                                color: cs.onSurface,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Row(
+                                              children: [
+                                                if (isToday) ...[
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 1),
+                                                    decoration: BoxDecoration(
+                                                      color: cs.primary
+                                                          .withValues(
+                                                              alpha: 0.12),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              5),
+                                                    ),
+                                                    child: Text(
+                                                      loc.today,
+                                                      style:
+                                                          typo.caption.copyWith(
+                                                        color: cs.primary,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                ],
+                                                Text(
+                                                  eventsForDay.isEmpty
+                                                      ? (isSpanish
+                                                          ? 'Sin eventos'
+                                                          : 'No events')
+                                                      : '${eventsForDay.length} ${eventsForDay.length == 1 ? (isSpanish ? 'evento' : loc.event) : (isSpanish ? 'eventos' : '${loc.event}s')}',
+                                                  style:
+                                                      typo.bodySmall.copyWith(
+                                                    color: cs.onSurfaceVariant,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Quick-add action
+                                      if (canAddEvents &&
+                                          eventsForDay.isNotEmpty) ...[
+                                        const SizedBox(width: 6),
+                                        FilledButton.tonal(
+                                          onPressed: () => _openAddEventForSlot(
+                                              selectedDate),
+                                          style: FilledButton.styleFrom(
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 0),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.add_rounded,
+                                                  size: 14),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                isSpanish ? 'Nuevo' : 'New',
+                                                style: typo.bodySmall.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  // Inline weather — secondary, under date
+                                  if (weatherSummary != null) ...[
+                                    const SizedBox(height: 5),
+                                    weatherInlineLine(),
+                                  ],
+                                  const SizedBox(height: 12),
+                                ],
+                              ),
+                            ),
+
+                            // ── Events / empty workspace ───────────────────
+                            Expanded(
+                              child: eventsForDay.isEmpty
+                                  ? emptyDayWorkspace()
+                                  : ListView.separated(
+                                      itemCount: eventsForDay.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 6),
+                                      itemBuilder: (context, index) {
+                                        final event = eventsForDay[index];
+                                        final eventColor =
+                                            (event.eventColorIndex >= 0 &&
+                                                    event.eventColorIndex <
+                                                        ColorManager
+                                                            .eventColors.length)
+                                                ? ColorManager.eventColors[
+                                                    event.eventColorIndex]
+                                                : cs.primary;
+                                        final timeRange = event.allDay
+                                            ? (isSpanish
+                                                ? 'Todo el día'
+                                                : 'All day')
+                                            : '${l10n.formatTimeOfDay(TimeOfDay.fromDateTime(event.startDate), alwaysUse24HourFormat: true)} – ${l10n.formatTimeOfDay(TimeOfDay.fromDateTime(event.endDate), alwaysUse24HourFormat: true)}';
+
+                                        return InkWell(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          onTap: () =>
+                                              _openViewEventInline(event),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(11),
+                                            decoration: BoxDecoration(
+                                              color: eventColor.withValues(
+                                                  alpha: 0.10),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: eventColor.withValues(
+                                                    alpha: 0.25),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                // Color dot
+                                                Container(
+                                                  width: 8,
+                                                  height: 8,
+                                                  margin: const EdgeInsets.only(
+                                                      top: 3, right: 9),
+                                                  decoration: BoxDecoration(
+                                                    color: eventColor,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                                // Content
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        event.title,
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: typo.bodyMedium
+                                                            .copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: cs.onSurface,
+                                                          fontSize: 13,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 3),
+                                                      Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons
+                                                                .schedule_outlined,
+                                                            size: 11,
+                                                            color: cs
+                                                                .onSurfaceVariant
+                                                                .withValues(
+                                                                    alpha: 0.7),
+                                                          ),
+                                                          const SizedBox(
+                                                              width: 3),
+                                                          Expanded(
+                                                            child: Text(
+                                                              timeRange,
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                              style: typo
+                                                                  .bodySmall
+                                                                  .copyWith(
+                                                                color: cs
+                                                                    .onSurfaceVariant
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.8),
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                // Chevron
+                                                Icon(
+                                                  Icons.chevron_right_rounded,
+                                                  size: 16,
+                                                  color: cs.onSurfaceVariant
+                                                      .withValues(alpha: 0.35),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          }
+
+          Widget miniMonthGrid() {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              child: calendarUI.buildCalendar(
+                context,
+                forcedViewMode: 'month',
+                showMonthAgenda: false,
+              ),
+            );
+          }
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 1180;
+              // Shared state: no event/add/edit mode active
+              final noEventSelected = _panelView == _SidePanelView.miniCalendar;
+              final detailTrailing = IconButton(
+                tooltip: 'Cerrar',
+                onPressed: () {
+                  setState(() {
+                    _viewingEvent = null;
+                    _editingEvent = null;
+                    _panelView = _SidePanelView.miniCalendar;
+                  });
+                },
+                icon: const Icon(Icons.close_rounded),
+              );
+
+              if (stacked) {
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: 320,
+                      child: miniPanelShell(
+                        title: loc.sectionOverview,
+                        child: miniMonthGrid(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // When event selected: show event list above details
+                    if (!noEventSelected) ...[
+                      SizedBox(
+                        height: 280,
+                        child: miniPanelShell(
+                          title: 'Eventos del dia',
+                          child: miniCalendarEventList(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    // Full workspace or details panel
+                    Expanded(
+                      child: miniPanelShell(
+                        title: noEventSelected
+                            ? 'Eventos del dia'
+                            : miniCalendarDetailTitle(),
+                        trailing: noEventSelected ? null : detailTrailing,
+                        child: noEventSelected
+                            ? miniCalendarEventList()
+                            : miniCalendarDetailPanel(),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              // Wide layout: Calendar 30% | Workspace 70%
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Calendar panel — fixed 30%
+                  Expanded(
+                    flex: 3,
+                    child: miniPanelShell(
+                      title: loc.sectionOverview,
+                      child: miniMonthGrid(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Dynamic workspace — 70%
+                  // No event: full workspace (date header + events/empty+CTA)
+                  // Event active: events list | detail panel split
+                  Expanded(
+                    flex: 7,
+                    child: noEventSelected
+                        ? miniPanelShell(
+                            title: 'Eventos del dia',
+                            child: miniCalendarEventList(),
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: miniPanelShell(
+                                  title: 'Eventos del dia',
+                                  child: miniCalendarEventList(),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 5,
+                                child: miniPanelShell(
+                                  title: miniCalendarDetailTitle(),
+                                  trailing: detailTrailing,
+                                  child: miniCalendarDetailPanel(),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ],
+              );
+            },
           );
         }
 
@@ -627,6 +1338,15 @@ class _MainCalendarViewState extends State<MainCalendarView> {
               return EventDetailScreen(
                 event: _viewingEvent!,
                 onEdit: () => _openEditEventInline(_viewingEvent!),
+                onDelete: () async {
+                  final ev = _viewingEvent!;
+                  await _c.actionManager?.removeEvent(ev, true);
+                  if (!mounted) return;
+                  setState(() {
+                    _viewingEvent = null;
+                    _panelView = _SidePanelView.upcoming;
+                  });
+                },
               );
             case _SidePanelView.editEvent:
               if (_editingEvent == null) {
@@ -644,6 +1364,13 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 child: EditEventScreen(
                   event: _editingEvent!,
                   embedded: true,
+                  onSaved: () {
+                    if (!mounted) return;
+                    setState(() {
+                      _editingEvent = null;
+                      _panelView = _SidePanelView.upcoming;
+                    });
+                  },
                 ),
               );
             default:
@@ -675,7 +1402,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             case 'insights':
               return loc.insightsTitle;
             case 'mini_calendar':
-              return 'Mini Calendar';
+              return loc.sectionOverview;
+            case 'tasks':
+              return loc.tasks;
             default:
               return loc.calendarTitle;
           }
@@ -699,6 +1428,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
               return InsightsInlinePanel(group: currentGroup);
             case 'mini_calendar':
               return miniCalendarPanel();
+            case 'tasks':
+              return CalendarTasksScreen(group: currentGroup);
             default:
               return Center(
                 child: Text(

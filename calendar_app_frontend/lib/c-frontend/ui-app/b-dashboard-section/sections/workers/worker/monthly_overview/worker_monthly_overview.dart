@@ -8,6 +8,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/wo
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/widgets/overview_legend_raw.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/widgets/worker_overview_info_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/widgets/year_switcher.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -92,12 +93,9 @@ class _WorkerMonthlyOverviewScreenState
   }
 
   void _openSelectedMonthInline() {
-    showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => FractionallySizedBox(
-        heightFactor: 0.95,
-        child: WorkerTimeTrackingScreen(
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WorkerTimeTrackingScreen(
           group: widget.group,
           worker: widget.worker,
           initialYear: _year,
@@ -146,6 +144,11 @@ class _WorkerMonthlyOverviewScreenState
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: theme.colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -156,7 +159,7 @@ class _WorkerMonthlyOverviewScreenState
             Text(
               '${widget.group.name} • $selectedLabel',
               style: t.bodyMedium.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],

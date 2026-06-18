@@ -158,18 +158,19 @@ class _FooterManagerPanel extends StatelessWidget {
                       runSpacing: 8,
                       children: [
                         FilledButton(
-                          onPressed: state._createFooter,
+                          onPressed: _asyncCallback(state._createFooter),
                           child: Text(l.mailFooterUseThis),
                         ),
                         TextButton(
-                          onPressed: () => state.setState(
+                          onPressed: () => state.update(
                             () => state._footerFormExpanded = true,
                           ),
                           child: Text(l.mailFooterEdit),
                         ),
                         TextButton.icon(
-                          onPressed: () =>
-                              state._previewFooter(useSystemDefault: true),
+                          onPressed: _asyncCallback(
+                            () => state._previewFooter(useSystemDefault: true),
+                          ),
                           icon: const Icon(Icons.visibility_outlined, size: 18),
                           label: Text(l.mailFooterPreviewSystemCta),
                         ),
@@ -211,7 +212,7 @@ class _FooterManagerPanel extends StatelessWidget {
                 state: state,
                 title: l.mailFooterFormTitle,
                 expanded: state._footerFormExpanded,
-                onToggle: () => state.setState(
+                onToggle: () => state.update(
                   () => state._footerFormExpanded = !state._footerFormExpanded,
                 ),
               ),
@@ -221,15 +222,15 @@ class _FooterManagerPanel extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   FilledButton.tonal(
-                    onPressed: state._previewFooter,
+                    onPressed: _asyncCallback(state._previewFooter),
                     child: Text(l.mailFooterPreviewCta),
                   ),
                   FilledButton(
-                    onPressed: state._createFooter,
+                    onPressed: _asyncCallback(state._createFooter),
                     child: Text(l.mailFooterSaveCta),
                   ),
                   OutlinedButton(
-                    onPressed: () => state.setState(() {
+                    onPressed: () => state.update(() {
                       state._footerNameCtrl.clear();
                       state._footerTextCtrl.clear();
                       state._footerHtmlCtrl.clear();
@@ -354,7 +355,7 @@ class _FooterFormSection extends StatelessWidget {
                 SwitchListTile.adaptive(
                   value: state._footerDefault,
                   onChanged: (value) =>
-                      state.setState(() => state._footerDefault = value),
+                      state.update(() => state._footerDefault = value),
                   title: Text(l.mailFooterDefaultLabel),
                   contentPadding: EdgeInsets.zero,
                 ),
