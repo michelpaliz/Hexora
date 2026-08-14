@@ -1,138 +1,142 @@
+# Hexora
 
-# High-Level Structure
+Hexora is a Flutter app for group scheduling and small-business back-office
+work: shared calendars and events, worker time tracking, invoicing and
+budgets (presupuestos), receipts and VAT summaries, bank statement
+reconciliation (Enable Banking / TrueLayer), a Telegram integration, and a
+private document vault — all built around groups with role-based access
+(admin/member) and real-time updates over sockets.
 
-### **lib/a-models/**
-
-* **group_model/**: `group.dart`, `calendar.dart`, `agenda.dart`
-* **event/**: `event.dart`, `event_data_source.dart`, `event_group_resolver.dart`, `event_utils.dart`
-* **recurrenceRule/**: custom recurrence logic for daily/weekly/monthly/yearly repetition with utilities and display helpers
-* **notification_model/**: notifications, invitations, update statuses
-* **user_model/**: `user.dart`
-
-> **Purpose:** Typed models for events, groups, calendars, users, recurrence rules, and notifications.
+Targets: Android, iOS, Web, Windows, macOS, and Linux from a single codebase.
 
 ---
 
-### **lib/b-backend/api/**
+## Project layout
 
-* **auth/**: authentication flows (login, register, password recovery) + exceptions
-* **event/**: event service layer and string utils
-* **group/**: group services for creation, editing, invitations
-* **user/**: user services
-* **notification/**: notification handling and socket updates
-* **socket/**: `socket_manager.dart`, `socket_events.dart` for real-time events
-* **recurrenceRule/**: server-side recurrence helpers
-* **blobUploader/**: image and file uploads
-* **config/**: API client and constants
+The app follows a layered structure under `lib/`, with each layer prefixed
+`a-`, `b-`, `c-`, … to keep the dependency direction obvious at a glance
+(lower letters are lower-level).
 
-> **Purpose:** Backend API client and service layer for all major features.
+### `lib/a-models/`
+Plain Dart data models and DTOs — no Flutter, no backend calls.
+`group_model/`, `invoice/`, `receipt/`, `notification_model/`, `user_model/`,
+`mail/`, `jobs/`, `telegram/`, `downloads/`, `weather/`.
 
----
+### `lib/b-backend/`
+The API/service layer — one folder per domain, each talking to the backend
+over `http`/`dio` and (where relevant) sockets:
+`auth_user/`, `group_mng_flow/` (groups, events, recurrence, invites,
+categories, agenda), `invoicing/`, `receipts/`, `vat/`, `expenses/`,
+`statements/`, `enable_banking/`, `truelayer/`, `documents/` (private
+documents), `mail/`, `emails/`, `notification/`, `telegram/`, `providers/`,
+`insights/`, `blobUploader/`, `downloads/`, `user/`, `config/` (API
+constants/client), `shared/`, `errorClases/`.
 
-### **lib/c-frontend/**
+### `lib/c-frontend/ui-app/`
+All screens and widgets, grouped by product area:
 
-* **a-home-section/**: main home screen (`home_page.dart`)
-* **b-calendar-section/**
+* **a-home-section/** — landing/home page
+* **b-dashboard-section/** — the main group workspace: dashboard shell
+  (`dashboard_screen/`) plus feature sections under `sections/`:
+  `invoices/` (invoice + presupuesto editors, VAT summary, clients/receipts
+  views), `workers/` (time tracking, monthly overview), `enable_banking/`
+  (bank statements, invoice linking), `expenses/`, `mail/` (compose,
+  inline invoice wizard), `telegram/`, `private_documents/` (vault,
+  upload/detail dialogs), `services_clients/`, `members/`, `notifications/`,
+  `business_hours/`, `group_settings/`, `undone_events/`,
+  `upcoming_events/`, `graphs/`, `role_info/`
+* **c-group-calendar-section/** — calendar screens and view adapters
+* **d-event-section/** — create/edit event flows
+* **e-log-user-section/** — login, register, password reset/forgot,
+  email verification, splash, app download prompt
+* **f-notification-section/** — notification center UI
+* **g-agenda-section/** — agenda/list view of events
+* **h-profile-section/** — user profile
+* **i-settings-section/** — app settings
+* **shared/** — cross-cutting widgets (app bar, side panels, popups)
 
-  * **screens/calendar/**: calendar UI, app bar, and screen managers
-  * **screens/group-screen/**:
+### `lib/d-local-stateManagement/`
+App-wide state (locale, and other local providers) — `local/`, `docs/`.
 
-    * **create-group/**: search bar, image picker, controllers
-    * **edit-group/**: update flows, image picker, initialization
-    * **group-settings/**, **invited-user/**, **show-groups/**
-  * **group_functions/**: `group_manager.dart`, `group_service.dart`
-  * **utils/**: search bar, selected users, shared widgets
-* **c-event-section/**
+### `lib/e-drawer-style-menu/`
+App shell navigation: contextual FAB and drawer.
 
-  * **screens/actions/**: Add / Edit Event flows
-  * **screens/repetition_dialog/**: dialogs for setting repetition rules
-  * **event_screen/**: event detail view
-* **d-log-user-section/**: login, register, splash, verify email, recover password
-* **e-notification-section/**: notifications UI and controllers
-* **f-settings-section/**: settings screen
-* **g-agenda-section/**: agenda list screen
-* **h-profile-section/**: profile screen
-* **routes/**: app navigation routes
-* **utils/**: user avatar utilities
+### `lib/f-themes/`
+Light/dark theming, color tokens, typography, shapes.
 
-> **Purpose:** Frontend UI, calendar, event, group management, notifications, profile, and routing.
+### `lib/l10n/`
+Localization sources (`app_en.arb`, `app_es.arb`) and the generated
+`app_localizations*.dart` files (via `flutter gen-l10n`, configured in
+`l10n.yaml`). **Do not hand-edit the generated files** — edit the `.arb`
+files and regenerate.
 
----
+### `lib/app/`
+App bootstrap/initialization (`bootstrapp/`, `init_main.dart`) and session
+handling (`session/`, e.g. session-expiry redirects).
 
-### **lib/d-stateManagement/**
-
-* **event/**: event data manager and notification helper
-* **group/**: group state management
-* **user/**: user presence and management
-* **notification/**: socket-driven notification system
-* **local/**: `LocaleProvider.dart` for i18n
-* **theme/**: theme management and persistence
-
-> **Purpose:** Central state hub for events, groups, notifications, users, and settings.
-                                                   
----
-
-### **lib/e-drawer-style-menu/**
-
-* Main scaffold, drawer navigation, horizontal tabs, contextual FAB
-
-> **Purpose:** App shell with global navigation and quick access.
-
----
-
-### **lib/f-themes/**
-
-* Palette, shapes, theme utilities
-
-> **Purpose:** Theming system for light, dark, and custom modes.
+### `lib/main.dart`
+Entry point: initializes services, sets up local notifications, and mounts
+`HexoraApp` (theme, locale, routes, deep-link handling via
+`onGenerateRoute`).
 
 ---
 
-### **lib/l10n/**
+## Key capabilities
 
-* Localization files: `app_en.arb`, `app_es.arb`
-
-> **Purpose:** Internationalization and multi-language support.
-
----
-
-### **lib/g-docs/**
-
-* Documentation and implementation guidelines, including AI integration plans.
-
----
-
-### **lib/utils/init_main.dart** & **lib/main.dart**
-
-* Application entry point and initialization.
-
----
-
-# Key Capabilities (Plain English)
-
-* **Authentication:** Secure account registration, login, and password recovery.
-* **Groups:** Group creation, management, roles, and invitations.
-* **Calendar:** Monthly, weekly, daily, and agenda-style calendar views.
-* **Events:** Create, edit, and delete events with advanced recurrence.
-* **Insights:** Future-ready visual analytics and reporting.
-* **Notifications:** Real-time group and event updates via sockets.
-* **Profiles & Settings:** User profile customization and preferences.
-* **Uploads:** Image and file uploads for groups and events.
-* **Themes & i18n:** Full dark/light mode and bilingual support (English, Spanish).
-* **Real-time State:** Centralized state with live updates and user presence.
+* **Groups & roles** — create/join groups, invite members, admin vs. member
+  permissions gating dashboard sections.
+* **Calendar & events** — monthly/weekly/daily/agenda views, recurring
+  events, category/business-hours support.
+* **Worker time tracking** — clock entries, monthly overview, Excel/Telegram
+  import of hours.
+* **Invoicing & presupuestos** — invoice editor with line-item blocks,
+  drafts, evidence flow, email sending, PDF/JSON import/export, receipts,
+  VAT summary by quarter.
+* **Banking** — Enable Banking / TrueLayer statement import, linking bank
+  movements to invoices, bulk downloads.
+* **Private documents** — per-group document vault (upload, categorize,
+  review status, expiry tracking).
+* **Telegram integration** — chat view and document import from Telegram.
+* **Notifications** — real-time via sockets, categorized and filterable.
+* **Theming & i18n** — light/dark themes, English/Spanish.
 
 ---
 
-# Developer Pointers
+## Getting started
+
+```bash
+flutter pub get
+flutter gen-l10n        # regenerate lib/l10n/app_localizations*.dart if needed
+flutter run              # pick a device/platform, or use -d chrome / -d windows / etc.
+```
+
+Run tests:
+
+```bash
+flutter test
+```
+
+API endpoints and other environment-specific values live in
+`lib/b-backend/config/`.
+
+### Deployment
+
+* `deploy_hexora_web.sh` / `deploy_hexora_web.ps1` — web deployment
+* `deploy_mobile.sh` — mobile build/release helper
+
+---
+
+## Developer pointers
 
 * **Entry point:** `lib/main.dart`
-* **Routing:** `c-frontend/routes/`
-* **Calendar UI:** `c-frontend/b-calendar-section/screens/calendar/`
-* **Events:** `c-frontend/c-event-section/screens/actions/`
-* **Groups:** `c-frontend/b-calendar-section/screens/group-screen/`
-* **API layer:** `b-backend/api/`
-* **State management:** `d-stateManagement/`
-* **Localization:** `l10n/`
-* **Drawer navigation:** `e-drawer-style-menu/`
-
----
+* **Routing:** `lib/c-frontend/routes/`
+* **Dashboard shell & nav:** `lib/c-frontend/ui-app/b-dashboard-section/dashboard_screen/`
+* **Calendar UI:** `lib/c-frontend/ui-app/c-group-calendar-section/`
+* **Events:** `lib/c-frontend/ui-app/d-event-section/`
+* **Invoicing:** `lib/c-frontend/ui-app/b-dashboard-section/sections/invoices/`
+* **Worker time tracking:** `lib/c-frontend/ui-app/b-dashboard-section/sections/workers/`
+* **API layer:** `lib/b-backend/`
+* **State management:** `lib/d-local-stateManagement/`
+* **Localization:** `lib/l10n/` (edit `.arb`, then `flutter gen-l10n`)
+* **Theming:** `lib/f-themes/`
+* **Tests:** `test/` (mirrors `lib/` layer names, e.g. `test/a_models/`, `test/b_backend/`, `test/c_frontend/`)
