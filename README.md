@@ -2,95 +2,52 @@
 
 # Hexora
 
-## Introduction
+## What it is
 
-**Hexora** is more than a calendar app — it's a **group scheduling and small-business back-office platform** for teams, families, and small businesses.
+Hexora is the operational hub for a small business or family-run business
+that manages its work as **groups**: a group has members, a shared calendar,
+and the tools that group needs to actually run — worker hours, invoices,
+receipts, VAT, bank reconciliation, and documents — instead of juggling a
+separate app for each.
 
-The name comes from **Hex** (structure, connection, technology) and **Ora** (time, from the Spanish *hora*), symbolizing a blend of **organization** and **time management**.
+The name comes from **Hex** (structure, connection) and **Ora** (time, from
+the Spanish *hora*).
 
-Beyond shared calendars, Hexora helps groups run the operational side of the business: tracking worker hours, issuing invoices and budgets, reconciling bank statements, and keeping documents organized — all in one place, with **real-time updates** across the group.
+## Who it's for
 
----
+A handyman crew, a small clinic, a family shop, a services business with a
+few contractors — anyone who needs to schedule work, track who worked when,
+bill clients, and keep the paperwork straight, without paying for (or
+learning) five different SaaS tools.
 
-## Features
+## What you can actually do with it
 
-### 🔐 Authentication
+* **Run a group** — invite members, assign admin/member roles, and gate
+  billing/admin sections so only the right people see them.
+* **Schedule the work** — shared calendars (month/week/day/agenda),
+  recurring events, business hours, and a live view of who's tied to what.
+* **Track worker hours** — clock entries per worker, a monthly overview
+  grid, and bulk import from Excel or straight out of a Telegram chat.
+* **Bill clients** — a full invoice editor (line items, drafts, evidence),
+  presupuestos (quotes/budgets) that convert into invoices, receipts, and
+  quarterly VAT summaries — sent by email, exported as JSON/PDF.
+* **Reconcile the bank** — pull statements in via Enable Banking or
+  TrueLayer and match transactions to the invoices they pay.
+* **Keep documents in order** — a per-group private vault for contracts,
+  insurance, and anything else with an expiry date worth tracking.
+* **Talk to the team over Telegram** — a synced chat view, plus importing
+  hours and documents directly from it.
+* **See what's happening** — real-time notifications and live insight
+  graphs over the group's activity, pushed over sockets/SSE as it happens.
 
-* Register, log in, verify email, and recover passwords.
+## Everything else you'd expect
 
-### 👥 Groups
-
-* Create groups with custom names and images.
-* Add members by username, assign roles (admin/member).
-* Role-gated access to admin-only sections.
-* Manage group settings and membership.
-* Quickly view and switch between groups.
-
-### 📅 Calendar & Events
-
-* Personal and shared group calendars — monthly, weekly, daily, and agenda views.
-* Add, edit, or delete events with title, dates, location, description, and notes.
-* Flexible repetition rules: daily, weekly, monthly, yearly (with intervals and end dates).
-* Business-hours awareness and upcoming/undone event tracking.
-* See which group members are connected to events in real time.
-
-### ⏱️ Worker Time Tracking
-
-* Clock time entries per worker, with a monthly overview grid.
-* Import hours from Excel or directly from Telegram.
-* Current-month summaries and history graphs.
-
-### 🧾 Invoicing & Presupuestos
-
-* Full invoice editor with line-item blocks, drafts, and evidence flow.
-* Presupuestos (budgets/quotes) with conversion to final invoices.
-* Receipts management and VAT summaries by quarter.
-* Send invoices by email, import/export via JSON.
-* Client-level views: invoice history, receipts, income analytics.
-
-### 🏦 Banking
-
-* Import bank statements via Enable Banking / TrueLayer.
-* Link bank movements to invoices, with bulk download support.
-
-### 🔒 Private Documents
-
-* Per-group document vault: upload, categorize, and track review status.
-* Expiry tracking for contracts, insurance, and other time-sensitive documents.
-
-### 💬 Telegram Integration
-
-* Chat view synced with group activity.
-* Import worker hours and documents directly from Telegram.
-
-### 📊 Insights & Graphs
-
-* Real-time analytics via server-sent events.
-* Visual breakdowns of group activity and scheduling patterns.
-
-### 🔔 Notifications
-
-* Real-time notifications for group activity, invoices, and events.
-* Invitations and reminders powered by live socket connections.
-* Filterable by category.
-
-### 👤 Profile & Settings
-
-* Personal profile with avatar customization.
-* Theme customization (light and dark modes).
-* Multi-language support (**English & Spanish**).
-
-### 📤 File Uploads
-
-* Upload images and documents for groups, events, and invoices.
-
-### 🎨 Interface
-
-* Dashboard with responsive wide/narrow layouts.
-* Floating action button (FAB) for quick, contextual actions.
-* Clean, modern UI with customizable themes.
-* Runs on Android, iOS, Web, Windows, macOS, and Linux.
+* Email/password auth with verification and password recovery.
+* Light/dark themes, English and Spanish.
+* Android, iOS, Web, Windows, macOS, and Linux from one codebase.
 
 ---
 
-✨ With **Hexora**, scheduling isn't just about setting dates — it's about **connecting people**, **running the back office**, and **bringing structure to time**.
+Hexora exists so a small team doesn't need a calendar app, an invoicing
+tool, a time-tracking spreadsheet, and a shared drive that never stays in
+sync — it's one group, one place, one source of truth.
