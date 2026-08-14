@@ -8,6 +8,9 @@ import 'package:http/http.dart' as http;
 class ReceiptsApiException implements Exception {
   final int statusCode;
   final String message;
+  final String? code;
+  final String? existingReceiptId;
+  final Receipt? receipt;
   final String? responseBody;
   final Map<String, String>? responseHeaders;
   final Uri url;
@@ -16,6 +19,9 @@ class ReceiptsApiException implements Exception {
   ReceiptsApiException({
     required this.statusCode,
     required this.message,
+    this.code,
+    this.existingReceiptId,
+    this.receipt,
     required this.url,
     required this.method,
     required this.responseBody,
@@ -24,6 +30,30 @@ class ReceiptsApiException implements Exception {
 
   @override
   String toString() => 'Exception: $message';
+}
+
+class UnnumberedReceiptDraftLookup {
+  const UnnumberedReceiptDraftLookup({
+    required this.exists,
+    this.existingReceiptId,
+    this.receipt,
+  });
+
+  final bool exists;
+  final String? existingReceiptId;
+  final Receipt? receipt;
+
+  factory UnnumberedReceiptDraftLookup.fromJson(Map<String, dynamic> json) {
+    return UnnumberedReceiptDraftLookup(
+      exists: json['exists'] == true,
+      existingReceiptId: json['existingReceiptId']?.toString(),
+      receipt: json['receipt'] is Map
+          ? Receipt.fromJson(
+              Map<String, dynamic>.from(json['receipt'] as Map),
+            )
+          : null,
+    );
+  }
 }
 
 class ReceiptsApi {
@@ -60,6 +90,12 @@ class ReceiptsApi {
     throw ReceiptsApiException(
       statusCode: r.statusCode,
       message: message,
+      code: body is Map ? body['code']?.toString() : null,
+      existingReceiptId:
+          body is Map ? body['existingReceiptId']?.toString() : null,
+      receipt: body is Map && body['receipt'] is Map
+          ? Receipt.fromJson(Map<String, dynamic>.from(body['receipt'] as Map))
+          : null,
       url: r.request?.url ?? _u(),
       method: r.request?.method ?? 'REQUEST',
       responseBody: r.body.isEmpty ? null : r.body,
@@ -101,7 +137,8 @@ class ReceiptsApi {
   }
 
   Future<Receipt> getById(String id) async {
-    final r = await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
+    final r =
+        await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
     return _decode<Receipt>(r, (j) => Receipt.fromJson(j));
   }
 
@@ -168,7 +205,8 @@ class ReceiptsApi {
       }
     }
     if (!ok) {
-      return _decode<Receipt>(r, (_) => throw Exception('Unexpected receipt payload'));
+      return _decode<Receipt>(
+          r, (_) => throw Exception('Unexpected receipt payload'));
     }
     if (body is Map<String, dynamic>) {
       if (body.containsKey('_id') || body.containsKey('id')) {
@@ -190,6 +228,20 @@ class ReceiptsApi {
       return getById(id);
     }
     throw Exception('Unexpected receipt payload');
+  }
+
+  Future<UnnumberedReceiptDraftLookup> lookupUnnumberedDraft({
+    required String groupId,
+  }) async {
+    final uri = _u('/draft/unnumbered').replace(
+      queryParameters: {'groupId': groupId},
+    );
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    return _decode<UnnumberedReceiptDraftLookup>(r, (j) {
+      if (j is! Map) throw Exception('Unexpected receipt draft payload');
+      final map = Map<String, dynamic>.from(j);
+      return UnnumberedReceiptDraftLookup.fromJson(map);
+    });
   }
 
   Future<http.Response> previewPdf(String id) async {

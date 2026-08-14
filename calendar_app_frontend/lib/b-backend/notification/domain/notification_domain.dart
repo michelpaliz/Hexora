@@ -51,7 +51,25 @@ class NotificationDomain extends ChangeNotifier {
   Future<void> updateNotificationStream(
     List<NotificationUser> notifications,
   ) async {
-    _notifications = _sortNotificationsByDate(notifications);
+    _notifications = _mergeNotifications(notifications, _notifications);
+    _notificationViewModel.add(_notifications);
+    notifyListeners();
+  }
+
+  Future<void> addInboundNotification(NotificationUser notification) async {
+    final existingIndex =
+        _notifications.indexWhere((item) => item.id == notification.id);
+    if (existingIndex >= 0) {
+      _notifications[existingIndex] = notification;
+    } else {
+      _notifications.add(notification);
+    }
+
+    if (!_notificationIds.contains(notification.id)) {
+      _notificationIds.add(notification.id);
+    }
+
+    _notifications = _sortNotificationsByDate(_notifications);
     _notificationViewModel.add(_notifications);
     notifyListeners();
   }
@@ -62,6 +80,21 @@ class NotificationDomain extends ChangeNotifier {
   ) {
     notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return notifications;
+  }
+
+  List<NotificationUser> _mergeNotifications(
+    List<NotificationUser> primary,
+    List<NotificationUser> secondary,
+  ) {
+    final byId = <String, NotificationUser>{};
+    for (final notification in secondary) {
+      byId[notification.id] = notification;
+    }
+    for (final notification in primary) {
+      byId[notification.id] = notification;
+    }
+    _notificationIds = byId.keys.toList(growable: false);
+    return _sortNotificationsByDate(byId.values.toList(growable: false));
   }
 
   /// Mark all notifications as read on the service and locally.

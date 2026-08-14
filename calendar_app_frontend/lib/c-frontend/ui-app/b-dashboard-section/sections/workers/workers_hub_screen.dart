@@ -34,7 +34,11 @@ class WorkersHubScreen extends StatefulWidget {
 }
 
 class _WorkersHubScreenState extends State<WorkersHubScreen> {
+  static const double _expandedMenuWidth = 168;
+  static const double _collapsedMenuWidth = 64;
+
   _WorkersSection _section = _WorkersSection.workers;
+  bool _sideMenuCollapsed = false;
 
   bool _isSpanish(BuildContext context) =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
@@ -57,6 +61,97 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
         WorkerCurrentMonthSummaryView(group: widget.group),
         TelegramWorkerHoursImportView(group: widget.group),
         _RegisterHoursImportPanel(group: widget.group),
+      ],
+    );
+  }
+
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    List<
+            ({
+              IconData icon,
+              String label,
+              String mobileLabel,
+              _WorkersSection section,
+            })>
+        navItems,
+  ) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+
+    return Row(
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          width: _sideMenuCollapsed ? _collapsedMenuWidth : _expandedMenuWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                child: Align(
+                  alignment: _sideMenuCollapsed
+                      ? Alignment.center
+                      : Alignment.centerRight,
+                  child: Tooltip(
+                    message: _sideMenuCollapsed
+                        ? l.groupInvoicesNavExpand
+                        : l.groupInvoicesNavCollapse,
+                    child: IconButton.filledTonal(
+                      onPressed: () => setState(
+                        () => _sideMenuCollapsed = !_sideMenuCollapsed,
+                      ),
+                      icon: Icon(
+                        _sideMenuCollapsed
+                            ? Icons.keyboard_double_arrow_right_rounded
+                            : Icons.keyboard_double_arrow_left_rounded,
+                      ),
+                      iconSize: 18,
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(40, 34),
+                        fixedSize: const Size(40, 34),
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                  children: [
+                    ...navItems.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: SidebarItem(
+                          icon: item.icon,
+                          label: item.label,
+                          isSelected: _section == item.section,
+                          collapsed: _sideMenuCollapsed,
+                          onTap: () => setState(
+                            () => _section = item.section,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        VerticalDivider(
+          width: 1,
+          thickness: 1,
+          color: cs.outlineVariant.withValues(alpha: 0.4),
+        ),
+        Expanded(child: _buildSectionContent()),
       ],
     );
   }
@@ -147,61 +242,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
                 Expanded(child: _buildSectionContent()),
               ],
             )
-          : Row(
-        children: [
-          // ── Left side nav ─────────────────────────────────────────────
-          SizedBox(
-            width: 168,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Divider(height: 1),
-                const SizedBox(height: 8),
-                ...navItems.map(
-                  (item) => Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    child: SidebarItem(
-                      icon: item.icon,
-                      label: item.label,
-                      isSelected: _section == item.section,
-                      collapsed: false,
-                      onTap: () => setState(() => _section = item.section),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          VerticalDivider(
-            width: 1,
-            thickness: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.4),
-          ),
-          // ── Content area ──────────────────────────────────────────────
-          Expanded(
-            child: IndexedStack(
-              index: _section.index,
-              children: [
-                GroupTimeTrackingScreen(
-                  key: ValueKey('workers-${widget.group.id}'),
-                  group: widget.group,
-                  embedded: true,
-                  onOpenHistorial: () =>
-                      setState(() => _section = _WorkersSection.historial),
-                ),
-                WorkerTimeHistoryGraphView(
-                  key: ValueKey('worker-graphs-${widget.group.id}'),
-                  group: widget.group,
-                ),
-                WorkerCurrentMonthSummaryView(group: widget.group),
-                TelegramWorkerHoursImportView(group: widget.group),
-                _RegisterHoursImportPanel(group: widget.group),
-              ],
-            ),
-          ),
-        ],
-      ),
+          : _buildDesktopLayout(context, navItems),
     );
   }
 }
@@ -249,8 +290,7 @@ class _MobileWorkersNavChip extends StatelessWidget {
                 label,
                 style: textStyle.copyWith(
                   fontWeight: FontWeight.w700,
-                  color:
-                      selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                  color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
                 ),
               ),
             ],

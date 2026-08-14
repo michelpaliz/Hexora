@@ -1633,6 +1633,9 @@
     }
   },
   "invoiceNumberInvalid": "Usa tres dígitos (ej. 001). El año se fija al AA actual.",
+  "bulkDownloadInvoiceNumberRequired": "Introduce al menos un numero de factura.",
+  "bulkDownloadInvoiceNumberInvalidFormat": "Usa solo letras, numeros, guion, barra, guion bajo o punto.",
+  "bulkDownloadInvoiceNumberRangeInvalid": "El numero de factura inicial debe ser menor o igual que el final.",
   "invoiceClientLabel": "Cliente",
   "invoiceClientRequired": "Elige un cliente",
   "invoicePdfUrl": "URL del PDF",

@@ -60,6 +60,12 @@ class WorkerAppBarTitle extends StatelessWidget {
     final advanceNum = _toNum(totals?['advanceAmount'] ?? advanceAmount);
     final netPayNum = _toNum(totals?['netPay'] ?? (grossPayNum - advanceNum));
     final safeNetPayNum = netPayNum < 0 ? 0 : netPayNum;
+    final toPayText =
+        '${_toPayLabel(context)}: ${safeNetPayNum.toStringAsFixed(2)}'
+        '${effectiveCurrency.isEmpty ? '' : ' $effectiveCurrency'}';
+    final advanceText =
+        '${_advanceLabel(context)}: ${advanceNum.toStringAsFixed(2)}'
+        '${effectiveCurrency.isEmpty ? '' : ' $effectiveCurrency'}';
     final payableSummary = totals == null
         ? '${group.name} • $monthLabel'
         : '${_toPayLabel(context)}: ${safeNetPayNum.toStringAsFixed(2)}'
@@ -68,8 +74,8 @@ class WorkerAppBarTitle extends StatelessWidget {
     if (compact) {
       return Row(
         children: [
-          Flexible(
-            fit: FlexFit.loose,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 150),
             child: Text(
               worker.displayName ?? 'Worker',
               style: t.titleLarge.copyWith(
@@ -84,36 +90,33 @@ class WorkerAppBarTitle extends StatelessWidget {
           _StatusChip(label: statusLabel, inactive: isInactive),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              payableSummary,
-              style: t.bodySmall.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.6),
+            child: Tooltip(
+              message: totals == null
+                  ? payableSummary
+                  : '$toPayText - $advanceText - $monthLabel',
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _InlineMetric(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: totals == null ? payableSummary : toPayText,
+                    ),
+                    if (onOpenAdvanceDialog != null) ...[
+                      const SizedBox(width: 8),
+                      _InlineMetric(
+                        icon: Icons.request_quote_outlined,
+                        label: advanceText,
+                        onTap: onOpenAdvanceDialog,
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (onOpenAdvanceDialog != null && advanceAmount != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 6),
-              child: TextButton.icon(
-                onPressed: onOpenAdvanceDialog,
-                icon: const Icon(Icons.request_quote_outlined, size: 14),
-                label: Text(
-                  '${_advanceLabel(context)}: ${advanceAmount!.toStringAsFixed(2)}'
-                  '${(currency ?? '').trim().isEmpty ? '' : ' ${currency!.trim()}'}',
-                  style: t.caption.copyWith(fontWeight: FontWeight.w700),
-                ),
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                ),
-              ),
-            ),
         ],
       );
     }
@@ -128,7 +131,8 @@ class WorkerAppBarTitle extends StatelessWidget {
             Flexible(
               child: Text(
                 worker.displayName ?? 'Worker',
-                style: t.titleLarge.copyWith(fontWeight: FontWeight.w700, fontSize: 16),
+                style: t.titleLarge
+                    .copyWith(fontWeight: FontWeight.w700, fontSize: 16),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -140,15 +144,60 @@ class WorkerAppBarTitle extends StatelessWidget {
         Text(
           payableSummary,
           style: t.bodySmall.copyWith(
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.6),
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
       ],
+    );
+  }
+}
+
+class _InlineMetric extends StatelessWidget {
+  const _InlineMetric({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 14,
+          color: cs.onSurfaceVariant.withValues(alpha: 0.78),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          maxLines: 1,
+          style: t.bodySmall.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+
+    if (onTap == null) return content;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        child: content,
+      ),
     );
   }
 }
@@ -169,9 +218,8 @@ class _StatusChip extends StatelessWidget {
     final bg = inactive
         ? cs.surfaceContainerHighest
         : Colors.green.withValues(alpha: 0.12);
-    final fg = inactive
-        ? cs.onSurface.withValues(alpha: 0.7)
-        : Colors.green.shade700;
+    final fg =
+        inactive ? cs.onSurface.withValues(alpha: 0.7) : Colors.green.shade700;
     final border =
         inactive ? cs.outlineVariant : Colors.green.withValues(alpha: 0.3);
 

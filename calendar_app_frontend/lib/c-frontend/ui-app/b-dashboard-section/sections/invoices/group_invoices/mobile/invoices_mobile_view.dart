@@ -50,12 +50,32 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
 
   String _monthLabel(DateTime date, bool isSpanish) {
     const es = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
     const en = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${(isSpanish ? es : en)[date.month - 1]} ${date.year}';
   }
@@ -103,7 +123,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-        builder: (_) => DraggableScrollableSheet(
+      builder: (_) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.92,
         minChildSize: 0.5,
@@ -181,8 +201,10 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
       (b['clientName'] ?? (b['client'] as Map?)?['name'] ?? '').toString();
 
   String _budgetDate(Map<String, dynamic> b) {
-    final raw =
-        b['issueDate'] ?? b['registeredAt'] ?? b['createdAt'] ?? b['occurrenceDate'];
+    final raw = b['issueDate'] ??
+        b['registeredAt'] ??
+        b['createdAt'] ??
+        b['occurrenceDate'];
     if (raw == null) return '';
     try {
       final dt = DateTime.parse(raw.toString()).toLocal();
@@ -195,7 +217,8 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
   }
 
   num? _budgetTotal(Map<String, dynamic> b) {
-    final v = b['total'] ?? b['grandTotal'] ?? b['amountTotal'] ?? b['subtotal'];
+    final v =
+        b['total'] ?? b['grandTotal'] ?? b['amountTotal'] ?? b['subtotal'];
     if (v == null) return null;
     if (v is num) return v;
     return num.tryParse(v.toString());
@@ -416,8 +439,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
           color: cs.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.58)),
+            side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.58)),
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
@@ -714,8 +736,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
       tabAlignment: TabAlignment.center,
       dividerColor: Colors.transparent,
       splashFactory: NoSplash.splashFactory,
-      overlayColor:
-          WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
+      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
       indicatorSize: TabBarIndicatorSize.tab,
       indicator: BoxDecoration(
         color: cs.primaryContainer,
@@ -810,7 +831,8 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
                     child: Center(
                       child: Text(
                         isSpanish ? 'Facturas' : 'Invoices',
-                        style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
+                        style:
+                            t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ),
                   ),
@@ -865,12 +887,32 @@ class _ClientMobileInvoicesScreenState
 
   String _monthLabel(DateTime date, bool isSpanish) {
     const es = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
     const en = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${(isSpanish ? es : en)[date.month - 1]} ${date.year}';
   }
@@ -931,12 +973,8 @@ class _ClientMobileInvoicesScreenState
     Widget buildList(List<Invoice> invoices, bool isDrafts) {
       if (invoices.isEmpty) {
         return _EmptyTab(
-          icon: isDrafts
-              ? Icons.drafts_outlined
-              : Icons.receipt_long_outlined,
-          label: isDrafts
-              ? l.groupInvoicesDraftInvoicesTitle
-              : l.noInvoicesYet,
+          icon: isDrafts ? Icons.drafts_outlined : Icons.receipt_long_outlined,
+          label: isDrafts ? l.groupInvoicesDraftInvoicesTitle : l.noInvoicesYet,
         );
       }
 
@@ -969,21 +1007,21 @@ class _ClientMobileInvoicesScreenState
           return Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: InvoiceListItem(
-            invoice: inv,
-            client: _clientFor(inv.clientId),
-            onTap: () => _openInvoiceDetail(inv),
-            onDelete: isDrafts
-                ? () async {
-                    await s._deleteInvoice(inv);
-                    await _refresh();
-                  }
-                : null,
-            onEdit: isDrafts
-                ? () async {
-                    await s._openEditDraft(inv);
-                    await _refresh();
-                  }
-                : null,
+              invoice: inv,
+              client: _clientFor(inv.clientId),
+              onTap: () => _openInvoiceDetail(inv),
+              onDelete: isDrafts
+                  ? () async {
+                      await s._deleteInvoice(inv);
+                      await _refresh();
+                    }
+                  : null,
+              onEdit: isDrafts
+                  ? () async {
+                      await s._openEditDraft(inv);
+                      await _refresh();
+                    }
+                  : null,
             ),
           );
         },
@@ -995,8 +1033,7 @@ class _ClientMobileInvoicesScreenState
       isScrollable: true,
       dividerColor: Colors.transparent,
       splashFactory: NoSplash.splashFactory,
-      overlayColor:
-          WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
+      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
       indicatorSize: TabBarIndicatorSize.tab,
       indicator: BoxDecoration(
         color: cs.primaryContainer,
@@ -1006,8 +1043,7 @@ class _ClientMobileInvoicesScreenState
       labelColor: cs.onPrimaryContainer,
       unselectedLabelColor: cs.onSurfaceVariant,
       labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-      unselectedLabelStyle:
-          t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+      unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
       tabs: [
         Tab(
           height: 36,
@@ -1167,7 +1203,8 @@ class _EmptyTab extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
+          Icon(icon,
+              size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
           const SizedBox(height: 12),
           Text(
             label,

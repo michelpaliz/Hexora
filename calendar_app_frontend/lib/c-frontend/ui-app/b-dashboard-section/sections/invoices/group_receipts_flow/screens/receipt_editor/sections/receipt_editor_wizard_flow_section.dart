@@ -3,6 +3,12 @@ part of '../receipt_editor_wizard_screen.dart';
 // ignore_for_file: invalid_use_of_protected_member
 
 extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
+  bool get _shouldRefreshReceiptList =>
+      _didPersist ||
+      (_draftReceipt?.id.trim().isNotEmpty ?? false) ||
+      (_existingUnnumberedReceiptId?.trim().isNotEmpty ?? false) ||
+      _existingUnnumberedReceipt != null;
+
   void _releasePreviewSurface() {
     _previewPdfBytes = null;
     _previewError = null;
@@ -36,7 +42,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
 
   Future<void> _requestClose() async {
     if (!_draftDirty || _savingDraft) {
-      _close(changed: _didPersist);
+      _close(changed: _shouldRefreshReceiptList);
       return;
     }
     final l = AppLocalizations.of(context)!;
@@ -71,7 +77,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       await _saveDraft(showSavedSnack: false);
       if (!mounted || _draftDirty) return;
     }
-    _close(changed: _didPersist);
+    _close(changed: _shouldRefreshReceiptList);
   }
 
   bool _validateCurrentStep() {
@@ -99,6 +105,8 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
             description:
                 line.description.trim().isEmpty ? '-' : line.description.trim(),
             quantity: line.quantity,
+            unit: line.unit,
+            unitLabel: line.unitLabel,
             unitPrice: line.unitPrice,
             total: line.total,
           ),
@@ -106,17 +114,128 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
         .toList(growable: false);
   }
 
+  bool _validateReceiptLineValues() {
+    final active = _lines.where((line) => line.hasAnyValue).toList();
+    for (final line in active) {
+      if (line.description.trim().isEmpty) {
+        showInfoSnack(context, 'La descripcion es obligatoria.');
+        return false;
+      }
+      if (line.quantity < 0) {
+        showInfoSnack(context, 'La cantidad debe ser mayor o igual que 0.');
+        return false;
+      }
+      if (line.unitPrice < 0) {
+        showInfoSnack(context, 'El precio debe ser mayor o igual que 0.');
+        return false;
+      }
+      if (line.unit == 'other' && (line.unitLabel ?? '').trim().length > 20) {
+        showInfoSnack(context, 'La unidad personalizada maximo 20 caracteres.');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<void> _openExistingUnnumberedDraft({
+    String? receiptId,
+    Receipt? receipt,
+  }) async {
+    Receipt? existing = receipt;
+    final id = receiptId ?? receipt?.id;
+    if (existing == null && id != null && id.trim().isNotEmpty) {
+      try {
+        existing = await _receiptsApi.getById(id.trim());
+      } catch (e) {
+        if (!mounted) return;
+        showErrorSnack(
+          context,
+          e.toString().replaceFirst('Exception: ', '').trim(),
+        );
+        return;
+      }
+    }
+    if (existing == null || !mounted) return;
+    setState(() {
+      _applyReceiptDraft(existing!);
+      _step = 1;
+      _releasePreviewSurface();
+    });
+    if (_clientId != null) {
+      await _loadClientReceiptStats(_clientId);
+    }
+  }
+
+  void _showDraftsList() {
+    _close(changed: _shouldRefreshReceiptList);
+  }
+
+  Future<void> _showExistingUnnumberedDraftDialog(
+    ReceiptsApiException error,
+  ) async {
+    final isEs =
+        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
+              'es',
+            );
+    final receipt = error.receipt;
+    final receiptId = error.existingReceiptId ?? receipt?.id;
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Borrador existente' : 'Existing draft'),
+        content: Text(
+          isEs
+              ? 'Ya existe un recibo borrador sin numerar para este grupo.'
+              : 'An unnumbered receipt draft already exists for this group.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('cancel'),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('list'),
+            child: Text(isEs ? 'Ver lista de borradores' : 'View drafts list'),
+          ),
+          FilledButton(
+            onPressed: (receiptId ?? '').trim().isEmpty && receipt == null
+                ? null
+                : () => Navigator.of(dialogContext).pop('open'),
+            child: Text(
+              isEs ? 'Abrir borrador existente' : 'Open existing draft',
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'open') {
+      await _openExistingUnnumberedDraft(
+        receiptId: receiptId,
+        receipt: receipt,
+      );
+    } else if (action == 'list') {
+      _showDraftsList();
+    }
+  }
+
   Future<Receipt?> _saveDraft({
     bool showSavedSnack = true,
     String? successSnackMessage,
     String? genericErrorMessage,
     bool emitErrorSnack = true,
+    bool allowEmptyLines = false,
   }) async {
     final l = AppLocalizations.of(context)!;
-    if (!_hasClient || !_hasLines) {
-      _validateCurrentStep();
+    if (!_hasClient || (!allowEmptyLines && !_hasLines)) {
+      if (allowEmptyLines && !_hasClient) {
+        showInfoSnack(context, l.receiptClientRequired);
+      } else {
+        _validateCurrentStep();
+      }
       return null;
     }
+    if (!allowEmptyLines && !_validateReceiptLineValues()) return null;
     if (_savingDraft) return _draftReceipt;
 
     setState(() => _savingDraft = true);
@@ -154,18 +273,20 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       return saved;
     } catch (e) {
       if (!mounted) return null;
+      if (e is ReceiptsApiException &&
+          e.statusCode == 409 &&
+          e.code == 'RECEIPT_UNNUMBERED_DRAFT_EXISTS') {
+        setState(() {
+          _existingUnnumberedReceiptId = e.existingReceiptId ?? e.receipt?.id;
+          _existingUnnumberedReceipt = e.receipt;
+          _draftSaveFailed = true;
+        });
+        await _showExistingUnnumberedDraftDialog(e);
+        return null;
+      }
       var msg = e.toString().replaceFirst('Exception: ', '').trim();
-      final lowerMsg = msg.toLowerCase();
-      if (lowerMsg.contains('e11000 duplicate key error') &&
-          lowerMsg.contains('receiptnumber') &&
-          lowerMsg.contains('null')) {
-        final isEs = Localizations.localeOf(context)
-            .languageCode
-            .toLowerCase()
-            .startsWith('es');
-        msg = isEs
-            ? 'Ya existe un recibo borrador sin numerar para este grupo. Revisa la lista de borradores de recibos.'
-            : 'An unnumbered draft receipt already exists for this group. Check the receipts drafts list.';
+      if (msg.toLowerCase().contains('e11000 duplicate key error')) {
+        msg = l.somethingWentWrong;
       }
       if (emitErrorSnack) {
         showErrorSnack(
@@ -209,29 +330,11 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     await _loadDraftPreview(receiptId: draft.id);
   }
 
-  Future<void> _syncDraftForPreviewFromSummary() async {
-    final isSpanish =
-        Localizations.localeOf(context).languageCode.startsWith('es');
-    final successMessage = isSpanish
-        ? 'Resumen actualizado. La vista previa usara los datos mas recientes.'
-        : 'Summary updated. Preview will use the latest data.';
-    final errorMessage = isSpanish
-        ? 'No se pudo actualizar el borrador para la vista previa.'
-        : 'Could not update the draft for preview.';
-
-    await _saveDraft(
-      showSavedSnack: true,
-      successSnackMessage: successMessage,
-      genericErrorMessage: errorMessage,
-      emitErrorSnack: true,
-    );
-  }
-
   Future<void> _tryGoToStep(int targetStep) async {
     if (targetStep == _step) return;
     if (targetStep < _step) {
       setState(() {
-        if (_step == 3) {
+        if (_step == 2) {
           _releasePreviewSurface();
         }
         _step = targetStep;
@@ -240,12 +343,12 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     }
     if (targetStep > _step + 1) return;
     if (!_validateCurrentStep()) return;
-    if (targetStep == 3) {
+    if (targetStep == 2) {
       await _preparePreviewStep();
       if (!mounted) return;
     }
     setState(() {
-      if (targetStep != 3) {
+      if (targetStep != 2) {
         _releasePreviewSurface();
       }
       _step = targetStep;

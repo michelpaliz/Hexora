@@ -45,6 +45,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
   Future<String> _persistDraftChanges() async {
     final existingId = (_draftId ?? '').trim();
     final payload = _buildBudgetDraftUpdatePayload();
+    final placeholderBlocks = _draftPlaceholderBlockPayloads();
     if (existingId.isNotEmpty) {
       final updated = await _presupuestosApi.updateDraft(
         id: existingId,
@@ -64,6 +65,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
       );
       _assertManualClientFieldsPersisted(payload, updated);
       _applyEditableBudgetPayload(updated, resetWizard: false);
+      _restoreDraftPlaceholderBlocks(placeholderBlocks);
       return _draftId ?? existingId;
     }
 
@@ -86,31 +88,15 @@ extension _GroupInvoicesBudgetsViewFlowSection
     );
     _assertManualClientFieldsPersisted(payload, updated);
     _applyEditableBudgetPayload(updated, resetWizard: false);
+    _restoreDraftPlaceholderBlocks(placeholderBlocks);
     return _draftId ?? createdId;
-  }
-
-  Map<String, dynamic>? _pickBestDraft(List<Map<String, dynamic>> items) {
-    final drafts = items
-        .where((item) =>
-            ((item['status'] ?? '').toString().toLowerCase().contains('draft')))
-        .toList(growable: false);
-    if (drafts.isEmpty) return null;
-    final sorted = [...drafts]..sort((a, b) {
-        final aTs = DateTime.tryParse(
-                (a['updatedAt'] ?? a['createdAt'] ?? '').toString()) ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-        final bTs = DateTime.tryParse(
-                (b['updatedAt'] ?? b['createdAt'] ?? '').toString()) ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-        return bTs.compareTo(aTs);
-      });
-    return sorted.first;
   }
 
   Future<String> _ensureDraftCreated({bool forceRebuild = false}) async {
     if (forceRebuild) {
       _draftId = null;
       _draftCreateInFlight = null;
+      _releaseCreatePreviewSurface();
     }
     final existing = (_draftId ?? '').trim();
     if (existing.isNotEmpty) {
@@ -150,7 +136,9 @@ extension _GroupInvoicesBudgetsViewFlowSection
                     ? linesPayload
                     : fallbackLinesFromBlocks)
                 : null,
-            blocks: withContent ? _buildBlocksPayload() : null,
+            blocks: withContent
+                ? _buildBlocksPayload(includeDraftPlaceholders: true)
+                : null,
           );
         }
 
@@ -161,56 +149,6 @@ extension _GroupInvoicesBudgetsViewFlowSection
         }
         _draftId = id;
         return id;
-      } on PresupuestosApiException catch (e) {
-        if (e.statusCode != 409) rethrow;
-        final itemsForClient = await _presupuestosApi.listByGroup(
-          groupId: widget.groupId.trim(),
-          clientId: (_selectedClientId ?? '').trim().isEmpty
-              ? null
-              : _selectedClientId!.trim(),
-        );
-        var draft = _pickBestDraft(itemsForClient);
-        if (draft == null) {
-          final itemsAnyClient = await _presupuestosApi.listByGroup(
-            groupId: widget.groupId.trim(),
-          );
-          draft = _pickBestDraft(itemsAnyClient);
-        }
-        final reusedId = draft == null ? '' : _extractIdFromPayload(draft);
-        if (reusedId.isNotEmpty) {
-          _draftId = reusedId;
-          return reusedId;
-        }
-
-        // If no reusable draft exists, try one minimal create without content.
-        final bool useExisting = _clientSource == _ClientSource.existing;
-        final String? clientId =
-            useExisting && (_selectedClientId ?? '').trim().isNotEmpty
-                ? _selectedClientId!.trim()
-                : null;
-        final String? clientName =
-            !useExisting && _clientNameCtrl.text.trim().isNotEmpty
-                ? _clientNameCtrl.text.trim()
-                : null;
-        final clientSnapshot = _buildManualClientSnapshotPayload();
-
-        final minimal = await _presupuestosApi.createDraft(
-          groupId: widget.groupId.trim(),
-          clientId: clientId,
-          clientName: clientName,
-          addressStreet: _clientAddressCtrl.text.trim(),
-          addressCity: _clientCityCtrl.text.trim(),
-          addressPostalCode: _clientPostalCodeCtrl.text.trim(),
-          clientSnapshot: clientSnapshot,
-        );
-        final minimalId = _extractIdFromPayload(minimal);
-        if (minimalId.isNotEmpty) {
-          _draftId = minimalId;
-          return minimalId;
-        }
-
-        if (reusedId.isEmpty) rethrow;
-        return reusedId;
       } finally {
         _draftCreateInFlight = null;
       }
@@ -239,7 +177,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
       if (!mounted) return;
       setState(() {
         _draftId = id;
-        _visibleStep = 4;
+        _visibleStep = 3;
         _confirmPreview = true;
       });
     } on PresupuestosApiException catch (e) {
@@ -340,25 +278,9 @@ extension _GroupInvoicesBudgetsViewFlowSection
       });
       return false;
     }
-    if (_visibleStep == 1 &&
-        _isIssuedEditable &&
-        _issuedEditReasonCtrl.text.trim().isEmpty) {
-      setState(() {
-        _error = _isSpanishLocale
-            ? 'Indica el motivo del cambio para continuar.'
-            : 'Add the change reason before continuing.';
-      });
-      return false;
-    }
     if (_visibleStep == 2 && !_hasLineContent) {
       setState(() {
         _error = l.budgetValidationLineItemsRequired;
-      });
-      return false;
-    }
-    if (_visibleStep == 3 && !_confirmPreview) {
-      setState(() {
-        _error = l.budgetPreviewAcceptRequired;
       });
       return false;
     }
@@ -383,17 +305,11 @@ extension _GroupInvoicesBudgetsViewFlowSection
       showErrorSnack(context, msg);
       return;
     }
-    if (!_isDraftEditable && !_isIssuedEditable) {
-      showInfoSnack(context, l.budgetDraftNotEditableSnack);
-      return;
-    }
-    if (_isIssuedEditable && _issuedEditReasonCtrl.text.trim().isEmpty) {
-      final msg = _isSpanishLocale
-          ? 'Indica el motivo del cambio para guardar una version.'
-          : 'Add a reason before saving a new version.';
-      setState(() => _error = msg);
-      showErrorSnack(context, msg);
-      return;
+    if (!_isDraftEditable && !_isIssuedEditable) return;
+    if (_isIssuedEditable) {
+      final reason = await _confirmIssuedChangeReason();
+      if (reason == null) return;
+      _issuedEditReasonCtrl.text = reason;
     }
     setState(() {
       _issuing = true;
@@ -413,6 +329,9 @@ extension _GroupInvoicesBudgetsViewFlowSection
       if (_isIssuedEditable) {
         await _loadEditableBudget(id);
         await _loadBudgets();
+        if (_historyBudget != null) {
+          _historyBudget = {'id': id, 'clientName': _clientNameCtrl.text};
+        }
       }
       if (!mounted) return;
       showSuccessSnack(
@@ -423,8 +342,8 @@ extension _GroupInvoicesBudgetsViewFlowSection
       );
     } on PresupuestosApiException catch (e) {
       if (!mounted) return;
-      final msg = e.statusCode == 409
-          ? l.budgetDraftNotEditableSnack
+      final msg = _isIssuedEditable
+          ? _issuedUpdateErrorMessage(e)
           : _translateApiError(e.message, isSpanish: _isSpanishLocale);
       setState(() => _error = msg);
       showErrorSnack(context, msg);
@@ -493,18 +412,135 @@ extension _GroupInvoicesBudgetsViewFlowSection
   Future<String> _persistIssuedChanges() async {
     final existingId = (_draftId ?? '').trim();
     if (existingId.isEmpty) throw Exception('Missing presupuesto id');
-    final payload = _buildBudgetDraftUpdatePayload();
+    final payload = _buildBudgetDraftUpdatePayload(
+      includeDraftPlaceholders: false,
+    );
     final updated = await _presupuestosApi.updateIssued(
       id: existingId,
+      clientId: payload['clientId']?.toString(),
+      clientName: payload['clientName']?.toString(),
+      addressStreet: payload['addressStreet']?.toString(),
+      addressCity: payload['addressCity']?.toString(),
+      addressPostalCode: payload['addressPostalCode']?.toString(),
       notes: payload['notes']?.toString(),
       currency: payload['currency']?.toString(),
+      issueDate: payload['issueDate']?.toString(),
+      lines: (payload['lines'] as List?)?.cast<Map<String, dynamic>>(),
       blocks: (payload['blocks'] as List?)?.cast<Map<String, dynamic>>(),
       clientSnapshot:
           (payload['clientSnapshot'] as Map?)?.cast<String, dynamic>(),
+      totals: (payload['totals'] as Map?)?.cast<String, dynamic>(),
       reason: _issuedEditReasonCtrl.text.trim(),
     );
     _applyEditableBudgetPayload(updated, resetWizard: false);
     return _draftId ?? existingId;
+  }
+
+  String _issuedUpdateErrorMessage(PresupuestosApiException e) {
+    final backend = e.message.trim();
+    switch (e.statusCode) {
+      case 400:
+        return backend.isNotEmpty
+            ? backend
+            : (_isSpanishLocale
+                ? 'Valores o fecha no validos.'
+                : 'Invalid values or date.');
+      case 403:
+        return _isSpanishLocale
+            ? 'No tienes permiso para editar este presupuesto.'
+            : 'You do not have permission to edit this presupuesto.';
+      case 404:
+        return _isSpanishLocale
+            ? 'No se encontro el presupuesto.'
+            : 'Presupuesto not found.';
+      case 409:
+        return backend.isNotEmpty
+            ? backend
+            : (_isSpanishLocale
+                ? 'Este presupuesto no esta emitido.'
+                : 'This presupuesto is not issued.');
+      default:
+        return _translateApiError(backend, isSpanish: _isSpanishLocale);
+    }
+  }
+
+  Future<String?> _confirmIssuedChangeReason() async {
+    final initial = _issuedEditReasonCtrl.text.trim();
+    final controller = TextEditingController(text: initial);
+    String? errorText;
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                _isSpanishLocale ? 'Confirmar cambio' : 'Confirm issued change',
+              ),
+              content: SizedBox(
+                width: 460,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isSpanishLocale
+                          ? 'Este presupuesto ya esta emitido. Indica el motivo para guardar una nueva version.'
+                          : 'This presupuesto is already issued. Add the reason to save a new version.',
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      minLines: 3,
+                      maxLines: 5,
+                      autofocus: initial.isEmpty,
+                      decoration: InputDecoration(
+                        labelText: _isSpanishLocale
+                            ? 'Motivo del cambio'
+                            : 'Reason for change',
+                        hintText: _isSpanishLocale
+                            ? 'Ej. Correccion solicitada por el cliente'
+                            : 'E.g. Correction requested by the client',
+                        errorText: errorText,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(_isSpanishLocale ? 'Cancelar' : 'Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final value = controller.text.trim();
+                    if (value.isEmpty) {
+                      setDialogState(() {
+                        errorText = _isSpanishLocale
+                            ? 'El motivo es obligatorio.'
+                            : 'Reason is required.';
+                      });
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(value);
+                  },
+                  child: Text(
+                    _isSpanishLocale
+                        ? 'Guardar nueva version'
+                        : 'Save new version',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+    return result?.trim().isEmpty == true ? null : result?.trim();
   }
 
   Future<void> _validateAndSave() async {

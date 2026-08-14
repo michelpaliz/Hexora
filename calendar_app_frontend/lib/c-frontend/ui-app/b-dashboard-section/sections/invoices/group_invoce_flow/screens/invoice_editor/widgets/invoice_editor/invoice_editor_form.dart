@@ -51,6 +51,7 @@ class InvoiceHeaderFields extends StatelessWidget {
   final ValueNotifier<DateTime?> dueDate;
   final VoidCallback onPickInvoiceDate;
   final VoidCallback onPickDueDate;
+  final ValueChanged<String>? onCurrencyChanged;
   final bool showClient;
   final bool showCurrency;
   final bool showDates;
@@ -65,6 +66,7 @@ class InvoiceHeaderFields extends StatelessWidget {
     required this.dueDate,
     required this.onPickInvoiceDate,
     required this.onPickDueDate,
+    this.onCurrencyChanged,
     this.showClient = true,
     this.showCurrency = true,
     this.showDates = true,
@@ -113,6 +115,7 @@ class InvoiceHeaderFields extends StatelessWidget {
                         width: 120,
                         child: TextFormField(
                           controller: currencyController,
+                          onChanged: onCurrencyChanged,
                           decoration: InputDecoration(
                             labelText: l.currencyLabel,
                           ),
@@ -149,6 +152,7 @@ class InvoiceHeaderFields extends StatelessWidget {
                             width: 120,
                             child: TextFormField(
                               controller: currencyController,
+                              onChanged: onCurrencyChanged,
                               decoration: InputDecoration(
                                 labelText: l.currencyLabel,
                               ),

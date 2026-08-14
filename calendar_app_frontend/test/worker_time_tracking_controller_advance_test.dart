@@ -77,6 +77,17 @@ class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
   }
 
   @override
+  Future<Uint8List> exportMonthlyCalendarPdf(
+    String groupId,
+    String token, {
+    required String month,
+    String? workerId,
+    String? lang,
+    double? advanceAmount,
+  }) =>
+      throw UnimplementedError();
+
+  @override
   Future<List<TimeEntry>> getTimeEntries(
     String groupId,
     String token, {

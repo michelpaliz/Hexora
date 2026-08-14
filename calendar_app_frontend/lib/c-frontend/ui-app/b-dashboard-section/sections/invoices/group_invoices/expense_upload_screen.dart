@@ -2077,56 +2077,58 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 buildImportTabsHeader(),
-                const SizedBox(height: 8),
-                _BatchCompactWorkflowIndicator(
-                  selectedCount: (() {
-                    final jobTotal =
-                        _batchJobInt(_batchJobStatus?['totalFiles']);
-                    if (jobTotal > 0) return jobTotal;
-                    return _batchDocumentNames.length;
-                  })(),
-                  maxDocuments:
-                      _ExpenseUploadScreenStateBase._maxBatchDocuments,
-                  totalBytes: _batchDocumentBytes.fold<int>(
-                    0,
-                    (sum, bytes) => sum + bytes.length,
+                if (!batchJobCompleted) ...[
+                  const SizedBox(height: 8),
+                  _BatchCompactWorkflowIndicator(
+                    selectedCount: (() {
+                      final jobTotal =
+                          _batchJobInt(_batchJobStatus?['totalFiles']);
+                      if (jobTotal > 0) return jobTotal;
+                      return _batchDocumentNames.length;
+                    })(),
+                    maxDocuments:
+                        _ExpenseUploadScreenStateBase._maxBatchDocuments,
+                    totalBytes: _batchDocumentBytes.fold<int>(
+                      0,
+                      (sum, bytes) => sum + bytes.length,
+                    ),
+                    submitting: _batchSubmitting ||
+                        _batchGeneratingJson ||
+                        batchJobActive,
+                    hasGroupSelected: hasGroupSelected,
+                    canImport: !batchJobActive &&
+                        !_batchSubmitting &&
+                        !_batchGeneratingJson &&
+                        !batchJobCompleted &&
+                        hasGroupSelected &&
+                        _batchDocumentNames.isNotEmpty,
+                    jobActive: batchJobActive,
+                    jobCompleted: batchJobCompleted,
+                    jobFailed: batchJobStatus == 'failed',
+                    readyCount: _batchJobInt(_batchJobStatus?['readyCount']),
+                    reviewCount: _batchJobInt(_batchJobStatus?['warningCount']),
+                    duplicateCount:
+                        _batchJobInt(_batchJobStatus?['duplicateCount']),
+                    onPickDocuments: pickBatchDocuments,
+                    onImport: submitBatchImport,
+                    onClearSelection: _batchDocumentNames.isEmpty
+                        ? null
+                        : () => setState(() {
+                              _resetBatchJobTracking(
+                                clearResult: true,
+                                clearCache: true,
+                              );
+                              _batchDocumentBytes.clear();
+                              _batchDocumentNames.clear();
+                              _batchSkippedDetails.clear();
+                              _batchVerifyMessage = null;
+                              _batchError = null;
+                              _batchDetectedInvoices = 0;
+                              _batchFileFilterIndex = 0;
+                            }),
                   ),
-                  submitting: _batchSubmitting ||
-                      _batchGeneratingJson ||
-                      batchJobActive,
-                  hasGroupSelected: hasGroupSelected,
-                  canImport: !batchJobActive &&
-                      !_batchSubmitting &&
-                      !_batchGeneratingJson &&
-                      !batchJobCompleted &&
-                      hasGroupSelected &&
-                      _batchDocumentNames.isNotEmpty,
-                  jobActive: batchJobActive,
-                  jobCompleted: batchJobCompleted,
-                  jobFailed: batchJobStatus == 'failed',
-                  readyCount: _batchJobInt(_batchJobStatus?['readyCount']),
-                  reviewCount: _batchJobInt(_batchJobStatus?['warningCount']),
-                  duplicateCount:
-                      _batchJobInt(_batchJobStatus?['duplicateCount']),
-                  onPickDocuments: pickBatchDocuments,
-                  onImport: submitBatchImport,
-                  onClearSelection: _batchDocumentNames.isEmpty
-                      ? null
-                      : () => setState(() {
-                            _resetBatchJobTracking(
-                              clearResult: true,
-                              clearCache: true,
-                            );
-                            _batchDocumentBytes.clear();
-                            _batchDocumentNames.clear();
-                            _batchSkippedDetails.clear();
-                            _batchVerifyMessage = null;
-                            _batchError = null;
-                            _batchDetectedInvoices = 0;
-                            _batchFileFilterIndex = 0;
-                          }),
-                ),
-                const SizedBox(height: 10),
+                ],
+                SizedBox(height: batchJobCompleted ? 6 : 10),
                 Expanded(
                   child: _buildBatchImportTab(
                     l,

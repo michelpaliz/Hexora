@@ -210,6 +210,18 @@ class WorkerTimeTrackingController extends ChangeNotifier {
     );
   }
 
+  Future<Uint8List> exportMonthlyCalendarPdf({required String lang}) async {
+    final token = await _token();
+    return _repo.exportMonthlyCalendarPdf(
+      group.id,
+      token,
+      month: _monthValue,
+      workerId: worker.id,
+      lang: lang,
+      advanceAmount: advanceAmount,
+    );
+  }
+
   @override
   void dispose() {
     _isDisposed = true;

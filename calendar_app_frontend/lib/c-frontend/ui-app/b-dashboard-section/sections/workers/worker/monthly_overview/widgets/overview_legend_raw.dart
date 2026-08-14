@@ -53,9 +53,9 @@ class OverviewLegendChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.22)),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -67,7 +67,7 @@ class OverviewLegendChip extends StatelessWidget {
             style: t.bodySmall.copyWith(
               fontWeight: FontWeight.w700,
               color: color,
-              letterSpacing: .2,
+              letterSpacing: 0,
             ),
           ),
         ],

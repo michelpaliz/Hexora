@@ -13,7 +13,6 @@ import '../statements_formatters.dart';
 import '../statements_shared.dart';
 import 'statements_all_data_bulk.dart';
 import 'statements_all_data_details.dart';
-import 'statements_all_data_filters.dart';
 import 'statements_all_data_skeleton.dart';
 import 'table/statements_all_data_table.dart';
 import 'table/statements_all_data_table_theme.dart';
@@ -39,7 +38,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   double? _amountMaxFilter;
   String _amountTypeFilter = 'all'; // all | income | expense
   bool _didLoad = false;
-  bool _filtersCollapsed = false;
   bool _isSoftDarkTable = false;
   bool _autoStatementImportLoading = false;
   bool _exportingExcel = false;
@@ -50,7 +48,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final self = this as dynamic;
     self._amountTypeFilter ??= 'all';
     self._didLoad ??= false;
-    self._filtersCollapsed ??= false;
     self._isSoftDarkTable ??= false;
     self._autoStatementImportLoading ??= false;
     self._exportingExcel ??= false;
@@ -397,6 +394,285 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     }
   }
 
+  Future<void> _showDateFilterDialog(StatementsController s) async {
+    final yearController = TextEditingController(text: _yearController.text);
+    final fromController = TextEditingController(text: _fromController.text);
+    final toController = TextEditingController(text: _toController.text);
+    var applied = false;
+
+    Future<void> pickDate({
+      required BuildContext dialogContext,
+      required TextEditingController target,
+      required StateSetter setDialogState,
+    }) async {
+      final initial = _parseDate(target.text) ?? DateTime.now();
+      final picked = await showDatePicker(
+        context: dialogContext,
+        initialDate: initial,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(DateTime.now().year + 1, 12, 31),
+      );
+      if (picked == null) return;
+      setDialogState(() => target.text = _dateOnly(picked));
+    }
+
+    Future<void> applyAndClose(BuildContext dialogContext) async {
+      _yearController.text = yearController.text.trim();
+      _fromController.text = fromController.text.trim();
+      _toController.text = toController.text.trim();
+      applied = true;
+      Navigator.of(dialogContext).pop();
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final l = AppLocalizations.of(dialogContext)!;
+        final cs = Theme.of(dialogContext).colorScheme;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Widget dateTile({
+              required String label,
+              required TextEditingController controller,
+              required IconData icon,
+            }) {
+              final value = controller.text.trim();
+              final parsed = _parseDate(value);
+              final display = parsed == null
+                  ? 'dd/mm/aaaa'
+                  : DateFormat('dd/MM/yyyy').format(parsed);
+              return InkWell(
+                onTap: s.loadingAllEntries
+                    ? null
+                    : () => pickDate(
+                          dialogContext: dialogContext,
+                          target: controller,
+                          setDialogState: setDialogState,
+                        ),
+                borderRadius: BorderRadius.circular(10),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: label,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    prefixIcon: Icon(icon, size: 18),
+                    suffixIcon: value.isEmpty
+                        ? const Icon(Icons.calendar_today_outlined, size: 16)
+                        : IconButton(
+                            tooltip: l.statementsClearFilters,
+                            onPressed: () => setDialogState(controller.clear),
+                            icon: const Icon(Icons.close_rounded, size: 16),
+                          ),
+                  ),
+                  child: Text(display),
+                ),
+              );
+            }
+
+            Widget preset(String label, DateTime from, DateTime to, int? year) {
+              return ActionChip(
+                label: Text(label),
+                onPressed: s.loadingAllEntries
+                    ? null
+                    : () => setDialogState(() {
+                          yearController.text = year?.toString() ?? '';
+                          fromController.text = _dateOnly(from);
+                          toController.text = _dateOnly(to);
+                        }),
+              );
+            }
+
+            final now = DateTime.now();
+            return AlertDialog(
+              backgroundColor: cs.surface,
+              surfaceTintColor: Colors.transparent,
+              title: Text(l.statementsHeaderDate),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: yearController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: l.statementsFilterYear,
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        prefixIcon:
+                            const Icon(Icons.calendar_month_outlined, size: 18),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: dateTile(
+                            label: l.statementsFilterFrom,
+                            controller: fromController,
+                            icon: Icons.arrow_forward_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: dateTile(
+                            label: l.statementsFilterTo,
+                            controller: toController,
+                            icon: Icons.arrow_back_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          preset(
+                            l.statementsPresetThisMonth,
+                            DateTime(now.year, now.month, 1),
+                            DateTime(now.year, now.month + 1, 0),
+                            now.year,
+                          ),
+                          preset(
+                            l.statementsPresetLast30Days,
+                            now.subtract(const Duration(days: 30)),
+                            now,
+                            null,
+                          ),
+                          preset(
+                            l.localeName.toLowerCase().startsWith('es')
+                                ? 'Ultimos 3 meses'
+                                : 'Last 3 months',
+                            DateTime(now.year, now.month - 3, now.day),
+                            now,
+                            null,
+                          ),
+                          preset(
+                            l.statementsPresetThisYear,
+                            DateTime(now.year, 1, 1),
+                            DateTime(now.year, 12, 31),
+                            now.year,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: s.loadingAllEntries
+                      ? null
+                      : () => setDialogState(() {
+                            yearController.clear();
+                            fromController.clear();
+                            toController.clear();
+                          }),
+                  child: const Text('Limpiar'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(l.close),
+                ),
+                FilledButton(
+                  onPressed: s.loadingAllEntries
+                      ? null
+                      : () => applyAndClose(dialogContext),
+                  child: Text(l.statementsApplyFilters),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    yearController.dispose();
+    fromController.dispose();
+    toController.dispose();
+    if (applied && mounted) {
+      await _applyFilters(s);
+    }
+  }
+
+  Future<void> _showClientProviderFilterDialog(StatementsController s) async {
+    final queryController =
+        TextEditingController(text: _clientProviderController.text);
+    var applied = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final l = AppLocalizations.of(dialogContext)!;
+        final cs = Theme.of(dialogContext).colorScheme;
+        return AlertDialog(
+          backgroundColor: cs.surface,
+          surfaceTintColor: Colors.transparent,
+          title: Text('${l.statementsHeaderClient} / Proveedor'),
+          content: SizedBox(
+            width: 380,
+            child: TextField(
+              controller: queryController,
+              enabled: !s.loadingAllEntries,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) {
+                _clientProviderController.text = queryController.text.trim();
+                applied = true;
+                Navigator.of(dialogContext).pop();
+              },
+              decoration: InputDecoration(
+                labelText: '${l.statementsHeaderClient} / Proveedor',
+                border: const OutlineInputBorder(),
+                isDense: true,
+                prefixIcon: const Icon(Icons.manage_search_rounded, size: 18),
+                suffixIcon: IconButton(
+                  tooltip: l.statementsClearFilters,
+                  onPressed: s.loadingAllEntries ? null : queryController.clear,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: s.loadingAllEntries
+                  ? null
+                  : () {
+                      queryController.clear();
+                      _clientProviderController.clear();
+                      applied = true;
+                      Navigator.of(dialogContext).pop();
+                    },
+              child: const Text('Limpiar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l.close),
+            ),
+            FilledButton(
+              onPressed: s.loadingAllEntries
+                  ? null
+                  : () {
+                      _clientProviderController.text =
+                          queryController.text.trim();
+                      applied = true;
+                      Navigator.of(dialogContext).pop();
+                    },
+              child: Text(l.statementsApplyFilters),
+            ),
+          ],
+        );
+      },
+    );
+    queryController.dispose();
+    if (applied && mounted) {
+      await _applyFilters(s);
+    }
+  }
+
   Future<void> _applyFilters(StatementsController s) async {
     final from = _fromController.text.trim();
     final to = _toController.text.trim();
@@ -413,81 +689,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       applyAmountFilters: true,
     );
     _selectedIds.clear();
-  }
-
-  Future<void> _clearFilters(StatementsController s) async {
-    _yearController.text = DateTime.now().year.toString();
-    _fromController.clear();
-    _toController.clear();
-    _clientProviderController.clear();
-    _amountMinFilter = null;
-    _amountMaxFilter = null;
-    _amountTypeFilter = 'all';
-    await s.loadAllEntries(
-      year: _parseYear(_yearController.text),
-      dateFrom: '',
-      dateTo: '',
-      page: 1,
-      amountType: 'all',
-      minAmount: null,
-      maxAmount: null,
-      clientProviderQuery: null,
-      sort: 'date_desc',
-      applyAmountFilters: true,
-    );
-    _selectedIds.clear();
-  }
-
-  Future<void> _pickFromDate(StatementsController s) async {
-    final initial = _parseDate(_fromController.text) ?? DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(DateTime.now().year + 1, 12, 31),
-    );
-    if (picked == null) return;
-    _fromController.text = _dateOnly(picked);
-    await _applyFilters(s);
-  }
-
-  Future<void> _pickToDate(StatementsController s) async {
-    final initial = _parseDate(_toController.text) ?? DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(DateTime.now().year + 1, 12, 31),
-    );
-    if (picked == null) return;
-    _toController.text = _dateOnly(picked);
-    await _applyFilters(s);
-  }
-
-  Future<void> _pickRange(StatementsController s) async {
-    final start = _parseDate(_fromController.text);
-    final end = _parseDate(_toController.text);
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(DateTime.now().year + 1, 12, 31),
-      initialDateRange: (start != null && end != null)
-          ? DateTimeRange(start: start, end: end)
-          : null,
-      saveText: AppLocalizations.of(context)!.statementsApplyFilters,
-    );
-    if (picked == null) return;
-    _fromController.text = _dateOnly(picked.start);
-    _toController.text = _dateOnly(picked.end);
-    await _applyFilters(s);
-  }
-
-  Future<void> _applyPreset(StatementsController s, DateTime from, DateTime to,
-      {int? year}) async {
-    _fromController.text = _dateOnly(from);
-    _toController.text = _dateOnly(to);
-    _yearController.text = year?.toString() ?? '';
-    await _applyFilters(s);
   }
 
   Widget _activeFiltersChips(AppLocalizations l, StatementsController s) {
@@ -572,43 +773,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       runSpacing: 6,
       children: chips,
     );
-  }
-
-  String _filterSummary(AppLocalizations l, StatementsController s) {
-    final parts = <String>[];
-    if (s.allEntriesYear != null) {
-      parts.add('${l.statementsFilterYear}: ${s.allEntriesYear}');
-    }
-    if (s.allEntriesDateFrom != null && s.allEntriesDateFrom!.isNotEmpty) {
-      parts.add('${l.statementsFilterFrom}: ${s.allEntriesDateFrom}');
-    }
-    if (s.allEntriesDateTo != null && s.allEntriesDateTo!.isNotEmpty) {
-      parts.add('${l.statementsFilterTo}: ${s.allEntriesDateTo}');
-    }
-    if (_amountMinFilter != null ||
-        _amountMaxFilter != null ||
-        _amountTypeFilter != 'all') {
-      final minLabel = _amountMinFilter == null
-          ? '-inf'
-          : _amountMinFilter!.toStringAsFixed(2);
-      final maxLabel = _amountMaxFilter == null
-          ? '+inf'
-          : _amountMaxFilter!.toStringAsFixed(2);
-      final typeLabel = _amountTypeFilter == 'income'
-          ? l.statementsSummaryIncome
-          : (_amountTypeFilter == 'expense'
-              ? l.statementsSummaryExpense
-              : 'Todos');
-      parts.add(
-          '${l.statementsHeaderAmount} ($typeLabel): $minLabel .. $maxLabel');
-    }
-    if (_clientProviderController.text.trim().isNotEmpty) {
-      parts.add(
-        '${l.statementsHeaderClient} / Proveedor: ${_clientProviderController.text.trim()}',
-      );
-    }
-    if (parts.isEmpty) return l.statementsFiltersNone;
-    return '${l.statementsFiltersActive}: ${parts.join(' · ')}';
   }
 
   String _fileNameFromHeaders(
@@ -1090,7 +1254,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final auth = context.watch<AuthProvider>();
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final typography = AppTypography.of(context);
     final tableTheme = _isSoftDarkTable
         ? StatementsTableTheme.softDark(cs)
         : StatementsTableTheme.light(cs);
@@ -1193,6 +1356,46 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                 s.allEntriesNextCursor!.isNotEmpty) ||
             s.allEntriesPage < totalPages)
         : s.allEntriesPage < totalPages;
+    final totalResults = s.isUsingAggregatedEntriesPath
+        ? s.allEntriesTotal
+        : amountFilteredEntries.length;
+    final rangeStart = sortedEntries.isEmpty
+        ? 0
+        : ((s.allEntriesPage - 1) * s.allEntriesSize) + 1;
+    final rangeEnd = sortedEntries.isEmpty
+        ? 0
+        : (rangeStart + sortedEntries.length - 1).clamp(0, totalResults);
+    final resultRangeLabel = l.localeName.toLowerCase().startsWith('es')
+        ? 'Mostrando $rangeStart-$rangeEnd de $totalResults'
+        : 'Showing $rangeStart-$rangeEnd of $totalResults';
+    final pageNavigationActions = _HeaderActionGroup(
+      children: [
+        _HeaderIconAction(
+          tooltip: l.statementsPrevPage,
+          onPressed: s.allEntriesPage > 1
+              ? () => s.loadAllEntries(page: s.allEntriesPage - 1)
+              : null,
+          icon: Icons.chevron_left,
+        ),
+        _HeaderPageBadge(
+          tooltip: l.statementsPageInfo(s.allEntriesPage, totalPages),
+          page: s.allEntriesPage,
+          totalPages: totalPages,
+        ),
+        _HeaderIconAction(
+          tooltip: l.statementsNextPage,
+          onPressed: canNextPage
+              ? () => s.loadAllEntries(
+                    page: s.allEntriesPage + 1,
+                    cursor: s.isUsingAggregatedEntriesPath
+                        ? s.allEntriesNextCursor
+                        : null,
+                  )
+              : null,
+          icon: Icons.chevron_right,
+        ),
+      ],
+    );
     final headerActions = <Widget>[
       _HeaderActionGroup(
         children: [
@@ -1225,14 +1428,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                 : Icons.sync_disabled_outlined,
             selected: autoImportEnabled,
             loading: _autoStatementImportLoading,
-          ),
-          _HeaderIconAction(
-            tooltip: _filtersCollapsed
-                ? l.statementsPanelExpand
-                : l.statementsPanelCollapse,
-            onPressed: () =>
-                setState(() => _filtersCollapsed = !_filtersCollapsed),
-            icon: _filtersCollapsed ? Icons.unfold_more : Icons.unfold_less,
           ),
           _HeaderIconAction(
             tooltip: l.refreshAction,
@@ -1272,34 +1467,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
           ),
         ],
       ),
-      _HeaderActionGroup(
-        children: [
-          _HeaderIconAction(
-            tooltip: l.statementsPrevPage,
-            onPressed: s.allEntriesPage > 1
-                ? () => s.loadAllEntries(page: s.allEntriesPage - 1)
-                : null,
-            icon: Icons.chevron_left,
-          ),
-          _HeaderPageBadge(
-            tooltip: l.statementsPageInfo(s.allEntriesPage, totalPages),
-            page: s.allEntriesPage,
-            totalPages: totalPages,
-          ),
-          _HeaderIconAction(
-            tooltip: l.statementsNextPage,
-            onPressed: canNextPage
-                ? () => s.loadAllEntries(
-                      page: s.allEntriesPage + 1,
-                      cursor: s.isUsingAggregatedEntriesPath
-                          ? s.allEntriesNextCursor
-                          : null,
-                    )
-                : null,
-            icon: Icons.chevron_right,
-          ),
-        ],
-      ),
     ];
 
     return ListView(
@@ -1315,90 +1482,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 8),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeInOutCubic,
-                  alignment: Alignment.topCenter,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, animation) {
-                      final fade = CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.easeOut,
-                      );
-                      return FadeTransition(
-                        opacity: fade,
-                        child: SizeTransition(
-                          sizeFactor: animation,
-                          axisAlignment: -1,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: _filtersCollapsed
-                        ? Row(
-                            key: const ValueKey('filters-compact'),
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _filterSummary(l, s),
-                                  style: typography.bodySmall,
-                                ),
-                              ),
-                              TextButton.icon(
-                                onPressed: () =>
-                                    setState(() => _filtersCollapsed = false),
-                                icon: const Icon(Icons.tune, size: 18),
-                                label: Text(l.statementsFiltersTitle),
-                              ),
-                            ],
-                          )
-                        : Padding(
-                            key: const ValueKey('filters-expanded'),
-                            padding: const EdgeInsets.fromLTRB(2, 4, 2, 4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    return StatementsAllDataFilters(
-                                      controller: s,
-                                      yearController: _yearController,
-                                      fromController: _fromController,
-                                      toController: _toController,
-                                      clientProviderController:
-                                          _clientProviderController,
-                                      onApply: () => _applyFilters(s),
-                                      onClear: () => _clearFilters(s),
-                                      onClientProviderClear: () =>
-                                          _applyFilters(s),
-                                      onPickFrom: () => _pickFromDate(s),
-                                      onPickTo: () => _pickToDate(s),
-                                      onPickRange: () => _pickRange(s),
-                                      includePresetsInline: true,
-                                      onPresetSelect: (from, to, year) =>
-                                          _applyPreset(
-                                        s,
-                                        from,
-                                        to,
-                                        year: year,
-                                      ),
-                                      showTitle: false,
-                                      compact: true,
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                                _activeFiltersChips(l, s),
-                              ],
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 16),
                 StatementsAllDataBulkBar(
                   controller: s,
                   selectedCount: _selectedIds.length,
@@ -1406,7 +1489,9 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                   onBulkLink: () => _showBulkLinkDialog(s),
                   onClear: () => setState(_selectedIds.clear),
                 ),
-                if (_selectedIds.isNotEmpty) const SizedBox(height: 12),
+                const SizedBox(height: 12),
+                _activeFiltersChips(l, s),
+                const SizedBox(height: 12),
                 if (s.loadingAllEntries && s.allEntries.isEmpty)
                   const StatementsAllDataSkeleton()
                 else if (s.allEntriesError != null)
@@ -1428,10 +1513,18 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                           if (id == null || id.isEmpty) return null;
                           return _noProcedeReasonsByEntryId[id];
                         },
+                        onDateFilterTap: () => _showDateFilterDialog(s),
+                        dateFilterActive: s.allEntriesYear != null ||
+                            (s.allEntriesDateFrom?.isNotEmpty ?? false) ||
+                            (s.allEntriesDateTo?.isNotEmpty ?? false),
                         onAmountFilterTap: _showAmountFilterDialog,
                         amountFilterActive: _amountMinFilter != null ||
                             _amountMaxFilter != null ||
                             _amountTypeFilter != 'all',
+                        onClientProviderFilterTap: () =>
+                            _showClientProviderFilterDialog(s),
+                        clientProviderFilterActive:
+                            _clientProviderController.text.trim().isNotEmpty,
                         onInvoiceSortTap: () => setState(() {
                           _invoiceSortMode = (_invoiceSortMode + 1) % 3;
                         }),
@@ -1494,6 +1587,21 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                             expenseOnly: expenseOnly,
                           );
                         },
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              resultRangeLabel,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: cs.onSurfaceVariant),
+                            ),
+                          ),
+                          pageNavigationActions,
+                        ],
                       ),
                     ],
                   ),

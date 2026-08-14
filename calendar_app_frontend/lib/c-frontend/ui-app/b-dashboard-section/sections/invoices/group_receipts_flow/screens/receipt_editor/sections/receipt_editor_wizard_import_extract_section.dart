@@ -22,7 +22,7 @@ extension _ReceiptEditorWizardImportExtractSection
     if (_draftReceipt != null && _draftReceipt!.id.trim().isNotEmpty) {
       return _draftReceipt;
     }
-    return _saveDraft(showSavedSnack: false);
+    return _saveDraft(showSavedSnack: false, allowEmptyLines: true);
   }
 
   Future<void> _pickJsonImportFile() async {
@@ -70,6 +70,7 @@ extension _ReceiptEditorWizardImportExtractSection
       if (prompt.isEmpty) {
         throw Exception(l.invoiceLinesJsonImportGenericError);
       }
+      if (!mounted) return;
       await copyTextWithManualFallbackDialog(
         context,
         text: prompt,
@@ -287,6 +288,7 @@ extension _ReceiptEditorWizardImportExtractSection
       ..add({
         'description': '',
         'quantity': 1,
+        'unit': 'unit',
         'unitPrice': 0,
         'taxRate': 21,
       });
@@ -309,7 +311,14 @@ extension _ReceiptEditorWizardImportExtractSection
     });
     try {
       final payload = <String, dynamic>{
-        'lines': _extractedDraftLines,
+        'lines': _extractedDraftLines
+            .map((line) => {
+                  ...line,
+                  'unit': (line['unit']?.toString().trim().isNotEmpty == true)
+                      ? line['unit']
+                      : 'unit',
+                })
+            .toList(growable: false),
         'overwrite': overwrite,
         'defaultTaxRate': defaultTaxRate,
       };

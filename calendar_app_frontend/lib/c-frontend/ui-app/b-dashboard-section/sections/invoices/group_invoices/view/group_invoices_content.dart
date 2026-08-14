@@ -41,6 +41,7 @@ class _GroupInvoicesContent extends StatelessWidget {
       return ClientInvoiceComparisonView(
         key: const ValueKey('group-invoices-client-invoice-stats'),
         clients: state._clients,
+        invoices: state._invoices,
         selectedClient: state._selectedClient,
         onSelectClient: (client) =>
             state.setState(() => state._selectedClient = client),
@@ -326,6 +327,7 @@ class _GroupInvoicesContent extends StatelessWidget {
           state._selectedMenu = 'recurring';
         }),
         onIssuedDateFilterChanged: state._updateIssuedInvoiceDateFilter,
+        canEditIssued: state.canEditIssuedInvoices(context),
       );
     }
 
@@ -364,6 +366,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         }),
         onIssuedDateFilterChanged: state._updateIssuedInvoiceDateFilter,
         onDownloadFiltered: state._downloadFilteredInvoices,
+        canEditIssued: state.canEditIssuedInvoices(context),
       );
     }
 
@@ -392,6 +395,7 @@ class _GroupInvoicesContent extends StatelessWidget {
       }),
       onIssuedDateFilterChanged: state._updateIssuedInvoiceDateFilter,
       onDownloadFiltered: state._downloadFilteredInvoices,
+      canEditIssued: state.canEditIssuedInvoices(context),
     );
   }
 }

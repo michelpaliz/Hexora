@@ -111,7 +111,7 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
         datesComplete &&
         _c.hasBillableEntries &&
         !invalidDates;
-    return !_c.saving && step1Complete && _c.previewedPdf;
+    return !_c.saving && step1Complete && (_c.editingIssued || _c.previewedPdf);
   }
 
   // ── step labels ────────────────────────────────────────────────────────────
@@ -255,18 +255,34 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
   Widget _buildDatesStep() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      child: InvoiceHeaderFields(
-        clients: widget.clients,
-        clientId: _c.clientId,
-        onClientChanged: _c.setClientId,
-        currencyController: _c.currency,
-        invoiceDate: _c.invoiceDate,
-        dueDate: _c.dueDate,
-        onPickInvoiceDate: () => _c.pickDate(context, _c.invoiceDate),
-        onPickDueDate: () => _c.pickDate(context, _c.dueDate),
-        showDates: true,
-        showClient: false,
-        showCurrency: false,
+      child: Column(
+        children: [
+          InvoiceHeaderFields(
+            clients: widget.clients,
+            clientId: _c.clientId,
+            onClientChanged: _c.setClientId,
+            currencyController: _c.currency,
+            invoiceDate: _c.invoiceDate,
+            dueDate: _c.dueDate,
+            onPickInvoiceDate: () => _c.pickDate(context, _c.invoiceDate),
+            onPickDueDate: () => _c.pickDate(context, _c.dueDate),
+            onCurrencyChanged: (_) => _c.notifyUi(),
+            showDates: true,
+            showClient: false,
+            showCurrency: true,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _c.notes,
+            minLines: 3,
+            maxLines: 5,
+            onChanged: (_) => _c.notifyUi(),
+            decoration: const InputDecoration(
+              labelText: 'Notas',
+              prefixIcon: Icon(Icons.notes_rounded),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -274,18 +290,25 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
   Widget _buildLinesStep() {
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 100),
-      child: InvoiceContentSection(
-        useBlocks: _c.useBlocks,
-        onModeChanged: _c.setUseBlocks,
-        blocks: _c.blocks,
-        lines: _c.lines,
-        onChanged: _c.notifyUi,
-        total: _c.total,
-        controller: _c,
-        ocrState: _c.ocrState,
-        onPickImageForLineExtraction: () => _c.extractLinesFromImage(context),
-        onApplyExtractedLines: _c.applyExtractedLinesToDraft,
-        onClearExtractedLines: _c.clearExtractedLines,
+      child: AbsorbPointer(
+        absorbing: _c.financialFieldsReadOnly,
+        child: Opacity(
+          opacity: _c.financialFieldsReadOnly ? 0.68 : 1,
+          child: InvoiceContentSection(
+            useBlocks: _c.useBlocks,
+            onModeChanged: _c.setUseBlocks,
+            blocks: _c.blocks,
+            lines: _c.lines,
+            onChanged: _c.notifyUi,
+            total: _c.total,
+            controller: _c,
+            ocrState: _c.ocrState,
+            onPickImageForLineExtraction: () =>
+                _c.extractLinesFromImage(context),
+            onApplyExtractedLines: _c.applyExtractedLinesToDraft,
+            onClearExtractedLines: _c.clearExtractedLines,
+          ),
+        ),
       ),
     );
   }
@@ -434,7 +457,11 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
                     )
                   : const Icon(Icons.save_outlined),
               label: Text(
-                _c.saving ? l.savingLabel : l.invoiceSaveDraftCta,
+                _c.saving
+                    ? l.savingLabel
+                    : _c.editingIssued
+                        ? 'Guardar cambios'
+                        : l.invoiceSaveDraftCta,
               ),
             ),
           ),

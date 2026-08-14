@@ -76,7 +76,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
     final hasSearch = widget.searchController.text.trim().isNotEmpty;
     final hasStructuredFilters =
         (widget.entityFilter ?? '').trim().isNotEmpty ||
-        (widget.propertyFilter ?? '').trim().isNotEmpty;
+            (widget.propertyFilter ?? '').trim().isNotEmpty;
 
     return Card(
       color: Colors.transparent,
@@ -104,11 +104,10 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                 spacing: 8,
                 runSpacing: 6,
                 children: [
-                  FilterChip(
-                    label: Text(l.clientMissingInvoiceThisMonth),
+                  _MissingInvoiceFilterChip(
+                    label: l.clientMissingInvoiceThisMonth,
                     selected: widget.missingCurrentMonthInvoiceOnly,
                     onSelected: widget.onToggleMissingCurrentMonthInvoiceOnly,
-                    visualDensity: VisualDensity.compact,
                   ),
                   if (hasInvoiceFlagData)
                     _MissingInvoiceCountChip(count: missingInvoiceCount),
@@ -165,8 +164,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                         children: [
                           if (widget.selectedHiddenByFilters)
                             Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                              padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -360,13 +358,16 @@ class _ClientRow extends StatelessWidget {
 
     if (client.hasCurrentMonthInvoiceFlagData) {
       final isMissing = client.missingCurrentMonthInvoice == true;
-      final icon =
-          isMissing ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded;
+      final icon = isMissing
+          ? Icons.warning_amber_rounded
+          : Icons.check_circle_outline_rounded;
       final color = isMissing ? cs.error : cs.secondary;
       final count = client.currentMonthInvoiceCount;
       final tooltip = count != null
           ? l.clientInvoiceCountThisMonth(count)
-          : (isMissing ? l.clientMissingInvoiceThisMonth : l.clientInvoiceAllGood);
+          : (isMissing
+              ? l.clientMissingInvoiceThisMonth
+              : l.clientInvoiceAllGood);
 
       parts.add(
         Tooltip(
@@ -409,7 +410,6 @@ class _ClientRow extends StatelessWidget {
     if (parts.isEmpty) return null;
     return Row(mainAxisSize: MainAxisSize.min, children: parts);
   }
-
 }
 
 class _MissingInvoiceCountChip extends StatelessWidget {
@@ -423,25 +423,100 @@ class _MissingInvoiceCountChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: cs.errorContainer.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.warning_amber_rounded, size: 12, color: cs.onErrorContainer),
-          const SizedBox(width: 4),
-          Text(
-            l.clientMissingCountThisMonth(count),
-            style: t.bodySmall.copyWith(
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 180),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 34),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: cs.errorContainer.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              size: 12,
               color: cs.onErrorContainer,
-              fontWeight: FontWeight.w700,
             ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                l.clientMissingCountThisMonth(count),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall.copyWith(
+                  color: cs.onErrorContainer,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MissingInvoiceFilterChip extends StatelessWidget {
+  const _MissingInvoiceFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final color = selected ? cs.error : cs.onSurfaceVariant;
+    final background = selected
+        ? cs.errorContainer.withValues(alpha: 0.34)
+        : cs.surfaceContainerHighest.withValues(alpha: 0.42);
+    final border = selected
+        ? cs.error.withValues(alpha: 0.32)
+        : cs.outlineVariant.withValues(alpha: 0.36);
+
+    return Semantics(
+      button: true,
+      toggled: selected,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => onSelected(!selected),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          constraints: const BoxConstraints(minHeight: 34, maxWidth: 218),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: border, width: 1.1),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.warning_amber_rounded, size: 14, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(
+                    color: color,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

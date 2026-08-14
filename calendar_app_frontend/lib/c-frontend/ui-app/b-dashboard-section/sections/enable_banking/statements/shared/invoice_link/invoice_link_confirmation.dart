@@ -55,7 +55,11 @@ class InvoiceLinkConfirmation {
 
     // Get total
     final expenseTotalRaw = selectedExpense?['total'];
-    final totalValue = expenseOnly ? expenseTotalRaw : selectedInvoice?.total;
+    final invoiceTotal = selectedInvoices.fold<num>(
+      0,
+      (sum, invoice) => sum + (invoice.total ?? 0),
+    );
+    final totalValue = expenseOnly ? expenseTotalRaw : invoiceTotal;
     final totalLabel = totalValue == null
         ? '-'
         : StatementsFormatters.formatCurrency(context, totalValue.toString());
@@ -223,7 +227,11 @@ class InvoiceLinkConfirmation {
               const SizedBox(height: 6),
               _infoRow(
                 cs,
-                expenseOnly ? 'Total gasto' : 'Total factura',
+                expenseOnly
+                    ? 'Total gasto'
+                    : selectedInvoices.length == 1
+                        ? 'Total factura'
+                        : 'Total facturas',
                 totalLabel,
               ),
               if (!expenseOnly) ...[

@@ -248,19 +248,21 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           'Ingresos',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                color: cs.onSurface,
-                                fontWeight: FontWeight.w900,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: cs.onSurface,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                         ),
                         Text(
                           'Menu de datos',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                       ],
                     ),
@@ -269,7 +271,8 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                     message: isEs ? 'Compactar menú' : 'Collapse menu',
                     child: IconButton.filledTonal(
                       onPressed: onToggleCollapse,
-                      icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
+                      icon:
+                          const Icon(Icons.keyboard_double_arrow_left_rounded),
                       iconSize: 18,
                       style: IconButton.styleFrom(
                         minimumSize: const Size(40, 34),
@@ -315,7 +318,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                         ),
                         GroupInvoicesSubMenuItem(
                           icon: Icons.insights_outlined,
-                          label: 'Gráfico facturas',
+                          label: 'Análisis de ingresos',
                           selected: selectedMenu == 'client_invoice_stats',
                           onPressed: () =>
                               onMenuChanged('client_invoice_stats'),
@@ -440,7 +443,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           ),
                           GroupInvoicesSubMenuItem(
                             icon: Icons.insights_outlined,
-                            label: 'Gráfico facturas',
+                            label: 'Análisis de ingresos',
                             selected: selectedMenu == 'client_invoice_stats',
                             onPressed: () =>
                                 onMenuChanged('client_invoice_stats'),

@@ -143,52 +143,63 @@ class ClientsSearchFilters extends StatelessWidget {
 
     final filters = <Widget>[];
 
-    // Single row: stat cards + toggle + additional chip
-    final hasToggleOrAdditional = hasInactiveToggle || additionalFilters != null;
+    // Single responsive row: stat cards + toggle + additional chip
+    final hasToggleOrAdditional =
+        hasInactiveToggle || additionalFilters != null;
     if (showCounts || hasToggleOrAdditional) {
+      final activeCountForDisplay = resolvedActiveCount ?? 0;
+      final inactiveCountForDisplay = resolvedInactiveCount ?? 0;
       filters.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (showCounts) ...[
-              _StatCard(
-                label: activeCountLabel!,
-                count: resolvedActiveCount,
-                icon: Icons.people_alt_rounded,
-                color: cs.primary,
-                background: cs.primaryContainer.withValues(alpha: 0.35),
-                foreground: cs.onPrimaryContainer,
-              ),
-              const SizedBox(width: 6),
-              _StatCard(
-                label: inactiveCountLabel!,
-                count: resolvedInactiveCount,
-                icon: Icons.person_off_rounded,
-                color: cs.onSurfaceVariant,
-                background: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-                foreground: cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-            ],
-            if (hasInactiveToggle)
-              Expanded(
-                child: _FilterToggleRow(
-                  icon: (inactiveValue ?? false)
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_rounded,
-                  label: (inactiveValue ?? false)
-                      ? inactiveLabelOn!
-                      : inactiveLabelOff!,
-                  value: inactiveValue ?? false,
-                  onChanged: (v) => onInactiveChanged!(v),
-                ),
-              ),
-            if (!hasInactiveToggle && showCounts) const Spacer(),
-            if (additionalFilters != null) ...[
-              const SizedBox(width: 8),
-              additionalFilters!,
-            ],
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final maxToggleWidth =
+                constraints.maxWidth < 360 ? constraints.maxWidth : 180.0;
+            return Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (showCounts) ...[
+                  _StatCard(
+                    label: activeCountLabel!,
+                    count: activeCountForDisplay,
+                    icon: Icons.people_alt_rounded,
+                    color: cs.primary,
+                    background: cs.primaryContainer.withValues(alpha: 0.35),
+                    foreground: cs.onPrimaryContainer,
+                  ),
+                  _StatCard(
+                    label: inactiveCountLabel!,
+                    count: inactiveCountForDisplay,
+                    icon: Icons.person_off_rounded,
+                    color: cs.onSurfaceVariant,
+                    background:
+                        cs.surfaceContainerHighest.withValues(alpha: 0.55),
+                    foreground: cs.onSurfaceVariant,
+                  ),
+                ],
+                if (hasInactiveToggle)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxToggleWidth),
+                    child: _FilterToggleRow(
+                      icon: (inactiveValue ?? false)
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      label: (inactiveValue ?? false)
+                          ? inactiveLabelOn!
+                          : inactiveLabelOff!,
+                      value: inactiveValue ?? false,
+                      onChanged: (v) => onInactiveChanged!(v),
+                    ),
+                  ),
+                if (additionalFilters != null)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                    child: additionalFilters!,
+                  ),
+              ],
+            );
+          },
         ),
       );
     }
@@ -275,36 +286,38 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      constraints: const BoxConstraints(minHeight: 34),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: foreground.withValues(alpha: 0.12),
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$count',
-                style: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: foreground,
-                  fontSize: 13,
-                ),
-              ),
-              Text(
-                label,
-                style: t.caption.copyWith(
-                  color: foreground.withValues(alpha: 0.75),
-                  fontSize: 10,
-                ),
-              ),
-            ],
+          Text(
+            '$count',
+            style: t.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: foreground,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            maxLines: 1,
+            style: t.caption.copyWith(
+              color: foreground.withValues(alpha: 0.78),
+              fontWeight: FontWeight.w600,
+              fontSize: 10.5,
+            ),
           ),
         ],
       ),
@@ -332,49 +345,66 @@ class _FilterToggleRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
 
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.only(left: 12, right: 6, top: 8, bottom: 8),
-        decoration: BoxDecoration(
-          color: value
-              ? cs.primaryContainer.withValues(alpha: 0.45)
-              : cs.surfaceContainerHighest.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
+    return Semantics(
+      button: true,
+      toggled: value,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => onChanged(!value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          constraints: const BoxConstraints(minHeight: 34),
+          padding: const EdgeInsets.only(left: 10, right: 7, top: 3, bottom: 3),
+          decoration: BoxDecoration(
             color: value
-                ? cs.primary.withValues(alpha: 0.3)
-                : cs.outlineVariant.withValues(alpha: 0.3),
-            width: 1.2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 15,
-              color: value ? cs.primary : cs.onSurfaceVariant,
+                ? cs.primaryContainer.withValues(alpha: 0.5)
+                : cs.surfaceContainerHighest.withValues(alpha: 0.38),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: value
+                  ? cs.primary.withValues(alpha: 0.35)
+                  : cs.outlineVariant.withValues(alpha: 0.38),
+              width: 1.1,
             ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                label,
-                style: t.bodySmall.copyWith(
-                  color: value ? cs.onPrimaryContainer : cs.onSurface,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: value ? cs.primary : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(
+                    color: value ? cs.onPrimaryContainer : cs.onSurface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                  ),
                 ),
               ),
-            ),
-            Switch.adaptive(
-              value: value,
-              onChanged: onChanged,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              activeThumbColor: cs.onPrimary,
-              activeTrackColor: cs.primary,
-            ),
-          ],
+              const SizedBox(width: 7),
+              SizedBox(
+                width: 32,
+                height: 20,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: Switch.adaptive(
+                    value: value,
+                    onChanged: onChanged,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    activeThumbColor: cs.onPrimary,
+                    activeTrackColor: cs.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -460,29 +490,35 @@ class _PillChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: selected
-              ? cs.primary
-              : cs.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          constraints: const BoxConstraints(minHeight: 30),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
             color: selected
                 ? cs.primary
-                : cs.outlineVariant.withValues(alpha: 0.4),
-            width: 1.2,
+                : cs.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? cs.primary
+                  : cs.outlineVariant.withValues(alpha: 0.4),
+              width: 1,
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: t.bodySmall.copyWith(
-            color: selected ? cs.onPrimary : cs.onSurface,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 12,
+          child: Text(
+            label,
+            style: t.bodySmall.copyWith(
+              color: selected ? cs.onPrimary : cs.onSurface,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 11.5,
+            ),
           ),
         ),
       ),

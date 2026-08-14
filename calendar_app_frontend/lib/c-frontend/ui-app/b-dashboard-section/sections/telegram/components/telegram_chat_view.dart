@@ -1208,7 +1208,7 @@ class TelegramChatComposer extends StatelessWidget {
           ],
           if (error != null && error!.trim().isNotEmpty) ...[
             _ComposerErrorBanner(message: error!),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
           ],
           Focus(
             onKeyEvent: onKeyEvent,
@@ -1217,10 +1217,21 @@ class TelegramChatComposer extends StatelessWidget {
               focusNode: focusNode,
               enabled: attachEnabled,
               minLines: 1,
-              maxLines: 5,
+              maxLines: 4,
               textCapitalization: TextCapitalization.sentences,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    height: 1.35,
+                  ),
               decoration: InputDecoration(
+                prefixIcon: Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 18,
+                  color: _kTelegramBlue.withValues(alpha: 0.72),
+                ),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 42,
+                  minHeight: 42,
+                ),
                 hintText: hasAttachment
                     ? l.chatComposerHintCaption
                     : replyTarget == null
@@ -1230,30 +1241,37 @@ class TelegramChatComposer extends StatelessWidget {
                   color: cs.onSurface.withValues(alpha: 0.38),
                 ),
                 filled: true,
-                fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.22),
+                fillColor: Color.alphaBlend(
+                  _kTelegramBlue.withValues(alpha: 0.025),
+                  cs.surface,
+                ),
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 11,
+                  horizontal: 16,
+                  vertical: 14,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.26),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.28),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(
-                    color: _kTelegramBlue.withValues(alpha: 0.4),
-                    width: 1.5,
+                    color: _kTelegramBlue.withValues(alpha: 0.58),
+                    width: 1.6,
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Row(
             children: [
               // ── Attachment buttons ──────────────────────────
@@ -1370,15 +1388,20 @@ class _AttachButton extends StatelessWidget {
           height: 36,
           decoration: BoxDecoration(
             color: onPressed != null
-                ? cs.secondaryContainer.withValues(alpha: 0.55)
+                ? _kTelegramBlue.withValues(alpha: 0.10)
                 : cs.onSurface.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: onPressed != null
+                  ? _kTelegramBlue.withValues(alpha: 0.16)
+                  : cs.outlineVariant.withValues(alpha: 0.18),
+            ),
           ),
           child: Icon(
             icon,
             size: 18,
             color: onPressed != null
-                ? cs.onSecondaryContainer
+                ? _kTelegramBlue
                 : cs.onSurface.withValues(alpha: 0.3),
           ),
         ),

@@ -27,8 +27,9 @@ class _InvoiceEditorView extends StatelessWidget {
             hasClient && datesComplete && hasLines && !invalidDates;
         final canSaveDraft = !state._c.saving;
         final canPreview = step1Complete && hasSavedDraft;
-        final canCompleteDraft =
-            !state._c.saving && step1Complete && state._c.previewedPdf;
+        final canCompleteDraft = !state._c.saving &&
+            step1Complete &&
+            (state._c.editingIssued || state._c.previewedPdf);
         final reinforceDraft = canCompleteDraft && state._c.previewedPdf;
 
         final step1Missing = <String>[
@@ -171,7 +172,38 @@ class _InvoiceEditorView extends StatelessWidget {
                 onClearExtractedLines: state._c.clearExtractedLines,
               );
 
-              final gatedLinesSection = linesSection;
+              final gatedLinesSection = state._c.financialFieldsReadOnly
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: cs.tertiaryContainer.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: cs.tertiary.withValues(alpha: 0.28),
+                            ),
+                          ),
+                          child: Text(
+                            Localizations.localeOf(context).languageCode == 'es'
+                                ? 'Esta es una factura de liquidacion final. Los importes, descuentos y conceptos no se pueden editar directamente; la fecha, el cliente y las notas siguen disponibles.'
+                                : 'This is a final-settlement invoice. Amounts, discounts and concepts cannot be edited directly; date, client and notes remain available.',
+                            style: t.bodySmall.copyWith(
+                              color: cs.onTertiaryContainer,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: AbsorbPointer(
+                            child: Opacity(opacity: 0.72, child: linesSection),
+                          ),
+                        ),
+                      ],
+                    )
+                  : linesSection;
 
               List<Map<String, Object>> buildSummaryRows() {
                 final rows = <Map<String, Object>>[];
@@ -747,7 +779,14 @@ class _InvoiceEditorView extends StatelessWidget {
                           )
                         : const Icon(Icons.save_outlined),
                     label: Text(
-                      state._c.saving ? l.savingLabel : l.invoiceSaveDraftCta,
+                      state._c.saving
+                          ? l.savingLabel
+                          : state._c.editingIssued
+                              ? (Localizations.localeOf(context).languageCode ==
+                                      'es'
+                                  ? 'Guardar cambios'
+                                  : 'Save changes')
+                              : l.invoiceSaveDraftCta,
                     ),
                   ),
                   if (!canCompleteDraft && draftCompletionReason != null) ...[
@@ -871,20 +910,44 @@ class _InvoiceEditorView extends StatelessWidget {
                           children: [
                             _buildInvoiceClientStep(context, state, l, t, cs),
                             SingleChildScrollView(
-                              child: InvoiceHeaderFields(
-                                clients: state.widget.clients,
-                                clientId: state._c.clientId,
-                                onClientChanged: state._c.setClientId,
-                                currencyController: state._c.currency,
-                                invoiceDate: state._c.invoiceDate,
-                                dueDate: state._c.dueDate,
-                                onPickInvoiceDate: () => state._c
-                                    .pickDate(context, state._c.invoiceDate),
-                                onPickDueDate: () => state._c
-                                    .pickDate(context, state._c.dueDate),
-                                showDates: true,
-                                showClient: false,
-                                showCurrency: false,
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  InvoiceHeaderFields(
+                                    clients: state.widget.clients,
+                                    clientId: state._c.clientId,
+                                    onClientChanged: state._c.setClientId,
+                                    currencyController: state._c.currency,
+                                    invoiceDate: state._c.invoiceDate,
+                                    dueDate: state._c.dueDate,
+                                    onPickInvoiceDate: () => state._c.pickDate(
+                                        context, state._c.invoiceDate),
+                                    onPickDueDate: () => state._c
+                                        .pickDate(context, state._c.dueDate),
+                                    onCurrencyChanged: (_) =>
+                                        state._c.notifyUi(),
+                                    showDates: true,
+                                    showClient: false,
+                                    showCurrency: true,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  TextFormField(
+                                    controller: state._c.notes,
+                                    minLines: 3,
+                                    maxLines: 5,
+                                    onChanged: (_) => state._c.notifyUi(),
+                                    decoration: InputDecoration(
+                                      labelText: Localizations.localeOf(context)
+                                                  .languageCode ==
+                                              'es'
+                                          ? 'Notas'
+                                          : 'Notes',
+                                      prefixIcon:
+                                          const Icon(Icons.notes_rounded),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             gatedLinesSection,
@@ -1190,6 +1253,19 @@ class _InvoiceEditorView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    if (state._c.editingIssued) ...[
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            _editIssuedBillingDetails(context, state),
+                        icon: const Icon(Icons.badge_outlined, size: 18),
+                        label: Text(
+                          isEs
+                              ? 'Editar datos fiscales'
+                              : 'Edit billing details',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     FilledButton.icon(
                       onPressed: () {
                         state._c.setCurrentStepIndex(1);
@@ -1248,6 +1324,130 @@ class _InvoiceEditorView extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _editIssuedBillingDetails(
+    BuildContext context,
+    _InvoiceEditorScreenState state,
+  ) async {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final clientFields = <String, String>{
+      'legalName': isEs ? 'Razon social' : 'Legal name',
+      'taxId': isEs ? 'CIF / NIF' : 'Tax ID',
+      'addressStreet': isEs ? 'Direccion' : 'Address',
+      'addressCity': isEs ? 'Ciudad' : 'City',
+      'addressProvince': isEs ? 'Provincia' : 'Province',
+      'addressPostalCode': isEs ? 'Codigo postal' : 'Postal code',
+      'addressCountry': isEs ? 'Pais' : 'Country',
+      'email': 'Email',
+      'phone': isEs ? 'Telefono' : 'Phone',
+    };
+    final issuerFields = <String, String>{
+      'legalName': isEs ? 'Razon social' : 'Legal name',
+      'taxId': isEs ? 'CIF / NIF' : 'Tax ID',
+      'addressStreet': isEs ? 'Direccion' : 'Address',
+      'addressCity': isEs ? 'Ciudad' : 'City',
+      'addressProvince': isEs ? 'Provincia' : 'Province',
+      'addressPostalCode': isEs ? 'Codigo postal' : 'Postal code',
+      'addressCountry': isEs ? 'Pais' : 'Country',
+      'email': 'Email',
+      'website': 'Web',
+      'iban': 'IBAN',
+    };
+    final clientControllers = {
+      for (final entry in clientFields.entries)
+        entry.key: TextEditingController(
+          text: state._c.issuedClientSnapshot[entry.key]?.toString() ?? '',
+        ),
+    };
+    final issuerControllers = {
+      for (final entry in issuerFields.entries)
+        entry.key: TextEditingController(
+          text: state._c.issuedIssuerSnapshot[entry.key]?.toString() ?? '',
+        ),
+    };
+    try {
+      final save = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(isEs
+              ? 'Datos fiscales de la factura'
+              : 'Invoice billing details'),
+          content: SizedBox(
+            width: 720,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(isEs ? 'Cliente' : 'Client',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final entry in clientFields.entries)
+                        SizedBox(
+                          width: 220,
+                          child: TextField(
+                            controller: clientControllers[entry.key],
+                            decoration: InputDecoration(labelText: entry.value),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(isEs ? 'Emisor' : 'Issuer',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final entry in issuerFields.entries)
+                        SizedBox(
+                          width: 220,
+                          child: TextField(
+                            controller: issuerControllers[entry.key],
+                            decoration: InputDecoration(labelText: entry.value),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(isEs ? 'Aplicar' : 'Apply'),
+            ),
+          ],
+        ),
+      );
+      if (save != true) return;
+      Map<String, dynamic> values(Map<String, TextEditingController> source) =>
+          {
+            for (final entry in source.entries)
+              entry.key: entry.value.text.trim(),
+          };
+      state._c.setIssuedBillingSnapshots(
+        client: values(clientControllers),
+        issuer: values(issuerControllers),
+      );
+    } finally {
+      for (final controller in [
+        ...clientControllers.values,
+        ...issuerControllers.values,
+      ]) {
+        controller.dispose();
+      }
+    }
   }
 }
 

@@ -1,14 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
-import 'package:hexora/a-models/invoice/invoice_block.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/blocks_table_editor.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/lines_table_editor.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/section_card.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:intl/intl.dart';
 
 import 'form_widgets/client_picker_field.dart';
 import 'form_widgets/dates_box.dart';
@@ -22,6 +14,7 @@ class InvoiceHeaderFields extends StatelessWidget {
   final ValueNotifier<DateTime?> dueDate;
   final VoidCallback onPickInvoiceDate;
   final VoidCallback onPickDueDate;
+  final ValueChanged<String>? onCurrencyChanged;
   final bool showClient;
   final bool showCurrency;
   final bool showDates;
@@ -36,6 +29,7 @@ class InvoiceHeaderFields extends StatelessWidget {
     required this.dueDate,
     required this.onPickInvoiceDate,
     required this.onPickDueDate,
+    this.onCurrencyChanged,
     this.showClient = true,
     this.showCurrency = true,
     this.showDates = true,
@@ -84,6 +78,7 @@ class InvoiceHeaderFields extends StatelessWidget {
                         width: 120,
                         child: TextFormField(
                           controller: currencyController,
+                          onChanged: onCurrencyChanged,
                           decoration: InputDecoration(
                             labelText: l.currencyLabel,
                           ),
@@ -120,6 +115,7 @@ class InvoiceHeaderFields extends StatelessWidget {
                             width: 120,
                             child: TextFormField(
                               controller: currencyController,
+                              onChanged: onCurrencyChanged,
                               decoration: InputDecoration(
                                 labelText: l.currencyLabel,
                               ),
@@ -140,4 +136,3 @@ class InvoiceHeaderFields extends StatelessWidget {
     );
   }
 }
-

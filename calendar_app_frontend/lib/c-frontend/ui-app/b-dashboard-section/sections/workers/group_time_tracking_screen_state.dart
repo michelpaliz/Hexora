@@ -9,6 +9,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_c
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/card/time_tracking_header_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/loading_list.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_list_section.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_month_picker_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/edit_worker/edit_worker_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -109,9 +110,6 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
   bool _isSpanish(BuildContext context) =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
 
-  String _monthLabel(BuildContext context) =>
-      _isSpanish(context) ? 'Mes' : 'Month';
-
   String _customRangeLabel(BuildContext context) =>
       _isSpanish(context) ? 'Rango personalizado' : 'Custom range';
 
@@ -159,13 +157,13 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
   }
 
   Future<void> _pickYearMonth() async {
-    final picked = await showDatePicker(
+    final picked = await showWorkerMonthPickerDialog(
       context: context,
       initialDate: DateTime(_periodYear, _periodMonth, 1),
-      firstDate: DateTime(2018, 1, 1),
-      lastDate: DateTime(2100, 12, 31),
-      helpText: _monthLabel(context),
-      initialDatePickerMode: DatePickerMode.year,
+      isSpanish: _isSpanish(context),
+      firstYear: 2018,
+      maxYear: 2100,
+      allowFutureMonths: true,
     );
     if (picked == null) return;
     setState(() {
@@ -343,15 +341,13 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
 
     final activeWorkers =
         (_activeTotals?['activeWorkersCount'] as num?)?.toInt() ?? 0;
-    final totalHours =
-        (_activeTotals?['totalHours'] as num?)?.toDouble() ?? 0;
+    final totalHours = (_activeTotals?['totalHours'] as num?)?.toDouble() ?? 0;
     final totalPay = (_activeTotals?['totalPay'] as num?)?.toDouble();
     final currency = _activeTotals?['currency']?.toString();
     final totalsByCurrency =
         (_activeTotals?['totalsByCurrency'] as List?) ?? const [];
     final isMultiCurrency = currency == null || totalsByCurrency.length > 1;
-    final entriesCount =
-        (_activeTotals?['entriesCount'] as num?)?.toInt() ?? 0;
+    final entriesCount = (_activeTotals?['entriesCount'] as num?)?.toInt() ?? 0;
 
     // ── Divider helper ───────────────────────────────────────────────────
     Widget divider() => Container(
@@ -452,8 +448,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.payments_outlined,
-              size: 12, color: cs.onSurfaceVariant),
+          Icon(Icons.payments_outlined, size: 12, color: cs.onSurfaceVariant),
           const SizedBox(width: 5),
           Text(
             parts,
@@ -471,8 +466,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.42)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.42)),
         color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
       ),
       child: SingleChildScrollView(
@@ -498,8 +492,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                     ),
                   ),
                   const SizedBox(width: 2),
-                  Icon(Icons.expand_more_rounded,
-                      size: 13, color: cs.primary),
+                  Icon(Icons.expand_more_rounded, size: 13, color: cs.primary),
                 ],
               ),
             ),
@@ -537,8 +530,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
               borderRadius: BorderRadius.circular(8),
               onTap: widget.onOpenHistorial,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -565,9 +557,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
               message: l.refresh,
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
-                onTap: _activeTotalsLoading
-                    ? null
-                    : _reloadActiveWorkersTotals,
+                onTap: _activeTotalsLoading ? null : _reloadActiveWorkersTotals,
                 child: Padding(
                   padding: const EdgeInsets.all(4),
                   child: _activeTotalsLoading

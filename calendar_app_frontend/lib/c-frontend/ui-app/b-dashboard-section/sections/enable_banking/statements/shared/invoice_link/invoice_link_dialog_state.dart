@@ -38,9 +38,9 @@ class InvoiceLinkDialogState {
     required String? currentClientId,
     required String? currentProviderId,
     required this.expenseOnly,
-  }) : idController = TextEditingController(text: currentInvoiceId ?? ''),
-       selectedClientId = currentClientId,
-       selectedProviderId = currentProviderId {
+  })  : idController = TextEditingController(text: currentInvoiceId ?? ''),
+        selectedClientId = currentClientId,
+        selectedProviderId = currentProviderId {
     for (final id in currentInvoiceIds) {
       final normalized = id.trim();
       if (normalized.isNotEmpty) {
@@ -133,9 +133,12 @@ class InvoiceLinkDialogState {
     } else {
       selectedInvoiceIds.add(normalized);
     }
-    idController.text = selectedInvoiceIds.isEmpty ? '' : selectedInvoiceIds.first;
+    idController.text =
+        selectedInvoiceIds.isEmpty ? '' : selectedInvoiceIds.first;
     confirmLink = false;
-    visibleStep = selectedInvoiceIds.isEmpty ? 1 : 2;
+    // Keep the selector open so the user can combine several invoices before
+    // explicitly continuing to the preview step.
+    visibleStep = 1;
     onStateChanged();
   }
 
@@ -180,7 +183,8 @@ class InvoiceLinkDialogState {
     if (targetId.isEmpty) return null;
     for (final list in expenseCacheByProvider.values) {
       for (final doc in list) {
-        final id = (doc['id'] ?? doc['_id'] ?? doc['expenseId'])?.toString() ?? '';
+        final id =
+            (doc['id'] ?? doc['_id'] ?? doc['expenseId'])?.toString() ?? '';
         if (id == targetId) return doc;
       }
     }

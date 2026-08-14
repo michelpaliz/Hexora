@@ -1,37 +1,74 @@
+import 'package:hexora/a-models/downloads/download_job.dart';
+import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:hexora/c-frontend/ui-app/shared/downloads/download_jobs_store.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
-late IO.Socket notificationSocket;
+late io.Socket notificationSocket;
+String? _activeNotificationSocketUserId;
+NotificationDomain? _activeNotificationDomain;
 
-void initializeNotificationSocket(String userId) {
+void initializeNotificationSocket(
+  String userId, {
+  NotificationDomain? notificationDomain,
+}) {
+  final normalizedUserId = userId.trim();
+  if (normalizedUserId.isEmpty) return;
+
+  _activeNotificationDomain = notificationDomain ?? _activeNotificationDomain;
+
+  if (_activeNotificationSocketUserId == normalizedUserId) {
+    try {
+      if (notificationSocket.connected) {
+        return;
+      }
+    } catch (_) {}
+  } else {
+    try {
+      notificationSocket.dispose();
+    } catch (_) {}
+  }
+
   final socketUrl = ApiConstants.socketBaseUrl;
+  _activeNotificationSocketUserId = normalizedUserId;
 
-  notificationSocket = IO.io(socketUrl, <String, dynamic>{
+  notificationSocket = io.io(socketUrl, <String, dynamic>{
     'transports': ['websocket'],
     'autoConnect': false,
-    'query': {'userId': userId},
+    'query': {'userId': normalizedUserId},
   });
 
   notificationSocket.connect();
 
   notificationSocket.onConnect((_) {
-    print('✅ Connected to Notification Socket');
+    print('Connected to notification socket');
+  });
+
+  notificationSocket.on('notification:created', (data) async {
+    print('Notification received: $data');
+    final payload = _asMap(data);
+    if (payload == null) return;
+    final notification = _extractNotification(payload);
+    if (notification == null) return;
+    if (!_isForActiveUser(notification)) return;
+    await _activeNotificationDomain?.addInboundNotification(notification);
   });
 
   notificationSocket.on('event:reminder', (data) {
-    print('ðŸ“© Reminder received: $data');
+    print('Reminder received: $data');
 
-    final parsedDate = DateTime.parse(data['startDate']).toLocal();
-    final notificationId = data['eventId'].hashCode;
-    final title = data['title'];
-    final body = 'Reminder: ${data['title']} is starting soon.';
+    final payload = _asMap(data);
+    if (payload == null) return;
+    final parsedDate = DateTime.tryParse(
+      payload['startDate']?.toString() ?? '',
+    )?.toLocal();
+    if (parsedDate == null) return;
 
-    print('ðŸ”” Scheduling reminder notification with values:');
-    print('   - ID: $notificationId');
-    print('   - Title: $title');
-    print('   - Body: $body');
-    print('   - Scheduled At: $parsedDate');
+    final notificationId = (payload['eventId']?.toString() ?? '').hashCode;
+    final title = payload['title']?.toString() ?? '';
+    final body = 'Reminder: $title is starting soon.';
 
     scheduleLocalNotification(
       id: notificationId,
@@ -42,18 +79,15 @@ void initializeNotificationSocket(String userId) {
   });
 
   notificationSocket.on('event:started', (data) {
-    print('ðŸš€ Event started: $data');
+    print('Event started: $data');
 
+    final payload = _asMap(data);
+    if (payload == null) return;
     final now = DateTime.now();
-    final notificationId = data['eventId'].hashCode + 1000;
-    final title = data['title'];
-    final body = '${data['title']} has just started.';
-
-    print('ðŸ“¢ Scheduling start notification with values:');
-    print('   - ID: $notificationId');
-    print('   - Title: $title');
-    print('   - Body: $body');
-    print('   - Time: $now');
+    final notificationId =
+        (payload['eventId']?.toString() ?? '').hashCode + 1000;
+    final title = payload['title']?.toString() ?? '';
+    final body = '$title has just started.';
 
     scheduleLocalNotification(
       id: notificationId,
@@ -63,7 +97,45 @@ void initializeNotificationSocket(String userId) {
     );
   });
 
+  notificationSocket.on('download:ready', _handleDownloadEvent);
+  notificationSocket.on('download:failed', _handleDownloadEvent);
+
   notificationSocket.onDisconnect((_) {
-    print('❌ Notification socket disconnected');
+    print('Notification socket disconnected');
   });
+}
+
+Map<String, dynamic>? _asMap(dynamic value) {
+  if (value is Map) {
+    return Map<String, dynamic>.from(value);
+  }
+  return null;
+}
+
+NotificationUser? _extractNotification(Map<String, dynamic> payload) {
+  final raw = payload['notification'] is Map ? payload['notification'] : payload;
+  if (raw is! Map) return null;
+  try {
+    return NotificationUser.fromJson(Map<String, dynamic>.from(raw));
+  } catch (_) {
+    return null;
+  }
+}
+
+void _handleDownloadEvent(dynamic data) {
+  final payload = _asMap(data);
+  if (payload == null) return;
+
+  final rawJob = payload['downloadJob'];
+  if (rawJob is! Map) return;
+  try {
+    final job = DownloadJob.fromJson(Map<String, dynamic>.from(rawJob));
+    DownloadJobsStore.instance.upsert(job);
+  } catch (_) {}
+}
+
+bool _isForActiveUser(NotificationUser notification) {
+  final activeUserId = _activeNotificationSocketUserId?.trim() ?? '';
+  if (activeUserId.isEmpty) return false;
+  return notification.recipientId.trim() == activeUserId;
 }

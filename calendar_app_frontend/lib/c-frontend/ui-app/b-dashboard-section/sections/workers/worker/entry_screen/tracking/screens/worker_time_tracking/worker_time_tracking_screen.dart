@@ -67,6 +67,7 @@ class _WorkerTimeTrackingView extends StatefulWidget {
 class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
   bool _showMissingDays = false;
   bool _previewingPayrollPdf = false;
+  bool _previewingMonthlyCalendarPdf = false;
   bool _downloadingPayrollPdf = false;
   Timer? _advanceDebounce;
 
@@ -261,6 +262,33 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     }
   }
 
+  Future<void> _previewMonthlyCalendarPdf(BuildContext context) async {
+    if (_previewingMonthlyCalendarPdf) return;
+    final c = context.read<WorkerTimeTrackingController>();
+    setState(() => _previewingMonthlyCalendarPdf = true);
+    try {
+      final bytes = await c.exportMonthlyCalendarPdf(lang: _langCode(context));
+      final fileName =
+          'monthly_calendar_${c.group.id}_${c.year}-${c.month.toString().padLeft(2, '0')}_${c.worker.id}.pdf';
+      await launchPdfPreview(bytes, fileName: fileName);
+    } catch (e) {
+      if (!context.mounted) return;
+      final isSpanish = _isSpanish(context);
+      final message = e is BackendApiException && e.statusCode == 403
+          ? (isSpanish
+              ? 'No tienes permiso para exportar este informe.'
+              : 'You do not have permission to export this report.')
+          : (isSpanish
+              ? 'No se pudo generar el PDF del calendario mensual.'
+              : 'Could not generate the monthly calendar PDF.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) setState(() => _previewingMonthlyCalendarPdf = false);
+    }
+  }
+
   Future<void> _downloadPayrollPdf(BuildContext context) async {
     if (_downloadingPayrollPdf) return;
     final c = context.read<WorkerTimeTrackingController>();
@@ -287,12 +315,70 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     }
   }
 
+  Widget _toolbarActionButton(
+    BuildContext context, {
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback? onPressed,
+    Color? color,
+    bool loading = false,
+    bool selected = false,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final accent = color ?? cs.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Tooltip(
+        message: tooltip,
+        child: IconButton.filledTonal(
+          onPressed: loading ? null : onPressed,
+          iconSize: 18,
+          style: IconButton.styleFrom(
+            minimumSize: const Size(34, 34),
+            fixedSize: const Size(34, 34),
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
+            backgroundColor: selected
+                ? cs.primary.withValues(alpha: 0.14)
+                : accent.withValues(alpha: 0.09),
+            disabledBackgroundColor:
+                cs.surfaceContainerHighest.withValues(alpha: 0.42),
+            foregroundColor: selected ? cs.primary : accent,
+            disabledForegroundColor:
+                cs.onSurfaceVariant.withValues(alpha: 0.44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(
+                color: selected
+                    ? cs.primary.withValues(alpha: 0.22)
+                    : cs.outlineVariant.withValues(alpha: 0.28),
+              ),
+            ),
+          ),
+          icon: loading
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(accent),
+                  ),
+                )
+              : Icon(icon),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final previewPdfLabel = isSpanish ? 'Ver PDF' : 'Preview PDF';
     final downloadPdfLabel = isSpanish ? 'Descargar PDF' : 'Download PDF';
+    final monthlyCalendarPdfLabel = isSpanish
+        ? 'Ver PDF del calendario mensual'
+        : 'Preview monthly calendar PDF';
     return Consumer<WorkerTimeTrackingController>(
       builder: (context, c, _) {
         final addButton = Padding(
@@ -364,63 +450,53 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                         advanceAmount: c.advanceAmount,
                         currency: (c.totals?['currency'] ?? c.worker.currency)
                             ?.toString(),
-                        onOpenAdvanceDialog: () =>
-                            _openAdvanceDialog(context),
+                        onOpenAdvanceDialog: () => _openAdvanceDialog(context),
                       ),
                     ),
-                    IconButton(
+                    _toolbarActionButton(
+                      context,
                       tooltip: l.toggleEmptyDays,
-                      iconSize: 20,
+                      icon: _showMissingDays
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      selected: _showMissingDays,
                       onPressed: () =>
                           setState(() => _showMissingDays = !_showMissingDays),
-                      icon: Icon(
-                        _showMissingDays
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                      ),
                     ),
-                    IconButton(
+                    _toolbarActionButton(
+                      context,
                       tooltip: l.exportExcel,
-                      iconSize: 20,
+                      icon: Icons.grid_on_rounded,
                       onPressed: () => _exportExcel(context),
-                      icon: const Icon(Icons.table_chart_outlined),
                     ),
-                    IconButton(
+                    _toolbarActionButton(
+                      context,
                       tooltip: isSpanish ? 'Importar Excel' : 'Import Excel',
-                      iconSize: 20,
+                      icon: Icons.upload_file_outlined,
                       onPressed: () => _openExcelImport(context),
-                      icon: const Icon(Icons.upload_file_rounded),
                     ),
-                    IconButton(
+                    _toolbarActionButton(
+                      context,
+                      tooltip: monthlyCalendarPdfLabel,
+                      icon: Icons.calendar_month_outlined,
+                      color: const Color(0xFF2E6E5A),
+                      loading: _previewingMonthlyCalendarPdf,
+                      onPressed: () => _previewMonthlyCalendarPdf(context),
+                    ),
+                    _toolbarActionButton(
+                      context,
                       tooltip: previewPdfLabel,
-                      iconSize: 20,
-                      onPressed: _previewingPayrollPdf
-                          ? null
-                          : () => _previewPayrollPdf(context),
-                      icon: _previewingPayrollPdf
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(
-                              Icons.picture_as_pdf_rounded,
-                              color: Color(0xFFC62828),
-                            ),
+                      icon: Icons.picture_as_pdf_outlined,
+                      color: const Color(0xFFC62828),
+                      loading: _previewingPayrollPdf,
+                      onPressed: () => _previewPayrollPdf(context),
                     ),
-                    IconButton(
+                    _toolbarActionButton(
+                      context,
                       tooltip: downloadPdfLabel,
-                      iconSize: 20,
-                      onPressed: _downloadingPayrollPdf
-                          ? null
-                          : () => _downloadPayrollPdf(context),
-                      icon: _downloadingPayrollPdf
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.download_rounded),
+                      icon: Icons.file_download_outlined,
+                      loading: _downloadingPayrollPdf,
+                      onPressed: () => _downloadPayrollPdf(context),
                     ),
                   ],
                 ),
@@ -445,56 +521,54 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
               month: c.month,
               totals: c.totals,
               advanceAmount: c.advanceAmount,
-              currency: (c.totals?['currency'] ?? c.worker.currency)
-                  ?.toString(),
+              currency:
+                  (c.totals?['currency'] ?? c.worker.currency)?.toString(),
             ),
             actions: [
-              IconButton(
+              _toolbarActionButton(
+                context,
                 tooltip: l.toggleEmptyDays,
+                icon: _showMissingDays
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                selected: _showMissingDays,
                 onPressed: () =>
                     setState(() => _showMissingDays = !_showMissingDays),
-                icon: Icon(
-                  _showMissingDays ? Icons.visibility_off : Icons.visibility,
-                ),
               ),
-              IconButton(
+              _toolbarActionButton(
+                context,
                 tooltip: l.exportExcel,
+                icon: Icons.grid_on_rounded,
                 onPressed: () => _exportExcel(context),
-                icon: const Icon(Icons.download),
               ),
-              IconButton(
+              _toolbarActionButton(
+                context,
                 tooltip: isSpanish ? 'Importar Excel' : 'Import Excel',
+                icon: Icons.upload_file_outlined,
                 onPressed: () => _openExcelImport(context),
-                icon: const Icon(Icons.upload_file_rounded),
               ),
-              IconButton(
+              _toolbarActionButton(
+                context,
+                tooltip: monthlyCalendarPdfLabel,
+                icon: Icons.calendar_month_outlined,
+                color: const Color(0xFF2E6E5A),
+                loading: _previewingMonthlyCalendarPdf,
+                onPressed: () => _previewMonthlyCalendarPdf(context),
+              ),
+              _toolbarActionButton(
+                context,
                 tooltip: '$previewPdfLabel - monthly payroll (hours and pay).',
-                onPressed: _previewingPayrollPdf
-                    ? null
-                    : () => _previewPayrollPdf(context),
-                icon: _previewingPayrollPdf
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(
-                        Icons.picture_as_pdf_rounded,
-                        color: Color(0xFFC62828),
-                      ),
+                icon: Icons.picture_as_pdf_outlined,
+                color: const Color(0xFFC62828),
+                loading: _previewingPayrollPdf,
+                onPressed: () => _previewPayrollPdf(context),
               ),
-              IconButton(
+              _toolbarActionButton(
+                context,
                 tooltip: '$downloadPdfLabel - monthly payroll (hours and pay).',
-                onPressed: _downloadingPayrollPdf
-                    ? null
-                    : () => _downloadPayrollPdf(context),
-                icon: _downloadingPayrollPdf
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.download_rounded),
+                icon: Icons.file_download_outlined,
+                loading: _downloadingPayrollPdf,
+                onPressed: () => _downloadPayrollPdf(context),
               ),
             ],
           ),

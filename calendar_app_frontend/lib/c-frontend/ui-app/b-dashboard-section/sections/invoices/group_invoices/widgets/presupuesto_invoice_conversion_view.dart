@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
@@ -12,7 +12,9 @@ import 'package:intl/intl.dart';
 part 'presupuesto_invoice_conversion_view_helpers.dart';
 part 'presupuesto_invoice_conversion_view_widgets.dart';
 
-enum _PresupuestoConversionType { advance, finalInvoice }
+enum _PresupuestoConversionType { advance, finalInvoice, fullFinalInvoice }
+
+enum _AdvanceAmountMode { percent, fixedGross }
 
 class PresupuestoInvoiceConversionView extends StatefulWidget {
   const PresupuestoInvoiceConversionView({
@@ -39,6 +41,8 @@ class _PresupuestoInvoiceConversionViewState
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _advancePercentController =
       TextEditingController();
+  final TextEditingController _advanceFixedAmountController =
+      TextEditingController();
   final TextEditingController _advanceDescriptionController =
       TextEditingController();
   final TextEditingController _advanceNotesController = TextEditingController();
@@ -62,6 +66,7 @@ class _PresupuestoInvoiceConversionViewState
   String? _selectedAdvanceInvoiceId;
   _PresupuestoConversionType _conversionType =
       _PresupuestoConversionType.advance;
+  _AdvanceAmountMode _advanceAmountMode = _AdvanceAmountMode.percent;
 
   @override
   void initState() {
@@ -76,6 +81,7 @@ class _PresupuestoInvoiceConversionViewState
   void dispose() {
     _searchController.dispose();
     _advancePercentController.dispose();
+    _advanceFixedAmountController.dispose();
     _advanceDescriptionController.dispose();
     _advanceNotesController.dispose();
     _finalNotesController.dispose();
@@ -305,6 +311,7 @@ class _PresupuestoInvoiceConversionViewState
     );
 
     _advancePercentController.text = '70';
+    _advanceFixedAmountController.clear();
     _advanceDescriptionController.text =
         _isSpanish ? 'Anticipo 70% del presupuesto' : 'Advance 70% from quote';
     _advanceNotesController.clear();
@@ -318,7 +325,10 @@ class _PresupuestoInvoiceConversionViewState
       );
       _conversionType = actionState.canCreateAdvance
           ? _PresupuestoConversionType.advance
-          : _PresupuestoConversionType.finalInvoice;
+          : actionState.canCreateFinal
+              ? _PresupuestoConversionType.finalInvoice
+              : _PresupuestoConversionType.fullFinalInvoice;
+      _advanceAmountMode = _AdvanceAmountMode.percent;
     });
   }
 
@@ -411,22 +421,69 @@ class _PresupuestoInvoiceConversionViewState
   Future<void> _submitAdvanceInvoice() async {
     final actionState = _selectedActionState;
     final presupuestoId = _selectedPresupuestoId?.trim() ?? '';
+    final presupuesto = _selectedPresupuesto;
     if (actionState == null ||
+        presupuesto == null ||
         presupuestoId.isEmpty ||
         !actionState.canCreateAdvance ||
         _submitting) {
       return;
     }
 
-    final percent = _parseDouble(_advancePercentController.text);
-    final input = AdvanceInvoiceConfigInput(
-      percent: percent ?? -1,
-      description: _advanceDescriptionController.text.trim(),
-    );
-    final validation = validateAdvanceConfig(input);
-    if (!validation.isValid) {
-      setState(() => _submitError = validation.message);
-      return;
+    late final CreateAdvanceInvoiceFromPresupuestoRequest payload;
+    if (_advanceAmountMode == _AdvanceAmountMode.percent) {
+      final percent = _parseDouble(_advancePercentController.text);
+      final input = AdvanceInvoiceConfigInput(
+        percent: percent ?? -1,
+        description: _advanceDescriptionController.text.trim(),
+      );
+      final validation = validateAdvanceConfig(input);
+      if (!validation.isValid) {
+        setState(() => _submitError = validation.message);
+        return;
+      }
+      payload = buildAdvanceInvoiceRequest(
+        input,
+        notes: _advanceNotesController.text,
+      );
+    } else {
+      final grossAmount = _parseDouble(_advanceFixedAmountController.text);
+      final total = _presupuestoTotal(presupuesto);
+      if (grossAmount == null || grossAmount <= 0) {
+        setState(() {
+          _submitError = _isSpanish
+              ? 'El importe fijo debe ser mayor que 0.'
+              : 'Fixed amount must be greater than 0.';
+        });
+        return;
+      }
+      if (total != null && grossAmount > total + 0.005) {
+        setState(() {
+          _submitError = _isSpanish
+              ? 'El importe fijo no puede superar el total del presupuesto.'
+              : 'Fixed amount cannot exceed the presupuesto total.';
+        });
+        return;
+      }
+      final vatRate = _advanceVatRate(presupuesto);
+      final baseAmount =
+          double.parse((grossAmount / (1 + vatRate / 100)).toStringAsFixed(2));
+      final number = _presupuestoNumber(presupuesto);
+      final description = _advanceDescriptionController.text.trim().isNotEmpty
+          ? _advanceDescriptionController.text.trim()
+          : (_isSpanish
+              ? 'Anticipo correspondiente al presupuesto $number'
+              : 'Advance corresponding to presupuesto $number');
+      payload = CreateAdvanceInvoiceFromPresupuestoRequest(
+        advanceConfig: CreateAdvanceInvoiceConfig(
+          percent: 100,
+          projectBaseAmount: baseAmount,
+          description: description,
+        ),
+        notes: _advanceNotesController.text.trim().isEmpty
+            ? null
+            : _advanceNotesController.text.trim(),
+      );
     }
 
     setState(() {
@@ -435,10 +492,6 @@ class _PresupuestoInvoiceConversionViewState
     });
 
     try {
-      final payload = buildAdvanceInvoiceRequest(
-        input,
-        notes: _advanceNotesController.text,
-      );
       final result = await _presupuestosApi.createAdvanceInvoiceFromPresupuesto(
         presupuestoId,
         payload: payload,
@@ -463,6 +516,12 @@ class _PresupuestoInvoiceConversionViewState
         _submitError = e.toString().replaceFirst('Exception: ', '').trim();
       });
     }
+  }
+
+  double _advanceVatRate(Map<String, dynamic> presupuesto) {
+    final rates = _presupuestoVatRates(presupuesto);
+    if (rates.isEmpty) return 21;
+    return rates.first;
   }
 
   Future<void> _submitFinalInvoice() async {
@@ -511,11 +570,75 @@ class _PresupuestoInvoiceConversionViewState
     }
   }
 
+  Future<void> _submitFullFinalInvoice() async {
+    final actionState = _selectedActionState;
+    final presupuestoId = _selectedPresupuestoId?.trim() ?? '';
+    if (actionState == null ||
+        presupuestoId.isEmpty ||
+        !actionState.canCreateFullFinal ||
+        _submitting) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+            _isSpanish ? 'Crear factura completa' : 'Create complete invoice'),
+        content: const Text(
+          'Este presupuesto se facturará por el importe total porque no tiene anticipo asociado.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(_isSpanish ? 'Confirmar' : 'Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
+
+    try {
+      final result = await _presupuestosApi.createFinalInvoiceFromPresupuesto(
+        presupuestoId,
+        payload: const CreateFinalInvoiceFromPresupuestoRequest(),
+      );
+      if (!mounted) return;
+      await _handleCreateSuccess(
+        result,
+        successLabel: _isSpanish
+            ? 'Factura completa creada correctamente.'
+            : 'Complete invoice created successfully.',
+      );
+    } on PresupuestosApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitError = e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitError = e.toString().replaceFirst('Exception: ', '').trim();
+      });
+    }
+  }
+
   Future<void> _handleCreateSuccess(
     PresupuestoCreateInvoiceResponse response, {
     required String successLabel,
   }) async {
-    final createdInvoiceId = response.invoiceId?.trim();
+    final createdInvoiceId = _createdInvoiceId(response);
     await _loadPresupuestos(keepSelection: true);
     if (!mounted) return;
 
@@ -545,6 +668,18 @@ class _PresupuestoInvoiceConversionViewState
       _submitting = false;
       _submitError = null;
     });
+  }
+
+  String? _createdInvoiceId(PresupuestoCreateInvoiceResponse response) {
+    final direct = response.invoiceId?.trim();
+    if (direct != null && direct.isNotEmpty) return direct;
+    final invoice = response.invoice;
+    if (invoice == null) return null;
+    for (final key in const ['_id', 'id', 'invoiceId']) {
+      final value = invoice[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return null;
   }
 
   void _showSnack(String message) {
@@ -878,9 +1013,8 @@ class _PresupuestoInvoiceConversionViewState
     if (_selectedPresupuestoId == null) {
       child = _CenteredInfoState(
         icon: Icons.touch_app_outlined,
-        title: _isSpanish
-            ? 'Selecciona un presupuesto'
-            : 'Select a presupuesto',
+        title:
+            _isSpanish ? 'Selecciona un presupuesto' : 'Select a presupuesto',
         subtitle: _isSpanish
             ? 'Elige un presupuesto a la izquierda para crear una factura de anticipo o final.'
             : 'Choose a presupuesto on the left to create an advance or final invoice.',
@@ -909,7 +1043,9 @@ class _PresupuestoInvoiceConversionViewState
       final statusColor = _statusColor(cs, statusStr);
       final total = _presupuestoTotal(presupuesto);
       final canDoAnything = actionState != null &&
-          (actionState.canCreateAdvance || actionState.canCreateFinal);
+          (actionState.canCreateAdvance ||
+              actionState.canCreateFinal ||
+              actionState.canCreateFullFinal);
 
       child = SingleChildScrollView(
         padding: const EdgeInsets.all(14),
@@ -930,9 +1066,7 @@ class _PresupuestoInvoiceConversionViewState
                   ),
                   child: Center(
                     child: Text(
-                      clientName.isNotEmpty
-                          ? clientName[0].toUpperCase()
-                          : '?',
+                      clientName.isNotEmpty ? clientName[0].toUpperCase() : '?',
                       style: typo.bodyLarge.copyWith(
                         fontWeight: FontWeight.w900,
                         color: cs.primary,
@@ -972,8 +1106,8 @@ class _PresupuestoInvoiceConversionViewState
                       _previewingPdf ? null : _previewSelectedPresupuesto,
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   ),
                   icon: _previewingPdf
                       ? const SizedBox(
@@ -993,8 +1127,7 @@ class _PresupuestoInvoiceConversionViewState
 
             // â”€â”€ Status + total strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
                 borderRadius: BorderRadius.circular(10),
@@ -1004,8 +1137,8 @@ class _PresupuestoInvoiceConversionViewState
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(999),
@@ -1055,9 +1188,7 @@ class _PresupuestoInvoiceConversionViewState
                       size: 13, color: cs.onSurfaceVariant),
                   const SizedBox(width: 5),
                   Text(
-                    _isSpanish
-                        ? 'Facturas enlazadas'
-                        : 'Linked invoices',
+                    _isSpanish ? 'Facturas enlazadas' : 'Linked invoices',
                     style: typo.bodySmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: cs.onSurfaceVariant,
@@ -1066,8 +1197,8 @@ class _PresupuestoInvoiceConversionViewState
                   ),
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                     decoration: BoxDecoration(
                       color: cs.primaryContainer.withValues(alpha: 0.45),
                       borderRadius: BorderRadius.circular(999),
@@ -1106,13 +1237,13 @@ class _PresupuestoInvoiceConversionViewState
             if (!canDoAnything) ...[
               // All done â€” show completion state inline
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 decoration: BoxDecoration(
                   color: cs.tertiaryContainer.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: cs.tertiary.withValues(alpha: 0.25)),
+                  border:
+                      Border.all(color: cs.tertiary.withValues(alpha: 0.25)),
                 ),
                 child: Row(
                   children: [
@@ -1188,10 +1319,15 @@ class _PresupuestoInvoiceConversionViewState
                   ),
                   ButtonSegment<_PresupuestoConversionType>(
                     value: _PresupuestoConversionType.finalInvoice,
-                    icon:
-                        const Icon(Icons.receipt_long_outlined, size: 15),
+                    icon: const Icon(Icons.receipt_long_outlined, size: 15),
                     label: Text(_isSpanish ? 'Final' : 'Final'),
                     enabled: actionState.canCreateFinal,
+                  ),
+                  ButtonSegment<_PresupuestoConversionType>(
+                    value: _PresupuestoConversionType.fullFinalInvoice,
+                    icon: const Icon(Icons.payments_outlined, size: 15),
+                    label: Text(_isSpanish ? 'Completa' : 'Complete'),
+                    enabled: actionState.canCreateFullFinal,
                   ),
                 ],
                 selected: {_conversionType},
@@ -1200,13 +1336,15 @@ class _PresupuestoInvoiceConversionViewState
                 },
               ),
               const SizedBox(height: 10),
-              if (_submitError != null &&
-                  _submitError!.trim().isNotEmpty) ...[
+              if (_submitError != null && _submitError!.trim().isNotEmpty) ...[
                 _InlineErrorBanner(message: _submitError!),
                 const SizedBox(height: 8),
               ],
               if (_conversionType == _PresupuestoConversionType.advance)
                 _buildAdvanceForm(context, cs, typo)
+              else if (_conversionType ==
+                  _PresupuestoConversionType.fullFinalInvoice)
+                _buildFullFinalForm(context, cs, typo)
               else
                 _buildFinalForm(context, cs, typo, advanceCandidates),
             ],
@@ -1232,26 +1370,106 @@ class _PresupuestoInvoiceConversionViewState
     final actionState = _selectedActionState;
     final presupuesto = _selectedPresupuesto;
     final vatSummary = presupuesto == null
-        ? (_isSpanish ? 'Calculado automáticamente' : 'Calculated automatically')
+        ? (_isSpanish
+            ? 'Calculado automáticamente'
+            : 'Calculated automatically')
         : _presupuestoVatSummaryLabel(presupuesto);
-    final vatRates = presupuesto == null ? const <double>[] : _presupuestoVatRates(presupuesto);
+    final vatRates = presupuesto == null
+        ? const <double>[]
+        : _presupuestoVatRates(presupuesto);
+    final vatRate = presupuesto == null ? 21.0 : _advanceVatRate(presupuesto);
+    final fixedGross = _parseDouble(_advanceFixedAmountController.text);
+    final fixedBase = fixedGross == null || fixedGross <= 0
+        ? null
+        : double.parse((fixedGross / (1 + vatRate / 100)).toStringAsFixed(2));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextFormField(
-          controller: _advancePercentController,
-          keyboardType: const TextInputType.numberWithOptions(
-            decimal: true,
-          ),
-          inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+        SegmentedButton<_AdvanceAmountMode>(
+          segments: [
+            ButtonSegment(
+              value: _AdvanceAmountMode.percent,
+              icon: const Icon(Icons.percent_outlined, size: 16),
+              label: Text(_isSpanish ? 'Porcentaje' : 'Percent'),
+            ),
+            ButtonSegment(
+              value: _AdvanceAmountMode.fixedGross,
+              icon: const Icon(Icons.euro_rounded, size: 16),
+              label: Text(_isSpanish ? 'Importe fijo' : 'Fixed amount'),
+            ),
           ],
-          decoration: InputDecoration(
-            labelText: _isSpanish ? 'Porcentaje' : 'Percent',
-            suffixText: '%',
-            isDense: true,
-          ),
+          selected: {_advanceAmountMode},
+          onSelectionChanged: _submitting
+              ? null
+              : (selection) {
+                  final mode = selection.first;
+                  setState(() {
+                    _advanceAmountMode = mode;
+                    if (mode == _AdvanceAmountMode.percent) {
+                      final percent =
+                          _parseDouble(_advancePercentController.text) ?? 70;
+                      _advanceDescriptionController.text = _isSpanish
+                          ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
+                          : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
+                    } else {
+                      final number = presupuesto == null
+                          ? ''
+                          : _presupuestoNumber(presupuesto);
+                      _advanceDescriptionController.text = _isSpanish
+                          ? 'Anticipo correspondiente al presupuesto $number'
+                          : 'Advance corresponding to presupuesto $number';
+                    }
+                  });
+                },
         ),
+        const SizedBox(height: 8),
+        if (_advanceAmountMode == _AdvanceAmountMode.percent)
+          TextFormField(
+            controller: _advancePercentController,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+            ),
+            inputFormatters: <TextInputFormatter>[
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+            onChanged: (value) {
+              final percent = _parseDouble(value);
+              if (percent == null) return;
+              _advanceDescriptionController.text = _isSpanish
+                  ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
+                  : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
+            },
+            decoration: InputDecoration(
+              labelText: _isSpanish ? 'Porcentaje' : 'Percent',
+              suffixText: '%',
+              isDense: true,
+            ),
+          )
+        else
+          TextFormField(
+            controller: _advanceFixedAmountController,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+            ),
+            inputFormatters: <TextInputFormatter>[
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: _isSpanish
+                  ? 'Importe anticipo con IVA'
+                  : 'Advance total incl. VAT',
+              suffixText: '€',
+              helperText: fixedBase == null
+                  ? (_isSpanish
+                      ? 'Introduce el total que quieres facturar.'
+                      : 'Enter the total amount to invoice.')
+                  : (_isSpanish
+                      ? 'Base enviada: ${_currencyFormatter.format(fixedBase)} · IVA ${_formatVatRateLabel(vatRate)}'
+                      : 'Base sent: ${_currencyFormatter.format(fixedBase)} · VAT ${_formatVatRateLabel(vatRate)}'),
+              isDense: true,
+            ),
+          ),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
@@ -1259,7 +1477,8 @@ class _PresupuestoInvoiceConversionViewState
           decoration: BoxDecoration(
             color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+            border:
+                Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1325,10 +1544,9 @@ class _PresupuestoInvoiceConversionViewState
         Align(
           alignment: Alignment.centerRight,
           child: FilledButton.icon(
-            onPressed:
-                (_submitting || actionState?.canCreateAdvance != true)
-                    ? null
-                    : _submitAdvanceInvoice,
+            onPressed: (_submitting || actionState?.canCreateAdvance != true)
+                ? null
+                : _submitAdvanceInvoice,
             icon: _submitting
                 ? const SizedBox(
                     width: 14,
@@ -1391,8 +1609,7 @@ class _PresupuestoInvoiceConversionViewState
             });
           },
           decoration: InputDecoration(
-            labelText:
-                _isSpanish ? 'Factura de anticipo' : 'Advance invoice',
+            labelText: _isSpanish ? 'Factura de anticipo' : 'Advance invoice',
             helperText: _isSpanish
                 ? 'Opcional. Selecciona el anticipo que debe descontarse de la factura final.'
                 : 'Optional. Select the advance invoice that should be deducted from the final invoice.',
@@ -1443,5 +1660,56 @@ class _PresupuestoInvoiceConversionViewState
       ],
     );
   }
-}
 
+  Widget _buildFullFinalForm(
+    BuildContext context,
+    ColorScheme cs,
+    AppTypography typo,
+  ) {
+    final actionState = _selectedActionState;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cs.primaryContainer.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.24)),
+          ),
+          child: Text(
+            _isSpanish
+                ? 'Este presupuesto se facturará por el importe total porque no tiene anticipo asociado.'
+                : 'This presupuesto will be invoiced for the full amount because it has no linked advance invoice.',
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Tooltip(
+            message: 'Crear factura final por el importe total, sin anticipo',
+            child: FilledButton.icon(
+              onPressed:
+                  (_submitting || actionState?.canCreateFullFinal != true)
+                      ? null
+                      : _submitFullFinalInvoice,
+              icon: _submitting
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.payments_outlined, size: 16),
+              label: const Text('Crear factura completa'),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

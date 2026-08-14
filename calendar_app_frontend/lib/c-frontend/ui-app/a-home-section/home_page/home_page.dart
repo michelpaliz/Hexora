@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/notification/domain/socket_notification_listener.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
@@ -39,13 +40,17 @@ class _HomePageState extends State<HomePage> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final userDomain = context.read<UserDomain>();
         final groupDomain = context.read<GroupDomain>();
+        final notificationDomain = context.read<NotificationDomain>();
 
         // seed domains with the new user
         userDomain.setCurrentUser(user);
         groupDomain.setCurrentUser(user);
 
         // sockets for notifications
-        initializeNotificationSocket(user.id);
+        initializeNotificationSocket(
+          user.id,
+          notificationDomain: notificationDomain,
+        );
 
         // refresh groups stream
         await groupDomain.refreshGroupsForCurrentUser(userDomain);

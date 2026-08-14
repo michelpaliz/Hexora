@@ -4,6 +4,7 @@ import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart'
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_manager.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/notification/domain/socket_notification_listener.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 
@@ -18,6 +19,7 @@ class LoginInitializer {
   final AuthService authService;
   final UserDomain userDomain;
   final GroupDomain groupDomain;
+  final NotificationDomain notificationDomain;
 
   User? _user;
 
@@ -25,6 +27,7 @@ class LoginInitializer {
     required this.authService,
     required this.userDomain,
     required this.groupDomain,
+    required this.notificationDomain,
   });
 
   Future<void> initializeUserAndServices(String email, String password) async {
@@ -52,7 +55,10 @@ class LoginInitializer {
 
       debugPrint('✅ setCurrentUser called with: ${normalizedUser.userName}');
 
-      initializeNotificationSocket(normalizedUser.id);
+      initializeNotificationSocket(
+        normalizedUser.id,
+        notificationDomain: notificationDomain,
+      );
 
       if (token != null) {
         SocketManager().connect(token);

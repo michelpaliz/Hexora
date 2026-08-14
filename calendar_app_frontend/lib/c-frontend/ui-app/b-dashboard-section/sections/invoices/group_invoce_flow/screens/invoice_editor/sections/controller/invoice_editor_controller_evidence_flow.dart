@@ -520,9 +520,8 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       return title.isEmpty ? null : title;
     }
 
-    return draftBlocks
-        .where((draft) => !_isPlaceholderBlock(draft))
-        .map((draft) {
+    final sanitized =
+        draftBlocks.where((draft) => !_isPlaceholderBlock(draft)).map((draft) {
       final block = draft.toBlock();
       final type = block.type;
       final sectionHasBillableValue =
@@ -616,18 +615,116 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       }
       return InvoiceBlock(type: type);
     }).toList();
+    return buildInvoiceBlocksPayload(sanitized);
   }
 
   Map<String, dynamic> _buildDraftUpdatePayload(List<InvoiceBlock> blocks) {
+    final draftLines = _draftLinesPayloadFromBlocks(blocks);
     return {
       if (_clientId != null) 'clientId': _clientId,
       if (invoiceDate.value != null)
-        'issueDate': invoiceDate.value!.toUtc().toIso8601String(),
+        'issueDate': DateTime.utc(
+          invoiceDate.value!.year,
+          invoiceDate.value!.month,
+          invoiceDate.value!.day,
+          12,
+        ).toIso8601String(),
       if (notes.text.trim().isNotEmpty) 'notes': notes.text.trim(),
       if (currency.text.trim().isNotEmpty) 'currency': currency.text.trim(),
       ...buildDiscountPayload(),
       'blocks': blocks.map((b) => b.toJson()).toList(),
+      if (!_useBlocks && draftLines.isNotEmpty) ...{
+        'draftLines': draftLines,
+        'lines': draftLines,
+      },
     };
+  }
+
+  Map<String, dynamic> _buildIssuedUpdatePayload(
+    List<InvoiceBlock> blocks,
+    String reason,
+  ) {
+    final current = _savedInvoice ?? initialInvoice;
+    final draftLines = _draftLinesPayloadFromBlocks(blocks);
+    final payload = <String, dynamic>{
+      if (_clientId != null) 'clientId': _clientId,
+      if (invoiceDate.value != null)
+        'issueDate': DateTime.utc(
+          invoiceDate.value!.year,
+          invoiceDate.value!.month,
+          invoiceDate.value!.day,
+          12,
+        ).toIso8601String(),
+      'notes': notes.text.trim(),
+      'currency': currency.text.trim().isEmpty ? 'EUR' : currency.text.trim(),
+      'reason': reason.trim(),
+      if (_issuedClientSnapshot.isNotEmpty)
+        'clientSnapshot': _issuedClientSnapshot,
+      if (_issuedIssuerSnapshot.isNotEmpty)
+        'issuerSnapshot': _issuedIssuerSnapshot,
+      if ((_issuedClientSnapshot['legalName'] ?? current?.billingName ?? '')
+          .toString()
+          .trim()
+          .isNotEmpty)
+        'billingName':
+            _issuedClientSnapshot['legalName'] ?? current?.billingName,
+      for (final key in const [
+        'addressStreet',
+        'addressCity',
+        'addressPostalCode',
+        'addressProvince',
+        'addressCountry',
+      ])
+        if ((_issuedClientSnapshot[key] ?? '').toString().trim().isNotEmpty)
+          key: _issuedClientSnapshot[key],
+      if ((current?.entityType ?? '').trim().isNotEmpty)
+        'entityType': current?.entityType,
+    };
+    if (!financialFieldsReadOnly) {
+      payload.addAll({
+        ...buildDiscountPayload(),
+        'blocks': blocks.map((b) => b.toJson()).toList(),
+        if (!_useBlocks) 'lines': draftLines,
+      });
+    }
+    return payload;
+  }
+
+  List<Map<String, dynamic>> _draftLinesPayloadFromBlocks(
+    List<InvoiceBlock> blocks,
+  ) {
+    var position = 1;
+    final lines = <Map<String, dynamic>>[];
+    for (final block in blocks) {
+      final isBillable =
+          block.isBillable == true || block.type == InvoiceBlockType.item;
+      if (!isBillable || (block.unitPrice ?? 0) <= 0) continue;
+      final description =
+          (block.description ?? block.title ?? block.text ?? '').trim();
+      final unitPrice = block.unitPrice ?? 0;
+      if (description.isEmpty || unitPrice <= 0) continue;
+      final line = InvoiceLine(
+        invoiceId: _editingDraftId ?? '',
+        position: position++,
+        description: description,
+        quantity: block.qty ?? 1,
+        unitPrice: unitPrice,
+        discountRate: block.discountRate ?? 0,
+        taxRate: block.taxRate ?? 21,
+        sku: block.sku,
+        conceptItems: block.conceptItems,
+        conceptTitle: block.conceptTitle,
+        serviceDate: block.serviceDate,
+        isCompositeConcept: block.isCompositeConcept,
+      ).toJson()
+        ..remove('id')
+        ..remove('invoiceId')
+        ..remove('lineSubtotal')
+        ..remove('lineTax')
+        ..remove('lineTotal');
+      lines.add(line);
+    }
+    return lines;
   }
 
   List<InvoiceBlock> _blocksFromLines(List<LineDraft> draftLines) {
@@ -676,7 +773,11 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     try {
       final editing =
           _editingDraftId != null && _editingDraftId!.trim().isNotEmpty;
-      if (editing && confirmIfEditing) {
+      if (editingIssued) {
+        final reason = await _requestIssuedChangeReason(context);
+        if (reason == null) return;
+        _issuedChangeReason = reason;
+      } else if (editing && confirmIfEditing) {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
@@ -706,30 +807,106 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
 
       _showDraftSuccessSnack(
         context,
-        title: editing
-            ? l.invoiceDraftUpdatedSnackTitle
-            : (inv.invoiceNumber.isNotEmpty
-                ? l.invoiceDraftSavedSnack(inv.invoiceNumber)
-                : l.invoiceDraftSavedSnackTitle),
-        message: editing
-            ? l.invoiceDraftUpdatedSnackMessage
-            : l.invoiceDraftSavedSnackMessage,
+        title: editingIssued
+            ? (Localizations.localeOf(context).languageCode == 'es'
+                ? 'Factura actualizada'
+                : 'Invoice updated')
+            : editing
+                ? l.invoiceDraftUpdatedSnackTitle
+                : (inv.invoiceNumber.isNotEmpty
+                    ? l.invoiceDraftSavedSnack(inv.invoiceNumber)
+                    : l.invoiceDraftSavedSnackTitle),
+        message: editingIssued
+            ? (Localizations.localeOf(context).languageCode == 'es'
+                ? 'Los cambios y el historial se guardaron correctamente.'
+                : 'Changes and history were saved successfully.')
+            : editing
+                ? l.invoiceDraftUpdatedSnackMessage
+                : l.invoiceDraftSavedSnackMessage,
         dismissLabel: l.invoiceDraftSnackDismiss,
       );
     } catch (e) {
       debugPrint('[InvoicePreview] $e');
       if (!context.mounted) return;
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      final issuedMessage = editingIssued && e is InvoicesApiException
+          ? switch (e.statusCode) {
+              400 => isEs
+                  ? 'Revisa los valores y escribe un motivo para el cambio.'
+                  : 'Check the values and provide a reason for the change.',
+              403 => isEs
+                  ? 'No tienes permiso para editar esta factura.'
+                  : 'You do not have permission to edit this invoice.',
+              404 => isEs ? 'No se encontro la factura.' : 'Invoice not found.',
+              409 => e.message.trim().isNotEmpty
+                  ? e.message
+                  : (isEs
+                      ? 'La factura no se puede modificar en su estado actual. Comprueba los pagos o si es una liquidacion final.'
+                      : 'The invoice cannot be changed in its current state. Check payments or final-settlement restrictions.'),
+              _ => e.message,
+            }
+          : null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _safeErrorMessage(
-              context,
-              e,
-              fallback: l.invoiceDraftSaveFailedSnack,
-            ),
+            issuedMessage ??
+                _safeErrorMessage(
+                  context,
+                  e,
+                  fallback: l.invoiceDraftSaveFailedSnack,
+                ),
           ),
         ),
       );
+    }
+  }
+
+  Future<String?> _requestIssuedChangeReason(BuildContext context) async {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(isEs ? 'Confirmar cambios' : 'Confirm changes'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              autofocus: true,
+              maxLines: 3,
+              maxLength: 500,
+              decoration: InputDecoration(
+                labelText: isEs ? 'Motivo del cambio' : 'Reason for change',
+                hintText: isEs
+                    ? 'Ej.: Correccion solicitada por el cliente'
+                    : 'E.g. Correction requested by the client',
+              ),
+              validator: (value) => (value ?? '').trim().isEmpty
+                  ? (isEs
+                      ? 'El motivo es obligatorio.'
+                      : 'A reason is required.')
+                  : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() != true) return;
+                Navigator.of(dialogContext).pop(controller.text.trim());
+              },
+              child: Text(isEs ? 'Guardar cambios' : 'Save changes'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
     }
   }
 
@@ -827,9 +1004,17 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     _previewing = true;
     notifyListeners();
     try {
-      final inv = await saveDraft(context);
-      final count = await _syncLinesForInvoice(inv.id);
-      if (count == 0) {
+      final inv = editingIssued
+          ? (_savedInvoice ?? initialInvoice!)
+          : await saveDraft(context);
+      final count = editingIssued
+          ? (inv.lines.isNotEmpty
+              ? inv.lines.length
+              : _draftLinesPayloadFromBlocks(_sanitizeBlocks(blocks)).length)
+          : _useBlocks
+              ? _draftLinesPayloadFromBlocks(_sanitizeBlocks(blocks)).length
+              : await _syncLinesForInvoice(inv.id);
+      if (count == 0 && !editingIssued) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l.invoiceLinesRequired)),
@@ -865,6 +1050,30 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     } finally {
       _previewing = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _refreshPreviewAfterIssuedUpdate(BuildContext context) async {
+    final invoice = _savedInvoice;
+    if (invoice == null || invoice.id.trim().isEmpty) return;
+    try {
+      final response = await _invoicesApi.previewPdf(invoice.id);
+      _previewPdfBytes = InvoiceEditorPdf.validatePdf(response);
+      _previewedPdf = true;
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _safeErrorMessage(
+              context,
+              error,
+              fallback:
+                  AppLocalizations.of(context)!.invoicePdfPreviewFailedSnack,
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -912,7 +1121,9 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     try {
       final inv = await saveDraft(context);
       savedInvoice = inv;
-      final count = await _syncLinesForInvoice(inv.id);
+      final count = _useBlocks
+          ? _draftLinesPayloadFromBlocks(_sanitizeBlocks(blocks)).length
+          : await _syncLinesForInvoice(inv.id);
       if (count == 0) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

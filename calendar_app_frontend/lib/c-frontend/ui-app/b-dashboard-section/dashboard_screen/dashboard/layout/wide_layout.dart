@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
@@ -10,6 +11,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/wi
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/enable_banking_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/presupuestos_module_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/mail_console_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart';
@@ -19,6 +21,7 @@ import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dar
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../controller/group_dashboard_state.dart';
 
@@ -54,6 +57,7 @@ class WideLayout extends StatelessWidget {
     const showMainBody = !kIsWeb;
     final showCalendarInline = kIsWeb && state.activeSection == 'calendar';
     final showInvoicesInline = kIsWeb && state.activeSection == 'invoices';
+    final showBudgetsInline = kIsWeb && state.activeSection == Sections.budgets;
     final showExpensesInline =
         kIsWeb && state.activeSection == Sections.expenses;
     final showEmailsInline = state.activeSection == 'emails';
@@ -98,33 +102,41 @@ class WideLayout extends StatelessWidget {
                       group: state.group,
                       embedded: true,
                     )
-                  : showExpensesInline
-                      ? GastosModuleScreen(
+                  : showBudgetsInline
+                      ? PresupuestosModuleScreen(
+                          key: ValueKey(
+                            'group-budgets-${state.group.id}-${state.activeSection}',
+                          ),
                           group: state.group,
                           embedded: true,
                         )
-                      : showEmailsInline
-                          ? const MailConsoleScreen(embedded: true)
-                          : showEnableBankingInline
-                              ? EnableBankingScreen(
-                                  group: state.group,
-                                  embedded: true,
-                                )
-                              : GroupDashboardRightPanel(
-                                  activeAnchor: state.activeSection,
-                                  counts: state.counts,
-                                  group: state.group,
-                                  user: state.user,
-                                  role: state.role,
-                                  fetchReadSas: state.fetchReadSas,
-                                  usersInGroup: const [],
-                                  onOpenCalendar: () =>
-                                      state.openSection('calendar'),
-                                  onOpenNotifications: () =>
-                                      state.openSection('notifications'),
-                                  onOpenSettings: () =>
-                                      state.openSection('settings'),
-                                ),
+                      : showExpensesInline
+                          ? GastosModuleScreen(
+                              group: state.group,
+                              embedded: true,
+                            )
+                          : showEmailsInline
+                              ? const MailConsoleScreen(embedded: true)
+                              : showEnableBankingInline
+                                  ? EnableBankingScreen(
+                                      group: state.group,
+                                      embedded: true,
+                                    )
+                                  : GroupDashboardRightPanel(
+                                      activeAnchor: state.activeSection,
+                                      counts: state.counts,
+                                      group: state.group,
+                                      user: state.user,
+                                      role: state.role,
+                                      fetchReadSas: state.fetchReadSas,
+                                      usersInGroup: const [],
+                                      onOpenCalendar: () =>
+                                          state.openSection('calendar'),
+                                      onOpenNotifications: () =>
+                                          state.openSection('notifications'),
+                                      onOpenSettings: () =>
+                                          state.openSection('settings'),
+                                    ),
         ),
       ],
     );
@@ -135,7 +147,7 @@ class WideLayout extends StatelessWidget {
 // Horizontal top navigation bar
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _DashboardTopNav extends StatelessWidget {
+class _DashboardTopNav extends StatefulWidget {
   const _DashboardTopNav({
     required this.state,
     required this.l,
@@ -146,7 +158,38 @@ class _DashboardTopNav extends StatelessWidget {
   final AppLocalizations l;
   final User? user;
 
+  @override
+  State<_DashboardTopNav> createState() => _DashboardTopNavState();
+}
+
+class _DashboardTopNavState extends State<_DashboardTopNav> {
+  static const _compactPreferenceKey = 'dashboard_top_nav_compact';
+  bool _compact = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompactPreference();
+  }
+
+  Future<void> _loadCompactPreference() async {
+    final preferences = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _compact = preferences.getBool(_compactPreferenceKey) ?? true;
+    });
+  }
+
+  void _toggleCompact() {
+    final next = !_compact;
+    setState(() => _compact = next);
+    SharedPreferences.getInstance().then(
+      (preferences) => preferences.setBool(_compactPreferenceKey, next),
+    );
+  }
+
   String _shortLabel(String section, String fullLabel) {
+    final l = widget.l;
     switch (section) {
       case Sections.calendar:
         return l.calendar;
@@ -154,6 +197,8 @@ class _DashboardTopNav extends StatelessWidget {
         return 'Servicios';
       case Sections.invoices:
         return l.localeName.startsWith('es') ? 'Ingresos' : 'Income';
+      case Sections.budgets:
+        return l.localeName.startsWith('es') ? 'Presup.' : 'Budgets';
       case Sections.expenses:
         return l.localeName.startsWith('es') ? 'Gastos' : 'Expenses';
       case Sections.emails:
@@ -177,6 +222,9 @@ class _DashboardTopNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = widget.state;
+    final l = widget.l;
+    final user = widget.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor =
         isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
@@ -205,6 +253,12 @@ class _DashboardTopNav extends StatelessWidget {
         icon: Icons.receipt_long_outlined,
         label: l.localeName.startsWith('es') ? 'Ingresos' : 'Income',
         section: Sections.invoices,
+        adminOnly: true,
+      ),
+      (
+        icon: Icons.description_outlined,
+        label: l.localeName.startsWith('es') ? 'Presupuestos' : 'Budgets',
+        section: Sections.budgets,
         adminOnly: true,
       ),
       (
@@ -272,9 +326,8 @@ class _DashboardTopNav extends StatelessWidget {
           Sections.notifications,
         };
 
-        final primaryItems = isMediumWidth
+        final primaryItems = _compact
             ? allowedItems
-                .where((i) => !mediumOverflowSections.contains(i.section))
                 .map(
                   (i) => (
                     icon: i.icon,
@@ -284,11 +337,23 @@ class _DashboardTopNav extends StatelessWidget {
                   ),
                 )
                 .toList()
-            : allowedItems;
+            : isMediumWidth
+                ? allowedItems
+                    .where((i) => !mediumOverflowSections.contains(i.section))
+                    .map(
+                      (i) => (
+                        icon: i.icon,
+                        label: _shortLabel(i.section, i.label),
+                        section: i.section,
+                        adminOnly: i.adminOnly,
+                      ),
+                    )
+                    .toList()
+                : allowedItems;
 
         final List<
                 ({IconData icon, String label, String section, bool adminOnly})>
-            overflowItems = isMediumWidth
+            overflowItems = !_compact && isMediumWidth
                 ? allowedItems
                     .where((i) => mediumOverflowSections.contains(i.section))
                     .toList()
@@ -299,70 +364,82 @@ class _DashboardTopNav extends StatelessWidget {
                     bool adminOnly
                   })>[];
 
-        return Card(
-          elevation: 1,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          color: bg,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
-            child: Row(
-              children: [
-                // Group avatar + name
-                GestureDetector(
-                  onTap: state.canSeeAdmin
-                      ? () => state.openSection(Sections.settings)
-                      : null,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: textColor.withValues(alpha: 0.12),
-                        backgroundImage:
-                            state.group.photoUrl?.trim().isNotEmpty == true
-                                ? NetworkImage(state.group.photoUrl!.trim())
-                                : null,
-                        child: state.group.photoUrl?.trim().isNotEmpty == true
-                            ? null
-                            : Icon(
-                                Icons.business_rounded,
-                                color: textColor.withValues(alpha: 0.65),
-                                size: 16,
-                              ),
-                      ),
-                      const SizedBox(width: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 140),
-                        child: Text(
-                          state.group.name,
-                          style: AppTypography.of(context).bodyMedium.copyWith(
-                                color: textColor,
-                                fontWeight: FontWeight.w800,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_compact ? 10 : 14),
+            ),
+            color: bg,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: _compact ? 12 : 26,
+                vertical: _compact ? 4 : 12,
+              ),
+              child: Row(
+                children: [
+                  // Group avatar + name
+                  GestureDetector(
+                    onTap: state.canSeeAdmin
+                        ? () => state.openSection(Sections.settings)
+                        : null,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: _compact ? 14 : 16,
+                          backgroundColor: textColor.withValues(alpha: 0.12),
+                          backgroundImage:
+                              state.group.photoUrl?.trim().isNotEmpty == true
+                                  ? NetworkImage(state.group.photoUrl!.trim())
+                                  : null,
+                          child: state.group.photoUrl?.trim().isNotEmpty == true
+                              ? null
+                              : Icon(
+                                  Icons.business_rounded,
+                                  color: textColor.withValues(alpha: 0.65),
+                                  size: 16,
+                                ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Vertical divider
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                  child: SizedBox(
-                    height: 28,
-                    child: VerticalDivider(
-                      thickness: 1,
-                      color: textColor.withValues(alpha: 0.15),
+                        if (!_compact) ...[
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 140),
+                            child: Text(
+                              state.group.name,
+                              style:
+                                  AppTypography.of(context).bodyMedium.copyWith(
+                                        color: textColor,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ),
-                // Scrollable nav items
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+                  // Vertical divider
+                  Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: _compact ? 10 : 22),
+                    child: SizedBox(
+                      height: 28,
+                      child: VerticalDivider(
+                        thickness: 1,
+                        color: textColor.withValues(alpha: 0.15),
+                      ),
+                    ),
+                  ),
+                  // Scrollable nav items
+                  Expanded(
+                    child: _ScrollableTopNavItems(
+                      isSpanish: l.localeName.startsWith('es'),
+                      textColor: textColor,
                       children: <Widget>[
                         ...primaryItems.map(
                           (item) => _TopNavItem(
@@ -376,6 +453,7 @@ class _DashboardTopNav extends StatelessWidget {
                                 : 0,
                             attention: item.section == Sections.notifications &&
                                 unreadNotifications > 0,
+                            compact: _compact,
                             onTap: () => state.openSection(item.section),
                           ),
                         ),
@@ -391,29 +469,190 @@ class _DashboardTopNav extends StatelessWidget {
                       ],
                     ),
                   ),
-                ),
-                // User profile avatar
-                const SizedBox(width: 18),
-                UserProfilePopup(user: user),
-                const SizedBox(width: 12),
-                // Back to groups
-                Tooltip(
-                  message: l.groupSectionTitle,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.arrow_back_rounded,
-                      size: 18,
-                      color: textColor.withValues(alpha: 0.5),
+                  Tooltip(
+                    message: _compact
+                        ? (l.localeName.startsWith('es')
+                            ? 'Expandir navegacion'
+                            : 'Expand navigation')
+                        : (l.localeName.startsWith('es')
+                            ? 'Compactar navegacion'
+                            : 'Compact navigation'),
+                    child: IconButton(
+                      onPressed: _toggleCompact,
+                      icon: Icon(
+                        _compact
+                            ? Icons.unfold_more_rounded
+                            : Icons.unfold_less_rounded,
+                        size: 18,
+                        color: textColor.withValues(alpha: 0.62),
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      constraints:
+                          const BoxConstraints.tightFor(width: 36, height: 36),
                     ),
-                    splashRadius: 18,
-                    onPressed: () => Navigator.of(context).maybePop(),
                   ),
-                ),
-              ],
+                  // User profile avatar
+                  SizedBox(width: _compact ? 8 : 18),
+                  UserProfilePopup(user: user),
+                  const SizedBox(width: 12),
+                  // Back to groups
+                  Tooltip(
+                    message: l.groupSectionTitle,
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.arrow_back_rounded,
+                        size: 18,
+                        color: textColor.withValues(alpha: 0.5),
+                      ),
+                      splashRadius: 18,
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _ScrollableTopNavItems extends StatefulWidget {
+  const _ScrollableTopNavItems({
+    required this.children,
+    required this.textColor,
+    required this.isSpanish,
+  });
+
+  final List<Widget> children;
+  final Color textColor;
+  final bool isSpanish;
+
+  @override
+  State<_ScrollableTopNavItems> createState() => _ScrollableTopNavItemsState();
+}
+
+class _ScrollableTopNavItemsState extends State<_ScrollableTopNavItems> {
+  final ScrollController _controller = ScrollController();
+  bool _hasOverflow = false;
+  bool _canScrollLeft = false;
+  bool _canScrollRight = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_syncScrollState);
+    _scheduleScrollStateSync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScrollableTopNavItems oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scheduleScrollStateSync();
+  }
+
+  @override
+  void dispose() {
+    _controller
+      ..removeListener(_syncScrollState)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _scheduleScrollStateSync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncScrollState();
+    });
+  }
+
+  void _syncScrollState() {
+    if (!_controller.hasClients) return;
+    final position = _controller.position;
+    final hasOverflow = position.maxScrollExtent > 0.5;
+    final canScrollLeft = position.pixels > 0.5;
+    final canScrollRight = position.pixels < position.maxScrollExtent - 0.5;
+    if (_hasOverflow == hasOverflow &&
+        _canScrollLeft == canScrollLeft &&
+        _canScrollRight == canScrollRight) {
+      return;
+    }
+    setState(() {
+      _hasOverflow = hasOverflow;
+      _canScrollLeft = canScrollLeft;
+      _canScrollRight = canScrollRight;
+    });
+  }
+
+  void _scrollBy(double delta) {
+    if (!_controller.hasClients) return;
+    final target = (_controller.offset + delta)
+        .clamp(0.0, _controller.position.maxScrollExtent)
+        .toDouble();
+    _controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent || !_controller.hasClients) return;
+    if (event.scrollDelta.dy.abs() <= event.scrollDelta.dx.abs()) return;
+    _scrollBy(event.scrollDelta.dy);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _scheduleScrollStateSync();
+    return Row(
+      children: [
+        if (_hasOverflow)
+          _scrollButton(
+            icon: Icons.chevron_left_rounded,
+            tooltip: widget.isSpanish
+                ? 'Ver opciones anteriores'
+                : 'View previous options',
+            enabled: _canScrollLeft,
+            onPressed: () => _scrollBy(-260),
+          ),
+        Expanded(
+          child: Listener(
+            onPointerSignal: _handlePointerSignal,
+            child: SingleChildScrollView(
+              controller: _controller,
+              scrollDirection: Axis.horizontal,
+              child: Row(children: widget.children),
+            ),
+          ),
+        ),
+        if (_hasOverflow)
+          _scrollButton(
+            icon: Icons.chevron_right_rounded,
+            tooltip:
+                widget.isSpanish ? 'Ver mas opciones' : 'View more options',
+            enabled: _canScrollRight,
+            onPressed: () => _scrollBy(260),
+          ),
+      ],
+    );
+  }
+
+  Widget _scrollButton({
+    required IconData icon,
+    required String tooltip,
+    required bool enabled,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: enabled ? onPressed : null,
+      icon: Icon(icon, size: 18),
+      color: widget.textColor.withValues(alpha: 0.72),
+      disabledColor: widget.textColor.withValues(alpha: 0.20),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints.tightFor(width: 30, height: 36),
     );
   }
 }
@@ -516,6 +755,7 @@ class _TopNavItem extends StatefulWidget {
     required this.textColor,
     this.unreadCount = 0,
     this.attention = false,
+    this.compact = false,
     required this.onTap,
   });
 
@@ -526,6 +766,7 @@ class _TopNavItem extends StatefulWidget {
   final Color textColor;
   final int? unreadCount;
   final bool? attention;
+  final bool compact;
   final VoidCallback onTap;
 
   @override
@@ -680,51 +921,63 @@ class _TopNavItemState extends State<_TopNavItem>
     );
 
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovering = true),
-        onExit: (_) => setState(() => _hovering = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: showHighlight
-                  ? widget.activeColor.withValues(alpha: 0.10)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedBuilder(
-                  animation: _attentionController,
-                  builder: (_, child) {
-                    final phase = _attentionController.value * 2 * math.pi;
-                    final dx = math.sin(phase) * 1.8;
-                    final rotation = math.sin(phase) * 0.06;
-                    return Transform.translate(
-                      offset: Offset(dx, 0),
-                      child: Transform.rotate(
-                        angle: rotation,
-                        child: child,
+      padding: EdgeInsets.only(right: widget.compact ? 4 : 8),
+      child: TooltipVisibility(
+        visible: widget.compact,
+        child: Tooltip(
+          message: widget.label,
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _hovering = true),
+            onExit: (_) => setState(() => _hovering = false),
+            child: GestureDetector(
+              onTap: widget.onTap,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.symmetric(
+                  horizontal: widget.compact ? 10 : 12,
+                  vertical: widget.compact ? 7 : 8,
+                ),
+                decoration: BoxDecoration(
+                  color: showHighlight
+                      ? widget.activeColor.withValues(alpha: 0.10)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _attentionController,
+                      builder: (_, child) {
+                        final phase = _attentionController.value * 2 * math.pi;
+                        final dx = math.sin(phase) * 1.8;
+                        final rotation = math.sin(phase) * 0.06;
+                        return Transform.translate(
+                          offset: Offset(dx, 0),
+                          child: Transform.rotate(
+                            angle: rotation,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: icon,
+                    ),
+                    if (!widget.compact || widget.isSelected) ...[
+                      const SizedBox(width: 7),
+                      Text(
+                        widget.label,
+                        style: t.bodySmall.copyWith(
+                          color: fg,
+                          fontWeight: widget.isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
                       ),
-                    );
-                  },
-                  child: icon,
+                    ],
+                  ],
                 ),
-                const SizedBox(width: 7),
-                Text(
-                  widget.label,
-                  style: t.bodySmall.copyWith(
-                    color: fg,
-                    fontWeight:
-                        widget.isSelected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

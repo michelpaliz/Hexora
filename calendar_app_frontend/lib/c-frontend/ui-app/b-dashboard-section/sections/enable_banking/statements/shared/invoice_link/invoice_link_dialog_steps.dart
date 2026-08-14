@@ -145,6 +145,21 @@ class InvoiceLinkDialogSteps {
     final issued = invoices.where((i) => (i.status ?? '') == 'issued').toList();
     final drafts = invoices.where((i) => (i.status ?? '') != 'issued').toList();
     final totalSelected = state.selectedInvoiceIds.length;
+    final selectedInvoices = invoices
+        .where((invoice) => state.selectedInvoiceIds.contains(invoice.id))
+        .toList(growable: false);
+    final selectedTotal = selectedInvoices.fold<num>(
+      0,
+      (sum, invoice) => sum + (invoice.total ?? 0),
+    );
+    final selectedCurrency = selectedInvoices
+            .map((invoice) => invoice.currency?.trim() ?? '')
+            .where((currency) => currency.isNotEmpty)
+            .firstOrNull ??
+        'EUR';
+    final selectedTotalLabel = totalSelected == 0
+        ? ''
+        : _formatInvoiceAmount(selectedTotal, selectedCurrency);
     var clientName = '';
     for (final client in pickerClients) {
       if (client.id == clientId) {
@@ -161,6 +176,34 @@ class InvoiceLinkDialogSteps {
             : (MediaQuery.of(context).size.height * (stacked ? 0.36 : 0.56))
                 .clamp(240.0, stacked ? 360.0 : 560.0)
                 .toDouble();
+
+        final invoiceColumns = Row(
+          crossAxisAlignment:
+              bounded ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _buildInvoiceColumn(
+                'IDs de factura',
+                issued.isNotEmpty ? issued : invoices,
+                onStateChanged,
+                listHeight: listHeight,
+                expandList: bounded,
+              ),
+            ),
+            if (drafts.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildInvoiceColumn(
+                  'Recibos',
+                  drafts,
+                  onStateChanged,
+                  listHeight: listHeight,
+                  expandList: bounded,
+                ),
+              ),
+            ],
+          ],
+        );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -213,8 +256,8 @@ class InvoiceLinkDialogSteps {
                             const SizedBox(height: 2),
                             Text(
                               totalSelected == 0
-                                  ? 'Elige una factura o recibo para vincular.'
-                                  : '$totalSelected documento(s) seleccionado(s)',
+                                  ? 'Elige una o varias facturas para vincular.'
+                                  : '$totalSelected seleccionado(s) · $selectedTotalLabel',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -285,30 +328,7 @@ class InvoiceLinkDialogSteps {
             if (invoices.isEmpty)
               _buildInfoContainer(l.noInvoicesYet)
             else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _buildInvoiceColumn(
-                      'IDs de factura',
-                      issued.isNotEmpty ? issued : invoices,
-                      onStateChanged,
-                      listHeight: listHeight,
-                    ),
-                  ),
-                  if (drafts.isNotEmpty) ...[
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildInvoiceColumn(
-                        'Recibos',
-                        drafts,
-                        onStateChanged,
-                        listHeight: listHeight,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+              bounded ? Expanded(child: invoiceColumns) : invoiceColumns,
           ],
         );
       },
@@ -320,7 +340,14 @@ class InvoiceLinkDialogSteps {
     List<Invoice> invoices,
     VoidCallback onStateChanged, {
     required double listHeight,
+    bool expandList = false,
   }) {
+    final list = ListView.builder(
+      itemCount: invoices.length,
+      itemBuilder: (_, index) =>
+          _buildInvoiceCheckRow(invoices[index], onStateChanged),
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.11),
@@ -332,7 +359,7 @@ class InvoiceLinkDialogSteps {
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: expandList ? MainAxisSize.max : MainAxisSize.min,
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 2, right: 2, bottom: 8),
@@ -375,14 +402,13 @@ class InvoiceLinkDialogSteps {
               ],
             ),
           ),
-          SizedBox(
-            height: listHeight,
-            child: ListView.builder(
-              itemCount: invoices.length,
-              itemBuilder: (_, index) =>
-                  _buildInvoiceCheckRow(invoices[index], onStateChanged),
+          if (expandList)
+            Expanded(child: list)
+          else
+            SizedBox(
+              height: listHeight,
+              child: list,
             ),
-          ),
         ],
       ),
     );
@@ -410,6 +436,13 @@ class InvoiceLinkDialogSteps {
     if (formatted.isNotEmpty) return formatted;
     final total = inv.total;
     if (total == null) return '';
+    final currency = (inv.currency?.trim().isNotEmpty ?? false)
+        ? inv.currency!.trim()
+        : 'EUR';
+    return _formatInvoiceAmount(total, currency);
+  }
+
+  String _formatInvoiceAmount(num total, String currency) {
     final parts = total.toStringAsFixed(2).split('.');
     final whole = parts.first;
     final buffer = StringBuffer();
@@ -418,9 +451,6 @@ class InvoiceLinkDialogSteps {
       buffer.write(whole[i]);
       if (left > 1 && left % 3 == 1) buffer.write('.');
     }
-    final currency = (inv.currency?.trim().isNotEmpty ?? false)
-        ? inv.currency!.trim()
-        : 'EUR';
     return '${buffer.toString()},${parts.last} $currency';
   }
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/widgets/month_tile_content.dart';
 import 'package:intl/intl.dart';
 
 import 'text_extensions.dart';
@@ -28,7 +28,7 @@ class MonthList extends StatefulWidget {
 
 class _MonthListState extends State<MonthList> {
   final ScrollController _scrollCtrl = ScrollController();
-  static const double _itemHeight = 72.0; // approx item + separator
+  static const double _itemHeight = 78.0;
 
   @override
   void initState() {
@@ -53,8 +53,8 @@ class _MonthListState extends State<MonthList> {
 
   void _scrollToSelected() {
     if (!_scrollCtrl.hasClients) return;
-    final targetOffset =
-        ((widget.selectedMonth - 1) * _itemHeight).clamp(0.0, _scrollCtrl.position.maxScrollExtent);
+    final targetOffset = ((widget.selectedMonth - 1) * _itemHeight)
+        .clamp(0.0, _scrollCtrl.position.maxScrollExtent);
     _scrollCtrl.animateTo(
       targetOffset,
       duration: const Duration(milliseconds: 320),
@@ -64,105 +64,75 @@ class _MonthListState extends State<MonthList> {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final now = DateTime.now();
 
     return ListView.separated(
       controller: _scrollCtrl,
+      padding: const EdgeInsets.symmetric(vertical: 2),
       itemCount: 12,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final month = index + 1;
+        final isCurrentMonth = now.year == widget.year && now.month == month;
         final isSelected = widget.selectedMonth == month;
         final title = DateFormat.MMMM(widget.locale)
             .format(DateTime(widget.year, month, 1))
             .capitalize();
-        final subtitle = widget.subtitleBuilder(widget.monthlyTotals[month]);
-        final bg = isSelected
-            ? cs.primaryContainer.withOpacity(0.55)
-            : cs.surfaceContainerHighest.withOpacity(0.35);
-        final border = isSelected
-            ? cs.primary.withOpacity(0.35)
-            : cs.outlineVariant.withOpacity(0.2);
+        final totals = widget.monthlyTotals[month];
+        final metrics = MonthTotalMetrics.from(totals);
+        final subtitle = widget.subtitleBuilder(totals);
+        final bgColor = isSelected
+            ? cs.primary.withValues(alpha: 0.09)
+            : isCurrentMonth
+                ? cs.primary.withValues(alpha: 0.05)
+                : metrics.hasActivity
+                    ? cs.surface
+                    : cs.surfaceContainerHighest.withValues(alpha: 0.30);
+        final borderColor = isSelected
+            ? cs.primary.withValues(alpha: 0.35)
+            : isCurrentMonth
+                ? cs.primary.withValues(alpha: 0.22)
+                : cs.outlineVariant.withValues(
+                    alpha: metrics.hasActivity ? 0.42 : 0.26,
+                  );
 
-        return Stack(
-          children: [
-            Material(
-              color: bg,
-              elevation: isSelected ? 1.5 : 0,
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: cs.primary.withValues(alpha: 0.12),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
               borderRadius: BorderRadius.circular(14),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: () => widget.onTapMonth(month),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: border),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_month,
-                        size: 20,
-                        color: isSelected ? cs.primary : cs.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.bodyMedium.copyWith(
-                                fontWeight: isSelected
-                                    ? FontWeight.w800
-                                    : FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurface.withOpacity(0.7),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.chevron_right,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ],
-                  ),
+              onTap: () => widget.onTapMonth(month),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                child: MonthTileContent(
+                  title: title,
+                  subtitle: subtitle,
+                  totals: totals,
+                  isSelected: isSelected,
+                  isCurrentMonth: isCurrentMonth,
                 ),
               ),
             ),
-            if (isSelected)
-              Positioned(
-                left: 12,
-                top: 0,
-                child: Container(
-                  width: 44,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
-                      bottom: Radius.circular(6),
-                    ),
-                    border: Border.all(color: border),
-                  ),
-                ),
-              ),
-          ],
+          ),
         );
       },
     );

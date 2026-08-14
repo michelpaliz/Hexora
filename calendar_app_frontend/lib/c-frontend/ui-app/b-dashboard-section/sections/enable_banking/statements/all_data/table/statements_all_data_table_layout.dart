@@ -29,5 +29,6 @@ class StatementsAllDataTableLayout {
   static const double clientWidth = 280.0;
   static const double notesWidth = 160.0;
   static const double invoiceWidth = 110.0;
-  static const double actionsWidth = 158.0;
+  static const double actionsWidth = 188.0;
+  static const double compactActionsWidth = 104.0;
 }

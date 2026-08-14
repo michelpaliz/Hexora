@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:hexora/a-models/invoice/invoice_block.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/models/manual_editor_capabilities.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_controller.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_payment_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/blocks_table_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/widgets/lines_json_import_panel.dart';
@@ -264,7 +266,8 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
     // Use exactly what the server returns — no hardcoded merging.
     final availableBlockTypes = [
       ...(_capabilities ?? ManualEditorCapabilities.fallback())
-          .enabledBlockTypes(lang: currentLang),
+          .enabledBlockTypes(lang: currentLang)
+          .where((capability) => capability.id != InvoiceBlockType.date),
     ]..sort((a, b) {
         int score(ManualEditorBlockTypeCapability c) {
           if (c.recommended && c.billable) return 3;
@@ -1031,6 +1034,16 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
                 setState(() => _selectedIndex = index),
             availableBlockTypes: availableBlockTypes,
           ),
+          if (widget.controller != null) ...[
+            const SizedBox(height: 12),
+            InvoicePaymentEditor(
+              invoice: widget.controller!.paymentEditorInvoice,
+              compact: true,
+              showSaveButton: false,
+              onPaymentChanged: widget.controller!.setDraftPaymentPayload,
+              onSave: (_) async {},
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1150,35 +1163,71 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
             );
           }
 
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(
-                  minWidth: 176,
-                  maxWidth: 196,
-                ),
-                child: Scrollbar(
-                  controller: _toolSectionsScrollController,
-                  thumbVisibility: true,
-                  child: SingleChildScrollView(
-                    controller: _toolSectionsScrollController,
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: actionsPanel,
+          final viewportHeight = constraints.hasBoundedHeight
+              ? constraints.maxHeight
+              : MediaQuery.sizeOf(context).height;
+
+          return SizedBox(
+            height: viewportHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 176,
+                    maxWidth: 196,
+                  ),
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      dragDevices: const {
+                        PointerDeviceKind.mouse,
+                        PointerDeviceKind.touch,
+                        PointerDeviceKind.stylus,
+                        PointerDeviceKind.trackpad,
+                      },
+                    ),
+                    child: ScrollbarTheme(
+                      data: ScrollbarThemeData(
+                        thumbColor: WidgetStatePropertyAll(
+                          cs.primary.withValues(alpha: 0.72),
+                        ),
+                        trackColor: WidgetStatePropertyAll(
+                          cs.surfaceContainerHighest.withValues(alpha: 0.55),
+                        ),
+                        trackBorderColor: WidgetStatePropertyAll(
+                          cs.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Scrollbar(
+                        controller: _toolSectionsScrollController,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        interactive: true,
+                        thickness: 8,
+                        radius: const Radius.circular(4),
+                        child: SingleChildScrollView(
+                          controller: _toolSectionsScrollController,
+                          primary: false,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.only(right: 14),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: actionsPanel,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 9,
-                child: SingleChildScrollView(
-                  child: blocksPanel,
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 9,
+                  child: SingleChildScrollView(
+                    child: blocksPanel,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       );

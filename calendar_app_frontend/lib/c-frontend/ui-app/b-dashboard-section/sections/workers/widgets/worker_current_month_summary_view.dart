@@ -4,6 +4,7 @@ import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_month_picker_dialog.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -92,26 +93,22 @@ class _WorkerCurrentMonthSummaryViewState
 
   Future<void> _prevMonth() async {
     final d = _selectedMonthDate;
-    setState(
-        () => _selectedMonthDate = DateTime(d.year, d.month - 1, 1));
+    setState(() => _selectedMonthDate = DateTime(d.year, d.month - 1, 1));
     await _load();
   }
 
   Future<void> _nextMonth() async {
     if (!_canGoNext) return;
     final d = _selectedMonthDate;
-    setState(
-        () => _selectedMonthDate = DateTime(d.year, d.month + 1, 1));
+    setState(() => _selectedMonthDate = DateTime(d.year, d.month + 1, 1));
     await _load();
   }
 
   Future<void> _pickMonth() async {
-    final result = await showDialog<DateTime>(
+    final result = await showWorkerMonthPickerDialog(
       context: context,
-      builder: (_) => _MonthPickerDialog(
-        initialDate: _selectedMonthDate,
-        isSpanish: _isSpanish,
-      ),
+      initialDate: _selectedMonthDate,
+      isSpanish: _isSpanish,
     );
     if (result == null) return;
     if (result.year == _selectedMonthDate.year &&
@@ -390,11 +387,10 @@ class _WorkerCurrentMonthSummaryViewState
               final label = _workerLabel(summary.worker);
 
               return Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color:
-                      cs.surfaceContainerHighest.withValues(alpha: 0.22),
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: cs.outlineVariant.withValues(alpha: 0.28),
@@ -470,8 +466,7 @@ class _WorkerCurrentMonthSummaryViewState
                             const SizedBox(height: 6),
                             Text(
                               summary.error!,
-                              style:
-                                  t.bodySmall.copyWith(color: cs.error),
+                              style: t.bodySmall.copyWith(color: cs.error),
                             ),
                           ],
                         ],
@@ -660,150 +655,6 @@ class _MonthNavBtn extends StatelessWidget {
       style: IconButton.styleFrom(
         minimumSize: const Size(30, 30),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-    );
-  }
-}
-
-// ── Month picker dialog ────────────────────────────────────────────────────────
-
-class _MonthPickerDialog extends StatefulWidget {
-  const _MonthPickerDialog({
-    required this.initialDate,
-    required this.isSpanish,
-  });
-
-  final DateTime initialDate;
-  final bool isSpanish;
-
-  @override
-  State<_MonthPickerDialog> createState() => _MonthPickerDialogState();
-}
-
-class _MonthPickerDialogState extends State<_MonthPickerDialog> {
-  late int _year;
-
-  @override
-  void initState() {
-    super.initState();
-    _year = widget.initialDate.year;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final now = DateTime.now();
-    final locale = Localizations.localeOf(context).toString();
-
-    final monthNames = List.generate(
-      12,
-      (i) => DateFormat.MMM(locale).format(DateTime(_year, i + 1)),
-    );
-
-    return Dialog(
-      backgroundColor: cs.surface,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Title
-            Text(
-              widget.isSpanish ? 'Seleccionar mes' : 'Select month',
-              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 16),
-            // Year row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left_rounded),
-                  onPressed: _year > 2020
-                      ? () => setState(() => _year--)
-                      : null,
-                  visualDensity: VisualDensity.compact,
-                ),
-                Text(
-                  '$_year',
-                  style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right_rounded),
-                  onPressed: _year < now.year
-                      ? () => setState(() => _year++)
-                      : null,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // 4 × 3 month grid
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 2.4,
-                mainAxisSpacing: 6,
-                crossAxisSpacing: 6,
-              ),
-              itemCount: 12,
-              itemBuilder: (context, i) {
-                final month = i + 1;
-                final isFuture = _year > now.year ||
-                    (_year == now.year && month > now.month);
-                final isSelected = _year == widget.initialDate.year &&
-                    month == widget.initialDate.month;
-
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? cs.primary
-                        : cs.surfaceContainerHighest.withValues(alpha: 0.38),
-                    borderRadius: BorderRadius.circular(10),
-                    border: isSelected
-                        ? null
-                        : Border.all(
-                            color: cs.outlineVariant.withValues(alpha: 0.3)),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: isFuture
-                        ? null
-                        : () => Navigator.of(context)
-                            .pop(DateTime(_year, month, 1)),
-                    child: Center(
-                      child: Text(
-                        monthNames[i],
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: isSelected
-                              ? cs.onPrimary
-                              : isFuture
-                                  ? cs.onSurface.withValues(alpha: 0.25)
-                                  : cs.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(widget.isSpanish ? 'Cancelar' : 'Cancel'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

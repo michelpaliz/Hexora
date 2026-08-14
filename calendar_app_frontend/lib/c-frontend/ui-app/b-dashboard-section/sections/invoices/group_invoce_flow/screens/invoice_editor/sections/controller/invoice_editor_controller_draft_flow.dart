@@ -27,10 +27,32 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
     if (_clientId == null) {
       throw Exception(l.selectClientFirst);
     }
+    final paymentPayload = buildDraftPaymentPayload(context);
 
     _saving = true;
     notifyListeners();
     try {
+      if (editingIssued) {
+        final id = (_savedInvoice?.id ?? initialInvoice?.id ?? '').trim();
+        final reason = (_issuedChangeReason ?? '').trim();
+        if (id.isEmpty) throw Exception('Factura no encontrada.');
+        if (reason.isEmpty) {
+          throw Exception('El motivo del cambio es obligatorio.');
+        }
+        final blocksPayload =
+            _useBlocks ? _sanitizeBlocks(blocks) : _blocksFromLines(lines);
+        final payload = _buildIssuedUpdatePayload(blocksPayload, reason);
+        final updated = await _invoicesApi.updateIssued(id, payload);
+        _applyInitialInvoice(updated);
+        _draftDirty = false;
+        _draftSaveFailed = false;
+        _issuedChangeReason = null;
+        _dataRevision++;
+        await refreshIssuedHistory();
+        await _refreshPreviewAfterIssuedUpdate(context);
+        notifyListeners();
+        return updated;
+      }
       if (_editingDraftId != null && _editingDraftId!.trim().isNotEmpty) {
         final blocksPayload =
             _useBlocks ? _sanitizeBlocks(blocks) : _blocksFromLines(lines);
@@ -60,6 +82,8 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
         } else {
           _savedInvoice = updated.copyWith(blocks: blocksPayload);
         }
+        _savedInvoice =
+            await _applyDraftPayment(_savedInvoice!, paymentPayload);
         _pendingDrafts = [
           _savedInvoice!,
           ..._pendingDrafts.where((inv) => inv.id != _savedInvoice!.id),
@@ -115,6 +139,7 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
       } else {
         _savedInvoice = created.copyWith(blocks: sanitizedBlocks);
       }
+      _savedInvoice = await _applyDraftPayment(_savedInvoice!, paymentPayload);
       if (_savedInvoice?.status == 'draft') {
         final savedDraft = _savedInvoice!;
         _editingDraftId = savedDraft.id.trim().isEmpty ? null : savedDraft.id;

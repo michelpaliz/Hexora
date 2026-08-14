@@ -62,12 +62,10 @@ class _ClientReceiptsTabState extends State<ClientReceiptsTab> {
         _api.list(groupId: widget.groupId, status: 'draft'),
       ]);
       if (!mounted) return;
-      final issued = results[0]
-          .where((r) => r.clientId == widget.client.id)
-          .toList();
-      final drafts = results[1]
-          .where((r) => r.clientId == widget.client.id)
-          .toList();
+      final issued =
+          results[0].where((r) => r.clientId == widget.client.id).toList();
+      final drafts =
+          results[1].where((r) => r.clientId == widget.client.id).toList();
       setState(() {
         _issued = issued;
         _drafts = drafts;

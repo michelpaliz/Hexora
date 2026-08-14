@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/vat/vat_summary_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -25,6 +27,7 @@ class _GastosModuleScreenState extends State<GastosModuleScreen>
   late final TabController _tabs;
   final VatSummaryApi _vatApi = VatSummaryApi();
   String _gastosSection = 'supplier_invoices';
+  bool _gastosSideRailCollapsed = false;
 
   @override
   void initState() {
@@ -59,6 +62,10 @@ class _GastosModuleScreenState extends State<GastosModuleScreen>
       gastosSection: _gastosSection,
       onGastosSectionSelected: (value) =>
           setState(() => _gastosSection = value),
+      sideRailCollapsed: _gastosSideRailCollapsed,
+      onToggleSideRailCollapsed: () {
+        setState(() => _gastosSideRailCollapsed = !_gastosSideRailCollapsed);
+      },
     );
 
     if (isNarrow && !widget.embedded) {
@@ -105,6 +112,8 @@ class _GastosModuleBody extends StatelessWidget {
     required this.vatApi,
     required this.gastosSection,
     required this.onGastosSectionSelected,
+    required this.sideRailCollapsed,
+    required this.onToggleSideRailCollapsed,
   });
 
   final String title;
@@ -117,6 +126,8 @@ class _GastosModuleBody extends StatelessWidget {
   final VatSummaryApi vatApi;
   final String gastosSection;
   final ValueChanged<String> onGastosSectionSelected;
+  final bool sideRailCollapsed;
+  final VoidCallback onToggleSideRailCollapsed;
 
   @override
   Widget build(BuildContext context) {
@@ -125,18 +136,18 @@ class _GastosModuleBody extends StatelessWidget {
       child: FolderPanel(
         title: title,
         showTab: showFolderTab,
-        contentTopPadding: topPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!isNarrow) ...[
-              _GastosTopTabs(
+        contentTopPadding: !isNarrow ? 48 : topPadding,
+        tabContent: !isNarrow
+            ? _GastosTopTabs(
                 controller: tabs,
                 isEs: isEs,
                 isNarrow: isNarrow,
-              ),
-              const SizedBox(height: 12),
-            ],
+                inFolderActions: true,
+              )
+            : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             Expanded(
               child: isNarrow
                   ? _GastosTab(
@@ -153,12 +164,16 @@ class _GastosModuleBody extends StatelessWidget {
                           group: group,
                           selectedSection: gastosSection,
                           onSectionSelected: onGastosSectionSelected,
+                          sideRailCollapsed: sideRailCollapsed,
+                          onToggleSideRailCollapsed: onToggleSideRailCollapsed,
                         ),
                         const _ImpuestosTab(isNarrow: false),
                         _AnaliticaTab(
                           isNarrow: false,
                           group: group,
                           vatApi: vatApi,
+                          sideRailCollapsed: sideRailCollapsed,
+                          onToggleSideRailCollapsed: onToggleSideRailCollapsed,
                         ),
                         const _ModelosTab(),
                       ],
@@ -176,11 +191,13 @@ class _GastosTopTabs extends StatelessWidget {
     required this.controller,
     required this.isEs,
     required this.isNarrow,
+    this.inFolderActions = false,
   });
 
   final TabController controller;
   final bool isEs;
   final bool isNarrow;
+  final bool inFolderActions;
 
   @override
   Widget build(BuildContext context) {
@@ -204,6 +221,54 @@ class _GastosTopTabs extends StatelessWidget {
         countLabel: '4',
       ),
     ];
+
+    final tabsBar = Material(
+      color: Colors.transparent,
+      child: TabBar(
+        controller: controller,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        padding: EdgeInsets.zero,
+        dividerColor: Colors.transparent,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: cs.primary.withValues(alpha: isDark ? 0.22 : 0.12),
+          borderRadius: BorderRadius.circular(inFolderActions ? 12 : 16),
+          border: Border.all(
+            color: cs.primary.withValues(alpha: 0.18),
+          ),
+        ),
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
+        splashBorderRadius: BorderRadius.circular(inFolderActions ? 12 : 16),
+        labelColor: cs.onSurface,
+        unselectedLabelColor: cs.onSurfaceVariant,
+        labelStyle: t.bodySmall.copyWith(
+          fontSize: inFolderActions ? 11.5 : null,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+        unselectedLabelStyle: t.bodySmall.copyWith(
+          fontSize: inFolderActions ? 11.5 : null,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0,
+        ),
+        tabs: [
+          for (final item in tabs)
+            _GastosTopTab(
+              label: item.label,
+              countLabel: item.countLabel,
+              compact: inFolderActions,
+            ),
+        ],
+      ),
+    );
+
+    if (inFolderActions) {
+      return ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: tabsBar,
+      );
+    }
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -247,43 +312,7 @@ class _GastosTopTabs extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Expanded(
-              child: Material(
-                color: Colors.transparent,
-                child: TabBar(
-                  controller: controller,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  padding: EdgeInsets.zero,
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    color: cs.primary.withValues(alpha: isDark ? 0.22 : 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: cs.primary.withValues(alpha: 0.18),
-                    ),
-                  ),
-                  overlayColor: WidgetStateProperty.all(Colors.transparent),
-                  splashBorderRadius: BorderRadius.circular(16),
-                  labelColor: cs.onSurface,
-                  unselectedLabelColor: cs.onSurfaceVariant,
-                  labelStyle: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.1,
-                  ),
-                  unselectedLabelStyle: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.05,
-                  ),
-                  tabs: [
-                    for (final item in tabs)
-                      _GastosTopTab(
-                        label: item.label,
-                        countLabel: item.countLabel,
-                      ),
-                  ],
-                ),
-              ),
+              child: tabsBar,
             ),
           ],
         ),
@@ -306,19 +335,21 @@ class _GastosTopTab extends StatelessWidget {
   const _GastosTopTab({
     required this.label,
     this.countLabel,
+    this.compact = false,
   });
 
   final String label;
   final String? countLabel;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     return Tab(
-      height: 38,
+      height: compact ? 30 : 38,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -327,9 +358,12 @@ class _GastosTopTab extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             if (countLabel != null) ...[
-              const SizedBox(width: 8),
+              SizedBox(width: compact ? 6 : 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 6 : 7,
+                  vertical: compact ? 2 : 3,
+                ),
                 decoration: BoxDecoration(
                   color: cs.surface.withValues(alpha: 0.82),
                   borderRadius: BorderRadius.circular(999),
@@ -341,6 +375,7 @@ class _GastosTopTab extends StatelessWidget {
                   countLabel!,
                   style: t.caption.copyWith(
                     color: cs.onSurfaceVariant,
+                    fontSize: compact ? 10 : null,
                     fontWeight: FontWeight.w800,
                     height: 1,
                   ),
@@ -360,12 +395,16 @@ class _GastosTab extends StatelessWidget {
     required this.group,
     required this.selectedSection,
     required this.onSectionSelected,
+    this.sideRailCollapsed = false,
+    this.onToggleSideRailCollapsed,
   });
 
   final bool isNarrow;
   final Group group;
   final String selectedSection;
   final ValueChanged<String> onSectionSelected;
+  final bool sideRailCollapsed;
+  final VoidCallback? onToggleSideRailCollapsed;
 
   @override
   Widget build(BuildContext context) {
@@ -384,6 +423,8 @@ class _GastosTab extends StatelessWidget {
 
     final rail = _GastosSideRail(
       isNarrow: isNarrow,
+      collapsed: sideRailCollapsed,
+      onToggleCollapsed: onToggleSideRailCollapsed,
       selectedValue: selectedSection,
       onSelected: onSectionSelected,
       sections: const [
@@ -471,8 +512,8 @@ class _GastosTab extends StatelessWidget {
 
     return Row(
       children: [
-        SizedBox(width: 248, child: rail),
-        const SizedBox(width: 14),
+        SizedBox(width: sideRailCollapsed ? 62 : 220, child: rail),
+        const SizedBox(width: 10),
         Expanded(child: content),
       ],
     );
@@ -549,16 +590,22 @@ class _AnaliticaTab extends StatelessWidget {
     required this.isNarrow,
     required this.group,
     required this.vatApi,
+    this.sideRailCollapsed = false,
+    this.onToggleSideRailCollapsed,
   });
 
   final bool isNarrow;
   final Group group;
   final VatSummaryApi vatApi;
+  final bool sideRailCollapsed;
+  final VoidCallback? onToggleSideRailCollapsed;
 
   @override
   Widget build(BuildContext context) {
     final rail = _GastosSideRail(
       isNarrow: isNarrow,
+      collapsed: sideRailCollapsed,
+      onToggleCollapsed: onToggleSideRailCollapsed,
       sections: const [
         _GastosRailSection(
           title: 'Panel analitico',
@@ -607,8 +654,8 @@ class _AnaliticaTab extends StatelessWidget {
 
     return Row(
       children: [
-        SizedBox(width: 248, child: rail),
-        const SizedBox(width: 14),
+        SizedBox(width: sideRailCollapsed ? 62 : 220, child: rail),
+        const SizedBox(width: 10),
         Expanded(child: content),
       ],
     );
@@ -658,12 +705,16 @@ class _GastosSideRail extends StatelessWidget {
   const _GastosSideRail({
     required this.sections,
     this.isNarrow = false,
+    this.collapsed = false,
+    this.onToggleCollapsed,
     this.selectedValue,
     this.onSelected,
   });
 
   final List<_GastosRailSection> sections;
   final bool isNarrow;
+  final bool collapsed;
+  final VoidCallback? onToggleCollapsed;
   final String? selectedValue;
   final ValueChanged<String>? onSelected;
 
@@ -674,6 +725,66 @@ class _GastosSideRail extends StatelessWidget {
     final flattened = [
       for (final section in sections) ...section.items,
     ];
+    if (!isNarrow && collapsed) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(7, 8, 7, 10),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: cs.shadow.withValues(alpha: 0.035),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Tooltip(
+              message: 'Mostrar menu',
+              child: IconButton.filledTonal(
+                onPressed: onToggleCollapsed,
+                icon: const Icon(Icons.keyboard_double_arrow_right_rounded),
+                iconSize: 18,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(42, 38),
+                  fixedSize: const Size(42, 38),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.separated(
+                padding: EdgeInsets.zero,
+                itemCount: flattened.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 6),
+                itemBuilder: (context, index) {
+                  final item = flattened[index];
+                  final selected = selectedValue == null
+                      ? index == 0
+                      : item.value == selectedValue;
+                  return _CollapsedGastosRailItem(
+                    entry: item,
+                    selected: selected,
+                    onTap: onSelected == null
+                        ? null
+                        : () => onSelected!(item.value),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final child = isNarrow
         ? SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -682,14 +793,15 @@ class _GastosSideRail extends StatelessWidget {
                 for (var i = 0; i < flattened.length; i++) ...[
                   ConstrainedBox(
                     constraints: const BoxConstraints(minWidth: 156),
-                    child: _GastosRailItem(
-                      entry: flattened[i],
+                    child: GroupInvoicesSubMenuItem(
+                      icon: flattened[i].icon,
+                      label: flattened[i].label,
                       selected: selectedValue == null
                           ? i == 0
                           : flattened[i].value == selectedValue,
-                      textStyle: t.bodySmall,
-                      compact: true,
-                      onTap: onSelected == null
+                      count: _badgeCount(flattened[i].badge),
+                      primaryAction: flattened[i].highlighted,
+                      onPressed: onSelected == null
                           ? null
                           : () => onSelected!(flattened[i].value),
                     ),
@@ -703,38 +815,75 @@ class _GastosSideRail extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
-                child: Text(
-                  'Workflow',
-                  style: t.caption.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+                padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Workflow',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.caption.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Compactar menu',
+                      child: IconButton.filledTonal(
+                        onPressed: onToggleCollapsed,
+                        icon: const Icon(
+                          Icons.keyboard_double_arrow_left_rounded,
+                        ),
+                        iconSize: 17,
+                        style: IconButton.styleFrom(
+                          minimumSize: const Size(34, 30),
+                          fixedSize: const Size(34, 30),
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < sections.length; i++) ...[
+                        _GastosRailGroupView(
+                          section: sections[i],
+                          selectedValue: selectedValue,
+                          onSelected: onSelected,
+                        ),
+                        if (i != sections.length - 1) const SizedBox(height: 7),
+                      ],
+                    ],
                   ),
                 ),
               ),
-              for (var i = 0; i < sections.length; i++) ...[
-                _GastosRailGroupView(
-                  section: sections[i],
-                  selectedValue: selectedValue,
-                  onSelected: onSelected,
-                ),
-                if (i != sections.length - 1) const SizedBox(height: 14),
-              ],
             ],
           );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: cs.shadow.withValues(alpha: 0.035),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -743,6 +892,11 @@ class _GastosSideRail extends StatelessWidget {
         child: child,
       ),
     );
+  }
+
+  int? _badgeCount(String? value) {
+    if (value == null) return null;
+    return int.tryParse(value);
   }
 }
 
@@ -769,32 +923,21 @@ class _GastosRailGroupView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-          child: Text(
-            section.title.toUpperCase(),
-            style: t.caption.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.55,
-            ),
-          ),
-        ),
+        GroupInvoicesSectionLabel(section.title),
         for (var i = 0; i < section.items.length; i++) ...[
-          _GastosRailItem(
-            entry: section.items[i],
+          GroupInvoicesSubMenuItem(
+            icon: section.items[i].icon,
+            label: section.items[i].label,
             selected: section.items[i].value == selectedValue,
-            textStyle: t.bodySmall,
-            onTap: onSelected == null
+            count: int.tryParse(section.items[i].badge ?? ''),
+            primaryAction: section.items[i].highlighted,
+            onPressed: onSelected == null
                 ? null
                 : () => onSelected!(section.items[i].value),
           ),
-          if (i != section.items.length - 1) const SizedBox(height: 4),
         ],
       ],
     );
@@ -817,151 +960,60 @@ class _GastosRailEntry {
   final bool highlighted;
 }
 
-class _GastosRailItem extends StatefulWidget {
-  const _GastosRailItem({
+class _CollapsedGastosRailItem extends StatelessWidget {
+  const _CollapsedGastosRailItem({
     required this.entry,
     required this.selected,
-    required this.textStyle,
-    this.compact = false,
-    this.onTap,
+    required this.onTap,
   });
 
   final _GastosRailEntry entry;
   final bool selected;
-  final TextStyle textStyle;
-  final bool compact;
   final VoidCallback? onTap;
-
-  @override
-  State<_GastosRailItem> createState() => _GastosRailItemState();
-}
-
-class _GastosRailItemState extends State<_GastosRailItem> {
-  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final selected = widget.selected;
-    final highlighted = widget.entry.highlighted;
-    final hovered = _hovered && widget.onTap != null;
-    final background = selected
-        ? cs.primary.withValues(alpha: 0.12)
-        : highlighted
-            ? cs.primary.withValues(alpha: hovered ? 0.11 : 0.07)
-            : hovered
-                ? cs.surfaceContainerHighest.withValues(alpha: 0.48)
-                : Colors.transparent;
-    final borderColor = selected
-        ? cs.primary.withValues(alpha: 0.26)
-        : highlighted
-            ? cs.primary.withValues(alpha: 0.12)
-            : Colors.transparent;
-    final iconColor = selected || highlighted
-        ? cs.primary
-        : hovered
-            ? cs.onSurface
-            : cs.onSurfaceVariant;
-    final textColor = selected
-        ? cs.onSurface
-        : highlighted
-            ? cs.primary
-            : hovered
-                ? cs.onSurface
-                : cs.onSurfaceVariant;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: borderColor),
-        ),
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(14),
-          hoverColor: Colors.transparent,
-          splashColor: cs.primary.withValues(alpha: 0.06),
-          highlightColor: Colors.transparent,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: widget.compact ? 9 : 8,
+    final enabled = onTap != null;
+    return Tooltip(
+      message: entry.label,
+      waitDuration: const Duration(milliseconds: 350),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        hoverColor: cs.primary.withValues(alpha: 0.05),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          width: 42,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? cs.primary.withValues(alpha: 0.13)
+                : entry.highlighted
+                    ? cs.primary.withValues(alpha: 0.08)
+                    : cs.surfaceContainerHighest.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: selected
+                  ? cs.primary.withValues(alpha: 0.25)
+                  : cs.outlineVariant.withValues(alpha: 0.18),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? cs.primary.withValues(alpha: 0.14)
-                        : highlighted
-                            ? cs.primary.withValues(alpha: 0.1)
-                            : cs.surfaceContainerHighest.withValues(
-                                alpha: hovered ? 0.5 : 0.34,
-                              ),
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    widget.entry.icon,
-                    size: 15.5,
-                    color: iconColor,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    widget.entry.label,
-                    style: widget.textStyle.copyWith(
-                      color: textColor,
-                      fontWeight: selected || highlighted
-                          ? FontWeight.w800
-                          : FontWeight.w700,
-                      height: 1.15,
-                    ),
-                    maxLines: _isOneLineLabel(widget.entry.label) ? 1 : 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (widget.entry.badge != null) ...[
-                  const SizedBox(width: 8),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? cs.primary.withValues(alpha: 0.12)
-                          : cs.surfaceContainerHighest.withValues(alpha: 0.46),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      widget.entry.badge!,
-                      style: widget.textStyle.copyWith(
-                        color: selected ? cs.primary : cs.onSurfaceVariant,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          ),
+          child: Icon(
+            entry.icon,
+            size: 18,
+            color: selected || entry.highlighted
+                ? cs.primary
+                : enabled
+                    ? cs.onSurfaceVariant
+                    : cs.outline,
           ),
         ),
       ),
     );
   }
-
-  bool _isOneLineLabel(String value) => value.length < 22;
 }
 
 class _PlaceholderGrid extends StatelessWidget {

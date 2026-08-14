@@ -148,6 +148,16 @@ abstract class ITimeTrackingApiClient {
     double? advanceAmount,
   });
 
+  /// GET /groups/:groupId/time-tracking/export/pdf/monthly-calendar
+  Future<Uint8List> exportMonthlyCalendarPdf(
+    String groupId,
+    String token, {
+    required String month,
+    String? workerId,
+    String? lang,
+    double? advanceAmount,
+  });
+
   /// GET /groups/:groupId/time-tracking/import-excel/template?month=YYYY-MM
   Future<Uint8List> downloadExcelImportTemplate(
     String groupId,

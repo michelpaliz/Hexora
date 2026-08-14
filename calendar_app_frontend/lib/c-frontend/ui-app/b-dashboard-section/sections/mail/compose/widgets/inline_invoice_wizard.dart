@@ -84,9 +84,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     _selectedPresupuestoIds = {...widget.state._selectedPresupuestoIds};
     _selectedReceiptIds = {...widget.state._selectedReceiptIds};
     // If the compose form is already in "client mode", pre-select that client.
-    final recipientId = widget.state._useClientMode
-        ? widget.state._recipientClientId
-        : null;
+    final recipientId =
+        widget.state._useClientMode ? widget.state._recipientClientId : null;
     _lastSyncedRecipientClientId = recipientId;
     _clientId = recipientId ??
         widget.state._inlineClientId ??
@@ -98,9 +97,9 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
       _loadReceipts(_clientId!);
       _loadPresupuestos(_clientId!);
       // If this client was already synced from the compose form (client mode),
-      // skip step 0 and jump straight to the document selection step.
+      // skip step 0. If documents are already selected, jump to review.
       if (recipientId != null && recipientId.isNotEmpty) {
-        _step = 1;
+        _step = _hasSelectedDocuments ? 2 : 1;
       }
     }
   }
@@ -108,13 +107,13 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
   @override
   void didUpdateWidget(covariant _InlineInvoiceWizardPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _syncSelectedDocumentsFromCompose();
 
     // Auto-sync: because widget.state is the SAME mutable object on every
     // rebuild we cannot compare old vs new via oldWidget.state. Instead we
     // remember the last ID we synced in _lastSyncedRecipientClientId.
-    final currentRecipientId = widget.state._useClientMode
-        ? widget.state._recipientClientId
-        : null;
+    final currentRecipientId =
+        widget.state._useClientMode ? widget.state._recipientClientId : null;
     if (currentRecipientId != null &&
         currentRecipientId.isNotEmpty &&
         currentRecipientId != _lastSyncedRecipientClientId) {
@@ -122,7 +121,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
       if (currentRecipientId != _clientId) {
         setState(() {
           _clientId = currentRecipientId;
-          _step = 1; // Auto-advance to document selection step
+          _step = _hasSelectedDocuments ? 2 : 1;
         });
         _loadInvoices(currentRecipientId);
         _loadReceipts(currentRecipientId);
@@ -283,6 +282,39 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     return null;
   }
 
+  bool get _hasSelectedDocuments =>
+      _selectedInvoiceIds.isNotEmpty ||
+      _selectedPresupuestoIds.isNotEmpty ||
+      _selectedReceiptIds.isNotEmpty;
+
+  void _syncSelectedDocumentsFromCompose() {
+    final currentInvoiceIds = widget.state
+        ._splitValues(widget.state._normalizeInvoiceIds(
+          widget.state._invoiceIdsCtrl.text,
+        ))
+        .toSet();
+    final currentPresupuestoIds = {...widget.state._selectedPresupuestoIds};
+    final currentReceiptIds = {...widget.state._selectedReceiptIds};
+    if (_setEquals(_selectedInvoiceIds, currentInvoiceIds) &&
+        _setEquals(_selectedPresupuestoIds, currentPresupuestoIds) &&
+        _setEquals(_selectedReceiptIds, currentReceiptIds)) {
+      return;
+    }
+    setState(() {
+      _selectedInvoiceIds = currentInvoiceIds;
+      _selectedPresupuestoIds = currentPresupuestoIds;
+      _selectedReceiptIds = currentReceiptIds;
+      if (_hasSelectedDocuments && _clientId != null) {
+        _step = 2;
+      }
+    });
+  }
+
+  bool _setEquals(Set<String> a, Set<String> b) {
+    if (a.length != b.length) return false;
+    return a.containsAll(b);
+  }
+
   void _applySelectionToCompose() {
     final id = _clientId;
     if (id == null || id.isEmpty) return;
@@ -300,7 +332,9 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     final invoiceCount = _selectedInvoiceIds.length;
     final presupuestoCount = _selectedPresupuestoIds.length;
     final receiptCount = _selectedReceiptIds.length;
+    final manualPdfCount = widget.state._manualPdfAttachmentCount;
     final total = invoiceCount + presupuestoCount + receiptCount;
+    final attachmentTotal = total + manualPdfCount;
     if (l.localeName.toLowerCase().startsWith('es')) {
       final parts = <String>[
         if (invoiceCount > 0)
@@ -309,20 +343,30 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
           '$presupuestoCount presupuesto${presupuestoCount == 1 ? '' : 's'}',
         if (receiptCount > 0)
           '$receiptCount recibo${receiptCount == 1 ? '' : 's'}',
+        if (manualPdfCount > 0)
+          '$manualPdfCount PDF${manualPdfCount == 1 ? '' : 's'} del correo',
       ];
-      return total == 0
+      return attachmentTotal == 0
           ? 'No hay documentos seleccionados.'
-          : 'Adjuntos actualizados: ${parts.join(', ')}.';
+          : parts.join(' + ');
     }
     final parts = <String>[
-      if (invoiceCount > 0) '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}',
+      if (invoiceCount > 0)
+        '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}',
       if (presupuestoCount > 0)
         '$presupuestoCount budget${presupuestoCount == 1 ? '' : 's'}',
-      if (receiptCount > 0) '$receiptCount receipt${receiptCount == 1 ? '' : 's'}',
+      if (receiptCount > 0)
+        '$receiptCount receipt${receiptCount == 1 ? '' : 's'}',
+      if (manualPdfCount > 0)
+        '$manualPdfCount email PDF${manualPdfCount == 1 ? '' : 's'}',
     ];
-    return total == 0
-        ? 'No documents selected.'
-        : 'Attachments updated: ${parts.join(', ')}.';
+    return attachmentTotal == 0 ? 'No documents selected.' : parts.join(' + ');
+  }
+
+  String _selectionAppliedTitle(AppLocalizations l) {
+    return l.localeName.toLowerCase().startsWith('es')
+        ? 'Adjuntos actualizados'
+        : 'Attachments updated';
   }
 
   Future<void> _openInvoicePdfPreview(Invoice invoice) async {
@@ -532,6 +576,9 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     final invoiceColor = cs.primary;
     final receiptColor = cs.tertiary;
     final budgetColor = cs.secondary;
+    final pdfAttachments = widget.state._manualPdfAttachments;
+    final pdfCount = pdfAttachments.length;
+    final pdfSummary = widget.state._manualPdfAttachmentNamesSummary();
     final chips = <Widget>[
       if (invoices.isNotEmpty)
         _summaryChip(
@@ -551,6 +598,13 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
           label:
               '${presupuestos.length} presupuesto${presupuestos.length == 1 ? '' : 's'}',
           color: budgetColor,
+        ),
+      if (pdfAttachments.isNotEmpty)
+        _summaryChip(
+          icon: Icons.picture_as_pdf_outlined,
+          label: '$pdfCount PDF${pdfCount == 1 ? '' : 's'} del correo',
+          color: cs.error,
+          tooltip: pdfSummary,
         ),
     ];
 
@@ -592,8 +646,9 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     required IconData icon,
     required String label,
     required Color color,
+    String? tooltip,
   }) {
-    return Container(
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
@@ -616,6 +671,10 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
         ],
       ),
     );
+    final message = tooltip?.trim();
+    return message == null || message.isEmpty
+        ? chip
+        : Tooltip(message: message, child: chip);
   }
 
   Widget _buildPreviewItemCard({
@@ -841,9 +900,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: active
-                                  ? cs.onPrimary
-                                  : cs.onSurfaceVariant,
+                              color:
+                                  active ? cs.onPrimary : cs.onSurfaceVariant,
                             ),
                           ),
                   ),
@@ -853,8 +911,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                   steps[i],
                   style: t.bodySmall.copyWith(
                     fontSize: 10,
-                    fontWeight:
-                        active ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                     color: active
                         ? cs.primary
                         : complete
@@ -966,11 +1023,10 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      BorderSide(color: cs.primary, width: 1.3),
+                  borderSide: BorderSide(color: cs.primary, width: 1.3),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 filled: true,
                 fillColor: cs.surfaceContainerLow,
               ),
@@ -1021,8 +1077,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                                   setState(() => _dateFilter = f),
                               visualDensity: VisualDensity.compact,
                               labelStyle: const TextStyle(fontSize: 11),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
                               showCheckmark: false,
                             ),
                           ),
@@ -1359,8 +1415,10 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                     return;
                   }
                   _applySelectionToCompose();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(_selectionAppliedMessage(l))),
+                  showSuccessSnack(
+                    context,
+                    _selectionAppliedMessage(l),
+                    title: _selectionAppliedTitle(l),
                   );
                 },
                 child: Text(

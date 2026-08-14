@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
@@ -13,13 +15,13 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_ops/form_helpers.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/money_format_utils.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
+import 'package:hexora/c-frontend/ui-app/shared/jobs/vat_ocr_reprocess_job_store.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:typed_data';
 
 part 'recent_uploads/recent_uploads_editor_section.dart';
 part 'recent_uploads/recent_uploads_item_widgets.dart';
@@ -104,10 +106,13 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   bool _showOnlyPotentialDuplicates = false;
   bool _showOnlyZeroVat = false;
   int _mobilePanelIndex = 0;
+  int _editorPanelIndex = 0;
   bool _suspendBackgroundPreview = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _desktopToolbarScrollController = ScrollController();
+  bool _canScrollToolbarLeft = false;
+  bool _canScrollToolbarRight = false;
   final int _year = DateTime.now().year;
   final Map<int, Map<String, dynamic>> _summary = {};
   final Map<int, String?> _summaryErrors = {};
@@ -117,6 +122,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   final Set<String> _reprocessingExpenseIds = <String>{};
   bool _bulkReprocessingVat = false;
   Map<String, dynamic>? _bulkReprocessJob;
+  Timer? _bulkReprocessPollTimer;
 
   @override
   void initState() {
@@ -127,20 +133,28 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _ensureLoaded(_tabs.index + 1);
       if (mounted) setState(() {});
     });
+    _desktopToolbarScrollController.addListener(_syncToolbarScrollState);
     _ensureLoaded(0);
     _ensureLoaded(_tabs.index + 1);
     _scheduleAutoEditIfNeeded();
+    _resumeBulkReprocessJob();
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _syncToolbarScrollState());
   }
 
   @override
   void didUpdateWidget(covariant ExpenseRecentUploadsTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.groupId != oldWidget.groupId) {
+      _bulkReprocessPollTimer?.cancel();
+      _bulkReprocessJob = null;
+      _bulkReprocessingVat = false;
       _summary.clear();
       _summaryErrors.clear();
       _summaryLoading.clear();
       _ensureLoaded(0);
       _ensureLoaded(_tabs.index + 1);
+      _resumeBulkReprocessJob();
     }
     if (widget.autoEditExpenseId != oldWidget.autoEditExpenseId ||
         (widget.selectedExpense?['id'] ?? '').trim() !=
@@ -151,10 +165,77 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
   @override
   void dispose() {
+    _bulkReprocessPollTimer?.cancel();
     _tabs.dispose();
     _searchController.dispose();
+    _desktopToolbarScrollController.removeListener(_syncToolbarScrollState);
     _desktopToolbarScrollController.dispose();
     super.dispose();
+  }
+
+  void _syncToolbarScrollState() {
+    if (!_desktopToolbarScrollController.hasClients || !mounted) return;
+    final position = _desktopToolbarScrollController.position;
+    final canLeft = position.pixels > position.minScrollExtent + 2;
+    final canRight = position.pixels < position.maxScrollExtent - 2;
+    if (_canScrollToolbarLeft == canLeft &&
+        _canScrollToolbarRight == canRight) {
+      return;
+    }
+    setState(() {
+      _canScrollToolbarLeft = canLeft;
+      _canScrollToolbarRight = canRight;
+    });
+  }
+
+  Future<void> _scrollToolbar(double direction) async {
+    if (!_desktopToolbarScrollController.hasClients) return;
+    final position = _desktopToolbarScrollController.position;
+    final distance = (position.viewportDimension * 0.68).clamp(160.0, 360.0);
+    final target = (position.pixels + distance * direction).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    await _desktopToolbarScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+    );
+    _syncToolbarScrollState();
+  }
+
+  Widget _toolbarScrollArrow(
+    BuildContext context,
+    ColorScheme cs, {
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback onPressed,
+  }) {
+    final materialL = MaterialLocalizations.of(context);
+    return Tooltip(
+      message: icon == Icons.chevron_left_rounded
+          ? materialL.previousPageTooltip
+          : materialL.nextPageTooltip,
+      child: IconButton(
+        onPressed: enabled ? onPressed : null,
+        icon: Icon(icon, size: 17),
+        visualDensity: VisualDensity.compact,
+        color: cs.onSurfaceVariant,
+        disabledColor: cs.onSurfaceVariant.withValues(alpha: 0.22),
+        style: IconButton.styleFrom(
+          minimumSize: const Size(26, 30),
+          fixedSize: const Size(26, 30),
+          padding: EdgeInsets.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          backgroundColor: enabled
+              ? cs.surfaceContainerHighest.withValues(alpha: 0.28)
+              : Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+    );
   }
 
   void _ensureLoaded(int quarter) {
@@ -488,6 +569,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
       setState(() {
         _editingExpense = Map<String, String>.from(selected);
+        _editorPanelIndex = 0;
         _autoOpenedExpenseId = targetId;
       });
       widget.onAutoEditHandled?.call(targetId);
@@ -742,8 +824,16 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       widget.onSelectExpense(item);
       return;
     }
-    setState(() => _editingExpense = item);
+    setState(() {
+      _editingExpense = item;
+      _editorPanelIndex = 0;
+    });
     widget.onSelectExpense(item);
+  }
+
+  void _setEditorPanelIndex(int index) {
+    if (_editorPanelIndex == index) return;
+    setState(() => _editorPanelIndex = index);
   }
 
   Widget _buildMobilePanelTabs(AppTypography t, ColorScheme cs) {
@@ -969,30 +1059,15 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       final jobId = (job['jobId'] ?? '').toString().trim();
       if (mounted) setState(() => _bulkReprocessJob = job);
       if (jobId.isEmpty) throw StateError('Missing OCR reprocess job id');
-
-      for (var attempt = 0; attempt < 80; attempt++) {
-        await Future<void>.delayed(const Duration(seconds: 2));
-        if (!mounted) return;
-        job = await _expensesApi.getExpenseOcrReprocessJob(
+      await VatOcrReprocessJobStore.save(
+        VatOcrReprocessJobRef(
           jobId: jobId,
           groupId: groupId,
-        );
-        if (mounted) setState(() => _bulkReprocessJob = job);
-        final status = (job['status'] ?? '').toString().toLowerCase();
-        if (status == 'completed' || status == 'failed') break;
-      }
-
-      if (!mounted) return;
-      final results = _ocrResultsFromJob(job);
-      final applied = await _showOcrReprocessReviewDialog(
-        title: 'Releer IVA 0',
-        results: results,
-        job: job,
+          startedAt: DateTime.now(),
+        ),
       );
-      if (applied == true) {
-        final selectedId = (widget.selectedExpense?['id'] ?? '').trim();
-        await _reloadRecentUploadsAfterEdit(selectedId: selectedId);
-      }
+
+      _startBulkReprocessPolling(jobId);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1000,11 +1075,76 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       );
     } finally {
       if (mounted) {
-        setState(() {
-          _bulkReprocessingVat = false;
-          _bulkReprocessJob = null;
-        });
+        setState(() => _bulkReprocessingVat = false);
       }
+    }
+  }
+
+  Future<void> _resumeBulkReprocessJob() async {
+    final groupId = widget.groupId.trim();
+    if (groupId.isEmpty) return;
+    final ref = await VatOcrReprocessJobStore.read(groupId);
+    if (!mounted || ref == null) return;
+    setState(() {
+      _bulkReprocessJob = {
+        'jobId': ref.jobId,
+        'groupId': ref.groupId,
+        'status': 'queued',
+        'processed': 0,
+      };
+      _bulkReprocessingVat = true;
+    });
+    _startBulkReprocessPolling(ref.jobId);
+  }
+
+  void _startBulkReprocessPolling(String jobId) {
+    _bulkReprocessPollTimer?.cancel();
+    _pollBulkReprocessJob(jobId);
+    _bulkReprocessPollTimer = Timer.periodic(
+      const Duration(seconds: 4),
+      (_) => _pollBulkReprocessJob(jobId),
+    );
+  }
+
+  Future<void> _pollBulkReprocessJob(String jobId) async {
+    final groupId = widget.groupId.trim();
+    if (groupId.isEmpty || jobId.trim().isEmpty) return;
+    try {
+      final job = await _expensesApi.getExpenseOcrReprocessJob(
+        jobId: jobId,
+        groupId: groupId,
+      );
+      if (!mounted) return;
+      final status = (job['status'] ?? '').toString().toLowerCase();
+      setState(() {
+        _bulkReprocessJob = job;
+        _bulkReprocessingVat = status != 'completed' && status != 'failed';
+      });
+      if (status == 'completed' || status == 'failed') {
+        _bulkReprocessPollTimer?.cancel();
+      }
+    } catch (_) {
+      // Keep the stored job so the next visit can resume polling.
+    }
+  }
+
+  Future<void> _openBulkReprocessResults() async {
+    final job = _bulkReprocessJob;
+    if (job == null) return;
+    final status = (job['status'] ?? '').toString().toLowerCase();
+    if (status != 'completed' && status != 'failed') return;
+    final results = _ocrResultsFromJob(job);
+    final applied = await _showOcrReprocessReviewDialog(
+      title: 'Releer IVA 0',
+      results: results,
+      job: job,
+    );
+    if (applied == true) {
+      await VatOcrReprocessJobStore.clear(widget.groupId.trim());
+      if (!mounted) return;
+      final selectedId = (widget.selectedExpense?['id'] ?? '').trim();
+      await _reloadRecentUploadsAfterEdit(selectedId: selectedId);
+      if (mounted) setState(() => _bulkReprocessJob = null);
     }
   }
 
@@ -1212,7 +1352,9 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return Column(
       children: [
         _buildCompactListToolbar(l, t, cs, isSpanish),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
+        _buildExpenseResultsAmountStrip(t, cs, isSpanish),
+        const SizedBox(height: 8),
         Expanded(
           child: visibleUploads.isEmpty
               ? Center(
@@ -1290,80 +1432,249 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 860;
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _syncToolbarScrollState(),
+        );
+        final isWide = constraints.maxWidth >= 760;
         final decoration = BoxDecoration(
           color: cs.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: cs.outlineVariant.withValues(alpha: 0.32),
           ),
         );
 
+        Widget scrollableControls({bool withBottomPadding = false}) {
+          return ScrollConfiguration(
+            behavior: const _ExpenseToolbarDragScrollBehavior(),
+            child: SingleChildScrollView(
+              controller: _desktopToolbarScrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              padding: EdgeInsets.only(bottom: withBottomPadding ? 5 : 0),
+              child: Row(
+                children: [
+                  _buildQuarterFilterBar(t, cs, isSpanish),
+                  const SizedBox(width: 8),
+                  if (_zeroVatItemCount > 0) ...[
+                    _buildVatReprocessButton(cs, t, isSpanish),
+                    const SizedBox(width: 8),
+                  ],
+                  _buildSummaryBar(l, t, cs, isSpanish, embedded: true),
+                ],
+              ),
+            ),
+          );
+        }
+
+        Widget controlsRow({bool showScrollbar = false}) {
+          final scrollable = showScrollbar
+              ? Scrollbar(
+                  controller: _desktopToolbarScrollController,
+                  thumbVisibility: false,
+                  interactive: true,
+                  thickness: 2.5,
+                  radius: const Radius.circular(999),
+                  child: scrollableControls(withBottomPadding: true),
+                )
+              : scrollableControls();
+          return Row(
+            children: [
+              _toolbarScrollArrow(
+                context,
+                cs,
+                icon: Icons.chevron_left_rounded,
+                enabled: _canScrollToolbarLeft,
+                onPressed: () => _scrollToolbar(-1),
+              ),
+              const SizedBox(width: 3),
+              Expanded(child: scrollable),
+              const SizedBox(width: 3),
+              _toolbarScrollArrow(
+                context,
+                cs,
+                icon: Icons.chevron_right_rounded,
+                enabled: _canScrollToolbarRight,
+                onPressed: () => _scrollToolbar(1),
+              ),
+            ],
+          );
+        }
+
         if (!isWide) {
           return Container(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 7),
             decoration: decoration,
             child: Column(
               children: [
                 _buildSearchBar(cs, isSpanish, compact: true),
-                const SizedBox(height: 8),
-                _buildQuarterFilterBar(t, cs, isSpanish),
-                const SizedBox(height: 8),
-                if (_zeroVatItemCount > 0) ...[
-                  _buildVatReprocessButton(cs, t, isSpanish),
-                  const SizedBox(height: 8),
-                ],
-                _buildSummaryBar(l, t, cs, isSpanish, embedded: true),
+                const SizedBox(height: 7),
+                controlsRow(),
               ],
             ),
           );
         }
 
         return Container(
-          padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+          padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
           decoration: decoration,
           child: Row(
             children: [
               SizedBox(
-                width: (constraints.maxWidth * 0.34).clamp(300.0, 430.0),
+                width: (constraints.maxWidth * 0.30).clamp(260.0, 380.0),
                 child: _buildSearchBar(cs, isSpanish, compact: true),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
-                child: ScrollConfiguration(
-                  behavior: const _ExpenseToolbarDragScrollBehavior(),
-                  child: Scrollbar(
-                    controller: _desktopToolbarScrollController,
-                    thumbVisibility: true,
-                    interactive: true,
-                    thickness: 3,
-                    radius: const Radius.circular(999),
-                    child: SingleChildScrollView(
-                      controller: _desktopToolbarScrollController,
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
-                      padding: const EdgeInsets.only(bottom: 7),
-                      child: Row(
-                        children: [
-                          _buildQuarterFilterBar(t, cs, isSpanish),
-                          const SizedBox(width: 10),
-                          if (_zeroVatItemCount > 0) ...[
-                            _buildVatReprocessButton(cs, t, isSpanish),
-                            const SizedBox(width: 10),
-                          ],
-                          _buildSummaryBar(l, t, cs, isSpanish, embedded: true),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                child: controlsRow(showScrollbar: true),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildExpenseResultsAmountStrip(
+    AppTypography t,
+    ColorScheme cs,
+    bool isSpanish,
+  ) {
+    final summary = _summaryForCurrentFilter();
+    final summaryCount = summary?['count'];
+    final count =
+        summaryCount is num ? summaryCount.toInt() : _visibleUploads.length;
+    final subtotal = _summaryNum(summary, 'subtotal');
+    final taxSum = _summaryNum(summary, 'taxTotal');
+    final total = _summaryNum(summary, 'total');
+    final currency = _summaryCurrency(summary);
+    final summaryLoading = _summaryLoading[_selectedQuarterFilter ?? 0] == true;
+    final summaryError = _summaryErrors[_selectedQuarterFilter ?? 0];
+    final totalColor = cs.brightness == Brightness.light
+        ? const Color(0xFFE65100)
+        : cs.secondary;
+
+    Widget metric(String label, String value) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: t.bodySmall.copyWith(
+              color: cs.onSurface,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      );
+    }
+
+    Widget divider() => Container(
+          width: 1,
+          height: 16,
+          color: cs.outlineVariant.withValues(alpha: 0.24),
+        );
+
+    Widget content;
+    if (summaryLoading) {
+      content = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 13,
+            height: 13,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.6,
+              valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            isSpanish ? 'Calculando totales' : 'Calculating totals',
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      );
+    } else if ((summaryError ?? '').trim().isNotEmpty) {
+      content = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, size: 15, color: cs.error),
+          const SizedBox(width: 7),
+          Text(
+            isSpanish
+                ? 'No se pudieron cargar los totales'
+                : 'Totals unavailable',
+            style: t.bodySmall.copyWith(
+              color: cs.error,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      );
+    } else {
+      content = Wrap(
+        spacing: 12,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 13,
+                color: cs.onSurfaceVariant.withValues(alpha: 0.62),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '$count ${count == 1 ? 'gasto' : 'gastos'}',
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurface,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          divider(),
+          metric(isSpanish ? 'Base' : 'Sub', _formatMoney(subtotal)),
+          divider(),
+          metric('IVA', _formatMoney(taxSum)),
+          divider(),
+          _SummaryTotalChip(
+            formattedValue: _formatMoney(total),
+            currency: currency,
+            color: totalColor,
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.26)),
+      ),
+      child: content,
     );
   }
 
@@ -1379,24 +1690,37 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         : (_asInt(progress['total']) == 0
             ? _zeroVatItemCount
             : _asInt(progress['total']));
-    final label = _bulkReprocessingVat
-        ? (isSpanish
-            ? 'Releyendo $processed/$total'
-            : 'Re-reading $processed/$total')
-        : (isSpanish
-            ? 'Releer IVA 0 ($_zeroVatItemCount)'
-            : 'Re-read VAT 0 ($_zeroVatItemCount)');
+    final status = (progress?['status'] ?? '').toString().toLowerCase();
+    final completed = status == 'completed' || status == 'failed';
+    final label = completed
+        ? (isSpanish ? 'Ver resultados IVA 0' : 'View VAT 0 results')
+        : _bulkReprocessingVat
+            ? (isSpanish
+                ? 'Releyendo $processed/$total'
+                : 'Re-reading $processed/$total')
+            : (isSpanish
+                ? 'Releer IVA 0 ($_zeroVatItemCount)'
+                : 'Re-read VAT 0 ($_zeroVatItemCount)');
     return OutlinedButton.icon(
-      onPressed: _bulkReprocessingVat || _zeroVatExpenseIds.isEmpty
+      onPressed: _bulkReprocessingVat
           ? null
-          : _bulkReprocessZeroVat,
+          : completed
+              ? _openBulkReprocessResults
+              : _zeroVatExpenseIds.isEmpty
+                  ? null
+                  : _bulkReprocessZeroVat,
       style: OutlinedButton.styleFrom(
         visualDensity: VisualDensity.compact,
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        minimumSize: const Size(0, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         side:
             BorderSide(color: const Color(0xFFD97706).withValues(alpha: 0.34)),
         foregroundColor: const Color(0xFFD97706),
-        textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+        textStyle: t.bodySmall.copyWith(
+          fontWeight: FontWeight.w800,
+          fontSize: 11.5,
+        ),
       ),
       icon: _bulkReprocessingVat
           ? const SizedBox(
@@ -1404,7 +1728,12 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               height: 14,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Icon(Icons.document_scanner_outlined, size: 16),
+          : Icon(
+              completed
+                  ? Icons.fact_check_outlined
+                  : Icons.document_scanner_outlined,
+              size: 16,
+            ),
       label: Text(label),
     );
   }
@@ -1433,8 +1762,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           color: hasQuery ? cs.primary : cs.onSurfaceVariant,
         ),
         prefixIconConstraints: BoxConstraints(
-          minWidth: compact ? 36 : 42,
-          minHeight: compact ? 36 : 42,
+          minWidth: compact ? 32 : 42,
+          minHeight: compact ? 32 : 42,
         ),
         suffixIcon: hasQuery
             ? IconButton(
@@ -1444,7 +1773,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                   setState(() => _searchQuery = '');
                 },
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
               )
             : null,
         filled: true,
@@ -1452,20 +1781,20 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         isDense: true,
         contentPadding: EdgeInsets.symmetric(
           horizontal: 8,
-          vertical: compact ? 9 : 12,
+          vertical: compact ? 7 : 12,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide:
               BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide:
               BorderSide(color: cs.outlineVariant.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.55)),
         ),
       ),
@@ -1482,7 +1811,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(7),
             color: selected
@@ -1500,7 +1829,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             style: t.bodySmall.copyWith(
               fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
               color: selected ? cs.primary : cs.onSurfaceVariant,
-              fontSize: 11.5,
+              fontSize: 11,
             ),
           ),
         ),
@@ -1543,7 +1872,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           ),
         ],
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
@@ -1673,7 +2002,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       ],
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
@@ -1813,7 +2142,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       ],
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
@@ -2607,9 +2936,9 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     // Thin group separator
     Widget divider() => Container(
           width: 1,
-          height: 16,
+          height: 14,
           color: cs.outlineVariant.withValues(alpha: 0.28),
-          margin: const EdgeInsets.symmetric(horizontal: 8),
+          margin: const EdgeInsets.symmetric(horizontal: 6),
         );
 
     // Inline label+value pair — no border, pure typography
@@ -2619,7 +2948,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               TextSpan(
                 text: '$label ',
                 style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: 10,
                   color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                   fontWeight: FontWeight.w500,
                   fontFamily: t.bodySmall.fontFamily,
@@ -2629,7 +2958,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               TextSpan(
                 text: value,
                 style: TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 11,
                   color: cs.onSurface,
                   fontWeight: FontWeight.w700,
                   fontFamily: t.bodySmall.fontFamily,
@@ -2641,16 +2970,46 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         );
 
     Widget dotSep() => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 5),
           child: Text(
             '·',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: cs.onSurfaceVariant.withValues(alpha: 0.28),
               fontWeight: FontWeight.w300,
             ),
           ),
         );
+
+    if (embedded) {
+      return Container(
+        padding: EdgeInsets.zero,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.transparent,
+          border: Border.all(color: Colors.transparent),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _fileTypeButton(cs, t, isSpanish),
+                const SizedBox(width: 3),
+                _auditFilterButton(cs, t, isSpanish),
+                if (_duplicateInvoiceItemCount > 0) ...[
+                  const SizedBox(width: 3),
+                  _resolveDuplicatesButton(cs, t, isSpanish),
+                ],
+              ],
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -2676,7 +3035,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             size: 13,
             color: cs.onSurfaceVariant.withValues(alpha: 0.6),
           ),
-          const SizedBox(width: 5),
+          const SizedBox(width: 4),
           Text(
             isMobileSummary
                 ? '$count'
@@ -2684,7 +3043,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             style: t.bodySmall.copyWith(
               fontWeight: FontWeight.w700,
               color: cs.onSurface,
-              fontSize: 12,
+              fontSize: 11.5,
             ),
           ),
           // ── B: Financial metrics ──────────────────────────────────────
@@ -2711,7 +3070,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               ),
               dotSep(),
               inlineMetric('IVA', _formatMoney(taxSum)),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
             ],
             // Total: the one chip that earns a border — the primary KPI
             _SummaryTotalChip(
@@ -2721,7 +3080,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             ),
             // Incidencias: compact warning badge
             if (mismatchCount > 0) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               _MismatchBadge(
                 count: mismatchCount,
                 isSpanish: isSpanish,
@@ -2731,10 +3090,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           divider(),
           // ── C: Actions ────────────────────────────────────────────────
           _fileTypeButton(cs, t, isSpanish),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           _auditFilterButton(cs, t, isSpanish),
           if (_duplicateInvoiceItemCount > 0) ...[
-            const SizedBox(width: 4),
+            const SizedBox(width: 3),
             _resolveDuplicatesButton(cs, t, isSpanish),
           ],
         ],
@@ -4074,7 +4433,7 @@ class _SummaryTotalChipState extends State<_SummaryTotalChip> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             color: color.withValues(alpha: _hovered ? 0.13 : 0.07),
@@ -4100,25 +4459,25 @@ class _SummaryTotalChipState extends State<_SummaryTotalChip> {
               Text(
                 'Σ',
                 style: ts.bodySmall?.copyWith(
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w400,
                   color: color.withValues(alpha: 0.6),
                 ),
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 4),
               Text(
                 widget.formattedValue,
                 style: ts.bodySmall?.copyWith(
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w800,
                   color: color,
                 ),
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 4),
               Text(
                 widget.currency,
                 style: ts.bodySmall?.copyWith(
-                  fontSize: 10,
+                  fontSize: 9.5,
                   fontWeight: FontWeight.w500,
                   color: color.withValues(alpha: 0.5),
                 ),
@@ -4162,7 +4521,7 @@ class _MismatchBadgeState extends State<_MismatchBadge> {
         cursor: SystemMouseCursors.alias,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             color: cs.error.withValues(alpha: _hovered ? 0.14 : 0.08),

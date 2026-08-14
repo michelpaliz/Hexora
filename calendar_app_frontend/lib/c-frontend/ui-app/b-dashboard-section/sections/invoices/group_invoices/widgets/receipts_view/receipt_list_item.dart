@@ -9,7 +9,7 @@ class ReceiptListItem extends StatefulWidget {
   final Receipt receipt;
   final GroupClient client;
   final VoidCallback? onTap;
-  final VoidCallback? onPreview;
+  final Future<void> Function()? onPreview;
   final VoidCallback? onEdit;
   final VoidCallback? onIssue;
   final VoidCallback? onDelete;
@@ -33,6 +33,43 @@ class ReceiptListItem extends StatefulWidget {
 
 class _ReceiptListItemState extends State<ReceiptListItem> {
   bool _hovered = false;
+  bool _previewing = false;
+
+  Future<void> _runPreview() async {
+    final onPreview = widget.onPreview;
+    if (onPreview == null || _previewing) return;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    setState(() => _previewing = true);
+    final notice = ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(minutes: 1),
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              isEs
+                  ? 'Preparando vista previa del PDF...'
+                  : 'Preparing PDF preview...',
+            ),
+          ],
+        ),
+      ),
+    );
+    try {
+      await onPreview();
+    } finally {
+      notice.close();
+      if (mounted) setState(() => _previewing = false);
+    }
+  }
 
   void _showMobileActions(
     BuildContext context,
@@ -121,14 +158,31 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                   ],
                 ),
               ),
-              Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.35)),
+              Divider(
+                  height: 1, color: cs.outlineVariant.withValues(alpha: 0.35)),
               if (widget.onPreview != null)
                 ListTile(
-                  leading: Icon(Icons.preview_outlined, color: cs.primary),
-                  title: Text(l.preview),
+                  enabled: !_previewing,
+                  leading: _previewing
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: cs.primary,
+                          ),
+                        )
+                      : Icon(Icons.preview_outlined, color: cs.primary),
+                  title: Text(
+                    _previewing
+                        ? (l.localeName.toLowerCase().startsWith('es')
+                            ? 'Preparando vista previa...'
+                            : 'Preparing preview...')
+                        : l.preview,
+                  ),
                   onTap: () {
                     Navigator.of(sheetCtx).pop();
-                    widget.onPreview!();
+                    _runPreview();
                   },
                 ),
               if (widget.onEdit != null)
@@ -142,8 +196,8 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                 ),
               if (widget.onDownload != null)
                 ListTile(
-                  leading: Icon(Icons.download_outlined,
-                      color: cs.onSurfaceVariant),
+                  leading:
+                      Icon(Icons.download_outlined, color: cs.onSurfaceVariant),
                   title: Text(l.download),
                   onTap: () {
                     Navigator.of(sheetCtx).pop();
@@ -271,8 +325,8 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                   color: iconBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(iconData,
-                    color: iconColor, size: isMobile ? 15 : 16),
+                child:
+                    Icon(iconData, color: iconColor, size: isMobile ? 15 : 16),
               ),
               const SizedBox(width: 9),
 
@@ -465,10 +519,15 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                         children: [
                           if (widget.onPreview != null)
                             _ActionBtn(
-                              icon: Icons.preview_outlined,
-                              tooltip: l.preview,
+                              icon: Icons.visibility_outlined,
+                              tooltip: _previewing
+                                  ? (l.localeName.toLowerCase().startsWith('es')
+                                      ? 'Preparando vista previa...'
+                                      : 'Preparing preview...')
+                                  : l.preview,
                               color: cs.primary,
-                              onTap: widget.onPreview!,
+                              loading: _previewing,
+                              onTap: _runPreview,
                             ),
                           if (widget.onEdit != null)
                             _ActionBtn(
@@ -479,7 +538,7 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                             ),
                           if (widget.onDownload != null)
                             _ActionBtn(
-                              icon: Icons.download_outlined,
+                              icon: Icons.download_rounded,
                               tooltip: l.download,
                               color: cs.onSurfaceVariant,
                               onTap: widget.onDownload!,
@@ -499,13 +558,12 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                             Container(
                               width: 1,
                               height: 14,
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 3),
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
                               color: cs.outlineVariant.withValues(alpha: 0.3),
                             ),
                           if (widget.onDelete != null)
                             _ActionBtn(
-                              icon: Icons.delete_outline,
+                              icon: Icons.delete_outline_rounded,
                               tooltip: l.delete,
                               color: cs.error,
                               onTap: widget.onDelete!,
@@ -542,8 +600,9 @@ class _LinesChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEs = Localizations.localeOf(context).languageCode == 'es';
-    final chipLabel =
-        isEs ? '$count línea${count == 1 ? '' : 's'}' : '$count line${count == 1 ? '' : 's'}';
+    final chipLabel = isEs
+        ? '$count línea${count == 1 ? '' : 's'}'
+        : '$count line${count == 1 ? '' : 's'}';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -565,30 +624,70 @@ class _LinesChip extends StatelessWidget {
 
 // ── Desktop action button ──────────────────────────────────────────────────────
 
-class _ActionBtn extends StatelessWidget {
+class _ActionBtn extends StatefulWidget {
   final IconData icon;
   final String tooltip;
   final Color color;
   final VoidCallback onTap;
+  final bool loading;
 
   const _ActionBtn({
     required this.icon,
     required this.tooltip,
     required this.color,
     required this.onTap,
+    this.loading = false,
   });
+
+  @override
+  State<_ActionBtn> createState() => _ActionBtnState();
+}
+
+class _ActionBtnState extends State<_ActionBtn> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: Icon(icon, size: 16, color: color),
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: widget.loading
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: InkWell(
+          onTap: widget.loading ? null : widget.onTap,
+          borderRadius: BorderRadius.circular(7),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 110),
+            curve: Curves.easeOut,
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: widget.color.withValues(alpha: _hovered ? 0.16 : 0.07),
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(
+                color: _hovered
+                    ? widget.color.withValues(alpha: 0.30)
+                    : Colors.transparent,
+              ),
+            ),
+            child: widget.loading
+                ? Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: widget.color,
+                    ),
+                  )
+                : Icon(
+                    widget.icon,
+                    size: 14,
+                    color:
+                        widget.color.withValues(alpha: _hovered ? 1.0 : 0.75),
+                  ),
+          ),
         ),
       ),
     );

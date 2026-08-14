@@ -708,8 +708,14 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                 defaultTaxRate: defaultTaxRate,
               ),
               onCopyJsonPrompt: _copyBudgetPromptTemplate,
-              jsonTextValidator: _validateBudgetJsonShape,
               onPickImageForLineExtraction: _pickBudgetExtractFile,
+              onSaveDraft: _saveDraftOnly,
+              saveDraftLabel: _isIssuedEditable
+                  ? (_isSpanishLocale
+                      ? 'Guardar nueva version'
+                      : 'Save new version')
+                  : (_isSpanishLocale ? 'Guardar borrador' : 'Save draft'),
+              savingDraft: _issuing,
               onApplyExtractedLines: _extractedBlocks.isEmpty
                   ? null
                   : () => _importExtractedBudgetBlocks(
@@ -717,14 +723,14 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                         defaultTaxRate: 21,
                       ),
               onClearExtractedLines: _clearBudgetExtractedBlocks,
-              showSaveDraftButton: false,
+              showSaveDraftButton: true,
             ),
           ),
         ),
       );
     }
 
-    if (_visibleStep == 3) {
+    if (_visibleStep == 99) {
       final selectedClient = widget.clients
           .where((c) => c.id == _selectedClientId)
           .cast<GroupClient?>()

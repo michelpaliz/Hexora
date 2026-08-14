@@ -24,6 +24,9 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
   Uint8List? _inlinePdfBytes;
   bool _savingBillingName = false;
   bool _updatingDelivery = false;
+  List<Map<String, dynamic>> _invoiceHistory = const [];
+  bool _historyLoading = false;
+  String? _historyError;
   Invoice get _invoice => _currentInvoice ?? widget.invoice;
   num get _total => _lines.fold<num>(0, (sum, l) => sum + (l.lineTotal ?? 0));
 
@@ -37,6 +40,48 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     } catch (_) {
       // Keep rendering from the selected list item snapshot if detail refresh fails.
     }
+  }
+
+  Future<void> _loadInvoiceHistory() async {
+    final id = _invoice.id.trim();
+    if (id.isEmpty) return;
+    setState(() {
+      _historyLoading = true;
+      _historyError = null;
+    });
+    try {
+      final payload = await _invoicesApi.getHistory(id);
+      final raw = payload['history'];
+      final history = raw is List
+          ? raw
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList()
+          : const <Map<String, dynamic>>[];
+      history.sort((a, b) {
+        DateTime value(Map<String, dynamic> item) =>
+            DateTime.tryParse(
+              (item['changedAt'] ?? item['createdAt'] ?? '').toString(),
+            ) ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return value(b).compareTo(value(a));
+      });
+      if (!mounted) return;
+      setState(() => _invoiceHistory = history);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _historyError = error.toString());
+    } finally {
+      if (mounted) setState(() => _historyLoading = false);
+    }
+  }
+
+  Future<void> _updateInvoicePayment(Map<String, dynamic> payload) async {
+    final updated = await _invoicesApi.updatePayment(_invoice.id, payload);
+    if (!mounted) return;
+    setState(() => _currentInvoice = updated);
+    widget.onInvoiceChanged?.call();
+    await _loadInlinePdfPreview();
   }
 
   Future<void> _fetchLines() async {

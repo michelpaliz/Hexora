@@ -26,9 +26,11 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
   late final TextEditingController _ccController;
   late final TextEditingController _subjectController;
   late final quill.QuillController _quillController;
+  final InvoicesApi _invoicesApi = InvoicesApi();
   final FocusNode _bodyFocus = FocusNode();
   final ScrollController _bodyScroll = ScrollController();
   late final TabController _tabs;
+  late Invoice _paymentInvoice;
   bool _templatesSeeded = false;
 
   bool _attachPdf = true;
@@ -44,6 +46,7 @@ class _SendInvoiceSheetState extends State<SendInvoiceSheet>
   void initState() {
     super.initState();
     debugPrint('[SendInvoiceSheet] opened for invoice=${widget.invoice.id}');
+    _paymentInvoice = widget.invoice;
     final fallbackEmail = widget.client.billing?.email ?? widget.client.email;
     _toController = TextEditingController(text: fallbackEmail ?? '');
     _ccController = TextEditingController();
@@ -206,6 +209,14 @@ $html
     }
   }
 
+  Future<void> _savePayment(Map<String, dynamic> payload) async {
+    final updated =
+        await _invoicesApi.updatePayment(widget.invoice.id, payload);
+    if (!mounted) return;
+    setState(() => _paymentInvoice = updated);
+    await widget.onSent();
+  }
+
   Map<String, dynamic>? _previewAttachment() {
     final payload = _previewPayload ?? {};
     final attachment = payload['attachment'];
@@ -358,6 +369,12 @@ $html
                 SingleChildScrollView(
                   child: Column(
                     children: [
+                      InvoicePaymentEditor(
+                        invoice: _paymentInvoice,
+                        compact: true,
+                        onSave: _savePayment,
+                      ),
+                      const SizedBox(height: 10),
                       TextField(
                         controller: _toController,
                         decoration: InputDecoration(

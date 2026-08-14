@@ -8,6 +8,7 @@ class FolderPanel extends StatelessWidget {
   final String? title;
   final bool showTab;
   final double contentTopPadding;
+  final Widget? tabContent;
   final List<Widget>? actions;
 
   const FolderPanel({
@@ -17,6 +18,7 @@ class FolderPanel extends StatelessWidget {
     this.title,
     this.showTab = true,
     this.contentTopPadding = 30,
+    this.tabContent,
     this.actions,
   });
 
@@ -25,7 +27,7 @@ class FolderPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final bg = cs.surface;
-    final border = cs.outlineVariant.withOpacity(0.35);
+    final border = cs.outlineVariant.withValues(alpha: 0.35);
     final label = title ?? AppLocalizations.of(context)!.workersLabel;
     final hasActions = actions != null && actions!.isNotEmpty;
 
@@ -60,42 +62,43 @@ class FolderPanel extends StatelessWidget {
                     ),
                     border: Border.all(color: border),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (onBack != null)
-                        Tooltip(
-                          message: label,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(999),
-                            onTap: onBack,
-                            child: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color:
-                                    cs.surfaceContainerHighest.withOpacity(0.8),
+                  child: tabContent ??
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (onBack != null)
+                            Tooltip(
+                              message: label,
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: border),
-                              ),
-                              child: Icon(
-                                Icons.arrow_back,
-                                size: 14,
-                                color: cs.onSurface.withOpacity(0.85),
+                                onTap: onBack,
+                                child: Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: cs.surfaceContainerHighest
+                                        .withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(color: border),
+                                  ),
+                                  child: Icon(
+                                    Icons.arrow_back,
+                                    size: 14,
+                                    color: cs.onSurface.withValues(alpha: 0.85),
+                                  ),
+                                ),
                               ),
                             ),
+                          if (onBack != null) const SizedBox(width: 8),
+                          Text(
+                            label,
+                            style: t.bodySmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface.withValues(alpha: 0.8),
+                            ),
                           ),
-                        ),
-                      if (onBack != null) const SizedBox(width: 8),
-                      Text(
-                        label,
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface.withOpacity(0.8),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
                 ),
               ),
             if (showTab && hasActions)

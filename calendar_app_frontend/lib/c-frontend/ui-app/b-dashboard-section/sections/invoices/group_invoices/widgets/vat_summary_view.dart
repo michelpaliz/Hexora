@@ -108,11 +108,10 @@ class _VatSummaryViewState extends State<VatSummaryView>
     final to = formatVatDate(toExclusive);
     try {
       final results = await Future.wait([
-        widget.api.getSummary(
+        widget.api.getQuarterSummary(
           groupId: widget.groupId,
-          from: from,
-          to: to,
-          currency: 'EUR',
+          year: _year,
+          quarter: quarter,
         ),
         _invoicesApi.getSummary(
           groupId: (widget.groupId ?? '').trim(),
@@ -149,10 +148,12 @@ class _VatSummaryViewState extends State<VatSummaryView>
             e.message.toLowerCase().contains('only eur currency is supported');
         if (isEurOnly) {
           message =
-              'IVA summary is only available when all documents in this period are in EUR.';
+              'El resumen de IVA solo esta disponible cuando todos los documentos del periodo estan en EUR.';
         } else {
-          message = e.message;
+          message = 'No se pudo cargar el resumen de IVA.';
         }
+      } else {
+        message = 'No se pudo cargar el resumen de IVA.';
       }
       setState(() => _errors[quarter] = message);
     } finally {

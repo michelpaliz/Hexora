@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
-import 'package:hexora/a-models/invoice/invoice_line.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -47,6 +46,8 @@ class InvoiceListItem extends StatefulWidget {
 }
 
 class _InvoiceListItemState extends State<InvoiceListItem> {
+  static const double _actionIconGap = 6;
+
   final _linesApi = InvoiceLinesApi();
 
   bool _loadingMeta = false;
@@ -79,27 +80,11 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
   }
 
-  num _lineSubtotal(InvoiceLine line) =>
-      line.lineSubtotal ?? (line.quantity * line.unitPrice);
-  num _lineTax(InvoiceLine line) =>
-      line.lineTax ?? (_lineSubtotal(line) * (line.taxRate / 100));
-  num _lineTotal(InvoiceLine line) =>
-      line.lineTotal ?? (_lineSubtotal(line) + _lineTax(line));
-
   void _seedFromInvoice() {
     final inv = widget.invoice;
     _discountAmount = inv.discountAmount;
     _discountPercent = inv.discountPercent;
-    if (inv.lines.isNotEmpty) {
-      _lineCount = inv.lines.length;
-      _subtotal = inv.subtotal ??
-          inv.lines.fold<num>(0, (s, l) => s + _lineSubtotal(l));
-      _taxTotal =
-          inv.taxTotal ?? inv.lines.fold<num>(0, (s, l) => s + _lineTax(l));
-      _total = inv.total ?? inv.lines.fold<num>(0, (s, l) => s + _lineTotal(l));
-      return;
-    }
-    _lineCount = null;
+    _lineCount = inv.lines.isEmpty ? null : inv.lines.length;
     _subtotal = inv.subtotal;
     _taxTotal = inv.taxTotal;
     _total = inv.total;
@@ -118,11 +103,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       final inv = widget.invoice;
       setState(() {
         _lineCount = lines.length;
-        _subtotal =
-            inv.subtotal ?? lines.fold<num>(0, (s, l) => s + _lineSubtotal(l));
-        _taxTotal =
-            inv.taxTotal ?? lines.fold<num>(0, (s, l) => s + _lineTax(l));
-        _total = inv.total ?? lines.fold<num>(0, (s, l) => s + _lineTotal(l));
+        _subtotal = inv.subtotal;
+        _taxTotal = inv.taxTotal;
+        _total = inv.total;
         _discountAmount = inv.discountAmount;
         _discountPercent = inv.discountPercent;
       });
@@ -152,9 +135,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final money = NumberFormat.currency(locale: l.localeName, symbol: '€');
 
     final backendTotalLabel = (widget.invoice.totalFormatted ?? '').trim();
-    final totalLabel = backendTotalLabel.isNotEmpty
-        ? backendTotalLabel
-        : (_total == null ? '' : money.format(_total));
+    final totalLabel = _total != null
+        ? money.format(_total)
+        : (backendTotalLabel.isNotEmpty ? backendTotalLabel : '');
 
     final settlement = widget.invoice.finalSettlement;
     final settlementDeduction = (settlement?.deductedTotal ?? 0).toDouble();
@@ -495,6 +478,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                                     () => _detailsExpanded = !_detailsExpanded,
                                   ),
                                 ),
+                                const SizedBox(width: _actionIconGap),
                                 _ActionBtn(
                                   icon: Icons.visibility_outlined,
                                   tooltip: isEs ? 'Vista previa' : 'Preview',
@@ -502,7 +486,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                                   onTap: widget.onPreview ?? widget.onTap,
                                 ),
                                 if (widget.onEdit != null) ...[
-                                  const SizedBox(width: 3),
+                                  const SizedBox(width: _actionIconGap),
                                   _ActionBtn(
                                     icon: Icons.edit_outlined,
                                     tooltip: l.edit,
@@ -511,7 +495,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                                   ),
                                 ],
                                 if (widget.onIssue != null) ...[
-                                  const SizedBox(width: 3),
+                                  const SizedBox(width: _actionIconGap),
                                   _ActionBtn(
                                     icon: Icons.publish_outlined,
                                     tooltip: l.invoiceIssueCta,
@@ -520,7 +504,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                                   ),
                                 ],
                                 if (widget.onInspectRecurrence != null) ...[
-                                  const SizedBox(width: 3),
+                                  const SizedBox(width: _actionIconGap),
                                   _ActionBtn(
                                     icon: Icons.rule_folder_outlined,
                                     tooltip:
@@ -530,14 +514,14 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                                   ),
                                 ],
                                 if (widget.onDelete != null) ...[
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: _actionIconGap),
                                   Container(
                                     width: 1,
                                     height: 14,
                                     color: cs.outlineVariant
                                         .withValues(alpha: 0.4),
                                   ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: _actionIconGap),
                                   _ActionBtn(
                                     icon: Icons.delete_outline_rounded,
                                     tooltip: l.delete,
@@ -844,10 +828,12 @@ class _ActionBtnState extends State<_ActionBtn> {
             : SystemMouseCursors.basic,
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
+        child: InkWell(
           onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(7),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 110),
+            curve: Curves.easeOut,
             width: 26,
             height: 26,
             decoration: BoxDecoration(

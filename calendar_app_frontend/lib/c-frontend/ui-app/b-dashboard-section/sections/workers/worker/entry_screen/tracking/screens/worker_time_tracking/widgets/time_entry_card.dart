@@ -22,8 +22,7 @@ class TimeEntryCard extends StatelessWidget {
     this.onUpdated,
   });
 
-  Duration? get _duration =>
-      entry.end != null ? entry.end!.difference(entry.start) : null;
+  Duration? get _duration => entry.end?.difference(entry.start);
 
   String _fmtDurShort(Duration d) {
     final h = d.inHours;
@@ -73,7 +72,7 @@ class TimeEntryCard extends StatelessWidget {
     return Container(
       alignment: align,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      color: Theme.of(context).colorScheme.error.withOpacity(0.12),
+      color: Theme.of(context).colorScheme.error.withValues(alpha: 0.12),
       child: Icon(Icons.delete,
           size: 18, color: Theme.of(context).colorScheme.error),
     );
@@ -145,8 +144,10 @@ class TimeEntryCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.08),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -192,7 +193,7 @@ class TimeEntryCard extends StatelessWidget {
                               fg: Theme.of(context)
                                   .colorScheme
                                   .onSurface
-                                  .withOpacity(0.75),
+                                  .withValues(alpha: 0.75),
                             ),
                           ],
                         ],
@@ -210,7 +211,7 @@ class TimeEntryCard extends StatelessWidget {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurface
-                                    .withOpacity(0.6),
+                                    .withValues(alpha: 0.6),
                               ),
                             ),
                           ),
@@ -221,7 +222,7 @@ class TimeEntryCard extends StatelessWidget {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurface
-                                    .withOpacity(0.6)),
+                                    .withValues(alpha: 0.6)),
                             const SizedBox(width: 4),
                             Text(
                               '${timeFmt.format(entry.start.toLocal())}–${timeFmt.format(entry.end!.toLocal())}',
@@ -229,7 +230,7 @@ class TimeEntryCard extends StatelessWidget {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurface
-                                    .withOpacity(0.7),
+                                    .withValues(alpha: 0.7),
                               ),
                             ),
                           ] else ...[
@@ -240,13 +241,42 @@ class TimeEntryCard extends StatelessWidget {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurface
-                                    .withOpacity(0.7),
+                                    .withValues(alpha: 0.7),
                               ),
                             ),
                           ],
                         ],
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: l.delete,
+                  child: IconButton.filledTonal(
+                    onPressed: () => _confirmAndDelete(context),
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    iconSize: 18,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(36, 36),
+                      fixedSize: const Size(36, 36),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .error
+                          .withValues(alpha: 0.08),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .error
+                              .withValues(alpha: 0.18),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -269,8 +299,8 @@ class _Chip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
-        color: fg.withOpacity(0.10),
-        border: Border.all(color: fg.withOpacity(0.22)),
+        color: fg.withValues(alpha: 0.10),
+        border: Border.all(color: fg.withValues(alpha: 0.22)),
       ),
       child: Text(
         label,

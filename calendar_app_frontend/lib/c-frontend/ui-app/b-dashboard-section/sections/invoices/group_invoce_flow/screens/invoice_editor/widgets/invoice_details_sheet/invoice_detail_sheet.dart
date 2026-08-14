@@ -19,6 +19,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_details_sheet/invoice_detail_lines.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_details_sheet/invoice_detail_party.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_email_widgets.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_payment_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
@@ -65,6 +66,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     _lines = widget.invoice.lines;
     _fetchLines();
     _loadInlinePdfPreview();
+    _loadInvoiceHistory();
   }
 
   // ── Computed helpers ────────────────────────────────────────────────────────
@@ -131,11 +133,9 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
       invoice.addressProvince,
       invoice.addressCountry,
     ].any((v) => (v ?? '').trim().isNotEmpty);
-    final history = [...invoice.updateHistory]..sort((a, b) {
-        final ad = a.changedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bd = b.changedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return bd.compareTo(ad);
-      });
+    final history = _invoiceHistory.isNotEmpty
+        ? _invoiceHistory
+        : invoice.updateHistory.map((entry) => entry.toJson()).toList();
     final deliveryData = invoiceDeliveryViewData(invoice.deliveryStatus);
     final deliveryColor = invoiceDeliveryColor(cs, deliveryData.visual);
     final deliveryStatus = normalizeDeliveryStatus(invoice.deliveryStatus);
@@ -241,8 +241,8 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                               style: AppTypography.of(context)
                                   .bodySmall
                                   .copyWith(
-                                    color: _statusColor(
-                                        cs, invoice.status ?? ''),
+                                    color:
+                                        _statusColor(cs, invoice.status ?? ''),
                                     fontWeight: FontWeight.w700,
                                     fontSize: 11,
                                   ),
@@ -334,6 +334,12 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
               isEs: isEs,
             ),
 
+            const SizedBox(height: 12),
+            InvoicePaymentEditor(
+              invoice: invoice,
+              onSave: _updateInvoicePayment,
+            ),
+
             // Delivery status
             const SizedBox(height: 12),
             _DeliverySection(
@@ -354,11 +360,11 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             InvoiceDetailHistoryCard(
               title: l.invoiceChangeHistoryTitle,
               history: history,
-              formatWhen: (h) => h.changedAt == null
-                  ? '-'
-                  : DateFormat.yMMMd(l.localeName)
-                      .add_Hm()
-                      .format(h.changedAt!.toLocal()),
+              localeName: l.localeName,
+              currency: invoice.currency ?? 'EUR',
+              loading: _historyLoading,
+              error: _historyError,
+              onRetry: _loadInvoiceHistory,
             ),
 
             // Lines

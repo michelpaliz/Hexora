@@ -12,7 +12,9 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     return '${local.year}-$month-$day';
   }
 
-  Map<String, dynamic> _buildBudgetDraftUpdatePayload() {
+  Map<String, dynamic> _buildBudgetDraftUpdatePayload({
+    bool includeDraftPlaceholders = true,
+  }) {
     final useManualClient = _clientSource == _ClientSource.manual;
     final manualClientSnapshot = _buildManualClientSnapshotPayload();
     final linesPayload = _buildLinesPayload();
@@ -37,7 +39,9 @@ extension _GroupInvoicesBudgetsViewPayloadSection
       'lines': linesPayload.isNotEmpty
           ? linesPayload
           : _buildLinesFromBlocksPayload(),
-      'blocks': _buildBlocksPayload(),
+      'blocks': _buildBlocksPayload(
+        includeDraftPlaceholders: includeDraftPlaceholders,
+      ),
       'totals': _buildBudgetDiscountTotalsPayload(),
     };
   }
@@ -77,8 +81,18 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     return line.conceptItemsCtrl.text
         .split(RegExp(r'[,;\n]'))
         .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
+        .where((item) => item.isNotEmpty && !_isBudgetUnitPlaceholder(item))
         .toList(growable: false);
+  }
+
+  bool _isBudgetUnitPlaceholder(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'unit' || normalized == 'unidad';
+  }
+
+  String _budgetVisibleConceptTitle(String value) {
+    final title = value.trim();
+    return _isBudgetUnitPlaceholder(title) ? '' : title;
   }
 
   String _budgetLineBillableDescription(LineDraft line) {
@@ -88,30 +102,87 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     final conceptItems = _budgetLineConceptItems(line);
     if (conceptItems.isNotEmpty) return conceptItems.first;
 
-    return line.conceptTitleCtrl.text.trim();
+    return _budgetVisibleConceptTitle(line.conceptTitleCtrl.text);
   }
 
   String _budgetDefaultConceptTitle(LineDraft line) {
     final invoiceLine = line.toLine();
     final conceptTitle = (invoiceLine.conceptTitle ?? '').trim();
-    if (conceptTitle.isNotEmpty) return conceptTitle;
-
-    return _budgetLineBillableDescription(line).isNotEmpty ? 'Unit' : '';
+    return _budgetVisibleConceptTitle(conceptTitle);
   }
 
   String _budgetLinePreviewLabel(LineDraft line) {
     final conceptTitle = _budgetDefaultConceptTitle(line);
     final conceptItems = _budgetLineConceptItems(line);
-    final firstConcept = conceptItems.isEmpty ? '' : conceptItems.first;
+    final concept = conceptItems.join(' · ');
     final detail = line.description.text.trim();
-    if (conceptTitle.isNotEmpty && firstConcept.isNotEmpty) {
-      return '$conceptTitle - $firstConcept';
-    }
-    if (firstConcept.isNotEmpty) return firstConcept;
+    if (concept.isNotEmpty) return concept;
     if (conceptTitle.isNotEmpty) return conceptTitle;
     if (detail.isNotEmpty) return detail;
     final fallback = _budgetLineBillableDescription(line);
-    return fallback.isEmpty ? '-' : fallback;
+    return _budgetVisibleConceptTitle(fallback).isEmpty
+        ? '-'
+        : _budgetVisibleConceptTitle(fallback);
+  }
+
+  String _budgetPdfDescription({
+    required List<String> conceptItems,
+    required String conceptTitle,
+    required String detail,
+    required String fallback,
+  }) {
+    final parts = <String>[];
+    void add(String value) {
+      final text = value.trim();
+      if (text.isEmpty) return;
+      if (parts.any((part) => part.toLowerCase() == text.toLowerCase())) {
+        return;
+      }
+      parts.add(text);
+    }
+
+    for (final item in conceptItems) {
+      add(item);
+    }
+    if (parts.isEmpty) add(conceptTitle);
+    add(detail);
+    if (parts.isEmpty) add(fallback);
+    return parts.join('\n');
+  }
+
+  String _budgetEditableDetailFromPayload({
+    required String description,
+    required List<String> conceptItems,
+    required String conceptTitle,
+  }) {
+    var detail = description.trim();
+    if (detail.isEmpty) return '';
+    final prefixes = <String>[
+      ...conceptItems,
+      if (conceptTitle.trim().isNotEmpty) conceptTitle.trim(),
+    ];
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (final prefix in prefixes) {
+        final cleanPrefix = prefix.trim();
+        if (cleanPrefix.isEmpty) continue;
+        if (detail.toLowerCase() == cleanPrefix.toLowerCase()) {
+          return '';
+        }
+        final escaped = RegExp.escape(cleanPrefix);
+        final pattern = RegExp(
+          '^$escaped(?:\\s*[-:·]\\s*|\\s*\\r?\\n\\s*|\\s+)',
+          caseSensitive: false,
+        );
+        final next = detail.replaceFirst(pattern, '').trim();
+        if (next != detail) {
+          detail = next;
+          changed = true;
+        }
+      }
+    }
+    return detail;
   }
 
   List<Map<String, dynamic>> _buildLinesPayload() {
@@ -119,14 +190,23 @@ extension _GroupInvoicesBudgetsViewPayloadSection
       final payload = line.toLine().toJson()
         ..removeWhere(
             (key, value) => key == 'id' || key == 'invoiceId' || value == null);
-      final conceptTitle = (payload['conceptTitle'] ?? '').toString().trim();
+      final conceptTitle = _budgetVisibleConceptTitle(
+          (payload['conceptTitle'] ?? '').toString());
       if (conceptTitle.isEmpty) {
         payload['conceptTitle'] = _budgetDefaultConceptTitle(line);
+      } else {
+        payload['conceptTitle'] = conceptTitle;
       }
-      final description = (payload['description'] ?? '').toString().trim();
-      if (description.isEmpty) {
-        payload['description'] = _budgetLineBillableDescription(line);
-      }
+      final conceptItems = _budgetLineConceptItems(line);
+      final detail = line.description.text.trim();
+      payload['description'] = _budgetPdfDescription(
+        conceptItems: conceptItems,
+        conceptTitle: (payload['conceptTitle'] ?? '').toString(),
+        detail: detail,
+        fallback: _budgetLineBillableDescription(line),
+      );
+      if (conceptItems.isNotEmpty) payload['conceptItems'] = conceptItems;
+      if (conceptItems.length > 1) payload['isCompositeConcept'] = true;
       if ((payload['conceptTitle'] ?? '').toString().trim().isEmpty) {
         payload.remove('conceptTitle');
       }
@@ -140,14 +220,26 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     for (final block in _budgetBlocks) {
       if (!block.hasBillableContent) continue;
       final label = _budgetBlockBillableDescription(block);
+      final conceptTitle =
+          _budgetVisibleConceptTitle(block.conceptTitleCtrl.text);
+      final conceptItems = _budgetBlockConceptItems(block);
       final qty = (block.qty ?? 1).toDouble();
       final unitPrice = (block.unitPrice ?? 0).toDouble();
       final discountRate = (block.discountRate ?? 0).toDouble().clamp(0, 100);
       final taxRate = (block.taxRate ?? 21).toDouble();
       if (label.isEmpty || unitPrice <= 0) continue;
+      final detail = block.description.text.trim();
       rows.add(<String, dynamic>{
         'position': position++,
-        'description': label,
+        'description': _budgetPdfDescription(
+          conceptItems: conceptItems,
+          conceptTitle: conceptTitle,
+          detail: detail,
+          fallback: label,
+        ),
+        if (conceptTitle.isNotEmpty) 'conceptTitle': conceptTitle,
+        if (conceptItems.isNotEmpty) 'conceptItems': conceptItems,
+        if (conceptItems.length > 1) 'isCompositeConcept': true,
         'quantity': qty,
         'unitPrice': unitPrice,
         'discountRate': discountRate,
@@ -178,7 +270,7 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     return block.conceptItemsCtrl.text
         .split(RegExp(r'[,;\n]'))
         .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
+        .where((item) => item.isNotEmpty && !_isBudgetUnitPlaceholder(item))
         .toList(growable: false);
   }
 
@@ -189,13 +281,12 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     final conceptItems = _budgetBlockConceptItems(block);
     if (conceptItems.isNotEmpty) return conceptItems.first;
 
-    return block.conceptTitleCtrl.text.trim();
+    return _budgetVisibleConceptTitle(block.conceptTitleCtrl.text);
   }
 
   String _budgetBlockConceptTitle(InvoiceBlockDraft block) {
     final title = block.conceptTitleCtrl.text.trim();
-    if (title.isNotEmpty) return title;
-    return _budgetBlockItemDescription(block).isNotEmpty ? 'Unit' : '';
+    return _budgetVisibleConceptTitle(title);
   }
 
   String _budgetBlockPreviewLabel(InvoiceBlockDraft block) {
@@ -203,16 +294,15 @@ extension _GroupInvoicesBudgetsViewPayloadSection
 
     final conceptTitle = _budgetBlockConceptTitle(block);
     final conceptItems = _budgetBlockConceptItems(block);
-    final firstConcept = conceptItems.isEmpty ? '' : conceptItems.first;
+    final concept = conceptItems.join(' · ');
     final detail = block.description.text.trim();
-    if (conceptTitle.isNotEmpty && firstConcept.isNotEmpty) {
-      return '$conceptTitle - $firstConcept';
-    }
-    if (firstConcept.isNotEmpty) return firstConcept;
+    if (concept.isNotEmpty) return concept;
     if (conceptTitle.isNotEmpty) return conceptTitle;
     if (detail.isNotEmpty) return detail;
     final fallback = _budgetBlockItemDescription(block);
-    return fallback.isEmpty ? '-' : fallback;
+    return _budgetVisibleConceptTitle(fallback).isEmpty
+        ? '-'
+        : _budgetVisibleConceptTitle(fallback);
   }
 
   Map<String, dynamic> _sanitizedBudgetBlockPayload(InvoiceBlockDraft block) {
@@ -233,26 +323,84 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     }
     final payload = raw.toJson();
     if (block.isBillableItem) {
-      final description = (payload['description'] ?? '').toString().trim();
-      if (description.isEmpty) {
-        payload['description'] = _budgetBlockItemDescription(block);
-      }
-      final conceptTitle = (payload['conceptTitle'] ?? '').toString().trim();
+      final conceptItems = _budgetBlockConceptItems(block);
+      final conceptTitle = _budgetVisibleConceptTitle(
+          (payload['conceptTitle'] ?? '').toString());
       if (conceptTitle.isEmpty) {
         payload['conceptTitle'] = _budgetBlockConceptTitle(block);
+      } else {
+        payload['conceptTitle'] = conceptTitle;
       }
+      payload['description'] = _budgetPdfDescription(
+        conceptItems: conceptItems,
+        conceptTitle: (payload['conceptTitle'] ?? '').toString(),
+        detail: block.description.text.trim(),
+        fallback: _budgetBlockItemDescription(block),
+      );
+      if (conceptItems.isNotEmpty) payload['conceptItems'] = conceptItems;
+      if (conceptItems.length > 1) payload['isCompositeConcept'] = true;
       if ((payload['conceptTitle'] ?? '').toString().trim().isEmpty) {
         payload.remove('conceptTitle');
+      }
+      if ((payload['description'] ?? '').toString().trim().isEmpty) {
+        payload.remove('description');
       }
     }
     return payload;
   }
 
-  List<Map<String, dynamic>> _buildBlocksPayload() {
+  bool _shouldPersistBudgetBlockDraft(
+    InvoiceBlockDraft block, {
+    required bool includeDraftPlaceholders,
+  }) {
+    if (block.hasBillableContent) return true;
+    if (!includeDraftPlaceholders) return false;
+    return block.isBillableLine ||
+        block.title.text.trim().isNotEmpty ||
+        block.text.text.trim().isNotEmpty ||
+        block.description.text.trim().isNotEmpty ||
+        block.conceptTitleCtrl.text.trim().isNotEmpty ||
+        block.conceptItemsCtrl.text.trim().isNotEmpty ||
+        block.serviceDateCtrl.text.trim().isNotEmpty ||
+        block.checklistItems.any((item) => item.text.text.trim().isNotEmpty);
+  }
+
+  List<Map<String, dynamic>> _buildBlocksPayload({
+    bool includeDraftPlaceholders = false,
+  }) {
     return _budgetBlocks
-        .where((b) => b.hasBillableContent)
+        .where((b) => _shouldPersistBudgetBlockDraft(
+              b,
+              includeDraftPlaceholders: includeDraftPlaceholders,
+            ))
         .map(_sanitizedBudgetBlockPayload)
         .toList(growable: false);
+  }
+
+  List<Map<String, dynamic>> _draftPlaceholderBlockPayloads() {
+    return _budgetBlocks
+        .where((block) =>
+            !block.hasBillableContent &&
+            _shouldPersistBudgetBlockDraft(
+              block,
+              includeDraftPlaceholders: true,
+            ))
+        .map(_sanitizedBudgetBlockPayload)
+        .toList(growable: false);
+  }
+
+  void _restoreDraftPlaceholderBlocks(
+    List<Map<String, dynamic>> placeholders,
+  ) {
+    if (placeholders.isEmpty || !_useBlocks) return;
+    final existingPlaceholderCount = _budgetBlocks
+        .where((block) => !block.hasBillableContent && block.isBillableLine)
+        .length;
+    final missingCount = placeholders.length - existingPlaceholderCount;
+    if (missingCount <= 0) return;
+    for (final payload in placeholders.take(missingCount)) {
+      _budgetBlocks.add(_blockDraftFromMap(payload));
+    }
   }
 
   Map<String, dynamic> _budgetPayloadData(Map<String, dynamic> payload) {
@@ -304,58 +452,10 @@ extension _GroupInvoicesBudgetsViewPayloadSection
 
   void _markDraftDirty() {
     _editableBudgetDirty = true;
-    _budgetAutoSaveFailed = false;
     widget.onUnsavedStateChanged?.call(true);
     _issuedPresupuestoNumber = null;
     _previewPdfBytes = null;
     _previewForId = null;
-    _scheduleBudgetAutoSave();
-  }
-
-  void _scheduleBudgetAutoSave() {
-    if (widget.mode != GroupInvoicesBudgetsMode.create) return;
-    _budgetAutoSaveTimer?.cancel();
-    _budgetAutoSaveTimer =
-        Timer(const Duration(seconds: 3), _autoSaveBudgetDraftIfReady);
-  }
-
-  Future<void> _autoSaveBudgetDraftIfReady() async {
-    if (!mounted ||
-        _budgetAutoSaving ||
-        _issuing ||
-        !_editableBudgetDirty ||
-        !_hasClientInfo ||
-        !_hasLineContent ||
-        (!_isDraftEditable && !_isIssuedEditable)) {
-      return;
-    }
-    if (_isIssuedEditable && _issuedEditReasonCtrl.text.trim().isEmpty) {
-      return;
-    }
-    setState(() {
-      _budgetAutoSaving = true;
-      _budgetAutoSaveFailed = false;
-    });
-    try {
-      final id = _isIssuedEditable
-          ? await _persistIssuedChanges()
-          : await _persistDraftChanges();
-      if (!mounted) return;
-      setState(() {
-        _draftId = id;
-        _editableBudgetDirty = false;
-        _budgetAutoSaveFailed = false;
-        widget.onUnsavedStateChanged?.call(false);
-      });
-    } catch (_) {
-      if (mounted) {
-        setState(() => _budgetAutoSaveFailed = true);
-        _scheduleBudgetAutoSave();
-      }
-    } finally {
-      _budgetAutoSaving = false;
-      if (mounted) setState(() {});
-    }
   }
 
   bool _isDraftPresupuesto(Map<String, dynamic> payload) {
@@ -408,8 +508,20 @@ extension _GroupInvoicesBudgetsViewPayloadSection
 
     final type = (map['type'] ?? InvoiceBlockType.item).toString().trim();
     final draft = InvoiceBlockDraft.ofType(type);
-    draft.description.text = (map['description'] ?? '').toString();
+    draft.conceptTitleCtrl.text = _budgetVisibleConceptTitle(
+        (map['conceptTitle'] ?? map['sku'] ?? '').toString());
+    final conceptItems = _stringListFromDynamic(map['conceptItems']);
+    draft.conceptItemsCtrl.text = conceptItems.length <= 1
+        ? conceptItems.join(', ')
+        : conceptItems.join('\n');
+    draft.description.text = _budgetEditableDetailFromPayload(
+      description: (map['description'] ?? '').toString(),
+      conceptItems: conceptItems,
+      conceptTitle: draft.conceptTitleCtrl.text,
+    );
+    draft.serviceDateCtrl.text = (map['serviceDate'] ?? '').toString();
     draft.qtyCtrl.text = (map['qty'] ?? map['quantity'] ?? 1).toString();
+    draft.unitCtrl.text = (map['unit'] ?? '').toString();
     draft.unitPriceCtrl.text = (map['unitPrice'] ?? 0).toString();
     draft.discountRateCtrl.text =
         (map['discountRate'] ?? map['discountPercent'] ?? 0).toString();
@@ -434,18 +546,39 @@ extension _GroupInvoicesBudgetsViewPayloadSection
         draft.checklistItems.add(InvoiceChecklistItemDraft());
       }
     }
+    draft.syncConceptMetadata();
     return draft;
   }
 
   LineDraft _lineDraftFromMap(Map<String, dynamic> map, int position) {
     final draft = LineDraft(position: position);
-    draft.description.text = (map['description'] ?? '').toString();
+    draft.conceptTitleCtrl.text = _budgetVisibleConceptTitle(
+        (map['conceptTitle'] ?? map['sku'] ?? '').toString());
+    final conceptItems = _stringListFromDynamic(map['conceptItems']);
+    draft.conceptItemsCtrl.text = conceptItems.length <= 1
+        ? conceptItems.join(', ')
+        : conceptItems.join('\n');
+    draft.description.text = _budgetEditableDetailFromPayload(
+      description: (map['description'] ?? '').toString(),
+      conceptItems: conceptItems,
+      conceptTitle: draft.conceptTitleCtrl.text,
+    );
+    draft.serviceDateCtrl.text = (map['serviceDate'] ?? '').toString();
     draft.quantityCtrl.text = (map['quantity'] ?? map['qty'] ?? 1).toString();
     draft.unitPriceCtrl.text = (map['unitPrice'] ?? 0).toString();
     draft.discountRateCtrl.text =
         (map['discountRate'] ?? map['discountPercent'] ?? 0).toString();
     draft.taxRateCtrl.text = (map['taxRate'] ?? 21).toString();
+    draft.syncConceptMetadata();
     return draft;
+  }
+
+  List<String> _stringListFromDynamic(dynamic value) {
+    if (value is! List) return const <String>[];
+    return value
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty && !_isBudgetUnitPlaceholder(item))
+        .toList(growable: false);
   }
 
   void _applyPresupuestoPayload(Map<String, dynamic> payload) {

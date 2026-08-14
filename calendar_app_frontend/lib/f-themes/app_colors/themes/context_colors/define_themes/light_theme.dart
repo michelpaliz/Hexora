@@ -17,6 +17,9 @@ final ThemeData lightTheme = ThemeData(
         ? Colors.white
         : const Color(0xFF1B1F23),
   ),
+  textTheme: AppTypography.materialTextTheme(
+    brightness: Brightness.light,
+  ),
   scaffoldBackgroundColor: AppColors.background,
   appBarTheme: AppBarStyles.defaultAppBarTheme(),
   extensions: <ThemeExtension<dynamic>>[

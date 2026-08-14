@@ -5548,6 +5548,24 @@ abstract class AppLocalizations {
   /// **'Use three digits (e.g., 001). Year is fixed to the current YY.'**
   String get invoiceNumberInvalid;
 
+  /// No description provided for @bulkDownloadInvoiceNumberRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter at least one invoice number.'**
+  String get bulkDownloadInvoiceNumberRequired;
+
+  /// No description provided for @bulkDownloadInvoiceNumberInvalidFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Use letters, numbers, hyphen, slash, underscore, or dot only.'**
+  String get bulkDownloadInvoiceNumberInvalidFormat;
+
+  /// No description provided for @bulkDownloadInvoiceNumberRangeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The starting invoice number must be lower than or equal to the ending number.'**
+  String get bulkDownloadInvoiceNumberRangeInvalid;
+
   /// No description provided for @invoiceClientLabel.
   ///
   /// In en, this message translates to:

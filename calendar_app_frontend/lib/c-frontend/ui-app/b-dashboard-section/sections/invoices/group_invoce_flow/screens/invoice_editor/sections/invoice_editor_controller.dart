@@ -9,6 +9,7 @@ import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/invoice/invoice_block.dart';
+import 'package:hexora/a-models/invoice/invoice_block_payload.dart';
 import 'package:hexora/a-models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/a-models/invoice/invoice_line.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
@@ -27,6 +28,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 part 'controller/invoice_editor_controller_draft_flow.dart';
@@ -105,6 +107,13 @@ class InvoiceEditorController extends ChangeNotifier {
   bool _editingDraftMode = false;
   bool _draftDirty = false;
   bool _draftSaveFailed = false;
+  Map<String, dynamic>? _draftPaymentPayload;
+  bool _draftPaymentPayloadInvalid = false;
+  String? _issuedChangeReason;
+  List<Map<String, dynamic>> _issuedHistory = const [];
+  Map<String, dynamic> _issuedClientSnapshot = const {};
+  Map<String, dynamic> _issuedIssuerSnapshot = const {};
+  int _dataRevision = 0;
   Uint8List? _lastOcrImageBytes;
   String? _lastOcrImageName;
   Uint8List? _jsonImportFileBytes;
@@ -140,8 +149,29 @@ class InvoiceEditorController extends ChangeNotifier {
   bool get deletingDraft => _deletingDraft;
   String? get editingDraftId => _editingDraftId;
   bool get editingDraft => _editingDraftMode;
+  bool get editingIssued {
+    final status = (_savedInvoice?.status ?? initialInvoice?.status ?? '')
+        .trim()
+        .toLowerCase();
+    return status.contains('issue');
+  }
+
+  bool get isFinalSettlement =>
+      editingIssued &&
+      (_savedInvoice?.invoiceType ?? initialInvoice?.invoiceType ?? '')
+              .trim()
+              .toLowerCase() ==
+          'final' &&
+      (_savedInvoice?.finalSettlement ?? initialInvoice?.finalSettlement) !=
+          null;
+  bool get financialFieldsReadOnly => isFinalSettlement;
+  List<Map<String, dynamic>> get issuedHistory => _issuedHistory;
+  Map<String, dynamic> get issuedClientSnapshot => _issuedClientSnapshot;
+  Map<String, dynamic> get issuedIssuerSnapshot => _issuedIssuerSnapshot;
+  int get dataRevision => _dataRevision;
   bool get draftDirty => _draftDirty;
   bool get draftSaveFailed => _draftSaveFailed;
+  Invoice get paymentEditorInvoice => _paymentEditorInvoice();
   bool get hasLastOcrImagePreview => _lastOcrImageBytes != null;
   Uint8List? get jsonImportFileBytes => _jsonImportFileBytes;
   String? get jsonImportFileName => _jsonImportFileName;
@@ -178,7 +208,9 @@ class InvoiceEditorController extends ChangeNotifier {
       );
 
   String get previewInvoiceNumber =>
-      _savedInvoice?.invoiceNumber ?? invoiceNumber;
+      _savedInvoice?.invoiceNumber ??
+      (editingIssued ? initialInvoice?.invoiceNumber : null) ??
+      invoiceNumber;
 
   bool get hasLines => lines.isNotEmpty;
 
@@ -191,8 +223,7 @@ class InvoiceEditorController extends ChangeNotifier {
 
   bool get useDiscountPercent => _useDiscountPercent;
   bool get discountReadOnly {
-    final status = (_savedInvoice?.status ?? '').toLowerCase();
-    return status.contains('issue');
+    return financialFieldsReadOnly;
   }
 
   num? _parseAmountValue(String raw) {
@@ -201,35 +232,45 @@ class InvoiceEditorController extends ChangeNotifier {
     return num.tryParse(normalized);
   }
 
-  num get rawSubtotal => _useBlocks
-      ? blocks.fold<num>(0, (sum, block) {
-          if (!block.isBillableLine) return sum;
-          final qty = block.qty ?? 1;
-          final price = block.unitPrice ?? 0;
-          return sum + (qty * price);
-        })
-      : lines.fold<num>(0, (sum, line) {
-          final qty = line.quantity ?? 1;
-          final price = line.unitPrice ?? 0;
-          return sum + (qty * price);
-        });
+  num get rawSubtotal {
+    if (editingIssued && !_draftDirty && _savedInvoice?.subtotal != null) {
+      return _savedInvoice!.subtotal!;
+    }
+    return _useBlocks
+        ? blocks.fold<num>(0, (sum, block) {
+            if (!block.isBillableLine) return sum;
+            final qty = block.qty ?? 1;
+            final price = block.unitPrice ?? 0;
+            return sum + (qty * price);
+          })
+        : lines.fold<num>(0, (sum, line) {
+            final qty = line.quantity ?? 1;
+            final price = line.unitPrice ?? 0;
+            return sum + (qty * price);
+          });
+  }
 
-  num get rawTax => _useBlocks
-      ? blocks.fold<num>(0, (sum, block) {
-          if (!block.isBillableLine) return sum;
-          final qty = block.qty ?? 1;
-          final price = block.unitPrice ?? 0;
-          final taxRate = block.taxRate ?? 21;
-          final subtotal = qty * price;
-          return sum + (subtotal * (taxRate / 100));
-        })
-      : lines.fold<num>(0, (sum, line) {
-          final qty = line.quantity ?? 1;
-          final price = line.unitPrice ?? 0;
-          final taxRate = line.taxRate ?? 21;
-          final subtotal = qty * price;
-          return sum + (subtotal * (taxRate / 100));
-        });
+  num get rawTax {
+    if (editingIssued && !_draftDirty && _savedInvoice?.taxTotal != null) {
+      return _savedInvoice!.taxTotal!;
+    }
+    return _useBlocks
+        ? blocks.fold<num>(0, (sum, block) {
+            if (!block.isBillableLine) return sum;
+            final qty = block.qty ?? 1;
+            final price = block.unitPrice ?? 0;
+            final taxRate = block.taxRate ?? 21;
+            final subtotal = qty * price;
+            return sum + (subtotal * (taxRate / 100));
+          })
+        : lines.fold<num>(0, (sum, line) {
+            final qty = line.quantity ?? 1;
+            final price = line.unitPrice ?? 0;
+            final taxRate = line.taxRate ?? 21;
+            final subtotal = qty * price;
+            return sum + (subtotal * (taxRate / 100));
+          });
+  }
 
   num? get discountAmountValue {
     final v = _parseAmountValue(discountAmountCtrl.text);
@@ -272,7 +313,12 @@ class InvoiceEditorController extends ChangeNotifier {
     return tax * ratio;
   }
 
-  num get total => subtotalAfterDiscount + taxAfterDiscount;
+  num get total {
+    if (editingIssued && !_draftDirty && _savedInvoice?.total != null) {
+      return _savedInvoice!.total!;
+    }
+    return subtotalAfterDiscount + taxAfterDiscount;
+  }
 
   bool get canPreviewDraft {
     final hasClient = _clientId != null;
@@ -417,11 +463,117 @@ class InvoiceEditorController extends ChangeNotifier {
     // Any form change makes the saved draft stale (there is no update API).
     _draftDirty = true;
     _draftSaveFailed = false;
-    _savedInvoice = null;
+    if (!editingIssued) _savedInvoice = null;
     _previewedPdf = false;
     _previewPdfBytes = null;
     _confirmSaveDraft = false;
     notifyListeners();
+  }
+
+  void setDraftPaymentPayload(Map<String, dynamic>? payload) {
+    _draftPaymentPayloadInvalid = payload == null;
+    if (payload != null) {
+      _draftPaymentPayload = Map<String, dynamic>.from(payload);
+    }
+    _draftDirty = true;
+    _draftSaveFailed = false;
+    _previewedPdf = false;
+    _previewPdfBytes = null;
+  }
+
+  Map<String, dynamic> buildDraftPaymentPayload(BuildContext context) {
+    if (_draftPaymentPayloadInvalid) {
+      final isEs = AppLocalizations.of(context)!
+          .localeName
+          .toLowerCase()
+          .startsWith('es');
+      throw Exception(isEs
+          ? 'Revisa el estado de pago antes de guardar.'
+          : 'Review the payment status before saving.');
+    }
+    return Map<String, dynamic>.from(_draftPaymentPayload ??
+        {
+          'paymentStatus': _normalizePaymentStatus(
+            _savedInvoice?.paymentStatus ?? initialInvoice?.paymentStatus,
+          ),
+        });
+  }
+
+  Future<Invoice> _applyDraftPayment(
+    Invoice invoice,
+    Map<String, dynamic> payload,
+  ) async {
+    final updated = await _invoicesApi.updatePayment(invoice.id, payload);
+    _draftPaymentPayload = null;
+    _draftPaymentPayloadInvalid = false;
+    return updated.copyWith(
+      // The payment endpoint is authoritative for payment fields, not editor
+      // content. Preserve the freshly saved lines/blocks to avoid replacing
+      // the editor state with a partial/stale payment response.
+      lines: invoice.lines,
+      blocks: invoice.blocks,
+    );
+  }
+
+  Invoice _paymentEditorInvoice() {
+    final payload = _draftPaymentPayload;
+    final status = payload?['paymentStatus']?.toString() ??
+        _savedInvoice?.paymentStatus ??
+        initialInvoice?.paymentStatus ??
+        'unpaid';
+    final amount = _payloadNum(payload?['paidAmount']) ??
+        (payload == null
+            ? (_savedInvoice?.paidAmount ?? initialInvoice?.paidAmount)
+            : null);
+    final paidAt = _payloadDate(payload?['paidAt']) ??
+        (payload == null
+            ? (_savedInvoice?.paidAt ?? initialInvoice?.paidAt)
+            : null);
+    final method = payload?['paymentMethod']?.toString() ??
+        (payload == null
+            ? (_savedInvoice?.paymentMethod ?? initialInvoice?.paymentMethod)
+            : null);
+
+    return Invoice(
+      id: _savedInvoice?.id ?? initialInvoice?.id ?? '',
+      invoiceNumber: previewInvoiceNumber,
+      groupId: group.id,
+      clientId: _clientId ?? '',
+      currency: currency.text.trim().isEmpty ? 'EUR' : currency.text.trim(),
+      issueDate: invoiceDate.value,
+      total: total,
+      paymentStatus: _normalizePaymentStatus(status),
+      paidAmount: amount,
+      paidAt: paidAt,
+      paymentMethod: _normalizePaymentMethod(method) ?? 'transfer',
+    );
+  }
+
+  String _normalizePaymentStatus(String? value) {
+    final raw = (value ?? '').trim().toLowerCase();
+    if (raw == 'paid' || raw == 'partial' || raw == 'unpaid') return raw;
+    return 'unpaid';
+  }
+
+  String? _normalizePaymentMethod(String? value) {
+    final raw = (value ?? '').trim().toLowerCase();
+    const methods = {'transfer', 'cash', 'card', 'cheque', 'other'};
+    return methods.contains(raw) ? raw : null;
+  }
+
+  num? _payloadNum(Object? value) {
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value.replaceAll(',', '.'));
+    return null;
+  }
+
+  DateTime? _payloadDate(Object? value) {
+    if (value is DateTime) return value;
+    if (value is String && value.trim().isNotEmpty) {
+      return DateTime.tryParse(value) ??
+          DateFormat('yyyy-MM-dd').tryParse(value, true);
+    }
+    return null;
   }
 
   void setUseBlocks(bool value) {
@@ -432,9 +584,19 @@ class InvoiceEditorController extends ChangeNotifier {
 
   void setClientId(String? v) {
     _clientId = v;
+    if (editingIssued && v != null) {
+      final selected = clients.cast<GroupClient?>().firstWhere(
+            (client) => client?.id == v,
+            orElse: () => null,
+          );
+      final billing = selected?.billing?.toJson();
+      if (billing != null) {
+        _issuedClientSnapshot = Map<String, dynamic>.from(billing);
+      }
+    }
     _draftDirty = true;
     _draftSaveFailed = false;
-    _savedInvoice = null;
+    if (!editingIssued) _savedInvoice = null;
     _previewedPdf = false;
     _previewPdfBytes = null;
     _confirmSaveDraft = false;
@@ -499,7 +661,8 @@ class InvoiceEditorController extends ChangeNotifier {
   void _applyInitialInvoice(Invoice invoice) {
     _savedInvoice = invoice;
     _editingDraftId = invoice.id.trim().isEmpty ? null : invoice.id.trim();
-    _editingDraftMode = _editingDraftId != null;
+    final status = (invoice.status ?? '').trim().toLowerCase();
+    _editingDraftMode = _editingDraftId != null && !status.contains('issue');
     _clientId = invoice.clientId.isNotEmpty ? invoice.clientId : _clientId;
     if (invoice.currency != null && invoice.currency!.trim().isNotEmpty) {
       currency.text = invoice.currency!.trim();
@@ -524,6 +687,14 @@ class InvoiceEditorController extends ChangeNotifier {
     if (invoice.pdfUrl != null) {
       pdfUrl.text = invoice.pdfUrl!.trim();
     }
+    _draftPaymentPayload = null;
+    _draftPaymentPayloadInvalid = false;
+    _issuedClientSnapshot = Map<String, dynamic>.from(
+      invoice.clientSnapshot?.toJson() ?? const {},
+    );
+    _issuedIssuerSnapshot = Map<String, dynamic>.from(
+      invoice.issuerSnapshot?.toJson() ?? const {},
+    );
     invoiceDate.value =
         invoice.issueDate ?? invoice.registeredAt ?? invoiceDate.value;
 
@@ -543,8 +714,9 @@ class InvoiceEditorController extends ChangeNotifier {
     _resetDraftLines();
     _resetDraftBlocks();
     if (hasUsableBlocks) {
-      final drafts =
-          invoice.blocks.map(_draftFromBlock).whereType<InvoiceBlockDraft>();
+      final drafts = invoiceBlocksForEditor(invoice.blocks)
+          .map(_draftFromBlock)
+          .whereType<InvoiceBlockDraft>();
       blocks.addAll(drafts);
       if (blocks.isEmpty) {
         blocks.add(InvoiceBlockDraft.item());
@@ -566,8 +738,38 @@ class InvoiceEditorController extends ChangeNotifier {
         lines.add(LineDraft(position: 1));
       }
     }
-    if (_editingDraftMode) {
+    if (_editingDraftId != null) {
       _currentStepIndex = 2;
+    }
+    if (status.contains('issue')) {
+      unawaited(refreshIssuedHistory());
+    }
+  }
+
+  void setIssuedBillingSnapshots({
+    required Map<String, dynamic> client,
+    required Map<String, dynamic> issuer,
+  }) {
+    _issuedClientSnapshot = Map<String, dynamic>.from(client);
+    _issuedIssuerSnapshot = Map<String, dynamic>.from(issuer);
+    notifyUi();
+  }
+
+  Future<void> refreshIssuedHistory() async {
+    final id = (_savedInvoice?.id ?? initialInvoice?.id ?? '').trim();
+    if (id.isEmpty || !editingIssued) return;
+    try {
+      final payload = await _invoicesApi.getHistory(id);
+      final raw = payload['history'];
+      _issuedHistory = raw is List
+          ? raw
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList(growable: false)
+          : const [];
+      notifyListeners();
+    } catch (_) {
+      // History failure must not block invoice editing.
     }
   }
 
@@ -769,7 +971,7 @@ class InvoiceEditorController extends ChangeNotifier {
       target.value = selected;
       _draftDirty = true;
       _draftSaveFailed = false;
-      _savedInvoice = null;
+      if (!editingIssued) _savedInvoice = null;
       notifyListeners();
     }
   }

@@ -33,7 +33,7 @@ class GroupInvoicesController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadAll() async {
+  Future<void> loadAll({Set<String> clearSelectedInvoiceIds = const {}}) async {
     _set(_s.copyWith(loading: true, error: null));
     try {
       final results = await Future.wait([
@@ -48,12 +48,17 @@ class GroupInvoicesController extends ChangeNotifier {
       final drafts = results[2] as List<Invoice>;
       final billing = results[3] as BillingProfile?;
 
-      // keep selection if still exists
-      Invoice? selectedInvoice = _s.selectedInvoice;
-      if (selectedInvoice != null) {
-        final stillExists = invoices.any((i) => i.id == selectedInvoice!.id) ||
-            drafts.any((i) => i.id == selectedInvoice!.id);
-        if (!stillExists) selectedInvoice = null;
+      // keep selection if still exists, but replace it with the refreshed object
+      Invoice? selectedInvoice;
+      final selectedInvoiceId = _s.selectedInvoice?.id;
+      if (selectedInvoiceId != null &&
+          !clearSelectedInvoiceIds.contains(selectedInvoiceId)) {
+        for (final invoice in [...drafts, ...invoices]) {
+          if (invoice.id == selectedInvoiceId) {
+            selectedInvoice = invoice;
+            break;
+          }
+        }
       }
 
       selectedInvoice ??= drafts.isNotEmpty
@@ -97,38 +102,6 @@ class GroupInvoicesController extends ChangeNotifier {
     final c = _s.selectedClient;
     if (c == null) return _s.drafts;
     return _s.drafts.where((inv) => inv.clientId == c.id).toList();
-  }
-
-  static const _invoiceChronologyErrorMessage =
-      'Esta factura tiene una fecha anterior a la última factura emitida. '
-      'Para mantener la numeración cronológica, debes emitir primero las '
-      'facturas de fechas anteriores o corregir la fecha.';
-
-  DateTime? _invoiceChronologyDate(Invoice invoice) {
-    return invoice.issueDate ?? invoice.occurrenceDate ?? invoice.registeredAt;
-  }
-
-  DateTime? _latestIssuedInvoiceDate() {
-    DateTime? latest;
-    for (final invoice in _s.invoices) {
-      final date = _invoiceChronologyDate(invoice);
-      if (date == null) continue;
-      if (latest == null || date.isAfter(latest)) latest = date;
-    }
-    return latest;
-  }
-
-  bool _isBeforeCalendarDay(DateTime value, DateTime limit) {
-    final valueDay = DateTime(value.year, value.month, value.day);
-    final limitDay = DateTime(limit.year, limit.month, limit.day);
-    return valueDay.isBefore(limitDay);
-  }
-
-  bool _canIssueInvoiceByDate(Invoice invoice) {
-    final selectedDate = _invoiceChronologyDate(invoice);
-    final latestIssuedDate = _latestIssuedInvoiceDate();
-    if (selectedDate == null || latestIssuedDate == null) return true;
-    return !_isBeforeCalendarDay(selectedDate, latestIssuedDate);
   }
 
   // --- actions ---
@@ -312,71 +285,68 @@ class GroupInvoicesController extends ChangeNotifier {
     BuildContext context,
     List<Invoice> drafts,
   ) async {
-    int issued = 0;
-    int failed = 0;
-    final errors = <String>[];
-
-    for (final draft in drafts) {
-      if (!context.mounted) break;
-      try {
-        if (!_canIssueInvoiceByDate(draft)) {
-          throw Exception(_invoiceChronologyErrorMessage);
-        }
-        final updated = await _invoicesApi.issue(draft.id);
-        issued++;
-        // Move from drafts to invoices in local state
-        final nextDrafts = _s.drafts.where((d) => d.id != draft.id).toList();
-        final nextInvoices = [..._s.invoices, updated];
-        final nextSelected =
-            _s.selectedInvoice?.id == draft.id ? updated : _s.selectedInvoice;
-        _set(_s.copyWith(
-          drafts: nextDrafts,
-          invoices: nextInvoices,
-          selectedInvoice: nextSelected,
-        ));
-      } catch (e) {
-        failed++;
-        final msg = e.toString().replaceFirst('Exception: ', '').trim();
-        errors.add(
-            '${draft.invoiceNumber.isNotEmpty ? draft.invoiceNumber : draft.id}: $msg');
-      }
-    }
-
-    if (!context.mounted) return;
+    final draftIds = drafts
+        .where(
+            (invoice) => (invoice.status ?? '').toLowerCase().contains('draft'))
+        .map((invoice) => invoice.id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    if (draftIds.isEmpty) return;
 
     final l = AppLocalizations.of(context)!;
-    if (failed == 0) {
+    final isSpanish = l.localeName.toLowerCase().startsWith('es');
+    try {
+      final result = await _invoicesApi.issueAll(
+        groupId: group.id,
+        invoiceIds: draftIds,
+      );
+      if (!context.mounted) return;
+      await loadAll(clearSelectedInvoiceIds: draftIds.toSet());
+      if (!context.mounted) return;
       showSuccessSnack(
-          context, l.invoiceBatchIssueSuccessSnack(issued.toString()));
-    } else {
-      showInfoSnack(
         context,
-        l.invoiceBatchIssuePartialSnack(issued.toString(), failed.toString()),
-        action: errors.isNotEmpty
-            ? SnackBarAction(
-                label: l.details,
-                onPressed: () {
-                  if (!context.mounted) return;
-                  showDialog<void>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text(l.invoiceBatchIssueErrorsTitle),
-                      content: SingleChildScrollView(
-                        child: Text(errors.join('\n')),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: Text(
-                            MaterialLocalizations.of(context).closeButtonLabel,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              )
-            : null,
+        l.invoiceBatchIssueSuccessSnack(result.issuedCount.toString()),
+      );
+    } on InvoicesBatchIssueException catch (e) {
+      final issuedCount = e.failure?.issuedCount ?? 0;
+      final failedInvoiceId = e.failure?.failedInvoiceId;
+      if (context.mounted) {
+        try {
+          await loadAll();
+        } catch (_) {}
+      }
+      if (!context.mounted) return;
+      final message = e.message.trim().isEmpty
+          ? l.invoiceIssueFailedSnack
+          : e.message.trim();
+      final parts = <String>[
+        if (issuedCount > 0)
+          isSpanish
+              ? '$issuedCount facturas emitidas antes del error'
+              : '$issuedCount invoices issued before the error',
+        if (failedInvoiceId != null)
+          isSpanish
+              ? 'Factura fallida: $failedInvoiceId'
+              : 'Failed invoice: $failedInvoiceId',
+        message,
+      ];
+      final text = parts.join(' · ');
+      if (issuedCount > 0) {
+        showInfoSnack(context, text);
+      } else {
+        showErrorSnack(context, text);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        try {
+          await loadAll();
+        } catch (_) {}
+      }
+      if (!context.mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '').trim();
+      showErrorSnack(
+        context,
+        message.isEmpty ? l.invoiceIssueFailedSnack : message,
       );
     }
   }

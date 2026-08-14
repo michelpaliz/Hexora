@@ -318,6 +318,7 @@ class _NotificationsListState extends State<_NotificationsList> {
         onNegate: () => widget.onNegate(n),
         onMarkRead: () => widget.onMarkRead(n),
         onOpenEvent: widget.onOpenEvent,
+        onTap: () => widget.onOpenDocument(n),
         onOpenDocument: () => widget.onOpenDocument(n),
       );
 
@@ -355,7 +356,7 @@ class _NotificationsListState extends State<_NotificationsList> {
 
   String _titleFor(NotificationUser n) {
     final args = EventArgsHelper(n.args);
-    return args.eventTitle ?? n.titleKey ?? '';
+    return args.eventTitle ?? n.titleKey;
   }
 }
 

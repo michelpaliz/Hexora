@@ -194,19 +194,16 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     await context.read<EventDomain>().manualRefresh(context, silent: true);
   }
 
-  void _openAddEventForSlot(DateTime slot) {
-    final start = DateTime(
-      slot.year,
-      slot.month,
-      slot.day,
-      slot.hour,
-      slot.minute,
-    );
+  void _openAddEventForRange(DateTime start, DateTime end) {
     setState(() {
       _panelView = _SidePanelView.addEvent;
       _pendingAddEventStart = start;
-      _pendingAddEventEnd = start.add(const Duration(hours: 1));
+      _pendingAddEventEnd = end;
     });
+  }
+
+  void _openAddEventForSlot(DateTime slot) {
+    _openAddEventForRange(slot, slot.add(const Duration(hours: 1)));
   }
 
   void _onUserFilterChanged(String? userId) {
@@ -515,7 +512,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 child: calendarUI?.buildCalendar(
                       context,
                       forcedViewMode: viewMode,
-                      onTimeSlotTap: _openAddEventForSlot,
+                      onTimeRangeSelected: _openAddEventForRange,
                     ) ??
                     const SizedBox(),
               ),
@@ -543,13 +540,13 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                     calendarUI?.buildCalendar(
                           context,
                           forcedViewMode: 'day',
-                          onTimeSlotTap: _openAddEventForSlot,
+                          onTimeRangeSelected: _openAddEventForRange,
                         ) ??
                         const SizedBox(),
                     calendarUI?.buildCalendar(
                           context,
                           forcedViewMode: 'week',
-                          onTimeSlotTap: _openAddEventForSlot,
+                          onTimeRangeSelected: _openAddEventForRange,
                         ) ??
                         const SizedBox(),
                     calendarUI?.buildCalendar(

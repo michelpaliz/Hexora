@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/worker/timeEntry.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
@@ -28,53 +26,57 @@ class StatsHeader extends StatefulWidget {
 
 class _StatsHeaderState extends State<StatsHeader> {
   final ScrollController _chipsScrollController = ScrollController();
-  Timer? _autoSlideTimer;
-  bool _slideForward = true;
+  bool _canScrollLeft = false;
+  bool _canScrollRight = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startAutoSlide());
+    _chipsScrollController.addListener(_syncScrollState);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncScrollState());
   }
 
   @override
   void didUpdateWidget(covariant StatsHeader oldWidget) {
     super.didUpdateWidget(oldWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startAutoSlide());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncScrollState());
   }
 
   @override
   void dispose() {
-    _autoSlideTimer?.cancel();
-    _chipsScrollController.dispose();
+    _chipsScrollController
+      ..removeListener(_syncScrollState)
+      ..dispose();
     super.dispose();
   }
 
-  void _startAutoSlide() {
-    _autoSlideTimer?.cancel();
-    _autoSlideTimer = Timer.periodic(const Duration(milliseconds: 2200), (_) async {
-      if (!mounted || !_chipsScrollController.hasClients) return;
-      final pos = _chipsScrollController.position;
-      if (pos.maxScrollExtent <= 0) return;
-
-      const step = 140.0;
-      final current = pos.pixels;
-      double target = _slideForward ? current + step : current - step;
-
-      if (target >= pos.maxScrollExtent) {
-        target = pos.maxScrollExtent;
-        _slideForward = false;
-      } else if (target <= 0) {
-        target = 0;
-        _slideForward = true;
-      }
-
-      await _chipsScrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 760),
-        curve: Curves.easeInOut,
-      );
+  void _syncScrollState() {
+    if (!_chipsScrollController.hasClients) return;
+    final position = _chipsScrollController.position;
+    final canScrollLeft = position.pixels > position.minScrollExtent + 2;
+    final canScrollRight = position.pixels < position.maxScrollExtent - 2;
+    if (_canScrollLeft == canScrollLeft && _canScrollRight == canScrollRight) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _canScrollLeft = canScrollLeft;
+      _canScrollRight = canScrollRight;
     });
+  }
+
+  Future<void> _scrollChips(double direction) async {
+    if (!_chipsScrollController.hasClients) return;
+    final position = _chipsScrollController.position;
+    final nextOffset = (position.pixels + (180 * direction)).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    await _chipsScrollController.animateTo(
+      nextOffset,
+      duration: const Duration(milliseconds: 190),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   String _fmt(dynamic v) {
@@ -106,8 +108,9 @@ class _StatsHeaderState extends State<StatsHeader> {
     final cs = Theme.of(context).colorScheme;
 
     final totalHours = _fmt(widget.totals?['totalHours']);
-    final currency = ((widget.totals?['currency'] ?? widget.worker.currency) ?? '')
-        .toString();
+    final currency =
+        ((widget.totals?['currency'] ?? widget.worker.currency) ?? '')
+            .toString();
 
     final totalPayNum = _toNum(widget.totals?['totalPay']);
     final grossPayNum =
@@ -132,15 +135,16 @@ class _StatsHeaderState extends State<StatsHeader> {
           sum + (e.end != null ? e.end!.difference(e.start).inMinutes : 0),
     );
     final uniqueDays = widget.entries
-        .map((e) => DateTime(
-            e.start.toLocal().year, e.start.toLocal().month, e.start.toLocal().day))
+        .map((e) => DateTime(e.start.toLocal().year, e.start.toLocal().month,
+            e.start.toLocal().day))
         .toSet();
     final daysWorked = uniqueDays.length;
     final avgHoursPerWorkedDay =
         daysWorked == 0 ? 0.0 : (totalMinutes / 60.0) / daysWorked;
 
     final sampleDate = widget.entries.first.start.toLocal();
-    final daysInMonth = DateUtils.getDaysInMonth(sampleDate.year, sampleDate.month);
+    final daysInMonth =
+        DateUtils.getDaysInMonth(sampleDate.year, sampleDate.month);
     var sundaysInMonth = 0;
     for (int d = 1; d <= daysInMonth; d++) {
       final weekday = DateTime(sampleDate.year, sampleDate.month, d).weekday;
@@ -228,13 +232,21 @@ class _StatsHeaderState extends State<StatsHeader> {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-      padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
+          _horizontalScrollButton(
+            context,
+            icon: Icons.chevron_left_rounded,
+            tooltip: _isEs(context) ? 'Ver importes anteriores' : 'Scroll left',
+            enabled: _canScrollLeft,
+            onPressed: () => _scrollChips(-1),
+          ),
+          const SizedBox(width: 4),
           Expanded(
             child: SingleChildScrollView(
               controller: _chipsScrollController,
@@ -246,9 +258,17 @@ class _StatsHeaderState extends State<StatsHeader> {
               ),
             ),
           ),
+          const SizedBox(width: 4),
+          _horizontalScrollButton(
+            context,
+            icon: Icons.chevron_right_rounded,
+            tooltip: _isEs(context) ? 'Ver mas importes' : 'Scroll right',
+            enabled: _canScrollRight,
+            onPressed: () => _scrollChips(1),
+          ),
           if (widget.totalsLoading)
             Padding(
-              padding: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.only(left: 6, right: 4),
               child: SizedBox(
                 width: 14,
                 height: 14,
@@ -259,6 +279,40 @@ class _StatsHeaderState extends State<StatsHeader> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _horizontalScrollButton(
+    BuildContext context, {
+    required IconData icon,
+    required String tooltip,
+    required bool enabled,
+    required VoidCallback onPressed,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: IconButton.filledTonal(
+        onPressed: enabled ? onPressed : null,
+        icon: Icon(icon),
+        iconSize: 18,
+        style: IconButton.styleFrom(
+          minimumSize: const Size(30, 30),
+          fixedSize: const Size(30, 30),
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          backgroundColor: cs.surface.withValues(alpha: 0.74),
+          disabledBackgroundColor: cs.surface.withValues(alpha: 0.32),
+          foregroundColor: cs.onSurfaceVariant,
+          disabledForegroundColor: cs.onSurfaceVariant.withValues(alpha: 0.35),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: 0.28),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -91,9 +91,10 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
         final confidence = _batchJobDouble(item.confidence['overall']);
         final confidenceColor = _expensePreviewConfidenceColor(confidence, cs);
         final statusColor = _expensePreviewStatusColor(item, cs);
-        final qualityColor = item.needsReview || item.isDuplicate || item.isFailed
-            ? statusColor
-            : confidenceColor;
+        final qualityColor =
+            item.needsReview || item.isDuplicate || item.isFailed
+                ? statusColor
+                : confidenceColor;
         final statusLabel = _expensePreviewStatusLabel(item);
         void saveChanges() {
           final next = Map<String, dynamic>.from(item.prediction);
@@ -305,7 +306,8 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: field('issueDate', 'Fecha emisi\u00f3n'),
+                                    child: field(
+                                        'issueDate', 'Fecha emisi\u00f3n'),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -421,8 +423,7 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
                             ),
                           ),
                           TextButton(
-                            onPressed: () =>
-                                Navigator.of(dialogContext).pop(),
+                            onPressed: () => Navigator.of(dialogContext).pop(),
                             child: const Text('Cancelar'),
                           ),
                           const SizedBox(width: 8),
@@ -1958,6 +1959,7 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
       final hasPreviewItems = _batchPreviewItems.isNotEmpty;
       final selectedPreviewCount =
           _batchPreviewItems.where((item) => item.selected).length;
+      final useCompletedPreviewFocus = jobCompleted && hasPreviewItems;
       final hasIncidentExport = hasTrackedJob &&
           _hasIncidentItems(
             _batchPreviewItems,
@@ -2141,69 +2143,87 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
           ],
           const SizedBox(height: 6),
           Expanded(
-            child: hasPreviewItems
-                ? DefaultTabController(
-                    length: 3,
-                    initialIndex: 1,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _BatchReviewTabHeader(
-                          fileCount: files.length,
-                          selectedCount: selectedPreviewCount,
-                          hasIssue: verifyHasIssue,
-                          looksOk: verifyLooksOk,
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: TabBarView(
-                            children: [
-                              _buildBatchFileListView(
-                                filteredFiles: filteredFiles,
-                                totalCount: files.length,
-                                warningCount: warningIndexes.length,
-                                warningIndexes: warningIndexes,
-                                selectedCount: selectedCount,
-                                hasTrackedJob: hasTrackedJob,
-                                jobActive: jobActive,
-                              ),
-                              _BatchExpensePreviewReviewPanel(
-                                items: _batchPreviewItems,
-                                selectedCount: selectedPreviewCount,
-                                confirming: batchSubmitting,
-                                confirmResult: _batchConfirmResult,
-                                canExportIncidents: hasIncidentExport,
-                                exportingIncidents: _batchExportingIncidents,
-                                onExportIncidents: exportBatchIncidentExcel,
-                                onToggle: (item, selected) => setState(() {
-                                  if (!item.canSelect) return;
-                                  item.selected = selected;
-                                }),
-                                onEdit: (item) =>
-                                    _showBatchPreviewEditDialog(item),
-                                onConfirm: confirmBatchPreviewImport,
-                              ),
-                              _BatchVerificationTabPanel(
-                                title: l.expenseUploadBatchVerificationTitle,
-                                message: verifyText,
-                                hasIssue: verifyHasIssue,
-                                looksOk: verifyLooksOk,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+            child: useCompletedPreviewFocus
+                ? _BatchExpensePreviewReviewPanel(
+                    items: _batchPreviewItems,
+                    selectedCount: selectedPreviewCount,
+                    confirming: batchSubmitting,
+                    confirmResult: _batchConfirmResult,
+                    canExportIncidents: hasIncidentExport,
+                    exportingIncidents: _batchExportingIncidents,
+                    onExportIncidents: exportBatchIncidentExcel,
+                    onToggle: (item, selected) => setState(() {
+                      if (!item.canSelect) return;
+                      item.selected = selected;
+                    }),
+                    onEdit: (item) => _showBatchPreviewEditDialog(item),
+                    onConfirm: confirmBatchPreviewImport,
                   )
-                : _buildBatchFileListView(
-                    filteredFiles: filteredFiles,
-                    totalCount: files.length,
-                    warningCount: warningIndexes.length,
-                    warningIndexes: warningIndexes,
-                    selectedCount: selectedCount,
-                    hasTrackedJob: hasTrackedJob,
-                    jobActive: jobActive,
-                  ),
+                : hasPreviewItems
+                    ? DefaultTabController(
+                        length: 3,
+                        initialIndex: 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _BatchReviewTabHeader(
+                              fileCount: files.length,
+                              selectedCount: selectedPreviewCount,
+                              hasIssue: verifyHasIssue,
+                              looksOk: verifyLooksOk,
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: TabBarView(
+                                children: [
+                                  _buildBatchFileListView(
+                                    filteredFiles: filteredFiles,
+                                    totalCount: files.length,
+                                    warningCount: warningIndexes.length,
+                                    warningIndexes: warningIndexes,
+                                    selectedCount: selectedCount,
+                                    hasTrackedJob: hasTrackedJob,
+                                    jobActive: jobActive,
+                                  ),
+                                  _BatchExpensePreviewReviewPanel(
+                                    items: _batchPreviewItems,
+                                    selectedCount: selectedPreviewCount,
+                                    confirming: batchSubmitting,
+                                    confirmResult: _batchConfirmResult,
+                                    canExportIncidents: hasIncidentExport,
+                                    exportingIncidents:
+                                        _batchExportingIncidents,
+                                    onExportIncidents: exportBatchIncidentExcel,
+                                    onToggle: (item, selected) => setState(() {
+                                      if (!item.canSelect) return;
+                                      item.selected = selected;
+                                    }),
+                                    onEdit: (item) =>
+                                        _showBatchPreviewEditDialog(item),
+                                    onConfirm: confirmBatchPreviewImport,
+                                  ),
+                                  _BatchVerificationTabPanel(
+                                    title:
+                                        l.expenseUploadBatchVerificationTitle,
+                                    message: verifyText,
+                                    hasIssue: verifyHasIssue,
+                                    looksOk: verifyLooksOk,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _buildBatchFileListView(
+                        filteredFiles: filteredFiles,
+                        totalCount: files.length,
+                        warningCount: warningIndexes.length,
+                        warningIndexes: warningIndexes,
+                        selectedCount: selectedCount,
+                        hasTrackedJob: hasTrackedJob,
+                        jobActive: jobActive,
+                      ),
           ),
           if (!hasGroup) ...[
             const SizedBox(height: 10),
@@ -5125,6 +5145,114 @@ class _BatchExpensePreviewReviewPanelState
     final ctaLabel = widget.selectedCount == 1
         ? 'Importar 1 gasto'
         : 'Importar ${widget.selectedCount} gastos';
+    final queueOptions = [
+      (
+        queue: _BatchExpensePreviewQueue.all,
+        label: 'Todos',
+        count: widget.items.length,
+        color: cs.primary,
+      ),
+      (
+        queue: _BatchExpensePreviewQueue.ready,
+        label: 'Listos',
+        count: readyCount,
+        color: Colors.green.shade600,
+      ),
+      (
+        queue: _BatchExpensePreviewQueue.review,
+        label: 'Revisi\u00f3n',
+        count: reviewCount,
+        color: Colors.amber.shade700,
+      ),
+      (
+        queue: _BatchExpensePreviewQueue.duplicate,
+        label: 'Duplicados',
+        count: duplicateCount,
+        color: cs.error,
+      ),
+      (
+        queue: _BatchExpensePreviewQueue.failed,
+        label: 'Fallidos',
+        count: failedCount,
+        color: cs.error,
+      ),
+    ];
+    final activeQueue = queueOptions.firstWhere(
+      (option) => option.queue == _queue,
+      orElse: () => queueOptions.first,
+    );
+
+    Widget queueMenu() {
+      return PopupMenuButton<_BatchExpensePreviewQueue>(
+        tooltip: 'Filtrar previsualizaci\u00f3n',
+        initialValue: _queue,
+        onSelected: (value) => setState(() => _queue = value),
+        itemBuilder: (context) => [
+          for (final option in queueOptions)
+            PopupMenuItem(
+              value: option.queue,
+              child: Row(
+                children: [
+                  Icon(
+                    option.queue == _queue
+                        ? Icons.check_circle_rounded
+                        : Icons.circle_outlined,
+                    size: 16,
+                    color: option.queue == _queue
+                        ? option.color
+                        : cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(option.label)),
+                  const SizedBox(width: 12),
+                  Text(
+                    option.count.toString(),
+                    style: ts.bodySmall?.copyWith(
+                      color: option.color,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            color: activeQueue.color.withValues(alpha: 0.10),
+            border: Border.all(
+              color: activeQueue.color.withValues(alpha: 0.26),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.filter_list_rounded,
+                size: 14,
+                color: activeQueue.color,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '${activeQueue.label} ${activeQueue.count}',
+                style: ts.bodySmall?.copyWith(
+                  color: activeQueue.color,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                Icons.expand_more_rounded,
+                size: 14,
+                color: activeQueue.color,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -5162,6 +5290,8 @@ class _BatchExpensePreviewReviewPanelState
                     ],
                   ),
                 ),
+                queueMenu(),
+                const SizedBox(width: 8),
                 _BatchStatusChip(
                   label: '${widget.selectedCount} seleccionados',
                   color: cs.primary,
@@ -5170,78 +5300,18 @@ class _BatchExpensePreviewReviewPanelState
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _BatchPreviewQueueChip(
-                        label: 'Todos',
-                        count: widget.items.length,
-                        selected: _queue == _BatchExpensePreviewQueue.all,
-                        color: cs.primary,
-                        onTap: () => setState(
-                          () => _queue = _BatchExpensePreviewQueue.all,
-                        ),
-                      ),
-                      _BatchPreviewQueueChip(
-                        label: 'Listos',
-                        count: readyCount,
-                        selected: _queue == _BatchExpensePreviewQueue.ready,
-                        color: Colors.green.shade600,
-                        onTap: () => setState(
-                          () => _queue = _BatchExpensePreviewQueue.ready,
-                        ),
-                      ),
-                      _BatchPreviewQueueChip(
-                        label: 'Revisi\u00f3n',
-                        count: reviewCount,
-                        selected: _queue == _BatchExpensePreviewQueue.review,
-                        color: Colors.amber.shade700,
-                        onTap: () => setState(
-                          () => _queue = _BatchExpensePreviewQueue.review,
-                        ),
-                      ),
-                      _BatchPreviewQueueChip(
-                        label: 'Duplicados',
-                        count: duplicateCount,
-                        selected: _queue == _BatchExpensePreviewQueue.duplicate,
-                        color: cs.error,
-                        onTap: () => setState(
-                          () => _queue = _BatchExpensePreviewQueue.duplicate,
-                        ),
-                      ),
-                      _BatchPreviewQueueChip(
-                        label: 'Fallidos',
-                        count: failedCount,
-                        selected: _queue == _BatchExpensePreviewQueue.failed,
-                        color: cs.error,
-                        onTap: () => setState(
-                          () => _queue = _BatchExpensePreviewQueue.failed,
-                        ),
-                      ),
-                    ],
-                  ),
+          if (hasFinancialSummary)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Text(
+                '${widget.selectedCount} gastos seleccionados \u00b7 ${_expensePreviewCurrency(selectedTotal, selectedCurrency)} total \u00b7 ${_expensePreviewCurrency(selectedTax, selectedCurrency)} IVA',
+                style: ts.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
-                if (hasFinancialSummary) ...[
-                  const SizedBox(height: 7),
-                  Text(
-                    '${widget.selectedCount} gastos seleccionados \u00b7 ${_expensePreviewCurrency(selectedTotal, selectedCurrency)} total \u00b7 ${_expensePreviewCurrency(selectedTax, selectedCurrency)} IVA',
-                    style: ts.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.22)),
           Flexible(
             fit: FlexFit.loose,
@@ -5271,8 +5341,7 @@ class _BatchExpensePreviewReviewPanelState
                       final item = visibleItems[index];
                       return _BatchExpensePreviewItemTile(
                         item: item,
-                        onToggle: (selected) =>
-                            widget.onToggle(item, selected),
+                        onToggle: (selected) => widget.onToggle(item, selected),
                         onEdit: () => widget.onEdit(item),
                       );
                     },
@@ -5325,10 +5394,9 @@ class _BatchExpensePreviewReviewPanelState
                 ],
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  onPressed:
-                      widget.confirming || widget.selectedCount == 0
-                          ? null
-                          : widget.onConfirm,
+                  onPressed: widget.confirming || widget.selectedCount == 0
+                      ? null
+                      : widget.onConfirm,
                   icon: widget.confirming
                       ? const SizedBox(
                           width: 14,
@@ -5370,27 +5438,27 @@ class _BatchExpensePreviewItemTile extends StatelessWidget {
         ? statusColor
         : _expensePreviewConfidenceColor(confidence, cs);
     final vendor = _batchJobText(prediction['vendorName']);
-    final taxId = _batchJobText(prediction['vendorTaxId']);
     final invoiceNumber = _batchJobText(prediction['invoiceNumber']);
     final issueDate = _batchJobText(prediction['issueDate']);
-    final subtotal = _expensePreviewMoney(prediction['subtotal']);
-    final tax = _expensePreviewMoney(prediction['taxTotal']);
     final total = _expensePreviewMoney(prediction['total']);
     final currency = _batchJobText(prediction['currency']);
-    final description = _batchJobFirstText([
-      prediction['category'],
-      prediction['description'],
-      prediction['notes'],
-    ]);
     final duplicateReason = _batchJobFirstText([
       item.duplicate['reason'],
       item.duplicate['existingExpenseId'] == null
           ? null
           : 'Ya existe: ${item.duplicate['existingExpenseId']}',
     ]);
+    final issueText = [
+      ...item.warnings,
+      if (duplicateReason.isNotEmpty) duplicateReason,
+      if ((item.error ?? '').trim().isNotEmpty) item.error!.trim(),
+    ].join(' \u00b7 ');
+    final hasIssue = issueText.trim().isNotEmpty;
+    final issueColor =
+        item.isFailed || item.isDuplicate ? cs.error : Colors.amber.shade700;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(9),
@@ -5401,13 +5469,17 @@ class _BatchExpensePreviewItemTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Checkbox(
-              value: item.selected,
-              onChanged:
-                  item.canSelect ? (value) => onToggle(value ?? false) : null,
-              visualDensity: VisualDensity.compact,
+            SizedBox(
+              width: 34,
+              height: 34,
+              child: Checkbox(
+                value: item.selected,
+                onChanged:
+                    item.canSelect ? (value) => onToggle(value ?? false) : null,
+                visualDensity: VisualDensity.compact,
+              ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -5421,68 +5493,76 @@ class _BatchExpensePreviewItemTile extends StatelessWidget {
                       height: 1.05,
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  Wrap(
-                    spacing: 11,
-                    runSpacing: 4,
+                  const SizedBox(height: 4),
+                  Row(
                     children: [
-                      _PreviewMeta(
-                        label: 'Factura',
-                        value: invoiceNumber,
-                        priority: _PreviewMetaPriority.secondary,
-                      ),
-                      _PreviewMeta(
-                        label: 'Fecha',
-                        value: issueDate,
-                        priority: _PreviewMetaPriority.secondary,
-                      ),
-                      _FinancialPreviewMeta(
-                        subtotal: subtotal,
-                        tax: tax,
-                      ),
-                      if (taxId.isNotEmpty)
-                        _PreviewMeta(
-                          label: 'NIF/CIF',
-                          value: taxId,
-                          priority: _PreviewMetaPriority.tertiary,
+                      Flexible(
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 3,
+                          children: [
+                            _PreviewMeta(
+                              label: 'Factura',
+                              value: invoiceNumber,
+                              priority: _PreviewMetaPriority.secondary,
+                            ),
+                            _PreviewMeta(
+                              label: 'Fecha',
+                              value: issueDate,
+                              priority: _PreviewMetaPriority.secondary,
+                            ),
+                          ],
                         ),
-                      _DocumentPreviewMeta(fileName: item.fileName),
+                      ),
+                      if (hasIssue) ...[
+                        const SizedBox(width: 8),
+                        Tooltip(
+                          message: issueText,
+                          waitDuration: const Duration(milliseconds: 350),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(999),
+                              color: issueColor.withValues(alpha: 0.10),
+                              border: Border.all(
+                                color: issueColor.withValues(alpha: 0.22),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  item.isFailed
+                                      ? Icons.error_outline_rounded
+                                      : item.isDuplicate
+                                          ? Icons.copy_all_rounded
+                                          : Icons.warning_amber_rounded,
+                                  size: 12,
+                                  color: issueColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  item.isDuplicate
+                                      ? 'Duplicado'
+                                      : item.isFailed
+                                          ? 'Fallido'
+                                          : 'Revisar',
+                                  style: ts.bodySmall?.copyWith(
+                                    color: issueColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                  if (description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: ts.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                  if (item.warnings.isNotEmpty ||
-                      duplicateReason.isNotEmpty ||
-                      (item.error ?? '').trim().isNotEmpty) ...[
-                    const SizedBox(height: 5),
-                    Text(
-                      [
-                        ...item.warnings,
-                        if (duplicateReason.isNotEmpty) duplicateReason,
-                        if ((item.error ?? '').trim().isNotEmpty)
-                          item.error!.trim(),
-                      ].join(' \u00b7 '),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: ts.bodySmall?.copyWith(
-                        color: item.isFailed || item.isDuplicate
-                            ? cs.error
-                            : Colors.amber.shade700,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -5528,59 +5608,6 @@ class _BatchExpensePreviewItemTile extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BatchPreviewQueueChip extends StatelessWidget {
-  final String label;
-  final int count;
-  final bool selected;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _BatchPreviewQueueChip({
-    required this.label,
-    required this.count,
-    required this.selected,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final ts = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            color: selected
-                ? color.withValues(alpha: 0.14)
-                : cs.surfaceContainerHighest.withValues(alpha: 0.18),
-            border: Border.all(
-              color: selected
-                  ? color.withValues(alpha: 0.34)
-                  : cs.outlineVariant.withValues(alpha: 0.34),
-            ),
-          ),
-          child: Text(
-            '$label $count',
-            style: ts.bodySmall?.copyWith(
-              color: selected ? color : cs.onSurfaceVariant,
-              fontSize: 10.5,
-              fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-            ),
-          ),
         ),
       ),
     );
@@ -5665,65 +5692,6 @@ class _PreviewMeta extends StatelessWidget {
       style: ts.bodySmall?.copyWith(
         color: cs.onSurfaceVariant.withValues(alpha: isTertiary ? 0.72 : 0.9),
         fontSize: isTertiary ? 10.5 : 11,
-      ),
-    );
-  }
-}
-
-class _FinancialPreviewMeta extends StatelessWidget {
-  final String subtotal;
-  final String tax;
-
-  const _FinancialPreviewMeta({
-    required this.subtotal,
-    required this.tax,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final ts = Theme.of(context).textTheme;
-    return Text(
-      'Base ${subtotal.isEmpty ? '-' : subtotal} \u00b7 IVA ${tax.isEmpty ? '-' : tax}',
-      style: ts.bodySmall?.copyWith(
-        color: cs.onSurfaceVariant.withValues(alpha: 0.82),
-        fontSize: 10.5,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-}
-
-class _DocumentPreviewMeta extends StatelessWidget {
-  final String fileName;
-
-  const _DocumentPreviewMeta({required this.fileName});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final ts = Theme.of(context).textTheme;
-    return Tooltip(
-      message: fileName,
-      waitDuration: const Duration(milliseconds: 350),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.attach_file_rounded,
-            size: 12,
-            color: cs.onSurfaceVariant.withValues(alpha: 0.58),
-          ),
-          const SizedBox(width: 3),
-          Text(
-            'Ver documento',
-            style: ts.bodySmall?.copyWith(
-              color: cs.onSurfaceVariant.withValues(alpha: 0.68),
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/presupuestos_module_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/screens/role_info_screen.dart';
 
@@ -67,6 +68,14 @@ class DashboardActions {
           context,
           AppRoutes.groupIncome,
           arguments: state.group,
+        );
+        break;
+      case Sections.budgets:
+        if (!state.canSeeAdmin) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PresupuestosModuleScreen(group: state.group),
+          ),
         );
         break;
       case Sections.expenses:

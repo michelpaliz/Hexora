@@ -59,6 +59,19 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
     super.dispose();
   }
 
+  DateTime _endOnStartDate(DateTime start) {
+    final syncedEnd = DateTime(
+      start.year,
+      start.month,
+      start.day,
+      _end.hour,
+      _end.minute,
+    );
+    return syncedEnd.isBefore(start)
+        ? start.add(const Duration(hours: 1))
+        : syncedEnd;
+  }
+
   Future<void> _pickDateTime(bool isStart) async {
     final l = AppLocalizations.of(context)!;
     final initial = isStart ? _start : _end;
@@ -70,6 +83,7 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
       lastDate: DateTime(2100),
     );
     if (pickedDate == null) return;
+    if (!mounted) return;
 
     final pickedTime = await showTimePicker(
       context: context,
@@ -89,9 +103,7 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
     setState(() {
       if (isStart) {
         _start = localDateTime;
-        if (_end.isBefore(_start)) {
-          _end = _start.add(const Duration(hours: 1));
-        }
+        _end = _endOnStartDate(_start);
       } else {
         _end = localDateTime;
       }
@@ -172,8 +184,8 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
             workers: widget.workers,
             selectedIds: _selectedWorkerIds,
             onSelectAll: () => setState(
-              () => _selectedWorkerIds =
-                  widget.workers.map((w) => w.id).toSet(),
+              () =>
+                  _selectedWorkerIds = widget.workers.map((w) => w.id).toSet(),
             ),
             onClear: () => setState(() => _selectedWorkerIds.clear()),
             onToggle: (id, selected) => setState(() {

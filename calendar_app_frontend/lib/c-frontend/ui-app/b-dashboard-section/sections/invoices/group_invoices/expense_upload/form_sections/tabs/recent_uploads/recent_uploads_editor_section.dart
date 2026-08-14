@@ -15,39 +15,38 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
         contentTopPadding: 36,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 1100;
-            if (isWide) {
+            final useSplitView = constraints.maxWidth >= 860;
+            if (useSplitView) {
               return Row(
                 children: [
                   Expanded(
-                    flex: 3,
+                    flex: 10,
                     child: _buildEditorFormPanel(editing, l, t, cs),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    flex: 2,
+                    flex: 11,
                     child: _buildEditorPreviewPanel(editing, l, t, cs),
                   ),
                 ],
               );
             }
 
-            final formHeight = (constraints.maxHeight * 0.62).clamp(320, 860);
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    height: formHeight.toDouble(),
-                    child: _buildEditorFormPanel(editing, l, t, cs),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildEditorPanelSwitcher(cs),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: IndexedStack(
+                    index: _editorPanelIndex,
+                    children: [
+                      _buildEditorFormPanel(editing, l, t, cs),
+                      _buildEditorPreviewPanel(editing, l, t, cs),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: (constraints.maxHeight * 0.38).clamp(260, 640),
-                    child: _buildEditorPreviewPanel(editing, l, t, cs),
-                  ),
-                ],
-              ),
+                ),
+              ],
             );
           },
         ),
@@ -92,6 +91,7 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
     AppTypography t,
     ColorScheme cs,
   ) {
+    final fileUrl = (item['fileUrl'] ?? '').trim();
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
@@ -100,8 +100,101 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _PanelHeader(icon: Icons.preview_outlined, label: l.preview),
+          _PanelHeader(
+            icon: Icons.preview_outlined,
+            label: l.preview,
+            trailing: fileUrl.isEmpty
+                ? null
+                : Tooltip(
+                    message: 'Abrir documento en una pestaña nueva',
+                    child: IconButton(
+                      onPressed: () async {
+                        final url = Uri.tryParse(fileUrl);
+                        if (url != null) {
+                          await launchUrl(url, webOnlyWindowName: '_blank');
+                        }
+                      },
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 17,
+                      icon: const Icon(Icons.open_in_new_rounded),
+                    ),
+                  ),
+          ),
           Expanded(child: _buildPreviewContent(item, l, t, cs)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditorPanelSwitcher(ColorScheme cs) {
+    Widget option({
+      required int index,
+      required IconData icon,
+      required String label,
+    }) {
+      final selected = _editorPanelIndex == index;
+      return Expanded(
+        child: InkWell(
+          onTap: () => _setEditorPanelIndex(index),
+          borderRadius: BorderRadius.circular(7),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: selected
+                  ? cs.primary.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: selected ? cs.primary : cs.onSurfaceVariant,
+                          fontWeight:
+                              selected ? FontWeight.w700 : FontWeight.w600,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Row(
+        children: [
+          option(
+            index: 0,
+            icon: Icons.edit_note_outlined,
+            label: 'Formulario',
+          ),
+          option(
+            index: 1,
+            icon: Icons.picture_as_pdf_outlined,
+            label: 'Documento',
+          ),
         ],
       ),
     );
@@ -113,7 +206,13 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
 class _PanelHeader extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _PanelHeader({required this.icon, required this.label});
+  final Widget? trailing;
+
+  const _PanelHeader({
+    required this.icon,
+    required this.label,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +237,10 @@ class _PanelHeader extends StatelessWidget {
               color: cs.onSurface,
             ),
           ),
+          if (trailing != null) ...[
+            const Spacer(),
+            trailing!,
+          ],
         ],
       ),
     );

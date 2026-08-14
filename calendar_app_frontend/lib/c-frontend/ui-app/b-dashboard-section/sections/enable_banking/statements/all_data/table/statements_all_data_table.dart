@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -21,8 +23,12 @@ class StatementsAllDataTable extends StatelessWidget {
     required this.onMarkNoProcede,
     required this.noProcedeReasonForEntry,
     required this.tableTheme,
+    required this.onDateFilterTap,
+    required this.dateFilterActive,
     required this.onAmountFilterTap,
     required this.amountFilterActive,
+    required this.onClientProviderFilterTap,
+    required this.clientProviderFilterActive,
     required this.onInvoiceSortTap,
     required this.invoiceSortMode,
   });
@@ -39,18 +45,38 @@ class StatementsAllDataTable extends StatelessWidget {
   final ValueChanged<Map<String, dynamic>> onMarkNoProcede;
   final String? Function(Map<String, dynamic> entry) noProcedeReasonForEntry;
   final StatementsTableTheme tableTheme;
+  final VoidCallback onDateFilterTap;
+  final bool dateFilterActive;
   final VoidCallback onAmountFilterTap;
   final bool amountFilterActive;
+  final VoidCallback onClientProviderFilterTap;
+  final bool clientProviderFilterActive;
   final VoidCallback onInvoiceSortTap;
   final int invoiceSortMode;
 
   bool _isCompact(BuildContext context) =>
-      MediaQuery.of(context).size.width < 1100;
+      MediaQuery.sizeOf(context).width < 800;
+
+  bool _isTablet(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    return width >= 800 && width < 1500;
+  }
+
+  double _preferredHeight(BuildContext context) {
+    const headerAndGapHeight = 70.0;
+    const rowExtent = 64.0;
+    final contentHeight = headerAndGapHeight + (entries.length * rowExtent);
+    final viewportHeight = (MediaQuery.sizeOf(context).height * 0.68)
+        .clamp(360.0, 720.0)
+        .toDouble();
+    return math.min(contentHeight, viewportHeight);
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isCompact = _isCompact(context);
+    final isTablet = _isTablet(context);
 
     final selectableVisible = entries.where((entry) {
       final id = (entry['_id'] ?? entry['id'])?.toString();
@@ -63,29 +89,31 @@ class StatementsAllDataTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final hasBoundedHeight = constraints.maxHeight.isFinite;
+        final tableHeight = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : _preferredHeight(context);
 
         final list = ListView.builder(
           itemCount: entries.length,
-          itemExtent: 72,
+          itemExtent: 64,
+          primary: false,
           addAutomaticKeepAlives: false,
           addRepaintBoundaries: true,
-          cacheExtent: 500,
-          shrinkWrap: !hasBoundedHeight,
-          physics:
-              hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
+          cacheExtent: 192,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           itemBuilder: (context, index) {
             final entry = entries[index];
             final entryId = (entry['_id'] ?? entry['id'])?.toString() ?? '';
             return Padding(
               key: ValueKey(entryId),
               padding: index < entries.length - 1
-                  ? const EdgeInsets.only(bottom: 6)
+                  ? const EdgeInsets.only(bottom: 5)
                   : EdgeInsets.zero,
               child: StatementsAllDataTableRow(
                 entry: entry,
                 index: index,
                 isCompact: isCompact,
+                isTablet: isTablet,
                 controller: controller,
                 selectedIds: selectedIds,
                 onToggleRow: onToggleRow,
@@ -101,22 +129,30 @@ class StatementsAllDataTable extends StatelessWidget {
           },
         );
 
-        return Column(
-          children: [
-            StatementsAllDataTableHeader(
-              label: l,
-              isCompact: isCompact,
-              allVisibleSelected: allVisibleSelected,
-              onToggleAll: onToggleAll,
-              tableTheme: tableTheme,
-              onAmountFilterTap: onAmountFilterTap,
-              amountFilterActive: amountFilterActive,
-              onInvoiceSortTap: onInvoiceSortTap,
-              invoiceSortMode: invoiceSortMode,
-            ),
-            const SizedBox(height: 6),
-            if (hasBoundedHeight) Expanded(child: list) else list,
-          ],
+        return SizedBox(
+          height: tableHeight,
+          child: Column(
+            children: [
+              StatementsAllDataTableHeader(
+                label: l,
+                isCompact: isCompact,
+                isTablet: isTablet,
+                allVisibleSelected: allVisibleSelected,
+                onToggleAll: onToggleAll,
+                tableTheme: tableTheme,
+                onDateFilterTap: onDateFilterTap,
+                dateFilterActive: dateFilterActive,
+                onAmountFilterTap: onAmountFilterTap,
+                amountFilterActive: amountFilterActive,
+                onClientProviderFilterTap: onClientProviderFilterTap,
+                clientProviderFilterActive: clientProviderFilterActive,
+                onInvoiceSortTap: onInvoiceSortTap,
+                invoiceSortMode: invoiceSortMode,
+              ),
+              const SizedBox(height: 6),
+              Expanded(child: list),
+            ],
+          ),
         );
       },
     );

@@ -3,6 +3,9 @@ import 'package:hexora/a-models/invoice/client_billing.dart';
 import 'package:hexora/a-models/invoice/invoice_block.dart';
 import 'package:hexora/a-models/invoice/invoice_line.dart';
 
+String _dateOnlyUtcIso(DateTime value) =>
+    DateTime.utc(value.year, value.month, value.day, 12).toIso8601String();
+
 class InvoiceFinalSettlement {
   final String? advanceInvoiceNumber;
   final num? deductedBase;
@@ -140,6 +143,11 @@ class Invoice {
   final String? sentBy;
   final String? deliveryChannel;
   final String? deliveryError;
+  final String? paymentStatus;
+  final num? paidAmount;
+  final DateTime? paidAt;
+  final String? paymentMethod;
+  final String? paymentSource;
   final String? invoiceType;
   final InvoiceFinalSettlement? finalSettlement;
   final String? issuedBy;
@@ -192,6 +200,11 @@ class Invoice {
     this.sentBy,
     this.deliveryChannel,
     this.deliveryError,
+    this.paymentStatus,
+    this.paidAmount,
+    this.paidAt,
+    this.paymentMethod,
+    this.paymentSource,
     this.invoiceType,
     this.finalSettlement,
     this.issuedBy,
@@ -245,6 +258,11 @@ class Invoice {
     String? sentBy,
     String? deliveryChannel,
     String? deliveryError,
+    String? paymentStatus,
+    num? paidAmount,
+    DateTime? paidAt,
+    String? paymentMethod,
+    String? paymentSource,
     String? invoiceType,
     InvoiceFinalSettlement? finalSettlement,
     String? issuedBy,
@@ -297,6 +315,11 @@ class Invoice {
       sentBy: sentBy ?? this.sentBy,
       deliveryChannel: deliveryChannel ?? this.deliveryChannel,
       deliveryError: deliveryError ?? this.deliveryError,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      paidAmount: paidAmount ?? this.paidAmount,
+      paidAt: paidAt ?? this.paidAt,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentSource: paymentSource ?? this.paymentSource,
       invoiceType: invoiceType ?? this.invoiceType,
       finalSettlement: finalSettlement ?? this.finalSettlement,
       issuedBy: issuedBy ?? this.issuedBy,
@@ -381,6 +404,14 @@ class Invoice {
       for (final value in values) {
         final parsed = parseNum(value);
         if (parsed != null) return parsed;
+      }
+      return null;
+    }
+
+    String? firstText(List<dynamic> values) {
+      for (final value in values) {
+        final parsed = value?.toString().trim() ?? '';
+        if (parsed.isNotEmpty) return parsed;
       }
       return null;
     }
@@ -476,26 +507,30 @@ class Invoice {
         ? (json['discount'] as Map).cast<String, dynamic>()
         : const <String, dynamic>{};
     final parsedSubtotal = firstNum([
-      json['subtotal'],
       totalsJson['subtotal'],
+      json['subtotal'],
       totalsJson['base'],
       totalsJson['baseAmount'],
       totalsJson['subTotal'],
     ]);
     final parsedTaxTotal = firstNum([
-      json['taxTotal'],
-      json['vatTotal'],
       totalsJson['taxTotal'],
+      json['taxTotal'],
       totalsJson['vatTotal'],
+      json['vatTotal'],
       totalsJson['tax'],
       totalsJson['iva'],
     ]);
     final parsedTotal = firstNum([
-      json['total'],
-      json['grandTotal'],
       totalsJson['total'],
+      json['total'],
       totalsJson['grandTotal'],
+      json['grandTotal'],
       totalsJson['amountTotal'],
+    ]);
+    final parsedTotalFormatted = firstText([
+      totalsJson['totalFormatted'],
+      json['totalFormatted'],
     ]);
     final parsedDiscountAmount = firstNum([
       json['discountAmount'],
@@ -510,7 +545,6 @@ class Invoice {
       discountJson['percentage'],
       totalsJson['discountPercent'],
     ]);
-
     return Invoice(
       id: readId(json['_id'] ?? json['id']),
       invoiceNumber: (json['invoiceNumber'] ?? '').toString(),
@@ -550,7 +584,7 @@ class Invoice {
       isLinked: parsedIsLinked,
       linked: parsedLinked,
       linkStatusLabel: json['linkStatusLabel']?.toString(),
-      totalFormatted: json['totalFormatted']?.toString(),
+      totalFormatted: parsedTotalFormatted,
       linkedEntriesCount: parsedLinkedEntriesCount,
       linkedEntryId: readIdOrNull(
         json['linkedEntryId'] ??
@@ -582,6 +616,11 @@ class Invoice {
       sentBy: json['sentBy']?.toString(),
       deliveryChannel: json['deliveryChannel']?.toString(),
       deliveryError: json['deliveryError']?.toString(),
+      paymentStatus: json['paymentStatus']?.toString(),
+      paidAmount: parseNum(json['paidAmount']),
+      paidAt: parseDate(json['paidAt']),
+      paymentMethod: json['paymentMethod']?.toString(),
+      paymentSource: json['paymentSource']?.toString(),
       invoiceType: json['invoiceType']?.toString(),
       finalSettlement: json['finalSettlement'] is Map
           ? InvoiceFinalSettlement.fromJson(
@@ -651,6 +690,11 @@ class Invoice {
         if (sentBy != null) 'sentBy': sentBy,
         if (deliveryChannel != null) 'deliveryChannel': deliveryChannel,
         if (deliveryError != null) 'deliveryError': deliveryError,
+        if (paymentStatus != null) 'paymentStatus': paymentStatus,
+        if (paidAmount != null) 'paidAmount': paidAmount,
+        if (paidAt != null) 'paidAt': paidAt!.toIso8601String(),
+        if (paymentMethod != null) 'paymentMethod': paymentMethod,
+        if (paymentSource != null) 'paymentSource': paymentSource,
         if (invoiceType != null) 'invoiceType': invoiceType,
         if (finalSettlement != null)
           'finalSettlement': finalSettlement!.toJson(),
@@ -682,7 +726,7 @@ class Invoice {
       if (registeredAt != null)
         'registeredAt': registeredAt!.toUtc().toIso8601String(),
       if (status != null) 'status': status,
-      if (issueDate != null) 'issueDate': issueDate!.toUtc().toIso8601String(),
+      if (issueDate != null) 'issueDate': _dateOnlyUtcIso(issueDate!),
       if (sequenceNumber != null) 'sequenceNumber': sequenceNumber,
       if (yearYY != null) 'yearYY': yearYY,
       if (notes != null && notes!.trim().isNotEmpty) 'notes': notes!.trim(),

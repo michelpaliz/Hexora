@@ -220,7 +220,10 @@ class _SettingsState extends State<Settings> {
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            _ProfileHeroCard(userName: userName),
+            _ProfileHeroCard(
+              userName: userName,
+              photoUrl: authProvider.currentUser?.photoUrl,
+            ),
             const SizedBox(height: 24),
             SectionHeader(
               title: loc.accountSectionTitle,
@@ -288,9 +291,13 @@ class _SettingsState extends State<Settings> {
 }
 
 class _ProfileHeroCard extends StatelessWidget {
-  const _ProfileHeroCard({required this.userName});
+  const _ProfileHeroCard({
+    required this.userName,
+    required this.photoUrl,
+  });
 
   final String userName;
+  final String? photoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -298,6 +305,18 @@ class _ProfileHeroCard extends StatelessWidget {
     final t = AppTypography.of(context);
 
     final initial = userName.isNotEmpty ? userName[0].toUpperCase() : '?';
+    final imageUrl = photoUrl?.trim() ?? '';
+
+    Widget fallbackInitial() => Center(
+          child: Text(
+            initial,
+            style: t.titleLarge.copyWith(
+              color: cs.onPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+            ),
+          ),
+        );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -333,15 +352,16 @@ class _ProfileHeroCard extends StatelessWidget {
                 ),
               ],
             ),
-            child: Center(
-              child: Text(
-                initial,
-                style: t.titleLarge.copyWith(
-                  color: cs.onPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                ),
-              ),
+            child: ClipOval(
+              child: imageUrl.isEmpty
+                  ? fallbackInitial()
+                  : Image.network(
+                      imageUrl,
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => fallbackInitial(),
+                    ),
             ),
           ),
           const SizedBox(width: 14),

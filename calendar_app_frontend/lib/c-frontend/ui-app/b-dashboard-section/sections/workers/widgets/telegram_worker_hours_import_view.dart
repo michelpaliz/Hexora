@@ -1,11 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/working_time_excel_import.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
+import 'package:hexora/b-backend/shared/backend_api_exception.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:timezone/data/latest_all.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
+
+enum _OverlapDialogAction { close, review, keepCurrent }
 
 class TelegramWorkerHoursImportView extends StatefulWidget {
   const TelegramWorkerHoursImportView({super.key, required this.group});
@@ -50,6 +59,7 @@ class _TelegramWorkerHoursImportViewState
   List<_TelegramIgnoredRow> _ignoredRows = const <_TelegramIgnoredRow>[];
   List<String> _warnings = const <String>[];
   WorkingTimeExcelImportConfirmResult? _lastConfirmResult;
+  static bool _timeZonesReady = false;
 
   static String _currentMonth() {
     final now = DateTime.now();
@@ -315,7 +325,7 @@ class _TelegramWorkerHoursImportViewState
               .map((item) => Map<String, dynamic>.from(item))
               .toList(growable: false)
           : const <Map<String, dynamic>>[];
-      if (!mounted) return;
+      if (!mounted || !context.mounted) return;
       setState(() {
         _candidates = candidates;
         _selectedCandidateIndex = null;
@@ -408,7 +418,7 @@ class _TelegramWorkerHoursImportViewState
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || !context.mounted) return;
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -419,12 +429,11 @@ class _TelegramWorkerHoursImportViewState
   Future<void> _confirmImport() async {
     if (_hasBlockingRows) {
       final isEs = _isSpanish(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEs
-              ? 'Confirma las filas con avisos antes de importar.'
-              : 'Confirm rows with warnings before importing.'),
-        ),
+      showInfoSnack(
+        context,
+        isEs
+            ? 'Confirma las filas con avisos antes de importar.'
+            : 'Confirm rows with warnings before importing.',
       );
       return;
     }
@@ -433,7 +442,15 @@ class _TelegramWorkerHoursImportViewState
         .map((row) => row.toConfirmJson())
         .where((row) => (row['workerId'] ?? '').toString().trim().isNotEmpty)
         .toList(growable: false);
-    if (entries.isEmpty) return;
+    if (entries.isEmpty) {
+      showInfoSnack(
+        context,
+        _isSpanish(context)
+            ? 'No hay filas validas para importar.'
+            : 'There are no valid rows to import.',
+      );
+      return;
+    }
     setState(() {
       _confirming = true;
       _error = null;
@@ -454,21 +471,33 @@ class _TelegramWorkerHoursImportViewState
         _lastConfirmResult = result;
         _confirming = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isSpanish(context)
-                ? 'Importadas: ${result.importedCount} · Omitidas: ${result.skippedCount}'
-                : 'Imported: ${result.importedCount} · Skipped: ${result.skippedCount}',
-          ),
-        ),
+      final isEs = _isSpanish(context);
+      showSuccessSnack(
+        context,
+        isEs
+            ? 'Importadas: ${result.importedCount} · Omitidas: ${result.skippedCount}'
+            : 'Imported: ${result.importedCount} · Skipped: ${result.skippedCount}',
       );
+      await _showImportedEntriesDialog(context, entries, result);
     } catch (e) {
       if (!mounted) return;
+      final handled =
+          await _maybeShowOverlapImportErrorDialog(context, e, entries);
+      if (handled) return;
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '').trim();
       setState(() {
-        _error = e.toString();
+        _error = message;
         _confirming = false;
       });
+      showErrorSnack(
+        context,
+        message.isEmpty
+            ? (_isSpanish(context)
+                ? 'No se pudo importar las horas.'
+                : 'Could not import the hours.')
+            : message,
+      );
     }
   }
 
@@ -1289,6 +1318,558 @@ class _TelegramWorkerHoursImportViewState
         ],
       ),
     );
+  }
+
+  Future<void> _showImportedEntriesDialog(
+    BuildContext context,
+    List<Map<String, dynamic>> submittedEntries,
+    WorkingTimeExcelImportConfirmResult result,
+  ) async {
+    if (!mounted || result.importedCount <= 0) return;
+
+    final isEs = _isSpanish(context);
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final importedEntries = _importedEntriesForDialog(submittedEntries, result);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Horas importadas' : 'Imported hours'),
+        content: SizedBox(
+          width: 760,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEs
+                      ? '${result.importedCount} entradas añadidas'
+                      : '${result.importedCount} entries added',
+                  style: t.bodyMedium.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (result.skippedCount > 0) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    isEs
+                        ? '${result.skippedCount} entradas existentes omitidas.'
+                        : '${result.skippedCount} existing entries skipped.',
+                    style: t.bodySmall.copyWith(color: Colors.orange),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Flexible(
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          headingRowHeight: 38,
+                          dataRowMinHeight: 44,
+                          dataRowMaxHeight: 56,
+                          columns: [
+                            DataColumn(
+                              label: Text(isEs ? 'Trabajador' : 'Worker'),
+                            ),
+                            DataColumn(label: Text(isEs ? 'Fecha' : 'Date')),
+                            const DataColumn(label: Text('Inicio')),
+                            const DataColumn(label: Text('Fin')),
+                            DataColumn(label: Text(isEs ? 'Notas' : 'Notes')),
+                          ],
+                          rows: importedEntries
+                              .map(
+                                (entry) => DataRow(
+                                  cells: [
+                                    DataCell(Text(
+                                      _entryText(entry, 'workerDisplayName'),
+                                    )),
+                                    DataCell(Text(_entryText(entry, 'date'))),
+                                    DataCell(
+                                        Text(_entryText(entry, 'startTime'))),
+                                    DataCell(
+                                        Text(_entryText(entry, 'endTime'))),
+                                    DataCell(Text(_entryText(entry, 'notes'))),
+                                  ],
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(isEs ? 'Cerrar' : 'Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _retryImportKeepingCurrentHours(
+    List<Map<String, dynamic>> entries,
+  ) async {
+    setState(() {
+      _confirming = true;
+      _error = null;
+      _skipExistingEntries = true;
+    });
+    try {
+      final repo = context.read<ITimeTrackingRepository>();
+      final token = await _token();
+      final result = await repo.confirmJsonImport(
+        widget.group.id,
+        token,
+        month: _monthController.text.trim(),
+        duplicateStrategy: 'skip_existing',
+        entries: entries,
+      );
+      if (!mounted) return;
+      setState(() {
+        _lastConfirmResult = result;
+        _confirming = false;
+      });
+      final isEs = _isSpanish(context);
+      showSuccessSnack(
+        context,
+        isEs
+            ? 'Importadas: ${result.importedCount} · Omitidas: ${result.skippedCount}'
+            : 'Imported: ${result.importedCount} · Skipped: ${result.skippedCount}',
+      );
+      await _showImportedEntriesDialog(context, entries, result);
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '').trim();
+      setState(() {
+        _error = message;
+        _confirming = false;
+      });
+      showErrorSnack(
+        context,
+        message.isEmpty
+            ? (_isSpanish(context)
+                ? 'No se pudo importar las horas.'
+                : 'Could not import the hours.')
+            : message,
+      );
+    }
+  }
+
+  Future<bool> _maybeShowOverlapImportErrorDialog(
+    BuildContext context,
+    Object error,
+    List<Map<String, dynamic>> submittedEntries,
+  ) async {
+    if (_errorCode(error) != 'IMPORT_WORKER_TIME_OVERLAP') return false;
+
+    final body = _decodeErrorPayload(error);
+    final detailsRaw = body?['details'];
+    if (detailsRaw is! Map) return false;
+    final details = Map<String, dynamic>.from(detailsRaw);
+    final existingEntries = _mapList(details['existingEntries']);
+    final importedRows = _mapList(details['importedRows']);
+    if (existingEntries.isEmpty || importedRows.isEmpty) return false;
+
+    if (!mounted || !context.mounted) return true;
+    final action = await _showOverlapImportErrorDialog(
+      context,
+      details: details,
+      existingEntries: existingEntries,
+      importedRows: importedRows,
+    );
+    if (!mounted || !context.mounted) return true;
+    if (action == _OverlapDialogAction.keepCurrent) {
+      await _retryImportKeepingCurrentHours(submittedEntries);
+    } else {
+      setState(() => _confirming = false);
+    }
+    return true;
+  }
+
+  Future<_OverlapDialogAction?> _showOverlapImportErrorDialog(
+    BuildContext context, {
+    required Map<String, dynamic> details,
+    required List<Map<String, dynamic>> existingEntries,
+    required List<Map<String, dynamic>> importedRows,
+  }) async {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final worker = details['worker'] is Map
+        ? Map<String, dynamic>.from(details['worker'] as Map)
+        : const <String, dynamic>{};
+    final workerName = _firstNonEmpty([
+      worker['displayName'],
+      worker['alias'],
+      worker['id'],
+    ]);
+    final timeZone = _entryText(details, 'timeZone').isEmpty
+        ? 'Europe/Madrid'
+        : _entryText(details, 'timeZone');
+    final overlap = details['overlap'] is Map
+        ? Map<String, dynamic>.from(details['overlap'] as Map)
+        : const <String, dynamic>{};
+    final rowNumbers = importedRows
+        .map((row) => _entryText(row, 'rowNumber'))
+        .where((value) => value.isNotEmpty)
+        .join(' y ');
+
+    return showDialog<_OverlapDialogAction>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Solapamiento de horas'),
+        content: SizedBox(
+          width: 860,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 560),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Las horas que intentas importar se cruzan con horas ya registradas para este trabajador. Revisa el conflicto antes de confirmar la importación.',
+                    style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 16),
+                  _overlapInfoLine(
+                    context,
+                    label: 'Trabajador',
+                    value: workerName.isEmpty ? '-' : workerName,
+                  ),
+                  _overlapInfoLine(
+                    context,
+                    label: 'Filas en conflicto',
+                    value: rowNumbers.isEmpty ? '-' : rowNumbers,
+                  ),
+                  _overlapInfoLine(
+                    context,
+                    label: 'Solapamiento',
+                    value: _overlapRangeLabel(overlap, timeZone),
+                  ),
+                  _overlapInfoLine(
+                    context,
+                    label: 'Duración',
+                    value:
+                        '${_entryText(overlap, 'durationMinutes').isEmpty ? '-' : _entryText(overlap, 'durationMinutes')} minutos',
+                  ),
+                  const SizedBox(height: 14),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final current = _overlapEntriesSection(
+                        context,
+                        title: 'Horas actuales',
+                        icon: Icons.schedule_rounded,
+                        entries: existingEntries,
+                        timeZone: timeZone,
+                        isImported: false,
+                      );
+                      final incoming = _overlapEntriesSection(
+                        context,
+                        title: 'Horas a importar',
+                        icon: Icons.upload_file_rounded,
+                        entries: importedRows,
+                        timeZone: timeZone,
+                        isImported: true,
+                      );
+                      if (constraints.maxWidth < 680) {
+                        return Column(
+                          children: [
+                            current,
+                            const SizedBox(height: 10),
+                            incoming,
+                          ],
+                        );
+                      }
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: current),
+                          const SizedBox(width: 12),
+                          Expanded(child: incoming),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_OverlapDialogAction.close),
+            child: const Text('Cerrar'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(dialogContext)
+                .pop(_OverlapDialogAction.keepCurrent),
+            child: const Text('Mantener horas actuales'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_OverlapDialogAction.review),
+            child: const Text('Revisar filas'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _overlapEntriesSection(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required List<Map<String, dynamic>> entries,
+    required String timeZone,
+    required bool isImported,
+  }) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 17, color: cs.primary),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  title,
+                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...entries.map(
+            (entry) => _overlapEntryCard(
+              context,
+              entry: entry,
+              timeZone: timeZone,
+              isImported: isImported,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _overlapEntryCard(
+    BuildContext context, {
+    required Map<String, dynamic> entry,
+    required String timeZone,
+    required bool isImported,
+  }) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final breakMinutes = int.tryParse(_entryText(entry, 'breakMinutes')) ?? 0;
+    final notes = _entryText(entry, 'notes');
+    final idLabel = isImported
+        ? 'Fila ${_entryText(entry, 'rowNumber').isEmpty ? '-' : _entryText(entry, 'rowNumber')}'
+        : 'Registro ${_entryText(entry, 'id').isEmpty ? '-' : _entryText(entry, 'id')}';
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: cs.surface.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(idLabel,
+              style: t.bodySmall.copyWith(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 5),
+          Text(_overlapRangeLabel(entry, timeZone), style: t.bodySmall),
+          if (breakMinutes > 0) ...[
+            const SizedBox(height: 4),
+            Text('Descanso: $breakMinutes minutos', style: t.bodySmall),
+          ],
+          if (notes.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text('Notas: $notes', style: t.bodySmall),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _overlapInfoLine(
+    BuildContext context, {
+    required String label,
+    required String value,
+  }) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: RichText(
+        text: TextSpan(
+          style: t.bodySmall.copyWith(color: cs.onSurface),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _overlapRangeLabel(Map<String, dynamic> source, String timeZone) {
+    final start = _formatZonedDateTime(source['startedAt'], timeZone);
+    final end = _formatZonedDateTime(source['endedAt'], timeZone);
+    if (start.isEmpty && end.isEmpty) return '-';
+    return '$start - $end ($timeZone)';
+  }
+
+  String _formatZonedDateTime(dynamic value, String timeZone) {
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
+    if (parsed == null) return '';
+    final location = _timeZoneLocation(timeZone);
+    final zoned = location == null
+        ? parsed.toLocal()
+        : tz.TZDateTime.from(parsed.toUtc(), location);
+    return DateFormat('yyyy-MM-dd HH:mm').format(zoned);
+  }
+
+  tz.Location? _timeZoneLocation(String timeZone) {
+    if (!_timeZonesReady) {
+      tz_data.initializeTimeZones();
+      _timeZonesReady = true;
+    }
+    try {
+      return tz.getLocation(timeZone);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _errorCode(Object error) {
+    if (error is BackendApiException) return error.code;
+    final data = _dynamicResponseData(error);
+    if (data is Map) {
+      final rawCode = data['code'] ?? data['errorCode'];
+      final code = rawCode?.toString().trim() ?? '';
+      return code.isEmpty ? null : code;
+    }
+    try {
+      final dynamic dynamicError = error;
+      final code = dynamicError.code?.toString().trim() ?? '';
+      return code.isEmpty ? null : code;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? _decodeErrorPayload(Object error) {
+    if (error is BackendApiException) {
+      return _decodeErrorBody(error.rawBody);
+    }
+    final data = _dynamicResponseData(error);
+    if (data is Map) return Map<String, dynamic>.from(data);
+    if (data is String) return _decodeErrorBody(data);
+    return null;
+  }
+
+  dynamic _dynamicResponseData(Object error) {
+    try {
+      final dynamic dynamicError = error;
+      return dynamicError.response?.data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? _decodeErrorBody(String? rawBody) {
+    final raw = rawBody?.trim() ?? '';
+    if (raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List<Map<String, dynamic>> _mapList(dynamic value) {
+    if (value is! List) return const <Map<String, dynamic>>[];
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+  }
+
+  List<Map<String, dynamic>> _importedEntriesForDialog(
+    List<Map<String, dynamic>> submittedEntries,
+    WorkingTimeExcelImportConfirmResult result,
+  ) {
+    if (result.skippedEntries.isEmpty) {
+      return submittedEntries
+          .take(result.importedCount)
+          .toList(growable: false);
+    }
+
+    final skippedKeys = result.skippedEntries
+        .map(_entryMatchKey)
+        .where((key) => key.isNotEmpty)
+        .toSet();
+    final imported = submittedEntries
+        .where((entry) => !skippedKeys.contains(_entryMatchKey(entry)))
+        .take(result.importedCount)
+        .toList(growable: false);
+    return imported.isEmpty
+        ? submittedEntries.take(result.importedCount).toList(growable: false)
+        : imported;
+  }
+
+  String _entryMatchKey(Map<String, dynamic> entry) {
+    final worker = _entryText(entry, 'workerId').isNotEmpty
+        ? _entryText(entry, 'workerId')
+        : _entryText(entry, 'workerDisplayName');
+    return [
+      worker,
+      _entryText(entry, 'date'),
+      _entryText(entry, 'startTime'),
+      _entryText(entry, 'endTime'),
+    ].join('|').toLowerCase();
+  }
+
+  String _entryText(Map<String, dynamic> entry, String key) {
+    return entry[key]?.toString().trim() ?? '';
+  }
+
+  String _firstNonEmpty(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty) return text;
+    }
+    return '';
   }
 
   String _skippedEntryLabel(Map<String, dynamic> entry) {

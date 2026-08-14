@@ -12,6 +12,7 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/profile_edit_dialog.dart';
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -40,10 +41,9 @@ class UserProfilePopup extends StatelessWidget {
         child: CircleAvatar(
           radius: 16,
           backgroundColor: textColor.withValues(alpha: 0.12),
-          backgroundImage:
-              u.photoUrl?.trim().isNotEmpty == true
-                  ? NetworkImage(u.photoUrl!.trim())
-                  : null,
+          backgroundImage: u.photoUrl?.trim().isNotEmpty == true
+              ? NetworkImage(u.photoUrl!.trim())
+              : null,
           child: u.photoUrl?.trim().isNotEmpty != true
               ? Text(
                   u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
@@ -67,8 +67,7 @@ class UserProfilePopup extends StatelessWidget {
         alignment: Alignment.topRight,
         insetPadding:
             const EdgeInsets.only(top: 56, right: 14, bottom: 0, left: 0),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 8,
         child: _UserProfileCard(initialUser: u),
       ),
@@ -136,8 +135,7 @@ class _UserProfileCardState extends State<_UserProfileCard> {
   }
 
   Future<void> _pickAndUpload() async {
-    final picked =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null || !mounted) return;
 
     setState(() => _uploading = true);
@@ -188,6 +186,7 @@ class _UserProfileCardState extends State<_UserProfileCard> {
 
   @override
   Widget build(BuildContext context) {
+    final themeModeProvider = context.watch<ThemeModeProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
@@ -356,17 +355,44 @@ class _UserProfileCardState extends State<_UserProfileCard> {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: Row(
               children: [
+                Tooltip(
+                  message: isDark ? 'Light mode' : 'Dark mode',
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: OutlinedButton(
+                      onPressed: themeModeProvider.toggleLightDark,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: activeColor,
+                        side: BorderSide(
+                          color: activeColor.withValues(alpha: 0.4),
+                        ),
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Icon(
+                        isDark
+                            ? Icons.light_mode_rounded
+                            : Icons.dark_mode_rounded,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.edit_outlined, size: 14),
                     label: const Text('Edit profile'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: activeColor,
-                      side: BorderSide(
-                          color: activeColor.withValues(alpha: 0.4)),
+                      side:
+                          BorderSide(color: activeColor.withValues(alpha: 0.4)),
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      textStyle: t.bodySmall
-                          .copyWith(fontWeight: FontWeight.w600),
+                      textStyle:
+                          t.bodySmall.copyWith(fontWeight: FontWeight.w600),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),
                     ),
@@ -421,7 +447,8 @@ class UserAvatarViewerDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = AppTypography.of(context);
-    final textColor = isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
+    final textColor =
+        isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
     final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
     final cardBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
 
@@ -521,43 +548,44 @@ class UserAvatarViewerDialog extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   if (onChangePhoto != null) ...[
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // Change photo button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton.icon(
-                      onPressed: uploading ? null : onChangePhoto,
-                      icon: uploading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.camera_alt_rounded, size: 20, color: Colors.white),
-                      label: Text(
-                        uploading ? 'Uploading...' : 'Change photo',
-                        style: t.bodyMedium.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
+                    // Change photo button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton.icon(
+                        onPressed: uploading ? null : onChangePhoto,
+                        icon: uploading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.camera_alt_rounded,
+                                size: 20, color: Colors.white),
+                        label: Text(
+                          uploading ? 'Uploading...' : 'Change photo',
+                          style: t.bodyMedium.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
                         ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: activeColor,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: activeColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   ],
                 ],
               ),
@@ -597,9 +625,8 @@ class _InfoRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        crossAxisAlignment: maxLines > 1
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.center,
+        crossAxisAlignment:
+            maxLines > 1 ? CrossAxisAlignment.start : CrossAxisAlignment.center,
         children: [
           Icon(icon, size: 15, color: subColor),
           const SizedBox(width: 10),

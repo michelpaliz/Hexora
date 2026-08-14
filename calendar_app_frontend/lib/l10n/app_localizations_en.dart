@@ -3085,6 +3085,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Use three digits (e.g., 001). Year is fixed to the current YY.';
 
   @override
+  String get bulkDownloadInvoiceNumberRequired =>
+      'Enter at least one invoice number.';
+
+  @override
+  String get bulkDownloadInvoiceNumberInvalidFormat =>
+      'Use letters, numbers, hyphen, slash, underscore, or dot only.';
+
+  @override
+  String get bulkDownloadInvoiceNumberRangeInvalid =>
+      'The starting invoice number must be lower than or equal to the ending number.';
+
+  @override
   String get invoiceClientLabel => 'Client';
 
   @override

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,7 @@ import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
 import 'package:hexora/b-backend/receipts/receipts_api.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/vat/vat_summary_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/invoice_editor_mobile_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/invoice_editor_screen.dart';
@@ -56,6 +58,8 @@ import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 
 part 'group_invoices/group_invoices_view.dart';
 part 'group_invoices/view/group_invoices_content.dart';
@@ -107,6 +111,15 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   final _vatApi = VatSummaryApi();
   final _linesApi = InvoiceLinesApi();
 
+  bool canEditIssuedInvoices(BuildContext context) {
+    final userId = context.read<UserDomain?>()?.user?.id;
+    if (userId == null || userId.trim().isEmpty) return false;
+    final role = widget.group.ownerId == userId
+        ? 'owner'
+        : widget.group.userRoles[userId];
+    return role == 'owner' || role == 'admin' || role == 'co-admin';
+  }
+
   List<Invoice> _invoices = [];
   List<Invoice> _drafts = [];
   List<Receipt> _receipts = [];
@@ -148,7 +161,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   bool? _sortingInvoices;
   bool _openingDraft = false;
   bool _downloadingAllPdfs = false;
+  bool _loadingInvoiceZipDownloads = false;
   bool _exportingInvoiceConcepts = false;
+  bool _confirmingIssueAllDrafts = false;
   bool? _issuingAllDrafts = false;
   bool? _refreshingClientsSection = false;
   int _classificationViewRefreshTick = 0;
@@ -157,6 +172,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   String? _budgetEditorBudgetId;
   DateTime? _issuedInvoicesFromDate;
   DateTime? _issuedInvoicesToDate;
+  List<InvoiceZipDownload> _invoiceZipDownloads = const [];
+  String? _lastExportFileId;
+  String? _lastExportFileUrl;
   late String? _pendingInitialInvoiceId;
   late String? _pendingInitialReceiptId;
 
@@ -164,30 +182,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _invoiceSortState ??
       const InvoiceSortState(
           by: InvoiceSortBy.number, dir: InvoiceSortDir.desc);
-
-  bool _isDraftReceipt(Receipt receipt) {
-    final status = (receipt.status ?? '').trim().toLowerCase();
-    final number = (receipt.receiptNumber ?? '').trim();
-    if (status.contains('void')) return false;
-    if (status.contains('issued')) return false;
-    if (status.contains('draft')) return true;
-    return number.isEmpty;
-  }
-
-  ({List<Receipt> drafts, List<Receipt> issued}) _splitReceipts(
-    List<Receipt> receipts,
-  ) {
-    final drafts = <Receipt>[];
-    final issued = <Receipt>[];
-    for (final receipt in receipts) {
-      if (_isDraftReceipt(receipt)) {
-        drafts.add(receipt);
-      } else {
-        issued.add(receipt);
-      }
-    }
-    return (drafts: drafts, issued: issued);
-  }
 
   bool get _effectiveSortingInvoices => _sortingInvoices ?? false;
 
@@ -207,6 +201,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
     _syncInitialMenuExpansion();
     _loadAll();
+    Future.microtask(_refreshInvoiceZipDownloads);
   }
 
   void _syncInitialMenuExpansion() {
@@ -345,12 +340,43 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           sortBy: sortBy,
           sortDir: sortDir,
         ),
-        _receiptsApi.list(groupId: widget.group.id),
+        _receiptsApi.list(
+          groupId: widget.group.id,
+          status: 'issued',
+        ),
+        _receiptsApi.list(
+          groupId: widget.group.id,
+          status: 'draft',
+        ),
         _billingApi.getByGroup(widget.group.id),
       ]);
       if (!mounted) return;
-      final receiptSplit =
-          _splitReceipts(List<Receipt>.from(results[3] as List<Receipt>));
+      final issuedReceipts =
+          List<Receipt>.from(results[3] as List<Receipt>);
+      final draftReceipts = List<Receipt>.from(results[4] as List<Receipt>);
+
+      try {
+        final lookup = await _receiptsApi.lookupUnnumberedDraft(
+          groupId: widget.group.id,
+        );
+        Receipt? unnumberedDraft = lookup.receipt;
+        final lookupId = (lookup.existingReceiptId ?? '').trim();
+        if (lookup.exists && unnumberedDraft == null && lookupId.isNotEmpty) {
+          unnumberedDraft = await _receiptsApi.getById(lookupId);
+        }
+        if (unnumberedDraft != null &&
+            !draftReceipts.any((item) => item.id == unnumberedDraft!.id)) {
+          draftReceipts.insert(0, unnumberedDraft);
+        }
+      } catch (_) {
+        // Non-blocking fallback for deployments where the draft list endpoint
+        // omits the current unnumbered receipt.
+      }
+      if (!mounted) return;
+      final draftIds = draftReceipts.map((receipt) => receipt.id).toSet();
+      issuedReceipts.removeWhere(
+        (receipt) => draftIds.contains(receipt.id),
+      );
       setState(() {
         _clients = List<GroupClient>.from(
           results[0] as List<GroupClient>,
@@ -365,14 +391,14 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           growable: true,
         );
         _receipts = List<Receipt>.from(
-          receiptSplit.issued,
+          issuedReceipts,
           growable: true,
         );
         _receiptDrafts = List<Receipt>.from(
-          receiptSplit.drafts,
+          draftReceipts,
           growable: true,
         );
-        _billingProfile = results[4] as BillingProfile?;
+        _billingProfile = results[5] as BillingProfile?;
         _selectedClient = previousSelectedClientId == null
             ? (_clients.isNotEmpty ? _clients.first : null)
             : _clients.cast<GroupClient?>().firstWhere(
@@ -459,11 +485,16 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           results[1],
           growable: true,
         );
-        if (_selectedInvoice != null) {
-          final stillExists =
-              _invoices.any((i) => i.id == _selectedInvoice!.id) ||
-                  _drafts.any((i) => i.id == _selectedInvoice!.id);
-          if (!stillExists) _selectedInvoice = null;
+        final selectedInvoiceId = _selectedInvoice?.id;
+        if (selectedInvoiceId != null) {
+          Invoice? refreshedSelection;
+          for (final invoice in [..._drafts, ..._invoices]) {
+            if (invoice.id == selectedInvoiceId) {
+              refreshedSelection = invoice;
+              break;
+            }
+          }
+          _selectedInvoice = refreshedSelection;
         }
         _selectedInvoice ??= _drafts.isNotEmpty
             ? _drafts.first
@@ -641,19 +672,17 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     setState(() => _downloadingAllPdfs = true);
     try {
       final params = filter.toQueryParams(widget.group.id);
-      final response = await _invoicesApi.downloadAllPdfsZip(
-        widget.group.id,
-        queryParams: params,
+      final job = await _invoicesApi.queueInvoiceZipExport(
+        groupId: widget.group.id,
+        params: params,
       );
-      final fileName = _zipFileNameFromHeaders(response.headers);
-      await launchFileDownload(
-        response.bodyBytes,
-        fileName: fileName,
-        mimeType: 'application/zip',
-      );
+      _rememberQueuedExport(job);
+      await _refreshInvoiceZipDownloads(showErrors: false);
+      if (!mounted) return;
+      showInfoSnack(context, _zipJobQueuedMessage());
     } catch (e) {
       if (!mounted) return;
-      showErrorSnack(context, e.toString());
+      showErrorSnack(context, _downloadZipErrorMessage(e));
     } finally {
       if (mounted) setState(() => _downloadingAllPdfs = false);
     }
@@ -670,22 +699,20 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       return;
     }
     try {
-      final response = await _invoicesApi.downloadAllPdfsZip(
-        widget.group.id,
-        queryParams: <String, String>{
+      final job = await _invoicesApi.queueInvoiceZipExport(
+        groupId: widget.group.id,
+        params: <String, String>{
           'groupId': widget.group.id,
           'invoiceIds': ids.join(','),
         },
       );
-      final fileName = _zipFileNameFromHeaders(response.headers);
-      await launchFileDownload(
-        response.bodyBytes,
-        fileName: fileName,
-        mimeType: 'application/zip',
-      );
+      _rememberQueuedExport(job);
+      await _refreshInvoiceZipDownloads(showErrors: false);
+      if (!mounted) return;
+      showInfoSnack(context, _zipJobQueuedMessage());
     } catch (e) {
       if (!mounted) return;
-      showErrorSnack(context, e.toString());
+      showErrorSnack(context, _downloadZipErrorMessage(e));
     }
   }
 
@@ -701,25 +728,105 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
     setState(() => _downloadingAllPdfs = true);
     try {
-      final response = await _invoicesApi.downloadAllPdfsZip(
-        widget.group.id,
-        queryParams: <String, String>{
+      final job = await _invoicesApi.queueInvoiceZipExport(
+        groupId: widget.group.id,
+        params: <String, String>{
           'groupId': widget.group.id,
           'invoiceIds': ids.join(','),
         },
       );
-      final fileName = _zipFileNameFromHeaders(response.headers);
-      await launchFileDownload(
-        response.bodyBytes,
-        fileName: fileName,
-        mimeType: 'application/zip',
-      );
+      _rememberQueuedExport(job);
+      await _refreshInvoiceZipDownloads(showErrors: false);
+      if (!mounted) return;
+      showInfoSnack(context, _zipJobQueuedMessage());
     } catch (e) {
       if (!mounted) return;
-      showErrorSnack(context, e.toString());
+      showErrorSnack(context, _downloadZipErrorMessage(e));
     } finally {
       if (mounted) setState(() => _downloadingAllPdfs = false);
     }
+  }
+
+  void _rememberQueuedExport(InvoiceZipDownload job) {
+    setState(() {
+      _lastExportFileId = job.id.trim().isEmpty ? null : job.id.trim();
+      _lastExportFileUrl =
+          job.fileUrl?.trim().isEmpty == true ? null : job.fileUrl?.trim();
+    });
+  }
+
+  String _zipJobQueuedMessage() {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    return isEs
+        ? 'Exportacion ZIP en cola. Puedes salir de esta pantalla y descargarla cuando termine.'
+        : 'ZIP export queued. You can leave this screen and download it when it is ready.';
+  }
+
+  String _downloadZipErrorMessage(Object error) {
+    final l = AppLocalizations.of(context)!;
+    if (error is InvoicesApiException) {
+      final message = error.message.replaceFirst('Exception: ', '').trim();
+      if (error.statusCode == 404) {
+        return Localizations.localeOf(context).languageCode == 'es'
+            ? 'No se encontraron facturas para los filtros seleccionados.'
+            : 'No invoices found for the selected filters';
+      }
+      if (error.statusCode == 400 && message.isNotEmpty) return message;
+      if (message.isNotEmpty) return message;
+    }
+    final text = error.toString().replaceFirst('Exception: ', '').trim();
+    return text.isNotEmpty ? text : l.invoicePdfPreviewFailedSnack;
+  }
+
+  Future<void> _refreshInvoiceZipDownloads({bool showErrors = false}) async {
+    if (_loadingInvoiceZipDownloads) return;
+    setState(() => _loadingInvoiceZipDownloads = true);
+    try {
+      final downloads =
+          await _invoicesApi.listInvoiceZipDownloads(widget.group.id);
+      if (!mounted) return;
+      setState(() => _invoiceZipDownloads = downloads);
+    } catch (e) {
+      if (showErrors && mounted) {
+        showErrorSnack(context, e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _loadingInvoiceZipDownloads = false);
+    }
+  }
+
+  Future<void> _openStoredInvoiceZip(InvoiceZipDownload download) async {
+    final fileUrl = download.fileUrl?.trim() ?? '';
+    if (fileUrl.isNotEmpty) {
+      final uri = Uri.tryParse(fileUrl);
+      if (uri != null) {
+        await launchUrl(uri, webOnlyWindowName: '_blank');
+        return;
+      }
+    }
+    if (download.id.trim().isEmpty) return;
+    try {
+      final response = await _invoicesApi.downloadStoredFile(download.id);
+      await launchFileDownload(
+        response.bodyBytes,
+        fileName: download.fileName.trim().isEmpty
+            ? _zipFileNameFromHeaders(response.headers)
+            : download.fileName.trim(),
+        mimeType: response.headers['content-type'] ?? 'application/zip',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnack(context, _downloadZipErrorMessage(e));
+    }
+  }
+
+  Future<void> _showStoredInvoiceZipDownloads() async {
+    await _refreshInvoiceZipDownloads(showErrors: false);
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => _InvoiceZipDownloadsDialog(state: this),
+    );
   }
 
   Future<void> _exportInvoiceConceptsExcel() async {
@@ -1401,80 +1508,119 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         : l.invoiceIssueDuplicateNumberValueSnack(number);
   }
 
-  Future<void> _issueAllDraftInvoices([List<Invoice>? orderedDrafts]) async {
-    if (_issuingAllDrafts == true) return;
-    final source = orderedDrafts ?? _drafts;
+  Future<void> _issueAllDraftInvoices([List<Invoice>? scopedDrafts]) async {
+    if (_issuingAllDrafts == true || _confirmingIssueAllDrafts) return;
+    final source = scopedDrafts ?? _drafts;
     final draftsToIssue = source.where(_isDraftInvoice).toList(growable: false);
     if (draftsToIssue.isEmpty) return;
+    final invoiceIds = draftsToIssue
+        .map((invoice) => invoice.id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    if (invoiceIds.isEmpty) return;
 
     final l = AppLocalizations.of(context)!;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    final count = draftsToIssue.length;
+    final count = invoiceIds.length;
     final confirmTitle =
         isSpanish ? 'Emitir todos los borradores' : 'Issue all drafts';
     final confirmMessage = isSpanish
-        ? 'Se emitirán $count facturas en borrador. ${l.invoiceIssueConfirmMessage}'
-        : '$count draft invoices will be issued. ${l.invoiceIssueConfirmMessage}';
+        ? 'Se emitirán $count facturas. El servidor determinará el orden cronológico y asignará la numeración.'
+        : '$count invoices will be issued. The server will determine the chronological order and assign numbering.';
     final confirmCta = isSpanish ? 'Emitir $count' : 'Issue $count';
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      useRootNavigator: true,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(confirmTitle),
-        content: Text(confirmMessage),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                Navigator.of(dialogContext, rootNavigator: true).pop(false),
-            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
-          ),
-          FilledButton.icon(
-            onPressed: () =>
-                Navigator.of(dialogContext, rootNavigator: true).pop(true),
-            icon: const Icon(Icons.publish_outlined),
-            label: Text(confirmCta),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
     if (!mounted) return;
+    setState(() => _confirmingIssueAllDrafts = true);
+    bool? confirmed;
+    try {
+      confirmed = await showDialog<bool>(
+        context: context,
+        useRootNavigator: true,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(confirmTitle),
+          content: Text(confirmMessage),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(dialogContext, rootNavigator: true).pop(false),
+              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+            ),
+            FilledButton.icon(
+              onPressed: () =>
+                  Navigator.of(dialogContext, rootNavigator: true).pop(true),
+              icon: const Icon(Icons.publish_outlined),
+              label: Text(confirmCta),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _confirmingIssueAllDrafts = false);
+      }
+    }
+    if (confirmed != true || !mounted || _issuingAllDrafts == true) return;
+
     setState(() => _issuingAllDrafts = true);
 
     var successCount = 0;
-    String? firstError;
     try {
-      for (final draft in draftsToIssue) {
-        try {
-          await _issueInvoiceDirect(draft);
-          successCount += 1;
-        } catch (e) {
-          firstError ??= _friendlyInvoiceIssueError(e, l);
-        }
-      }
+      final result = await _invoicesApi.issueAll(
+        groupId: widget.group.id,
+        invoiceIds: invoiceIds,
+      );
+      successCount = result.issuedCount;
 
       if (!mounted) return;
       await _refreshInvoiceListsOnly();
       if (!mounted) return;
 
-      final failedCount = count - successCount;
-      if (failedCount == 0) {
-        showSuccessSnack(
-            context, l.invoiceBatchIssueSuccessSnack(successCount.toString()));
-      } else if (successCount > 0) {
-        showInfoSnack(
-            context,
-            l.invoiceBatchIssuePartialSnack(
-                successCount.toString(), failedCount.toString()));
-      } else {
-        showErrorSnack(
-            context,
-            firstError?.isNotEmpty == true
-                ? firstError!
-                : l.invoiceIssueFailedSnack);
+      if (_selectedInvoice != null &&
+          invoiceIds.contains(_selectedInvoice!.id)) {
+        setState(() => _selectedInvoice = null);
       }
+      showSuccessSnack(
+          context, l.invoiceBatchIssueSuccessSnack(successCount.toString()));
+    } on InvoicesBatchIssueException catch (e) {
+      final issuedCount = e.failure?.issuedCount ?? 0;
+      final failedInvoiceId = e.failure?.failedInvoiceId;
+
+      if (mounted) {
+        try {
+          await _refreshInvoiceListsOnly();
+        } catch (_) {}
+      }
+      if (!mounted) return;
+
+      final message = e.message.trim().isEmpty
+          ? l.invoiceIssueFailedSnack
+          : e.message.trim();
+      final parts = <String>[
+        if (issuedCount > 0)
+          isSpanish
+              ? '$issuedCount facturas emitidas antes del error'
+              : '$issuedCount invoices issued before the error',
+        if (failedInvoiceId != null)
+          isSpanish
+              ? 'Factura fallida: $failedInvoiceId'
+              : 'Failed invoice: $failedInvoiceId',
+        message,
+      ];
+      final text = parts.join(' · ');
+      if (issuedCount > 0) {
+        showInfoSnack(context, text);
+      } else {
+        showErrorSnack(context, text);
+      }
+    } catch (e) {
+      if (mounted) {
+        try {
+          await _refreshInvoiceListsOnly();
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      final message = _friendlyInvoiceIssueError(e, l);
+      showErrorSnack(context, message);
     } finally {
       if (mounted) {
         setState(() => _issuingAllDrafts = false);

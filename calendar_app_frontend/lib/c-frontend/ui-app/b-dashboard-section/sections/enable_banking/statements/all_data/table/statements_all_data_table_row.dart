@@ -21,6 +21,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
     required this.entry,
     required this.index,
     required this.isCompact,
+    required this.isTablet,
     required this.controller,
     required this.selectedIds,
     required this.onToggleRow,
@@ -36,6 +37,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
   final Map<String, dynamic> entry;
   final int index;
   final bool isCompact;
+  final bool isTablet;
   final StatementsController controller;
   final Set<String> selectedIds;
   final ValueChanged<String> onToggleRow;
@@ -66,13 +68,16 @@ class StatementsAllDataTableRow extends StatelessWidget {
               (emphasize ? typography.bodySmall : typography.bodySmall))
           .copyWith(
         fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
-        fontSize: emphasize ? 13 : null,
+        fontSize: emphasize ? 13 : 12.5,
         color: amountColor,
+        fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
     if (!asPill) return text;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      height: 32,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
         color: amountColor.withValues(alpha: 0.11),
         borderRadius: BorderRadius.circular(999),
@@ -91,10 +96,10 @@ class StatementsAllDataTableRow extends StatelessWidget {
     return IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
-      icon: Icon(icon, size: 16),
+      icon: Icon(icon, size: 17),
       padding: EdgeInsets.zero,
       style: IconButton.styleFrom(
-        minimumSize: const Size(26, 26),
+        minimumSize: const Size(28, 28),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         foregroundColor: activeColor,
         disabledForegroundColor: activeColor?.withValues(alpha: 0.35),
@@ -114,6 +119,14 @@ class StatementsAllDataTableRow extends StatelessWidget {
     return source.substring(source.length - 3);
   }
 
+  String _displayDescription(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || RegExp(r'\d').hasMatch(trimmed)) return trimmed;
+    if (trimmed != trimmed.toUpperCase()) return trimmed;
+    final lower = trimmed.toLowerCase();
+    return '${lower[0].toUpperCase()}${lower.substring(1)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -122,12 +135,18 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width > 1400;
     final balanceMaxWidth =
         isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
+    final isDesktop = !isCompact && !isTablet;
+    final actionsWidth = isDesktop
+        ? StatementsAllDataTableLayout.actionsWidth
+        : StatementsAllDataTableLayout.compactActionsWidth;
     final entryId = (entry['_id'] ?? entry['id'])?.toString() ?? '';
     final batchId = entry['_batchId']?.toString() ?? '';
     final shortBatchId = _shortBatchId(batchId);
     final date = StatementsShared.entryText(entry, ['date']);
     final valueDate = StatementsShared.entryText(entry, ['valueDate']);
-    final desc = StatementsShared.entryText(entry, ['description']);
+    final desc = _displayDescription(
+      StatementsShared.entryText(entry, ['description']),
+    );
     String rawIndex(Map<String, dynamic> entry, int index) {
       final raw = entry['raw'];
       if (raw is List && raw.length > index) {
@@ -208,10 +227,9 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final isSelected = entryId.isNotEmpty && selectedIds.contains(entryId);
     final isUnlinked = entry['clientId'] == null ||
         entry['clientId'].toString().trim().isEmpty;
-    final rowColor = isSelected
-        ? tableTheme.rowSelected
-        : (index.isEven ? tableTheme.rowBg : tableTheme.rowBgAlt);
-    final rowAccent = isNegative ? cs.tertiary : cs.primary;
+    final rowColor = isSelected ? tableTheme.rowSelected : tableTheme.rowBg;
+    final rowAccent =
+        isNegative ? tableTheme.amountNegative : tableTheme.amountPositive;
     final amountAbs = (amountValue ?? 0).abs();
     final canLinkInvoice = amountAbs > 0;
     final canSuggest = (amountValue ?? 0) != 0;
@@ -272,6 +290,94 @@ class StatementsAllDataTableRow extends StatelessWidget {
       }
     }
 
+    Widget menuLabel(IconData icon, String text) {
+      return Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 12),
+          Flexible(child: Text(text)),
+        ],
+      );
+    }
+
+    List<PopupMenuEntry<String>> rowMenuItems({
+      bool includePrimaryActions = true,
+    }) {
+      return [
+        if (includePrimaryActions)
+          PopupMenuItem(
+            value: 'suggest',
+            enabled: entryId.isNotEmpty && !suggestLoading && canSuggest,
+            child: menuLabel(Icons.auto_awesome, aiSuggestActionLabel),
+          ),
+        PopupMenuItem(
+          value: 'link_client',
+          enabled: entryId.isNotEmpty && !linking,
+          child: menuLabel(
+            Icons.person_add_alt_1_outlined,
+            isEs ? 'Vincular cliente' : 'Link client',
+          ),
+        ),
+        PopupMenuItem(
+          value: 'preview',
+          enabled: hasLinkedDocument,
+          child: menuLabel(Icons.visibility_outlined, previewActionLabel),
+        ),
+        if (includePrimaryActions)
+          PopupMenuItem(
+            value: 'link_invoice',
+            enabled: entryId.isNotEmpty && canLinkInvoice,
+            child: menuLabel(Icons.receipt_long, manualLinkActionLabel),
+          ),
+        PopupMenuItem(
+          value: 'notes',
+          enabled: entryId.isNotEmpty && !savingNotes,
+          child: menuLabel(
+            Icons.sticky_note_2_outlined,
+            hasNotes
+                ? (isEs ? 'Editar nota' : 'Edit note')
+                : (isEs ? 'Añadir nota' : 'Add note'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'not_applicable',
+          enabled: entryId.isNotEmpty,
+          child: menuLabel(
+            Icons.block_outlined,
+            hasNoProcede
+                ? (isEs ? 'Editar no procede' : 'Edit not applicable')
+                : (isEs ? 'Marcar no procede' : 'Mark not applicable'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'details',
+          child: menuLabel(Icons.info_outline, l.statementsViewDetails),
+        ),
+      ];
+    }
+
+    void handleRowMenuSelection(String result) {
+      if (result == 'suggest') {
+        if (entryId.isNotEmpty && !suggestLoading && canSuggest) {
+          onSuggest(entry);
+        }
+      } else if (result == 'link_client') {
+        if (entryId.isNotEmpty && !linking) onLink(entry);
+      } else if (result == 'preview') {
+        if (hasLinkedDocument) previewLinkedInvoice();
+      } else if (result == 'link_invoice') {
+        if (entryId.isNotEmpty && canLinkInvoice) onLinkInvoice(entry);
+      } else if (result == 'notes') {
+        if (entryId.isNotEmpty && !savingNotes) {
+          StatementEntryNotesDialog.show(context, controller, entry);
+        }
+      } else if (result == 'not_applicable') {
+        if (entryId.isNotEmpty) onMarkNoProcede(entry);
+      } else if (result == 'details') {
+        onShowDetails(entry);
+      }
+    }
+
     Future<void> showRowMenu(Offset position) async {
       final overlay =
           Overlay.of(context).context.findRenderObject() as RenderBox;
@@ -281,55 +387,18 @@ class StatementsAllDataTableRow extends StatelessWidget {
           Rect.fromLTWH(position.dx, position.dy, 0, 0),
           Offset.zero & overlay.size,
         ),
-        items: [
-          PopupMenuItem(
-            value: 'suggest',
-            enabled: entryId.isNotEmpty && !suggestLoading,
-            child: Text(aiSuggestActionLabel),
-          ),
-          PopupMenuItem(
-            value: 'link',
-            enabled: entryId.isNotEmpty && !linking,
-            child: Text(manualLinkActionLabel),
-          ),
-          PopupMenuItem(
-            value: 'details',
-            child: Text(l.statementsViewDetails),
-          ),
-        ],
+        items: rowMenuItems(),
       );
-      if (result == 'suggest') {
-        if (entryId.isNotEmpty && !suggestLoading) {
-          onSuggest(entry);
-        }
-      } else if (result == 'link') {
-        if (entryId.isNotEmpty && !linking) {
-          onLink(entry);
-        }
-      } else if (result == 'details') {
-        onShowDetails(entry);
-      }
+      if (result != null) handleRowMenuSelection(result);
     }
 
     final amountColor =
         isNegative ? tableTheme.amountNegative : tableTheme.amountPositive;
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected
-              ? rowAccent.withValues(alpha: 0.65)
-              : tableTheme.border.withValues(alpha: 0.82),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.035),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+    return _StatementRowSurface(
+      borderColor: isSelected
+          ? rowAccent.withValues(alpha: 0.65)
+          : tableTheme.border.withValues(alpha: 0.82),
       child: Material(
         color: rowColor,
         borderRadius: BorderRadius.circular(12),
@@ -339,11 +408,12 @@ class StatementsAllDataTableRow extends StatelessWidget {
           onLongPressStart: (details) => showRowMenu(details.globalPosition),
           child: InkWell(
             hoverColor: tableTheme.rowHover,
+            hoverDuration: const Duration(milliseconds: 150),
             borderRadius: BorderRadius.circular(12),
             onTap: () => onShowDetails(entry),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                vertical: 7,
+                vertical: 4,
                 horizontal: 12,
               ),
               child: Stack(
@@ -380,7 +450,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                   : (_) => onToggleRow(entryId),
                             ),
                           ),
-                          if (!isCompact) ...[
+                          if (isDesktop) ...[
                             SizedBox(
                               width: StatementsAllDataTableLayout.batchWidth,
                               child: Row(
@@ -393,6 +463,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                         textAlign: TextAlign.center,
                                         style: typography.bodySmall.copyWith(
                                           color: tableTheme.textSecondary,
+                                          fontSize: 12.5,
                                           fontFeatures: const [
                                             FontFeature.tabularFigures()
                                           ],
@@ -410,17 +481,49 @@ class StatementsAllDataTableRow extends StatelessWidget {
                           ],
                           SizedBox(
                             width: StatementsAllDataTableLayout.dateWidth,
-                            child: Text(
-                              valueDate.isNotEmpty && valueDate != date
-                                  ? '${StatementsFormatters.formatDate(context, date)}\n${StatementsFormatters.formatDate(context, valueDate)}'
-                                  : (date.isNotEmpty
-                                      ? StatementsFormatters.formatDate(
-                                          context, date)
-                                      : StatementsFormatters.formatDate(
-                                          context, valueDate)),
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  if (date.isNotEmpty) ...[
+                                    const TextSpan(
+                                      text: 'Op. ',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: StatementsFormatters.formatDate(
+                                        context,
+                                        date,
+                                      ),
+                                    ),
+                                  ],
+                                  if (valueDate.isNotEmpty &&
+                                      valueDate != date) ...[
+                                    if (date.isNotEmpty)
+                                      const TextSpan(text: '\n'),
+                                    const TextSpan(
+                                      text: 'Val. ',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: StatementsFormatters.formatDate(
+                                        context,
+                                        valueDate,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                               style: typography.bodySmall.copyWith(
                                 color: tableTheme.textSecondary,
+                                fontSize: 11.5,
+                                height: 1.3,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(
@@ -437,7 +540,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                       child: Icon(
                                         Icons.link_off_outlined,
                                         size: 16,
-                                        color: cs.tertiary,
+                                        color: tableTheme.textSecondary,
                                       ),
                                     ),
                                   if (isUnlinked) const SizedBox(width: 6),
@@ -473,7 +576,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                       child: Icon(
                                         Icons.link_off_outlined,
                                         size: 16,
-                                        color: cs.tertiary,
+                                        color: tableTheme.textSecondary,
                                       ),
                                     ),
                                   if (isUnlinked) const SizedBox(width: 6),
@@ -490,7 +593,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                         overflow: TextOverflow.ellipsis,
                                         style: typography.bodySmall.copyWith(
                                           fontWeight: FontWeight.w600,
-                                          fontSize: 12,
+                                          fontSize: 13.5,
                                         ),
                                       ),
                                     ),
@@ -514,7 +617,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (!isCompact) ...[
+                          if (isDesktop) ...[
                             const SizedBox(
                                 width: StatementsAllDataTableLayout.columnGap),
                             SizedBox(
@@ -532,9 +635,12 @@ class StatementsAllDataTableRow extends StatelessWidget {
                             ),
                           ],
                           if (!isCompact) ...[
-                            const SizedBox(
-                                width: StatementsAllDataTableLayout
-                                    .balanceClientGap),
+                            SizedBox(
+                              width: isTablet
+                                  ? 12
+                                  : StatementsAllDataTableLayout
+                                      .balanceClientGap,
+                            ),
                             Expanded(
                               child: () {
                                 final displayName =
@@ -542,94 +648,138 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                         l, controller, entry);
                                 return Tooltip(
                                   message: displayName,
-                                  child: Text(
-                                    displayName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: typography.bodySmall.copyWith(
-                                      fontSize: 12,
-                                      color: isUnlinked
-                                          ? tableTheme.textSecondary
-                                          : tableTheme.textPrimary,
-                                      fontWeight: isUnlinked
-                                          ? FontWeight.w400
-                                          : FontWeight.w600,
-                                    ),
-                                  ),
+                                  child: isUnlinked
+                                      ? Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: tableTheme.chipBg,
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              border: Border.all(
+                                                color: tableTheme.border,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.circle,
+                                                  size: 6,
+                                                  color: tableTheme
+                                                      .textSecondary
+                                                      .withValues(alpha: 0.7),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Flexible(
+                                                  child: Text(
+                                                    displayName,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: typography.bodySmall
+                                                        .copyWith(
+                                                      fontSize: 12.5,
+                                                      color: tableTheme
+                                                          .textSecondary,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
+                                      : Text(
+                                          displayName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: typography.bodySmall.copyWith(
+                                            fontSize: 12.5,
+                                            color: tableTheme.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
                                 );
                               }(),
                             ),
-                            const SizedBox(
-                                width:
-                                    StatementsAllDataTableLayout.columnGapWide),
-                            SizedBox(
-                              width: StatementsAllDataTableLayout.notesWidth,
-                              child: Tooltip(
-                                message: hasNotes ? notes : 'Añadir nota',
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(999),
-                                  onTap: entryId.isEmpty || savingNotes
-                                      ? null
-                                      : () => StatementEntryNotesDialog.show(
-                                            context,
-                                            controller,
-                                            entry,
-                                          ),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: hasNotes
-                                          ? cs.primary.withValues(alpha: 0.08)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(999),
-                                      border: hasNotes
-                                          ? Border.all(
-                                              color: cs.primary
-                                                  .withValues(alpha: 0.20),
-                                            )
-                                          : null,
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          hasNotes
-                                              ? Icons.sticky_note_2
-                                              : Icons.sticky_note_2_outlined,
-                                          size: 14,
-                                          color: hasNotes
-                                              ? cs.primary
-                                              : tableTheme.textSecondary
-                                                  .withValues(alpha: 0.65),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Flexible(
-                                          child: Text(
-                                            hasNotes ? notes : 'Sin nota',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style:
-                                                typography.bodySmall.copyWith(
-                                              fontSize: 12,
-                                              color: hasNotes
-                                                  ? tableTheme.textPrimary
-                                                  : tableTheme.textSecondary
-                                                      .withValues(alpha: 0.72),
-                                              fontWeight: hasNotes
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w400,
+                            if (isDesktop) ...[
+                              const SizedBox(
+                                  width: StatementsAllDataTableLayout
+                                      .columnGapWide),
+                              SizedBox(
+                                width: StatementsAllDataTableLayout.notesWidth,
+                                child: Tooltip(
+                                  message: hasNotes ? notes : 'Añadir nota',
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(999),
+                                    onTap: entryId.isEmpty || savingNotes
+                                        ? null
+                                        : () => StatementEntryNotesDialog.show(
+                                              context,
+                                              controller,
+                                              entry,
+                                            ),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: hasNotes
+                                            ? cs.primary.withValues(alpha: 0.08)
+                                            : Colors.transparent,
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                        border: hasNotes
+                                            ? Border.all(
+                                                color: cs.primary
+                                                    .withValues(alpha: 0.20),
+                                              )
+                                            : null,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (hasNotes) ...[
+                                            Icon(
+                                              Icons.sticky_note_2,
+                                              size: 14,
+                                              color: cs.primary,
+                                            ),
+                                            const SizedBox(width: 6),
+                                          ],
+                                          Flexible(
+                                            child: Text(
+                                              hasNotes ? notes : '\u2014',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style:
+                                                  typography.bodySmall.copyWith(
+                                                fontSize: 12.5,
+                                                color: hasNotes
+                                                    ? tableTheme.textPrimary
+                                                    : tableTheme.textSecondary
+                                                        .withValues(
+                                                            alpha: 0.72),
+                                                fontWeight: hasNotes
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w400,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ],
                           const SizedBox(
                               width:
@@ -799,7 +949,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                               width:
                                   StatementsAllDataTableLayout.columnGapWide),
                           SizedBox(
-                            width: StatementsAllDataTableLayout.actionsWidth,
+                            width: actionsWidth,
                             child: Align(
                               alignment: Alignment.centerRight,
                               child: IconTheme(
@@ -809,68 +959,131 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.max,
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    _actionButton(
-                                      tooltip: aiSuggestActionLabel,
-                                      onPressed: (!canSuggest ||
-                                              suggestLoading ||
-                                              entryId.isEmpty)
-                                          ? null
-                                          : () => onSuggest(entry),
-                                      icon: Icons.auto_awesome,
-                                      activeColor: cs.primary,
-                                    ),
-                                    _actionButton(
-                                      tooltip: previewActionLabel,
-                                      onPressed: hasLinkedDocument
-                                          ? previewLinkedInvoice
-                                          : null,
-                                      icon: Icons.visibility_outlined,
-                                    ),
-                                    _actionButton(
-                                      tooltip: manualLinkActionLabel,
-                                      onPressed:
-                                          (!canLinkInvoice || entryId.isEmpty)
-                                              ? null
-                                              : () => onLinkInvoice(entry),
-                                      icon: Icons.receipt_long,
-                                      activeColor: cs.primary,
-                                    ),
-                                    _actionButton(
-                                      tooltip: notesActionLabel,
-                                      onPressed: (entryId.isEmpty ||
-                                              savingNotes)
-                                          ? null
-                                          : () =>
-                                              StatementEntryNotesDialog.show(
-                                                context,
-                                                controller,
-                                                entry,
-                                              ),
-                                      icon: savingNotes
-                                          ? Icons.hourglass_top_rounded
-                                          : hasNotes
-                                              ? Icons.sticky_note_2
-                                              : Icons.sticky_note_2_outlined,
-                                      activeColor: hasNotes ? cs.primary : null,
-                                    ),
-                                    _actionButton(
-                                      tooltip: hasNoProcede
-                                          ? 'Editar no procede'
-                                          : 'Marcar no procede',
-                                      onPressed: entryId.isEmpty
-                                          ? null
-                                          : () => onMarkNoProcede(entry),
-                                      icon: hasNoProcede
-                                          ? Icons.block
-                                          : Icons.block_outlined,
-                                      activeColor:
-                                          hasNoProcede ? cs.tertiary : null,
-                                    ),
-                                    _actionButton(
-                                      tooltip: l.statementsViewDetails,
-                                      onPressed: () => onShowDetails(entry),
-                                      icon: Icons.info_outline,
-                                    ),
+                                    if (!isDesktop) ...[
+                                      _actionButton(
+                                        tooltip: aiSuggestActionLabel,
+                                        onPressed: (!canSuggest ||
+                                                suggestLoading ||
+                                                entryId.isEmpty)
+                                            ? null
+                                            : () => onSuggest(entry),
+                                        icon: Icons.auto_awesome,
+                                        activeColor: cs.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      _actionButton(
+                                        tooltip: manualLinkActionLabel,
+                                        onPressed:
+                                            (!canLinkInvoice || entryId.isEmpty)
+                                                ? null
+                                                : () => onLinkInvoice(entry),
+                                        icon: Icons.receipt_long,
+                                        activeColor: cs.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      PopupMenuButton<String>(
+                                        tooltip: isEs
+                                            ? 'Más acciones'
+                                            : 'More actions',
+                                        padding: EdgeInsets.zero,
+                                        position: PopupMenuPosition.under,
+                                        menuPadding: const EdgeInsets.symmetric(
+                                          vertical: 4,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        surfaceTintColor: Colors.transparent,
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: tableTheme.chipBg,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(9),
+                                          ),
+                                        ),
+                                        icon: const Icon(
+                                          Icons.more_horiz_rounded,
+                                          size: 17,
+                                        ),
+                                        itemBuilder: (_) => rowMenuItems(
+                                          includePrimaryActions: false,
+                                        ),
+                                        onSelected: handleRowMenuSelection,
+                                      ),
+                                    ],
+                                    if (isDesktop) ...[
+                                      _actionButton(
+                                        tooltip: aiSuggestActionLabel,
+                                        onPressed: (!canSuggest ||
+                                                suggestLoading ||
+                                                entryId.isEmpty)
+                                            ? null
+                                            : () => onSuggest(entry),
+                                        icon: Icons.auto_awesome,
+                                        activeColor: cs.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      _actionButton(
+                                        tooltip: previewActionLabel,
+                                        onPressed: hasLinkedDocument
+                                            ? previewLinkedInvoice
+                                            : null,
+                                        icon: Icons.visibility_outlined,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      _actionButton(
+                                        tooltip: manualLinkActionLabel,
+                                        onPressed:
+                                            (!canLinkInvoice || entryId.isEmpty)
+                                                ? null
+                                                : () => onLinkInvoice(entry),
+                                        icon: Icons.receipt_long,
+                                        activeColor: cs.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      _actionButton(
+                                        tooltip: notesActionLabel,
+                                        onPressed: (entryId.isEmpty ||
+                                                savingNotes)
+                                            ? null
+                                            : () =>
+                                                StatementEntryNotesDialog.show(
+                                                  context,
+                                                  controller,
+                                                  entry,
+                                                ),
+                                        icon: savingNotes
+                                            ? Icons.hourglass_top_rounded
+                                            : hasNotes
+                                                ? Icons.sticky_note_2
+                                                : Icons.sticky_note_2_outlined,
+                                        activeColor:
+                                            hasNotes ? cs.primary : null,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      _actionButton(
+                                        tooltip: hasNoProcede
+                                            ? 'Editar no procede'
+                                            : 'Marcar no procede',
+                                        onPressed: entryId.isEmpty
+                                            ? null
+                                            : () => onMarkNoProcede(entry),
+                                        icon: hasNoProcede
+                                            ? Icons.block
+                                            : Icons.block_outlined,
+                                        activeColor:
+                                            hasNoProcede ? cs.tertiary : null,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      _actionButton(
+                                        tooltip: l.statementsViewDetails,
+                                        onPressed: () => onShowDetails(entry),
+                                        icon: Icons.info_outline,
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -903,6 +1116,50 @@ class StatementsAllDataTableRow extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StatementRowSurface extends StatefulWidget {
+  const _StatementRowSurface({
+    required this.borderColor,
+    required this.child,
+  });
+
+  final Color borderColor;
+  final Widget child;
+
+  @override
+  State<_StatementRowSurface> createState() => _StatementRowSurfaceState();
+}
+
+class _StatementRowSurfaceState extends State<_StatementRowSurface> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: widget.borderColor),
+          boxShadow: _hovering
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.075),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : const [],
+        ),
+        child: widget.child,
       ),
     );
   }

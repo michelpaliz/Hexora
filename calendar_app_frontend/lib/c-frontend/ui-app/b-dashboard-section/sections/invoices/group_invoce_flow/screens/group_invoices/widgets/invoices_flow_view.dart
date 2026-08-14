@@ -55,6 +55,7 @@ class InvoicesView extends StatefulWidget {
 
 class _InvoicesViewState extends State<InvoicesView> {
   bool _issuingAll = false;
+  bool _confirmingIssueAll = false;
 
   GroupClient _clientOrUnknown(AppLocalizations l, String id) {
     return widget.clients.firstWhere(
@@ -64,36 +65,44 @@ class _InvoicesViewState extends State<InvoicesView> {
   }
 
   Future<void> _handleIssueAll(AppLocalizations l) async {
-    if (_issuingAll || widget.onIssueAll == null) return;
+    if (_issuingAll || _confirmingIssueAll || widget.onIssueAll == null) {
+      return;
+    }
     final drafts = widget.drafts;
     if (drafts.isEmpty) return;
 
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        icon: const Icon(Icons.publish_outlined, size: 28),
-        title: Text(isEs ? 'Emitir todas las facturas' : 'Issue all invoices'),
-        content: Text(
-          isEs
-              ? '¿Emitir ${drafts.length} borrador${drafts.length == 1 ? '' : 'es'} de una vez? Esta acción no se puede deshacer.'
-              : 'Issue ${drafts.length} draft${drafts.length == 1 ? '' : 's'} at once? This cannot be undone.',
+    setState(() => _confirmingIssueAll = true);
+    bool? confirmed;
+    try {
+      confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          icon: const Icon(Icons.publish_outlined, size: 28),
+          title:
+              Text(isEs ? 'Emitir todas las facturas' : 'Issue all invoices'),
+          content: Text(
+            isEs
+                ? 'Se emitirán ${drafts.length} facturas. El servidor determinará el orden cronológico y asignará la numeración.'
+                : '${drafts.length} invoices will be issued. The server will determine the chronological order and assign numbering.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(Icons.publish_outlined, size: 16),
+              label: Text(isEs ? 'Emitir todas' : 'Issue all'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child:
-                Text(MaterialLocalizations.of(context).cancelButtonLabel),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(Icons.publish_outlined, size: 16),
-            label: Text(isEs ? 'Emitir todas' : 'Issue all'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
+      );
+    } finally {
+      if (mounted) setState(() => _confirmingIssueAll = false);
+    }
+    if (confirmed != true || !mounted || _issuingAll) return;
 
     setState(() => _issuingAll = true);
     try {
@@ -169,9 +178,7 @@ class _InvoicesViewState extends State<InvoicesView> {
                           widget.drafts.isEmpty
                               ? _EmptyTab(
                                   icon: Icons.drafts_outlined,
-                                  label: isEs
-                                      ? 'Sin borradores'
-                                      : 'No drafts',
+                                  label: isEs ? 'Sin borradores' : 'No drafts',
                                   cs: cs,
                                   t: t,
                                 )
@@ -187,10 +194,8 @@ class _InvoicesViewState extends State<InvoicesView> {
                                     return widget.invoiceItemBuilder(
                                       inv,
                                       client,
-                                      onTap: () =>
-                                          widget.onSelectInvoice(inv),
-                                      onDelete: () =>
-                                          widget.onDeleteDraft(inv),
+                                      onTap: () => widget.onSelectInvoice(inv),
+                                      onDelete: () => widget.onDeleteDraft(inv),
                                       onEdit: () => widget.onEditDraft(inv),
                                     );
                                   },
@@ -218,8 +223,7 @@ class _InvoicesViewState extends State<InvoicesView> {
                                     return widget.invoiceItemBuilder(
                                       inv,
                                       client,
-                                      onTap: () =>
-                                          widget.onSelectInvoice(inv),
+                                      onTap: () => widget.onSelectInvoice(inv),
                                     );
                                   },
                                 ),
@@ -248,8 +252,7 @@ class _InvoicesViewState extends State<InvoicesView> {
                           Icon(
                             Icons.receipt_long_outlined,
                             size: 40,
-                            color: cs.onSurfaceVariant
-                                .withValues(alpha: 0.3),
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.3),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -396,12 +399,13 @@ class _EmptyTab extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 36, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+          Icon(icon,
+              size: 36, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
           const SizedBox(height: 10),
           Text(
             label,
-            style:
-                t.bodyMedium.copyWith(color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
+            style: t.bodyMedium
+                .copyWith(color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
           ),
         ],
       ),

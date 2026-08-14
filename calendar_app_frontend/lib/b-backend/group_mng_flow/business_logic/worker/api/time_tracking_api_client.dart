@@ -547,6 +547,64 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
     );
   }
 
+  Uri buildMonthlyCalendarPdfUri(
+    String groupId, {
+    required String month,
+    String? workerId,
+    String? lang,
+    double? advanceAmount,
+  }) {
+    final normalizedLang =
+        (lang ?? _detectLang()).toLowerCase() == 'es' ? 'es' : 'en';
+    final qp = <String, String>{
+      'month': month.trim(),
+      'lang': normalizedLang,
+    };
+    if (workerId != null && workerId.trim().isNotEmpty) {
+      qp['workerId'] = workerId.trim();
+    }
+    if (advanceAmount != null && advanceAmount >= 0) {
+      qp['advanceAmount'] = advanceAmount.toStringAsFixed(2);
+    }
+
+    return Uri.parse(
+      '$_root${_ttPath(groupId)}/export/pdf/monthly-calendar',
+    ).replace(queryParameters: qp);
+  }
+
+  @override
+  Future<Uint8List> exportMonthlyCalendarPdf(
+    String groupId,
+    String token, {
+    required String month,
+    String? workerId,
+    String? lang,
+    double? advanceAmount,
+  }) async {
+    final uri = buildMonthlyCalendarPdfUri(
+      groupId,
+      month: month,
+      workerId: workerId,
+      lang: lang,
+      advanceAmount: advanceAmount,
+    );
+    final res = await _client.get(
+      uri,
+      headers: _headers(
+        token,
+        json: false,
+        accept: 'application/pdf',
+      ),
+    );
+
+    if (res.statusCode == 200) return res.bodyBytes;
+
+    throw BackendApiException.fromResponse(
+      res,
+      fallbackMessage: 'Failed to export monthly calendar PDF',
+    );
+  }
+
   @override
   Future<Uint8List> downloadExcelImportTemplate(
     String groupId,

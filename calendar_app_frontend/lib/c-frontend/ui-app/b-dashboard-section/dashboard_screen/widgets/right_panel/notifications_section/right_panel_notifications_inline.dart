@@ -95,13 +95,19 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     return Tooltip(
       message: tooltip,
       child: SizedBox(
-        width: 24,
-        height: 24,
+        width: 32,
+        height: 32,
         child: IconButton(
           padding: EdgeInsets.zero,
           visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 24, height: 24),
-          splashRadius: 14,
+          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          style: IconButton.styleFrom(
+            backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.38),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          splashRadius: 16,
           iconSize: 16,
           icon: Icon(
             Icons.refresh_rounded,
@@ -120,9 +126,17 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     final hasUnreadJobs = _jobNotifications.isNotEmpty;
     return PopupMenuButton<String>(
       tooltip: 'Acciones',
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      style: IconButton.styleFrom(
+        backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.38),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
       icon: Icon(
         Icons.more_horiz_rounded,
-        size: 18,
+        size: 16,
         color: cs.onSurface.withValues(alpha: 0.75),
       ),
       onSelected: (value) async {

@@ -56,6 +56,7 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
   String? _lastSavedInvoiceId;
   String? _lastSavedInvoiceStatus;
   bool _lastReportedUnsaved = false;
+  int _lastDataRevision = 0;
   final bool _headerCompact = false;
   late final TabController _tabController;
 
@@ -93,9 +94,11 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
     }
     if (saved != null && widget.onDataChanged != null) {
       if (saved.id != _lastSavedInvoiceId ||
-          saved.status != _lastSavedInvoiceStatus) {
+          saved.status != _lastSavedInvoiceStatus ||
+          _lastDataRevision != _c.dataRevision) {
         _lastSavedInvoiceId = saved.id;
         _lastSavedInvoiceStatus = saved.status;
+        _lastDataRevision = _c.dataRevision;
         widget.onDataChanged!();
       }
     }

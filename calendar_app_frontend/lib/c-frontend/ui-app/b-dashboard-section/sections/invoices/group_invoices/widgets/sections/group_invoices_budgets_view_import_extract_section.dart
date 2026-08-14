@@ -13,17 +13,11 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
     'webp',
   };
 
-  bool get _hasIssuedPresupuesto =>
-      (_issuedPresupuestoNumber ?? '').trim().isNotEmpty;
-
   String _friendlyPresupuestoImportError(
     String raw, {
     String? code,
   }) {
     final normalizedCode = (code ?? '').trim().toUpperCase();
-    if (normalizedCode == 'PRESUPUESTO_NOT_DRAFT') {
-      return 'Este presupuesto ya no esta en borrador.';
-    }
     if (normalizedCode == 'INVALID_IMPORT_PAYLOAD') {
       return 'El JSON de importacion no tiene formato valido (usa lines, draftLines o blocks).';
     }
@@ -33,10 +27,6 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
     final m = raw.trim();
     if (m.isEmpty) return m;
     final lower = m.toLowerCase();
-    if (lower
-        .contains('only draft presupuestos can be updated via json import')) {
-      return 'Este presupuesto ya no esta en borrador.';
-    }
     if (lower.contains('invalid_import_payload') ||
         lower.contains('invalid import payload')) {
       return 'El JSON de importacion no tiene formato valido (usa lines, draftLines o blocks).';
@@ -51,31 +41,6 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
     return m;
   }
 
-  bool _isDraftOnlyImportError(String message) {
-    final lower = message.toLowerCase();
-    return lower.contains('only draft presupuestos can be updated') ||
-        lower.contains(
-            'solo se pueden importar lineas en presupuestos en borrador');
-  }
-
-  bool _isDraftOnlyImportCode(String? code) {
-    return (code ?? '').trim().toUpperCase() == 'PRESUPUESTO_NOT_DRAFT';
-  }
-
-  bool _isValidJsonPayload(String sourceText) {
-    final raw = sourceText.trim();
-    if (raw.isEmpty) return false;
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is List) return true;
-      if (decoded is Map<String, dynamic>) return true;
-      if (decoded is Map) return true;
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
-
   bool _looksLikeBudgetLineObject(Map<dynamic, dynamic> map) {
     final keys = map.keys.map((e) => e.toString().trim().toLowerCase()).toSet();
     return keys.contains('description') ||
@@ -86,29 +51,6 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
         keys.contains('taxrate') ||
         keys.contains('iva') ||
         keys.contains('type');
-  }
-
-  String? _validateBudgetJsonShape(String rawText) {
-    final trimmed = rawText.trim();
-    if (trimmed.isEmpty) return null;
-    dynamic decoded;
-    try {
-      decoded = jsonDecode(trimmed);
-    } catch (_) {
-      return 'JSON invalido. Revisa llaves, comas y estructura.';
-    }
-    if (decoded is List) return null;
-    if (decoded is! Map) {
-      return 'Estructura no valida. Usa {"lines":[...]} o una lista de lineas.';
-    }
-    final map = Map<String, dynamic>.from(decoded);
-    if (map['lines'] is List ||
-        map['draftLines'] is List ||
-        map['blocks'] is List) {
-      return null;
-    }
-    if (_looksLikeBudgetLineObject(map)) return null;
-    return 'Estructura no valida. Incluye "lines", "draftLines", "blocks" o una linea.';
   }
 
   String _normalizeBudgetJsonSource(String sourceText) {
@@ -140,25 +82,7 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
     if (currentId.isEmpty) {
       return _ensureDraftCreated(forceRebuild: false);
     }
-
-    var requiresNewDraft = _hasIssuedPresupuesto;
-    if (!requiresNewDraft) {
-      try {
-        final current = await _presupuestosApi.getById(currentId);
-        if (!_isDraftPresupuesto(current)) {
-          requiresNewDraft = true;
-        }
-      } catch (_) {
-        // If status cannot be resolved, force a new draft to avoid importing into
-        // a potentially issued/non-editable presupuesto.
-        requiresNewDraft = true;
-      }
-    }
-
-    if (!requiresNewDraft) return currentId;
-
-    _markDraftDirty();
-    return _ensureDraftCreated(forceRebuild: true);
+    return currentId;
   }
 
   bool _isSupportedOcrFile(String fileName) {
@@ -282,18 +206,6 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
       setState(() => _jsonImportError = l.invoiceLinesJsonImportInvalidPayload);
       return;
     }
-    if (!_isValidJsonPayload(raw)) {
-      setState(() {
-        _jsonImportError =
-            'JSON invalido. Revisa llaves, comas y estructura antes de importar.';
-      });
-      return;
-    }
-    final shapeError = _validateBudgetJsonShape(raw);
-    if (shapeError != null && shapeError.trim().isNotEmpty) {
-      setState(() => _jsonImportError = shapeError);
-      return;
-    }
     final normalizedSource = _normalizeBudgetJsonSource(sourceText);
     final payload = JsonImportService.buildImportPayload(
       entity: JsonImportEntityType.presupuesto,
@@ -323,26 +235,9 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
       }
 
       var id = await _ensureWritableDraftForImport();
-      Map<String, dynamic> response;
-      try {
-        response = await runImport(id);
-      } on PresupuestosApiException catch (e) {
-        if (!_isDraftOnlyImportCode(e.code) &&
-            !_isDraftOnlyImportError(e.message)) {
-          rethrow;
-        }
-        _markDraftDirty();
-        id = await _ensureDraftCreated(forceRebuild: true);
-        response = await runImport(id);
-      }
+      final response = await runImport(id);
       final refreshed = await _presupuestosApi.getById(id);
       if (!mounted) return;
-      if (!_isDraftPresupuesto(refreshed)) {
-        setState(() {
-          _jsonImportError = 'Este presupuesto ya no esta en borrador.';
-        });
-        return;
-      }
       _applyPresupuestoPayload(refreshed);
       final importedCount = JsonImportService.extractImportedCount(response);
       final imported =
@@ -591,15 +486,7 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
           payload: payload,
         );
       } on PresupuestosApiException catch (e) {
-        if (_isDraftOnlyImportCode(e.code) ||
-            _isDraftOnlyImportError(e.message)) {
-          _markDraftDirty();
-          id = await _ensureDraftCreated(forceRebuild: true);
-          response = await _presupuestosApi.importLinesMultipart(
-            id: id,
-            payload: payload,
-          );
-        } else if (e.statusCode == 404 || e.statusCode == 405) {
+        if (e.statusCode == 404 || e.statusCode == 405) {
           response = await _presupuestosApi.importJson(id, payload);
         } else {
           rethrow;
@@ -610,12 +497,7 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
           response = await _presupuestosApi.importJson(id, payload);
         }
       } on PresupuestosApiException catch (e) {
-        if (_isDraftOnlyImportCode(e.code) ||
-            _isDraftOnlyImportError(e.message)) {
-          _markDraftDirty();
-          id = await _ensureDraftCreated(forceRebuild: true);
-          response = await _presupuestosApi.importJson(id, payload);
-        } else if (e.statusCode == 404 || e.statusCode == 405) {
+        if (e.statusCode == 404 || e.statusCode == 405) {
           response = await _presupuestosApi.importJson(id, payload);
         } else {
           rethrow;

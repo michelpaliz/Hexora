@@ -4,6 +4,7 @@ import 'package:hexora/a-models/invoice/invoice_block.dart';
 import 'package:hexora/a-models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/b-backend/invoicing/models/manual_editor_capabilities.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/money_format_utils.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -145,21 +146,21 @@ class BlockCardState extends State<BlockCard> {
     }
 
     String? nonNegativeValidator(String? v) {
-      final parsed = num.tryParse((v ?? '').trim());
+      final parsed = parseFlexibleMoney(v);
       if (parsed == null) return l.fieldIsRequired;
       if (parsed < 0) return l.invoiceValidationNonNegative;
       return null;
     }
 
     String? taxValidator(String? v) {
-      final parsed = num.tryParse((v ?? '').trim());
+      final parsed = parseFlexibleMoney(v);
       if (parsed == null) return l.fieldIsRequired;
       if (parsed < 0 || parsed > 100) return l.invoiceValidationTaxRate;
       return null;
     }
 
     String? discountValidator(String? v) {
-      final parsed = num.tryParse((v ?? '').trim().replaceAll(',', '.'));
+      final parsed = parseFlexibleMoney(v);
       if (parsed == null) return l.fieldIsRequired;
       if (parsed < 0 || parsed > 100) return l.invoiceValidationTaxRate;
       return null;
@@ -221,7 +222,8 @@ class BlockCardState extends State<BlockCard> {
     String summaryText() {
       switch (block.type) {
         case InvoiceBlockType.item:
-          final sku = block.conceptTitleCtrl.text.trim();
+          final rawSku = block.conceptTitleCtrl.text.trim();
+          final sku = isInvoiceUnitCode(rawSku) ? '' : rawSku;
           final concept = block.conceptItemsCtrl.text
               .split(RegExp(r'[,;\n]'))
               .map((item) => item.trim())
@@ -359,19 +361,44 @@ class BlockCardState extends State<BlockCard> {
                   widget.onChanged();
                 },
               );
+
+              Future<void> pickServiceDate() async {
+                final now = DateTime.now();
+                final current = cleanInvoiceServiceDate(
+                  block.serviceDateCtrl.text,
+                );
+                final selected = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.tryParse(current ?? '') ?? now,
+                  firstDate: DateTime(now.year - 10),
+                  lastDate: DateTime(now.year + 5),
+                );
+                if (selected == null) return;
+
+                block.serviceDateCtrl.text =
+                    DateFormat('yyyy-MM-dd').format(selected);
+                block.syncConceptMetadata();
+                widget.onChanged();
+                if (mounted) setState(() {});
+              }
+
               final serviceDateField = TextFormField(
                 controller: block.serviceDateCtrl,
                 decoration: fieldDec(
                   label: isEs ? 'Fecha servicio' : 'Service date',
                 ).copyWith(
                   hintText: 'YYYY-MM-DD',
-                  prefixIcon: const Icon(
-                    Icons.calendar_today_outlined,
-                    size: 15,
+                  prefixIcon: IconButton(
+                    tooltip: isEs ? 'Seleccionar fecha' : 'Select date',
+                    onPressed: pickServiceDate,
+                    icon: const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 15,
+                    ),
                   ),
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9/-]')),
                   LengthLimitingTextInputFormatter(10),
                 ],
                 onChanged: (_) {

@@ -7,14 +7,10 @@ void main() {
       final payload = buildAdvanceInvoicePayload(
         const AdvanceInvoiceConfigInput(
           percent: 70,
-          projectBaseAmount: 1000,
-          taxRate: 21,
           description: '  Anticipo 70% presupuesto  ',
         ),
       );
       expect(payload['advanceConfig']['percent'], 70);
-      expect(payload['advanceConfig']['projectBaseAmount'], 1000);
-      expect(payload['advanceConfig']['taxRate'], 21);
       expect(payload['advanceConfig']['description'], 'Anticipo 70% presupuesto');
     });
 
@@ -47,6 +43,16 @@ void main() {
       );
       expect(state.canCreateAdvance, isFalse);
       expect(state.canCreateFinal, isFalse);
+      expect(state.canCreateFullFinal, isFalse);
+    });
+
+    test('enables complete final when issued without advance or final invoice', () {
+      final state = resolvePresupuestoInvoiceActionState(
+        <String, dynamic>{'status': 'issued'},
+      );
+      expect(state.canCreateAdvance, isTrue);
+      expect(state.canCreateFinal, isFalse);
+      expect(state.canCreateFullFinal, isTrue);
     });
 
     test('disables advance when an advance invoice already exists', () {
@@ -60,6 +66,7 @@ void main() {
       );
       expect(state.canCreateAdvance, isFalse);
       expect(state.canCreateFinal, isTrue);
+      expect(state.canCreateFullFinal, isFalse);
     });
 
     test('disables final when final invoice already exists', () {
@@ -73,6 +80,17 @@ void main() {
       );
       expect(state.canCreateAdvance, isTrue);
       expect(state.canCreateFinal, isFalse);
+      expect(state.canCreateFullFinal, isFalse);
+    });
+
+    test('disables complete final when convertedFinalInvoiceId exists', () {
+      final state = resolvePresupuestoInvoiceActionState(
+        <String, dynamic>{
+          'status': 'issued',
+          'convertedFinalInvoiceId': 'final-1',
+        },
+      );
+      expect(state.canCreateFullFinal, isFalse);
     });
   });
 }

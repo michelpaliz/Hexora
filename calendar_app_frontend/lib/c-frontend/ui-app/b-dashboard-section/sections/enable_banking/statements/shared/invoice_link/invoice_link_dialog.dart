@@ -245,7 +245,11 @@ class InvoiceLinkDialog {
             },
           ),
           _buildStepContent(
-              currentStep, stepsBuilder, expenseOnly, () => setState(() {})),
+            currentStep,
+            stepsBuilder,
+            expenseOnly,
+            () => setState(() {}),
+          ),
         ],
       ),
     );
@@ -302,6 +306,7 @@ class InvoiceLinkDialog {
                     stepsBuilder,
                     expenseOnly,
                     () => setState(() {}),
+                    scrollConfirmation: true,
                   ),
                 ),
               ),
@@ -316,8 +321,9 @@ class InvoiceLinkDialog {
     int currentStep,
     InvoiceLinkDialogSteps stepsBuilder,
     bool expenseOnly,
-    VoidCallback onStateChanged,
-  ) {
+    VoidCallback onStateChanged, {
+    bool scrollConfirmation = false,
+  }) {
     if (currentStep == 0) {
       return expenseOnly
           ? stepsBuilder.buildProviderSelector(onStateChanged)
@@ -327,13 +333,19 @@ class InvoiceLinkDialog {
           ? stepsBuilder.buildExpenseSelector(onStateChanged)
           : stepsBuilder.buildInvoiceSelector(onStateChanged);
     } else {
-      return InvoiceLinkConfirmation.build(
+      final confirmation = InvoiceLinkConfirmation.build(
         stepsBuilder.context,
         stepsBuilder.state,
         expenseOnly,
         stepsBuilder.l,
         stepsBuilder.cs,
         onStateChanged,
+      );
+      if (!scrollConfirmation) return confirmation;
+      return SingleChildScrollView(
+        key: const ValueKey('invoice-link-confirmation-scroll'),
+        padding: const EdgeInsets.only(bottom: 8),
+        child: confirmation,
       );
     }
   }

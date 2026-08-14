@@ -48,6 +48,7 @@ enum NotificationWorkflowFilter {
 class _NotificationCategoryFilterBarState
     extends State<NotificationCategoryFilterBar> {
   final ScrollController _controller = ScrollController();
+  bool _showMoreFilters = false;
 
   List<Category> get _activeCategories {
     final seen = <Category>{};
@@ -66,113 +67,237 @@ class _NotificationCategoryFilterBarState
   @override
   Widget build(BuildContext context) {
     final categories = _activeCategories;
-    const workflowFilters = NotificationWorkflowFilter.values;
+    const primaryWorkflowFilters = [
+      NotificationWorkflowFilter.all,
+      NotificationWorkflowFilter.unread,
+      NotificationWorkflowFilter.important,
+      NotificationWorkflowFilter.pending,
+    ];
+    final secondaryItems = <_SecondaryFilterItem>[
+      _SecondaryFilterItem.workflow(NotificationWorkflowFilter.automations),
+      _SecondaryFilterItem.modules(),
+      for (final cat in categories) _SecondaryFilterItem.category(cat),
+      if (widget.downloadsCount > 0 && widget.onDownloadsSelected != null)
+        _SecondaryFilterItem.downloads(),
+      if (widget.ocrJobsCount > 0 && widget.onOcrJobsSelected != null)
+        _SecondaryFilterItem.ocrJobs(),
+    ];
 
-    return ScrollConfiguration(
-      behavior: const _HorizontalDragScrollBehavior(),
-      child: Scrollbar(
-        controller: _controller,
-        thumbVisibility: true,
-        interactive: true,
-        thickness: 3,
-        radius: const Radius.circular(999),
-        child: SingleChildScrollView(
-          controller: _controller,
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        final primaryChips = <Widget>[
+          for (final filter in primaryWorkflowFilters)
+            NotificationFilterChip(
+              label: _workflowLabel(filter, context),
+              count: _workflowCount(filter),
+              icon: _workflowIcon(filter),
+              selected: widget.selectedWorkflow == filter &&
+                  !widget.downloadsSelected &&
+                  !widget.ocrJobsSelected,
+              tone: _workflowTone(filter),
+              warning: filter == NotificationWorkflowFilter.important ||
+                  filter == NotificationWorkflowFilter.pending,
+              onTap: () => widget.onWorkflowSelected(filter),
+            ),
+          NotificationFilterChip(
+            label: _moreFiltersLabel(context),
+            count: secondaryItems.where(_isSecondarySelected).length,
+            icon: _showMoreFilters
+                ? Icons.expand_less_rounded
+                : Icons.tune_rounded,
+            selected:
+                _showMoreFilters || secondaryItems.any(_isSecondarySelected),
+            tone: NotificationFilterTone.info,
+            onTap: () => setState(() => _showMoreFilters = !_showMoreFilters),
           ),
-          padding: const EdgeInsets.only(bottom: 7),
-          child: Row(
-            children: [
-              for (final filter in workflowFilters) ...[
-                _FilterChip(
-                  label: _workflowLabel(filter, context),
-                  count: _workflowCount(filter),
-                  icon: _workflowIcon(filter),
-                  selected: widget.selectedWorkflow == filter &&
-                      !widget.downloadsSelected &&
-                      !widget.ocrJobsSelected,
-                  tone: _workflowTone(filter),
-                  prominent: filter == NotificationWorkflowFilter.important ||
-                      filter == NotificationWorkflowFilter.pending,
-                  onTap: () => widget.onWorkflowSelected(filter),
-                ),
-                const SizedBox(width: 6),
-              ],
-              Container(
-                width: 1,
-                height: 24,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                color: Theme.of(context)
-                    .colorScheme
-                    .outlineVariant
-                    .withValues(alpha: 0.55),
-              ),
-              const SizedBox(width: 2),
-              _FilterChip(
-                label: _modulesLabel(context),
-                count: widget.notifications.length +
-                    widget.downloadsCount +
-                    widget.ocrJobsCount,
-                icon: Icons.grid_view_rounded,
-                selected: widget.selectedCategory == null &&
-                    widget.selectedWorkflow == NotificationWorkflowFilter.all &&
-                    !widget.downloadsSelected &&
-                    !widget.ocrJobsSelected,
-                tone: _ChipTone.neutral,
-                onTap: () {
-                  widget.onWorkflowSelected(NotificationWorkflowFilter.all);
-                  widget.onCategorySelected(null);
-                },
-              ),
-              const SizedBox(width: 6),
-              for (final cat in categories) ...[
-                _FilterChip(
-                  label: _categoryLabel(cat, context),
-                  count: widget.notifications
-                      .where((n) => n.category == cat)
-                      .length,
-                  icon: _iconForCategory(cat),
-                  selected: widget.selectedCategory == cat,
-                  tone: _toneForCategory(cat),
-                  prominent: _priorityForCategory(cat) == _Priority.high,
-                  onTap: () => widget.onCategorySelected(
-                    widget.selectedCategory == cat ? null : cat,
+        ];
+        final secondaryChips = <Widget>[
+          for (final item in secondaryItems)
+            NotificationFilterChip(
+              label: _secondaryLabel(item, context),
+              count: _secondaryCount(item),
+              icon: _secondaryIcon(item),
+              selected: _isSecondarySelected(item),
+              tone: _secondaryTone(item),
+              warning: _secondaryTone(item) == NotificationFilterTone.warning,
+              onTap: () => _selectSecondary(item),
+            ),
+        ];
+
+        final content = compact
+            ? ScrollConfiguration(
+                behavior: const _HorizontalDragScrollBehavior(),
+                child: SingleChildScrollView(
+                  controller: _controller,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  child: Row(
+                    children: [
+                      for (final chip in primaryChips) ...[
+                        chip,
+                        const SizedBox(width: 8),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(width: 6),
-              ],
-              if (widget.downloadsCount > 0 &&
-                  widget.onDownloadsSelected != null) ...[
-                _FilterChip(
-                  label: _downloadsLabel(context),
-                  count: widget.downloadsCount,
-                  icon: Icons.download_rounded,
-                  selected: widget.downloadsSelected,
-                  tone: _ChipTone.low,
-                  onTap: widget.onDownloadsSelected!,
-                ),
-                const SizedBox(width: 6),
-              ],
-              if (widget.ocrJobsCount > 0 &&
-                  widget.onOcrJobsSelected != null) ...[
-                _FilterChip(
-                  label: _ocrJobsLabel(context),
-                  count: widget.ocrJobsCount,
-                  icon: Icons.document_scanner_outlined,
-                  selected: widget.ocrJobsSelected,
-                  tone: _ChipTone.info,
-                  prominent: true,
-                  onTap: widget.onOcrJobsSelected!,
-                ),
-                const SizedBox(width: 6),
-              ],
+              )
+            : Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: primaryChips,
+              );
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 7),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              content,
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: _showMoreFilters
+                    ? Padding(
+                        key: const ValueKey('more-filters-open'),
+                        padding: const EdgeInsets.only(top: 8),
+                        child: compact
+                            ? ScrollConfiguration(
+                                behavior: const _HorizontalDragScrollBehavior(),
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(),
+                                  child: Row(
+                                    children: [
+                                      for (final chip in secondaryChips) ...[
+                                        chip,
+                                        const SizedBox(width: 8),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: secondaryChips,
+                              ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
+  }
+
+  bool _isSecondarySelected(_SecondaryFilterItem item) {
+    switch (item.kind) {
+      case _SecondaryFilterKind.workflow:
+        return widget.selectedWorkflow == item.workflow &&
+            !widget.downloadsSelected &&
+            !widget.ocrJobsSelected;
+      case _SecondaryFilterKind.modules:
+        return widget.selectedCategory == null &&
+            widget.selectedWorkflow == NotificationWorkflowFilter.all &&
+            !widget.downloadsSelected &&
+            !widget.ocrJobsSelected;
+      case _SecondaryFilterKind.category:
+        return widget.selectedCategory == item.category;
+      case _SecondaryFilterKind.downloads:
+        return widget.downloadsSelected;
+      case _SecondaryFilterKind.ocrJobs:
+        return widget.ocrJobsSelected;
+    }
+  }
+
+  void _selectSecondary(_SecondaryFilterItem item) {
+    switch (item.kind) {
+      case _SecondaryFilterKind.workflow:
+        widget.onWorkflowSelected(item.workflow!);
+      case _SecondaryFilterKind.modules:
+        widget.onWorkflowSelected(NotificationWorkflowFilter.all);
+        widget.onCategorySelected(null);
+      case _SecondaryFilterKind.category:
+        widget.onCategorySelected(
+          widget.selectedCategory == item.category ? null : item.category,
+        );
+      case _SecondaryFilterKind.downloads:
+        widget.onDownloadsSelected?.call();
+      case _SecondaryFilterKind.ocrJobs:
+        widget.onOcrJobsSelected?.call();
+    }
+  }
+
+  String _secondaryLabel(_SecondaryFilterItem item, BuildContext context) {
+    switch (item.kind) {
+      case _SecondaryFilterKind.workflow:
+        return _workflowLabel(item.workflow!, context);
+      case _SecondaryFilterKind.modules:
+        return _modulesLabel(context);
+      case _SecondaryFilterKind.category:
+        return _categoryLabel(item.category!, context);
+      case _SecondaryFilterKind.downloads:
+        return _downloadsLabel(context);
+      case _SecondaryFilterKind.ocrJobs:
+        return _ocrJobsLabel(context);
+    }
+  }
+
+  int _secondaryCount(_SecondaryFilterItem item) {
+    switch (item.kind) {
+      case _SecondaryFilterKind.workflow:
+        return _workflowCount(item.workflow!);
+      case _SecondaryFilterKind.modules:
+        return widget.notifications.length +
+            widget.downloadsCount +
+            widget.ocrJobsCount;
+      case _SecondaryFilterKind.category:
+        return widget.notifications
+            .where((n) => n.category == item.category)
+            .length;
+      case _SecondaryFilterKind.downloads:
+        return widget.downloadsCount;
+      case _SecondaryFilterKind.ocrJobs:
+        return widget.ocrJobsCount;
+    }
+  }
+
+  IconData _secondaryIcon(_SecondaryFilterItem item) {
+    switch (item.kind) {
+      case _SecondaryFilterKind.workflow:
+        return _workflowIcon(item.workflow!);
+      case _SecondaryFilterKind.modules:
+        return Icons.grid_view_rounded;
+      case _SecondaryFilterKind.category:
+        return _iconForCategory(item.category!);
+      case _SecondaryFilterKind.downloads:
+        return Icons.download_rounded;
+      case _SecondaryFilterKind.ocrJobs:
+        return Icons.document_scanner_outlined;
+    }
+  }
+
+  NotificationFilterTone _secondaryTone(_SecondaryFilterItem item) {
+    switch (item.kind) {
+      case _SecondaryFilterKind.workflow:
+        return _workflowTone(item.workflow!);
+      case _SecondaryFilterKind.modules:
+        return NotificationFilterTone.neutral;
+      case _SecondaryFilterKind.category:
+        return _toneForCategory(item.category!);
+      case _SecondaryFilterKind.downloads:
+        return NotificationFilterTone.low;
+      case _SecondaryFilterKind.ocrJobs:
+        return NotificationFilterTone.info;
+    }
+  }
+
+  String _moreFiltersLabel(BuildContext context) {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    return isEs ? 'Mas filtros' : 'More filters';
   }
 
   int _workflowCount(NotificationWorkflowFilter filter) {
@@ -239,17 +364,17 @@ class _NotificationCategoryFilterBarState
     }
   }
 
-  _ChipTone _workflowTone(NotificationWorkflowFilter filter) {
+  NotificationFilterTone _workflowTone(NotificationWorkflowFilter filter) {
     switch (filter) {
       case NotificationWorkflowFilter.important:
       case NotificationWorkflowFilter.pending:
-        return _ChipTone.warning;
+        return NotificationFilterTone.warning;
       case NotificationWorkflowFilter.automations:
-        return _ChipTone.info;
+        return NotificationFilterTone.info;
       case NotificationWorkflowFilter.unread:
-        return _ChipTone.message;
+        return NotificationFilterTone.message;
       case NotificationWorkflowFilter.all:
-        return _ChipTone.neutral;
+        return NotificationFilterTone.neutral;
     }
   }
 
@@ -362,21 +487,21 @@ class _NotificationCategoryFilterBarState
     }
   }
 
-  _ChipTone _toneForCategory(Category category) {
+  NotificationFilterTone _toneForCategory(Category category) {
     switch (category) {
       case Category.systemAlert:
       case Category.errorReport:
       case Category.actionRequired:
-        return _ChipTone.warning;
+        return NotificationFilterTone.warning;
       case Category.billing:
-        return _ChipTone.finance;
+        return NotificationFilterTone.finance;
       case Category.message:
-        return _ChipTone.message;
+        return NotificationFilterTone.message;
       case Category.eventReminder:
       case Category.taskUpdate:
-        return _ChipTone.medium;
+        return NotificationFilterTone.medium;
       case Category.achievement:
-        return _ChipTone.success;
+        return NotificationFilterTone.success;
       case Category.feedbackRequest:
       case Category.systemUpdate:
       case Category.userInvitation:
@@ -384,14 +509,14 @@ class _NotificationCategoryFilterBarState
       case Category.groupCreation:
       case Category.groupUpdate:
       case Category.userRemoval:
-        return _ChipTone.low;
+        return NotificationFilterTone.low;
     }
   }
 }
 
 enum _Priority { high, medium, low }
 
-enum _ChipTone {
+enum NotificationFilterTone {
   neutral,
   warning,
   info,
@@ -400,6 +525,41 @@ enum _ChipTone {
   medium,
   success,
   low,
+}
+
+enum _SecondaryFilterKind { workflow, modules, category, downloads, ocrJobs }
+
+class _SecondaryFilterItem {
+  const _SecondaryFilterItem._({
+    required this.kind,
+    this.workflow,
+    this.category,
+  });
+
+  factory _SecondaryFilterItem.workflow(NotificationWorkflowFilter workflow) =>
+      _SecondaryFilterItem._(
+        kind: _SecondaryFilterKind.workflow,
+        workflow: workflow,
+      );
+
+  factory _SecondaryFilterItem.modules() =>
+      const _SecondaryFilterItem._(kind: _SecondaryFilterKind.modules);
+
+  factory _SecondaryFilterItem.category(Category category) =>
+      _SecondaryFilterItem._(
+        kind: _SecondaryFilterKind.category,
+        category: category,
+      );
+
+  factory _SecondaryFilterItem.downloads() =>
+      const _SecondaryFilterItem._(kind: _SecondaryFilterKind.downloads);
+
+  factory _SecondaryFilterItem.ocrJobs() =>
+      const _SecondaryFilterItem._(kind: _SecondaryFilterKind.ocrJobs);
+
+  final _SecondaryFilterKind kind;
+  final NotificationWorkflowFilter? workflow;
+  final Category? category;
 }
 
 class _HorizontalDragScrollBehavior extends MaterialScrollBehavior {
@@ -414,15 +574,16 @@ class _HorizontalDragScrollBehavior extends MaterialScrollBehavior {
       };
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
+class NotificationFilterChip extends StatelessWidget {
+  const NotificationFilterChip({
+    super.key,
     required this.label,
     required this.count,
     required this.icon,
     required this.selected,
     required this.onTap,
-    this.tone = _ChipTone.neutral,
-    this.prominent = false,
+    this.tone = NotificationFilterTone.neutral,
+    this.warning = false,
   });
 
   final String label;
@@ -430,34 +591,35 @@ class _FilterChip extends StatelessWidget {
   final IconData icon;
   final bool selected;
   final VoidCallback onTap;
-  final _ChipTone tone;
-  final bool prominent;
+  final NotificationFilterTone tone;
+  final bool warning;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final accent = _toneColor(tone, cs);
-    final selectedBg = accent.withValues(alpha: prominent ? 0.16 : 0.12);
-    final idleBg = prominent
-        ? accent.withValues(alpha: 0.08)
-        : cs.surfaceContainerHighest.withValues(alpha: 0.24);
+    final accent = toneColor(tone, cs);
+    const selectedBlue = Color(0xFF2563EB);
+    const warningOrange = Color(0xFFD97706);
+    final idleBg = warning
+        ? warningOrange.withValues(alpha: 0.09)
+        : cs.surfaceContainerHighest.withValues(alpha: 0.34);
+    final foreground = selected ? selectedBlue : cs.onSurfaceVariant;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(999),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        duration: const Duration(milliseconds: 160),
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: selected ? selectedBg : idleBg,
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? selectedBlue.withValues(alpha: 0.11) : idleBg,
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected
-                ? accent.withValues(alpha: 0.36)
-                : (prominent
-                    ? accent.withValues(alpha: 0.18)
-                    : cs.outlineVariant.withValues(alpha: 0.28)),
+                ? selectedBlue.withValues(alpha: 0.42)
+                : cs.outlineVariant.withValues(alpha: 0.34),
           ),
         ),
         child: Row(
@@ -465,40 +627,21 @@ class _FilterChip extends StatelessWidget {
           children: [
             Icon(
               icon,
-              size: 13,
-              color: selected || prominent ? accent : cs.onSurfaceVariant,
+              size: 14,
+              color: selected ? selectedBlue : accent,
             ),
-            const SizedBox(width: 5),
+            const SizedBox(width: 6),
             Text(
               label,
               style: t.caption.copyWith(
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected
-                    ? accent
-                    : prominent
-                        ? cs.onSurface.withValues(alpha: 0.78)
-                        : cs.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: foreground,
               ),
             ),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: selected
-                    ? accent.withValues(alpha: 0.16)
-                    : prominent
-                        ? accent.withValues(alpha: 0.11)
-                        : cs.outlineVariant.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '$count',
-                style: t.caption.copyWith(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: selected || prominent ? accent : cs.onSurfaceVariant,
-                ),
-              ),
+            const SizedBox(width: 6),
+            _FilterCountBadge(
+              count: count,
+              selected: selected,
             ),
           ],
         ),
@@ -506,24 +649,61 @@ class _FilterChip extends StatelessWidget {
     );
   }
 
-  Color _toneColor(_ChipTone tone, ColorScheme cs) {
+  static Color toneColor(NotificationFilterTone tone, ColorScheme cs) {
     switch (tone) {
-      case _ChipTone.warning:
+      case NotificationFilterTone.warning:
         return const Color(0xFFD97706);
-      case _ChipTone.info:
+      case NotificationFilterTone.info:
         return const Color(0xFF2563EB);
-      case _ChipTone.finance:
+      case NotificationFilterTone.finance:
         return const Color(0xFF0F766E);
-      case _ChipTone.message:
+      case NotificationFilterTone.message:
         return const Color(0xFF475569);
-      case _ChipTone.medium:
+      case NotificationFilterTone.medium:
         return const Color(0xFF64748B);
-      case _ChipTone.success:
+      case NotificationFilterTone.success:
         return const Color(0xFF16A34A);
-      case _ChipTone.low:
-        return cs.onSurfaceVariant;
-      case _ChipTone.neutral:
-        return cs.primary;
+      case NotificationFilterTone.low:
+        return const Color(0xFF6B7280);
+      case NotificationFilterTone.neutral:
+        return const Color(0xFF4B5563);
     }
+  }
+}
+
+class _FilterCountBadge extends StatelessWidget {
+  const _FilterCountBadge({
+    required this.count,
+    required this.selected,
+  });
+
+  final int count;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    const selectedBlue = Color(0xFF2563EB);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20, minHeight: 18),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        color: selected
+            ? selectedBlue.withValues(alpha: 0.14)
+            : cs.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$count',
+        style: t.caption.copyWith(
+          fontSize: 10,
+          height: 1,
+          fontWeight: FontWeight.w800,
+          color: selected ? selectedBlue : cs.onSurfaceVariant,
+        ),
+      ),
+    );
   }
 }

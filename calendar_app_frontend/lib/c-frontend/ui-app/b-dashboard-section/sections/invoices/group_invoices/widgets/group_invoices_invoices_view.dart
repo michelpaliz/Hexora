@@ -83,6 +83,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
   final ValueChanged<String>? onOpenRecurringSeries;
   final ValueChanged<InvoiceDateFilterState>? onIssuedDateFilterChanged;
   final Future<void> Function(List<Invoice>)? onDownloadFiltered;
+  final bool canEditIssued;
 
   const GroupInvoicesInvoicesView({
     super.key,
@@ -107,6 +108,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
     this.onOpenRecurringSeries,
     this.onIssuedDateFilterChanged,
     this.onDownloadFiltered,
+    this.canEditIssued = false,
   });
 
   @override
@@ -222,7 +224,9 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                             clients: widget.clients,
                             onTap: widget.onSelectInvoice,
                             onDelete: null,
-                            onEdit: null,
+                            onEdit: widget.canEditIssued
+                                ? widget.onEditDraft
+                                : null,
                             onIssue: null,
                             onIssueAll: null,
                             sortState: widget.sortState,
@@ -497,6 +501,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     try {
       final summary = await _invoicesApi.getSummary(
         groupId: groupId,
+        status: 'issued',
         from: _apiDate(_fromDate, endOfDay: false),
         to: _apiDate(_toDate, endOfDay: true),
         currency: 'EUR',
@@ -1575,85 +1580,121 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             '${summary != null ? summaryCount : count} ${isSpanish ? ((summary != null ? summaryCount : count) == 1 ? 'factura' : 'facturas') : ((summary != null ? summaryCount : count) == 1 ? 'invoice' : 'invoices')}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: t.bodySmall.copyWith(
               color: cs.onSurfaceVariant,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const Spacer(),
-          if (loading)
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
-              ),
-            )
-          else ...[
-            valueChip('Base', subtotal, cs.primary),
-            const SizedBox(width: 8),
-            valueChip('IVA', taxTotal, cs.onSurface),
-            const SizedBox(width: 8),
-            valueChip('Total', total, totalChipColor),
-            if (mismatchCount > 0) ...[
-              const SizedBox(width: 8),
-              Text(
-                isSpanish
-                    ? '$mismatchCount desajustes'
-                    : '$mismatchCount mismatches',
-                style: t.bodySmall.copyWith(
-                  color: cs.error,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ],
-          if (!loading && (error ?? '').trim().isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Tooltip(
-              message: error!,
-              child: Icon(Icons.error_outline, size: 16, color: cs.error),
+          const SizedBox(width: 12),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (loading)
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(cs.primary),
+                            ),
+                          )
+                        else ...[
+                          valueChip('Base', subtotal, cs.primary),
+                          const SizedBox(width: 8),
+                          valueChip('IVA', taxTotal, cs.onSurface),
+                          const SizedBox(width: 8),
+                          valueChip('Total', total, totalChipColor),
+                          if (mismatchCount > 0) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              isSpanish
+                                  ? '$mismatchCount desajustes'
+                                  : '$mismatchCount mismatches',
+                              style: t.bodySmall.copyWith(
+                                color: cs.error,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ],
+                        if (!loading &&
+                            (error ?? '').trim().isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Tooltip(
+                            message: error!,
+                            child: Icon(
+                              Icons.error_outline,
+                              size: 16,
+                              color: cs.error,
+                            ),
+                          ),
+                        ],
+                        if (onDownloadFiltered != null) ...[
+                          const SizedBox(width: 8),
+                          Tooltip(
+                            message: isSpanish
+                                ? 'Descargar facturas filtradas'
+                                : 'Download filtered invoices',
+                            child: OutlinedButton.icon(
+                              onPressed: downloadingFiltered
+                                  ? null
+                                  : onDownloadFiltered,
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                minimumSize: const Size(0, 38),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                foregroundColor: cs.primary,
+                                backgroundColor:
+                                    cs.primary.withValues(alpha: 0.04),
+                                side: BorderSide(
+                                  color: cs.primary.withValues(alpha: 0.35),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                              icon: downloadingFiltered
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.download_rounded,
+                                      size: 16,
+                                    ),
+                              label: Text(
+                                isSpanish ? 'Descargar' : 'Download',
+                                style: t.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ],
-          if (onDownloadFiltered != null) ...[
-            const SizedBox(width: 8),
-            Tooltip(
-              message: isSpanish
-                  ? 'Descargar facturas filtradas'
-                  : 'Download filtered invoices',
-              child: OutlinedButton.icon(
-                onPressed: downloadingFiltered ? null : onDownloadFiltered,
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  minimumSize: const Size(0, 38),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  foregroundColor: cs.primary,
-                  backgroundColor: cs.primary.withValues(alpha: 0.04),
-                  side: BorderSide(
-                    color: cs.primary.withValues(alpha: 0.35),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                icon: downloadingFiltered
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.download_rounded, size: 16),
-                label: Text(
-                  isSpanish ? 'Descargar' : 'Download',
-                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );

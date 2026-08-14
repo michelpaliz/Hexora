@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
+import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_contracts_api.dart';
+import 'package:hexora/b-backend/receipts/receipts_api.dart';
 import 'package:intl/intl.dart';
 import '../invoice_row_item.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/date_range_filter_card.dart';
@@ -58,8 +60,69 @@ class ClientDetailPanel extends StatefulWidget {
 }
 
 class _ClientDetailPanelState extends State<ClientDetailPanel> {
+  final ClientContractsApi _contractsApi = ClientContractsApi();
+  final ReceiptsApi _receiptsApi = ReceiptsApi();
   int _contractsCount = 0;
   int _receiptsCount = 0;
+  String? _contractsCountClientId;
+  String? _receiptsCountRequestKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadContractsCount();
+    _loadReceiptsCount();
+  }
+
+  @override
+  void didUpdateWidget(covariant ClientDetailPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedClient?.id != widget.selectedClient?.id ||
+        oldWidget.groupId != widget.groupId) {
+      setState(() {
+        _contractsCount = 0;
+        _receiptsCount = 0;
+      });
+      _loadContractsCount();
+      _loadReceiptsCount();
+    }
+  }
+
+  Future<void> _loadContractsCount() async {
+    final clientId = widget.selectedClient?.id.trim();
+    if (clientId == null || clientId.isEmpty) return;
+    _contractsCountClientId = clientId;
+    try {
+      final contracts = await _contractsApi.list(clientId);
+      if (!mounted || _contractsCountClientId != clientId) return;
+      setState(() => _contractsCount = contracts.length);
+    } catch (_) {
+      // Keep the tab usable; it will show the full error if the user opens it.
+    }
+  }
+
+  Future<void> _loadReceiptsCount() async {
+    final clientId = widget.selectedClient?.id.trim();
+    final groupId = widget.groupId.trim();
+    if (clientId == null || clientId.isEmpty || groupId.isEmpty) return;
+
+    final requestKey = '$groupId:$clientId';
+    _receiptsCountRequestKey = requestKey;
+    try {
+      final results = await Future.wait([
+        _receiptsApi.list(groupId: groupId, status: 'issued'),
+        _receiptsApi.list(groupId: groupId, status: 'draft'),
+      ]);
+      if (!mounted || _receiptsCountRequestKey != requestKey) return;
+      final count = results
+          .expand((receipts) => receipts)
+          .where((receipt) => receipt.clientId == clientId)
+          .length;
+      setState(() => _receiptsCount = count);
+    } catch (_) {
+      // The receipts tab keeps its own detailed loading error state.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

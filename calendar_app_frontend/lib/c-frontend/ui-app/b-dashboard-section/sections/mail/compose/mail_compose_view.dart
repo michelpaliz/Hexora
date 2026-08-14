@@ -124,8 +124,12 @@ class _MailComposeView extends StatelessWidget {
                         enabled: !state._sending,
                         emailLabel: 'Email',
                         clientLabel: 'Cliente',
+                        recentLabel:
+                            state._isSpanishLocale ? 'Recientes' : 'Recent',
+                        recentLoading: state._loadingRecentInvoices,
                         onChanged: (v) =>
                             state.update(() => state._useClientMode = v),
+                        onRecentTap: state._openRecentIssuedInvoicesPicker,
                       ),
                     ],
                   ),
@@ -360,28 +364,25 @@ class _MailComposeView extends StatelessWidget {
                           ),
                         )
                       else
-                        Tooltip(
-                          message: state._selectedComposeTemplateName != null
-                              ? 'Cambiar plantilla'
-                              : 'Usar plantilla',
-                          child: InkWell(
-                            onTap: state._sending
-                                ? null
-                                : state._showTemplatePicker,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(7),
-                              child: Icon(
-                                state._selectedComposeTemplateName != null
-                                    ? Icons.description_rounded
-                                    : Icons.description_outlined,
-                                size: 18,
-                                color:
-                                    state._selectedComposeTemplateName != null
-                                        ? cs.primary
-                                        : cs.onSurfaceVariant,
-                              ),
-                            ),
+                        IconButton(
+                          onPressed:
+                              state._sending ? null : state._showTemplatePicker,
+                          tooltip: state._selectedComposeTemplateName != null
+                              ? (state._isSpanishLocale
+                                  ? 'Cambiar plantilla'
+                                  : 'Change template')
+                              : (state._isSpanishLocale
+                                  ? 'Usar plantilla'
+                                  : 'Use template'),
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(
+                            state._selectedComposeTemplateName != null
+                                ? Icons.description_rounded
+                                : Icons.description_outlined,
+                            size: 18,
+                            color: state._selectedComposeTemplateName != null
+                                ? cs.primary
+                                : cs.onSurfaceVariant,
                           ),
                         ),
                     ],
@@ -683,58 +684,58 @@ class _MailComposeView extends StatelessWidget {
             decoration: BoxDecoration(
               color: cs.surfaceContainerLow,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.5)),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
             ),
             child: _CollapsedPanel(
-            title: state._attachments.isEmpty
-                ? l.mailComposeAttachmentsLabel
-                : '${l.mailComposeAttachmentsLabel} (${state._attachments.length})',
-            expanded: state._attachmentsExpanded,
-            onToggle: () => state.update(
-              () => state._attachmentsExpanded = !state._attachmentsExpanded,
-            ),
-            trailing: TextButton.icon(
-              onPressed: state._sending || state._uploadingAttachment
-                  ? null
-                  : state._showAttachmentActions,
-              style: TextButton.styleFrom(
-                foregroundColor: cs.onSurfaceVariant,
-                textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+              title: state._attachments.isEmpty
+                  ? l.mailComposeAttachmentsLabel
+                  : '${l.mailComposeAttachmentsLabel} (${state._attachments.length})',
+              expanded: state._attachmentsExpanded,
+              onToggle: () => state.update(
+                () => state._attachmentsExpanded = !state._attachmentsExpanded,
               ),
-              icon: state._uploadingAttachment
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+              trailing: TextButton.icon(
+                onPressed: state._sending || state._uploadingAttachment
+                    ? null
+                    : state._showAttachmentActions,
+                style: TextButton.styleFrom(
+                  foregroundColor: cs.onSurfaceVariant,
+                  textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                ),
+                icon: state._uploadingAttachment
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.attach_file, size: 18),
+                label: Text(l.mailComposeAddAttachment),
+              ),
+              child: state._attachments.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        l.mailComposeAttachmentsEmpty,
+                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                      ),
                     )
-                  : const Icon(Icons.attach_file, size: 18),
-              label: Text(l.mailComposeAddAttachment),
-            ),
-            child: state._attachments.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Text(
-                      l.mailComposeAttachmentsEmpty,
-                      style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  : Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: state._attachments.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final attachment = entry.value;
+                        final label =
+                            attachment.filename ?? attachment.storageKey ?? '-';
+                        return InputChip(
+                          label: Text(label, style: t.bodySmall),
+                          onDeleted: () => state
+                              .update(() => state._attachments.removeAt(index)),
+                        );
+                      }).toList(),
                     ),
-                  )
-                : Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: state._attachments.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final attachment = entry.value;
-                      final label =
-                          attachment.filename ?? attachment.storageKey ?? '-';
-                      return InputChip(
-                        label: Text(label, style: t.bodySmall),
-                        onDeleted: () => state
-                            .update(() => state._attachments.removeAt(index)),
-                      );
-                    }).toList(),
-                  ),
-          ),
+            ),
           ), // Container
           if (!isWideEmbedded) ...[
             const SizedBox(height: 8),
@@ -743,387 +744,396 @@ class _MailComposeView extends StatelessWidget {
               decoration: BoxDecoration(
                 color: cs.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.5)),
+                border:
+                    Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
               ),
               child: _CollapsedPanel(
-              title: l.mailComposeInvoiceOptions,
-              expanded: state._invoiceExpanded,
-              onToggle: () => state.update(
-                  () => state._invoiceExpanded = !state._invoiceExpanded),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l.mailComposeInvoiceOptionsHelper,
-                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: state._invoiceIdsCtrl,
-                    enabled: !state._sending,
-                    style: t.bodySmall.copyWith(color: cs.onSurface),
-                    decoration: inputDecoration.copyWith(
-                      labelText: l.mailComposeInvoiceIdsLabel,
-                      hintText: l.mailComposeInvoiceIdsHint,
-                      helperText: l.mailComposeInvoiceIdsHint,
-                      prefixIcon: const Icon(Icons.receipt_long_outlined),
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9,\\s-]')),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: OutlinedButton.icon(
-                      onPressed: state._sending || state._openingInvoicePicker
-                          ? null
-                          : state._openInvoicePicker,
-                      icon: state._openingInvoicePicker
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.search_rounded),
-                      label: Text(l.searchPerson),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Visual feedback for selected invoices
-                  Builder(
-                    builder: (context) {
-                      final invoiceIds = state
-                          ._splitValues(state
-                              ._normalizeInvoiceIds(state._invoiceIdsCtrl.text))
-                          .where((id) => id.trim().isNotEmpty)
-                          .toList();
-
-                      if (invoiceIds.isEmpty) return const SizedBox.shrink();
-
-                      return Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: cs.primaryContainer.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: cs.outlineVariant.withValues(alpha: 0.5),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.receipt_long_outlined,
-                                      size: 18,
-                                      color: cs.primary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        '${l.invoicesListTitle} PDF (${invoiceIds.length})',
-                                        style: t.bodyMedium.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: cs.onSurface,
-                                        ),
-                                      ),
-                                    ),
-                                    if (state._attachInvoicePdf)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: cs.primary
-                                              .withValues(alpha: 0.15),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.check_circle,
-                                              size: 14,
-                                              color: cs.primary,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'PDF adjunto',
-                                              style: t.bodySmall.copyWith(
-                                                color: cs.primary,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: invoiceIds.map((id) {
-                                    return Chip(
-                                      label: Text(
-                                        id,
-                                        style: t.bodySmall,
-                                      ),
-                                      deleteIcon: Icon(
-                                        Icons.close,
-                                        size: 16,
-                                        color: cs.onSurfaceVariant,
-                                      ),
-                                      onDeleted: () => state.update(() {
-                                        final remaining = invoiceIds
-                                            .where((existing) => existing != id)
-                                            .toList();
-                                        state._invoiceIdsCtrl.text =
-                                            remaining.join(',');
-                                      }),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                      );
-                    },
-                  ),
-                  if (state._selectedPresupuestoIds.isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: cs.secondaryContainer.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: cs.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.picture_as_pdf_outlined,
-                                size: 18,
-                                color: cs.primary,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '${l.budgetsMenuSection} PDF (${state._selectedPresupuestoIds.length})',
-                                  style: t.bodyMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: cs.onSurface,
-                                  ),
-                                ),
-                              ),
-                              if (state._attachInvoicePdf)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: cs.primary.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.check_circle,
-                                        size: 14,
-                                        color: cs.primary,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'PDF adjunto',
-                                        style: t.bodySmall.copyWith(
-                                          color: cs.primary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: state._selectedPresupuestoIds.map((id) {
-                              return Chip(
-                                label: Text(
-                                  id,
-                                  style: t.bodySmall,
-                                ),
-                                deleteIcon: Icon(
-                                  Icons.close,
-                                  size: 16,
-                                  color: cs.onSurfaceVariant,
-                                ),
-                                onDeleted: () => state.update(() {
-                                  state._selectedPresupuestoIds.remove(id);
-                                }),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  // Visual feedback for selected receipts
-                  if (state._selectedReceiptIds.isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: cs.tertiaryContainer.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: cs.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.receipt_outlined,
-                                size: 18,
-                                color: cs.tertiary,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Recibos PDF (${state._selectedReceiptIds.length})',
-                                  style: t.bodyMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: cs.onSurface,
-                                  ),
-                                ),
-                              ),
-                              if (state._attachInvoicePdf)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: cs.tertiary.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.check_circle,
-                                        size: 14,
-                                        color: cs.tertiary,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'PDF adjunto',
-                                        style: t.bodySmall.copyWith(
-                                          color: cs.tertiary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: state._selectedReceiptIds.map((id) {
-                              return Chip(
-                                label: Text(
-                                  id,
-                                  style: t.bodySmall,
-                                ),
-                                deleteIcon: Icon(
-                                  Icons.close,
-                                  size: 16,
-                                  color: cs.onSurfaceVariant,
-                                ),
-                                onDeleted: () => state.update(() {
-                                  state._selectedReceiptIds.remove(id);
-                                }),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  SwitchListTile.adaptive(
-                    value: state._attachInvoicePdf,
-                    title: Text(
-                      l.mailComposeAttachInvoicePdf,
-                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    secondary: const Icon(Icons.picture_as_pdf_outlined),
-                    onChanged: state._sending
-                        ? null
-                        : (value) =>
-                            state.update(() => state._attachInvoicePdf = value),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  SwitchListTile.adaptive(
-                    value: state._includeInvoiceLinks,
-                    title: Text(
-                      l.mailComposeIncludeInvoiceLinks,
-                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    secondary: const Icon(Icons.link_outlined),
-                    onChanged: state._sending
-                        ? null
-                        : (value) => state
-                            .update(() => state._includeInvoiceLinks = value),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  const SizedBox(height: 4),
-                  SwitchListTile.adaptive(
-                    value: state._applyDefaultFooter,
-                    title: Text(
-                      l.mailComposeApplyFooterLabel,
-                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      l.mailComposeApplyFooterHelper,
+                title: l.mailComposeInvoiceOptions,
+                expanded: state._invoiceExpanded,
+                onToggle: () => state.update(
+                    () => state._invoiceExpanded = !state._invoiceExpanded),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.mailComposeInvoiceOptionsHelper,
                       style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                     ),
-                    secondary: const Icon(Icons.notes_outlined),
-                    onChanged: state._sending
-                        ? null
-                        : (value) => state
-                            .update(() => state._applyDefaultFooter = value),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: state._invoiceIdsCtrl,
+                      enabled: !state._sending,
+                      style: t.bodySmall.copyWith(color: cs.onSurface),
+                      decoration: inputDecoration.copyWith(
+                        labelText: l.mailComposeInvoiceIdsLabel,
+                        hintText: l.mailComposeInvoiceIdsHint,
+                        helperText: l.mailComposeInvoiceIdsHint,
+                        prefixIcon: const Icon(Icons.receipt_long_outlined),
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'[0-9,\\s-]')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: state._sending || state._openingInvoicePicker
+                            ? null
+                            : state._openInvoicePicker,
+                        icon: state._openingInvoicePicker
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.search_rounded),
+                        label: Text(l.searchPerson),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Visual feedback for selected invoices
+                    Builder(
+                      builder: (context) {
+                        final invoiceIds = state
+                            ._splitValues(state._normalizeInvoiceIds(
+                                state._invoiceIdsCtrl.text))
+                            .where((id) => id.trim().isNotEmpty)
+                            .toList();
+
+                        if (invoiceIds.isEmpty) return const SizedBox.shrink();
+
+                        return Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color:
+                                    cs.primaryContainer.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color:
+                                      cs.outlineVariant.withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.receipt_long_outlined,
+                                        size: 18,
+                                        color: cs.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          '${l.invoicesListTitle} PDF (${invoiceIds.length})',
+                                          style: t.bodyMedium.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: cs.onSurface,
+                                          ),
+                                        ),
+                                      ),
+                                      if (state._attachInvoicePdf)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: cs.primary
+                                                .withValues(alpha: 0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle,
+                                                size: 14,
+                                                color: cs.primary,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'PDF adjunto',
+                                                style: t.bodySmall.copyWith(
+                                                  color: cs.primary,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: invoiceIds.map((id) {
+                                      return Chip(
+                                        label: Text(
+                                          id,
+                                          style: t.bodySmall,
+                                        ),
+                                        deleteIcon: Icon(
+                                          Icons.close,
+                                          size: 16,
+                                          color: cs.onSurfaceVariant,
+                                        ),
+                                        onDeleted: () => state.update(() {
+                                          final remaining = invoiceIds
+                                              .where(
+                                                  (existing) => existing != id)
+                                              .toList();
+                                          state._invoiceIdsCtrl.text =
+                                              remaining.join(',');
+                                        }),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        );
+                      },
+                    ),
+                    if (state._selectedPresupuestoIds.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: cs.secondaryContainer.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.picture_as_pdf_outlined,
+                                  size: 18,
+                                  color: cs.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${l.budgetsMenuSection} PDF (${state._selectedPresupuestoIds.length})',
+                                    style: t.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: cs.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                if (state._attachInvoicePdf)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: cs.primary.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle,
+                                          size: 14,
+                                          color: cs.primary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'PDF adjunto',
+                                          style: t.bodySmall.copyWith(
+                                            color: cs.primary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: state._selectedPresupuestoIds.map((id) {
+                                return Chip(
+                                  label: Text(
+                                    id,
+                                    style: t.bodySmall,
+                                  ),
+                                  deleteIcon: Icon(
+                                    Icons.close,
+                                    size: 16,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                  onDeleted: () => state.update(() {
+                                    state._selectedPresupuestoIds.remove(id);
+                                  }),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    // Visual feedback for selected receipts
+                    if (state._selectedReceiptIds.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: cs.tertiaryContainer.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.receipt_outlined,
+                                  size: 18,
+                                  color: cs.tertiary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Recibos PDF (${state._selectedReceiptIds.length})',
+                                    style: t.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: cs.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                if (state._attachInvoicePdf)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          cs.tertiary.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle,
+                                          size: 14,
+                                          color: cs.tertiary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'PDF adjunto',
+                                          style: t.bodySmall.copyWith(
+                                            color: cs.tertiary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: state._selectedReceiptIds.map((id) {
+                                return Chip(
+                                  label: Text(
+                                    id,
+                                    style: t.bodySmall,
+                                  ),
+                                  deleteIcon: Icon(
+                                    Icons.close,
+                                    size: 16,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                  onDeleted: () => state.update(() {
+                                    state._selectedReceiptIds.remove(id);
+                                  }),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    SwitchListTile.adaptive(
+                      value: state._attachInvoicePdf,
+                      title: Text(
+                        l.mailComposeAttachInvoicePdf,
+                        style:
+                            t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      secondary: const Icon(Icons.picture_as_pdf_outlined),
+                      onChanged: state._sending
+                          ? null
+                          : (value) => state
+                              .update(() => state._attachInvoicePdf = value),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    SwitchListTile.adaptive(
+                      value: state._includeInvoiceLinks,
+                      title: Text(
+                        l.mailComposeIncludeInvoiceLinks,
+                        style:
+                            t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      secondary: const Icon(Icons.link_outlined),
+                      onChanged: state._sending
+                          ? null
+                          : (value) => state
+                              .update(() => state._includeInvoiceLinks = value),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    const SizedBox(height: 4),
+                    SwitchListTile.adaptive(
+                      value: state._applyDefaultFooter,
+                      title: Text(
+                        l.mailComposeApplyFooterLabel,
+                        style:
+                            t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        l.mailComposeApplyFooterHelper,
+                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                      secondary: const Icon(Icons.notes_outlined),
+                      onChanged: state._sending
+                          ? null
+                          : (value) => state
+                              .update(() => state._applyDefaultFooter = value),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
               ),
-            ),
             ), // Container
           ],
         ],
@@ -1418,14 +1428,20 @@ class _RecipientModeToggle extends StatelessWidget {
     required this.enabled,
     required this.emailLabel,
     required this.clientLabel,
+    required this.recentLabel,
+    required this.recentLoading,
     required this.onChanged,
+    required this.onRecentTap,
   });
 
   final bool clientMode;
   final bool enabled;
   final String emailLabel;
   final String clientLabel;
+  final String recentLabel;
+  final bool recentLoading;
   final void Function(bool) onChanged;
+  final VoidCallback onRecentTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1474,6 +1490,46 @@ class _RecipientModeToggle extends StatelessWidget {
       );
     }
 
+    Widget recentTab() {
+      return GestureDetector(
+        onTap: enabled && !recentLoading ? onRecentTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (recentLoading)
+                SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: cs.primary,
+                  ),
+                )
+              else
+                Icon(Icons.history_rounded, size: 13, color: cs.primary),
+              const SizedBox(width: 4),
+              Text(
+                recentLabel,
+                style: t.bodySmall.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: recentLoading ? cs.primary : cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
@@ -1485,8 +1541,163 @@ class _RecipientModeToggle extends StatelessWidget {
         children: [
           tab(value: false, icon: Icons.edit_outlined, label: emailLabel),
           tab(value: true, icon: Icons.person_outline, label: clientLabel),
+          recentTab(),
         ],
       ),
+    );
+  }
+}
+
+class _RecentIssuedInvoicesDialog extends StatelessWidget {
+  const _RecentIssuedInvoicesDialog({
+    required this.invoices,
+    required this.clients,
+    required this.isSpanish,
+    required this.formatDate,
+    required this.formatTotal,
+  });
+
+  final List<Invoice> invoices;
+  final List<GroupClient> clients;
+  final bool isSpanish;
+  final String Function(DateTime value) formatDate;
+  final String Function(Invoice invoice) formatTotal;
+
+  GroupClient? _clientFor(Invoice invoice) {
+    final clientId = invoice.clientId.trim();
+    if (clientId.isEmpty) return null;
+    return clients.cast<GroupClient?>().firstWhere(
+          (client) => client?.id == clientId,
+          orElse: () => null,
+        );
+  }
+
+  DateTime _invoiceDate(Invoice invoice) {
+    return (invoice.issueDate ??
+            invoice.issuedAtResolved ??
+            invoice.registeredAt ??
+            DateTime.fromMillisecondsSinceEpoch(0))
+        .toLocal();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final title = isSpanish ? 'Facturas emitidas hoy' : 'Today issued invoices';
+    final empty = isSpanish
+        ? 'No hay facturas emitidas hoy.'
+        : 'No invoices issued today.';
+
+    return AlertDialog(
+      title: Text(title),
+      contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+      content: SizedBox(
+        width: 520,
+        child: invoices.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  empty,
+                  style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
+                ),
+              )
+            : ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 420),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: invoices.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final invoice = invoices[index];
+                    final client = _clientFor(invoice);
+                    final clientName = (client?.name.trim().isNotEmpty == true
+                            ? client!.name
+                            : invoice.clientName ?? '')
+                        .trim();
+                    final number = invoice.invoiceNumber.trim().isEmpty
+                        ? invoice.id
+                        : invoice.invoiceNumber.trim();
+                    final email =
+                        (client?.billing?.email ?? client?.email ?? '').trim();
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => Navigator.of(context).pop(invoice),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.55),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color:
+                                    cs.primaryContainer.withValues(alpha: 0.55),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.receipt_long_outlined,
+                                color: cs.primary,
+                                size: 19,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '#$number · ${clientName.isEmpty ? '-' : clientName}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    [
+                                      formatDate(_invoiceDate(invoice)),
+                                      if (email.isNotEmpty) email,
+                                    ].join(' · '),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.bodySmall.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              formatTotal(invoice),
+                              style: t.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: cs.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(isSpanish ? 'Cerrar' : 'Close'),
+        ),
+      ],
     );
   }
 }
@@ -1534,7 +1745,7 @@ class _ClientSearchField extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final selected = _selected;
     final hasSelection = selected != null;
-    final email = (selected?.email ?? '').trim();
+    final email = (selected?.billing?.email ?? selected?.email ?? '').trim();
 
     if (loading) {
       return Row(

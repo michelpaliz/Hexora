@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
+import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/utils/show_error_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/login/logic/login_init.dart';
@@ -114,6 +115,10 @@ Widget buildRegisterButton(
             authService: authService, // ✅ Changed
             userDomain: Provider.of<UserDomain>(context, listen: false),
             groupDomain: Provider.of<GroupDomain>(
+              context,
+              listen: false,
+            ),
+            notificationDomain: Provider.of<NotificationDomain>(
               context,
               listen: false,
             ),

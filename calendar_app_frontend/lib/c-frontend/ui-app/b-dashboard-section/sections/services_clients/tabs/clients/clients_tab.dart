@@ -94,14 +94,12 @@ class _ClientsTabState extends State<ClientsTab> {
         flagged.where((c) => c.isActive != false).toList(growable: false);
     final inactiveItems =
         flagged.where((c) => c.isActive == false).toList(growable: false);
-    final visible = widget.showInactive
-        ? [...activeItems, ...inactiveItems]
-        : activeItems;
+    final visible =
+        widget.showInactive ? [...activeItems, ...inactiveItems] : activeItems;
     final hasInvoiceFlagData =
         widget.items.any((c) => c.hasCurrentMonthInvoiceFlagData);
-    final missingInvoiceCount = widget.items
-        .where((c) => c.missingCurrentMonthInvoice == true)
-        .length;
+    final missingInvoiceCount =
+        widget.items.where((c) => c.missingCurrentMonthInvoice == true).length;
     final filterCountSource = widget.missingCurrentMonthInvoiceOnly
         ? widget.items
             .where((c) => c.missingCurrentMonthInvoice == true)
@@ -212,8 +210,7 @@ class _ClientsTabState extends State<ClientsTab> {
                       !widget.missingCurrentMonthInvoiceOnly,
                     ),
           ),
-          extraActiveFilterCount:
-              widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
+          extraActiveFilterCount: widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
           propertyLabel: l.clientPropertyKindLabel,
           propertyOptions: widget.propertyKindOptions,
           propertyFilter: widget.propertyKindFilter,
@@ -264,7 +261,7 @@ class _MissingInvoiceFilterRow extends StatelessWidget {
     final typo = AppTypography.of(context);
 
     const activeColor = Color(0xFFD97706); // amber-600
-    const activeBg = Color(0xFFFEF3C7);   // amber-100
+    const activeBg = Color(0xFFFEF3C7); // amber-100
 
     final chipColor = selected ? activeColor : cs.onSurfaceVariant;
     final chipBg = selected
@@ -274,64 +271,73 @@ class _MissingInvoiceFilterRow extends StatelessWidget {
         ? activeColor.withValues(alpha: 0.45)
         : cs.outlineVariant.withValues(alpha: 0.35);
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: chipBg,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 230),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: InkWell(
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: chipBorder, width: 1.2),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  size: 14,
-                  color: chipColor,
+              onTap: onTap,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                constraints: const BoxConstraints(minHeight: 34),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                decoration: BoxDecoration(
+                  color: chipBg,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: chipBorder, width: 1.2),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: typo.bodySmall.copyWith(
-                    color: chipColor,
-                    fontWeight:
-                        selected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 12,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 14,
+                      color: chipColor,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: typo.bodySmall.copyWith(
+                          color: chipColor,
+                          fontWeight:
+                              selected ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ),
-        if (count != null && count! > 0) ...[
-          const SizedBox(width: 6),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: activeColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                  color: activeColor.withValues(alpha: 0.3)),
-            ),
-            child: Text(
-              '${count!}',
-              style: typo.caption.copyWith(
-                color: activeColor,
-                fontWeight: FontWeight.w800,
-                fontSize: 11,
               ),
             ),
           ),
+          if (count != null && count! > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: activeColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: activeColor.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                '${count!}',
+                style: typo.caption.copyWith(
+                  color: activeColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

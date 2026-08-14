@@ -206,14 +206,11 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                       Navigator.of(context).pop();
                       widget.onDeleteDraft();
                     },
-                    icon: Icon(Icons.delete_outline,
-                        size: 18, color: cs.error),
-                    label: Text(l.delete,
-                        style: TextStyle(color: cs.error)),
+                    icon: Icon(Icons.delete_outline, size: 18, color: cs.error),
+                    label: Text(l.delete, style: TextStyle(color: cs.error)),
                     style: OutlinedButton.styleFrom(
                       visualDensity: VisualDensity.compact,
-                      side: BorderSide(
-                          color: cs.error.withValues(alpha: 0.4)),
+                      side: BorderSide(color: cs.error.withValues(alpha: 0.4)),
                     ),
                   ),
                 ],
@@ -296,9 +293,8 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
     if (_previewBytes != null) {
       return LayoutBuilder(
         builder: (_, constraints) {
-          final h = constraints.maxHeight.isFinite
-              ? constraints.maxHeight
-              : 400.0;
+          final h =
+              constraints.maxHeight.isFinite ? constraints.maxHeight : 400.0;
           return PdfInlinePreview(
             bytes: _previewBytes!,
             height: h,
@@ -495,8 +491,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                           color: statusColor.withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child:
-                            Icon(statusIcon, size: 18, color: statusColor),
+                        child: Icon(statusIcon, size: 18, color: statusColor),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -662,8 +657,7 @@ class _SheetSection extends StatelessWidget {
               ],
             ),
           ),
-          Divider(
-              height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
           Padding(padding: const EdgeInsets.all(12), child: child),
         ],
       ),
@@ -688,8 +682,7 @@ class _HeaderChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
         borderRadius: BorderRadius.circular(999),
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.30)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.30)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -791,8 +784,7 @@ class _LinesTable extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                  flex: 3,
-                  child: Text(l.lineDescription, style: headerStyle)),
+                  flex: 3, child: Text(l.lineDescription, style: headerStyle)),
               Expanded(
                   child: Text(l.lineQuantity,
                       style: headerStyle, textAlign: TextAlign.right)),
@@ -813,8 +805,7 @@ class _LinesTable extends StatelessWidget {
           final total = line.total ?? (qty * unit);
           return Container(
             margin: const EdgeInsets.only(bottom: 6),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             decoration: BoxDecoration(
               color: cs.surface,
               borderRadius: BorderRadius.circular(8),
@@ -838,7 +829,7 @@ class _LinesTable extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    NumberFormat.compact().format(qty),
+                    line.quantityWithUnit(),
                     style: t.bodySmall.copyWith(
                       color: cs.onSurfaceVariant,
                       fontWeight: FontWeight.w600,

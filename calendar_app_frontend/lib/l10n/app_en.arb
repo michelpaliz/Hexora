@@ -1664,6 +1664,9 @@
     }
   },
   "invoiceNumberInvalid": "Use three digits (e.g., 001). Year is fixed to the current YY.",
+  "bulkDownloadInvoiceNumberRequired": "Enter at least one invoice number.",
+  "bulkDownloadInvoiceNumberInvalidFormat": "Use letters, numbers, hyphen, slash, underscore, or dot only.",
+  "bulkDownloadInvoiceNumberRangeInvalid": "The starting invoice number must be lower than or equal to the ending number.",
   "invoiceClientLabel": "Client",
   "invoiceClientRequired": "Client is required",
   "invoicePdfUrl": "Invoice PDF URL",

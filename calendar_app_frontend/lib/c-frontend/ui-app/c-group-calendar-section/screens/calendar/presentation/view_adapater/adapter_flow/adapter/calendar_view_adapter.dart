@@ -92,7 +92,7 @@ class CalendarViewAdapter implements SupportsViewMode {
     double? width,
     String? forcedViewMode,
     bool showMonthAgenda = true,
-    ValueChanged<DateTime>? onTimeSlotTap,
+    widgets.TimeRangeSelected? onTimeRangeSelected,
   }) {
     return SizedBox(
       height: height,
@@ -103,7 +103,7 @@ class CalendarViewAdapter implements SupportsViewMode {
         eventDomain: _eventDomain,
         forcedViewMode: forcedViewMode,
         showMonthAgenda: showMonthAgenda,
-        onTimeSlotTap: onTimeSlotTap,
+        onTimeRangeSelected: onTimeRangeSelected,
       ),
     );
   }

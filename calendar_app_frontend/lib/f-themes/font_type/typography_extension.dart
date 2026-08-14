@@ -32,11 +32,36 @@ class AppTypography extends ThemeExtension<AppTypography> {
   static TextStyle _scale(TextStyle s, double f) =>
       s.copyWith(fontSize: (s.fontSize ?? 14) * f);
 
+  static TextTheme materialTextTheme({
+    required Brightness brightness,
+  }) {
+    final base = ThemeData(
+      brightness: brightness,
+      useMaterial3: true,
+    ).textTheme;
+    final bodyTheme = GoogleFonts.manropeTextTheme(base);
+
+    TextStyle? heading(TextStyle? style) =>
+        style == null ? null : GoogleFonts.poppins(textStyle: style);
+
+    return bodyTheme.copyWith(
+      displayLarge: heading(bodyTheme.displayLarge),
+      displayMedium: heading(bodyTheme.displayMedium),
+      displaySmall: heading(bodyTheme.displaySmall),
+      headlineLarge: heading(bodyTheme.headlineLarge),
+      headlineMedium: heading(bodyTheme.headlineMedium),
+      headlineSmall: heading(bodyTheme.headlineSmall),
+      titleLarge: heading(bodyTheme.titleLarge),
+      titleMedium: heading(bodyTheme.titleMedium),
+      titleSmall: heading(bodyTheme.titleSmall),
+    );
+  }
+
   // ---------- Light ----------
   factory AppTypography.light({double scale = 1.0}) {
     // Display: Poppins, Body: Manrope
-    final display = GoogleFonts.poppins;
-    final body = GoogleFonts.manrope;
+    const display = GoogleFonts.poppins;
+    const body = GoogleFonts.manrope;
 
     return AppTypography(
       displayLarge: _scale(
@@ -96,8 +121,8 @@ class AppTypography extends ThemeExtension<AppTypography> {
 
   // ---------- Dark ----------
   factory AppTypography.dark({double scale = 1.0}) {
-    final display = GoogleFonts.poppins;
-    final body = GoogleFonts.manrope;
+    const display = GoogleFonts.poppins;
+    const body = GoogleFonts.manrope;
 
     return AppTypography(
       displayLarge: _scale(

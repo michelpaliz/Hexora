@@ -33,6 +33,9 @@ class VatSummaryApi {
   final String _base = ApiConstants.baseUrl.endsWith('/api')
       ? '${ApiConstants.baseUrl}/tax/iva/summary'
       : '${ApiConstants.baseUrl}/api/tax/iva/summary';
+  final String _apiRoot = ApiConstants.baseUrl.endsWith('/api')
+      ? ApiConstants.baseUrl
+      : '${ApiConstants.baseUrl}/api';
 
   Uri _u({String? groupId, String? from, String? to, String? currency}) {
     final params = <String, String>{};
@@ -90,9 +93,8 @@ class VatSummaryApi {
       method: method,
       responseBody: r.body.isEmpty ? null : r.body,
     );
-    final isKnownEurOnly =
-        r.statusCode == 400 &&
-            msg.toLowerCase().contains('only eur currency is supported');
+    final isKnownEurOnly = r.statusCode == 400 &&
+        msg.toLowerCase().contains('only eur currency is supported');
     if (kDebugMode && !isKnownEurOnly) {
       debugPrint(ex.toString());
     }
@@ -116,7 +118,37 @@ class VatSummaryApi {
       r,
       url: uri,
       method: 'GET',
-      map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> getQuarterSummary({
+    String? groupId,
+    required int year,
+    required int quarter,
+  }) async {
+    final safeQuarter = quarter.clamp(1, 4);
+    final params = <String, String>{
+      'year': year.toString(),
+      'quarter': 'T$safeQuarter',
+      if ((groupId ?? '').trim().isNotEmpty) 'groupId': groupId!.trim(),
+    };
+    final uri = Uri.parse('$_apiRoot/vat-audit/summary')
+        .replace(queryParameters: params);
+    var r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    var resolvedUri = uri;
+    if (r.statusCode == 404) {
+      resolvedUri =
+          Uri.parse('$_apiRoot/vat/summary').replace(queryParameters: params);
+      r = await AuthenticatedHttpClient.get(resolvedUri, headers: _headers());
+    }
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: resolvedUri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 }

@@ -11,13 +11,11 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
     final labels = [
       l.invoiceBillToLabel,
       l.receiptLinesTitle,
-      l.receiptSummaryTitle,
       l.preview,
     ];
     final icons = [
       Icons.person_outline,
       Icons.format_list_bulleted_outlined,
-      Icons.summarize_outlined,
       Icons.picture_as_pdf_outlined,
     ];
     final totalSteps = labels.length;
@@ -617,6 +615,9 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
     final dateLabel = _issueDate == null
         ? '-'
         : DateFormat.yMMMd(l.localeName).format(_issueDate!);
+    final activeLineCount = _lines.where((line) => line.hasAnyValue).length;
+    final linesTotal = _lines.fold<num>(0, (sum, line) => sum + line.total);
+    final currency = NumberFormat.simpleCurrency(name: '');
 
     return Card(
       elevation: 0,
@@ -630,43 +631,92 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l.receiptIssueDateLabel,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.24),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.24),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer.withValues(alpha: 0.68),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.receipt_long_outlined,
+                      color: cs.primary,
+                      size: 22,
+                    ),
                   ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _pickIssueDate,
-                  icon: const Icon(Icons.event_outlined),
-                  label: Text(dateLabel),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.receiptLinesTitle,
+                          style: t.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            _ReceiptMetaChip(
+                              icon: Icons.event_outlined,
+                              label: l.receiptIssueDateLabel,
+                              value: dateLabel,
+                              onTap: _pickIssueDate,
+                            ),
+                            _ReceiptMetaChip(
+                              icon: Icons.format_list_bulleted_rounded,
+                              label: 'Lineas',
+                              value: '$activeLineCount',
+                            ),
+                            _ReceiptMetaChip(
+                              icon: Icons.payments_outlined,
+                              label: 'Total',
+                              value: currency.format(linesTotal),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton.tonalIcon(
+                    onPressed: !_isManualLinesMode
+                        ? null
+                        : () => setState(() {
+                              _lines.add(ReceiptLineDraft.empty());
+                              _markDraftDirty();
+                            }),
+                    icon: const Icon(Icons.add),
+                    label: Text(l.addLine),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 13,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l.receiptLinesTitle,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: !_isManualLinesMode
-                      ? null
-                      : () => setState(() {
-                            _lines.add(ReceiptLineDraft.empty());
-                            _markDraftDirty();
-                          }),
-                  icon: const Icon(Icons.add),
-                  label: Text(l.addLine),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
             Container(
               decoration: BoxDecoration(
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
@@ -742,119 +792,64 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                     onImportFromFile: _importLinesFromJsonFile,
                     onCopyPrompt: _copyJsonPromptTemplate,
                     onClearError: () => setState(() => _jsonImportError = null),
+                    showDefaultTaxRate: false,
+                    formatHint:
+                        'Formato: {"items": [{"quantity": 1, "description": "...", "unitPrice": 21.70}]}',
                   ),
                   const SizedBox(height: 12),
                   _buildReceiptOpenAiExtractPanel(context),
                 ],
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryStep(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final currency = NumberFormat.simpleCurrency(name: '');
-    final issueDate = _issueDate == null
-        ? '-'
-        : DateFormat.yMMMd(l.localeName).format(_issueDate!);
-    final activeLines = _lines.where((line) => line.hasAnyValue).toList();
-
-    Widget row(
-        {required String label, required String value, bool strong = false}) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: t.bodyMedium.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: strong ? FontWeight.w700 : FontWeight.w500,
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.24),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.24),
                 ),
               ),
-            ),
-            Text(
-              value,
-              style: (strong ? t.bodyLarge : t.bodyMedium)
-                  .copyWith(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Card(
-      elevation: 0,
-      color: cs.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l.receiptSummaryTitle,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.save_outlined,
+                    color: cs.primary,
+                    size: 20,
                   ),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed:
-                      _savingDraft ? null : _syncDraftForPreviewFromSummary,
-                  icon: _savingDraft
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.sync_outlined),
-                  label: Text(
-                    l.localeName.startsWith('es')
-                        ? 'Guardar para vista previa'
-                        : 'Save for preview',
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l.localeName.startsWith('es')
+                          ? 'Guarda el borrador antes de generar la vista previa.'
+                          : 'Save the draft before generating the preview.',
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            row(
-              label: l.invoiceBillToLabel,
-              value: _resolvedClientName.isEmpty ? '-' : _resolvedClientName,
-            ),
-            row(label: l.receiptIssueDateLabel, value: issueDate),
-            row(label: l.receiptLinesTitle, value: '${activeLines.length}'),
-            const Divider(height: 20),
-            row(
-              label: l.receiptSubtotalLabel,
-              value: currency.format(_subtotal),
-            ),
-            row(
-              label: l.receiptTotalLabel,
-              value: currency.format(_subtotal),
-              strong: true,
-            ),
-            if (_notesCtrl.text.trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                l.invoiceNotesLabel,
-                style: t.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurfaceVariant,
-                ),
+                  const SizedBox(width: 12),
+                  FilledButton.tonalIcon(
+                    onPressed: _savingDraft ? null : _saveDraft,
+                    icon: _savingDraft
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: Text(l.saveDraft),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: _savingDraft ? null : () => _tryGoToStep(2),
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: Text(l.preview),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(_notesCtrl.text.trim(), style: t.bodyMedium),
-            ],
+            ),
           ],
         ),
       ),
@@ -1157,8 +1152,66 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
   Widget _buildStepBody(BuildContext context) {
     if (_step == 0) return _buildClientStep(context);
     if (_step == 1) return _buildDetailsStep(context);
-    if (_step == 2) return _buildSummaryStep(context);
     return _buildPreviewStep(context);
+  }
+
+  Widget _buildExistingDraftBanner(BuildContext context) {
+    final id = _existingUnnumberedReceiptId;
+    final receipt = _existingUnnumberedReceipt;
+    if ((id == null || id.trim().isEmpty) && receipt == null) {
+      return const SizedBox.shrink();
+    }
+    if (_draftReceipt?.id == id || _draftReceipt?.id == receipt?.id) {
+      return const SizedBox.shrink();
+    }
+
+    final l = AppLocalizations.of(context)!;
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: cs.tertiaryContainer.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.tertiary.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.edit_note_outlined, color: cs.tertiary, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isEs
+                  ? 'Hay un borrador de recibo sin numerar pendiente.'
+                  : 'There is a pending unnumbered receipt draft.',
+              style: t.bodyMedium.copyWith(
+                color: cs.onTertiaryContainer,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          TextButton.icon(
+            onPressed: _checkingUnnumberedDraft
+                ? null
+                : () => _openExistingUnnumberedDraft(
+                      receiptId: id,
+                      receipt: receipt,
+                    ),
+            icon: _checkingUnnumberedDraft
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.open_in_new_outlined, size: 16),
+            label: Text(isEs ? 'Abrir' : 'Open'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildContent(BuildContext context) {
@@ -1166,6 +1219,12 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 14),
+        _buildExistingDraftBanner(context),
+        if ((_existingUnnumberedReceiptId != null ||
+                _existingUnnumberedReceipt != null) &&
+            _draftReceipt?.id != _existingUnnumberedReceiptId &&
+            _draftReceipt?.id != _existingUnnumberedReceipt?.id)
+          const SizedBox(height: 14),
         _buildStepIndicator(context),
         const SizedBox(height: 14),
         _buildStepBody(context),
@@ -1180,6 +1239,76 @@ String _wizardMonthLabel(DateTime dt, String locale) {
   final formatter = DateFormat.yMMMM(locale);
   final raw = formatter.format(dt.toLocal());
   return raw[0].toUpperCase() + raw.substring(1);
+}
+
+class _ReceiptMetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  const _ReceiptMetaChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final clickable = onTap != null;
+
+    return Material(
+      color: clickable
+          ? cs.primaryContainer.withValues(alpha: 0.42)
+          : cs.surface.withValues(alpha: 0.82),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: clickable
+                  ? cs.primary.withValues(alpha: 0.18)
+                  : cs.outlineVariant.withValues(alpha: 0.22),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: clickable ? cs.primary : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$label: ',
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                value,
+                style: t.bodySmall.copyWith(
+                  color: clickable ? cs.primary : cs.onSurface,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ClientReceiptStatsBox extends StatefulWidget {

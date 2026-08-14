@@ -84,6 +84,9 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   List<Map<String, dynamic>> _extractedDraftLines = const [];
   String? _extractMethodUsed;
   List<String> _extractDiagnostics = const [];
+  bool _checkingUnnumberedDraft = false;
+  String? _existingUnnumberedReceiptId;
+  Receipt? _existingUnnumberedReceipt;
 
   // ── Client receipt stats (right panel) ──────────────────────────────────
   int _clientIssuedCount = 0;
@@ -159,30 +162,70 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
     }
   }
 
+  void _applyReceiptDraft(Receipt receipt) {
+    _clientId = receipt.clientId.trim().isEmpty ? null : receipt.clientId;
+    _clientNameCtrl.text = receipt.clientName ?? '';
+    _useManualClient = (_clientId == null || _clientId!.trim().isEmpty) &&
+        _clientNameCtrl.text.trim().isNotEmpty;
+    _issueDate = receipt.issueDate ?? DateTime.now();
+    _draftReceipt = receipt;
+    _notesCtrl.text = receipt.notes ?? '';
+    for (final line in _lines) {
+      line.dispose();
+    }
+    _lines.clear();
+    if (receipt.lines.isEmpty) {
+      _lines.add(ReceiptLineDraft.empty());
+    } else {
+      for (final line in receipt.lines) {
+        _lines.add(ReceiptLineDraft.fromLine(line));
+      }
+    }
+    _existingUnnumberedReceiptId = null;
+    _existingUnnumberedReceipt = null;
+    _markDraftSynced();
+  }
+
+  Future<void> _checkExistingUnnumberedDraft() async {
+    if (widget.initialReceipt != null || widget.group.id.trim().isEmpty) return;
+    setState(() => _checkingUnnumberedDraft = true);
+    try {
+      final result = await _receiptsApi.lookupUnnumberedDraft(
+        groupId: widget.group.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _existingUnnumberedReceiptId =
+            result.exists ? result.existingReceiptId : null;
+        _existingUnnumberedReceipt = result.exists ? result.receipt : null;
+      });
+    } catch (_) {
+      // Non-blocking helper only; creation still handles the conflict safely.
+    } finally {
+      if (mounted) setState(() => _checkingUnnumberedDraft = false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _clientId = widget.initialClientId ?? widget.initialReceipt?.clientId;
-    _clientNameCtrl.text = widget.initialReceipt?.clientName ?? '';
-    _useManualClient = (_clientId == null || _clientId!.trim().isEmpty) &&
-        _clientNameCtrl.text.trim().isNotEmpty;
-    _issueDate = widget.initialReceipt?.issueDate ?? DateTime.now();
-    _draftReceipt = widget.initialReceipt;
-    _notesCtrl.text = widget.initialReceipt?.notes ?? '';
-
-    final initialLines = widget.initialReceipt?.lines ?? const [];
-    if (initialLines.isEmpty) {
-      _lines.add(ReceiptLineDraft.empty());
+    final initial = widget.initialReceipt;
+    if (initial != null) {
+      _applyReceiptDraft(initial);
+      _step = 1;
     } else {
-      for (final line in initialLines) {
-        _lines.add(ReceiptLineDraft.fromLine(line));
-      }
+      _clientId = widget.initialClientId;
+      _issueDate = DateTime.now();
+      _lines.add(ReceiptLineDraft.empty());
     }
 
     if (_clientId != null) {
       WidgetsBinding.instance
           .addPostFrameCallback((_) => _loadClientReceiptStats(_clientId));
     }
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _checkExistingUnnumberedDraft(),
+    );
   }
 
   @override

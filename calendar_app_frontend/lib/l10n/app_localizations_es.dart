@@ -3115,6 +3115,18 @@ class AppLocalizationsEs extends AppLocalizations {
       'Usa tres dígitos (ej. 001). El año se fija al AA actual.';
 
   @override
+  String get bulkDownloadInvoiceNumberRequired =>
+      'Introduce al menos un numero de factura.';
+
+  @override
+  String get bulkDownloadInvoiceNumberInvalidFormat =>
+      'Usa solo letras, numeros, guion, barra, guion bajo o punto.';
+
+  @override
+  String get bulkDownloadInvoiceNumberRangeInvalid =>
+      'El numero de factura inicial debe ser menor o igual que el final.';
+
+  @override
   String get invoiceClientLabel => 'Cliente';
 
   @override

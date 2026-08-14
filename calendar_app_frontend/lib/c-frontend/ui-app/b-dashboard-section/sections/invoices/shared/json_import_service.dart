@@ -34,7 +34,8 @@ class JsonImportService {
 
     addAttempt(normalizeBasic(raw));
     addAttempt(_stripMarkdownCodeFences(normalizeBasic(raw)));
-    addAttempt(_escapeLikelyInnerQuotes(_stripMarkdownCodeFences(normalizeBasic(raw))));
+    addAttempt(_escapeLikelyInnerQuotes(
+        _stripMarkdownCodeFences(normalizeBasic(raw))));
 
     for (final base in List<String>.from(attempts)) {
       final trimmedNoise = _trimWrapperNoise(base);
@@ -173,7 +174,9 @@ class JsonImportService {
         case JsonImportEntityType.receipt:
           return 'Only draft receipts can be updated via JSON import';
         case JsonImportEntityType.presupuesto:
-          return 'Only draft presupuestos can be updated via JSON import';
+          return backend.isEmpty
+              ? l.invoiceLinesJsonImportGenericError
+              : backend;
         case JsonImportEntityType.invoice:
           return backend.isEmpty ? 'Line position already exists' : backend;
       }
@@ -190,7 +193,7 @@ class JsonImportService {
         case JsonImportEntityType.invoice:
           return {'draftLines': decoded};
         case JsonImportEntityType.receipt:
-          return {'lines': decoded};
+          return {'lines': _normalizeReceiptLines(decoded)};
         case JsonImportEntityType.presupuesto:
           return {'lines': decoded};
       }
@@ -208,10 +211,16 @@ class JsonImportService {
           return map;
         case JsonImportEntityType.receipt:
           if (map['lines'] is List) {
-            return {'lines': map['lines']};
+            return {'lines': _normalizeReceiptLines(map['lines'] as List)};
+          }
+          if (map['items'] is List) {
+            return {'lines': _normalizeReceiptLines(map['items'] as List)};
+          }
+          if (map['concepts'] is List) {
+            return {'lines': _normalizeReceiptLines(map['concepts'] as List)};
           }
           if (map['draftLines'] is List) {
-            return {'draftLines': map['draftLines']};
+            return {'lines': _normalizeReceiptLines(map['draftLines'] as List)};
           }
           return map;
         case JsonImportEntityType.presupuesto:
@@ -228,6 +237,19 @@ class JsonImportService {
       }
     }
     return <String, dynamic>{};
+  }
+
+  static List<dynamic> _normalizeReceiptLines(List<dynamic> lines) {
+    return lines.map((line) {
+      if (line is! Map) return line;
+      final map = Map<String, dynamic>.from(line);
+      final unit = map['unit']?.toString().trim();
+      map['unit'] = unit == null || unit.isEmpty ? 'unit' : unit;
+      if (map['lineTotal'] == null && map['total'] != null) {
+        map['lineTotal'] = map['total'];
+      }
+      return map;
+    }).toList(growable: false);
   }
 
   static dynamic _tryDecode(String raw) {

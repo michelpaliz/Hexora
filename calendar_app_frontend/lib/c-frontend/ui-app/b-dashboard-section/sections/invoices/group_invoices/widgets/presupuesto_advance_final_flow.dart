@@ -25,6 +25,7 @@ class PresupuestoFlowValidationResult {
 class PresupuestoInvoiceActionState {
   final bool canCreateAdvance;
   final bool canCreateFinal;
+  final bool canCreateFullFinal;
   final bool hasAdvance;
   final bool hasFinal;
   final String status;
@@ -32,6 +33,7 @@ class PresupuestoInvoiceActionState {
   const PresupuestoInvoiceActionState({
     required this.canCreateAdvance,
     required this.canCreateFinal,
+    required this.canCreateFullFinal,
     required this.hasAdvance,
     required this.hasFinal,
     required this.status,
@@ -192,10 +194,15 @@ PresupuestoInvoiceActionState resolvePresupuestoInvoiceActionState(
           .toString()
           .trim()
           .isNotEmpty;
+  final convertedFinalInvoiceId =
+      (presupuesto['convertedFinalInvoiceId'] ?? '').toString().trim();
+  final isIssued = status == 'issued';
 
   return PresupuestoInvoiceActionState(
     canCreateAdvance: eligible && !hasAdvance,
-    canCreateFinal: eligible && !hasFinal,
+    canCreateFinal: eligible && hasAdvance && !hasFinal,
+    canCreateFullFinal:
+        isIssued && !hasAdvance && !hasFinal && convertedFinalInvoiceId.isEmpty,
     hasAdvance: hasAdvance,
     hasFinal: hasFinal,
     status: status,

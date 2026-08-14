@@ -43,6 +43,19 @@ class _EditTimeEntrySheetState extends State<EditTimeEntrySheet> {
     super.dispose();
   }
 
+  DateTime _endOnStartDate(DateTime start) {
+    final syncedEnd = DateTime(
+      start.year,
+      start.month,
+      start.day,
+      _end.hour,
+      _end.minute,
+    );
+    return syncedEnd.isBefore(start)
+        ? start.add(const Duration(hours: 1))
+        : syncedEnd;
+  }
+
   Future<void> _pickDateTime(bool isStart) async {
     final l = AppLocalizations.of(context)!;
     final initial = isStart ? _start : _end;
@@ -54,6 +67,7 @@ class _EditTimeEntrySheetState extends State<EditTimeEntrySheet> {
       lastDate: DateTime(2100),
     );
     if (pickedDate == null) return;
+    if (!mounted) return;
 
     final pickedTime = await showTimePicker(
       context: context,
@@ -74,7 +88,7 @@ class _EditTimeEntrySheetState extends State<EditTimeEntrySheet> {
     setState(() {
       if (isStart) {
         _start = localDateTime;
-        if (_end.isBefore(_start)) _end = _start.add(const Duration(hours: 1));
+        _end = _endOnStartDate(_start);
       } else {
         _end = localDateTime;
       }

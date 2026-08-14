@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -174,9 +173,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   List<Map<String, dynamic>> _extractedBlocks = const [];
   String? _extractMethodUsed;
   List<String> _extractDiagnostics = const [];
-  Timer? _budgetAutoSaveTimer;
-  bool _budgetAutoSaving = false;
-  bool _budgetAutoSaveFailed = false;
 
   bool get _isPhotoLinesMode => _linesInputTabIndex == 1;
   bool get _isJsonLinesMode => _linesInputTabIndex == 2;
@@ -355,20 +351,25 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     };
   }
 
+  // ignore: unused_element
   String get _createAdvanceInvoiceLabel =>
       _isSpanishLocale ? 'Crear factura de anticipo' : 'Create advance invoice';
 
+  // ignore: unused_element
   String get _createFinalInvoiceLabel =>
       _isSpanishLocale ? 'Crear factura final' : 'Create final invoice';
 
+  // ignore: unused_element
   String get _advanceInvoiceExistsLabel => _isSpanishLocale
       ? 'Ya existe una factura de anticipo.'
       : 'Advance invoice already exists.';
 
+  // ignore: unused_element
   String get _finalInvoiceExistsLabel => _isSpanishLocale
       ? 'Ya existe una factura final.'
       : 'Final invoice already exists.';
 
+  // ignore: unused_element
   String get _budgetMustBeIssuedLabel => _isSpanishLocale
       ? 'El presupuesto debe estar emitido.'
       : 'Presupuesto must be issued.';
@@ -399,10 +400,13 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     }
     setState(() => _loadingClientBudgetStats = true);
     try {
-      final all = await _presupuestosApi.listByGroup(
+      final all = (await _presupuestosApi.listByGroup(
         groupId: widget.groupId.trim(),
         clientId: clientId.trim(),
-      );
+        limit: 500,
+      ))
+          .where((item) => item['hasDocumentContent'] != true)
+          .toList(growable: false);
       final now = DateTime.now();
       DateTime? _budgetDate(Map<String, dynamic> b) {
         final v = b['registeredAt'] ?? b['issueDate'] ?? b['createdAt'];
@@ -542,7 +546,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   void _setVisibleStep(int value) {
-    if (_visibleStep == 4 && value != 4) {
+    if (_visibleStep == 3 && value != 3) {
       _releaseCreatePreviewSurface();
     }
     _visibleStep = value;
@@ -560,7 +564,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   Future<void> _requestExitBudgetEditor() async {
-    if (!_editableBudgetDirty || _issuing || _budgetAutoSaving) {
+    if (!_editableBudgetDirty || _issuing) {
       widget.onExitEditor?.call();
       return;
     }
@@ -601,33 +605,23 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
 
   Widget _budgetDraftStatusChip(ColorScheme cs, AppTypography t) {
     final hasSavedDraft = (_draftId ?? '').trim().isNotEmpty;
-    final text = _budgetAutoSaveFailed
-        ? (_isSpanishLocale
-            ? 'No se pudo guardar. Reintentando...'
-            : 'Save failed. Retrying...')
-        : _budgetAutoSaving
-            ? (_isSpanishLocale ? 'Guardando...' : 'Saving...')
-            : _editableBudgetDirty
-                ? (_isSpanishLocale ? 'Cambios pendientes' : 'Pending changes')
-                : hasSavedDraft
-                    ? (_isSpanishLocale ? 'Borrador guardado' : 'Draft saved')
-                    : (_isSpanishLocale
-                        ? 'Auto-guardado activo'
-                        : 'Auto-save on');
-    final icon = _budgetAutoSaveFailed
-        ? Icons.cloud_off_outlined
-        : _budgetAutoSaving
-            ? Icons.sync_rounded
-            : _editableBudgetDirty
-                ? Icons.edit_note_rounded
-                : hasSavedDraft
-                    ? Icons.cloud_done_outlined
-                    : Icons.cloud_queue_outlined;
-    final color = _budgetAutoSaveFailed
-        ? cs.error
-        : _budgetAutoSaving || _editableBudgetDirty
-            ? cs.tertiary
-            : cs.primary;
+    final text = _issuing
+        ? (_isSpanishLocale ? 'Guardando...' : 'Saving...')
+        : _editableBudgetDirty
+            ? (_isSpanishLocale ? 'Cambios sin guardar' : 'Unsaved changes')
+            : hasSavedDraft
+                ? (_isSpanishLocale ? 'Borrador guardado' : 'Draft saved')
+                : (_isSpanishLocale
+                    ? 'Pulsa guardar para crear borrador'
+                    : 'Press save to create draft');
+    final icon = _issuing
+        ? Icons.sync_rounded
+        : _editableBudgetDirty
+            ? Icons.edit_note_rounded
+            : hasSavedDraft
+                ? Icons.cloud_done_outlined
+                : Icons.save_outlined;
+    final color = _issuing || _editableBudgetDirty ? cs.tertiary : cs.primary;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -714,7 +708,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
 
   @override
   void dispose() {
-    _budgetAutoSaveTimer?.cancel();
     _releaseCreatePreviewSurface();
     _releaseDetailPreviewSurface();
     _clientNameCtrl.dispose();
@@ -754,9 +747,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       ? 0
       : !_hasLineContent
           ? 2
-          : !_confirmPreview
-              ? 3
-              : 4;
+          : 3;
 
   @override
   Widget build(BuildContext context) {
@@ -772,7 +763,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         ? selectedClient!.name.trim()
         : _clientNameCtrl.text.trim();
     if (_visibleStep > _maxAllowedStep) {
-      if (_visibleStep == 4) {
+      if (_visibleStep == 3) {
         _releaseCreatePreviewSurface();
       }
       _visibleStep = _maxAllowedStep;
@@ -805,20 +796,11 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             : (_visibleStep == 2 ? StepState.editing : StepState.indexed),
       ),
       Step(
-        title: Text(l.budgetStepConfirm),
-        subtitle: const SizedBox.shrink(),
-        content: const SizedBox.shrink(),
-        isActive: _visibleStep == 3,
-        state: _visibleStep > 3
-            ? StepState.complete
-            : (_visibleStep == 3 ? StepState.editing : StepState.indexed),
-      ),
-      Step(
         title: Text(l.budgetStepPreview),
         subtitle: const SizedBox.shrink(),
         content: const SizedBox.shrink(),
-        isActive: _visibleStep == 4,
-        state: _visibleStep == 4 ? StepState.editing : StepState.indexed,
+        isActive: _visibleStep == 3,
+        state: _visibleStep == 3 ? StepState.editing : StepState.indexed,
       ),
     ];
 
@@ -917,7 +899,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                       setState(() {
                                         _setVisibleStep(target);
                                       });
-                                      if (target == 4) {
+                                      if (target == 3) {
                                         _createDraftAndPreparePreview();
                                       }
                                     }
@@ -995,28 +977,21 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                           child: Text(l.budgetBackCta),
                         ),
                       const Spacer(),
-                      if (_visibleStep < 4)
+                      if (_visibleStep < 3)
                         FilledButton(
-                          onPressed: (!_issuing &&
-                                  !(_visibleStep == 3 && !_confirmPreview))
+                          onPressed: !_issuing
                               ? () async {
                                   if (!_validateCurrentStep()) return;
                                   final target = _visibleStep + 1;
                                   setState(() {
                                     _setVisibleStep(target);
                                   });
-                                  if (target == 4) {
+                                  if (target == 3) {
                                     await _createDraftAndPreparePreview();
                                   }
                                 }
                               : null,
-                          child: Text(
-                            _visibleStep == 3 && !_confirmPreview
-                                ? (_isSpanishLocale
-                                    ? 'Confirma para continuar'
-                                    : 'Confirm to continue')
-                                : l.budgetNextCta,
-                          ),
+                          child: Text(l.budgetNextCta),
                         )
                       else ...[
                         if (_isEditingBudget &&
@@ -1121,6 +1096,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     return int.tryParse(raw?.toString() ?? '') ?? 1;
   }
 
+  // ignore: unused_element
   bool _hasBudgetChangeHistory(Map<String, dynamic> item) {
     if (_budgetVersion(item) > 1) return true;
     final snapshots = item['snapshots'];
@@ -1371,10 +1347,13 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         groupId: widget.groupId,
         sortBy: qp.sortBy,
         sortDir: qp.sortDir,
+        limit: 500,
       );
       if (!mounted) return;
       setState(() {
-        _budgets = list;
+        _budgets = list
+            .where((item) => item['hasDocumentContent'] != true)
+            .toList(growable: false);
         final selected = (_selectedBudgetId ?? '').trim();
         final preferred = (widget.initialSelectedBudgetId ?? '').trim();
         if (selected.isEmpty ||
@@ -1586,6 +1565,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     );
   }
 
+  // ignore: unused_element
   Future<void> _createAdvanceInvoiceAutomatically(
     Map<String, dynamic> budget,
   ) async {
@@ -1870,6 +1850,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     return extractAdvanceInvoiceCandidatesFromPresupuesto(detail);
   }
 
+  // ignore: unused_element
   Future<void> _openCreateFinalInvoiceDialog(
     Map<String, dynamic> budget,
   ) async {
@@ -2138,8 +2119,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     final drafts = _budgets.where(_isDraftBudget).toList(growable: false);
-    final allBudgets = List<Map<String, dynamic>>.unmodifiable(_budgets);
-    final activeList = _budgetsTabIndex == 0 ? drafts : allBudgets;
+    final issuedBudgets =
+        _budgets.where((item) => !_isDraftBudget(item)).toList(growable: false);
+    final activeList = _budgetsTabIndex == 0 ? drafts : issuedBudgets;
     final sortState = _effectiveBudgetSortState;
     final sortByDate = sortState.by == BudgetSortBy.date;
     final sortByNumber = sortState.by == BudgetSortBy.number;
@@ -2168,12 +2150,78 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       final missingClientFields = _missingClientBillingFieldsForBudget(item);
       final canIssueBudget = isDraft && missingClientFields.isEmpty;
       final isDeleting = _deletingBudgetIds.contains(id);
-      final isConverted = _isConvertedToInvoice(item);
-      final actionState = _invoiceActionState(item);
-      final creatingAdvance = _creatingAdvanceInvoiceBudgetIds.contains(id);
-      final creatingFinal = _creatingFinalInvoiceBudgetIds.contains(id);
-      final hasChangeHistory = _hasBudgetChangeHistory(item);
-      final statusColor = isDraft ? cs.onSurfaceVariant : cs.tertiary;
+      final issueTooltip = !isDraft
+          ? (_isSpanishLocale ? 'Presupuesto emitido' : 'Budget already issued')
+          : missingClientFields.isNotEmpty
+              ? 'Completa datos del cliente antes de emitir: ${missingClientFields.join(', ')}'
+              : 'Emitir';
+
+      Widget busySpinner(Color color) => SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: color,
+            ),
+          );
+
+      Widget budgetActionButton({
+        required String tooltip,
+        required IconData icon,
+        required VoidCallback? onPressed,
+        required Color color,
+        Widget? busyIcon,
+      }) {
+        final enabled = onPressed != null;
+        var hovered = false;
+        return StatefulBuilder(
+          builder: (context, setHoverState) {
+            return Tooltip(
+              message: tooltip,
+              child: MouseRegion(
+                cursor: enabled
+                    ? SystemMouseCursors.click
+                    : SystemMouseCursors.basic,
+                onEnter: (_) => setHoverState(() => hovered = true),
+                onExit: (_) => setHoverState(() => hovered = false),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(7),
+                  onTap: onPressed,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 110),
+                    curve: Curves.easeOut,
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: enabled
+                          ? color.withValues(alpha: hovered ? 0.16 : 0.07)
+                          : cs.surfaceContainerHighest.withValues(alpha: 0.24),
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(
+                        color: enabled && hovered
+                            ? color.withValues(alpha: 0.30)
+                            : enabled
+                                ? Colors.transparent
+                                : cs.outlineVariant.withValues(alpha: 0.20),
+                      ),
+                    ),
+                    child: Center(
+                      child: busyIcon ??
+                          Icon(
+                            icon,
+                            size: 14,
+                            color: enabled
+                                ? color.withValues(alpha: hovered ? 1.0 : 0.75)
+                                : cs.onSurfaceVariant.withValues(alpha: 0.42),
+                          ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }
 
       return InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -2258,7 +2306,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                 ),
               ),
               const SizedBox(width: 8),
-              // ── Actions + status + total (single row) ──
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
@@ -2272,161 +2319,52 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Publish (draft only)
-                    if (isDraft)
-                      IconButton(
-                        tooltip: 'Emitir',
-                        onPressed: (isIssuing || !canIssueBudget)
-                            ? null
-                            : () => _issueBudgetFromList(item),
-                        icon: isIssuing
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.publish_outlined, size: 16),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    // Missing billing warning
-                    if (isDraft && missingClientFields.isNotEmpty)
-                      Tooltip(
-                        message:
-                            'Completa datos del cliente antes de emitir: ${missingClientFields.join(', ')}',
-                        child: Icon(
-                          Icons.warning_amber_rounded,
-                          size: 16,
-                          color: cs.error,
-                        ),
-                      ),
-                    // Preview
-                    IconButton(
-                      tooltip: l.budgetPreviewOpenCta,
-                      onPressed: () => _loadDetailPreviewPdf(id),
-                      icon: const Icon(Icons.visibility_outlined, size: 16),
-                      visualDensity: VisualDensity.compact,
+                    budgetActionButton(
+                      tooltip: issueTooltip,
+                      icon: Icons.publish_outlined,
+                      onPressed: (canIssueBudget && !isIssuing)
+                          ? () => _issueBudgetFromList(item)
+                          : null,
+                      color: cs.tertiary,
+                      busyIcon: isIssuing ? busySpinner(cs.tertiary) : null,
                     ),
-                    // Download
-                    IconButton(
+                    const SizedBox(width: 6),
+                    budgetActionButton(
                       tooltip: l.download,
+                      icon: Icons.download_rounded,
                       onPressed: () => _downloadBudgetPdf(item),
-                      icon: const Icon(Icons.download_outlined, size: 16),
-                      visualDensity: VisualDensity.compact,
+                      color: cs.onSurfaceVariant,
                     ),
-                    IconButton(
-                      tooltip: _isSpanishLocale ? 'Historial' : 'History',
-                      onPressed: () => _showBudgetHistoryDialog(item),
-                      icon: const Icon(Icons.history_rounded, size: 16),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    if (hasChangeHistory)
-                      IconButton(
-                        tooltip:
-                            _isSpanishLocale ? 'Ver cambios' : 'View changes',
-                        onPressed: () => _showBudgetHistoryDialog(item),
-                        icon: Icon(
-                          Icons.difference_outlined,
-                          size: 16,
-                          color: cs.secondary,
-                        ),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    // Create advance invoice
-                    IconButton(
-                      tooltip: actionState.canCreateAdvance
-                          ? _createAdvanceInvoiceLabel
-                          : (actionState.hasAdvance
-                              ? _advanceInvoiceExistsLabel
-                              : _budgetMustBeIssuedLabel),
-                      onPressed:
-                          (creatingAdvance || !actionState.canCreateAdvance)
-                              ? null
-                              : () => _createAdvanceInvoiceAutomatically(item),
-                      icon: creatingAdvance
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.request_quote_outlined, size: 16),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    // Create final invoice
-                    IconButton(
-                      tooltip: actionState.canCreateFinal
-                          ? _createFinalInvoiceLabel
-                          : (actionState.hasFinal
-                              ? _finalInvoiceExistsLabel
-                              : _budgetMustBeIssuedLabel),
-                      onPressed: (creatingFinal || !actionState.canCreateFinal)
-                          ? null
-                          : () => _openCreateFinalInvoiceDialog(item),
-                      icon: creatingFinal
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.receipt_long_outlined, size: 16),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    IconButton(
+                    const SizedBox(width: 6),
+                    budgetActionButton(
                       tooltip: _isSpanishLocale
                           ? 'Editar presupuesto'
                           : 'Edit presupuesto',
                       onPressed: widget.onEditDraftBudget == null
                           ? null
                           : () => widget.onEditDraftBudget!.call(id),
-                      icon: const Icon(Icons.edit_outlined, size: 16),
-                      visualDensity: VisualDensity.compact,
+                      icon: Icons.edit_outlined,
+                      color: cs.primary,
                     ),
-                    // Delete (draft only)
-                    if (isDraft)
-                      IconButton(
+                    if (isDraft) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 1,
+                        height: 14,
+                        color: cs.outlineVariant.withValues(alpha: 0.4),
+                      ),
+                      const SizedBox(width: 6),
+                      budgetActionButton(
                         tooltip: l.delete,
-                        onPressed: (isDeleting || isIssuing)
-                            ? null
-                            : () => _deleteDraftBudget(item),
-                        icon: isDeleting
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.delete_outline, size: 16),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    // Separator
-                    const SizedBox(width: 4),
-                    // Status icon
-                    Tooltip(
-                      message: isDraft ? l.statusDraft : l.statusIssued,
-                      child: Icon(
-                        isDraft
-                            ? Icons.circle_outlined
-                            : Icons.check_circle_outline_rounded,
-                        size: 16,
-                        color: isDraft
-                            ? statusColor.withValues(alpha: 0.5)
-                            : statusColor,
-                      ),
-                    ),
-                    // "Converted to invoice" icon
-                    if (isConverted) ...[
-                      const SizedBox(width: 4),
-                      Tooltip(
-                        message: 'Convertido a factura',
-                        child: Icon(
-                          Icons.swap_horiz_rounded,
-                          size: 16,
-                          color: cs.primary,
-                        ),
+                        onPressed: (!isDeleting && !isIssuing)
+                            ? () => _deleteDraftBudget(item)
+                            : null,
+                        icon: Icons.delete_outline_rounded,
+                        color: cs.error,
+                        busyIcon: isDeleting ? busySpinner(cs.error) : null,
                       ),
                     ],
-                    const SizedBox(width: 8),
-                    // Total
+                    const SizedBox(width: 10),
                     Text(
                       totalLabel,
                       style: t.bodySmall?.copyWith(
@@ -2655,7 +2593,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                         ),
                                         child: Center(
                                           child: Text(
-                                            'Presupuestos (${allBudgets.length})',
+                                            'Presupuestos (${issuedBudgets.length})',
                                             style: t.bodySmall?.copyWith(
                                               fontWeight: FontWeight.w800,
                                               color: _budgetsTabIndex == 1
@@ -3019,8 +2957,81 @@ class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
 
   String _displayValue(Object? value) {
     final text = value?.toString().trim() ?? '';
-    if (text.isEmpty || text == 'null') return 'Sin datos';
+    if (text.isEmpty || text == 'null') {
+      return widget.isSpanish ? 'No establecido' : 'Not set';
+    }
     return text;
+  }
+
+  String _userLabel(Map<String, dynamic> item) {
+    final user = item['user'];
+    if (user is Map) {
+      final name = user['name']?.toString().trim() ?? '';
+      if (name.isNotEmpty) return name;
+    }
+    final userName = item['userName']?.toString().trim() ?? '';
+    if (userName.isNotEmpty) return userName;
+    return widget.isSpanish ? 'Usuario desconocido' : 'Unknown user';
+  }
+
+  String _versionTransition(Map<String, dynamic> item) {
+    final from = item['fromVersion'] ?? item['previousVersion'];
+    final to = item['toVersion'] ?? item['version'];
+    return '${_displayValue(from)} -> ${_displayValue(to)}';
+  }
+
+  String _formatHistoryChangeValue(String field, Object? value) {
+    if (value == null || value.toString().trim() == 'null') {
+      return widget.isSpanish ? 'No establecido' : 'Not set';
+    }
+    if (field == 'issueDate' || field.endsWith('.issueDate')) {
+      final parsed = DateTime.tryParse(value.toString());
+      if (parsed != null) {
+        return DateFormat.yMMMd(widget.localeName).format(parsed.toLocal());
+      }
+    }
+    if (field == 'totals' || field.startsWith('totals.')) {
+      if (value is num) {
+        return NumberFormat.currency(locale: widget.localeName, symbol: '€')
+            .format(value);
+      }
+    }
+    if (field == 'blocks') {
+      if (value is List) {
+        return widget.isSpanish
+            ? '${value.length} lineas'
+            : '${value.length} lines';
+      }
+      return widget.isSpanish ? 'Lineas modificadas' : 'Lines changed';
+    }
+    if (value is Map || value is List) {
+      return const JsonEncoder.withIndent('  ').convert(value);
+    }
+    final text = value.toString().trim();
+    return text.isEmpty
+        ? (widget.isSpanish ? 'No establecido' : 'Not set')
+        : text;
+  }
+
+  List<String> _changeSummaryRows(Object? changes) {
+    if (changes is! List) return const <String>[];
+    return changes
+        .whereType<Map>()
+        .map((raw) {
+          final item = Map<String, dynamic>.from(raw);
+          final field = (item['field'] ?? item['path'] ?? '').toString();
+          final label = _friendlyField(field);
+          if (field == 'blocks') {
+            return widget.isSpanish
+                ? '$label: lineas agregadas, eliminadas o modificadas'
+                : '$label: lines added, removed, or modified';
+          }
+          final oldValue = _formatHistoryChangeValue(field, item['oldValue']);
+          final newValue = _formatHistoryChangeValue(field, item['newValue']);
+          return '$label: $oldValue -> $newValue';
+        })
+        .where((line) => line.trim().isNotEmpty)
+        .toList(growable: false);
   }
 
   void _selectSnapshot(Map<String, dynamic> item) {
@@ -3188,6 +3199,10 @@ class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
                                     _changedBlockReferences(item['changes']);
                                 final reason =
                                     item['reason']?.toString().trim() ?? '';
+                                final userLabel = _userLabel(item);
+                                final transition = _versionTransition(item);
+                                final summaries =
+                                    _changeSummaryRows(item['changes']);
                                 return InkWell(
                                   borderRadius: BorderRadius.circular(10),
                                   onTap: () => _selectSnapshot(item),
@@ -3231,7 +3246,7 @@ class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
                                                     BorderRadius.circular(6),
                                               ),
                                               child: Text(
-                                                'v${item['version'] ?? '-'}',
+                                                transition,
                                                 style: t.caption.copyWith(
                                                   fontWeight: FontWeight.w900,
                                                   color: selected
@@ -3285,6 +3300,33 @@ class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
                                             ],
                                           ],
                                         ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          userLabel,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: t.caption.copyWith(
+                                            color: cs.onSurfaceVariant,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        if (summaries.isNotEmpty) ...[
+                                          const SizedBox(height: 3),
+                                          for (final summary
+                                              in summaries.take(2))
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.only(top: 2),
+                                              child: Text(
+                                                summary,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: t.caption.copyWith(
+                                                  color: cs.onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                         if (reason.isNotEmpty) ...[
                                           const SizedBox(height: 2),
                                           Row(
@@ -4267,6 +4309,17 @@ class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
           _historyChangedFields(context, changedFields),
           if (rows.isNotEmpty) ...[
             const SizedBox(height: 8),
+            for (final summary in _changeSummaryRows(rows))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  summary,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(

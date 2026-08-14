@@ -24,8 +24,10 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/c-frontend/ui-app/shared/widgets/client_search_select.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 part 'compose/mail_compose_utils.dart';
@@ -92,7 +94,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   bool _invoiceExpanded = false;
   bool _openingInvoicePicker = false;
   bool _loadingRecipientClients = false;
-  bool _useClientMode = false; // true = pick from client list, false = type email directly
+  bool _useClientMode =
+      false; // true = pick from client list, false = type email directly
+  bool _loadingRecentInvoices = false;
   bool _inlineInvoiceLoading = false;
   String? _inlineInvoiceError;
   String? _inlineClientId;
@@ -346,14 +350,10 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         .where((id) => id.isNotEmpty)
         .toSet()
         .toList(growable: false);
-    final hasDocumentIds =
-        invoiceIds.isNotEmpty || presupuestoIds.isNotEmpty || receiptIds.isNotEmpty;
-    final hasManualPdfAttachment = _attachments.any((a) {
-      final contentType = (a.contentType ?? '').toLowerCase().trim();
-      if (contentType.contains('pdf')) return true;
-      final filename = (a.filename ?? '').toLowerCase().trim();
-      return filename.endsWith('.pdf');
-    });
+    final hasDocumentIds = invoiceIds.isNotEmpty ||
+        presupuestoIds.isNotEmpty ||
+        receiptIds.isNotEmpty;
+    final hasManualPdfAttachment = _manualPdfAttachmentCount > 0;
     if (_useClientMode && !hasDocumentIds && !hasManualPdfAttachment) {
       final msg = l.localeName.toLowerCase().startsWith('es')
           ? 'Adjunta al menos un PDF (factura, presupuesto, recibo o archivo) para enviar desde cliente.'
@@ -429,6 +429,14 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     }
   }
 
+  http.Client? _mailHttpClient() {
+    try {
+      return context.read<http.Client>();
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _resetForm() {
     _toCtrl.clear();
     _ccCtrl.clear();
@@ -468,36 +476,102 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     );
   }
 
+  bool _isManualPdfAttachment(MailOutgoingAttachment attachment) {
+    final contentType = (attachment.contentType ?? '').toLowerCase().trim();
+    if (contentType.contains('pdf')) return true;
+    final filename = (attachment.filename ?? '').toLowerCase().trim();
+    return filename.endsWith('.pdf');
+  }
+
+  List<MailOutgoingAttachment> get _manualPdfAttachments =>
+      _attachments.where(_isManualPdfAttachment).toList(growable: false);
+
+  int get _manualPdfAttachmentCount => _manualPdfAttachments.length;
+
+  String _manualPdfAttachmentName(MailOutgoingAttachment attachment) {
+    final filename = (attachment.filename ?? '').trim();
+    if (filename.isNotEmpty) return filename;
+    final storageKey = (attachment.storageKey ?? '').trim();
+    return storageKey.isNotEmpty ? storageKey : 'PDF';
+  }
+
+  String _manualPdfAttachmentNamesSummary({int maxNames = 2}) {
+    final names = _manualPdfAttachments
+        .map(_manualPdfAttachmentName)
+        .where((name) => name.trim().isNotEmpty)
+        .toList(growable: false);
+    if (names.isEmpty) return '';
+    final visible = names.take(maxNames).join(', ');
+    final hidden = names.length - maxNames;
+    return hidden > 0 ? '$visible +$hidden' : visible;
+  }
+
+  bool get _isSpanishLocale => Localizations.localeOf(context)
+      .languageCode
+      .toLowerCase()
+      .startsWith('es');
+
   // ── Template loading & application ────────────────────────────────────────
 
-  Future<void> _loadComposeTemplates() async {
+  Future<bool> _loadComposeTemplates() async {
+    final l = AppLocalizations.of(context)!;
     final groupId = _currentGroupId();
-    if (groupId == null || groupId.isEmpty) return;
-    setState(() => _composeTemplatesLoading = true);
+    if (groupId == null || groupId.isEmpty) {
+      _showError(l.notAuthenticatedOrUserMissing);
+      return false;
+    }
+    setState(() {
+      _composeTemplatesLoading = true;
+    });
     try {
       final base = ApiConstants.baseUrl.endsWith('/api')
           ? ApiConstants.baseUrl
           : '${ApiConstants.baseUrl}/api';
       final uri = Uri.parse('$base/mail/templates')
           .replace(queryParameters: {'groupId': groupId});
-      final r = await AuthenticatedHttpClient.get(uri);
-      if (!mounted) return;
-      if (r.statusCode >= 200 && r.statusCode < 300) {
-        final decoded = jsonDecode(r.body);
-        final raw = decoded is List
-            ? decoded
-            : (decoded['items'] ?? decoded['data'] ?? const []);
-        setState(() {
-          _composeTemplates = raw is List
-              ? raw
-                  .whereType<Map>()
-                  .map((e) => e.cast<String, dynamic>())
-                  .toList(growable: false)
-              : const [];
-        });
+      final r = await AuthenticatedHttpClient.get(
+        uri,
+        client: _mailHttpClient(),
+      );
+      if (!mounted) return false;
+      if (r.statusCode < 200 || r.statusCode >= 300) {
+        throw Exception(
+          r.body.trim().isNotEmpty ? r.body.trim() : r.reasonPhrase,
+        );
       }
-    } catch (_) {
-      // Templates are optional — silently ignore load failures.
+
+      final decoded = jsonDecode(r.body);
+      final dynamic raw = decoded is List
+          ? decoded
+          : decoded is Map
+              ? decoded['items'] ??
+                  decoded['data'] ??
+                  decoded['templates'] ??
+                  const <dynamic>[]
+              : null;
+      if (raw is! List) {
+        throw const FormatException('Unexpected templates response');
+      }
+
+      final templates = raw
+          .whereType<Map>()
+          .map((item) => item.cast<String, dynamic>())
+          .toList(growable: false);
+      setState(() {
+        _composeTemplates = templates;
+      });
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      final detail = e.toString().replaceFirst('Exception: ', '').trim();
+      final message = _isSpanishLocale
+          ? 'No se pudieron cargar las plantillas${detail.isEmpty ? '.' : ': $detail'}'
+          : 'Could not load templates${detail.isEmpty ? '.' : ': $detail'}';
+      setState(() {
+        _composeTemplates = const [];
+      });
+      _showError(message);
+      return false;
     } finally {
       if (mounted) setState(() => _composeTemplatesLoading = false);
     }
@@ -528,11 +602,14 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   Future<void> _showTemplatePicker() async {
     if (_composeTemplatesLoading) return;
     if (_composeTemplates.isEmpty) {
-      await _loadComposeTemplates();
+      final loaded = await _loadComposeTemplates();
       if (!mounted) return;
+      if (!loaded) return;
     }
     if (_composeTemplates.isEmpty) {
-      _showError('No hay plantillas disponibles. Crea una en la sección Templates.');
+      _showError(_isSpanishLocale
+          ? 'No hay plantillas disponibles. Crea una en la sección Templates.'
+          : 'No templates are available. Create one in the Templates section.');
       return;
     }
     final hasSelected = _selectedComposeTemplateId != null;
@@ -600,6 +677,46 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
   }
 
+  String _clientPrimaryEmail(GroupClient client) {
+    final billingEmail = (client.billing?.email ?? '').trim();
+    if (_isValidEmail(billingEmail)) return billingEmail;
+    final email = (client.email ?? '').trim();
+    return _isValidEmail(email) ? email : '';
+  }
+
+  DateTime _invoiceDisplayDate(Invoice invoice) {
+    return (invoice.issueDate ??
+            invoice.issuedAtResolved ??
+            invoice.registeredAt ??
+            DateTime.fromMillisecondsSinceEpoch(0))
+        .toLocal();
+  }
+
+  bool _isToday(DateTime value) {
+    final local = value.toLocal();
+    final now = DateTime.now();
+    return local.year == now.year &&
+        local.month == now.month &&
+        local.day == now.day;
+  }
+
+  String _formatInvoiceDate(DateTime value) {
+    final local = value.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/'
+        '${local.year.toString().padLeft(4, '0')}';
+  }
+
+  String _formatInvoiceTotal(Invoice invoice) {
+    final formatted = (invoice.totalFormatted ?? '').trim();
+    if (formatted.isNotEmpty) return formatted;
+    final total = invoice.total;
+    if (total == null) return '-';
+    final amount = total.toStringAsFixed(2);
+    final currency = (invoice.currency ?? 'EUR').trim();
+    return currency.isEmpty ? amount : '$amount $currency';
+  }
+
   Future<void> _loadRecipientClientsIfNeeded() async {
     if (_loadingRecipientClients || _pickerClients.isNotEmpty) return;
     final groupId = _currentGroupId();
@@ -611,10 +728,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     try {
       final clients = await _ensurePickerClientsLoaded(groupId);
       if (!mounted) return;
-      final withEmail = clients.where((c) {
-        final email = (c.email ?? '').trim();
-        return email.isNotEmpty && _isValidEmail(email);
-      }).toList(growable: false);
+      final withEmail = clients
+          .where((c) => _clientPrimaryEmail(c).isNotEmpty)
+          .toList(growable: false);
       setState(() {
         _recipientClientId = withEmail.isNotEmpty ? withEmail.first.id : null;
       });
@@ -629,10 +745,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   }
 
   List<GroupClient> _recipientClientsWithEmail() {
-    return _pickerClients.where((c) {
-      final email = (c.email ?? '').trim();
-      return email.isNotEmpty && _isValidEmail(email);
-    }).toList(growable: false);
+    return _pickerClients
+        .where((c) => _clientPrimaryEmail(c).isNotEmpty)
+        .toList(growable: false);
   }
 
   String? _selectedRecipientClientEmail() {
@@ -640,9 +755,8 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     if (id.isEmpty) return null;
     for (final c in _pickerClients) {
       if (c.id != id) continue;
-      final email = (c.email ?? '').trim();
-      if (_isValidEmail(email)) return email;
-      return null;
+      final email = _clientPrimaryEmail(c);
+      return email.isEmpty ? null : email;
     }
     return null;
   }
@@ -660,6 +774,93 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     if (email == null || email.isEmpty) return;
     if (_toList.contains(email)) return;
     _toList.add(email);
+  }
+
+  Future<void> _openRecentIssuedInvoicesPicker() async {
+    if (_loadingRecentInvoices) return;
+    final l = AppLocalizations.of(context)!;
+    final groupId = _currentGroupId();
+    if (groupId == null || groupId.isEmpty) {
+      _showError(l.notAuthenticatedOrUserMissing);
+      return;
+    }
+
+    setState(() => _loadingRecentInvoices = true);
+    try {
+      final responses = await Future.wait([
+        _invoicesApi.listByGroup(
+          groupId,
+          status: 'issued',
+          sortBy: 'issueDate',
+          sortDir: 'desc',
+        ),
+        _ensurePickerClientsLoaded(groupId),
+      ]);
+      if (!mounted) return;
+      final invoices = (responses[0] as List<Invoice>)
+          .where((invoice) => _isToday(_invoiceDisplayDate(invoice)))
+          .toList(growable: false)
+        ..sort(
+            (a, b) => _invoiceDisplayDate(b).compareTo(_invoiceDisplayDate(a)));
+      final clients = responses[1] as List<GroupClient>;
+
+      final selected = await showDialog<Invoice>(
+        context: context,
+        builder: (dialogContext) => _RecentIssuedInvoicesDialog(
+          invoices: invoices,
+          clients: clients,
+          isSpanish: _isSpanishLocale,
+          formatDate: _formatInvoiceDate,
+          formatTotal: _formatInvoiceTotal,
+        ),
+      );
+      if (!mounted || selected == null) return;
+      _applyRecentInvoiceSelection(selected, clients);
+    } catch (e) {
+      if (!mounted) return;
+      _showError(e.toString());
+    } finally {
+      if (mounted) setState(() => _loadingRecentInvoices = false);
+    }
+  }
+
+  void _applyRecentInvoiceSelection(
+    Invoice invoice,
+    List<GroupClient> clients,
+  ) {
+    final clientId = invoice.clientId.trim();
+    if (clientId.isEmpty) {
+      _showError(_isSpanishLocale
+          ? 'La factura no tiene cliente asociado.'
+          : 'This invoice has no linked client.');
+      return;
+    }
+    final client = clients.cast<GroupClient?>().firstWhere(
+          (item) => item?.id == clientId,
+          orElse: () => null,
+        );
+    final email = client == null ? '' : _clientPrimaryEmail(client);
+    if (email.isEmpty) {
+      _showError(_isSpanishLocale
+          ? 'Este cliente no tiene email guardado.'
+          : 'This client has no saved email.');
+    }
+
+    setState(() {
+      _useClientMode = true;
+      _recipientClientId = clientId;
+      _inlineClientId = clientId;
+      final existing = _splitValues(_normalizeInvoiceIds(_invoiceIdsCtrl.text));
+      final merged = <String>{...existing, invoice.id}
+          .where((id) => id.trim().isNotEmpty)
+          .toList(growable: false);
+      _invoiceIdsCtrl.text = merged.join(',');
+      _attachInvoicePdf = true;
+      _includeInvoiceLinks = true;
+      _invoiceExpanded = true;
+      _toList.clear();
+      if (email.isNotEmpty) _toList.add(email);
+    });
   }
 
   String _normalizeInvoiceIds(String raw) {
@@ -820,8 +1021,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
                   clientId: clientId,
                 ),
                 onPreviewPresupuesto: _openPresupuestoPdfPreviewById,
-                initialReceiptIds:
-                    _selectedReceiptIds.toList(growable: false),
+                initialReceiptIds: _selectedReceiptIds.toList(growable: false),
               ),
             ),
           ),

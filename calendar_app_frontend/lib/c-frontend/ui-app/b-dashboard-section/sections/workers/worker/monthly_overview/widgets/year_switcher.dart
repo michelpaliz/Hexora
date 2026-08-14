@@ -18,36 +18,56 @@ class YearSwitcher extends StatelessWidget {
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
 
-    final bgColor = theme.colorScheme.primaryContainer.withOpacity(.5);
-    final onBgColor = theme.colorScheme.onPrimaryContainer;
+    final bgColor = theme.colorScheme.primary.withValues(alpha: 0.10);
+    final borderColor = theme.colorScheme.primary.withValues(alpha: 0.16);
+    final onBgColor = theme.colorScheme.primary;
+    final buttonStyle = IconButton.styleFrom(
+      fixedSize: const Size(42, 42),
+      backgroundColor: bgColor,
+      foregroundColor: onBgColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: borderColor),
+      ),
+    );
 
     return Row(
       children: [
         IconButton.filledTonal(
-          style: ButtonStyle(
-            backgroundColor: WidgetStatePropertyAll(bgColor),
-          ),
+          style: buttonStyle,
           tooltip: l.previous,
-          icon: Icon(Icons.chevron_left, color: onBgColor),
+          icon: const Icon(Icons.chevron_left_rounded),
           onPressed: () => onYearChanged(year - 1),
         ),
         Expanded(
           child: Center(
-            child: Text(
-              '$year',
-              style: t.accentHeading.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: .2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.42),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.35,
+                  ),
+                ),
+              ),
+              child: Text(
+                '$year',
+                style: t.accentHeading.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
               ),
             ),
           ),
         ),
         IconButton.filledTonal(
-          style: ButtonStyle(
-            backgroundColor: WidgetStatePropertyAll(bgColor),
-          ),
+          style: buttonStyle,
           tooltip: l.next,
-          icon: Icon(Icons.chevron_right, color: onBgColor),
+          icon: const Icon(Icons.chevron_right_rounded),
           onPressed: () => onYearChanged(year + 1),
         ),
       ],

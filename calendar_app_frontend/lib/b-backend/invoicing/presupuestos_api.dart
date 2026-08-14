@@ -122,6 +122,24 @@ class PresupuestosApi {
   Uri buildCreateAdvanceInvoiceUri(String presupuestoId) =>
       _u('/${presupuestoId.trim()}/create-advance-invoice');
 
+  Uri buildCreateDraftUri() => _u();
+
+  Uri buildCreateDocumentDraftUri() => _u('/documents');
+
+  Uri buildListDocumentsByGroupUri(String groupId) =>
+      _u('/documents/group/${groupId.trim()}');
+
+  Uri buildDocumentIssueUri(String presupuestoId) =>
+      _u('/${presupuestoId.trim()}/issue');
+
+  Uri buildCreateDocumentFromDefaultUri({
+    required String key,
+    required String groupId,
+  }) =>
+      _u(
+        '/documents/defaults/${Uri.encodeComponent(key)}/group/${groupId.trim()}',
+      );
+
   Uri buildCreateFinalInvoiceUri(String presupuestoId) =>
       _u('/${presupuestoId.trim()}/create-final-invoice');
 
@@ -130,6 +148,7 @@ class PresupuestosApi {
     String? clientId,
     String? sortBy,
     String? sortDir,
+    int? limit,
   }) {
     final query = <String, String>{
       if (clientId != null && clientId.trim().isNotEmpty)
@@ -137,6 +156,7 @@ class PresupuestosApi {
       if (sortBy != null && sortBy.trim().isNotEmpty) 'sortBy': sortBy.trim(),
       if (sortDir != null && sortDir.trim().isNotEmpty)
         'sortDir': sortDir.trim(),
+      if (limit != null && limit > 0) 'limit': limit.toString(),
     };
     return query.isEmpty
         ? _u('/group/${groupId.trim()}')
@@ -246,7 +266,7 @@ class PresupuestosApi {
       if (blocks != null && blocks.isNotEmpty) 'blocks': blocks,
     };
     final r = await AuthenticatedHttpClient.post(
-      _u(),
+      buildCreateDraftUri(),
       headers: _headers(),
       body: jsonEncode(payload),
     );
@@ -299,20 +319,42 @@ class PresupuestosApi {
 
   Future<Map<String, dynamic>> updateIssued({
     required String id,
+    String? clientId,
+    String? clientName,
+    String? addressStreet,
+    String? addressCity,
+    String? addressPostalCode,
+    List<Map<String, dynamic>>? lines,
     List<Map<String, dynamic>>? blocks,
+    String? issueDate,
     String? notes,
     String? currency,
     Map<String, dynamic>? clientSnapshot,
     Map<String, dynamic>? issuerSnapshot,
+    Map<String, dynamic>? totals,
     required String reason,
   }) async {
     final payload = <String, dynamic>{
+      if (clientId != null && clientId.trim().isNotEmpty)
+        'clientId': clientId.trim(),
+      if (clientName != null && clientName.trim().isNotEmpty)
+        'clientName': clientName.trim(),
+      if (addressStreet != null && addressStreet.trim().isNotEmpty)
+        'addressStreet': addressStreet.trim(),
+      if (addressCity != null && addressCity.trim().isNotEmpty)
+        'addressCity': addressCity.trim(),
+      if (addressPostalCode != null && addressPostalCode.trim().isNotEmpty)
+        'addressPostalCode': addressPostalCode.trim(),
+      if (lines != null) 'lines': lines,
       if (blocks != null) 'blocks': blocks,
+      if (issueDate != null && issueDate.trim().isNotEmpty)
+        'issueDate': issueDate.trim(),
       if (notes != null) 'notes': notes,
       if (currency != null && currency.trim().isNotEmpty)
         'currency': currency.trim(),
       if (clientSnapshot != null) 'clientSnapshot': clientSnapshot,
       if (issuerSnapshot != null) 'issuerSnapshot': issuerSnapshot,
+      if (totals != null) 'totals': totals,
       'reason': reason.trim(),
     };
     final r = await AuthenticatedHttpClient.patch(
@@ -385,12 +427,14 @@ class PresupuestosApi {
     String? clientId,
     String? sortBy,
     String? sortDir,
+    int? limit,
   }) async {
     final uri = buildListByGroupUri(
       groupId,
       clientId: clientId,
       sortBy: sortBy,
       sortDir: sortDir,
+      limit: limit,
     );
     final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decodeList(r);
@@ -423,6 +467,342 @@ class PresupuestosApi {
       statusCode: r.statusCode,
       message:
           'Failed to download presupuesto PDF (${r.statusCode}): ${_resolveErrorMessage(r, body)}',
+      code: _resolveErrorCode(body),
+      details: _resolveErrorDetails(body),
+    );
+  }
+
+  Future<Map<String, dynamic>> listTemplatesByGroup(String groupId) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/templates/group/${groupId.trim()}'),
+      headers: _headers(),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> listDefaultTemplates() async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/templates/defaults'),
+      headers: _headers(),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> createTemplateFromDefault({
+    required String key,
+    required String groupId,
+  }) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u('/templates/defaults/${Uri.encodeComponent(key)}/group/${groupId.trim()}'),
+      headers: _headers(),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> createDocumentDraft({
+    required String groupId,
+    required Map<String, dynamic> content,
+  }) async {
+    final payload = buildDocumentDraftPayload(
+      groupId: groupId,
+      content: content,
+    );
+    final r = await AuthenticatedHttpClient.post(
+      buildCreateDocumentDraftUri(),
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> createDocumentFromDefault({
+    required String key,
+    required String groupId,
+    required Map<String, dynamic> content,
+  }) async {
+    final payload = buildDocumentDraftPayload(
+      groupId: groupId,
+      content: content,
+    );
+    final r = await AuthenticatedHttpClient.post(
+      buildCreateDocumentFromDefaultUri(key: key, groupId: groupId),
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decodeMap(r);
+  }
+
+  Map<String, dynamic> buildDocumentDraftPayload({
+    required String groupId,
+    required Map<String, dynamic> content,
+  }) {
+    final variables = content['variables'];
+    final clientName =
+        variables is Map ? (variables['CLIENTE'] ?? '').toString().trim() : '';
+    return <String, dynamic>{
+      'groupId': groupId.trim(),
+      if (clientName.isNotEmpty) 'clientName': clientName,
+      ...content,
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> listDocumentsByGroup(
+      String groupId) async {
+    final r = await AuthenticatedHttpClient.get(
+      buildListDocumentsByGroupUri(groupId),
+      headers: _headers(),
+    );
+    final body = _tryDecodeBody(r.body);
+    final ok = r.statusCode >= 200 && r.statusCode < 300;
+    if (ok) {
+      final raw = body is List
+          ? body
+          : body is Map && body['documents'] is List
+              ? body['documents'] as List
+              : body is Map && body['items'] is List
+                  ? body['items'] as List
+                  : null;
+      if (raw != null) {
+        return raw
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false);
+      }
+      throw Exception('Unexpected presupuesto document list payload');
+    }
+    throw PresupuestosApiException(
+      statusCode: r.statusCode,
+      message: _resolveErrorMessage(r, body),
+      code: _resolveErrorCode(body),
+      details: _resolveErrorDetails(body),
+    );
+  }
+
+  Future<Map<String, dynamic>> issueDocument(String presupuestoId) async {
+    final r = await AuthenticatedHttpClient.post(
+      buildDocumentIssueUri(presupuestoId),
+      headers: _headers(),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> createTemplate(
+    Map<String, dynamic> payload,
+  ) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u('/templates'),
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> updateTemplate(
+    String templateId,
+    Map<String, dynamic> payload,
+  ) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/templates/${templateId.trim()}'),
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> deleteTemplate(String templateId) async {
+    final r = await AuthenticatedHttpClient.delete(
+      _u('/templates/${templateId.trim()}'),
+      headers: _headers(),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> uploadTemplateImage({
+    required String templateId,
+    required List<int> bytes,
+    required String fileName,
+    required String slot,
+    String? label,
+  }) async {
+    final auth = await _requireAuthToken(
+      path: '/templates/${templateId.trim()}/images',
+      method: 'POST',
+    );
+    final req = http.MultipartRequest(
+      'POST',
+      _u('/templates/${templateId.trim()}/images'),
+    );
+    req.headers['Authorization'] = auth;
+    req.fields['slot'] = slot;
+    if ((label ?? '').trim().isNotEmpty) {
+      req.fields['label'] = label!.trim();
+    }
+    req.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+    );
+    final streamed = await req.send();
+    final response = await http.Response.fromStream(streamed);
+    return _decodeMap(response);
+  }
+
+  Future<Map<String, dynamic>> uploadPresupuestoTemplateContentImage({
+    required String presupuestoId,
+    required List<int> bytes,
+    required String fileName,
+    required String slot,
+    String? label,
+  }) async {
+    final auth = await _requireAuthToken(
+      path: '/${presupuestoId.trim()}/template-content/images',
+      method: 'POST',
+    );
+    final req = http.MultipartRequest(
+      'POST',
+      _u('/${presupuestoId.trim()}/template-content/images'),
+    );
+    req.headers['Authorization'] = auth;
+    req.fields['slot'] = slot;
+    if ((label ?? '').trim().isNotEmpty) {
+      req.fields['label'] = label!.trim();
+    }
+    req.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+    );
+    final streamed = await req.send();
+    final response = await http.Response.fromStream(streamed);
+    return _decodeMap(response);
+  }
+
+  Future<Map<String, dynamic>> saveTemplateContent(
+    String presupuestoId,
+    Map<String, dynamic> payload,
+  ) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/${presupuestoId.trim()}/template-content'),
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> getTemplateContent(String presupuestoId) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/${presupuestoId.trim()}/template-content'),
+      headers: _headers(),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> getTemplateVariables(
+      String presupuestoId) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/${presupuestoId.trim()}/template-variables'),
+      headers: _headers(),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<Map<String, dynamic>> updateTemplateVariables(
+    String presupuestoId, {
+    required Map<String, dynamic> variables,
+    String? reason,
+  }) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/${presupuestoId.trim()}/template-variables'),
+      headers: _headers(),
+      body: jsonEncode({
+        'variables': variables,
+        if ((reason ?? '').trim().isNotEmpty) 'reason': reason!.trim(),
+      }),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<http.Response> previewTemplatePdf(String id) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/${id.trim()}/template-pdf/preview'),
+      headers: _headers(),
+    );
+    if (r.statusCode >= 200 && r.statusCode < 300) return r;
+    final body = _tryDecodeBody(r.body);
+    throw PresupuestosApiException(
+      statusCode: r.statusCode,
+      message:
+          'Failed to preview editable presupuesto PDF (${r.statusCode}): ${_resolveErrorMessage(r, body)}',
+      code: _resolveErrorCode(body),
+      details: _resolveErrorDetails(body),
+    );
+  }
+
+  Future<http.Response> previewSavedTemplatePdf(String templateId) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/templates/${templateId.trim()}/pdf/preview'),
+      headers: _headers(),
+    );
+    if (r.statusCode >= 200 && r.statusCode < 300) return r;
+    final body = _tryDecodeBody(r.body);
+    throw PresupuestosApiException(
+      statusCode: r.statusCode,
+      message:
+          'Failed to preview saved presupuesto template PDF (${r.statusCode}): ${_resolveErrorMessage(r, body)}',
+      code: _resolveErrorCode(body),
+      details: _resolveErrorDetails(body),
+    );
+  }
+
+  Future<http.Response> previewDefaultTemplatePdf({
+    required String key,
+    required String groupId,
+  }) async {
+    final encodedKey = Uri.encodeComponent(key.trim());
+    final uri = Uri.parse('$_base/templates/defaults/$encodedKey/pdf/preview')
+        .replace(queryParameters: {'groupId': groupId.trim()});
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    if (r.statusCode >= 200 && r.statusCode < 300) return r;
+    final body = _tryDecodeBody(r.body);
+    throw PresupuestosApiException(
+      statusCode: r.statusCode,
+      message:
+          'Failed to preview default presupuesto template PDF (${r.statusCode}): ${_resolveErrorMessage(r, body)}',
+      code: _resolveErrorCode(body),
+      details: _resolveErrorDetails(body),
+    );
+  }
+
+  Future<http.Response> previewLiveTemplatePdf({
+    required String groupId,
+    required Map<String, dynamic> template,
+  }) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u('/templates/pdf/preview'),
+      headers: _headers(),
+      body: jsonEncode({
+        'groupId': groupId.trim(),
+        'template': template,
+      }),
+    );
+    if (r.statusCode >= 200 && r.statusCode < 300) return r;
+    final body = _tryDecodeBody(r.body);
+    throw PresupuestosApiException(
+      statusCode: r.statusCode,
+      message:
+          'Failed to preview live presupuesto template PDF (${r.statusCode}): ${_resolveErrorMessage(r, body)}',
+      code: _resolveErrorCode(body),
+      details: _resolveErrorDetails(body),
+    );
+  }
+
+  Future<http.Response> downloadTemplatePdf(String id) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/${id.trim()}/template-pdf'),
+      headers: _headers(),
+    );
+    if (r.statusCode >= 200 && r.statusCode < 300) return r;
+    final body = _tryDecodeBody(r.body);
+    throw PresupuestosApiException(
+      statusCode: r.statusCode,
+      message:
+          'Failed to download editable presupuesto PDF (${r.statusCode}): ${_resolveErrorMessage(r, body)}',
       code: _resolveErrorCode(body),
       details: _resolveErrorDetails(body),
     );

@@ -10,22 +10,32 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     super.key,
     required this.label,
     required this.isCompact,
+    required this.isTablet,
     required this.allVisibleSelected,
     required this.onToggleAll,
     required this.tableTheme,
+    required this.onDateFilterTap,
+    required this.dateFilterActive,
     required this.onAmountFilterTap,
     required this.amountFilterActive,
+    required this.onClientProviderFilterTap,
+    required this.clientProviderFilterActive,
     required this.onInvoiceSortTap,
     required this.invoiceSortMode,
   });
 
   final AppLocalizations label;
   final bool isCompact;
+  final bool isTablet;
   final bool allVisibleSelected;
   final ValueChanged<bool> onToggleAll;
   final StatementsTableTheme tableTheme;
+  final VoidCallback onDateFilterTap;
+  final bool dateFilterActive;
   final VoidCallback onAmountFilterTap;
   final bool amountFilterActive;
+  final VoidCallback onClientProviderFilterTap;
+  final bool clientProviderFilterActive;
   final VoidCallback onInvoiceSortTap;
   final int invoiceSortMode; // 0=none, 1=asc, 2=desc
 
@@ -35,16 +45,21 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width > 1400;
     final balanceMaxWidth =
         isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
+    final isDesktop = !isCompact && !isTablet;
+    final actionsWidth = isDesktop
+        ? StatementsAllDataTableLayout.actionsWidth
+        : StatementsAllDataTableLayout.compactActionsWidth;
 
     final headerStyle = typography.bodySmall.copyWith(
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w600,
+      fontSize: 13,
       color: tableTheme.headerText,
-      letterSpacing: 0.5,
+      letterSpacing: 0,
     );
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        vertical: 12,
+        vertical: 8,
         horizontal: 12,
       ),
       decoration: BoxDecoration(
@@ -53,13 +68,6 @@ class StatementsAllDataTableHeader extends StatelessWidget {
         border: Border.all(
           color: tableTheme.border.withValues(alpha: 0.55),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -71,7 +79,7 @@ class StatementsAllDataTableHeader extends StatelessWidget {
               onChanged: (checked) => onToggleAll(checked == true),
             ),
           ),
-          if (!isCompact) ...[
+          if (isDesktop) ...[
             _fixedCell(
               label.statementsHeaderBatch,
               StatementsAllDataTableLayout.batchWidth,
@@ -81,10 +89,16 @@ class StatementsAllDataTableHeader extends StatelessWidget {
             ),
             const SizedBox(width: StatementsAllDataTableLayout.columnGap),
           ],
-          _fixedCell(
-            label.statementsHeaderDate,
-            StatementsAllDataTableLayout.dateWidth,
-            headerStyle,
+          _filterableCell(
+            context,
+            text: label.statementsHeaderDate,
+            width: StatementsAllDataTableLayout.dateWidth,
+            style: headerStyle,
+            active: dateFilterActive,
+            tooltip: dateFilterActive
+                ? '${label.statementsHeaderDate}: filtro activo'
+                : '${label.statementsHeaderDate}: filtrar',
+            onTap: onDateFilterTap,
           ),
           const SizedBox(width: StatementsAllDataTableLayout.columnGap),
           if (isCompact)
@@ -149,7 +163,7 @@ class StatementsAllDataTableHeader extends StatelessWidget {
               ],
             ),
           ),
-          if (!isCompact) ...[
+          if (isDesktop) ...[
             const SizedBox(width: StatementsAllDataTableLayout.columnGap),
             SizedBox(
               width: balanceMaxWidth,
@@ -166,27 +180,40 @@ class StatementsAllDataTableHeader extends StatelessWidget {
             ),
           ],
           if (!isCompact) ...[
-            const SizedBox(
-                width: StatementsAllDataTableLayout.balanceClientGap),
+            SizedBox(
+              width:
+                  isTablet ? 12 : StatementsAllDataTableLayout.balanceClientGap,
+            ),
             Expanded(
-              child: Text(
-                '${label.statementsHeaderClient} / Proveedor',
+              child: _filterableCell(
+                context,
+                text: Localizations.localeOf(context)
+                        .languageCode
+                        .toLowerCase()
+                        .startsWith('es')
+                    ? 'Contacto'
+                    : 'Contact',
                 style: headerStyle,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+                active: clientProviderFilterActive,
+                tooltip: clientProviderFilterActive
+                    ? '${label.statementsHeaderClient} / Proveedor: filtro activo'
+                    : '${label.statementsHeaderClient} / Proveedor: filtrar',
+                onTap: onClientProviderFilterTap,
               ),
             ),
-            const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
-            _fixedCell(
-              Localizations.localeOf(context)
-                      .languageCode
-                      .toLowerCase()
-                      .startsWith('es')
-                  ? 'Notas'
-                  : 'Notes',
-              StatementsAllDataTableLayout.notesWidth,
-              headerStyle,
-            ),
+            if (isDesktop) ...[
+              const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
+              _fixedCell(
+                Localizations.localeOf(context)
+                        .languageCode
+                        .toLowerCase()
+                        .startsWith('es')
+                    ? 'Notas'
+                    : 'Notes',
+                StatementsAllDataTableLayout.notesWidth,
+                headerStyle,
+              ),
+            ],
           ],
           const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
           SizedBox(
@@ -195,7 +222,12 @@ class StatementsAllDataTableHeader extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    label.documentTypeInvoice,
+                    Localizations.localeOf(context)
+                            .languageCode
+                            .toLowerCase()
+                            .startsWith('es')
+                        ? 'Nº factura'
+                        : 'Invoice no.',
                     style: headerStyle,
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
@@ -212,18 +244,29 @@ class StatementsAllDataTableHeader extends StatelessWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8),
                     onTap: onInvoiceSortTap,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: invoiceSortMode == 0
+                            ? Colors.transparent
+                            : Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: Icon(
                         invoiceSortMode == 1
-                            ? Icons.arrow_upward
+                            ? Icons.arrow_upward_rounded
                             : invoiceSortMode == 2
-                                ? Icons.arrow_downward
-                                : Icons.unfold_more,
-                        size: 16,
+                                ? Icons.arrow_downward_rounded
+                                : Icons.unfold_more_rounded,
+                        size: invoiceSortMode == 0 ? 16 : 18,
                         color: invoiceSortMode == 0
                             ? tableTheme.headerText.withValues(alpha: 0.85)
-                            : tableTheme.amountPositive,
+                            : Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ),
@@ -234,7 +277,7 @@ class StatementsAllDataTableHeader extends StatelessWidget {
           const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
           _fixedCell(
             label.statementsHeaderActions,
-            StatementsAllDataTableLayout.actionsWidth,
+            actionsWidth,
             headerStyle,
             align: TextAlign.right,
           ),
@@ -263,5 +306,53 @@ class StatementsAllDataTableHeader extends StatelessWidget {
       child:
           tooltip == null ? content : Tooltip(message: tooltip, child: content),
     );
+  }
+
+  Widget _filterableCell(
+    BuildContext context, {
+    required String text,
+    double? width,
+    required TextStyle style,
+    required bool active,
+    required String tooltip,
+    required VoidCallback onTap,
+    TextAlign align = TextAlign.left,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final content = Row(
+      mainAxisSize: width == null ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        Expanded(
+          child: Text(
+            text,
+            style: style,
+            textAlign: align,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Tooltip(
+          message: tooltip,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                active ? Icons.filter_alt : Icons.filter_alt_outlined,
+                size: 16,
+                color: active
+                    ? cs.primary
+                    : tableTheme.headerText.withValues(alpha: 0.85),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (width == null) return content;
+    return SizedBox(width: width, child: content);
   }
 }

@@ -4,6 +4,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/wi
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/enable_banking_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/presupuestos_module_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/mail_console_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/telegram/telegram_section_screen.dart';
 
@@ -20,6 +21,12 @@ class NarrowLayout extends StatelessWidget {
     switch (state.activeSection) {
       case Sections.invoices:
         child = GroupInvoicesScreen(
+          group: state.group,
+          embedded: true,
+        );
+        break;
+      case Sections.budgets:
+        child = PresupuestosModuleScreen(
           group: state.group,
           embedded: true,
         );

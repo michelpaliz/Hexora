@@ -10,6 +10,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/wi
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/telegram_worker_hours_import_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/time_tracking_excel_import_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_current_month_summary_view.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_month_picker_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_time_history_graph_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_list_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
@@ -18,6 +19,8 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/nav_section.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
 
 import 'widgets/status_filter_chips.dart';
@@ -32,6 +35,257 @@ enum _InlineSection {
   registerHours
 }
 
+class _WorkersNavHeader extends StatelessWidget {
+  const _WorkersNavHeader({
+    required this.title,
+    required this.subtitle,
+    required this.onCollapse,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback onCollapse;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.38),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.group_outlined,
+                size: 18,
+                color: cs.primary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelLarge?.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Tooltip(
+              message: AppLocalizations.of(context)!.groupInvoicesNavCollapse,
+              child: IconButton.filledTonal(
+                onPressed: onCollapse,
+                icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
+                iconSize: 18,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(40, 34),
+                  fixedSize: const Size(40, 34),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkersCollapsedRail extends StatelessWidget {
+  const _WorkersCollapsedRail({
+    required this.width,
+    required this.selected,
+    required this.onSelect,
+    required this.onExpand,
+    required this.onCreateWorker,
+    required this.workersLabel,
+    required this.chartsLabel,
+    required this.summaryLabel,
+    required this.telegramLabel,
+    required this.registerHoursLabel,
+    required this.createWorkerLabel,
+  });
+
+  final double width;
+  final _InlineSection selected;
+  final ValueChanged<_InlineSection> onSelect;
+  final VoidCallback onExpand;
+  final VoidCallback onCreateWorker;
+  final String workersLabel;
+  final String chartsLabel;
+  final String summaryLabel;
+  final String telegramLabel;
+  final String registerHoursLabel;
+  final String createWorkerLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    Widget item(
+      IconData icon,
+      String tooltip, {
+      _InlineSection? section,
+      VoidCallback? onTap,
+      bool selectedOverride = false,
+    }) {
+      final isSelected = selectedOverride || selected == section;
+      return Tooltip(
+        message: tooltip,
+        preferBelow: false,
+        waitDuration: const Duration(milliseconds: 300),
+        child: InkWell(
+          onTap: onTap ?? (section == null ? null : () => onSelect(section)),
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 36,
+            height: 34,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? cs.primary.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isSelected
+                    ? cs.primary.withValues(alpha: 0.22)
+                    : Colors.transparent,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: isSelected ? cs.primary : cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget divider() => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Divider(
+            height: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.3),
+          ),
+        );
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      width: width,
+      padding: const EdgeInsets.fromLTRB(7, 6, 7, 8),
+      child: Column(
+        children: [
+          Tooltip(
+            message: AppLocalizations.of(context)!.groupInvoicesNavExpand,
+            preferBelow: false,
+            child: InkWell(
+              onTap: onExpand,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 36,
+                height: 28,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  item(
+                    Icons.person_add_alt_1,
+                    createWorkerLabel,
+                    onTap: onCreateWorker,
+                  ),
+                  const SizedBox(height: 3),
+                  item(
+                    Icons.group_outlined,
+                    workersLabel,
+                    section: _InlineSection.workers,
+                  ),
+                  const SizedBox(height: 3),
+                  item(
+                    Icons.schedule_outlined,
+                    registerHoursLabel,
+                    section: _InlineSection.registerHours,
+                  ),
+                  const SizedBox(height: 3),
+                  item(
+                    Icons.telegram,
+                    telegramLabel,
+                    section: _InlineSection.telegramImport,
+                  ),
+                  divider(),
+                  item(
+                    Icons.history_outlined,
+                    summaryLabel,
+                    section: _InlineSection.historial,
+                  ),
+                  divider(),
+                  item(
+                    Icons.bar_chart_rounded,
+                    chartsLabel,
+                    section: _InlineSection.graphs,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class WorkersInlinePanel extends StatefulWidget {
   final Group group;
   const WorkersInlinePanel({super.key, required this.group});
@@ -42,6 +296,9 @@ class WorkersInlinePanel extends StatefulWidget {
 
 class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     with SingleTickerProviderStateMixin {
+  static const double _expandedMenuWidth = 218;
+  static const double _collapsedMenuWidth = 50;
+
   late UserDomain _userDomain;
   late ITimeTrackingRepository _repo;
 
@@ -60,6 +317,10 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   String? _activeTotalsError;
   late int _totalsYear;
   late int _totalsMonth;
+  bool _sideMenuCollapsed = false;
+  bool _dataMenuExpanded = true;
+  bool _historyMenuExpanded = true;
+  bool _analyticsMenuExpanded = true;
 
   @override
   void initState() {
@@ -162,77 +423,13 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   }
 
   Future<void> _pickTotalsMonth() async {
-    final locale = AppLocalizations.of(context)!.localeName;
-    final selected = await showDialog<DateTime>(
+    final selected = await showWorkerMonthPickerDialog(
       context: context,
-      builder: (dialogCtx) {
-        var tempYear = _totalsYear;
-        var tempMonth = _totalsMonth;
-        return StatefulBuilder(
-          builder: (dialogCtx, setDialogState) {
-            final months = List<int>.generate(12, (i) => i + 1);
-            return AlertDialog(
-              title: Text(
-                _isSpanish(context) ? 'Seleccionar mes' : 'Select month',
-              ),
-              content: SizedBox(
-                width: 360,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<int>(
-                      initialValue: tempYear,
-                      decoration: InputDecoration(
-                        labelText: _isSpanish(context) ? 'Año' : 'Year',
-                      ),
-                      items:
-                          List<int>.generate(2100 - 2018 + 1, (i) => 2018 + i)
-                              .map(
-                                (y) => DropdownMenuItem<int>(
-                                  value: y,
-                                  child: Text('$y'),
-                                ),
-                              )
-                              .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setDialogState(() => tempYear = value);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: months.map((m) {
-                        final isSelected = m == tempMonth;
-                        final monthName =
-                            DateFormat.MMMM(locale).format(DateTime(2000, m));
-                        return ChoiceChip(
-                          label: Text(monthName),
-                          selected: isSelected,
-                          onSelected: (_) =>
-                              setDialogState(() => tempMonth = m),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogCtx).pop(),
-                  child: Text(AppLocalizations.of(context)!.cancel),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(dialogCtx)
-                      .pop(DateTime(tempYear, tempMonth, 1)),
-                  child: Text(AppLocalizations.of(context)!.confirm),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      initialDate: DateTime(_totalsYear, _totalsMonth, 1),
+      isSpanish: _isSpanish(context),
+      firstYear: 2018,
+      maxYear: 2100,
+      allowFutureMonths: true,
     );
 
     if (selected == null) return;
@@ -301,7 +498,8 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
           decoration: BoxDecoration(
             color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+            border:
+                Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -526,123 +724,140 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     });
   }
 
+  void _openCreateWorkerForm() {
+    _tabController.animateTo(1);
+    setState(() {
+      _section = _InlineSection.workers;
+      _selectedWorker = null;
+      _showOverview = false;
+    });
+  }
+
   Widget _buildSideMenu(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
 
-    return SizedBox(
-      width: 160,
+    if (_sideMenuCollapsed) {
+      return _WorkersCollapsedRail(
+        width: _collapsedMenuWidth,
+        selected: _section,
+        onExpand: () => setState(() => _sideMenuCollapsed = false),
+        onSelect: (section) => setState(() => _section = section),
+        onCreateWorker: _openCreateWorkerForm,
+        workersLabel: l.workersLabel,
+        chartsLabel: isEs ? 'Graficas' : 'Charts',
+        summaryLabel: isEs ? 'Resumen del mes' : 'Summary this month',
+        telegramLabel: isEs ? 'Importar Telegram' : 'Telegram import',
+        registerHoursLabel: isEs ? 'Registrar horas' : 'Register hours',
+        createWorkerLabel: l.createWorkerCta,
+      );
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      width: _expandedMenuWidth,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _WorkersNavHeader(
+            title: l.workersLabel,
+            subtitle: isEs ? 'Menu de datos' : 'Data menu',
+            onCollapse: () => setState(() => _sideMenuCollapsed = true),
+          ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+              padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildMenuItem(
-                    context,
-                    icon: Icons.group_outlined,
-                    label: l.workersLabel,
-                    selected: _section == _InlineSection.workers,
-                    onTap: () =>
-                        setState(() => _section = _InlineSection.workers),
+                  GroupInvoicesNavSection(
+                    title: isEs ? 'Datos' : 'Data',
+                    icon: Icons.dataset_outlined,
+                    expanded: _dataMenuExpanded,
+                    onToggle: () => setState(
+                      () => _dataMenuExpanded = !_dataMenuExpanded,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        GroupInvoicesSubMenuItem(
+                          icon: Icons.person_add_alt_1,
+                          label: l.createWorkerCta,
+                          selected: false,
+                          primaryAction: true,
+                          indent: 12,
+                          onPressed: _openCreateWorkerForm,
+                        ),
+                        GroupInvoicesSubMenuItem(
+                          icon: Icons.group_outlined,
+                          label: l.workersLabel,
+                          selected: _section == _InlineSection.workers,
+                          indent: 12,
+                          onPressed: () => setState(
+                            () => _section = _InlineSection.workers,
+                          ),
+                        ),
+                        GroupInvoicesSubMenuItem(
+                          icon: Icons.schedule_outlined,
+                          label: isEs ? 'Registrar horas' : 'Register hours',
+                          selected: _section == _InlineSection.registerHours,
+                          indent: 12,
+                          onPressed: () => setState(
+                            () => _section = _InlineSection.registerHours,
+                          ),
+                        ),
+                        GroupInvoicesSubMenuItem(
+                          icon: Icons.telegram,
+                          label: isEs ? 'Importar Telegram' : 'Telegram import',
+                          selected: _section == _InlineSection.telegramImport,
+                          indent: 12,
+                          onPressed: () => setState(
+                            () => _section = _InlineSection.telegramImport,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  _buildMenuItem(
-                    context,
-                    icon: Icons.bar_chart_rounded,
-                    label: isEs ? 'Graficas' : 'Charts',
-                    selected: _section == _InlineSection.graphs,
-                    onTap: () =>
-                        setState(() => _section = _InlineSection.graphs),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildMenuItem(
-                    context,
+                  GroupInvoicesNavSection(
+                    title: isEs ? 'Historial' : 'History',
                     icon: Icons.history_outlined,
-                    label: isEs ? 'Resumen del mes' : 'Summary this month',
-                    selected: _section == _InlineSection.historial,
-                    onTap: () =>
-                        setState(() => _section = _InlineSection.historial),
+                    expanded: _historyMenuExpanded,
+                    onToggle: () => setState(
+                      () => _historyMenuExpanded = !_historyMenuExpanded,
+                    ),
+                    child: GroupInvoicesSubMenuItem(
+                      icon: Icons.history_outlined,
+                      label: isEs ? 'Resumen del mes' : 'Summary this month',
+                      selected: _section == _InlineSection.historial,
+                      indent: 12,
+                      onPressed: () => setState(
+                        () => _section = _InlineSection.historial,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  _buildMenuItem(
-                    context,
-                    icon: Icons.telegram,
-                    label: isEs ? 'Importar Telegram' : 'Telegram import',
-                    selected: _section == _InlineSection.telegramImport,
-                    onTap: () => setState(
-                        () => _section = _InlineSection.telegramImport),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildMenuItem(
-                    context,
-                    icon: Icons.schedule_outlined,
-                    label: isEs ? 'Registrar horas' : 'Register hours',
-                    selected: _section == _InlineSection.registerHours,
-                    onTap: () =>
-                        setState(() => _section = _InlineSection.registerHours),
+                  GroupInvoicesNavSection(
+                    title: isEs ? 'Analiticas' : 'Analytics',
+                    icon: Icons.analytics_outlined,
+                    expanded: _analyticsMenuExpanded,
+                    onToggle: () => setState(
+                      () => _analyticsMenuExpanded = !_analyticsMenuExpanded,
+                    ),
+                    child: GroupInvoicesSubMenuItem(
+                      icon: Icons.bar_chart_rounded,
+                      label: isEs ? 'Graficas' : 'Charts',
+                      selected: _section == _InlineSection.graphs,
+                      indent: 12,
+                      onPressed: () => setState(
+                        () => _section = _InlineSection.graphs,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMenuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final fg = selected ? cs.onPrimaryContainer : cs.onSurfaceVariant;
-
-    return SizedBox(
-      height: 40,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected ? cs.primaryContainer : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              if (selected)
-                Container(
-                  width: 3,
-                  height: 16,
-                  margin: const EdgeInsets.only(right: 6),
-                  decoration: BoxDecoration(
-                    color: cs.primary,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              Icon(icon, size: 16, color: fg),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label,
-                  style: t.bodySmall.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

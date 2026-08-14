@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Filter data class
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum BulkDownloadPeriodMode { month, quarter, custom }
+enum BulkDownloadPeriodMode { month, quarter, custom, invoiceRange }
 
 class BulkDownloadFilter {
   final BulkDownloadPeriodMode periodMode;
@@ -16,6 +17,8 @@ class BulkDownloadFilter {
   final int? quarter;
   final DateTime? from;
   final DateTime? to;
+  final String? invoiceNumberFrom;
+  final String? invoiceNumberTo;
   final List<String> status; // 'issued' | 'draft' | 'void'
   final String dateField; // 'issueDate' | 'createdAt'
 
@@ -26,6 +29,8 @@ class BulkDownloadFilter {
     this.quarter,
     this.from,
     this.to,
+    this.invoiceNumberFrom,
+    this.invoiceNumberTo,
     required this.status,
     required this.dateField,
   });
@@ -48,6 +53,11 @@ class BulkDownloadFilter {
           p['to'] =
               '${to!.year.toString().padLeft(4, '0')}-${to!.month.toString().padLeft(2, '0')}-${to!.day.toString().padLeft(2, '0')}';
         }
+      case BulkDownloadPeriodMode.invoiceRange:
+        final fromNumber = invoiceNumberFrom?.trim() ?? '';
+        final toNumber = invoiceNumberTo?.trim() ?? '';
+        if (fromNumber.isNotEmpty) p['invoiceNumberFrom'] = fromNumber;
+        if (toNumber.isNotEmpty) p['invoiceNumberTo'] = toNumber;
     }
     if (status.isNotEmpty) p['status'] = status.join(',');
     p['dateField'] = dateField;
@@ -77,6 +87,8 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
   int _quarter = _currentQuarter();
   DateTime? _from;
   DateTime? _to;
+  final TextEditingController _invoiceNumberFromCtrl = TextEditingController();
+  final TextEditingController _invoiceNumberToCtrl = TextEditingController();
 
   // status: at least one must be selected
   final Set<String> _status = {'issued'};
@@ -92,16 +104,34 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
 
   static int _currentQuarter() => ((DateTime.now().month - 1) ~/ 3) + 1;
 
+  bool _isValidInvoiceNumberInput(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return true;
+    return RegExp(r'^[A-Za-z0-9][A-Za-z0-9._/-]{0,39}$').hasMatch(trimmed);
+  }
+
   @override
   void initState() {
     super.initState();
     _year = DateTime.now().year;
   }
 
+  @override
+  void dispose() {
+    _invoiceNumberFromCtrl.dispose();
+    _invoiceNumberToCtrl.dispose();
+    super.dispose();
+  }
+
   // ── Validation ─────────────────────────────────────────────────────────────
 
   String? _validate() {
-    if (_status.isEmpty) return _isEs(context) ? 'Selecciona al menos un estado.' : 'Select at least one status.';
+    final l = AppLocalizations.of(context)!;
+    if (_status.isEmpty) {
+      return _isEs(context)
+          ? 'Selecciona al menos un estado.'
+          : 'Select at least one status.';
+    }
     if (_periodMode == BulkDownloadPeriodMode.custom) {
       if (_from == null || _to == null) {
         return _isEs(context)
@@ -112,6 +142,22 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
         return _isEs(context)
             ? 'La fecha de inicio debe ser anterior a la de fin.'
             : 'From date must be before to date.';
+      }
+    }
+    if (_periodMode == BulkDownloadPeriodMode.invoiceRange) {
+      final from = _invoiceNumberFromCtrl.text.trim();
+      final to = _invoiceNumberToCtrl.text.trim();
+      if (from.isEmpty && to.isEmpty) {
+        return l.bulkDownloadInvoiceNumberRequired;
+      }
+      if (!_isValidInvoiceNumberInput(from) ||
+          !_isValidInvoiceNumberInput(to)) {
+        return l.bulkDownloadInvoiceNumberInvalidFormat;
+      }
+      final fromNumber = int.tryParse(from);
+      final toNumber = int.tryParse(to);
+      if (fromNumber != null && toNumber != null && fromNumber > toNumber) {
+        return l.bulkDownloadInvoiceNumberRangeInvalid;
       }
     }
     return null;
@@ -130,11 +176,19 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
       quarter: _periodMode == BulkDownloadPeriodMode.quarter ? _quarter : null,
       from: _periodMode == BulkDownloadPeriodMode.custom ? _from : null,
       to: _periodMode == BulkDownloadPeriodMode.custom ? _to : null,
+      invoiceNumberFrom: _periodMode == BulkDownloadPeriodMode.invoiceRange
+          ? _invoiceNumberFromCtrl.text.trim()
+          : null,
+      invoiceNumberTo: _periodMode == BulkDownloadPeriodMode.invoiceRange
+          ? _invoiceNumberToCtrl.text.trim()
+          : null,
       status: _status.toList(),
       dateField: _dateField,
     );
     Navigator.of(context).pop();
-    widget.onDownload(filter);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onDownload(filter);
+    });
   }
 
   // ── Date picker helpers ─────────────────────────────────────────────────────
@@ -175,14 +229,19 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
     final labelDownload = isEs ? 'Descargar ZIP' : 'Download ZIP';
     final labelCancel = isEs ? 'Cancelar' : 'Cancel';
     final labelTitle = isEs ? 'Descargar facturas' : 'Download invoices';
-    final labelHelper = isEs
-        ? 'Más rápido al filtrar por mes o trimestre.'
-        : 'Faster when filtering by month or quarter.';
+    final labelHelper = _periodMode == BulkDownloadPeriodMode.invoiceRange
+        ? (isEs
+            ? 'Exporta por numero de factura, por ejemplo de 001 a 025.'
+            : 'Export by invoice number, for example 001 to 025.')
+        : (isEs
+            ? 'Más rápido al filtrar por mes o trimestre.'
+            : 'Faster when filtering by month or quarter.');
 
     final modeLabels = {
       BulkDownloadPeriodMode.month: isEs ? 'Mes' : 'Month',
       BulkDownloadPeriodMode.quarter: isEs ? 'Trimestre' : 'Quarter',
       BulkDownloadPeriodMode.custom: isEs ? 'Rango' : 'Range',
+      BulkDownloadPeriodMode.invoiceRange: isEs ? 'Factura' : 'Invoice',
     };
 
     return Card(
@@ -249,7 +308,8 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
                     const SizedBox(height: 14),
 
                     // ── Year ─────────────────────────────────────────────
-                    if (_periodMode != BulkDownloadPeriodMode.custom) ...[
+                    if (_periodMode != BulkDownloadPeriodMode.custom &&
+                        _periodMode != BulkDownloadPeriodMode.invoiceRange) ...[
                       _sectionLabel(context, labelYear),
                       const SizedBox(height: 8),
                       SizedBox(
@@ -276,8 +336,7 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
 
                     // ── Quarter selector ──────────────────────────────────
                     if (_periodMode == BulkDownloadPeriodMode.quarter) ...[
-                      _sectionLabel(
-                          context, isEs ? 'Trimestre' : 'Quarter'),
+                      _sectionLabel(context, isEs ? 'Trimestre' : 'Quarter'),
                       const SizedBox(height: 8),
                       _segmentRow(
                         context,
@@ -317,6 +376,32 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
                     ],
 
                     // ── Status ────────────────────────────────────────────
+                    if (_periodMode == BulkDownloadPeriodMode.invoiceRange) ...[
+                      _sectionLabel(
+                        context,
+                        isEs ? 'Rango de facturas' : 'Invoice range',
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _InvoiceNumberField(
+                              controller: _invoiceNumberFromCtrl,
+                              label: isEs ? 'Desde factura' : 'From invoice',
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _InvoiceNumberField(
+                              controller: _invoiceNumberToCtrl,
+                              label: isEs ? 'Hasta factura' : 'To invoice',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
                     _sectionLabel(context, labelStatus),
                     const SizedBox(height: 8),
                     Wrap(
@@ -328,16 +413,18 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
                           value: 'issued',
                           selected: _status.contains('issued'),
                           color: cs.primary,
-                          onToggle: (v) => setState(() =>
-                              v ? _status.add('issued') : _status.remove('issued')),
+                          onToggle: (v) => setState(() => v
+                              ? _status.add('issued')
+                              : _status.remove('issued')),
                         ),
                         _StatusChip(
                           label: isEs ? 'Borrador' : 'Draft',
                           value: 'draft',
                           selected: _status.contains('draft'),
                           color: cs.tertiary,
-                          onToggle: (v) => setState(() =>
-                              v ? _status.add('draft') : _status.remove('draft')),
+                          onToggle: (v) => setState(() => v
+                              ? _status.add('draft')
+                              : _status.remove('draft')),
                         ),
                         _StatusChip(
                           label: isEs ? 'Anulada' : 'Void',
@@ -352,17 +439,23 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
                     const SizedBox(height: 14),
 
                     // ── Date field ────────────────────────────────────────
-                    _sectionLabel(context, labelDateField),
-                    const SizedBox(height: 4),
-                    Text(
-                      _dateField == 'issueDate'
-                          ? (isEs ? 'Fecha de emisión (auto)' : 'Issue date (auto)')
-                          : (isEs ? 'Fecha de creación (auto)' : 'Created date (auto)'),
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.6),
+                    if (_periodMode != BulkDownloadPeriodMode.invoiceRange) ...[
+                      _sectionLabel(context, labelDateField),
+                      const SizedBox(height: 4),
+                      Text(
+                        _dateField == 'issueDate'
+                            ? (isEs
+                                ? 'Fecha de emisión (auto)'
+                                : 'Issue date (auto)')
+                            : (isEs
+                                ? 'Fecha de creación (auto)'
+                                : 'Created date (auto)'),
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurface.withValues(alpha: 0.6),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 14),
+                    ],
 
                     // ── Helper ────────────────────────────────────────────
                     Row(
@@ -463,8 +556,7 @@ class _BulkDownloadDialogState extends State<BulkDownloadDialog> {
           onTap: () => onSelect(v),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
               color: isSelected
                   ? cs.primary
@@ -508,12 +600,32 @@ class _MonthGrid extends StatelessWidget {
   final ValueChanged<int> onSelect;
 
   static const _esMonths = [
-    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
   ];
   static const _enMonths = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   @override
@@ -707,6 +819,54 @@ class _YearFieldState extends State<_YearField> {
 // Date picker field
 // ─────────────────────────────────────────────────────────────────────────────
 
+class _InvoiceNumberField extends StatelessWidget {
+  const _InvoiceNumberField({
+    required this.controller,
+    required this.label,
+  });
+
+  final TextEditingController controller;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return TextField(
+      controller: controller,
+      textInputAction: TextInputAction.next,
+      decoration: InputDecoration(
+        isDense: true,
+        prefixIcon: Icon(
+          Icons.receipt_long_outlined,
+          size: 16,
+          color: cs.onSurface.withValues(alpha: 0.45),
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 32,
+          minHeight: 36,
+        ),
+        labelText: label,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide:
+              BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide:
+              BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: cs.primary, width: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
 class _DatePickerField extends StatelessWidget {
   const _DatePickerField({
     required this.label,
@@ -740,7 +900,8 @@ class _DatePickerField extends StatelessWidget {
           children: [
             Icon(Icons.calendar_today_outlined,
                 size: 14,
-                color: cs.onSurface.withValues(alpha: date != null ? 0.7 : 0.4)),
+                color:
+                    cs.onSurface.withValues(alpha: date != null ? 0.7 : 0.4)),
             const SizedBox(width: 6),
             Expanded(
               child: Text(

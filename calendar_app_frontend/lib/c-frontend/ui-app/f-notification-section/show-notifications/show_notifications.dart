@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/downloads/download_job.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/jobs/background_job.dart';
 import 'package:hexora/a-models/jobs/job_notification.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/b-backend/downloads/downloads_api.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
 import 'package:hexora/b-backend/notification/notification_api_client.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/shared/jobs/ocr_import_job_mapping_store.dart';
 import 'package:hexora/c-frontend/ui-app/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/c-frontend/utils/errors/group_membership_error_mapper.dart';
@@ -43,6 +46,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
   late final Stream<List<NotificationUser>> _notificationsStream;
   bool _clearing = false; // prevent double taps while clearing
   final NotificationApiClient _notificationApiClient = NotificationApiClient();
+  final DownloadsApi _downloadsApi = DownloadsApi();
   List<JobNotification> _jobNotifications = const <JobNotification>[];
   bool _loadingJobNotifications = false;
 
@@ -241,6 +245,125 @@ class _ShowNotificationsState extends State<ShowNotifications>
     }
   }
 
+  bool _isInvoiceZipDownloadNotification(NotificationUser notification) {
+    final rawCategory = notification.args['category']?.toString().trim();
+    final categoryMatches =
+        notification.category.index == 8 || rawCategory == '8';
+    final jobType = notification.args['jobType']?.toString().trim();
+    return categoryMatches && jobType == 'invoice_zip';
+  }
+
+  bool _isReadyDownloadNotification(NotificationUser notification) {
+    if (!_isInvoiceZipDownloadNotification(notification)) return false;
+    final status = notification.args['downloadStatus']?.toString().trim();
+    return status == 'ready';
+  }
+
+  bool _isFailedDownloadNotification(NotificationUser notification) {
+    if (!_isInvoiceZipDownloadNotification(notification)) return false;
+    final status = notification.args['downloadStatus']?.toString().trim();
+    return status == 'failed';
+  }
+
+  DownloadJob? _downloadJobFromNotification(NotificationUser notification) {
+    if (!_isInvoiceZipDownloadNotification(notification)) return null;
+    final args = notification.args;
+    final jobId = (args['downloadJobId'] ??
+            args['downloadId'] ??
+            args['id'] ??
+            args['jobId'])
+        ?.toString()
+        .trim();
+    final downloadUrl = args['downloadUrl']?.toString().trim() ?? '';
+    if ((jobId == null || jobId.isEmpty) && downloadUrl.isEmpty) return null;
+
+    DateTime? parseDate(dynamic value) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isEmpty) return null;
+      return DateTime.tryParse(text);
+    }
+
+    int? parseInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '');
+    }
+
+    final status = (args['downloadStatus'] ?? args['status'] ?? '')
+        .toString()
+        .trim();
+
+    return DownloadJob(
+      id: jobId?.isNotEmpty == true ? jobId! : notification.id,
+      groupId: (args['groupId'] ?? notification.groupId).toString(),
+      requestedByUserId: (args['requestedByUserId'] ?? '').toString(),
+      requestedByUserName: (args['requestedByUserName'] ?? '').toString(),
+      jobType: (args['jobType'] ?? '').toString(),
+      title: (args['title']?.toString().trim().isNotEmpty == true)
+          ? args['title'].toString()
+          : notification.fallbackTitle,
+      description: (args['description']?.toString().trim().isNotEmpty == true)
+          ? args['description'].toString()
+          : notification.fallbackMessage,
+      status: status,
+      fileName: (args['fileName'] ?? '').toString(),
+      mimeType: (args['mimeType'] ?? 'application/zip').toString(),
+      size: parseInt(args['size']),
+      errorMessage: (args['errorMessage'] ?? '').toString(),
+      params: const <String, dynamic>{},
+      notificationId: notification.id,
+      expiresAt: parseDate(args['expiresAt']),
+      startedAt: parseDate(args['startedAt']),
+      createdAt: parseDate(args['createdAt']) ?? notification.timestamp,
+      updatedAt: parseDate(args['updatedAt']) ?? notification.timestamp,
+      completedAt: parseDate(args['completedAt']),
+      downloadUrl: downloadUrl,
+      canDownload: status == 'ready' && downloadUrl.isNotEmpty,
+    );
+  }
+
+  Future<void> _downloadNotificationFile(NotificationUser notification) async {
+    final job = _downloadJobFromNotification(notification);
+    if (job == null || !job.canDownload) return;
+    try {
+      final response = await _downloadsApi.downloadFile(job);
+      await launchFileDownload(
+        response.bodyBytes,
+        fileName: job.effectiveFileName,
+        mimeType: job.mimeType.trim().isNotEmpty
+            ? job.mimeType
+            : 'application/octet-stream',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Future<void> _handleNotificationOpen(NotificationUser notification) async {
+    if (_isReadyDownloadNotification(notification)) {
+      await _downloadNotificationFile(notification);
+      return;
+    }
+    if (_isFailedDownloadNotification(notification)) {
+      final message =
+          notification.args['errorMessage']?.toString().trim().isNotEmpty ==
+                  true
+              ? notification.args['errorMessage'].toString()
+              : notification.fallbackMessage;
+      if (!mounted || message.trim().isEmpty) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      return;
+    }
+    if (isIssuedDocumentNotification(notification)) {
+      await _openDocumentNotification(notification);
+    }
+  }
+
   bool _isExpenseJobNotification(JobNotification notification) {
     final type = notification.type.toUpperCase();
     return type.startsWith('OCR_IMPORT');
@@ -413,7 +536,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
           isAttentionJobNotification: _isAttentionJobNotification,
           onConfirm: _handleInviteConfirmation,
           onOpenDocument: (notification) {
-            _openDocumentNotification(notification);
+            _handleNotificationOpen(notification);
           },
           onOpenActiveJob: _openExpenseJob,
           onOpenJobNotification: _openJobNotification,

@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/client/client_invoice_stats.dart';
+import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
+import 'invoice_income_analytics.dart';
+
+enum _IncomeAnalyticsMode { monthly, clients }
+
 class ClientInvoiceComparisonView extends StatefulWidget {
   final List<GroupClient> clients;
+  final List<Invoice> invoices;
   final GroupClient? selectedClient;
   final ValueChanged<GroupClient> onSelectClient;
 
   const ClientInvoiceComparisonView({
     super.key,
     required this.clients,
+    required this.invoices,
     required this.selectedClient,
     required this.onSelectClient,
   });
@@ -40,6 +47,7 @@ class _ClientInvoiceComparisonViewState
       TooltipBehavior(enable: true, canShowMarker: false);
 
   int _selectedMonths = 12;
+  _IncomeAnalyticsMode _mode = _IncomeAnalyticsMode.monthly;
   int _requestVersion = 0;
   bool _loading = true;
   String? _error;
@@ -51,7 +59,6 @@ class _ClientInvoiceComparisonViewState
   void initState() {
     super.initState();
     _selectedClientIds = _initialSelectedClientIds();
-    _loadStats();
   }
 
   @override
@@ -64,21 +71,23 @@ class _ClientInvoiceComparisonViewState
   void didUpdateWidget(covariant ClientInvoiceComparisonView oldWidget) {
     super.didUpdateWidget(oldWidget);
     final availableIds = widget.clients.map((client) => client.id).toSet();
-    final filteredIds = _selectedClientIds
-        .where(availableIds.contains)
-        .toList(growable: false);
+    final filteredIds =
+        _selectedClientIds.where(availableIds.contains).toList(growable: false);
     if (filteredIds.length != _selectedClientIds.length) {
       _selectedClientIds = filteredIds;
     }
     if (_selectedClientIds.isEmpty && widget.clients.isNotEmpty) {
       _selectedClientIds = _initialSelectedClientIds();
-      _loadStats();
+      if (_mode == _IncomeAnalyticsMode.clients) {
+        _loadStats();
+      }
     }
   }
 
   List<String> _initialSelectedClientIds() {
     if (widget.selectedClient != null &&
-        widget.clients.any((client) => client.id == widget.selectedClient!.id)) {
+        widget.clients
+            .any((client) => client.id == widget.selectedClient!.id)) {
       return [widget.selectedClient!.id];
     }
     if (widget.clients.isEmpty) return const [];
@@ -218,7 +227,9 @@ class _ClientInvoiceComparisonViewState
   Future<void> _changeRange(int months) async {
     if (_selectedMonths == months) return;
     setState(() => _selectedMonths = months);
-    await _loadStats();
+    if (_mode == _IncomeAnalyticsMode.clients) {
+      await _loadStats();
+    }
   }
 
   List<String> _monthKeys(List<GroupClient> selectedClients) {
@@ -246,22 +257,20 @@ class _ClientInvoiceComparisonViewState
       for (final month in stats.months) month.month: month,
     };
 
-    return monthKeys
-        .map((monthKey) {
-          final month = byMonth[monthKey];
-          return _SeriesPoint(
-            clientName: client.name,
-            monthKey: monthKey,
-            label: _formatMonthLabel(monthKey, locale),
-            issuedTotal: month?.issuedTotal ?? 0,
-            issuedCount: month?.issuedCount ?? 0,
-            draftTotal: month?.draftTotal ?? 0,
-            draftCount: month?.draftCount ?? 0,
-            voidTotal: month?.voidTotal ?? 0,
-            voidCount: month?.voidCount ?? 0,
-          );
-        })
-        .toList(growable: false);
+    return monthKeys.map((monthKey) {
+      final month = byMonth[monthKey];
+      return _SeriesPoint(
+        clientName: client.name,
+        monthKey: monthKey,
+        label: _formatMonthLabel(monthKey, locale),
+        issuedTotal: month?.issuedTotal ?? 0,
+        issuedCount: month?.issuedCount ?? 0,
+        draftTotal: month?.draftTotal ?? 0,
+        draftCount: month?.draftCount ?? 0,
+        voidTotal: month?.voidTotal ?? 0,
+        voidCount: month?.voidCount ?? 0,
+      );
+    }).toList(growable: false);
   }
 
   String _formatMonthLabel(String rawMonth, String locale) {
@@ -279,21 +288,262 @@ class _ClientInvoiceComparisonViewState
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-      child: isCompact
-          ? Column(
-              children: [
-                SizedBox(height: 300, child: _buildSelectorPanel(context)),
-                const SizedBox(height: 12),
-                Expanded(child: _buildComparisonPanel(context)),
-              ],
-            )
-          : Row(
-              children: [
-                SizedBox(width: 340, child: _buildSelectorPanel(context)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildComparisonPanel(context)),
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildModeSelector(context),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _mode == _IncomeAnalyticsMode.monthly
+                ? _buildMonthlyIncomePanel(context)
+                : _buildClientComparisonLayout(context, isCompact),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeSelector(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final compactLabels = MediaQuery.sizeOf(context).width < 700;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SegmentedButton<_IncomeAnalyticsMode>(
+        segments: [
+          ButtonSegment(
+            value: _IncomeAnalyticsMode.monthly,
+            icon: const Icon(Icons.bar_chart_rounded, size: 17),
+            label: Text(
+              compactLabels
+                  ? (isSpanish ? 'Mensual' : 'Monthly')
+                  : (isSpanish ? 'Ingresos mensuales' : 'Monthly income'),
             ),
+          ),
+          ButtonSegment(
+            value: _IncomeAnalyticsMode.clients,
+            icon: const Icon(Icons.compare_arrows_rounded, size: 17),
+            label: Text(isSpanish ? 'Comparar clientes' : 'Compare clients'),
+          ),
+        ],
+        selected: {_mode},
+        showSelectedIcon: false,
+        onSelectionChanged: (selection) {
+          final next = selection.first;
+          if (next == _mode) return;
+          setState(() => _mode = next);
+          if (next == _IncomeAnalyticsMode.clients) {
+            _loadStats();
+          }
+        },
+        style: ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          side: WidgetStatePropertyAll(
+            BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClientComparisonLayout(BuildContext context, bool isCompact) {
+    if (isCompact) {
+      return Column(
+        children: [
+          SizedBox(height: 300, child: _buildSelectorPanel(context)),
+          const SizedBox(height: 12),
+          Expanded(child: _buildComparisonPanel(context)),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        SizedBox(width: 340, child: _buildSelectorPanel(context)),
+        const SizedBox(width: 12),
+        Expanded(child: _buildComparisonPanel(context)),
+      ],
+    );
+  }
+
+  Widget _buildMonthlyIncomePanel(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final currency = NumberFormat.currency(
+      locale: locale,
+      symbol: 'EUR ',
+      decimalDigits: 2,
+    );
+    final compactCurrency = NumberFormat.compactCurrency(
+      locale: locale,
+      symbol: 'EUR ',
+    );
+    final analytics = buildInvoiceIncomeAnalytics(
+      invoices: widget.invoices,
+      months: _selectedMonths,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            isSpanish ? 'Ingresos mensuales' : 'Monthly income',
+            style: typo.titleLarge.copyWith(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isSpanish
+                ? 'Evolucion de las facturas emitidas y los pagos registrados.'
+                : 'Issued invoices and recorded payments over time.',
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildRangeSelector(isSpanish),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _IncomeKpi(
+                icon: Icons.receipt_long_outlined,
+                label: isSpanish ? 'Facturado' : 'Billed',
+                value: currency.format(analytics.billedTotal),
+                color: cs.primary,
+              ),
+              _IncomeKpi(
+                icon: Icons.payments_outlined,
+                label: isSpanish ? 'Cobrado' : 'Collected',
+                value: currency.format(analytics.collectedTotal),
+                color: const Color(0xFF16A085),
+              ),
+              _IncomeKpi(
+                icon: Icons.schedule_outlined,
+                label: isSpanish ? 'Pendiente' : 'Outstanding',
+                value: currency.format(analytics.outstandingTotal),
+                color: const Color(0xFFE09B32),
+              ),
+              _IncomeKpi(
+                icon: Icons.equalizer_rounded,
+                label: isSpanish ? 'Media mensual' : 'Monthly average',
+                value: currency.format(analytics.monthlyAverage),
+                color: cs.secondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.35),
+                ),
+              ),
+              child: analytics.hasActivity
+                  ? SfCartesianChart(
+                      legend: Legend(
+                        isVisible: true,
+                        position: LegendPosition.top,
+                        textStyle: typo.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      plotAreaBorderWidth: 0,
+                      tooltipBehavior: _tooltipBehavior,
+                      primaryXAxis: CategoryAxis(
+                        majorGridLines: const MajorGridLines(width: 0),
+                        labelRotation: analytics.months.length > 8 ? -45 : 0,
+                        axisLine: AxisLine(
+                          color: cs.outlineVariant.withValues(alpha: 0.45),
+                        ),
+                        labelStyle: typo.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      primaryYAxis: NumericAxis(
+                        majorTickLines: const MajorTickLines(size: 0),
+                        axisLine: const AxisLine(width: 0),
+                        numberFormat: compactCurrency,
+                        labelStyle: typo.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                        majorGridLines: MajorGridLines(
+                          width: 1,
+                          color: cs.outlineVariant.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      series: [
+                        ColumnSeries<InvoiceIncomeMonth, String>(
+                          name: isSpanish ? 'Facturado' : 'Billed',
+                          color: cs.primary.withValues(alpha: 0.78),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(5),
+                          ),
+                          enableTooltip: true,
+                          dataSource: analytics.months,
+                          xValueMapper: (point, _) => _formatMonthLabel(
+                            '${point.month.year}-${point.month.month.toString().padLeft(2, '0')}',
+                            locale,
+                          ),
+                          yValueMapper: (point, _) => point.billed,
+                        ),
+                        SplineSeries<InvoiceIncomeMonth, String>(
+                          name: isSpanish ? 'Cobrado' : 'Collected',
+                          color: const Color(0xFF16A085),
+                          width: 3,
+                          markerSettings: const MarkerSettings(
+                            isVisible: true,
+                            width: 6,
+                            height: 6,
+                          ),
+                          enableTooltip: true,
+                          dataSource: analytics.months,
+                          xValueMapper: (point, _) => _formatMonthLabel(
+                            '${point.month.year}-${point.month.month.toString().padLeft(2, '0')}',
+                            locale,
+                          ),
+                          yValueMapper: (point, _) => point.collected,
+                        ),
+                      ],
+                    )
+                  : const Center(child: _ComparisonEmptyState()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRangeSelector(bool isSpanish) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [6, 12, 24]
+          .map(
+            (months) => ChoiceChip(
+              label: Text(isSpanish ? '$months meses' : '$months months'),
+              selected: _selectedMonths == months,
+              onSelected: (_) => _changeRange(months),
+            ),
+          )
+          .toList(growable: false),
     );
   }
 
@@ -499,7 +749,8 @@ class _ClientInvoiceComparisonViewState
         .toList(growable: false);
     final allSeriesEmpty = activeClients.isEmpty ||
         activeClients.every(
-          (client) => !(_statsByClientId[client.id]?.hasAnyMonthlyActivity ?? false),
+          (client) =>
+              !(_statsByClientId[client.id]?.hasAnyMonthlyActivity ?? false),
         );
 
     return Column(
@@ -539,21 +790,7 @@ class _ClientInvoiceComparisonViewState
           ],
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [6, 12, 24]
-              .map(
-                (months) => ChoiceChip(
-                  label: Text(
-                    isSpanish ? '$months meses' : '$months months',
-                  ),
-                  selected: _selectedMonths == months,
-                  onSelected: (_) => _changeRange(months),
-                ),
-              )
-              .toList(growable: false),
-        ),
+        _buildRangeSelector(isSpanish),
         if (_loading) ...[
           const SizedBox(height: 12),
           LinearProgressIndicator(
@@ -602,7 +839,8 @@ class _ClientInvoiceComparisonViewState
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
             ),
             child: allSeriesEmpty
                 ? const Center(child: _ComparisonEmptyState())
@@ -668,6 +906,68 @@ class _ClientInvoiceComparisonViewState
   }
 }
 
+class _IncomeKpi extends StatelessWidget {
+  const _IncomeKpi({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 180, maxWidth: 250),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: typo.caption.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: typo.bodyMedium.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ClientStatsResult {
   final GroupClient client;
   final ClientInvoiceStats? stats;
@@ -727,9 +1027,7 @@ class _ClientSelectorRow extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 side: BorderSide(
-                  color: selected
-                      ? cs.primary
-                      : cs.outlineVariant,
+                  color: selected ? cs.primary : cs.outlineVariant,
                   width: 1.5,
                 ),
               ),

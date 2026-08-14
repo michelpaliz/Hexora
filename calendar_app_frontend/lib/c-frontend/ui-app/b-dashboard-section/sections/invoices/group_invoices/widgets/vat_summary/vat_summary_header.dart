@@ -95,12 +95,10 @@ class VatSummaryHeader extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Align(
-        alignment: Alignment.topRight,
-        child: Transform.translate(
-          offset: const Offset(0, -16),
-          child: Container(
+      padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final bar = Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: cs.surface,
@@ -149,7 +147,8 @@ class VatSummaryHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Icon(Icons.event_outlined, size: 14, color: cs.onSurfaceVariant),
+                Icon(Icons.event_outlined,
+                    size: 14, color: cs.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Text(
                   rangeLabel,
@@ -170,7 +169,8 @@ class VatSummaryHeader extends StatelessWidget {
                         color: cs.outlineVariant.withValues(alpha: 0.6),
                       ),
                     ),
-                    child: Icon(Icons.schedule_outlined, size: 14, color: cs.onSurfaceVariant),
+                    child: Icon(Icons.schedule_outlined,
+                        size: 14, color: cs.onSurfaceVariant),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -184,7 +184,8 @@ class VatSummaryHeader extends StatelessWidget {
                 Tooltip(
                   message: 'Year: $year',
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
@@ -236,8 +237,19 @@ class VatSummaryHeader extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
+          );
+          return Align(
+            alignment: Alignment.centerRight,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                reverse: true,
+                child: bar,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

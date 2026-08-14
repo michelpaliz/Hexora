@@ -33,8 +33,7 @@ class TelegramClientDocumentSelection {
   final String documentLabel;
 }
 
-Future<TelegramClientDocumentSelection?>
-showTelegramClientDocumentPickerDialog(
+Future<TelegramClientDocumentSelection?> showTelegramClientDocumentPickerDialog(
   BuildContext context, {
   required String groupId,
   String? initialClientId,
@@ -76,6 +75,7 @@ class TelegramClientDocumentPickerDialog extends StatefulWidget {
 
 enum _TelegramClientDocumentType {
   invoice(Icons.receipt_long_rounded),
+  draft(Icons.edit_note_rounded),
   receipt(Icons.receipt_rounded),
   presupuesto(Icons.request_quote_rounded);
 
@@ -85,6 +85,7 @@ enum _TelegramClientDocumentType {
 
   String label(bool isEs) => switch (this) {
         invoice => isEs ? 'Facturas' : 'Invoices',
+        draft => isEs ? 'Borradores' : 'Drafts',
         receipt => isEs ? 'Recibos' : 'Receipts',
         presupuesto => 'Presupuestos',
       };
@@ -165,10 +166,22 @@ class _TelegramClientDocumentPickerDialogState
     );
     setState(() {
       if (!_containsDocumentKey(visibleEntries, _selectedDocumentKey)) {
-        _selectedDocumentKey = visibleEntries.isNotEmpty
-            ? visibleEntries.first.key
-            : null;
+        _selectedDocumentKey =
+            visibleEntries.isNotEmpty ? visibleEntries.first.key : null;
       }
+    });
+  }
+
+  void _selectDocumentType(_TelegramClientDocumentType type) {
+    if (_selectedType == type) return;
+    final nextEntries = _visibleEntriesFor(
+      clientId: _selectedClientId,
+      type: type,
+    );
+    setState(() {
+      _selectedType = type;
+      _selectedDocumentKey =
+          nextEntries.isNotEmpty ? nextEntries.first.key : null;
     });
   }
 
@@ -186,12 +199,11 @@ class _TelegramClientDocumentPickerDialogState
       if (!mounted) return;
 
       final preferredClientId = widget.initialClientId?.trim();
-      final initialClientId =
-          preferredClientId != null &&
-                  preferredClientId.isNotEmpty &&
-                  loaded.any((client) => client.id == preferredClientId)
-              ? preferredClientId
-              : (loaded.isNotEmpty ? loaded.first.id : null);
+      final initialClientId = preferredClientId != null &&
+              preferredClientId.isNotEmpty &&
+              loaded.any((client) => client.id == preferredClientId)
+          ? preferredClientId
+          : (loaded.isNotEmpty ? loaded.first.id : null);
 
       setState(() {
         _clients = loaded;
@@ -227,9 +239,8 @@ class _TelegramClientDocumentPickerDialogState
         setState(() {
           _documentsError = null;
           if (!_containsDocumentKey(visibleEntries, _selectedDocumentKey)) {
-            _selectedDocumentKey = visibleEntries.isNotEmpty
-                ? visibleEntries.first.key
-                : null;
+            _selectedDocumentKey =
+                visibleEntries.isNotEmpty ? visibleEntries.first.key : null;
           }
         });
       }
@@ -262,9 +273,8 @@ class _TelegramClientDocumentPickerDialogState
       setState(() {
         _loadingDocuments = false;
         if (!_containsDocumentKey(visibleEntries, _selectedDocumentKey)) {
-          _selectedDocumentKey = visibleEntries.isNotEmpty
-              ? visibleEntries.first.key
-              : null;
+          _selectedDocumentKey =
+              visibleEntries.isNotEmpty ? visibleEntries.first.key : null;
         }
       });
     } catch (e) {
@@ -343,8 +353,10 @@ class _TelegramClientDocumentPickerDialogState
       clientId: clientId,
     );
     list.sort((a, b) {
-      final aDate = _parseDate(a['createdAt'] ?? a['updatedAt']) ?? DateTime(1970);
-      final bDate = _parseDate(b['createdAt'] ?? b['updatedAt']) ?? DateTime(1970);
+      final aDate =
+          _parseDate(a['createdAt'] ?? a['updatedAt']) ?? DateTime(1970);
+      final bDate =
+          _parseDate(b['createdAt'] ?? b['updatedAt']) ?? DateTime(1970);
       return bDate.compareTo(aDate);
     });
     return list;
@@ -359,10 +371,16 @@ class _TelegramClientDocumentPickerDialogState
     }
 
     final rawEntries = switch (type) {
-      _TelegramClientDocumentType.invoice => (_invoiceCache[clientId] ?? const <Invoice>[])
-          .map(_buildInvoiceEntry),
-      _TelegramClientDocumentType.receipt => (_receiptCache[clientId] ?? const <Receipt>[])
-          .map(_buildReceiptEntry),
+      _TelegramClientDocumentType.invoice =>
+        (_invoiceCache[clientId] ?? const <Invoice>[])
+            .where((invoice) => !_isDraftStatus(invoice.status))
+            .map(_buildInvoiceEntry),
+      _TelegramClientDocumentType.draft =>
+        (_invoiceCache[clientId] ?? const <Invoice>[])
+            .where((invoice) => _isDraftStatus(invoice.status))
+            .map(_buildInvoiceEntry),
+      _TelegramClientDocumentType.receipt =>
+        (_receiptCache[clientId] ?? const <Receipt>[]).map(_buildReceiptEntry),
       _TelegramClientDocumentType.presupuesto =>
         (_presupuestoCache[clientId] ?? const <Map<String, dynamic>>[])
             .map(_buildPresupuestoEntry),
@@ -390,8 +408,9 @@ class _TelegramClientDocumentPickerDialogState
   }
 
   _TelegramClientDocumentEntry _buildInvoiceEntry(Invoice invoice) {
+    final isDraft = _isDraftStatus(invoice.status);
     final title = invoice.invoiceNumber.trim().isEmpty
-        ? invoice.id
+        ? _draftInvoiceTitle(invoice)
         : invoice.invoiceNumber.trim();
     final status = _normalizeStatus(
       invoice.status,
@@ -411,8 +430,10 @@ class _TelegramClientDocumentPickerDialogState
       title: title,
       subtitle: subtitleParts.join('  -  '),
       statusLabel: status,
-      icon: Icons.receipt_long_rounded,
-      type: _TelegramClientDocumentType.invoice,
+      icon: isDraft ? Icons.edit_note_rounded : Icons.receipt_long_rounded,
+      type: isDraft
+          ? _TelegramClientDocumentType.draft
+          : _TelegramClientDocumentType.invoice,
       fileName:
           'invoice-${_safeFileName(title.isEmpty ? invoice.id : title)}.pdf',
       loadBytes: () async {
@@ -488,8 +509,7 @@ class _TelegramClientDocumentPickerDialogState
       statusLabel: status,
       icon: Icons.request_quote_rounded,
       type: _TelegramClientDocumentType.presupuesto,
-      fileName:
-          'presupuesto-${_safeFileName(title.isEmpty ? id : title)}.pdf',
+      fileName: 'presupuesto-${_safeFileName(title.isEmpty ? id : title)}.pdf',
       loadBytes: () async {
         final response = await _presupuestosApi.previewPdf(id);
         return response.bodyBytes;
@@ -601,8 +621,9 @@ class _TelegramClientDocumentPickerDialogState
       clientId: _selectedClientId,
       type: _selectedType,
     );
-    final canAttach =
-        !_attachingDocument && !_loadingDocuments && _selectedDocumentKey != null;
+    final canAttach = !_attachingDocument &&
+        !_loadingDocuments &&
+        _selectedDocumentKey != null;
 
     return Column(
       children: [
@@ -664,8 +685,8 @@ class _TelegramClientDocumentPickerDialogState
                 const SizedBox(height: 4),
                 Text(
                   _isSpanish
-                      ? 'Elige un cliente y adjunta una factura, recibo o presupuesto en PDF a Telegram.'
-                      : 'Choose a client, then attach an invoice, receipt, or presupuesto PDF to Telegram.',
+                      ? 'Elige un cliente y adjunta una factura, borrador, recibo o presupuesto en PDF a Telegram.'
+                      : 'Choose a client, then attach an invoice, draft, receipt, or budget PDF to Telegram.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: cs.onSurface.withValues(alpha: 0.64),
                       ),
@@ -718,8 +739,9 @@ class _TelegramClientDocumentPickerDialogState
           ),
           const SizedBox(width: 16),
           TextButton(
-            onPressed:
-                _attachingDocument ? null : () => Navigator.of(context).maybePop(),
+            onPressed: _attachingDocument
+                ? null
+                : () => Navigator.of(context).maybePop(),
             child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
           ),
           const SizedBox(width: 8),
@@ -875,73 +897,84 @@ class _TelegramClientDocumentPickerDialogState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            selectedClient == null
+                ? (_isSpanish ? 'Documentos del cliente' : 'Client documents')
+                : (_isSpanish
+                    ? 'Documentos de ${selectedClient.name}'
+                    : 'Client documents for ${selectedClient.name}'),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            selectedClient == null
+                ? (_isSpanish
+                    ? 'Selecciona un cliente para ver sus PDFs.'
+                    : 'Select a client to browse its PDFs.')
+                : (_isSpanish
+                    ? 'Elige el tipo de documento y selecciona un PDF.'
+                    : 'Choose the document type, then select one PDF.'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurface.withValues(alpha: 0.58),
+                ),
+          ),
+          const SizedBox(height: 14),
+          _DocumentTypeTabs(
+            selectedType: _selectedType,
+            isSpanish: _isSpanish,
+            enabled: selectedClient != null && !_loadingDocuments,
+            counts: {
+              for (final type in _TelegramClientDocumentType.values)
+                type: _documentCountForClient(_selectedClientId, type),
+            },
+            onSelected: _selectDocumentType,
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
+              Icon(_selectedType.icon, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      selectedClient == null
-                          ? (_isSpanish
-                              ? 'Documentos del cliente'
-                              : 'Client documents')
-                          : (_isSpanish
-                              ? 'Documentos de ${selectedClient.name}'
-                              : 'Client documents for ${selectedClient.name}'),
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      selectedClient == null
-                          ? (_isSpanish
-                              ? 'Selecciona un cliente para ver sus PDFs.'
-                              : 'Select a client to browse its PDFs.')
-                          : (_isSpanish
-                              ? 'Elige un PDF para adjuntarlo al chat de Telegram.'
-                              : 'Pick one PDF to attach to the current Telegram chat.'),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.58),
-                          ),
-                    ),
-                  ],
+                child: Text(
+                  _isSpanish
+                      ? '${_selectedType.label(_isSpanish)} disponibles'
+                      : 'Available ${_selectedType.label(_isSpanish).toLowerCase()}',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: cs.onSurface,
+                      ),
                 ),
               ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _TelegramClientDocumentType.values.map((type) {
-                  final selected = _selectedType == type;
-                  return ChoiceChip(
-                    selected: selected,
-                    label: Text(type.label(_isSpanish)),
-                    avatar: Icon(type.icon, size: 16),
-                    onSelected: (value) {
-                      if (!value) return;
-                      final nextEntries = _visibleEntriesFor(
-                        clientId: _selectedClientId,
-                        type: type,
-                      );
-                      setState(() {
-                        _selectedType = type;
-                        _selectedDocumentKey = nextEntries.isNotEmpty
-                            ? nextEntries.first.key
-                            : null;
-                      });
-                    },
-                  );
-                }).toList(growable: false),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: cs.primary.withValues(alpha: 0.16),
+                  ),
+                ),
+                child: Text(
+                  '${entries.length}',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(
@@ -953,7 +986,8 @@ class _TelegramClientDocumentPickerDialogState
                     controller: _documentSearchController,
                     decoration: InputDecoration(
                       border: InputBorder.none,
-                      hintText: _isSpanish ? 'Buscar PDFs...' : 'Search PDFs...',
+                      hintText:
+                          _isSpanish ? 'Buscar PDFs...' : 'Search PDFs...',
                     ),
                   ),
                 ),
@@ -975,7 +1009,8 @@ class _TelegramClientDocumentPickerDialogState
               message: _documentsError!,
               onRetry: _selectedClientId == null
                   ? null
-                  : () => _loadDocumentsForClient(_selectedClientId!, force: true),
+                  : () =>
+                      _loadDocumentsForClient(_selectedClientId!, force: true),
             ),
             const SizedBox(height: 12),
           ],
@@ -995,12 +1030,22 @@ class _TelegramClientDocumentPickerDialogState
                     : entries.isEmpty
                         ? _EmptyCard(
                             icon: _selectedType.icon,
-                            title: _isSpanish
-                                ? 'Sin PDFs de ${_selectedType.label(_isSpanish).toLowerCase()}'
-                                : 'No ${_selectedType.label(_isSpanish).toLowerCase()} PDFs',
-                            message: _isSpanish
-                                ? 'Prueba con otro cliente o tipo de documento.'
-                                : 'Try another client or another document type.',
+                            title: _selectedType ==
+                                    _TelegramClientDocumentType.draft
+                                ? (_isSpanish
+                                    ? 'Sin borradores'
+                                    : 'No invoice drafts')
+                                : (_isSpanish
+                                    ? 'Sin PDFs de ${_selectedType.label(_isSpanish).toLowerCase()}'
+                                    : 'No ${_selectedType.label(_isSpanish).toLowerCase()} PDFs'),
+                            message: _selectedType ==
+                                    _TelegramClientDocumentType.draft
+                                ? (_isSpanish
+                                    ? 'Este cliente no tiene facturas guardadas como borrador.'
+                                    : 'This client has no invoices saved as drafts.')
+                                : (_isSpanish
+                                    ? 'Prueba con otro cliente o tipo de documento.'
+                                    : 'Try another client or another document type.'),
                           )
                         : ListView.separated(
                             itemCount: entries.length,
@@ -1013,8 +1058,7 @@ class _TelegramClientDocumentPickerDialogState
                               return _DocumentTile(
                                 entry: entry,
                                 selected: selected,
-                                previewing:
-                                    _previewingDocumentKey == entry.key,
+                                previewing: _previewingDocumentKey == entry.key,
                                 onTap: () {
                                   setState(() {
                                     _selectedDocumentKey = entry.key;
@@ -1052,6 +1096,55 @@ class _TelegramClientDocumentPickerDialogState
         .join(' ');
   }
 
+  bool _isDraftStatus(String? status) {
+    final value = (status ?? '').trim().toLowerCase();
+    return value == 'draft' || value == 'borrador';
+  }
+
+  int _documentCountForClient(
+    String? clientId,
+    _TelegramClientDocumentType type,
+  ) {
+    if (clientId == null || clientId.isEmpty) return 0;
+    return switch (type) {
+      _TelegramClientDocumentType.invoice =>
+        (_invoiceCache[clientId] ?? const <Invoice>[])
+            .where((invoice) => !_isDraftStatus(invoice.status))
+            .length,
+      _TelegramClientDocumentType.draft =>
+        (_invoiceCache[clientId] ?? const <Invoice>[])
+            .where((invoice) => _isDraftStatus(invoice.status))
+            .length,
+      _TelegramClientDocumentType.receipt =>
+        (_receiptCache[clientId] ?? const <Receipt>[]).length,
+      _TelegramClientDocumentType.presupuesto =>
+        (_presupuestoCache[clientId] ?? const <Map<String, dynamic>>[]).length,
+    };
+  }
+
+  String _draftInvoiceTitle(Invoice invoice) {
+    for (final line in invoice.lines) {
+      for (final value in <String?>[
+        line.conceptTitle,
+        line.description,
+      ]) {
+        final label = value?.trim() ?? '';
+        if (label.isNotEmpty) return label;
+      }
+    }
+    for (final block in invoice.blocks) {
+      for (final value in <String?>[
+        block.conceptTitle,
+        block.description,
+        block.title,
+      ]) {
+        final label = value?.trim() ?? '';
+        if (label.isNotEmpty) return label;
+      }
+    }
+    return _isSpanish ? 'Borrador de factura' : 'Invoice draft';
+  }
+
   String _formatDate(DateTime value) {
     return DateFormat('dd MMM yyyy').format(value.toLocal());
   }
@@ -1087,6 +1180,191 @@ class _TelegramClientDocumentPickerDialogState
   String _safeFileName(String value) {
     final cleaned = value.trim().replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '-');
     return cleaned.isEmpty ? 'document' : cleaned;
+  }
+}
+
+class _DocumentTypeTabs extends StatelessWidget {
+  const _DocumentTypeTabs({
+    required this.selectedType,
+    required this.isSpanish,
+    required this.enabled,
+    required this.counts,
+    required this.onSelected,
+  });
+
+  final _TelegramClientDocumentType selectedType;
+  final bool isSpanish;
+  final bool enabled;
+  final Map<_TelegramClientDocumentType, int> counts;
+  final ValueChanged<_TelegramClientDocumentType> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.26),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 620;
+          final tabs = [
+            for (final type in _TelegramClientDocumentType.values)
+              _DocumentTypeTabButton(
+                type: type,
+                label: type.label(isSpanish),
+                count: counts[type] ?? 0,
+                selected: selectedType == type,
+                enabled: enabled,
+                onTap: () => onSelected(type),
+              ),
+          ];
+
+          if (compact) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final tab in tabs)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: SizedBox(width: 150, child: tab),
+                    ),
+                ],
+              ),
+            );
+          }
+
+          return Row(
+            children: [
+              for (final tab in tabs)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: tab,
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DocumentTypeTabButton extends StatelessWidget {
+  const _DocumentTypeTabButton({
+    required this.type,
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final _TelegramClientDocumentType type;
+  final String label;
+  final int count;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fg = selected
+        ? cs.onPrimary
+        : enabled
+            ? cs.onSurface
+            : cs.onSurface.withValues(alpha: 0.42);
+    final countFg = selected
+        ? cs.primary
+        : enabled
+            ? cs.onSurfaceVariant
+            : cs.onSurfaceVariant.withValues(alpha: 0.48);
+
+    return Tooltip(
+      message: label,
+      waitDuration: const Duration(milliseconds: 450),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(11),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 170),
+          curve: Curves.easeOutCubic,
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: selected ? cs.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: selected
+                  ? cs.primary
+                  : cs.outlineVariant.withValues(alpha: 0.18),
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: cs.primary.withValues(alpha: 0.18),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(type.icon, size: 16, color: fg),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Container(
+                constraints: const BoxConstraints(minWidth: 22),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? cs.onPrimary.withValues(alpha: 0.92)
+                      : cs.surface.withValues(alpha: 0.78),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: selected
+                        ? Colors.transparent
+                        : cs.outlineVariant.withValues(alpha: 0.24),
+                  ),
+                ),
+                child: Text(
+                  count.toString(),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: countFg,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

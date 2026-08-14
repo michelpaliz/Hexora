@@ -28,6 +28,156 @@ class InvoicesApiException implements Exception {
   String toString() => 'Exception: $message';
 }
 
+class InvoiceBatchIssueResult {
+  const InvoiceBatchIssueResult({
+    required this.ok,
+    required this.issuedCount,
+    required this.orderedInvoiceIds,
+    required this.invoices,
+  });
+
+  final bool ok;
+  final int issuedCount;
+  final List<String> orderedInvoiceIds;
+  final List<Invoice> invoices;
+
+  factory InvoiceBatchIssueResult.fromJson(Map<String, dynamic> json) {
+    final invoices = _invoiceApiInvoiceList(json['invoices']);
+    final rawIssuedCount = json['issuedCount'];
+    final issuedCount = rawIssuedCount is num
+        ? rawIssuedCount.toInt()
+        : int.tryParse(rawIssuedCount?.toString() ?? '') ?? invoices.length;
+
+    return InvoiceBatchIssueResult(
+      ok: json['ok'] == true,
+      issuedCount: issuedCount,
+      orderedInvoiceIds: _invoiceApiStringList(json['orderedInvoiceIds']),
+      invoices: invoices,
+    );
+  }
+}
+
+class InvoiceBatchIssueFailure {
+  const InvoiceBatchIssueFailure({
+    required this.message,
+    this.failedInvoiceId,
+    required this.orderedInvoiceIds,
+    required this.issuedInvoices,
+    required this.missingInvoiceIds,
+    required this.nonDraftInvoiceIds,
+  });
+
+  final String message;
+  final String? failedInvoiceId;
+  final List<String> orderedInvoiceIds;
+  final List<Invoice> issuedInvoices;
+  final List<String> missingInvoiceIds;
+  final List<String> nonDraftInvoiceIds;
+
+  int get issuedCount => issuedInvoices.length;
+
+  factory InvoiceBatchIssueFailure.fromJson(Map<String, dynamic> json) {
+    final failedInvoiceId = json['failedInvoiceId']?.toString().trim();
+    return InvoiceBatchIssueFailure(
+      message: json['message']?.toString().trim() ?? '',
+      failedInvoiceId: failedInvoiceId == null || failedInvoiceId.isEmpty
+          ? null
+          : failedInvoiceId,
+      orderedInvoiceIds: _invoiceApiStringList(json['orderedInvoiceIds']),
+      issuedInvoices: _invoiceApiInvoiceList(json['issuedInvoices']),
+      missingInvoiceIds: _invoiceApiStringList(json['missingInvoiceIds']),
+      nonDraftInvoiceIds: _invoiceApiStringList(json['nonDraftInvoiceIds']),
+    );
+  }
+}
+
+class InvoicesBatchIssueException extends InvoicesApiException {
+  InvoicesBatchIssueException({
+    required super.statusCode,
+    required super.message,
+    required super.url,
+    required super.method,
+    required super.responseBody,
+    required super.responseHeaders,
+    required this.failure,
+  });
+
+  final InvoiceBatchIssueFailure? failure;
+}
+
+List<String> _invoiceApiStringList(dynamic value) {
+  if (value is! List) return const [];
+  return value
+      .map((item) => item?.toString().trim() ?? '')
+      .where((item) => item.isNotEmpty)
+      .toList(growable: false);
+}
+
+List<Invoice> _invoiceApiInvoiceList(dynamic value) {
+  if (value is! List) return const [];
+  return value
+      .whereType<Map>()
+      .map((item) => Invoice.fromJson(Map<String, dynamic>.from(item)))
+      .toList(growable: false);
+}
+
+class InvoiceZipDownload {
+  const InvoiceZipDownload({
+    required this.id,
+    required this.fileName,
+    this.fileUrl,
+    this.createdAt,
+    this.sizeBytes,
+    this.status,
+    this.errorMessage,
+  });
+
+  final String id;
+  final String fileName;
+  final String? fileUrl;
+  final DateTime? createdAt;
+  final int? sizeBytes;
+  final String? status;
+  final String? errorMessage;
+
+  factory InvoiceZipDownload.fromJson(Map<String, dynamic> json) {
+    String text(List<dynamic> values) {
+      for (final value in values) {
+        final trimmed = value?.toString().trim() ?? '';
+        if (trimmed.isNotEmpty) return trimmed;
+      }
+      return '';
+    }
+
+    int? parseSize(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.round();
+      return int.tryParse(value?.toString().trim() ?? '');
+    }
+
+    DateTime? parseDate(dynamic value) {
+      final raw = value?.toString().trim() ?? '';
+      if (raw.isEmpty) return null;
+      return DateTime.tryParse(raw)?.toLocal();
+    }
+
+    return InvoiceZipDownload(
+      id: text([json['id'], json['_id'], json['fileId']]),
+      fileName: text(
+          [json['fileName'], json['name'], json['filename'], json['title']]),
+      fileUrl: text([json['fileUrl'], json['url'], json['downloadUrl']]).isEmpty
+          ? null
+          : text([json['fileUrl'], json['url'], json['downloadUrl']]),
+      createdAt: parseDate(json['createdAt'] ?? json['created_at']),
+      sizeBytes: parseSize(json['sizeBytes'] ?? json['size']),
+      status: text([json['status']]).isEmpty ? null : text([json['status']]),
+      errorMessage: text([json['errorMessage'], json['error']]).isEmpty
+          ? null
+          : text([json['errorMessage'], json['error']]),
+    );
+  }
+}
+
 class InvoicePaymentSuggestion {
   const InvoicePaymentSuggestion({
     required this.invoiceId,
@@ -143,6 +293,9 @@ class InvoicePaymentSuggestion {
 
 class InvoicesApi {
   final String _base = '${ApiConstants.baseUrl}/invoices';
+  final String _apiRoot = ApiConstants.baseUrl.endsWith('/api')
+      ? ApiConstants.baseUrl
+      : '${ApiConstants.baseUrl}/api';
 
   Map<String, String> _headers() => {
         'Content-Type': 'application/json; charset=UTF-8',
@@ -150,8 +303,12 @@ class InvoicesApi {
 
   Uri _u([String path = '']) => Uri.parse('$_base$path');
 
+  Uri _api(String path, [Map<String, String>? query]) =>
+      Uri.parse('$_apiRoot$path').replace(queryParameters: query);
+
   Uri buildMarkSentUri(String invoiceId) => _u('/$invoiceId/mark-sent');
   Uri buildMarkUnsentUri(String invoiceId) => _u('/$invoiceId/mark-unsent');
+  Uri buildIssueAllUri() => _api('/invoices/issue-all');
 
   Uri buildListByGroupUri(
     String groupId, {
@@ -530,6 +687,23 @@ class InvoicesApi {
     });
   }
 
+  Future<Invoice> updatePayment(
+    String invoiceId,
+    Map<String, dynamic> payload,
+  ) async {
+    final uri = _u('/$invoiceId/payment');
+    final r = await AuthenticatedHttpClient.patch(
+      uri,
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decode<Invoice>(r, (j) {
+      if (j is Map<String, dynamic>) return Invoice.fromJson(j);
+      if (j is Map) return Invoice.fromJson(Map<String, dynamic>.from(j));
+      throw Exception('Unexpected invoice payment payload');
+    });
+  }
+
   Future<Map<String, dynamic>> previewAccountantCompare({
     required List<int> bytes,
     required String fileName,
@@ -592,6 +766,64 @@ class InvoicesApi {
       if (j is Map<String, dynamic>) return Invoice.fromJson(j);
       throw Exception('Unexpected invoice payload');
     });
+  }
+
+  /// POST /api/invoices/issue-all -> backend sorts and issues draft invoices.
+  Future<InvoiceBatchIssueResult> issueAll({
+    required String groupId,
+    required List<String> invoiceIds,
+  }) async {
+    final uri = buildIssueAllUri();
+    final r = await AuthenticatedHttpClient.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({
+        'groupId': groupId,
+        'invoiceIds': invoiceIds,
+      }),
+    );
+
+    dynamic body;
+    if (r.body.isNotEmpty) {
+      try {
+        body = jsonDecode(r.body);
+      } catch (_) {
+        body = r.body;
+      }
+    }
+
+    if (r.statusCode >= 200 && r.statusCode < 300) {
+      if (body is Map) {
+        return InvoiceBatchIssueResult.fromJson(
+          Map<String, dynamic>.from(body),
+        );
+      }
+      throw Exception('Unexpected invoice batch issue payload');
+    }
+
+    var message = r.reasonPhrase ?? 'Could not issue invoices';
+    InvoiceBatchIssueFailure? failure;
+    if (body is Map) {
+      final json = Map<String, dynamic>.from(body);
+      failure = InvoiceBatchIssueFailure.fromJson(json);
+      if (failure.message.isNotEmpty) {
+        message = failure.message;
+      } else if (json['error'] != null) {
+        message = json['error'].toString();
+      }
+    } else if (body is String && body.trim().isNotEmpty) {
+      message = body.trim();
+    }
+
+    throw InvoicesBatchIssueException(
+      statusCode: r.statusCode,
+      message: message,
+      url: uri,
+      method: 'POST',
+      responseBody: r.body.isEmpty ? null : r.body,
+      responseHeaders: r.headers,
+      failure: failure,
+    );
   }
 
   /// GET /invoices/:id/pdf/preview  (inline PDF for drafts/issued)
@@ -657,6 +889,112 @@ class InvoicesApi {
     );
   }
 
+  Future<List<InvoiceZipDownload>> listInvoiceZipDownloads(
+    String groupId,
+  ) async {
+    final uri = _api('/groups/${Uri.encodeComponent(groupId)}/downloads', {
+      'type': 'invoice_zip',
+    });
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      throw InvoicesApiException(
+        statusCode: r.statusCode,
+        message: r.reasonPhrase ?? 'Failed to load downloads',
+        url: uri,
+        method: 'GET',
+        responseBody: r.body.isEmpty ? null : r.body,
+        responseHeaders: r.headers,
+      );
+    }
+    final decoded = jsonDecode(r.body);
+    final rawList = decoded is List
+        ? decoded
+        : decoded is Map && decoded['downloads'] is List
+            ? decoded['downloads'] as List
+            : decoded is Map && decoded['jobs'] is List
+                ? decoded['jobs'] as List
+                : decoded is Map && decoded['items'] is List
+                    ? decoded['items'] as List
+                    : const [];
+    return rawList
+        .whereType<Map>()
+        .map((item) => InvoiceZipDownload.fromJson(
+              item.cast<String, dynamic>(),
+            ))
+        .where((item) => item.id.isNotEmpty || item.fileUrl != null)
+        .toList(growable: false);
+  }
+
+  Future<InvoiceZipDownload> queueInvoiceZipExport({
+    required String groupId,
+    required Map<String, String> params,
+  }) async {
+    final payload = <String, dynamic>{
+      'groupId': groupId,
+      'jobType': 'invoice_zip',
+      'title': 'Invoice ZIP export',
+      'description': 'Invoice ZIP export',
+      'params': Map<String, dynamic>.from(params)..remove('groupId'),
+    };
+    final uri = _api('/downloads');
+    final r = await AuthenticatedHttpClient.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      String msg = r.reasonPhrase ?? 'Could not create download job';
+      if (r.body.isNotEmpty) {
+        try {
+          final body = jsonDecode(r.body);
+          if (body is Map && body['message'] != null) {
+            msg = body['message'].toString();
+          } else if (body is Map && body['error'] != null) {
+            msg = body['error'].toString();
+          }
+        } catch (_) {
+          if (r.body.trim().isNotEmpty) msg = r.body.trim();
+        }
+      }
+      throw InvoicesApiException(
+        statusCode: r.statusCode,
+        message: msg,
+        url: uri,
+        method: 'POST',
+        responseBody: r.body.isEmpty ? null : r.body,
+        responseHeaders: r.headers,
+      );
+    }
+    final decoded =
+        r.body.isEmpty ? const <String, dynamic>{} : jsonDecode(r.body);
+    final raw = decoded is Map && decoded['job'] is Map
+        ? decoded['job'] as Map
+        : decoded is Map && decoded['download'] is Map
+            ? decoded['download'] as Map
+            : decoded is Map
+                ? decoded
+                : const <String, dynamic>{};
+    return InvoiceZipDownload.fromJson(raw.cast<String, dynamic>());
+  }
+
+  Uri storedDownloadUri(String downloadId) => _api(
+        '/downloads/${Uri.encodeComponent(downloadId)}/download',
+      );
+
+  Future<http.Response> downloadStoredFile(String downloadId) async {
+    final uri = storedDownloadUri(downloadId);
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    if (r.statusCode >= 200 && r.statusCode < 300) return r;
+    throw InvoicesApiException(
+      statusCode: r.statusCode,
+      message: r.reasonPhrase ?? 'Failed to download stored file',
+      url: uri,
+      method: 'GET',
+      responseBody: r.body.isEmpty ? null : r.body,
+      responseHeaders: r.headers,
+    );
+  }
+
   Future<Invoice> updateBillingName(
     String id, {
     String? billingName,
@@ -703,6 +1041,35 @@ class InvoicesApi {
     return _decode<Invoice>(r, (j) {
       if (j is Map<String, dynamic>) return Invoice.fromJson(j);
       throw Exception('Unexpected invoice payload');
+    });
+  }
+
+  Future<Invoice> updateIssued(String id, Map<String, dynamic> payload) async {
+    final uri = _u('/$id/issued');
+    final r = await AuthenticatedHttpClient.patch(
+      uri,
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
+    return _decode<Invoice>(r, (j) {
+      if (j is Map<String, dynamic>) {
+        final raw = j['invoice'];
+        if (raw is Map) {
+          return Invoice.fromJson(Map<String, dynamic>.from(raw));
+        }
+        return Invoice.fromJson(j);
+      }
+      throw Exception('Unexpected issued invoice payload');
+    });
+  }
+
+  Future<Map<String, dynamic>> getHistory(String id) async {
+    final uri = _u('/$id/history');
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    return _decode<Map<String, dynamic>>(r, (j) {
+      if (j is List) return {'history': j};
+      if (j is Map) return Map<String, dynamic>.from(j);
+      throw Exception('Unexpected invoice history payload');
     });
   }
 

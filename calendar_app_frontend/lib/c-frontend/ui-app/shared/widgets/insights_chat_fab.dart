@@ -14,6 +14,7 @@ import 'package:hexora/b-backend/insights/insights_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/statements/statements_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/statements/statements_controller.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/statements/statements_formatters.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/statements/statements_shared.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
@@ -552,14 +553,31 @@ bool _isExportPlaceholderText(String text) {
 
 bool _looksLikeActionToken(String text) {
   final trimmed = text.trim();
-  return trimmed.startsWith('__menu__:') || trimmed.startsWith('__back__:');
+  return trimmed.startsWith('__menu__:') ||
+      trimmed.startsWith('__back__:') ||
+      trimmed.startsWith('__anchored_') ||
+      trimmed.startsWith('__') && trimmed.contains(':');
 }
 
 const String _incomeInvoicesByAmountAction =
     '__menu__:category_income:facturas_por_importe';
+const String _financeBreakdownAction = '__menu__::finance_follow_up:breakdown';
 
 bool _isIncomeInvoicesByAmountAction(String? text) {
   return (text ?? '').trim() == _incomeInvoicesByAmountAction;
+}
+
+bool _isFinanceBreakdownAction(String? text) {
+  return (text ?? '').trim() == _financeBreakdownAction;
+}
+
+bool _messageIndicatesZeroFinanceMovements(String text) {
+  final normalized = text.trim().toLowerCase();
+  if (normalized.isEmpty) return false;
+  return normalized.contains('0 movimiento(s)') ||
+      normalized.contains('0 movimientos') ||
+      normalized.contains('0 movement(s)') ||
+      normalized.contains('0 movements');
 }
 
 bool _looksLikeExcelExportOption(String text) {
@@ -683,6 +701,38 @@ InsightsExcelExportAction? _getExportActionFromMessage(_ChatMessage message) {
 
 bool _messageHasMenu(_ChatMessage message) =>
     message.menu?.hasOptions == true || message.menu?.hasBackAction == true;
+
+String _visibleTextForRawValue(
+  String raw, {
+  required bool isUser,
+  required bool isEs,
+}) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return '';
+  if (_looksLikeActionToken(trimmed)) {
+    return isUser
+        ? (isEs ? 'Opcion seleccionada' : 'Option selected')
+        : (isEs ? 'Procesando opcion...' : 'Processing option...');
+  }
+  return raw;
+}
+
+String _visibleMessageText(
+  _ChatMessage message, {
+  required bool isEs,
+  bool preserveStructuredAssistantText = false,
+}) {
+  if (!message.isUser && preserveStructuredAssistantText) {
+    return message.text.trim();
+  }
+  final display = message.displayText?.trim() ?? '';
+  if (display.isNotEmpty) return display;
+  return _visibleTextForRawValue(
+    message.text,
+    isUser: message.isUser,
+    isEs: isEs,
+  );
+}
 
 enum _InsightsResponseMode { auto, stream }
 
@@ -1063,6 +1113,266 @@ class _InsightsChatRuntime extends ChangeNotifier {
     );
   }
 
+  _InsightsMenu? _localStarterMenuForArea({
+    required bool isEs,
+    required String areaLabel,
+  }) {
+    final normalized = areaLabel.trim().toLowerCase();
+    final isIncome = normalized == 'ingresos' || normalized == 'revenue';
+    final isExpenses = normalized == 'gastos' || normalized == 'expenses';
+    final isInvoices = normalized == 'facturas' || normalized == 'invoices';
+    final isClients = normalized == 'clientes' || normalized == 'clients';
+
+    if (isIncome) {
+      return _InsightsMenu(
+        id: 'guided_income',
+        parentId: 'guided_root',
+        backAction: 'menu:root',
+        title: isEs ? 'Ingresos' : 'Revenue',
+        options: <_InsightsMenuOption>[
+          _InsightsMenuOption(
+            index: 1,
+            label: isEs ? 'Resumen de ingresos' : 'Revenue summary',
+            action: isEs
+                ? 'Dame un resumen de ingresos de los ultimos 90 dias.'
+                : 'Give me a revenue summary for the last 90 days.',
+          ),
+          _InsightsMenuOption(
+            index: 2,
+            label: isEs ? 'Tendencia mensual' : 'Monthly trend',
+            action: isEs
+                ? 'Analiza la tendencia mensual de ingresos.'
+                : 'Analyze the monthly revenue trend.',
+          ),
+          _InsightsMenuOption(
+            index: 3,
+            label: isEs ? 'Clientes con mas ingresos' : 'Top revenue clients',
+            action: isEs
+                ? 'Muestra los clientes que generan mas ingresos.'
+                : 'Show the clients generating the most revenue.',
+          ),
+        ],
+      );
+    }
+
+    if (isExpenses) {
+      return _InsightsMenu(
+        id: 'guided_expenses',
+        parentId: 'guided_root',
+        backAction: 'menu:root',
+        title: isEs ? 'Gastos' : 'Expenses',
+        options: <_InsightsMenuOption>[
+          _InsightsMenuOption(
+            index: 1,
+            label: isEs ? 'Resumen de gastos' : 'Expense summary',
+            action: isEs
+                ? 'Dame un resumen de gastos de los ultimos 90 dias.'
+                : 'Give me an expense summary for the last 90 days.',
+          ),
+          _InsightsMenuOption(
+            index: 2,
+            label: isEs ? 'Mayores proveedores' : 'Top suppliers',
+            action: isEs
+                ? 'Muestra los proveedores con mas gasto.'
+                : 'Show the suppliers with the highest spend.',
+          ),
+          _InsightsMenuOption(
+            index: 3,
+            label: isEs ? 'Gastos con incidencias' : 'Expense issues',
+            action: isEs
+                ? 'Revisa gastos con posibles incidencias o datos pendientes.'
+                : 'Review expenses with possible issues or pending data.',
+          ),
+        ],
+      );
+    }
+
+    if (isInvoices) {
+      return _InsightsMenu(
+        id: 'guided_invoices',
+        parentId: 'guided_root',
+        backAction: 'menu:root',
+        title: isEs ? 'Facturas' : 'Invoices',
+        options: <_InsightsMenuOption>[
+          _InsightsMenuOption(
+            index: 1,
+            label: isEs ? 'Facturas emitidas' : 'Issued invoices',
+            action: isEs
+                ? 'Resume las facturas emitidas de los ultimos 90 dias.'
+                : 'Summarize issued invoices for the last 90 days.',
+          ),
+          _InsightsMenuOption(
+            index: 2,
+            label: isEs ? 'Pendientes de cobro' : 'Pending collection',
+            action: isEs
+                ? 'Muestra facturas pendientes de cobro.'
+                : 'Show invoices pending collection.',
+          ),
+          _InsightsMenuOption(
+            index: 3,
+            label: isEs ? 'Vencidas' : 'Overdue',
+            action: isEs
+                ? 'Muestra facturas vencidas y acciones recomendadas.'
+                : 'Show overdue invoices and recommended actions.',
+          ),
+        ],
+      );
+    }
+
+    if (isClients) {
+      return _InsightsMenu(
+        id: 'guided_clients',
+        parentId: 'guided_root',
+        backAction: 'menu:root',
+        title: isEs ? 'Clientes' : 'Clients',
+        options: <_InsightsMenuOption>[
+          _InsightsMenuOption(
+            index: 1,
+            label: isEs ? 'Resumen de clientes' : 'Client summary',
+            action: isEs
+                ? 'Dame un resumen de clientes y actividad reciente.'
+                : 'Give me a client summary and recent activity.',
+          ),
+          _InsightsMenuOption(
+            index: 2,
+            label: isEs ? 'Clientes principales' : 'Top clients',
+            action: isEs
+                ? 'Muestra los clientes principales por ingresos.'
+                : 'Show top clients by revenue.',
+          ),
+          _InsightsMenuOption(
+            index: 3,
+            label: isEs ? 'Clientes sin actividad' : 'Inactive clients',
+            action: isEs
+                ? 'Detecta clientes sin actividad reciente.'
+                : 'Find clients with no recent activity.',
+          ),
+        ],
+      );
+    }
+
+    return null;
+  }
+
+  bool openLocalStarterArea({
+    required BuildContext context,
+    required _InsightsMenuOption option,
+  }) {
+    if (_sending) return true;
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
+    final menu = _localStarterMenuForArea(isEs: isEs, areaLabel: option.label);
+    if (menu == null) return false;
+    final conversationId = _conversationId;
+    final label = option.label.trim();
+    _messages.add(
+      _ChatMessage(
+        isUser: true,
+        text: label,
+        displayText: label,
+        timestamp: DateTime.now(),
+        conversationId: conversationId,
+      ),
+    );
+    final text = isEs
+        ? 'Perfecto. Elige que quieres revisar en $label.'
+        : 'Perfect. Choose what you want to review in $label.';
+    _messages.add(
+      _ChatMessage(
+        isUser: false,
+        text: text,
+        displayText: text,
+        timestamp: DateTime.now(),
+        conversationId: conversationId,
+        menu: menu,
+      ),
+    );
+    notifyListeners();
+    unawaited(_persistHistory());
+    return true;
+  }
+
+  bool openLocalRootMenu({required BuildContext context}) {
+    if (_sending) return true;
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
+    final text =
+        isEs ? 'Elige un area para continuar.' : 'Choose an area to continue.';
+    _messages.add(
+      _ChatMessage(
+        isUser: false,
+        text: text,
+        displayText: text,
+        timestamp: DateTime.now(),
+        conversationId: _conversationId,
+        menu: _defaultRootMenu(isEs),
+      ),
+    );
+    notifyListeners();
+    unawaited(_persistHistory());
+    return true;
+  }
+
+  bool handleLocalMenuBack({
+    required BuildContext context,
+    required _InsightsMenu menu,
+  }) {
+    if ((menu.backAction ?? '').trim() != 'menu:root') return false;
+    return openLocalRootMenu(context: context);
+  }
+
+  bool handleLocalMenuChoice({
+    required BuildContext context,
+    required _ChatMessage message,
+    required String action,
+    required String displayLabel,
+  }) {
+    if (_sending) return true;
+    if (_isFinanceBreakdownAction(action) &&
+        _messageIndicatesZeroFinanceMovements(message.text)) {
+      final isEs = Localizations.localeOf(context)
+          .languageCode
+          .toLowerCase()
+          .startsWith('es');
+      final conversationId = message.conversationId?.trim().isNotEmpty == true
+          ? message.conversationId!.trim()
+          : _conversationId;
+      final userText =
+          displayLabel.trim().isNotEmpty ? displayLabel.trim() : '1';
+      final replyText = isEs
+          ? 'No hay movimientos bancarios en este ciclo, asi que no existe un desglose para mostrar.'
+          : 'There are no bank movements in this cycle, so there is no breakdown to show.';
+      _messages.add(
+        _ChatMessage(
+          isUser: true,
+          text: action,
+          displayText: userText,
+          timestamp: DateTime.now(),
+          conversationId: conversationId,
+        ),
+      );
+      _messages.add(
+        _ChatMessage(
+          isUser: false,
+          text: replyText,
+          displayText: replyText,
+          timestamp: DateTime.now(),
+          conversationId: conversationId,
+          sourceUserMessage: action,
+          menu: _defaultRootMenu(isEs),
+        ),
+      );
+      notifyListeners();
+      unawaited(_persistHistory());
+      return true;
+    }
+    return false;
+  }
+
   _ChatMessage _buildRecoveryMessage({
     required bool isEs,
     required String conversationId,
@@ -1070,13 +1380,21 @@ class _InsightsChatRuntime extends ChangeNotifier {
   }) {
     final isInvalidMenu =
         error.code == 'INVALID_MENU_ACTION' || error.statusCode == 409;
+    final isTemporaryServerFailure = error.statusCode == 500 ||
+        error.statusCode == 502 ||
+        error.statusCode == 503 ||
+        error.statusCode == 504;
     final text = isInvalidMenu
         ? (isEs
             ? 'Esa opcion ya no es valida para esta conversacion. Vamos a empezar de nuevo.'
             : 'That option is no longer valid for this conversation. Let\'s start again.')
-        : (isEs
-            ? 'No pude completar esa accion ahora mismo. Elige un area para continuar.'
-            : 'I could not complete that action right now. Choose an area to continue.');
+        : isTemporaryServerFailure
+            ? (isEs
+                ? 'Insights no esta disponible ahora mismo. Intentalo de nuevo en unos segundos o elige otra area.'
+                : 'Insights is not available right now. Try again in a few seconds or choose another area.')
+            : (isEs
+                ? 'No pude completar esa accion ahora mismo. Elige un area para continuar.'
+                : 'I could not complete that action right now. Choose an area to continue.');
     return _ChatMessage(
       isUser: false,
       text: text,
@@ -1120,6 +1438,49 @@ class _InsightsChatRuntime extends ChangeNotifier {
         return InsightsChatEndpoint.chatStream;
       case _InsightsChatEndpointType.chatAutoStream:
         return InsightsChatEndpoint.chatAutoStream;
+    }
+  }
+
+  bool _isTemporaryInsightsFailure(InsightsApiException error) {
+    return error.statusCode == 500 ||
+        error.statusCode == 502 ||
+        error.statusCode == 503;
+  }
+
+  Future<InsightsChatResult> _sendAutoChatWithFallback({
+    required String message,
+    required String groupId,
+    required Map<String, dynamic> extra,
+  }) async {
+    final endpoint = _apiEndpointForNonStream(_endpointType);
+    try {
+      return await _api.chat(
+        endpoint: endpoint,
+        message: message,
+        groupId: groupId,
+        days: _days,
+        temperature: 0.2,
+        maxTokens: 800,
+        timeoutMs: _timeoutMs,
+        extra: extra,
+      );
+    } on InsightsApiException catch (error) {
+      final canFallback = endpoint == InsightsChatEndpoint.chatAuto &&
+          _isTemporaryInsightsFailure(error);
+      if (!canFallback) rethrow;
+      debugPrint(
+        '[insights_send] chatAuto failed with ${error.statusCode}; retrying via chat',
+      );
+      return _api.chat(
+        endpoint: InsightsChatEndpoint.chat,
+        message: message,
+        groupId: groupId,
+        days: _days,
+        temperature: 0.2,
+        maxTokens: 800,
+        timeoutMs: _timeoutMs,
+        extra: extra,
+      );
     }
   }
 
@@ -1198,14 +1559,9 @@ class _InsightsChatRuntime extends ChangeNotifier {
     var timedOut = false;
     try {
       if (_mode == _InsightsResponseMode.auto) {
-        final response = await _api.chat(
-          endpoint: _apiEndpointForNonStream(_endpointType),
+        final response = await _sendAutoChatWithFallback(
           message: outboundText,
           groupId: resolvedGroupId,
-          days: _days,
-          temperature: 0.2,
-          maxTokens: 800,
-          timeoutMs: _timeoutMs,
           extra: extra,
         );
         if (requestGeneration != _generation) {
@@ -1607,9 +1963,10 @@ class _InsightsChatRuntime extends ChangeNotifier {
         groupId: resolvedGroupId,
         message: trimmed,
       );
-      final textOut = (response['message']?.toString().trim().isNotEmpty ?? false)
-          ? response['message'].toString().trim()
-          : l.insightsChatNoResponse;
+      final textOut =
+          (response['message']?.toString().trim().isNotEmpty ?? false)
+              ? response['message'].toString().trim()
+              : l.insightsChatNoResponse;
       _messages.add(
         _ChatMessage(
           isUser: false,
@@ -1758,16 +2115,42 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     _ChatMessage? message,
   }) async {
     if (_runtime.sending) return;
+    final displayLabel = (label?.trim().isNotEmpty ?? false)
+        ? label!.trim()
+        : (() {
+            final options =
+                message?.menu?.options ?? const <_InsightsMenuOption>[];
+            for (final option in options) {
+              if (option.index == index && option.label.trim().isNotEmpty) {
+                return option.label.trim();
+              }
+            }
+            return null;
+          })();
+    final resolvedAction =
+        (action?.trim().isNotEmpty ?? false) ? action!.trim() : '$index';
+    if (message != null &&
+        _runtime.handleLocalMenuChoice(
+          context: context,
+          message: message,
+          action: resolvedAction,
+          displayLabel: displayLabel ?? '$index',
+        )) {
+      return;
+    }
     await _sendMessageAction(
-      (action?.trim().isNotEmpty ?? false) ? action!.trim() : '$index',
+      resolvedAction,
       source: _InsightsSendSource.followUpButton,
       message: message,
-      displayTextOverride: label,
+      displayTextOverride: displayLabel,
     );
   }
 
   Future<void> _sendStarterChoice(_InsightsMenuOption option) async {
     if (_runtime.sending) return;
+    if (_runtime.openLocalStarterArea(context: context, option: option)) {
+      return;
+    }
     await _sendMessageAction(
       option.action?.trim().isNotEmpty == true
           ? option.action!.trim()
@@ -1793,6 +2176,9 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }) async {
     final backAction = menu.backAction?.trim() ?? '';
     if (backAction.isEmpty || _runtime.sending) return;
+    if (_runtime.handleLocalMenuBack(context: context, menu: menu)) {
+      return;
+    }
     await _sendMessageAction(
       backAction,
       source: _InsightsSendSource.backButton,
@@ -1924,7 +2310,8 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     final primaryServiceId =
         payload['primaryServiceId']?.toString().trim() ?? '';
     final needsClient = clientId.isEmpty ||
-        missing.any((item) => item.contains('client') || item.contains('cliente'));
+        missing
+            .any((item) => item.contains('client') || item.contains('cliente'));
     final needsService = primaryServiceId.isEmpty ||
         missing.any(
           (item) => item.contains('service') || item.contains('servicio'),
@@ -2260,6 +2647,55 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
         'label': isEs ? 'Ingreso' : 'Income',
       },
     ];
+  }
+
+  List<Map<String, dynamic>> _columnsWithUnlinkedIncomeLinkAction(
+    List<Map<String, dynamic>> columns, {
+    required bool isEs,
+  }) {
+    const actionKey = '__unlinkedIncomeLinkAction';
+    if (columns.any((column) => column['key']?.toString() == actionKey)) {
+      return columns;
+    }
+    return <Map<String, dynamic>>[
+      ...columns,
+      {
+        'key': actionKey,
+        'label': isEs ? 'Acciones' : 'Actions',
+      },
+    ];
+  }
+
+  bool _messageLooksLikeUnlinkedIncome(_ChatMessage message) {
+    final table = message.table ?? const <String, dynamic>{};
+    final parts = [
+      message.text,
+      message.displayText,
+      message.sourceUserMessage,
+      table['title'],
+      table['label'],
+      _safeMap(table['summary'])?['label'],
+    ];
+    final text = _normalizedInsightText(parts.whereType<Object>().join(' '));
+    final mentionsIncome = text.contains('ingres') || text.contains('income');
+    final mentionsUnlinked =
+        text.contains('vincul') || text.contains('unlinked');
+    return mentionsIncome && mentionsUnlinked;
+  }
+
+  bool _rowIsPositiveStatementEntry(Map<String, dynamic> row) {
+    final amountText = StatementsShared.entryText(
+      row,
+      const ['amount', 'importe', 'amountFormatted'],
+    );
+    final amount = StatementsFormatters.parseAmount(amountText);
+    return amount != null && amount > 0;
+  }
+
+  bool _rowCanLinkUnlinkedIncomeInvoice(Map<String, dynamic> row) {
+    if (_rowEntryId(row) == null) return false;
+    if (_rowHasExistingInvoiceLink(row)) return false;
+    return _rowIsPositiveStatementEntry(row);
   }
 
   String _invoiceIdFromInsightsInvoiceRow(Map<String, dynamic> row) {
@@ -3101,6 +3537,32 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildUnlinkedIncomeLinkActionCell(
+    BuildContext context, {
+    required _ChatMessage message,
+    required Map<String, dynamic> row,
+    required ColorScheme cs,
+    required AppTypography t,
+  }) {
+    if (!_rowCanLinkUnlinkedIncomeInvoice(row)) {
+      return Text(
+        '-',
+        style: t.caption.copyWith(
+          color: cs.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+    return _buildInvoiceLinkStatusCell(
+      context,
+      message: message,
+      row: row,
+      value: row['linkStatusLabel']?.toString() ?? '',
+      cs: cs,
+      t: t,
     );
   }
 
@@ -4102,7 +4564,8 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
       _InsightsMenuOption(index: 2, label: isEs ? 'Gastos' : 'Expenses'),
       _InsightsMenuOption(index: 3, label: isEs ? 'Facturas' : 'Invoices'),
       _InsightsMenuOption(index: 4, label: isEs ? 'Clientes' : 'Clients'),
-      _InsightsMenuOption(index: 5, label: isEs ? 'Crear evento' : 'Create event'),
+      _InsightsMenuOption(
+          index: 5, label: isEs ? 'Crear evento' : 'Create event'),
     ];
     return Center(
       child: ConstrainedBox(
@@ -4399,9 +4862,19 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
         .where((row) => row['isSummaryRow'] != true)
         .toList(growable: false);
     final hasBankIncomeSearch = _rowsHaveBankIncomeSearch(dataRows);
-    final displayedColumns = hasBankIncomeSearch
+    final hasUnlinkedIncomeLinkActions = !hasManualLinking &&
+        (_messageLooksLikeUnlinkedIncome(message) ||
+            dataRows.any(_rowIsUnlinkedInvoice)) &&
+        dataRows.any(_rowCanLinkUnlinkedIncomeInvoice);
+    final columnsWithBankIncomeSearch = hasBankIncomeSearch
         ? _columnsWithBankIncomeSearchAction(columns, isEs: isEs)
         : columns;
+    final displayedColumns = hasUnlinkedIncomeLinkActions
+        ? _columnsWithUnlinkedIncomeLinkAction(
+            columnsWithBankIncomeSearch,
+            isEs: isEs,
+          )
+        : columnsWithBankIncomeSearch;
     final bulkLinkableRows = hasManualLinking
         ? _bulkLinkableRows(dataRows)
         : const <Map<String, dynamic>>[];
@@ -4524,8 +4997,14 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
               clipBehavior: Clip.antiAlias,
               child: DataTable(
                 headingRowHeight: 38,
-                dataRowMinHeight: hasManualLinking ? 54 : 38,
-                dataRowMaxHeight: hasManualLinking ? 88 : 46,
+                dataRowMinHeight:
+                    (hasManualLinking || hasUnlinkedIncomeLinkActions)
+                        ? 54
+                        : 38,
+                dataRowMaxHeight:
+                    (hasManualLinking || hasUnlinkedIncomeLinkActions)
+                        ? 88
+                        : 46,
                 horizontalMargin: 14,
                 columnSpacing: 18,
                 dividerThickness: 0.5,
@@ -4577,76 +5056,89 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                                       isEs: isEs,
                                     )
                                   : column['key']?.toString() ==
-                                          'linkStatusLabel'
-                                      ? _buildInvoiceLinkStatusCell(
+                                          '__unlinkedIncomeLinkAction'
+                                      ? _buildUnlinkedIncomeLinkActionCell(
                                           context,
                                           message: message,
                                           row: entry.value,
-                                          value: _tableCellValue(
-                                            entry.value,
-                                            column,
-                                          ),
                                           cs: cs,
                                           t: t,
                                         )
                                       : column['key']?.toString() ==
-                                              'transactionLinkedStateLabel'
-                                          ? _buildTransactionLinkedStateCell(
-                                              entry.value,
+                                              'linkStatusLabel'
+                                          ? _buildInvoiceLinkStatusCell(
+                                              context,
+                                              message: message,
+                                              row: entry.value,
+                                              value: _tableCellValue(
+                                                entry.value,
+                                                column,
+                                              ),
                                               cs: cs,
                                               t: t,
-                                              isEs: isEs,
                                             )
-                                          : Align(
-                                              alignment:
-                                                  column['align']?.toString() ==
+                                          : column['key']?.toString() ==
+                                                  'transactionLinkedStateLabel'
+                                              ? _buildTransactionLinkedStateCell(
+                                                  entry.value,
+                                                  cs: cs,
+                                                  t: t,
+                                                  isEs: isEs,
+                                                )
+                                              : Align(
+                                                  alignment: column['align']
+                                                              ?.toString() ==
                                                           'right'
                                                       ? Alignment.centerRight
                                                       : Alignment.centerLeft,
-                                              child: ConstrainedBox(
-                                                constraints: BoxConstraints(
-                                                  maxWidth: (column['key']
-                                                                  ?.toString() ==
-                                                              'description' ||
-                                                          column['key']
-                                                                  ?.toString() ==
-                                                              'concept')
-                                                      ? 360
-                                                      : 180,
+                                                  child: ConstrainedBox(
+                                                    constraints: BoxConstraints(
+                                                      maxWidth: (column['key']
+                                                                      ?.toString() ==
+                                                                  'description' ||
+                                                              column['key']
+                                                                      ?.toString() ==
+                                                                  'concept')
+                                                          ? 360
+                                                          : 180,
+                                                    ),
+                                                    child: _rowIsUnlinkedInvoice(
+                                                              entry.value,
+                                                            ) &&
+                                                            _isInvoiceStatusColumn(
+                                                              column,
+                                                            )
+                                                        ? _buildUnlinkedInvoiceStatusCell(
+                                                            value:
+                                                                _tableCellValue(
+                                                              entry.value,
+                                                              column,
+                                                            ),
+                                                            cs: cs,
+                                                            t: t,
+                                                            isDark: isDark,
+                                                          )
+                                                        : Text(
+                                                            _tableCellValue(
+                                                              entry.value,
+                                                              column,
+                                                            ),
+                                                            maxLines: 2,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            textAlign:
+                                                                column['align']
+                                                                            ?.toString() ==
+                                                                        'right'
+                                                                    ? TextAlign
+                                                                        .right
+                                                                    : TextAlign
+                                                                        .left,
+                                                            style: cellStyle,
+                                                          ),
+                                                  ),
                                                 ),
-                                                child: _rowIsUnlinkedInvoice(
-                                                          entry.value,
-                                                        ) &&
-                                                        _isInvoiceStatusColumn(
-                                                          column,
-                                                        )
-                                                    ? _buildUnlinkedInvoiceStatusCell(
-                                                        value: _tableCellValue(
-                                                          entry.value,
-                                                          column,
-                                                        ),
-                                                        cs: cs,
-                                                        t: t,
-                                                        isDark: isDark,
-                                                      )
-                                                    : Text(
-                                                        _tableCellValue(
-                                                          entry.value,
-                                                          column,
-                                                        ),
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        textAlign: column[
-                                                                        'align']
-                                                                    ?.toString() ==
-                                                                'right'
-                                                            ? TextAlign.right
-                                                            : TextAlign.left,
-                                                        style: cellStyle,
-                                                      ),
-                                              ),
-                                            ),
                             ),
                           ),
                       ],
@@ -4874,7 +5366,8 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
         _eventDate(_safeMap(preview?['recurrenceRule'])?['untilDate']);
     final missing = _stringList(preview?['missing']);
     final assumptions = _stringList(preview?['assumptions']);
-    final needsClientAndService = _eventShouldPromptForClientAndService(message);
+    final needsClientAndService =
+        _eventShouldPromptForClientAndService(message);
 
     Widget infoRow(String label, String value) {
       if (value.trim().isEmpty) return const SizedBox.shrink();
@@ -5023,10 +5516,10 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                   isEs ? 'Fecha' : 'Date',
                   _eventDateRangeLabel(context, message),
                 ),
-                  infoRow(
-                    isEs ? 'Duracion' : 'Duration',
-                    _eventDurationLabel(message, isEs),
-                  ),
+                infoRow(
+                  isEs ? 'Duracion' : 'Duration',
+                  _eventDurationLabel(message, isEs),
+                ),
                 if (needsClientAndService)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
@@ -5095,8 +5588,9 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                     runSpacing: 8,
                     children: [
                       FilledButton.icon(
-                        onPressed:
-                            busy || !_eventCanCreate(message) ? null : () => _confirmEventCreation(message),
+                        onPressed: busy || !_eventCanCreate(message)
+                            ? null
+                            : () => _confirmEventCreation(message),
                         icon: busy
                             ? SizedBox(
                                 width: 14,
@@ -5115,7 +5609,8 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                         label: Text(isEs ? 'Editar detalles' : 'Edit details'),
                       ),
                       TextButton(
-                        onPressed: busy ? null : () => _cancelEventDraft(message),
+                        onPressed:
+                            busy ? null : () => _cancelEventDraft(message),
                         child: Text(isEs ? 'Cancelar' : 'Cancel'),
                       ),
                     ],
@@ -5127,7 +5622,8 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                   child: FilledButton.tonalIcon(
                     onPressed: _openCalendarForCurrentGroup,
                     icon: const Icon(Icons.calendar_month_rounded, size: 16),
-                    label: Text(isEs ? 'Ver en calendario' : 'View in calendar'),
+                    label:
+                        Text(isEs ? 'Ver en calendario' : 'View in calendar'),
                   ),
                 ),
             ],
@@ -5360,7 +5856,10 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      message.text,
+                                      _visibleMessageText(
+                                        message,
+                                        isEs: isEs,
+                                      ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: t.bodySmall.copyWith(
@@ -5374,7 +5873,12 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                                         !hasStructuredReply) ...[
                                       const SizedBox(height: 5),
                                       Text(
-                                        linkedReply.text,
+                                        _visibleMessageText(
+                                          linkedReply,
+                                          isEs: isEs,
+                                          preserveStructuredAssistantText:
+                                              hasStructuredReply,
+                                        ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: t.bodySmall.copyWith(
@@ -5649,8 +6153,12 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                             const SizedBox(width: 3),
                             Expanded(
                               child: Text(
-                                selectedAssistantMessage.sourceUserMessage!
-                                    .trim(),
+                                _visibleTextForRawValue(
+                                  selectedAssistantMessage.sourceUserMessage!
+                                      .trim(),
+                                  isUser: true,
+                                  isEs: isEs,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: t.bodySmall.copyWith(
@@ -6578,16 +7086,14 @@ class _ChatBubbleState extends State<_ChatBubble> {
   bool _copied = false;
 
   String get _visibleText {
-    if (!widget.message.isUser && widget.isStructuredTableResponse) {
-      return widget.message.text.trim();
-    }
-    final display = widget.message.displayText?.trim() ?? '';
-    if (display.isNotEmpty) return display;
-    final text = widget.message.text.trim();
-    if (_looksLikeActionToken(text)) {
-      return widget.message.isUser ? 'Option selected' : '';
-    }
-    return widget.message.text;
+    return _visibleMessageText(
+      widget.message,
+      isEs: Localizations.localeOf(context)
+          .languageCode
+          .toLowerCase()
+          .startsWith('es'),
+      preserveStructuredAssistantText: widget.isStructuredTableResponse,
+    );
   }
 
   void _copyText() {
@@ -6661,45 +7167,45 @@ class _ChatBubbleState extends State<_ChatBubble> {
                     ? widget.buildStructuredTable(context, message)
                     : !isUser && _messageHasEventAssistant(message)
                         ? widget.buildEventPreview(context, message)
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 1),
-                            child: Icon(
-                              isUser
-                                  ? Icons.person_rounded
-                                  : Icons.auto_awesome_rounded,
-                              size: 14,
-                              color: isUser
-                                  ? fg.withValues(alpha: 0.85)
-                                  : cs.primary.withValues(alpha: 0.75),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: visibleText.trim().isEmpty
-                                ? const SizedBox.shrink()
-                                : RichText(
-                                    text: TextSpan(
-                                      children: widget.markdownBoldSpans(
-                                        text: visibleText,
-                                        baseStyle: t.bodySmall.copyWith(
-                                          color: fg,
-                                          height: 1.55,
-                                          fontSize: isUser ? 12.5 : 13,
-                                          fontWeight: isUser
-                                              ? FontWeight.w500
-                                              : FontWeight.w400,
-                                          letterSpacing: 0.1,
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 1),
+                                child: Icon(
+                                  isUser
+                                      ? Icons.person_rounded
+                                      : Icons.auto_awesome_rounded,
+                                  size: 14,
+                                  color: isUser
+                                      ? fg.withValues(alpha: 0.85)
+                                      : cs.primary.withValues(alpha: 0.75),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: visibleText.trim().isEmpty
+                                    ? const SizedBox.shrink()
+                                    : RichText(
+                                        text: TextSpan(
+                                          children: widget.markdownBoldSpans(
+                                            text: visibleText,
+                                            baseStyle: t.bodySmall.copyWith(
+                                              color: fg,
+                                              height: 1.55,
+                                              fontSize: isUser ? 12.5 : 13,
+                                              fontWeight: isUser
+                                                  ? FontWeight.w500
+                                                  : FontWeight.w400,
+                                              letterSpacing: 0.1,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
               ),
               if (hasMenuActions)
                 Padding(
@@ -6847,7 +7353,8 @@ class _InsightsEventEditDialog extends StatefulWidget {
   final Map<String, dynamic> initialAssistant;
 
   @override
-  State<_InsightsEventEditDialog> createState() => _InsightsEventEditDialogState();
+  State<_InsightsEventEditDialog> createState() =>
+      _InsightsEventEditDialogState();
 }
 
 class _InsightsEventEditDialogState extends State<_InsightsEventEditDialog> {
@@ -6871,9 +7378,10 @@ class _InsightsEventEditDialogState extends State<_InsightsEventEditDialog> {
   void initState() {
     super.initState();
     _assistant = _cloneJsonMap(widget.initialAssistant);
-    _preview = _cloneJsonMap(_safeMap(_assistant['preview']) ?? <String, dynamic>{});
-    _payload =
-        _cloneJsonMap(_safeMap(_preview['eventPayload']) ?? <String, dynamic>{});
+    _preview =
+        _cloneJsonMap(_safeMap(_assistant['preview']) ?? <String, dynamic>{});
+    _payload = _cloneJsonMap(
+        _safeMap(_preview['eventPayload']) ?? <String, dynamic>{});
     _titleCtrl = TextEditingController(
       text: _preview['title']?.toString().trim() ?? '',
     );
@@ -6884,21 +7392,21 @@ class _InsightsEventEditDialogState extends State<_InsightsEventEditDialog> {
           '',
     );
     _allDay = _preview['allDay'] == true;
-    _start = DateTime.tryParse(_preview['startDate']?.toString() ?? '')
-            ?.toLocal() ??
-        DateTime.now();
-    _end = DateTime.tryParse(_preview['endDate']?.toString() ?? '')
-            ?.toLocal() ??
-        _start.add(const Duration(hours: 1));
+    _start =
+        DateTime.tryParse(_preview['startDate']?.toString() ?? '')?.toLocal() ??
+            DateTime.now();
+    _end =
+        DateTime.tryParse(_preview['endDate']?.toString() ?? '')?.toLocal() ??
+            _start.add(const Duration(hours: 1));
     final rule = _safeMap(_preview['recurrenceRule']);
-    _untilDate = DateTime.tryParse(rule?['untilDate']?.toString() ?? '')?.toLocal();
+    _untilDate =
+        DateTime.tryParse(rule?['untilDate']?.toString() ?? '')?.toLocal();
     _daysOfWeek = ((rule?['daysOfWeek'] as List?) ?? const [])
         .map((item) => item?.toString().trim() ?? '')
         .where((item) => item.isNotEmpty)
         .toSet();
     _selectedClientId = _payload['clientId']?.toString().trim();
-    _selectedPrimaryServiceId =
-        _payload['primaryServiceId']?.toString().trim();
+    _selectedPrimaryServiceId = _payload['primaryServiceId']?.toString().trim();
     unawaited(_loadAssignments());
   }
 
@@ -7030,7 +7538,8 @@ class _InsightsEventEditDialogState extends State<_InsightsEventEditDialog> {
     _preview['title'] = title;
     _preview['startDate'] = _start.toUtc().toIso8601String();
     _preview['endDate'] = _end.toUtc().toIso8601String();
-    _preview['durationMinutes'] = _allDay ? 1440 : _end.difference(_start).inMinutes;
+    _preview['durationMinutes'] =
+        _allDay ? 1440 : _end.difference(_start).inMinutes;
     _preview['localization'] = location;
     _payload['title'] = title;
     _payload['startDate'] = _start.toUtc().toIso8601String();
@@ -7073,28 +7582,26 @@ class _InsightsEventEditDialogState extends State<_InsightsEventEditDialog> {
         .map((item) => item?.toString().trim() ?? '')
         .where((item) => item.isNotEmpty)
         .toList(growable: false);
-    _preview['missing'] = missing
-        .where((item) {
-          final lower = item.toLowerCase();
-          if ((_selectedClientId?.isNotEmpty ?? false) &&
-              lower.contains('client')) {
-            return false;
-          }
-          if ((_selectedClientId?.isNotEmpty ?? false) &&
-              lower.contains('cliente')) {
-            return false;
-          }
-          if ((_selectedPrimaryServiceId?.isNotEmpty ?? false) &&
-              lower.contains('service')) {
-            return false;
-          }
-          if ((_selectedPrimaryServiceId?.isNotEmpty ?? false) &&
-              lower.contains('servicio')) {
-            return false;
-          }
-          return true;
-        })
-        .toList(growable: false);
+    _preview['missing'] = missing.where((item) {
+      final lower = item.toLowerCase();
+      if ((_selectedClientId?.isNotEmpty ?? false) &&
+          lower.contains('client')) {
+        return false;
+      }
+      if ((_selectedClientId?.isNotEmpty ?? false) &&
+          lower.contains('cliente')) {
+        return false;
+      }
+      if ((_selectedPrimaryServiceId?.isNotEmpty ?? false) &&
+          lower.contains('service')) {
+        return false;
+      }
+      if ((_selectedPrimaryServiceId?.isNotEmpty ?? false) &&
+          lower.contains('servicio')) {
+        return false;
+      }
+      return true;
+    }).toList(growable: false);
     _preview['eventPayload'] = _payload;
     _assistant['preview'] = _preview;
     _assistant['cancelled'] = false;
@@ -7131,7 +7638,8 @@ class _InsightsEventEditDialogState extends State<_InsightsEventEditDialog> {
       'Sunday',
     ];
     final recurrenceType =
-        _safeMap(_preview['recurrenceRule'])?['recurrenceType']?.toString() ?? '';
+        _safeMap(_preview['recurrenceRule'])?['recurrenceType']?.toString() ??
+            '';
 
     return AlertDialog(
       title: Text(isEs ? 'Editar evento' : 'Edit event'),

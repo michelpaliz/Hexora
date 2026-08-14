@@ -10,6 +10,7 @@ import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository
 import 'package:hexora/b-backend/shared/backend_api_exception.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_month_picker_dialog.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -161,7 +162,8 @@ class _TimeTrackingExcelImportDialogState
   WorkingTimeImportMode? get _jsonInstructions => _instructions?.jsonMode;
 
   WorkingTimeImportExample? get _firstJsonExample {
-    final examples = _jsonInstructions?.examples ?? const <WorkingTimeImportExample>[];
+    final examples =
+        _jsonInstructions?.examples ?? const <WorkingTimeImportExample>[];
     return examples.isEmpty ? null : examples.first;
   }
 
@@ -181,7 +183,8 @@ class _TimeTrackingExcelImportDialogState
     final lower = raw.toLowerCase();
 
     if (lower.contains('overlap') &&
-        (lower.contains('existing entry') || lower.contains('existing entries'))) {
+        (lower.contains('existing entry') ||
+            lower.contains('existing entries'))) {
       return _isSpanish
           ? 'Las filas se solapan con horas ya registradas para este trabajador. Activa "Reemplazar horas existentes" si quieres sustituir ese mes antes de importar.'
           : 'The rows overlap with time entries already saved for this worker. Turn on "Replace existing entries" if you want to replace that month before importing.';
@@ -278,13 +281,13 @@ class _TimeTrackingExcelImportDialogState
   }
 
   Future<void> _pickMonth() async {
-    final picked = await showDatePicker(
+    final now = DateTime.now();
+    final picked = await showWorkerMonthPickerDialog(
       context: context,
       initialDate: _selectedMonthDate,
-      firstDate: DateTime(2020, 1, 1),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
-      helpText: _isSpanish ? 'Seleccionar mes' : 'Select month',
-      initialDatePickerMode: DatePickerMode.year,
+      isSpanish: _isSpanish,
+      maxYear: now.year + 10,
+      allowFutureMonths: true,
     );
     if (picked == null) return;
     setState(() {
@@ -652,8 +655,8 @@ class _TimeTrackingExcelImportDialogState
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child:
-                  Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
+              child: Text(
+                  MaterialLocalizations.of(dialogContext).cancelButtonLabel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: cs.error),
@@ -748,8 +751,7 @@ class _TimeTrackingExcelImportDialogState
       if (month != null) {
         _selectedMonthDate = month;
       }
-      if (workerId != null &&
-          _workers.any((worker) => worker.id == workerId)) {
+      if (workerId != null && _workers.any((worker) => worker.id == workerId)) {
         _selectedWorkerId = workerId;
       }
       _clearJsonPreviewState();
@@ -774,7 +776,8 @@ class _TimeTrackingExcelImportDialogState
     return const JsonEncoder.withIndent('  ').convert(value);
   }
 
-  Future<void> _editJsonEntry(int index, WorkingTimeExcelImportEntry entry) async {
+  Future<void> _editJsonEntry(
+      int index, WorkingTimeExcelImportEntry entry) async {
     _ParsedJsonRoot parsed;
     try {
       parsed = _parseJsonRoot();
@@ -934,7 +937,9 @@ class _TimeTrackingExcelImportDialogState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _isSpanish ? 'Importar horas' : 'Import working hours',
+                          _isSpanish
+                              ? 'Importar horas'
+                              : 'Import working hours',
                           style: t.titleLarge.copyWith(
                             fontWeight: FontWeight.w900,
                             color: cs.onSurface,
@@ -954,7 +959,9 @@ class _TimeTrackingExcelImportDialogState
                     ),
                   ),
                   IconButton(
-                    tooltip: _isSpanish ? 'Actualizar trabajadores' : 'Refresh workers',
+                    tooltip: _isSpanish
+                        ? 'Actualizar trabajadores'
+                        : 'Refresh workers',
                     onPressed: _workersLoading ? null : _loadWorkers,
                     icon: const Icon(Icons.refresh_rounded),
                   ),
@@ -1103,8 +1110,12 @@ class _TimeTrackingExcelImportDialogState
                             ],
                             FilledButton.icon(
                               onPressed: _mode == _ImportMode.excel
-                                  ? (_canConfirmExcel ? _confirmExcelImport : null)
-                                  : (_canConfirmJson ? _confirmJsonImport : null),
+                                  ? (_canConfirmExcel
+                                      ? _confirmExcelImport
+                                      : null)
+                                  : (_canConfirmJson
+                                      ? _confirmJsonImport
+                                      : null),
                               icon: _confirming
                                   ? const SizedBox(
                                       width: 16,
@@ -1113,7 +1124,8 @@ class _TimeTrackingExcelImportDialogState
                                         strokeWidth: 2,
                                       ),
                                     )
-                                  : const Icon(Icons.check_circle_outline_rounded),
+                                  : const Icon(
+                                      Icons.check_circle_outline_rounded),
                               label: Text(
                                 _isSpanish
                                     ? 'Confirmar importacion'
@@ -1230,8 +1242,8 @@ class _TimeTrackingExcelImportDialogState
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.preview_outlined),
-            label:
-                Text(_isSpanish ? 'Actualizar vista previa' : 'Refresh preview'),
+            label: Text(
+                _isSpanish ? 'Actualizar vista previa' : 'Refresh preview'),
           ),
           const SizedBox(height: 10),
           Container(
@@ -1506,10 +1518,7 @@ class _TimeTrackingExcelImportDialogState
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: _replaceExistingEntries
-                    ? Theme.of(context)
-                        .colorScheme
-                        .error
-                        .withValues(alpha: 0.4)
+                    ? Theme.of(context).colorScheme.error.withValues(alpha: 0.4)
                     : Theme.of(context)
                         .colorScheme
                         .outlineVariant
@@ -1541,11 +1550,12 @@ class _TimeTrackingExcelImportDialogState
                 ),
                 Switch.adaptive(
                   value: _replaceExistingEntries,
-                  onChanged: !_canReplaceJsonEntries || _confirming || _previewLoading
-                      ? null
-                      : (value) => setState(
-                            () => _replaceExistingEntries = value,
-                          ),
+                  onChanged:
+                      !_canReplaceJsonEntries || _confirming || _previewLoading
+                          ? null
+                          : (value) => setState(
+                                () => _replaceExistingEntries = value,
+                              ),
                 ),
               ],
             ),
@@ -1990,7 +2000,8 @@ class _InstructionModeView extends StatelessWidget {
       );
     }
 
-    final example = effectiveMode.examples.isEmpty ? null : effectiveMode.examples.first;
+    final example =
+        effectiveMode.examples.isEmpty ? null : effectiveMode.examples.first;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2101,7 +2112,8 @@ class _InstructionModeView extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (onCopyJsonExample != null || onUseJsonExample != null) ...[
+                  if (onCopyJsonExample != null ||
+                      onUseJsonExample != null) ...[
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
@@ -2159,7 +2171,8 @@ class _InstructionModeView extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              worker.alias == null || worker.alias!.trim().isEmpty
+                              worker.alias == null ||
+                                      worker.alias!.trim().isEmpty
                                   ? worker.displayName
                                   : '${worker.displayName} (alias: ${worker.alias})',
                               style: t.bodySmall.copyWith(
@@ -2370,99 +2383,102 @@ class _PreviewEntryCard extends StatelessWidget {
           ),
         ),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '${isSpanish ? 'Fila' : 'Row'} ${entry.rowNumber}',
-                  style: t.bodySmall.copyWith(
-                    color: cs.primary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 10.5,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '${entry.date}  ·  ${entry.startTime} - ${entry.endTime}',
-                  style: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (trailingStats.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                Flexible(
                   child: Text(
-                    trailingStats,
+                    '${isSpanish ? 'Fila' : 'Row'} ${entry.rowNumber}',
                     style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 11,
+                      color: cs.primary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${entry.date}  ·  ${entry.startTime} - ${entry.endTime}',
+                    style: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: cs.onSurface,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ],
-              const SizedBox(width: 8),
-              Icon(
-                hasIssues
-                    ? Icons.error_outline_rounded
-                    : Icons.check_circle_outline_rounded,
-                color: hasIssues ? cs.error : Colors.green.shade600,
-                size: 15,
-              ),
-              if (canEdit) ...[
-                const SizedBox(width: 8),
-                if (isEditing)
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
-                  Icon(
-                    Icons.edit_outlined,
-                    color: cs.primary,
-                    size: 15,
-                  ),
-              ],
-            ],
-          ),
-          if (hasIssues) ...entry.issues.map(
-            (issue) => Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: cs.error, size: 13),
-                  const SizedBox(width: 5),
-                  Expanded(
+                if (trailingStats.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
                     child: Text(
-                      issue,
+                      trailingStats,
                       style: t.bodySmall.copyWith(
-                        color: cs.error,
-                        fontWeight: FontWeight.w700,
+                        color: cs.onSurfaceVariant,
                         fontSize: 11,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
-              ),
+                const SizedBox(width: 8),
+                Icon(
+                  hasIssues
+                      ? Icons.error_outline_rounded
+                      : Icons.check_circle_outline_rounded,
+                  color: hasIssues ? cs.error : Colors.green.shade600,
+                  size: 15,
+                ),
+                if (canEdit) ...[
+                  const SizedBox(width: 8),
+                  if (isEditing)
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    Icon(
+                      Icons.edit_outlined,
+                      color: cs.primary,
+                      size: 15,
+                    ),
+                ],
+              ],
             ),
-          ),
-        ],
-      ),
+            if (hasIssues)
+              ...entry.issues.map(
+                (issue) => Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          color: cs.error, size: 13),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          issue,
+                          style: t.bodySmall.copyWith(
+                            color: cs.error,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -2515,11 +2531,10 @@ class _JsonEntryEditorDialogState extends State<_JsonEntryEditorDialog> {
       text: entry['endTime']?.toString() ?? widget.fallbackEntry.endTime,
     );
     _breakCtrl = TextEditingController(
-      text:
-          (entry['breakMinutes'] ?? widget.fallbackEntry.breakMinutes).toString(),
+      text: (entry['breakMinutes'] ?? widget.fallbackEntry.breakMinutes)
+          .toString(),
     );
-    _notesCtrl =
-        TextEditingController(text: entry['notes']?.toString() ?? '');
+    _notesCtrl = TextEditingController(text: entry['notes']?.toString() ?? '');
   }
 
   @override
@@ -2572,8 +2587,7 @@ class _JsonEntryEditorDialogState extends State<_JsonEntryEditorDialog> {
   bool _validDate(String value) =>
       RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value);
 
-  bool _validTime(String value) =>
-      RegExp(r'^\d{2}:\d{2}$').hasMatch(value);
+  bool _validTime(String value) => RegExp(r'^\d{2}:\d{2}$').hasMatch(value);
 
   @override
   Widget build(BuildContext context) {
@@ -2604,7 +2618,8 @@ class _JsonEntryEditorDialogState extends State<_JsonEntryEditorDialog> {
                   Expanded(
                     child: TextField(
                       controller: _workerAliasCtrl,
-                      decoration: const InputDecoration(labelText: 'workerAlias'),
+                      decoration:
+                          const InputDecoration(labelText: 'workerAlias'),
                     ),
                   ),
                 ],

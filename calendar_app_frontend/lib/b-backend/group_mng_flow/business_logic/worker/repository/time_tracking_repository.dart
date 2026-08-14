@@ -118,6 +118,15 @@ abstract class ITimeTrackingRepository {
     double? advanceAmount,
   });
 
+  Future<Uint8List> exportMonthlyCalendarPdf(
+    String groupId,
+    String token, {
+    required String month,
+    String? workerId,
+    String? lang,
+    double? advanceAmount,
+  });
+
   Future<Uint8List> downloadExcelImportTemplate(
     String groupId,
     String token, {
@@ -393,6 +402,24 @@ class TimeTrackingRepository implements ITimeTrackingRepository {
         token,
         from: from,
         to: to,
+        workerId: workerId,
+        lang: lang,
+        advanceAmount: advanceAmount,
+      );
+
+  @override
+  Future<Uint8List> exportMonthlyCalendarPdf(
+    String groupId,
+    String token, {
+    required String month,
+    String? workerId,
+    String? lang,
+    double? advanceAmount,
+  }) =>
+      _api.exportMonthlyCalendarPdf(
+        groupId,
+        token,
+        month: month,
         workerId: workerId,
         lang: lang,
         advanceAmount: advanceAmount,

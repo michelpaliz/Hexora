@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/invoice/invoice_block.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/money_format_utils.dart';
 
 class InvoiceChecklistItemDraft {
   final TextEditingController text;
@@ -102,16 +103,14 @@ class InvoiceBlockDraft {
     return draft;
   }
 
-  String _norm(String v) => v.trim().replaceAll(',', '.');
-
-  num? get qty => num.tryParse(_norm(qtyCtrl.text));
-  num? get unitPrice => num.tryParse(_norm(unitPriceCtrl.text));
+  num? get qty => parseFlexibleMoney(qtyCtrl.text);
+  num? get unitPrice => parseFlexibleMoney(unitPriceCtrl.text);
   num? get discountRate {
-    final parsed = num.tryParse(_norm(discountRateCtrl.text)) ?? 0;
+    final parsed = parseFlexibleMoney(discountRateCtrl.text) ?? 0;
     return parsed.clamp(0, 100);
   }
 
-  num? get taxRate => num.tryParse(_norm(taxRateCtrl.text));
+  num? get taxRate => parseFlexibleMoney(taxRateCtrl.text);
   int? get level => int.tryParse(levelCtrl.text.trim());
 
   List<String>? _conceptItemsFromText(String value) {
@@ -123,8 +122,17 @@ class InvoiceBlockDraft {
     return items.isEmpty ? null : items;
   }
 
+  bool _isPlaceholderUnitTitle(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'unit' || normalized == 'unidad';
+  }
+
   void syncConceptMetadata() {
-    final title = conceptTitleCtrl.text.trim();
+    final rawTitle = conceptTitleCtrl.text.trim();
+    final title = _isPlaceholderUnitTitle(rawTitle) ? '' : rawTitle;
+    if (rawTitle.isNotEmpty && title.isEmpty) {
+      conceptTitleCtrl.clear();
+    }
     conceptTitle = title.isEmpty ? null : title;
     sku.text = title;
     conceptItems = _conceptItemsFromText(conceptItemsCtrl.text);

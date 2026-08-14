@@ -12,6 +12,8 @@ import 'package:syncfusion_flutter_calendar/calendar.dart' as sf;
 import '../adapter/calendar_state.dart';
 import 'appointment_builder_bridge.dart';
 
+typedef TimeRangeSelected = void Function(DateTime start, DateTime end);
+
 // calendar_surface.dart
 class CalendarSurface extends StatefulWidget {
   final CalendarState state;
@@ -19,7 +21,7 @@ class CalendarSurface extends StatefulWidget {
   final EventDomain eventDomain;
   final String? forcedViewMode;
   final bool showMonthAgenda;
-  final ValueChanged<DateTime>? onTimeSlotTap;
+  final TimeRangeSelected? onTimeRangeSelected;
 
   const CalendarSurface({
     super.key,
@@ -28,7 +30,7 @@ class CalendarSurface extends StatefulWidget {
     required this.eventDomain,
     this.forcedViewMode,
     this.showMonthAgenda = true,
-    this.onTimeSlotTap,
+    this.onTimeRangeSelected,
   });
 
   @override
@@ -39,9 +41,12 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
   final sf.CalendarController _controller = sf.CalendarController();
   sf.CalendarView _selectedView = sf.CalendarView.month;
   DateTime? _selectedDate;
-  DateTime? _tappedSlot;
+  DateTime? _selectionStart;
+  DateTime? _selectionEnd;
+  DateTime? _dragSelectionAnchor;
   bool _syncScheduled = false;
   bool _isDraggingEvent = false;
+  bool _isSelectingTimeRange = false;
 
   sf.CalendarView _mapModeToSf(String mode) {
     switch (mode) {
@@ -68,12 +73,13 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
   }
 
   List<sf.TimeRegion> _buildSelectedSlotRegion() {
-    final slot = _tappedSlot;
-    if (slot == null) return const [];
+    final start = _selectionStart;
+    final end = _selectionEnd;
+    if (start == null || end == null) return const [];
     return [
       sf.TimeRegion(
-        startTime: slot,
-        endTime: slot.add(const Duration(minutes: 30)),
+        startTime: start,
+        endTime: end,
         enablePointerInteraction: false,
         color: Colors.transparent,
         text: '__selected__',
@@ -90,6 +96,194 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
         color: cs.primary.withValues(alpha: 0.13),
         border: Border(
           left: BorderSide(color: cs.primary, width: 3),
+        ),
+      ),
+    );
+  }
+
+  bool _isTimeGridView() =>
+      _selectedView == sf.CalendarView.day ||
+      _selectedView == sf.CalendarView.week ||
+      _selectedView == sf.CalendarView.workWeek;
+
+  bool _isSameDate(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  DateTime _slotStart(DateTime slot) => DateTime(
+        slot.year,
+        slot.month,
+        slot.day,
+        slot.hour,
+      );
+
+  DateTime? _timeGridSlotAt(Offset localPosition) {
+    if (!_isTimeGridView()) return null;
+    final details = _controller.getCalendarDetailsAtOffset?.call(localPosition);
+    if (details == null ||
+        details.targetElement != sf.CalendarElement.calendarCell ||
+        details.date == null) {
+      return null;
+    }
+    return _slotStart(details.date!);
+  }
+
+  void _updateDraggedTimeSelection(DateTime slot) {
+    final anchor = _dragSelectionAnchor;
+    if (anchor == null || !_isSameDate(anchor, slot)) return;
+
+    final start = slot.isBefore(anchor) ? slot : anchor;
+    final lastSlot = slot.isAfter(anchor) ? slot : anchor;
+    final end = lastSlot.add(const Duration(hours: 1));
+
+    if (_selectionStart == start && _selectionEnd == end) return;
+    setState(() {
+      _selectionStart = start;
+      _selectionEnd = end;
+    });
+  }
+
+  void _handleSelectionPointerDown(Offset localPosition) {
+    if (_isDraggingEvent) return;
+    final slot = _timeGridSlotAt(localPosition);
+    if (slot == null) return;
+    _dragSelectionAnchor = slot;
+    _isSelectingTimeRange = true;
+    _updateDraggedTimeSelection(slot);
+  }
+
+  void _handleSelectionPointerMove(Offset localPosition) {
+    if (!_isSelectingTimeRange) return;
+    final slot = _timeGridSlotAt(localPosition);
+    if (slot == null) return;
+    _updateDraggedTimeSelection(slot);
+  }
+
+  void _handleSelectionPointerEnd() {
+    _isSelectingTimeRange = false;
+    _dragSelectionAnchor = null;
+  }
+
+  void _selectTimeSlot(DateTime slot) {
+    final tappedStart = _slotStart(slot);
+    final tappedEnd = tappedStart.add(const Duration(hours: 1));
+    final currentStart = _selectionStart;
+    final sameDay = currentStart != null &&
+        currentStart.year == tappedStart.year &&
+        currentStart.month == tappedStart.month &&
+        currentStart.day == tappedStart.day;
+
+    setState(() {
+      if (!sameDay) {
+        _selectionStart = tappedStart;
+        _selectionEnd = tappedEnd;
+        return;
+      }
+
+      _selectionStart =
+          tappedStart.isBefore(currentStart) ? tappedStart : currentStart;
+      final currentEnd =
+          _selectionEnd ?? currentStart.add(const Duration(hours: 1));
+      _selectionEnd = tappedEnd.isAfter(currentEnd) ? tappedEnd : currentEnd;
+    });
+  }
+
+  void _clearTimeSelection() {
+    setState(() {
+      _selectionStart = null;
+      _selectionEnd = null;
+    });
+  }
+
+  Widget _buildTimeSelectionBar(BuildContext context) {
+    final start = _selectionStart!;
+    final end = _selectionEnd!;
+    final localizations = MaterialLocalizations.of(context);
+    final date = localizations.formatMediumDate(start);
+    final startTime = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(start),
+      alwaysUse24HourFormat: true,
+    );
+    final endTime = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(end),
+      alwaysUse24HourFormat: true,
+    );
+    final cs = Theme.of(context).colorScheme;
+    final label = '$date  |  $startTime - $endTime';
+
+    void createEvent() {
+      widget.onTimeRangeSelected?.call(start, end);
+      _clearTimeSelection();
+    }
+
+    return Material(
+      elevation: 6,
+      color: cs.surface,
+      shadowColor: Colors.black.withValues(alpha: 0.16),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 520;
+            final selectionLabel = Row(
+              mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+              children: [
+                Icon(Icons.schedule_rounded, size: 19, color: cs.primary),
+                const SizedBox(width: 9),
+                if (compact)
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  )
+                else
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                IconButton(
+                  tooltip: 'Cancelar seleccion',
+                  onPressed: _clearTimeSelection,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            );
+
+            final createButton = FilledButton.icon(
+              onPressed: createEvent,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Crear evento'),
+            );
+
+            if (compact) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  selectionLabel,
+                  const SizedBox(height: 6),
+                  SizedBox(width: double.infinity, child: createButton),
+                ],
+              );
+            }
+
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                selectionLabel,
+                const SizedBox(width: 4),
+                createButton,
+              ],
+            );
+          },
         ),
       ),
     );
@@ -303,10 +497,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                             final weatherMap = showWeatherIcons
                                 ? _resolveForecast(forecast)
                                 : const <DateTime, DaySummary>{};
-                            final isTimeGridView =
-                                _selectedView == sf.CalendarView.day ||
-                                    _selectedView == sf.CalendarView.week ||
-                                    _selectedView == sf.CalendarView.workWeek;
+                            final isTimeGridView = _isTimeGridView();
                             final calendarHeaderHeight =
                                 isTimeGridView ? 42.0 : 36.0;
                             final calendarViewHeaderHeight =
@@ -315,89 +506,130 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                             return Container(
                               decoration:
                                   buildContainerDecoration(backgroundColor),
-                              child: sf.SfCalendar(
-                                key: ObjectKey('${ds.hashCode}-$effectiveMode'),
-                                controller: _controller,
-                                dataSource: ds,
-                                view: _selectedView,
-                                headerHeight: calendarHeaderHeight,
-                                viewHeaderHeight: calendarViewHeaderHeight,
-                                onViewChanged: (_) =>
-                                    _selectedView = _controller.view!,
-                                onSelectionChanged: (d) {
-                                  if (d.date == null) return;
-                                  _selectedDate = d.date!;
-                                  _scheduleSync(() {
-                                    _controller.selectedDate = _selectedDate;
-                                    widget.state.jumpTo(_selectedDate!);
-                                  });
-                                },
-                                onTap: (details) {
-                                  final tapped = details.date;
-                                  if (tapped == null) return;
-                                  final target = details.targetElement;
-                                  if (target !=
-                                      sf.CalendarElement.calendarCell) {
-                                    return;
-                                  }
-                                  if (_selectedView != sf.CalendarView.week &&
-                                      _selectedView != sf.CalendarView.day &&
-                                      _selectedView !=
-                                          sf.CalendarView.workWeek) {
-                                    return;
-                                  }
-                                  setState(() => _tappedSlot = tapped);
-                                  widget.onTimeSlotTap?.call(tapped);
-                                },
-                                // ✅ Keep Month custom tiles (old behavior)
-                                monthCellBuilder: (context, d) =>
-                                    buildMonthCell(
-                                  context: context,
-                                  details: d,
-                                  selectedDate: _selectedDate,
-                                  events: events,
-                                  weatherSummaries: weatherMap,
-                                ),
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Listener(
+                                      onPointerDown: (event) =>
+                                          _handleSelectionPointerDown(
+                                              event.localPosition),
+                                      onPointerMove: (event) =>
+                                          _handleSelectionPointerMove(
+                                              event.localPosition),
+                                      onPointerUp: (_) =>
+                                          _handleSelectionPointerEnd(),
+                                      onPointerCancel: (_) =>
+                                          _handleSelectionPointerEnd(),
+                                      child: sf.SfCalendar(
+                                        key: ObjectKey(
+                                            '${ds.hashCode}-$effectiveMode'),
+                                        controller: _controller,
+                                        dataSource: ds,
+                                        view: _selectedView,
+                                        headerHeight: calendarHeaderHeight,
+                                        viewHeaderHeight:
+                                            calendarViewHeaderHeight,
+                                        onViewChanged: (_) =>
+                                            _selectedView = _controller.view!,
+                                        onSelectionChanged: (d) {
+                                          if (d.date == null) return;
+                                          _selectedDate = d.date!;
+                                          _scheduleSync(() {
+                                            _controller.selectedDate =
+                                                _selectedDate;
+                                            widget.state.jumpTo(_selectedDate!);
+                                          });
+                                        },
+                                        onTap: (details) {
+                                          final tapped = details.date;
+                                          if (tapped == null) return;
+                                          final target = details.targetElement;
+                                          if (target !=
+                                              sf.CalendarElement.calendarCell) {
+                                            return;
+                                          }
+                                          if (!_isTimeGridView()) {
+                                            return;
+                                          }
+                                          _selectTimeSlot(tapped);
+                                        },
+                                        // ✅ Keep Month custom tiles (old behavior)
+                                        monthCellBuilder: (context, d) =>
+                                            buildMonthCell(
+                                          context: context,
+                                          details: d,
+                                          selectedDate: _selectedDate,
+                                          events: events,
+                                          weatherSummaries: weatherMap,
+                                        ),
 
-                                scheduleViewMonthHeaderBuilder: (context, d) =>
-                                    buildScheduleMonthHeader(
-                                        context, d, monthHeaderHeight),
-                                scheduleViewSettings: sf.ScheduleViewSettings(
-                                  monthHeaderSettings: sf.MonthHeaderSettings(
-                                    height:
-                                        monthHeaderHeight, // <-- must match builder height
-                                    backgroundColor: Colors
-                                        .transparent, // keep images visible
-                                    monthFormat: 'MMMM yyyy',
-                                    textAlign: TextAlign.left,
+                                        scheduleViewMonthHeaderBuilder:
+                                            (context, d) =>
+                                                buildScheduleMonthHeader(
+                                                    context,
+                                                    d,
+                                                    monthHeaderHeight),
+                                        scheduleViewSettings:
+                                            sf.ScheduleViewSettings(
+                                          monthHeaderSettings:
+                                              sf.MonthHeaderSettings(
+                                            height:
+                                                monthHeaderHeight, // <-- must match builder height
+                                            backgroundColor: Colors
+                                                .transparent, // keep images visible
+                                            monthFormat: 'MMMM yyyy',
+                                            textAlign: TextAlign.left,
+                                          ),
+                                          appointmentItemHeight: 60,
+                                        ),
+
+                                        appointmentBuilder:
+                                            (context, details) =>
+                                                widget.apptBridge.build(
+                                                    context,
+                                                    _selectedView,
+                                                    details,
+                                                    textColor),
+                                        allowDragAndDrop: isTimeGridView,
+                                        onDragEnd: (details) =>
+                                            _handleAppointmentDragEnd(
+                                                context, details),
+                                        specialRegions:
+                                            _buildSelectedSlotRegion(),
+                                        timeRegionBuilder:
+                                            _buildTimeRegionWidget,
+                                        selectionDecoration:
+                                            const BoxDecoration(
+                                                color: Colors.transparent),
+                                        showNavigationArrow: true,
+                                        showDatePickerButton: true,
+                                        firstDayOfWeek: DateTime.monday,
+                                        initialSelectedDate: DateTime.now(),
+                                        headerStyle: buildHeaderStyle(
+                                            fontSize, textColor),
+                                        viewHeaderStyle: buildViewHeaderStyle(
+                                            fontSize, textColor, isDarkMode),
+                                        // scheduleViewSettings: buildScheduleSettings(
+                                        //     fontSize, backgroundColor,
+                                        //     monthHeaderHeight: monthHeaderHeight),
+                                        monthViewSettings: buildMonthSettings(
+                                          showAgenda: widget.showMonthAgenda,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                  appointmentItemHeight: 60,
-                                ),
-
-                                appointmentBuilder: (context, details) =>
-                                    widget.apptBridge.build(context,
-                                        _selectedView, details, textColor),
-                                allowDragAndDrop: isTimeGridView,
-                                onDragEnd: (details) =>
-                                    _handleAppointmentDragEnd(context, details),
-                                specialRegions: _buildSelectedSlotRegion(),
-                                timeRegionBuilder: _buildTimeRegionWidget,
-                                selectionDecoration: const BoxDecoration(
-                                    color: Colors.transparent),
-                                showNavigationArrow: true,
-                                showDatePickerButton: true,
-                                firstDayOfWeek: DateTime.monday,
-                                initialSelectedDate: DateTime.now(),
-                                headerStyle:
-                                    buildHeaderStyle(fontSize, textColor),
-                                viewHeaderStyle: buildViewHeaderStyle(
-                                    fontSize, textColor, isDarkMode),
-                                // scheduleViewSettings: buildScheduleSettings(
-                                //     fontSize, backgroundColor,
-                                //     monthHeaderHeight: monthHeaderHeight),
-                                monthViewSettings: buildMonthSettings(
-                                  showAgenda: widget.showMonthAgenda,
-                                ),
+                                  if (_selectionStart != null &&
+                                      _selectionEnd != null)
+                                    Positioned(
+                                      left: 16,
+                                      right: 16,
+                                      bottom: 16,
+                                      child: Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: _buildTimeSelectionBar(context),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ).animate().fadeIn(duration: 300.ms);
                           },

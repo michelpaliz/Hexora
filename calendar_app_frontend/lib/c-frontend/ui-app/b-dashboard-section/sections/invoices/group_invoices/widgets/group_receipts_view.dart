@@ -167,7 +167,7 @@ class GroupReceiptsView extends StatelessWidget {
   final ValueChanged<Receipt> onEditReceipt;
   final ValueChanged<Receipt> onIssueReceipt;
   final ValueChanged<Receipt> onDeleteReceipt;
-  final ValueChanged<Receipt> onPreviewPdf;
+  final Future<void> Function(Receipt) onPreviewPdf;
   final ValueChanged<Receipt> onDownloadPdf;
   final ValueChanged<Receipt> onImportJson;
   final Future<Uint8List?> Function(Receipt) onLoadInlinePdf;
@@ -207,7 +207,7 @@ class GroupReceiptsView extends StatelessWidget {
         children: [
           // ── Left panel: list ──────────────────────────────────────────────
           Expanded(
-            flex: 2,
+            flex: 3,
             child: DefaultTabController(
               length: 2,
               child: Container(
@@ -410,7 +410,7 @@ class GroupReceiptsView extends StatelessWidget {
           const SizedBox(width: 12),
           // ── Right panel: detail ───────────────────────────────────────────
           Expanded(
-            flex: 3,
+            flex: 4,
             child: Container(
               decoration: BoxDecoration(
                 color: isDark

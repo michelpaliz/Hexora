@@ -230,8 +230,9 @@ class _WorkerTimeHistoryGraphViewState
   }
 
   Future<void> _updatePreset(_TimeHistoryPreset preset) async {
-    if (_selectedPreset == preset && preset != _TimeHistoryPreset.custom)
+    if (_selectedPreset == preset && preset != _TimeHistoryPreset.custom) {
       return;
+    }
     setState(() {
       _selectedPreset = preset;
       if (preset != _TimeHistoryPreset.custom) {
@@ -321,7 +322,7 @@ class _WorkerTimeHistoryGraphViewState
     return RefreshIndicator(
       onRefresh: () => _loadData(reloadWorkers: true),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           // ── Header ─────────────────────────────────────────────
@@ -329,8 +330,8 @@ class _WorkerTimeHistoryGraphViewState
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -340,13 +341,13 @@ class _WorkerTimeHistoryGraphViewState
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
                 ),
                 child:
-                    Icon(Icons.analytics_rounded, color: cs.primary, size: 22),
+                    Icon(Icons.analytics_rounded, color: cs.primary, size: 20),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,7 +398,7 @@ class _WorkerTimeHistoryGraphViewState
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // ── Filter panel ────────────────────────────────────────
           _FilterPanel(
@@ -417,7 +418,7 @@ class _WorkerTimeHistoryGraphViewState
             onPickCustomRange: _selectCustomRange,
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // ── Inline progress ─────────────────────────────────────
           if (_loading)
@@ -482,7 +483,7 @@ class _WorkerTimeHistoryGraphViewState
                   foreground: cs.onPrimaryContainer,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: _SummaryCard(
                   label: isSpanish ? 'Entradas totales' : 'Total entries',
@@ -492,7 +493,7 @@ class _WorkerTimeHistoryGraphViewState
                   foreground: cs.onSecondaryContainer,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: _SummaryCard(
                   label: isSpanish ? 'Promedio por tramo' : 'Avg per bucket',
@@ -502,7 +503,7 @@ class _WorkerTimeHistoryGraphViewState
                   foreground: cs.onTertiaryContainer,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: _SummaryCard(
                   label: isSpanish ? 'Rango' : 'Range',
@@ -516,7 +517,7 @@ class _WorkerTimeHistoryGraphViewState
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // ── Chart card ──────────────────────────────────────────
           Container(
@@ -826,7 +827,7 @@ class _FilterPanel extends StatelessWidget {
       filled: true,
       fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
@@ -843,7 +844,7 @@ class _FilterPanel extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(18),
@@ -868,12 +869,13 @@ class _FilterPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
-          // Preset chips
+          // Controls
           Wrap(
             spacing: 8,
             runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _PresetChip(
                 label: isSpanish ? '7 dias' : 'Last 7 days',
@@ -940,23 +942,8 @@ class _FilterPanel extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-          Divider(
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.2),
-          ),
-          const SizedBox(height: 14),
-
-          // Dropdowns
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
               SizedBox(
-                width: 240,
+                width: 230,
                 child: DropdownButtonFormField<String>(
                   key: ValueKey(selectedWorkerId ?? '__all-workers__'),
                   initialValue: selectedWorkerId,
@@ -980,7 +967,7 @@ class _FilterPanel extends StatelessWidget {
                 ),
               ),
               SizedBox(
-                width: 220,
+                width: 210,
                 child: DropdownButtonFormField<String>(
                   key: ValueKey(granularity),
                   initialValue: granularity,
@@ -1010,6 +997,9 @@ class _FilterPanel extends StatelessWidget {
                 ),
               ),
               FilterChip(
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 selected: compareWorkers,
                 onSelected: workerItems.isEmpty
                     ? null
@@ -1112,46 +1102,52 @@ class _SummaryCard extends StatelessWidget {
     final typo = AppTypography.of(context);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: foreground.withValues(alpha: 0.1)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: foreground.withValues(alpha: 0.13),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: foreground, size: 18),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: typo.titleLarge.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w900,
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: foreground.withValues(alpha: 0.13),
+              borderRadius: BorderRadius.circular(9),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            child: Icon(icon, color: foreground, size: 17),
           ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: typo.bodySmall.copyWith(
-              color: foreground.withValues(alpha: 0.72),
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  style: typo.titleLarge.copyWith(
+                    color: foreground,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: typo.bodySmall.copyWith(
+                    color: foreground.withValues(alpha: 0.72),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         ],
