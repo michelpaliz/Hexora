@@ -48,6 +48,7 @@ class ClientsApi {
   // GET /clients?groupId=...&active=true|false
   Future<List<GroupClient>> list({
     String? groupId,
+    String? search,
     bool? active,
     bool includeCurrentMonthInvoiceFlag = false,
     bool? missingCurrentMonthInvoice,
@@ -55,12 +56,12 @@ class ClientsApi {
     final r = await AuthenticatedHttpClient.get(
         _u('', {
           'groupId': groupId,
+          'q': search?.trim(),
           if (active != null) 'active': active.toString(),
           if (includeCurrentMonthInvoiceFlag)
             'includeCurrentMonthInvoiceFlag': 'true',
           if (missingCurrentMonthInvoice != null)
-            'missingCurrentMonthInvoice':
-                missingCurrentMonthInvoice.toString(),
+            'missingCurrentMonthInvoice': missingCurrentMonthInvoice.toString(),
         }),
         headers: _headers());
 
@@ -103,7 +104,8 @@ class ClientsApi {
 
   // GET /clients/:id
   Future<GroupClient> getById(String id) async {
-    final r = await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
+    final r =
+        await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
     return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
   }
 
@@ -177,7 +179,8 @@ class ClientsApi {
 
   // DELETE /clients/:id
   Future<bool> delete(String id) async {
-    final r = await AuthenticatedHttpClient.delete(_u('/$id'), headers: _headers());
+    final r =
+        await AuthenticatedHttpClient.delete(_u('/$id'), headers: _headers());
     if (r.statusCode == 404) return false;
     _decode<void>(r, (_) {});
     return true;

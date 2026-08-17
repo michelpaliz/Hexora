@@ -1,11 +1,35 @@
 # Hexora
 
-Hexora is a Flutter app for group scheduling and small-business back-office
-work: shared calendars and events, worker time tracking, invoicing and
-budgets (presupuestos), receipts and VAT summaries, bank statement
-reconciliation (Enable Banking / TrueLayer), a Telegram integration, and a
-private document vault — all built around groups with role-based access
-(admin/member) and real-time updates over sockets.
+Hexora is the operating system I am building around the real needs of my
+business. It brings scheduling, employees, clients, presupuestos, invoices,
+receipts, expenses, banking, documents, email, and Telegram into one shared
+workspace instead of spreading daily work across disconnected tools.
+
+It is useful because it turns repetitive administration into a connected
+workflow. Information entered once can continue through the full business
+process: a client can receive a tailored presupuesto, the work can be planned
+and assigned, employee hours can be recorded, the final invoice can be issued,
+and the payment can be reconciled against the bank statement. The same team
+and client information remains available throughout, reducing duplicate data
+entry and avoidable mistakes.
+
+## Why Hexora matters to the business
+
+- **Less administrative work** — recurring schedules, reusable document
+  templates, automatic calculations, and connected records reduce manual work.
+- **Faster client service** — professional presupuestos, invoices, receipts,
+  PDFs, and emails can be prepared and sent from the same workspace.
+- **Better financial control** — expenses, VAT summaries, invoices, receipts,
+  and bank movements are easier to review and reconcile.
+- **Clearer team coordination** — shared calendars, worker time tracking,
+  roles, and real-time updates help everyone work from current information.
+- **More consistent operations** — client data, business documents, and
+  communication history stay organized by group and are easier to find.
+- **Capacity to grow** — the business can manage more clients and work without
+  increasing administration at the same rate.
+
+Hexora is not only a software project; it is becoming a practical business
+tool shaped by the problems encountered in day-to-day operations.
 
 Targets: Android, iOS, Web, Windows, macOS, and Linux from a single codebase.
 

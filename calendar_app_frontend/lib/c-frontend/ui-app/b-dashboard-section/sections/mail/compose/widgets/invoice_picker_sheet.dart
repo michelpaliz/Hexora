@@ -139,7 +139,8 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
   }
 
   String _presupuestoId(Map<String, dynamic> item) {
-    return (item['_id'] ?? item['id'] ?? '').toString();
+    return (item['presupuestoId'] ?? item['_id'] ?? item['id'] ?? '')
+        .toString();
   }
 
   String _presupuestoNumber(Map<String, dynamic> item) {
@@ -280,10 +281,15 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
         _selectedPresupuestoIds.length +
         _selectedReceiptIds.length;
     final busy = _loadingInvoices || _loadingPresupuestos || _loadingReceipts;
-    final hasItems =
-        filteredInvoices.isNotEmpty ||
+    final hasItems = filteredInvoices.isNotEmpty ||
         filteredPresupuestos.isNotEmpty ||
         filteredReceipts.isNotEmpty;
+    final structuredPresupuestos = filteredPresupuestos
+        .where((item) => !item.containsKey('_mailPresupuestoType'))
+        .toList(growable: false);
+    final wordPresupuestos = filteredPresupuestos
+        .where((item) => item['_mailPresupuestoType'] == 'word')
+        .toList(growable: false);
 
     return Container(
       decoration: BoxDecoration(
@@ -324,7 +330,8 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                 ),
                 if (_invoiceSearchCtrl.text.isNotEmpty)
                   IconButton(
-                    icon: Icon(Icons.clear, size: 18, color: cs.onSurfaceVariant),
+                    icon:
+                        Icon(Icons.clear, size: 18, color: cs.onSurfaceVariant),
                     constraints: const BoxConstraints(
                       minWidth: 32,
                       minHeight: 32,
@@ -357,7 +364,8 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: cs.primary,
                     borderRadius: BorderRadius.circular(12),
@@ -428,8 +436,10 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                               vertical: 1,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: cs.primary.withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(10),
+                                              color: cs.primary
+                                                  .withValues(alpha: 0.15),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
                                             ),
                                             child: Text(
                                               '${filteredInvoices.length + filteredPresupuestos.length}',
@@ -450,9 +460,13 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                           ...filteredInvoices.map((invoice) {
                                             final selected = _selectedInvoiceIds
                                                 .contains(invoice.id);
-                                            final status = invoice.status ?? 'draft';
-                                            final isDraft = status.toLowerCase() == 'draft' ||
-                                                status.toLowerCase() == 'borrador';
+                                            final status =
+                                                invoice.status ?? 'draft';
+                                            final isDraft =
+                                                status.toLowerCase() ==
+                                                        'draft' ||
+                                                    status.toLowerCase() ==
+                                                        'borrador';
                                             final statusColor = isDraft
                                                 ? cs.tertiary
                                                 : cs.primary;
@@ -461,12 +475,14 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                 : 'Emitida';
 
                                             return Padding(
-                                              padding: const EdgeInsets.only(bottom: 6),
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 6),
                                               child: Container(
                                                 decoration: BoxDecoration(
                                                   color: selected
                                                       ? cs.primaryContainer
-                                                          .withValues(alpha: 0.15)
+                                                          .withValues(
+                                                              alpha: 0.15)
                                                       : cs.surfaceContainerLowest,
                                                   borderRadius:
                                                       BorderRadius.circular(12),
@@ -474,13 +490,16 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                     color: selected
                                                         ? cs.primary
                                                         : cs.outlineVariant
-                                                            .withValues(alpha: 0.3),
+                                                            .withValues(
+                                                                alpha: 0.3),
                                                     width: selected ? 1.5 : 1,
                                                   ),
                                                 ),
                                                 child: ListTile(
                                                   dense: true,
-                                                  contentPadding: const EdgeInsets.symmetric(
+                                                  contentPadding:
+                                                      const EdgeInsets
+                                                          .symmetric(
                                                     horizontal: 10,
                                                     vertical: 2,
                                                   ),
@@ -492,32 +511,42 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                                   .trim()
                                                                   .isEmpty
                                                               ? invoice.id
-                                                              : invoice.invoiceNumber,
-                                                          style: t.bodySmall.copyWith(
-                                                            fontWeight: FontWeight.w700,
+                                                              : invoice
+                                                                  .invoiceNumber,
+                                                          style: t.bodySmall
+                                                              .copyWith(
+                                                            fontWeight:
+                                                                FontWeight.w700,
                                                             color: cs.onSurface,
                                                           ),
-                                                          overflow: TextOverflow.ellipsis,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
                                                         ),
                                                       ),
                                                       const SizedBox(width: 6),
                                                       Container(
                                                         padding:
-                                                            const EdgeInsets.symmetric(
+                                                            const EdgeInsets
+                                                                .symmetric(
                                                           horizontal: 6,
                                                           vertical: 2,
                                                         ),
-                                                        decoration: BoxDecoration(
+                                                        decoration:
+                                                            BoxDecoration(
                                                           color: statusColor
-                                                              .withValues(alpha: 0.15),
+                                                              .withValues(
+                                                                  alpha: 0.15),
                                                           borderRadius:
-                                                              BorderRadius.circular(6),
+                                                              BorderRadius
+                                                                  .circular(6),
                                                         ),
                                                         child: Text(
                                                           statusLabel,
-                                                          style: t.bodySmall.copyWith(
+                                                          style: t.bodySmall
+                                                              .copyWith(
                                                             color: statusColor,
-                                                            fontWeight: FontWeight.w600,
+                                                            fontWeight:
+                                                                FontWeight.w600,
                                                             fontSize: 10,
                                                           ),
                                                         ),
@@ -528,10 +557,12 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                     invoice.id,
                                                     style: t.bodySmall.copyWith(
                                                       color: cs.onSurfaceVariant
-                                                          .withValues(alpha: 0.7),
+                                                          .withValues(
+                                                              alpha: 0.7),
                                                       fontSize: 11,
                                                     ),
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                   trailing: Checkbox(
                                                     value: selected,
@@ -542,7 +573,8 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                               .add(invoice.id);
                                                         } else {
                                                           _selectedInvoiceIds
-                                                              .remove(invoice.id);
+                                                              .remove(
+                                                                  invoice.id);
                                                         }
                                                       });
                                                     },
@@ -562,14 +594,15 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                               ),
                                             );
                                           }),
-                                          if (filteredPresupuestos.isNotEmpty)
+                                          if (structuredPresupuestos.isNotEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                 top: 8,
                                                 bottom: 8,
                                               ),
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
                                                   horizontal: 8,
                                                   vertical: 4,
                                                 ),
@@ -580,7 +613,8 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                       BorderRadius.circular(8),
                                                 ),
                                                 child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   children: [
                                                     Icon(
                                                       Icons.assignment_outlined,
@@ -590,29 +624,35 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                     const SizedBox(width: 6),
                                                     Text(
                                                       l.budgetsMenuSection,
-                                                      style: t.bodySmall.copyWith(
+                                                      style:
+                                                          t.bodySmall.copyWith(
                                                         color: cs.onSurface,
-                                                        fontWeight: FontWeight.w700,
+                                                        fontWeight:
+                                                            FontWeight.w700,
                                                       ),
                                                     ),
                                                     const SizedBox(width: 4),
                                                     Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
                                                         horizontal: 6,
                                                         vertical: 1,
                                                       ),
                                                       decoration: BoxDecoration(
                                                         color: cs.secondary
-                                                            .withValues(alpha: 0.15),
+                                                            .withValues(
+                                                                alpha: 0.15),
                                                         borderRadius:
-                                                            BorderRadius.circular(10),
+                                                            BorderRadius
+                                                                .circular(10),
                                                       ),
                                                       child: Text(
-                                                        '${filteredPresupuestos.length}',
-                                                        style: t.bodySmall.copyWith(
+                                                        '${structuredPresupuestos.length}',
+                                                        style: t.bodySmall
+                                                            .copyWith(
                                                           color: cs.secondary,
-                                                          fontWeight: FontWeight.w700,
+                                                          fontWeight:
+                                                              FontWeight.w700,
                                                           fontSize: 11,
                                                         ),
                                                       ),
@@ -621,31 +661,38 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                 ),
                                               ),
                                             ),
-                                          ...filteredPresupuestos.map((presupuesto) {
-                                            final id = _presupuestoId(presupuesto);
+                                          ...structuredPresupuestos
+                                              .map((presupuesto) {
+                                            final id =
+                                                _presupuestoId(presupuesto);
                                             final number =
                                                 _presupuestoNumber(presupuesto);
                                             final selected =
-                                                _selectedPresupuestoIds.contains(id);
+                                                _selectedPresupuestoIds
+                                                    .contains(id);
                                             final status =
                                                 _presupuestoStatus(presupuesto);
                                             final isDraft =
-                                                status.toLowerCase() == 'draft' ||
-                                                    status.toLowerCase() == 'borrador';
+                                                status.toLowerCase() ==
+                                                        'draft' ||
+                                                    status.toLowerCase() ==
+                                                        'borrador';
                                             final statusColor = isDraft
                                                 ? cs.tertiary
                                                 : cs.secondary;
-                                            final statusLabel =
-                                                isDraft ? 'Borrador' : 'Aprobado';
+                                            final statusLabel = isDraft
+                                                ? 'Borrador'
+                                                : 'Aprobado';
 
                                             return Padding(
-                                              padding:
-                                                  const EdgeInsets.only(bottom: 6),
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 6),
                                               child: Container(
                                                 decoration: BoxDecoration(
                                                   color: selected
                                                       ? cs.secondaryContainer
-                                                          .withValues(alpha: 0.15)
+                                                          .withValues(
+                                                              alpha: 0.15)
                                                       : cs.surfaceContainerLowest,
                                                   borderRadius:
                                                       BorderRadius.circular(12),
@@ -653,14 +700,16 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                     color: selected
                                                         ? cs.secondary
                                                         : cs.outlineVariant
-                                                            .withValues(alpha: 0.3),
+                                                            .withValues(
+                                                                alpha: 0.3),
                                                     width: selected ? 1.5 : 1,
                                                   ),
                                                 ),
                                                 child: ListTile(
                                                   dense: true,
                                                   contentPadding:
-                                                      const EdgeInsets.symmetric(
+                                                      const EdgeInsets
+                                                          .symmetric(
                                                     horizontal: 10,
                                                     vertical: 2,
                                                   ),
@@ -668,33 +717,43 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                     children: [
                                                       Expanded(
                                                         child: Text(
-                                                          number.isEmpty ? id : number,
-                                                          style: t.bodySmall.copyWith(
-                                                            fontWeight: FontWeight.w700,
+                                                          number.isEmpty
+                                                              ? id
+                                                              : number,
+                                                          style: t.bodySmall
+                                                              .copyWith(
+                                                            fontWeight:
+                                                                FontWeight.w700,
                                                             color: cs.onSurface,
                                                           ),
-                                                          overflow:
-                                                              TextOverflow.ellipsis,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
                                                         ),
                                                       ),
                                                       const SizedBox(width: 6),
                                                       Container(
                                                         padding:
-                                                            const EdgeInsets.symmetric(
+                                                            const EdgeInsets
+                                                                .symmetric(
                                                           horizontal: 6,
                                                           vertical: 2,
                                                         ),
-                                                        decoration: BoxDecoration(
+                                                        decoration:
+                                                            BoxDecoration(
                                                           color: statusColor
-                                                              .withValues(alpha: 0.15),
+                                                              .withValues(
+                                                                  alpha: 0.15),
                                                           borderRadius:
-                                                              BorderRadius.circular(6),
+                                                              BorderRadius
+                                                                  .circular(6),
                                                         ),
                                                         child: Text(
                                                           statusLabel,
-                                                          style: t.bodySmall.copyWith(
+                                                          style: t.bodySmall
+                                                              .copyWith(
                                                             color: statusColor,
-                                                            fontWeight: FontWeight.w600,
+                                                            fontWeight:
+                                                                FontWeight.w600,
                                                             fontSize: 10,
                                                           ),
                                                         ),
@@ -705,13 +764,16 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                     id,
                                                     style: t.bodySmall.copyWith(
                                                       color: cs.onSurfaceVariant
-                                                          .withValues(alpha: 0.7),
+                                                          .withValues(
+                                                              alpha: 0.7),
                                                       fontSize: 11,
                                                     ),
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                   trailing: Row(
-                                                    mainAxisSize: MainAxisSize.min,
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
                                                     children: [
                                                       IconButton(
                                                         tooltip: l.preview,
@@ -720,16 +782,21 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                           minWidth: 32,
                                                           minHeight: 32,
                                                         ),
-                                                        padding: const EdgeInsets.all(4),
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(4),
                                                         onPressed: id.isEmpty
                                                             ? null
                                                             : () => widget
-                                                                .onPreviewPresupuesto(id),
+                                                                .onPreviewPresupuesto(
+                                                                    id),
                                                         icon: Icon(
-                                                          Icons.visibility_outlined,
+                                                          Icons
+                                                              .visibility_outlined,
                                                           size: 18,
                                                           color: cs.secondary
-                                                              .withValues(alpha: 0.8),
+                                                              .withValues(
+                                                                  alpha: 0.8),
                                                         ),
                                                       ),
                                                       Checkbox(
@@ -751,15 +818,161 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                   onTap: () {
                                                     setState(() {
                                                       if (selected) {
-                                                        _selectedPresupuestoIds.remove(
+                                                        _selectedPresupuestoIds
+                                                            .remove(
                                                           id,
                                                         );
                                                       } else {
-                                                        _selectedPresupuestoIds.add(id);
+                                                        _selectedPresupuestoIds
+                                                            .add(id);
                                                       }
                                                     });
                                                   },
                                                 ),
+                                              ),
+                                            );
+                                          }),
+                                          if (wordPresupuestos.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 8,
+                                                bottom: 8,
+                                              ),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: cs.primaryContainer
+                                                      .withValues(alpha: 0.3),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.article_outlined,
+                                                      size: 16,
+                                                      color: cs.primary,
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      l.localeName
+                                                              .toLowerCase()
+                                                              .startsWith('es')
+                                                          ? 'Presupuestos Word'
+                                                          : 'Word budgets',
+                                                      style:
+                                                          t.bodySmall.copyWith(
+                                                        color: cs.onSurface,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      '${wordPresupuestos.length}',
+                                                      style:
+                                                          t.bodySmall.copyWith(
+                                                        color: cs.primary,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ...wordPresupuestos.map((item) {
+                                            final id = _presupuestoId(item);
+                                            final number =
+                                                _presupuestoNumber(item);
+                                            final selected =
+                                                _selectedPresupuestoIds
+                                                    .contains(id);
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 6),
+                                              child: ListTile(
+                                                dense: true,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  side: BorderSide(
+                                                    color: selected
+                                                        ? cs.primary
+                                                        : cs.outlineVariant
+                                                            .withValues(
+                                                                alpha: 0.3),
+                                                  ),
+                                                ),
+                                                tileColor: selected
+                                                    ? cs.primaryContainer
+                                                        .withValues(alpha: 0.15)
+                                                    : cs.surfaceContainerLowest,
+                                                title: Text(
+                                                  number.isEmpty
+                                                      ? presupuestoDocumentTitle(
+                                                          item)
+                                                      : number,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: t.bodySmall.copyWith(
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                subtitle: Text(
+                                                  _presupuestoStatus(item),
+                                                  style: t.bodySmall.copyWith(
+                                                    fontSize: 10,
+                                                    color: cs.onSurfaceVariant,
+                                                  ),
+                                                ),
+                                                trailing: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    IconButton(
+                                                      tooltip: l.preview,
+                                                      constraints:
+                                                          const BoxConstraints(
+                                                        minWidth: 32,
+                                                        minHeight: 32,
+                                                      ),
+                                                      onPressed: id.isEmpty
+                                                          ? null
+                                                          : () => widget
+                                                              .onPreviewPresupuesto(
+                                                                  id),
+                                                      icon: const Icon(
+                                                        Icons
+                                                            .visibility_outlined,
+                                                        size: 18,
+                                                      ),
+                                                    ),
+                                                    Checkbox(
+                                                      value: selected,
+                                                      onChanged: (_) => setState(
+                                                          () => selected
+                                                              ? _selectedPresupuestoIds
+                                                                  .remove(id)
+                                                              : _selectedPresupuestoIds
+                                                                  .add(id)),
+                                                    ),
+                                                  ],
+                                                ),
+                                                onTap: () => setState(() =>
+                                                    selected
+                                                        ? _selectedPresupuestoIds
+                                                            .remove(id)
+                                                        : _selectedPresupuestoIds
+                                                            .add(id)),
                                               ),
                                             );
                                           }),
@@ -807,8 +1020,10 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                               vertical: 1,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: cs.tertiary.withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(10),
+                                              color: cs.tertiary
+                                                  .withValues(alpha: 0.15),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
                                             ),
                                             child: Text(
                                               '${filteredReceipts.length}',
@@ -827,25 +1042,28 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                       height: listHeight - 28,
                                       child: ListView(
                                         children: filteredReceipts.map((r) {
-                                          final selected =
-                                              _selectedReceiptIds.contains(r.id);
-                                          final number =
-                                              (r.receiptNumber?.trim().isNotEmpty ==
-                                                      true)
-                                                  ? r.receiptNumber!.trim()
-                                                  : r.id;
+                                          final selected = _selectedReceiptIds
+                                              .contains(r.id);
+                                          final number = (r.receiptNumber
+                                                      ?.trim()
+                                                      .isNotEmpty ==
+                                                  true)
+                                              ? r.receiptNumber!.trim()
+                                              : r.id;
                                           final status = r.status ?? 'draft';
                                           final isDraft =
                                               status.toLowerCase() == 'draft' ||
-                                                  status.toLowerCase() == 'borrador';
-                                          final statusColor =
-                                              isDraft ? cs.tertiary : cs.primary;
+                                                  status.toLowerCase() ==
+                                                      'borrador';
+                                          final statusColor = isDraft
+                                              ? cs.tertiary
+                                              : cs.primary;
                                           final statusLabel =
                                               isDraft ? 'Borrador' : 'Emitido';
 
                                           return Padding(
-                                            padding:
-                                                const EdgeInsets.only(bottom: 6),
+                                            padding: const EdgeInsets.only(
+                                                bottom: 6),
                                             child: Container(
                                               decoration: BoxDecoration(
                                                 color: selected
@@ -858,7 +1076,8 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                   color: selected
                                                       ? cs.tertiary
                                                       : cs.outlineVariant
-                                                          .withValues(alpha: 0.3),
+                                                          .withValues(
+                                                              alpha: 0.3),
                                                   width: selected ? 1.5 : 1,
                                                 ),
                                               ),
@@ -874,32 +1093,38 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                     Expanded(
                                                       child: Text(
                                                         number,
-                                                        style: t.bodySmall.copyWith(
-                                                          fontWeight: FontWeight.w700,
+                                                        style: t.bodySmall
+                                                            .copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w700,
                                                           color: cs.onSurface,
                                                         ),
-                                                        overflow:
-                                                            TextOverflow.ellipsis,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                                     ),
                                                     const SizedBox(width: 6),
                                                     Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
                                                         horizontal: 6,
                                                         vertical: 2,
                                                       ),
                                                       decoration: BoxDecoration(
                                                         color: statusColor
-                                                            .withValues(alpha: 0.15),
+                                                            .withValues(
+                                                                alpha: 0.15),
                                                         borderRadius:
-                                                            BorderRadius.circular(6),
+                                                            BorderRadius
+                                                                .circular(6),
                                                       ),
                                                       child: Text(
                                                         statusLabel,
-                                                        style: t.bodySmall.copyWith(
+                                                        style: t.bodySmall
+                                                            .copyWith(
                                                           color: statusColor,
-                                                          fontWeight: FontWeight.w600,
+                                                          fontWeight:
+                                                              FontWeight.w600,
                                                           fontSize: 10,
                                                         ),
                                                       ),
@@ -913,14 +1138,16 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                         .withValues(alpha: 0.7),
                                                     fontSize: 11,
                                                   ),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                                 trailing: Checkbox(
                                                   value: selected,
                                                   onChanged: (value) {
                                                     setState(() {
                                                       if (value == true) {
-                                                        _selectedReceiptIds.add(r.id);
+                                                        _selectedReceiptIds
+                                                            .add(r.id);
                                                       } else {
                                                         _selectedReceiptIds
                                                             .remove(r.id);
@@ -931,9 +1158,11 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                 onTap: () {
                                                   setState(() {
                                                     if (selected) {
-                                                      _selectedReceiptIds.remove(r.id);
+                                                      _selectedReceiptIds
+                                                          .remove(r.id);
                                                     } else {
-                                                      _selectedReceiptIds.add(r.id);
+                                                      _selectedReceiptIds
+                                                          .add(r.id);
                                                     }
                                                   });
                                                 },
@@ -978,6 +1207,8 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
         _presupuestoNumber(item),
         _presupuestoId(item),
         _presupuestoStatus(item),
+        if (item['_mailPresupuestoType'] == 'word')
+          presupuestoDocumentTitle(item),
       ].join(' ').toLowerCase();
       return haystack.contains(q);
     }).toList(growable: false);

@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_document_workspace.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_pdf_preview_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_template_editor_screen.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:intl/intl.dart';
 
 enum PresupuestoDocumentActionMode { drafts, issued, edit, preview }
+
+/// Screens at or above this width show the presupuesto editor as a centered
+/// dialog instead of a full-page route, so it doesn't navigate away from
+/// the dashboard it was opened from.
+const double _kPresupuestoEditorDialogBreakpoint = 900;
 
 class PresupuestoDocumentActionsView extends StatefulWidget {
   const PresupuestoDocumentActionsView({
@@ -128,18 +135,36 @@ class _PresupuestoDocumentActionsViewState
   Future<void> _openEditor(Map<String, dynamic> document) async {
     final id = presupuestoDocumentId(document);
     if (id.isEmpty) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => PresupuestoTemplateEditorScreen(
-          api: _api,
-          groupId: widget.groupId,
-          presupuestoId: id,
-          presupuestoNumber: _documentNumber(document),
-          initialBudget: document,
-          onDocumentSaved: _load,
-        ),
-      ),
+    final editor = PresupuestoTemplateEditorScreen(
+      api: _api,
+      groupId: widget.groupId,
+      presupuestoId: id,
+      presupuestoNumber: _documentNumber(document),
+      initialBudget: document,
+      onDocumentSaved: _load,
     );
+    final isWide = MediaQuery.of(context).size.width >=
+        _kPresupuestoEditorDialogBreakpoint;
+    if (isWide) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => Dialog(
+          clipBehavior: Clip.antiAlias,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1280, maxHeight: 860),
+            child: editor,
+          ),
+        ),
+      );
+    } else {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => editor),
+      );
+    }
     if (mounted) await _load();
   }
 
@@ -151,23 +176,52 @@ class _PresupuestoDocumentActionsViewState
     if (id.isEmpty || _fileBusy) return;
     setState(() => _fileBusy = true);
     try {
-      final response = preview
-          ? await _api.previewTemplatePdf(id)
-          : await _api.downloadTemplatePdf(id);
       final number = _documentNumber(document).replaceAll('/', '-');
-      await launchFileDownload(
-        response.bodyBytes,
-        fileName: 'presupuesto-$number-documento.pdf',
-        mimeType: 'application/pdf',
-      );
+      final fileName = 'presupuesto-$number-documento.pdf';
+      if (preview) {
+        final response = await _api.previewTemplatePdf(id);
+        final bytes = InvoiceEditorPdf.validatePdf(response);
+        if (!mounted) return;
+        await PresupuestoPdfPreviewDialog.show(
+          context,
+          bytes: bytes,
+          onDownload: () => launchFileDownload(
+            bytes,
+            fileName: fileName,
+            mimeType: 'application/pdf',
+          ),
+        );
+      } else {
+        final response = await _api.downloadTemplatePdf(id);
+        await launchFileDownload(
+          response.bodyBytes,
+          fileName: fileName,
+          mimeType: 'application/pdf',
+        );
+      }
     } on PresupuestosApiException catch (e) {
-      if (mounted) showErrorSnack(context, e.message);
+      if (mounted) showErrorSnack(context, _friendlyPdfError(e));
     } catch (e) {
       if (mounted) {
         showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _fileBusy = false);
+    }
+  }
+
+  String _friendlyPdfError(PresupuestosApiException e) {
+    switch (e.statusCode) {
+      case 401:
+        return 'Tu sesion ha caducado. Vuelve a iniciar sesion e intentalo de nuevo.';
+      case 403:
+        return 'No tienes permiso para previsualizar este presupuesto.';
+      case 404:
+        return 'No se encontro el presupuesto solicitado.';
+      case 500:
+        return 'No se pudo generar el PDF en el servidor. Intentalo de nuevo en unos minutos.';
+      default:
+        return e.message;
     }
   }
 
@@ -290,21 +344,28 @@ class _PresupuestoDocumentActionsViewState
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: Icon(
                     widget.mode == PresupuestoDocumentActionMode.issued
                         ? Icons.verified_outlined
                         : Icons.drafts_outlined,
-                    size: 20,
+                    size: 22,
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,7 +424,25 @@ class _PresupuestoDocumentActionsViewState
                       filled: true,
                       fillColor: theme.colorScheme.surfaceContainerLowest,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.4),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.4),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.5),
+                        ),
                       ),
                     ),
                   ),
@@ -372,6 +451,11 @@ class _PresupuestoDocumentActionsViewState
                 Tooltip(
                   message: 'Actualizar documentos',
                   child: IconButton.filledTonal(
+                    style: IconButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
                     onPressed: _load,
                     icon: const Icon(Icons.refresh_rounded),
                   ),
@@ -421,7 +505,7 @@ class _PresupuestoDocumentActionsViewState
               onIssue: () => _issue(document),
               onDelete: () => _remove(document),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
           ],
       ],
     );
@@ -489,6 +573,16 @@ class _DocumentRow extends StatelessWidget {
 
   bool get _isIssued => presupuestoDocumentStatus(document) == 'issued';
 
+  static String _initials(String source) {
+    final trimmed = source.trim();
+    if (trimmed.isEmpty) return '#';
+    final words = trimmed.split(RegExp(r'\s+'));
+    final first = words.first.characters.first.toUpperCase();
+    if (words.length == 1) return first;
+    final second = words[1].characters.first.toUpperCase();
+    return '$first$second';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -496,198 +590,352 @@ class _DocumentRow extends StatelessWidget {
     final date = _documentDate(document, issued: _isIssued);
     final amount = presupuestoDocumentAmount(document);
     final client = _clientName(document, clients);
+    final accent = _isIssued ? Colors.green.shade700 : cs.primary;
+    final title = presupuestoDocumentTitle(document);
 
-    return Material(
-      color: cs.surfaceContainerLowest,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: cs.outlineVariant.withValues(alpha: 0.42),
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withValues(alpha: 0.045),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        hoverColor: cs.primary.withValues(alpha: 0.035),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final compact = constraints.maxWidth < 780;
-              final details = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          presupuestoDocumentTitle(document),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      if (_isIssued) ...[
-                        const SizedBox(width: 8),
-                        _DocumentPill(
-                          label: _documentNumber(document),
-                          color: cs.primary,
-                        ),
-                      ],
-                    ],
+      child: Material(
+        color: cs.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.38),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpen,
+          hoverColor: accent.withValues(alpha: 0.035),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 920;
+
+                final avatar = Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    client.isEmpty ? 'Sin cliente' : client,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: client.isEmpty ? cs.error : cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
+                  child: Text(
+                    _initials(client.isNotEmpty ? client : title),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      _DocumentMeta(
-                        icon: _isIssued
-                            ? Icons.event_available_outlined
-                            : Icons.update_rounded,
-                        label: date == null
-                            ? 'Sin fecha'
-                            : '${_isIssued ? 'Emitido' : 'Actualizado'} ${DateFormat('d MMM y', 'es').format(date)}',
-                      ),
-                      if (!_isIssued)
-                        _DocumentMeta(
-                          icon: Icons.image_outlined,
-                          label:
-                              '${presupuestoDocumentImageCount(document)} imágenes',
-                        ),
-                      _DocumentPill(
-                        label: _isIssued ? 'Emitido' : 'Borrador',
-                        color: _isIssued ? Colors.green.shade700 : cs.primary,
-                      ),
-                    ],
-                  ),
-                ],
-              );
-              final actions = _actions(context, amount);
+                );
 
-              if (compact) {
+                final identity = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (_isIssued) ...[
+                          const SizedBox(width: 8),
+                          _DocumentPill(
+                            label: _documentNumber(document),
+                            color: cs.primary,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.person_outline_rounded,
+                          size: 14,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            client.isEmpty ? 'Sin cliente' : client,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: client.isEmpty
+                                  ? cs.error
+                                  : cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _DocumentMeta(
+                          icon: _isIssued
+                              ? Icons.event_available_outlined
+                              : Icons.update_rounded,
+                          label: date == null
+                              ? 'Sin fecha'
+                              : DateFormat('d MMM y', 'es').format(date),
+                        ),
+                        if (!_isIssued) ...[
+                          const SizedBox(width: 12),
+                          _DocumentMeta(
+                            icon: Icons.image_outlined,
+                            label:
+                                '${presupuestoDocumentImageCount(document)} im\u00e1genes',
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                );
+
+                final statusAndAmount = Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (amount != null)
+                      Text(
+                        NumberFormat.currency(locale: 'es_ES', symbol: '€')
+                            .format(amount),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: accent,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    const SizedBox(height: 3),
+                    _DocumentPill(
+                      label: _isIssued ? 'Emitido' : 'Borrador',
+                      color: accent,
+                    ),
+                  ],
+                );
+
+                final header = compact
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              avatar,
+                              const SizedBox(width: 14),
+                              Expanded(child: identity),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          statusAndAmount,
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          avatar,
+                          const SizedBox(width: 16),
+                          Expanded(child: identity),
+                          const SizedBox(width: 16),
+                          statusAndAmount,
+                          const SizedBox(width: 16),
+                          _actions(context),
+                        ],
+                      );
+
+                if (!compact) return header;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    details,
+                    header,
+                    const SizedBox(height: 16),
+                    Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.18),
+                    ),
                     const SizedBox(height: 12),
-                    actions,
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            _DocumentMeta(
+                              icon: _isIssued
+                                  ? Icons.event_available_outlined
+                                  : Icons.update_rounded,
+                              label: date == null
+                                  ? 'Sin fecha'
+                                  : '${_isIssued ? 'Emitido' : 'Actualizado'} ${DateFormat('d MMM y', 'es').format(date)}',
+                            ),
+                            if (!_isIssued)
+                              _DocumentMeta(
+                                icon: Icons.image_outlined,
+                                label:
+                                    '${presupuestoDocumentImageCount(document)} imágenes',
+                              ),
+                          ],
+                        ),
+                        _actions(context),
+                      ],
+                    ),
                   ],
                 );
-              }
-              return Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.description_outlined, color: cs.primary),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(child: details),
-                  const SizedBox(width: 18),
-                  actions,
-                ],
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _actions(BuildContext context, num? amount) {
+  Widget _actions(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      alignment: WrapAlignment.end,
-      children: [
-        if (amount != null)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Text(
-              NumberFormat.currency(locale: 'es_ES', symbol: '€')
-                  .format(amount),
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: cs.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ),
-        OutlinedButton.icon(
-          onPressed: onOpen,
-          icon:
-              Icon(_isIssued ? Icons.open_in_new_rounded : Icons.edit_rounded),
-          label: Text(_isIssued ? 'Abrir' : 'Abrir/Editar'),
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.3),
         ),
-        Tooltip(
-          message: 'Vista previa',
-          child: IconButton.filledTonal(
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _compactAction(
+            context,
+            tooltip: _isIssued ? 'Abrir documento' : 'Editar documento',
+            icon: _isIssued ? Icons.open_in_new_rounded : Icons.edit_outlined,
+            onPressed: onOpen,
+          ),
+          const SizedBox(width: 2),
+          _compactAction(
+            context,
+            tooltip: 'Vista previa',
+            icon: Icons.visibility_outlined,
             onPressed: fileBusy ? null : onPreview,
-            icon: const Icon(Icons.visibility_outlined),
           ),
-        ),
-        if (_isIssued)
-          Tooltip(
-            message: 'Descargar PDF',
-            child: IconButton.filledTonal(
+          const SizedBox(width: 3),
+          if (_isIssued)
+            _compactAction(
+              context,
+              tooltip: 'Descargar PDF',
+              icon: Icons.download_rounded,
               onPressed: fileBusy ? null : onDownload,
-              icon: const Icon(Icons.download_rounded),
-            ),
-          )
-        else ...[
-          FilledButton.icon(
-            onPressed: issuing ? null : onIssue,
-            icon: issuing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.publish_rounded),
-            label: const Text('Emitir'),
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Más acciones',
-            onSelected: (value) {
-              if (value == 'delete') onDelete();
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem<String>(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_outline_rounded, color: cs.error),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Eliminar borrador',
-                      style: TextStyle(color: cs.error),
-                    ),
-                  ],
+            )
+          else ...[
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 32),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 11),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-            ],
-            icon: const Icon(Icons.more_horiz_rounded),
-          ),
+              onPressed: issuing ? null : onIssue,
+              icon: issuing
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded, size: 15),
+              label: Text(
+                'Emitir',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: cs.onPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ),
+            Tooltip(
+              message: 'Más acciones',
+              child: PopupMenuButton<String>(
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints.tightFor(width: 32, height: 32),
+                onSelected: (value) {
+                  if (value == 'delete') onDelete();
+                },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                itemBuilder: (context) => [
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline_rounded, color: cs.error),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Eliminar borrador',
+                          style: TextStyle(color: cs.error),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                icon: Icon(
+                  Icons.more_horiz_rounded,
+                  size: 18,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
+    );
+  }
+
+  Widget _compactAction(
+    BuildContext context, {
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback? onPressed,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          fixedSize: const Size(32, 32),
+          minimumSize: const Size(32, 32),
+          maximumSize: const Size(32, 32),
+          padding: EdgeInsets.zero,
+          foregroundColor: cs.onSurfaceVariant,
+          hoverColor: cs.primary.withValues(alpha: 0.08),
+          highlightColor: cs.primary.withValues(alpha: 0.12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        icon: Icon(icon, size: 17),
+      ),
     );
   }
 
@@ -700,7 +948,10 @@ class _DocumentRow extends StatelessWidget {
 }
 
 class _DocumentMeta extends StatelessWidget {
-  const _DocumentMeta({required this.icon, required this.label});
+  const _DocumentMeta({
+    required this.icon,
+    required this.label,
+  });
 
   final IconData icon;
   final String label;
@@ -708,15 +959,17 @@ class _DocumentMeta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final color = cs.onSurfaceVariant;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 15, color: cs.onSurfaceVariant),
-        const SizedBox(width: 5),
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 4),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
               ),
         ),
       ],
@@ -733,7 +986,7 @@ class _DocumentPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
@@ -765,24 +1018,32 @@ class _DocumentEmptyState extends StatelessWidget {
     final searching = searchQuery.isNotEmpty;
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
-          Icon(
-            searching
-                ? Icons.search_off_rounded
-                : issued
-                    ? Icons.verified_outlined
-                    : Icons.drafts_outlined,
-            size: 34,
-            color: cs.onSurfaceVariant,
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              searching
+                  ? Icons.search_off_rounded
+                  : issued
+                      ? Icons.verified_outlined
+                      : Icons.drafts_outlined,
+              size: 26,
+              color: cs.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Text(
             searching
                 ? 'No hay resultados para "$searchQuery"'
@@ -791,6 +1052,18 @@ class _DocumentEmptyState extends StatelessWidget {
                     : 'No hay borradores',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            searching
+                ? 'Prueba con otro nombre de cliente o documento.'
+                : issued
+                    ? 'Los presupuestos emitidos apareceran aqui.'
+                    : 'Crea un presupuesto para verlo listado aqui.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
                 ),
           ),
         ],

@@ -126,8 +126,16 @@ class PresupuestosApi {
 
   Uri buildCreateDocumentDraftUri() => _u('/documents');
 
-  Uri buildListDocumentsByGroupUri(String groupId) =>
-      _u('/documents/group/${groupId.trim()}');
+  Uri buildListDocumentsByGroupUri(String groupId, {String? search}) {
+    final query = <String, String>{
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+    };
+    return query.isEmpty
+        ? _u('/documents/group/${groupId.trim()}')
+        : _u(
+            '/documents/group/${groupId.trim()}?${Uri(queryParameters: query).query}',
+          );
+  }
 
   Uri buildDocumentIssueUri(String presupuestoId) =>
       _u('/${presupuestoId.trim()}/issue');
@@ -547,9 +555,11 @@ class PresupuestosApi {
   }
 
   Future<List<Map<String, dynamic>>> listDocumentsByGroup(
-      String groupId) async {
+    String groupId, {
+    String? search,
+  }) async {
     final r = await AuthenticatedHttpClient.get(
-      buildListDocumentsByGroupUri(groupId),
+      buildListDocumentsByGroupUri(groupId, search: search),
       headers: _headers(),
     );
     final body = _tryDecodeBody(r.body);

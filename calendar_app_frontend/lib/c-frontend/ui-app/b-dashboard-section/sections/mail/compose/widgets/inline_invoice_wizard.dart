@@ -193,7 +193,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
   }
 
   String _presupuestoId(Map<String, dynamic> item) {
-    return (item['_id'] ?? item['id'] ?? '').toString();
+    return (item['presupuestoId'] ?? item['_id'] ?? item['id'] ?? '')
+        .toString();
   }
 
   String _presupuestoNumber(Map<String, dynamic> item) {
@@ -208,7 +209,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
   }
 
   DateTime? _presupuestoDate(Map<String, dynamic> item) {
-    final v = item['issueDate'] ?? item['createdAt'];
+    final v = item['issueDate'] ?? item['issuedAt'] ?? item['createdAt'];
     if (v == null) return null;
     if (v is DateTime) return v;
     if (v is String) return DateTime.tryParse(v);
@@ -231,6 +232,9 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
   }
 
   num? _presupuestoTotal(Map<String, dynamic> item) {
+    if (widget.state._isWordPresupuesto(item)) {
+      return presupuestoDocumentAmount(item);
+    }
     final direct = item['total'];
     if (direct is num) return direct;
     if (direct != null) return num.tryParse(direct.toString());
@@ -841,11 +845,21 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     final filteredPresupuestos = _presupuestos.where((item) {
       if (!_matchesDateFilter(_presupuestoDate(item))) return false;
       if (q.isEmpty) return true;
-      final haystack =
-          '${_presupuestoNumber(item)} ${_presupuestoId(item)} ${_presupuestoStatus(item)}'
-              .toLowerCase();
+      final haystack = <String>[
+        _presupuestoNumber(item),
+        _presupuestoId(item),
+        _presupuestoStatus(item),
+        if (widget.state._isWordPresupuesto(item))
+          presupuestoDocumentTitle(item),
+      ].join(' ').toLowerCase();
       return haystack.contains(q);
     }).toList(growable: false);
+    final filteredStructuredPresupuestos = filteredPresupuestos
+        .where((item) => !widget.state._isWordPresupuesto(item))
+        .toList(growable: false);
+    final filteredWordPresupuestos = filteredPresupuestos
+        .where(widget.state._isWordPresupuesto)
+        .toList(growable: false);
     final filteredReceipts = _receipts.where((receipt) {
       if (!_matchesDateFilter(receipt.issueDate ?? receipt.registeredAt)) {
         return false;
@@ -1174,7 +1188,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                                           _openInvoicePdfPreview(invoice),
                                     );
                                   }),
-                                  if (filteredPresupuestos.isNotEmpty) ...[
+                                  if (filteredStructuredPresupuestos
+                                      .isNotEmpty) ...[
                                     Padding(
                                       padding: const EdgeInsets.only(
                                           top: 6, bottom: 6),
@@ -1186,7 +1201,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                                         ),
                                       ),
                                     ),
-                                    ...filteredPresupuestos.map((item) {
+                                    ...filteredStructuredPresupuestos
+                                        .map((item) {
                                       final id = _presupuestoId(item);
                                       final number = _presupuestoNumber(item);
                                       final selected =
@@ -1194,6 +1210,46 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                                       return _buildItemCard(
                                         number: number.isEmpty ? id : number,
                                         statusLabel: _presupuestoStatus(item),
+                                        selected: selected,
+                                        cs: cs,
+                                        date: _presupuestoDate(item),
+                                        onTap: () => setState(() => selected
+                                            ? _selectedPresupuestoIds.remove(id)
+                                            : _selectedPresupuestoIds.add(id)),
+                                        onPreview: id.isEmpty
+                                            ? null
+                                            : () => widget.state
+                                                ._openPresupuestoPdfPreviewById(
+                                                    id),
+                                      );
+                                    }),
+                                  ],
+                                  if (filteredWordPresupuestos.isNotEmpty) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          top: 6, bottom: 6),
+                                      child: Text(
+                                        widget.state
+                                            ._wordPresupuestoSectionLabel(l),
+                                        style: t.bodySmall.copyWith(
+                                          color: cs.onSurface,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    ...filteredWordPresupuestos.map((item) {
+                                      final id = _presupuestoId(item);
+                                      final number = _presupuestoNumber(item);
+                                      final selected =
+                                          _selectedPresupuestoIds.contains(id);
+                                      return _buildItemCard(
+                                        number: number.isEmpty
+                                            ? presupuestoDocumentTitle(item)
+                                            : number,
+                                        statusLabel: _localizedStatusLabel(
+                                          l,
+                                          _presupuestoStatus(item),
+                                        ),
                                         selected: selected,
                                         cs: cs,
                                         date: _presupuestoDate(item),
@@ -1268,6 +1324,12 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
       final selectedPresupuestos = _presupuestos
           .where(
               (item) => _selectedPresupuestoIds.contains(_presupuestoId(item)))
+          .toList(growable: false);
+      final selectedStructuredPresupuestos = selectedPresupuestos
+          .where((item) => !widget.state._isWordPresupuesto(item))
+          .toList(growable: false);
+      final selectedWordPresupuestos = selectedPresupuestos
+          .where(widget.state._isWordPresupuesto)
           .toList(growable: false);
       final selectedReceipts = _receipts
           .where((r) => _selectedReceiptIds.contains(r.id))
@@ -1348,15 +1410,41 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                           ),
                         ),
                       ],
-                      if (selectedPresupuestos.isNotEmpty) ...[
+                      if (selectedStructuredPresupuestos.isNotEmpty) ...[
                         _previewSectionLabel(l.budgetsMenuSection, cs),
-                        ...selectedPresupuestos.map((item) {
+                        ...selectedStructuredPresupuestos.map((item) {
                           final id = _presupuestoId(item);
                           final number = _presupuestoNumber(item);
                           return _buildPreviewItemCard(
                             typeIcon: Icons.calculate_outlined,
                             number: number.isEmpty ? id : number,
                             statusLabel: _presupuestoStatus(item),
+                            cs: cs,
+                            amount: _presupuestoTotal(item),
+                            onPreview: id.isEmpty
+                                ? null
+                                : () => widget.state
+                                    ._openPresupuestoPdfPreviewById(id),
+                          );
+                        }),
+                      ],
+                      if (selectedWordPresupuestos.isNotEmpty) ...[
+                        _previewSectionLabel(
+                          widget.state._wordPresupuestoSectionLabel(l),
+                          cs,
+                        ),
+                        ...selectedWordPresupuestos.map((item) {
+                          final id = _presupuestoId(item);
+                          final number = _presupuestoNumber(item);
+                          return _buildPreviewItemCard(
+                            typeIcon: Icons.article_outlined,
+                            number: number.isEmpty
+                                ? presupuestoDocumentTitle(item)
+                                : number,
+                            statusLabel: _localizedStatusLabel(
+                              l,
+                              _presupuestoStatus(item),
+                            ),
                             cs: cs,
                             amount: _presupuestoTotal(item),
                             onPreview: id.isEmpty
