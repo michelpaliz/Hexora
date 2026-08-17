@@ -24,11 +24,36 @@ class PresupuestoDocumentWorkspace {
   bool isIssuing(String id) => _issuingIds.contains(id.trim());
 
   Future<List<Map<String, dynamic>>> refresh(String groupId) async {
-    _documents = (await api.listDocumentsByGroup(groupId))
+    final listed = (await api.listDocumentsByGroup(groupId))
         .where(presupuestoHasDocumentContent)
         .map(Map<String, dynamic>.from)
         .toList(growable: false);
+    _documents = await Future.wait(listed.map(_hydrateZeroAmountSummary));
     return documents;
+  }
+
+  Future<Map<String, dynamic>> _hydrateZeroAmountSummary(
+    Map<String, dynamic> document,
+  ) async {
+    final amount = document.containsKey('amount')
+        ? _localizedNumber(document['amount'])
+        : null;
+    if (amount != 0 || _cleaningScheduleAmount(document) != null) {
+      return document;
+    }
+    final id = presupuestoDocumentId(document);
+    if (id.isEmpty) return document;
+    try {
+      final response = await api.getTemplateContent(id);
+      final content = _nested(response, 'content');
+      if (content == null) return document;
+      return <String, dynamic>{
+        ...document,
+        'documentContent': content,
+      };
+    } catch (_) {
+      return document;
+    }
   }
 
   Future<Map<String, dynamic>> issue(
@@ -139,6 +164,7 @@ String presupuestoDocumentClientName(Map<String, dynamic> document) {
 }
 
 String presupuestoDocumentTitle(Map<String, dynamic> document) {
+  final cleaningDocument = _isCleaningDocument(document);
   for (final value in <Object?>[
     document['documentTitle'],
     document['title'],
@@ -148,9 +174,12 @@ String presupuestoDocumentTitle(Map<String, dynamic> document) {
     document['name'],
   ]) {
     final text = value?.toString().trim() ?? '';
+    if (cleaningDocument && _isGardenPoolTitle(text)) continue;
     if (text.isNotEmpty) return text;
   }
-  return 'Documento sin titulo';
+  return cleaningDocument
+      ? 'Limpieza anual de escaleras y zonas comunes'
+      : 'Documento sin titulo';
 }
 
 int presupuestoDocumentImageCount(Map<String, dynamic> document) {
@@ -168,8 +197,19 @@ int presupuestoDocumentImageCount(Map<String, dynamic> document) {
 }
 
 num? presupuestoDocumentAmount(Map<String, dynamic> document) {
+  // The list endpoint now returns an authoritative `amount` (see
+  // `amountSource`: 'templateVariable' or 'totals') computed server-side, so
+  // trust it directly whenever present instead of guessing across fields.
+  if (document.containsKey('amount')) {
+    final parsed = _localizedNumber(document['amount']);
+    if (parsed != null && parsed != 0) return parsed;
+  }
+
+  final scheduleAmount = _cleaningScheduleAmount(document);
+  if (scheduleAmount != null) return scheduleAmount;
+
+  // Fallback for payloads that predate the authoritative `amount` field.
   final values = <Object?>[
-    document['amount'],
     document['total'],
     _nested(document, 'totals')?['total'],
     _nested(document, 'totals')?['grandTotal'],
@@ -183,6 +223,7 @@ num? presupuestoDocumentAmount(Map<String, dynamic> document) {
     if (variables == null) continue;
     values.addAll(<Object?>[
       variables['IMPORTE_MENSUAL'],
+      variables['TOTAL_MENSUAL'],
       variables['IMPORTE'],
       variables['PRECIO_TOTAL'],
       variables['TOTAL'],
@@ -199,6 +240,90 @@ num? presupuestoDocumentAmount(Map<String, dynamic> document) {
   return zeroFallback;
 }
 
+num? _cleaningScheduleAmount(Map<String, dynamic> document) {
+  for (final source in <Map<String, dynamic>>[
+    document,
+    ...<Map<String, dynamic>?>[
+      _nested(document, 'documentContent'),
+      _nested(document, 'templateContent'),
+      _nested(document, 'content'),
+    ].whereType<Map<String, dynamic>>(),
+  ]) {
+    final sections = source['sections'];
+    if (sections is! List) continue;
+    var sourceTotal = 0.0;
+    var found = false;
+    for (final rawSection in sections) {
+      if (rawSection is! Map) continue;
+      final table = rawSection['table'];
+      if (table is! Map) continue;
+      final columns = table['columns'];
+      final rows = table['rows'];
+      if (columns is! List || rows is! List) continue;
+      final totalIndex = columns.indexWhere((column) {
+        final heading = _normalizeColumn(column?.toString() ?? '');
+        return heading == 'TOTAL MENSUAL' ||
+            heading == 'IMPORTE MENSUAL' ||
+            heading == 'TOTAL';
+      });
+      if (totalIndex < 0) continue;
+      for (final rawRow in rows) {
+        if (rawRow is! List || totalIndex >= rawRow.length) continue;
+        final value = _localizedNumber(rawRow[totalIndex]);
+        if (value == null) continue;
+        sourceTotal += value;
+        found = true;
+      }
+    }
+    if (found) return sourceTotal;
+  }
+  return null;
+}
+
+bool _isCleaningDocument(Map<String, dynamic> document) {
+  for (final source in <Map<String, dynamic>>[
+    document,
+    ...<Map<String, dynamic>?>[
+      _nested(document, 'documentContent'),
+      _nested(document, 'templateContent'),
+      _nested(document, 'content'),
+    ].whereType<Map<String, dynamic>>(),
+  ]) {
+    final key = (source['key'] ??
+            source['templateKey'] ??
+            source['presupuestoType'] ??
+            '')
+        .toString()
+        .trim();
+    final rawLayout = source['pageLayout'];
+    final layout = rawLayout is Map
+        ? (rawLayout['key'] ?? rawLayout['name'] ?? '').toString().trim()
+        : (rawLayout ?? '').toString().trim();
+    if (key == 'stair_cleaning_annual_maintenance' ||
+        layout == 'cleaning_three_page') {
+      return true;
+    }
+    if (_cleaningScheduleAmount(source) != null) return true;
+  }
+  return false;
+}
+
+bool _isGardenPoolTitle(String value) {
+  final normalized = value.toLowerCase();
+  return normalized.contains('jardin') || normalized.contains('piscina');
+}
+
+String _normalizeColumn(String value) => value
+    .trim()
+    .toUpperCase()
+    .replaceAll('_', ' ')
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .replaceAll('Á', 'A')
+    .replaceAll('É', 'E')
+    .replaceAll('Í', 'I')
+    .replaceAll('Ó', 'O')
+    .replaceAll('Ú', 'U');
+
 num? _localizedNumber(Object? value) {
   if (value is num) return value;
   var text = value?.toString().trim() ?? '';
@@ -212,6 +337,11 @@ num? _localizedNumber(Object? value) {
     }
   } else if (text.contains(',')) {
     text = text.replaceAll(',', '.');
+  } else if (text.contains('.')) {
+    final parts = text.split('.');
+    if (parts.length > 1 && parts.last.length == 3) {
+      text = parts.join();
+    }
   }
   return num.tryParse(text);
 }

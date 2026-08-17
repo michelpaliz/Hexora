@@ -1,9 +1,17 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/a-models/group_model/client/client.dart';
+import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_document_draft_flow.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_pdf_preview_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
+import 'package:intl/intl.dart';
 
 class PresupuestoTemplateEditorScreen extends StatefulWidget {
   const PresupuestoTemplateEditorScreen({
@@ -17,6 +25,7 @@ class PresupuestoTemplateEditorScreen extends StatefulWidget {
     this.createNewTemplate = false,
     this.createDocumentDraft = false,
     this.onDocumentSaved,
+    this.clientSearch,
   }) : assert(templateOnly || createDocumentDraft || presupuestoId != null);
 
   final PresupuestosApi api;
@@ -28,6 +37,7 @@ class PresupuestoTemplateEditorScreen extends StatefulWidget {
   final bool createNewTemplate;
   final bool createDocumentDraft;
   final Future<void> Function()? onDocumentSaved;
+  final Future<List<GroupClient>> Function(String search)? clientSearch;
 
   @override
   State<PresupuestoTemplateEditorScreen> createState() =>
@@ -56,6 +66,10 @@ class _TemplateVariableField {
     required this.icon,
     this.keyboardType,
     this.maxLines = 1,
+    this.isAutomatic = false,
+    this.isUsedInTemplate = true,
+    this.readOnly = false,
+    this.calculation,
   });
 
   final String key;
@@ -64,101 +78,45 @@ class _TemplateVariableField {
   final IconData icon;
   final TextInputType? keyboardType;
   final int maxLines;
+  final bool isAutomatic;
+  final bool isUsedInTemplate;
+  final bool readOnly;
+  final _VariableCalculation? calculation;
+}
+
+class _VariableCalculation {
+  const _VariableCalculation({
+    required this.operation,
+    required this.operands,
+    required this.format,
+    required this.currency,
+    required this.readOnly,
+  });
+
+  factory _VariableCalculation.fromMap(Map<String, dynamic> map) {
+    return _VariableCalculation(
+      operation: _string(map['operation']) ?? '',
+      operands: map['operands'] is List
+          ? (map['operands'] as List)
+              .map((value) => value.toString().trim())
+              .where((value) => value.isNotEmpty)
+              .toList(growable: false)
+          : const [],
+      format: _string(map['format']) ?? '',
+      currency: _string(map['currency']) ?? 'EUR',
+      readOnly: map['readOnly'] == true,
+    );
+  }
+
+  final String operation;
+  final List<String> operands;
+  final String format;
+  final String currency;
+  final bool readOnly;
 }
 
 class _PresupuestoTemplateEditorScreenState
     extends State<PresupuestoTemplateEditorScreen> {
-  static const _variableKeys = <String>[
-    'CLIENTE',
-    'FECHA',
-    'MES',
-    'ANO',
-    'ZONAS_COMUNES',
-    'PRODUCTOS_INCLUIDOS',
-    'DIAS_TEMPORADA_ALTA',
-    'FRECUENCIA_TEMPORADA_BAJA',
-    'PRECIO_HORA',
-    'PRECIO_PISCINA_PRIVADA',
-    'IMPORTE_MENSUAL',
-    'DURACION_CONTRATO',
-    'PREAVISO',
-  ];
-
-  static const _tagFields = <_TemplateVariableField>[
-    _TemplateVariableField(
-      key: 'FECHA',
-      label: 'Fecha [FECHA]',
-      hint: 'Ej. 31/07/2026',
-      icon: Icons.calendar_today_outlined,
-      keyboardType: TextInputType.datetime,
-    ),
-    _TemplateVariableField(
-      key: 'MES',
-      label: 'Mes [MES]',
-      hint: 'Ej. julio',
-      icon: Icons.calendar_view_month_outlined,
-    ),
-    _TemplateVariableField(
-      key: 'ANO',
-      label: 'Ano [ANO]',
-      hint: 'Ej. 2026',
-      icon: Icons.event_outlined,
-      keyboardType: TextInputType.number,
-    ),
-    _TemplateVariableField(
-      key: 'PRECIO_HORA',
-      label: 'Precio por hora [PRECIO_HORA]',
-      hint: 'Ej. 25,00 EUR',
-      icon: Icons.euro_rounded,
-      keyboardType: TextInputType.numberWithOptions(decimal: true),
-    ),
-    _TemplateVariableField(
-      key: 'PRECIO_PISCINA_PRIVADA',
-      label: 'Precio piscina privada [PRECIO_PISCINA_PRIVADA]',
-      hint: 'Ej. 120,00 EUR / mes',
-      icon: Icons.pool_outlined,
-      keyboardType: TextInputType.numberWithOptions(decimal: true),
-    ),
-    _TemplateVariableField(
-      key: 'ZONAS_COMUNES',
-      label: 'Zonas comunes [ZONAS_COMUNES]',
-      hint: 'Ej. jardines, accesos y piscina',
-      icon: Icons.location_city_outlined,
-      maxLines: 2,
-    ),
-    _TemplateVariableField(
-      key: 'PRODUCTOS_INCLUIDOS',
-      label: 'Productos incluidos [PRODUCTOS_INCLUIDOS]',
-      hint: 'Ej. cloro, regulador de pH y abono',
-      icon: Icons.inventory_2_outlined,
-      maxLines: 2,
-    ),
-    _TemplateVariableField(
-      key: 'DIAS_TEMPORADA_ALTA',
-      label: 'Dias en temporada alta [DIAS_TEMPORADA_ALTA]',
-      hint: 'Ej. tres dias por semana',
-      icon: Icons.sunny_snowing,
-    ),
-    _TemplateVariableField(
-      key: 'FRECUENCIA_TEMPORADA_BAJA',
-      label: 'Frecuencia en temporada baja [FRECUENCIA_TEMPORADA_BAJA]',
-      hint: 'Ej. una vez por semana',
-      icon: Icons.date_range_outlined,
-    ),
-    _TemplateVariableField(
-      key: 'DURACION_CONTRATO',
-      label: 'Duracion del contrato [DURACION_CONTRATO]',
-      hint: 'Ej. 12 meses',
-      icon: Icons.description_outlined,
-    ),
-    _TemplateVariableField(
-      key: 'PREAVISO',
-      label: 'Preaviso [PREAVISO]',
-      hint: 'Ej. 30 dias',
-      icon: Icons.notifications_active_outlined,
-    ),
-  ];
-
   final _name = TextEditingController();
   final _instagram = TextEditingController();
   final _website = TextEditingController();
@@ -166,14 +124,22 @@ class _PresupuestoTemplateEditorScreenState
   final _title = TextEditingController();
   final _subtitle = TextEditingController();
   final _intro = TextEditingController();
+  final _previewHorizontalScrollController = ScrollController();
   final Map<String, TextEditingController> _variables = {};
   final List<_TemplateSectionState> _sections = [];
   final List<_TemplateImageState> _images = [];
   late final PresupuestoDocumentDraftFlow _documentFlow;
   final Map<String, String> _loadedDocumentVariables = {};
+  final Map<String, _TemplateVariableField> _variableFieldDefinitions = {};
+  dynamic _variableFieldsSource = const <dynamic>[];
+  String _variableSchemaKey = 'unselected';
 
   List<Map<String, dynamic>> _templates = const [];
   List<Map<String, dynamic>> _defaultTemplates = const [];
+  Map<String, dynamic> _sourceContent = const {};
+  Map<String, dynamic>? _selectedDefaultTemplate;
+  String? _selectedDefaultKey;
+  String? _selectedTemplateSnapshot;
   String? _templateId;
   String? _logoUrl;
   int _activeStep = 0;
@@ -182,10 +148,14 @@ class _PresupuestoTemplateEditorScreenState
   bool _creatingDocumentFromTemplate = false;
   bool _downloading = false;
   bool _previewing = false;
+  String? _loadErrorMessage;
   String? _creatingDefaultKey;
   String? _deletingTemplateId;
   String? _previewingDefaultKey;
   String? _previewingSavedTemplateId;
+  final ClientsApi _clientsApi = ClientsApi();
+  String? _selectedClientId;
+  String? _selectedClientName;
 
   @override
   void initState() {
@@ -206,6 +176,7 @@ class _PresupuestoTemplateEditorScreenState
     _title.dispose();
     _subtitle.dispose();
     _intro.dispose();
+    _previewHorizontalScrollController.dispose();
     for (final controller in _variables.values) {
       controller.dispose();
     }
@@ -219,7 +190,10 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadErrorMessage = null;
+    });
     try {
       if (!widget.templateOnly) {
         final presupuestoId = _documentFlow.presupuestoId;
@@ -234,12 +208,36 @@ class _PresupuestoTemplateEditorScreenState
               _string(content['templateId']) ?? _string(payload['templateId']);
           _hydrate(content);
           _applyLoadedDocumentVariables(responses[1]);
+          _selectedClientId = _string(payload['clientId']) ??
+              _string(content['clientId']) ??
+              _string(widget.initialBudget?['clientId']);
+          _selectedClientName = _selectedClientId == null
+              ? null
+              : _variables['CLIENTE']?.text.trim();
+          _variableSchemaKey = 'document:$presupuestoId';
           return;
         }
         if (!widget.createDocumentDraft) {
           throw Exception(
               'Selecciona un presupuesto para editar el documento.');
         }
+      }
+
+      if (widget.createDocumentDraft && _documentFlow.presupuestoId == null) {
+        final defaultsPayload = await widget.api.listDefaultTemplates();
+        final defaults = defaultsPayload['templates'];
+        _defaultTemplates = defaults is List
+            ? defaults
+                .map(_asMap)
+                .whereType<Map<String, dynamic>>()
+                .toList(growable: false)
+            : const [];
+        _templateId = null;
+        _selectedDefaultKey = null;
+        _selectedDefaultTemplate = null;
+        _variableSchemaKey = 'unselected';
+        _hydrate(_newDocumentSource());
+        return;
       }
 
       final payload = await widget.api.listTemplatesByGroup(widget.groupId);
@@ -282,10 +280,12 @@ class _PresupuestoTemplateEditorScreenState
         _hydrate(_newDocumentSource());
       }
     } on PresupuestosApiException catch (e) {
+      _loadErrorMessage = e.message;
       if (mounted) showErrorSnack(context, e.message);
     } catch (e) {
+      _loadErrorMessage = e.toString().replaceFirst('Exception: ', '');
       if (mounted) {
-        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+        showErrorSnack(context, _loadErrorMessage!);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -311,32 +311,60 @@ class _PresupuestoTemplateEditorScreenState
     });
   }
 
-  Future<void> _createFromDefault(Map<String, dynamic> template) async {
+  Future<void> _useDefaultTemplate(Map<String, dynamic> template) async {
     final key = _string(template['key']);
     if (key == null || key.isEmpty || _creatingDefaultKey != null) return;
-    setState(() => _creatingDefaultKey = key);
-    try {
-      if (!widget.templateOnly) {
-        final requestedContent = _documentContentFromSource(template);
-        final created = await _documentFlow.createFromDefault(
-          key: key,
-          groupId: widget.groupId,
-          content: requestedContent,
+
+    if (!widget.templateOnly) {
+      if (_selectedDefaultKey != null &&
+          _selectedDefaultKey != key &&
+          _hasTemplateEdits()) {
+        final replace = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Cambiar tipo de presupuesto'),
+            content: const Text(
+              'Los cambios actuales se reemplazaran por el contenido de la nueva plantilla.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Cambiar plantilla'),
+              ),
+            ],
+          ),
         );
-        final createdContent = _createdDocumentContent(created.response);
-        setState(() {
-          _templateId = null;
-          _hydrate(createdContent ?? requestedContent);
-          _rememberCurrentDocumentVariables();
-          _activeStep = 0;
-        });
-        await widget.onDocumentSaved?.call();
-        if (mounted) {
-          showSuccessSnack(context, 'Presupuesto guardado como borrador.');
-        }
-        return;
+        if (replace != true || !mounted) return;
       }
 
+      final content = _templateContent(template);
+      final sharedVariables = <String, String>{};
+      final currentClient = _variables['CLIENTE']?.text;
+      if (_selectedDefaultKey != null &&
+          currentClient != null &&
+          _readVariableFieldDefinitions(content['variableFields'])
+              .containsKey('CLIENTE')) {
+        sharedVariables['CLIENTE'] = currentClient;
+      }
+      setState(() {
+        _selectedDefaultKey = key;
+        _selectedDefaultTemplate = Map<String, dynamic>.from(template);
+        _variableSchemaKey = 'default:$key';
+        _templateId = null;
+        _hydrate(content, preservedVariables: sharedVariables);
+        _activeStep = 0;
+        _selectedTemplateSnapshot =
+            jsonEncode(_payload(includeTemplateId: false));
+      });
+      return;
+    }
+
+    setState(() => _creatingDefaultKey = key);
+    try {
       final created = await widget.api.createTemplateFromDefault(
         key: key,
         groupId: widget.groupId,
@@ -346,6 +374,7 @@ class _PresupuestoTemplateEditorScreenState
           _string(createdTemplate['_id']) ?? _string(createdTemplate['id']);
       setState(() {
         if (id != null && id.isNotEmpty) _templateId = id;
+        _variableSchemaKey = 'template:${id ?? key}';
         _templates = [
           createdTemplate,
           ..._templates.where((item) {
@@ -367,47 +396,27 @@ class _PresupuestoTemplateEditorScreenState
     }
   }
 
-  Map<String, dynamic> _documentContentFromSource(
-    Map<String, dynamic> source,
-  ) {
-    final sourceVariables = _asMap(source['variables']) ?? const {};
-    final currentClient = _variableController('CLIENTE').text.trim();
-    return <String, dynamic>{
-      'name': _string(source['name']) ?? 'Presupuesto',
-      'header': _asMap(source['header']) ?? const <String, dynamic>{},
-      'watermark': _string(source['watermark']) ?? '',
-      'title': _string(source['title']) ?? '',
-      'subtitle': _string(source['subtitle']) ?? '',
-      'intro': _string(source['intro']) ?? '',
-      'variables': <String, dynamic>{
-        ...sourceVariables,
-        if (currentClient.isNotEmpty) 'CLIENTE': currentClient,
-      },
-      'sections': source['sections'] is List ? source['sections'] : const [],
-      'images': source['images'] is List ? source['images'] : const [],
-    };
+  bool _hasTemplateEdits() {
+    final snapshot = _selectedTemplateSnapshot;
+    if (snapshot == null) return false;
+    return snapshot != jsonEncode(_payload(includeTemplateId: false));
   }
 
-  Map<String, dynamic>? _createdDocumentContent(
-    Map<String, dynamic> response,
-  ) {
-    for (final source in <Map<String, dynamic>>[
-      response,
-      ...['presupuesto', 'document', 'data']
-          .map((key) => response[key])
-          .whereType<Map>()
-          .map((value) => Map<String, dynamic>.from(value)),
-    ]) {
-      for (final key in const [
-        'content',
-        'templateContent',
-        'documentTemplateContent',
-      ]) {
-        final content = _asMap(source[key]);
-        if (content != null) return content;
+  Map<String, dynamic> _templateContent(Map<String, dynamic> template) {
+    for (final key in const ['content', 'templateContent']) {
+      final content = _asMap(template[key]);
+      if (content != null) {
+        final merged = <String, dynamic>{
+          ...template,
+          ...content,
+          'key': template['key']
+        };
+        merged.remove('content');
+        merged.remove('templateContent');
+        return merged;
       }
     }
-    return null;
+    return Map<String, dynamic>.from(template);
   }
 
   Map<String, dynamic>? _savedContent(Map<String, dynamic>? budget) {
@@ -423,14 +432,25 @@ class _PresupuestoTemplateEditorScreenState
     return null;
   }
 
-  void _hydrate(Map<String, dynamic> source) {
-    _name.text = _string(source['name']) ?? 'Plantilla presupuesto';
+  void _hydrate(
+    Map<String, dynamic> source, {
+    Map<String, String> preservedVariables = const {},
+  }) {
+    _sourceContent = Map<String, dynamic>.from(source);
+    final cleaningTemplate = _isCleaningTemplateSource(source);
+    final sourceName = _string(source['name']);
+    final sourceTitle = _string(source['title']);
+    _name.text = cleaningTemplate && _isGardenPoolText(sourceName)
+        ? 'Limpieza anual de escaleras y zonas comunes'
+        : sourceName ?? 'Plantilla presupuesto';
     final header = _asMap(source['header']) ?? const {};
     _instagram.text = _string(header['instagram']) ?? '';
     _website.text = _string(header['website']) ?? '';
     _logoUrl = _string(header['logoUrl']);
     _watermark.text = _string(source['watermark']) ?? '';
-    _title.text = _string(source['title']) ?? '';
+    _title.text = cleaningTemplate && _isGardenPoolText(sourceTitle)
+        ? 'Limpieza anual de escaleras y zonas comunes'
+        : sourceTitle ?? '';
     _subtitle.text = _string(source['subtitle']) ?? '';
     _intro.text = _string(source['intro']) ?? '';
 
@@ -439,11 +459,20 @@ class _PresupuestoTemplateEditorScreenState
     }
     _variables.clear();
     final variables = _asMap(source['variables']) ?? const {};
-    final keys = {..._variableKeys, ...variables.keys.map((e) => e.toString())};
-    for (final key in keys) {
-      _variables[key] =
-          TextEditingController(text: _string(variables[key]) ?? '');
+    _variableFieldsSource = source['variableFields'] ?? const <dynamic>[];
+    _variableFieldDefinitions
+      ..clear()
+      ..addAll(_readVariableFieldDefinitions(_variableFieldsSource));
+    final variableFieldValues = _readVariableFieldValues(_variableFieldsSource);
+    for (final key in _variableFieldDefinitions.keys) {
+      _variables[key] = TextEditingController(
+        text: preservedVariables[key] ??
+            variableFieldValues[key] ??
+            _string(variables[key]) ??
+            '',
+      );
     }
+    _recalculateVariableFields();
 
     for (final section in _sections) {
       section.dispose();
@@ -457,7 +486,199 @@ class _PresupuestoTemplateEditorScreenState
     }
     _images
       ..clear()
-      ..addAll(_imageStates(source['images']));
+      ..addAll(_imageStates(_imageDefinitions(source)));
+  }
+
+  dynamic _imageDefinitions(Map<String, dynamic> source) {
+    final templateKey = _string(source['key']) ??
+        _string(source['templateKey']) ??
+        _string(source['presupuestoType']);
+    if (_isCleaningTemplateSource(source)) {
+      return const <dynamic>[];
+    }
+    if (source['images'] is List && (source['images'] as List).isNotEmpty) {
+      return source['images'];
+    }
+    if (source['imageSlots'] is List &&
+        (source['imageSlots'] as List).isNotEmpty) {
+      return source['imageSlots'];
+    }
+    final pageLayout = _asMap(source['pageLayout']);
+    if (pageLayout?['imageSlots'] is List &&
+        (pageLayout!['imageSlots'] as List).isNotEmpty) {
+      return pageLayout['imageSlots'];
+    }
+    final variables = _asMap(source['variables']) ?? const {};
+    final isGardenTemplate = templateKey == 'garden_pool_annual_maintenance' ||
+        variables.containsKey('PRECIO_PISCINA_PRIVADA') ||
+        variables.containsKey('DIAS_TEMPORADA_ALTA');
+    if (isGardenTemplate) {
+      return List.generate(
+        6,
+        (index) => <String, dynamic>{
+          'slot': 'photo_${index + 1}',
+          'label': 'Foto ${index + 1}',
+          'url': '',
+          'blobName': '',
+          'enabled': true,
+        },
+      );
+    }
+    return const <dynamic>[];
+  }
+
+  Map<String, _TemplateVariableField> _readVariableFieldDefinitions(
+    dynamic value,
+  ) {
+    final definitions = <String, _TemplateVariableField>{};
+
+    void add(String rawKey, dynamic rawDefinition) {
+      final key = rawKey.trim();
+      if (key.isEmpty) return;
+      final definition = _asMap(rawDefinition) ?? const {};
+      final label = _variableLabel(key, _string(definition['label']));
+      final type = (_string(definition['type']) ?? '').toLowerCase();
+      final calculationMap = _asMap(definition['calculation']) ??
+          (definition['operation'] != null ? definition : null);
+      final calculation = calculationMap == null
+          ? null
+          : _VariableCalculation.fromMap(calculationMap);
+      definitions[key] = _TemplateVariableField(
+        key: key,
+        label: '$label [$key]',
+        hint: _string(definition['hint']) ??
+            _string(definition['placeholder']) ??
+            _variableHint(key),
+        icon: _variableIcon(key),
+        keyboardType: key == 'ANO' || type == 'year'
+            ? TextInputType.number
+            : key == 'FECHA' || type == 'date'
+                ? TextInputType.datetime
+                : TextInputType.text,
+        maxLines: type.contains('textarea') ? 3 : 1,
+        isAutomatic: definition['isAutomatic'] == true,
+        isUsedInTemplate: definition['isUsedInTemplate'] != false,
+        readOnly:
+            definition['readOnly'] == true || (calculation?.readOnly ?? false),
+        calculation: calculation,
+      );
+    }
+
+    if (value is Map) {
+      for (final entry in value.entries) {
+        add(entry.key.toString(), entry.value);
+      }
+    } else if (value is List) {
+      for (final item in value) {
+        final definition = _asMap(item);
+        final key = _string(definition?['key']) ??
+            _string(definition?['name']) ??
+            _string(definition?['variable']) ??
+            (item is String ? _string(item) : null);
+        if (key != null) add(key, definition);
+      }
+    }
+    return definitions;
+  }
+
+  Map<String, String> _readVariableFieldValues(dynamic value) {
+    final values = <String, String>{};
+
+    void add(String rawKey, dynamic rawDefinition) {
+      final key = rawKey.trim();
+      if (key.isEmpty) return;
+      final definition = _asMap(rawDefinition);
+      final rawValue = definition == null
+          ? rawDefinition
+          : _displayedVariableValue(definition);
+      if (rawValue != null) values[key] = rawValue.toString();
+    }
+
+    if (value is Map) {
+      for (final entry in value.entries) {
+        add(entry.key.toString(), entry.value);
+      }
+    } else if (value is List) {
+      for (final item in value) {
+        final definition = _asMap(item);
+        final key = _string(definition?['key']) ??
+            _string(definition?['name']) ??
+            _string(definition?['variable']) ??
+            (item is String ? _string(item) : null);
+        if (key != null) add(key, definition);
+      }
+    }
+    return values;
+  }
+
+  dynamic _displayedVariableValue(Map<String, dynamic> definition) {
+    return definition['value'] ??
+        definition['resolvedValue'] ??
+        definition['automaticValue'] ??
+        '';
+  }
+
+  String _variableLabel(String key, String? backendLabel) {
+    const localized = <String, String>{
+      'CLIENTE': 'Nombre del cliente',
+      'FECHA': 'Fecha',
+      'MES': 'Mes',
+      'ANO': 'Año',
+      'FRECUENCIA_MENSUAL': 'Frecuencia mensual',
+      'PRECIO_VISITA': 'Precio por visita',
+      'TOTAL_MENSUAL': 'Total mensual',
+      'DURACION_CONTRATO': 'Duración del contrato',
+      'FRECUENCIA_LIMPIEZA_GARAJE': 'Frecuencia de limpieza del garaje',
+      'PRECIO_LIMPIEZA_GARAJE': 'Precio de limpieza del garaje',
+      'PRECIO_HORA': 'Precio por hora',
+      'PRECIO_PISCINA_PRIVADA': 'Precio piscina privada',
+      'ZONAS_COMUNES': 'Zonas comunes',
+      'PRODUCTOS_INCLUIDOS': 'Productos incluidos',
+      'DIAS_TEMPORADA_ALTA': 'Días en temporada alta',
+      'FRECUENCIA_TEMPORADA_BAJA': 'Frecuencia en temporada baja',
+      'IMPORTE_MENSUAL': 'Importe mensual',
+      'PREAVISO': 'Preaviso',
+    };
+    final candidate = backendLabel?.replaceAll('[$key]', '').trim();
+    final backendIsReadable = candidate != null &&
+        candidate.isNotEmpty &&
+        candidate != key &&
+        !candidate.contains('_') &&
+        candidate != candidate.toUpperCase();
+    return backendIsReadable
+        ? candidate
+        : localized[key] ?? key.replaceAll('_', ' ');
+  }
+
+  String _variableHint(String key) {
+    const hints = <String, String>{
+      'CLIENTE': 'Ej. Comunidad Las Alondras',
+      'FECHA': 'Ej. 31/07/2026',
+      'MES': 'Ej. julio',
+      'ANO': 'Ej. 2026',
+      'FRECUENCIA_MENSUAL': 'Ej. 4 veces al mes',
+      'PRECIO_VISITA': 'Ej. 480 €',
+      'TOTAL_MENSUAL': 'Ej. 1.920 €',
+      'DURACION_CONTRATO': 'Ej. un (1) año',
+      'FRECUENCIA_LIMPIEZA_GARAJE': 'Ej. una vez al año',
+      'PRECIO_LIMPIEZA_GARAJE': 'Ej. 650 €',
+    };
+    return hints[key] ?? 'Valor para [$key]';
+  }
+
+  IconData _variableIcon(String key) {
+    if (key == 'CLIENTE') return Icons.person_outline_rounded;
+    if (key == 'FECHA') return Icons.calendar_today_outlined;
+    if (key == 'MES') return Icons.calendar_view_month_outlined;
+    if (key == 'ANO') return Icons.event_outlined;
+    if (key.contains('PRECIO') ||
+        key.contains('TOTAL') ||
+        key.contains('IMPORTE')) {
+      return Icons.euro_rounded;
+    }
+    if (key.contains('FRECUENCIA')) return Icons.event_repeat_rounded;
+    if (key.contains('DURACION')) return Icons.description_outlined;
+    return Icons.data_object_rounded;
   }
 
   List<_TemplateSectionState> _sectionStates(dynamic value) {
@@ -482,12 +703,8 @@ class _PresupuestoTemplateEditorScreenState
         }
       }
     }
-    return List.generate(6, (index) {
-      final slot = 'photo_${index + 1}';
-      return _TemplateImageState.fromMap(
-        bySlot[slot] ?? {'slot': slot, 'label': 'Foto ${index + 1}'},
-      );
-    });
+    if (bySlot.isEmpty) return const [];
+    return bySlot.values.map(_TemplateImageState.fromMap).toList();
   }
 
   Future<void> _save({bool silent = false}) async {
@@ -498,12 +715,27 @@ class _PresupuestoTemplateEditorScreenState
         await _persistTemplate();
       } else {
         final creating = _documentFlow.presupuestoId == null;
-        final presupuestoId = await _documentFlow.save(
-          groupId: widget.groupId,
-          content: _payload(includeTemplateId: false),
-        );
+        if (creating && _selectedDefaultKey == null) {
+          throw Exception('Selecciona un tipo de presupuesto para continuar.');
+        }
+        final content = _payload(includeTemplateId: false);
+        if (creating && (_selectedClientId ?? '').isNotEmpty) {
+          content['clientId'] = _selectedClientId;
+        }
+        final presupuestoId = creating
+            ? (await _documentFlow.createFromDefault(
+                key: _selectedDefaultKey!,
+                groupId: widget.groupId,
+                content: content,
+              ))
+                .presupuestoId
+            : await _documentFlow.save(
+                groupId: widget.groupId,
+                content: content,
+              );
         if (creating) {
           _rememberCurrentDocumentVariables();
+          _selectedTemplateSnapshot = jsonEncode(content);
         } else {
           await _saveChangedDocumentVariables(presupuestoId);
         }
@@ -600,32 +832,64 @@ class _PresupuestoTemplateEditorScreenState
 
   Future<void> _previewPdf() async {
     if (_previewing) return;
+    if (_mustSelectDefaultTemplate) {
+      showErrorSnack(context, 'Selecciona un tipo de presupuesto primero.');
+      return;
+    }
     setState(() => _previewing = true);
     try {
-      final response = widget.templateOnly
-          ? await widget.api.previewLiveTemplatePdf(
+      final response = !widget.templateOnly &&
+              _documentFlow.presupuestoId == null &&
+              _selectedDefaultKey != null
+          ? await widget.api.previewDefaultTemplatePdf(
+              key: _selectedDefaultKey!,
               groupId: widget.groupId,
-              template: _payload(includeTemplateId: false),
             )
-          : await () async {
-              await _save(silent: true);
-              return widget.api.previewTemplatePdf(
-                _documentFlow.presupuestoId!,
-              );
-            }();
-      await launchFileDownload(
-        response.bodyBytes,
-        fileName: _fileName('preview'),
-        mimeType: 'application/pdf',
+          : widget.templateOnly
+              ? await widget.api.previewLiveTemplatePdf(
+                  groupId: widget.groupId,
+                  template: _payload(includeTemplateId: false),
+                )
+              : await () async {
+                  await _save(silent: true);
+                  return widget.api.previewTemplatePdf(
+                    _documentFlow.presupuestoId!,
+                  );
+                }();
+      final bytes = InvoiceEditorPdf.validatePdf(response);
+      if (!mounted) return;
+      await PresupuestoPdfPreviewDialog.show(
+        context,
+        bytes: bytes,
+        onDownload: () => launchFileDownload(
+          bytes,
+          fileName: _fileName('preview'),
+          mimeType: 'application/pdf',
+        ),
       );
     } on PresupuestosApiException catch (e) {
-      if (mounted) showErrorSnack(context, e.message);
+      if (mounted) showErrorSnack(context, _friendlyPdfError(e));
     } catch (e) {
       if (mounted) {
         showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _previewing = false);
+    }
+  }
+
+  String _friendlyPdfError(PresupuestosApiException e) {
+    switch (e.statusCode) {
+      case 401:
+        return 'Tu sesion ha caducado. Vuelve a iniciar sesion e intentalo de nuevo.';
+      case 403:
+        return 'No tienes permiso para previsualizar este presupuesto.';
+      case 404:
+        return 'No se encontro el presupuesto solicitado.';
+      case 500:
+        return 'No se pudo generar el PDF en el servidor. Intentalo de nuevo en unos minutos.';
+      default:
+        return e.message;
     }
   }
 
@@ -638,10 +902,16 @@ class _PresupuestoTemplateEditorScreenState
         key: key,
         groupId: widget.groupId,
       );
-      await launchFileDownload(
-        response.bodyBytes,
-        fileName: 'presupuesto-plantilla-$key-preview.pdf',
-        mimeType: 'application/pdf',
+      final bytes = InvoiceEditorPdf.validatePdf(response);
+      if (!mounted) return;
+      await PresupuestoPdfPreviewDialog.show(
+        context,
+        bytes: bytes,
+        onDownload: () => launchFileDownload(
+          bytes,
+          fileName: 'presupuesto-plantilla-$key-preview.pdf',
+          mimeType: 'application/pdf',
+        ),
       );
     } on PresupuestosApiException catch (e) {
       if (mounted) showErrorSnack(context, e.message);
@@ -834,7 +1104,9 @@ class _PresupuestoTemplateEditorScreenState
     for (var i = 0; i < _sections.length; i++) {
       _sections[i].order = i + 1;
     }
+    final scheduleTotal = _scheduleTotal();
     return {
+      ..._sourceContent,
       'name': _name.text.trim().isEmpty ? 'Presupuesto' : _name.text.trim(),
       if (includeTemplateId && (_templateId ?? '').trim().isNotEmpty)
         'templateId': _templateId!.trim(),
@@ -851,28 +1123,63 @@ class _PresupuestoTemplateEditorScreenState
         for (final entry in _variables.entries) entry.key: entry.value.text,
       },
       'sections': _sections.map((section) => section.toJson()).toList(),
+      if (scheduleTotal != null)
+        'totals': <String, dynamic>{
+          'total': scheduleTotal,
+          'grandTotal': scheduleTotal,
+          'currency': 'EUR',
+        },
       'images': _images.map((image) => image.toJson()).toList(),
     };
   }
 
+  double? _scheduleTotal() {
+    var total = 0.0;
+    var found = false;
+    for (final section in _sections) {
+      final sectionTotal = section.table?.totalAmount();
+      if (sectionTotal == null) continue;
+      total += sectionTotal;
+      found = true;
+    }
+    return found ? total : null;
+  }
+
   void _applyLoadedDocumentVariables(Map<String, dynamic> payload) {
-    final values = <String, String>{};
-    final raw = payload['variables'];
-    if (raw is Map) {
-      for (final entry in raw.entries) {
-        values[entry.key.toString()] = entry.value?.toString() ?? '';
-      }
-    } else if (raw is List) {
-      for (final item in raw.whereType<Map>()) {
-        final key = (item['key'] ?? '').toString().trim();
-        if (key.isEmpty) continue;
-        final value = item['value'] ?? item['resolvedValue'] ?? '';
-        values[key] = value.toString();
-      }
+    final rawFields = payload['variableFields'] ??
+        (payload['variables'] is List ? payload['variables'] : null);
+    final definitions = _readVariableFieldDefinitions(rawFields);
+    final fieldValues = _readVariableFieldValues(rawFields);
+    final rawVariables = payload['variables'];
+    final explicitValues = rawVariables is Map
+        ? <String, String>{
+            for (final entry in rawVariables.entries)
+              entry.key.toString(): entry.value?.toString() ?? '',
+          }
+        : _readVariableFieldValues(rawVariables);
+
+    for (final controller in _variables.values) {
+      controller.dispose();
     }
-    for (final entry in values.entries) {
-      _variableController(entry.key).text = entry.value;
+    _variables.clear();
+    _variableFieldDefinitions
+      ..clear()
+      ..addAll(definitions);
+    _variableFieldsSource = rawFields ?? const <dynamic>[];
+    _sourceContent = <String, dynamic>{
+      ..._sourceContent,
+      'variableFields': _variableFieldsSource,
+    };
+    for (final key in definitions.keys) {
+      _variables[key] = TextEditingController(
+        text: fieldValues[key] ?? _string(explicitValues[key]) ?? '',
+      );
     }
+    _recalculateVariableFields();
+
+    final values = <String, String>{
+      for (final entry in _variables.entries) entry.key: entry.value.text,
+    };
     _loadedDocumentVariables
       ..clear()
       ..addAll(values);
@@ -891,6 +1198,7 @@ class _PresupuestoTemplateEditorScreenState
   Future<void> _saveChangedDocumentVariables(String presupuestoId) async {
     final changes = <String, dynamic>{};
     for (final entry in _variables.entries) {
+      if (_variableFieldDefinitions[entry.key]?.readOnly == true) continue;
       final value = entry.value.text.trim();
       if (_loadedDocumentVariables[entry.key] == value) continue;
       changes[entry.key] = value.isEmpty ? null : value;
@@ -920,8 +1228,155 @@ class _PresupuestoTemplateEditorScreenState
     });
   }
 
-  TextEditingController _variableController(String key) {
-    return _variables.putIfAbsent(key, () => TextEditingController());
+  String? _primaryPriceKey() {
+    for (final key in const [
+      'TOTAL_MENSUAL',
+      'IMPORTE_MENSUAL',
+      'PRECIO_VISITA',
+      'PRECIO_HORA',
+    ]) {
+      if (_variables.containsKey(key)) return key;
+    }
+    return null;
+  }
+
+  String _primaryPriceValue() {
+    final key = _primaryPriceKey();
+    return key == null ? '' : (_variables[key]?.text.trim() ?? '');
+  }
+
+  String _variableValue(String key) => _variables[key]?.text.trim() ?? '';
+
+  void _recalculateVariableFields({String? changedKey}) {
+    for (final field in _variableFieldDefinitions.values) {
+      final calculation = field.calculation;
+      final target = _variables[field.key];
+      if (calculation == null || target == null) continue;
+      if (calculation.operation != 'multiply' || calculation.operands.isEmpty) {
+        continue;
+      }
+      var result = 1.0;
+      var valid = true;
+      for (final operand in calculation.operands) {
+        final value = _parseLocalizedNumber(_variables[operand]?.text ?? '');
+        if (value == null) {
+          valid = false;
+          break;
+        }
+        result *= value;
+      }
+      final next = valid
+          ? _formatCalculatedValue(
+              result,
+              format: calculation.format,
+              currency: calculation.currency,
+            )
+          : '';
+      if (target.text != next) target.text = next;
+    }
+    if (changedKey != null) _syncVariableToTables(changedKey);
+  }
+
+  void _syncVariableToTables(String key) {
+    // Monthly frequencies are intentionally edited row by row. The global
+    // visit price, however, is the default price for every monthly row.
+    if (key != 'PRECIO_VISITA') return;
+    final value = _variables[key]?.text ?? '';
+    for (final section in _sections) {
+      final table = section.table;
+      if (table == null) continue;
+      table.applyVariableValue(key, value);
+    }
+  }
+
+  Future<void> _selectVariableDate(String key) async {
+    final controller = _variables[key];
+    if (controller == null) return;
+    final parts = controller.text.trim().split('/');
+    final parsed = parts.length == 3
+        ? DateTime.tryParse('${parts[2]}-${parts[1]}-${parts[0]}')
+        : DateTime.tryParse(controller.text.trim());
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: parsed ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (selected == null || !mounted) return;
+    controller.text =
+        '${selected.day.toString().padLeft(2, '0')}/${selected.month.toString().padLeft(2, '0')}/${selected.year}';
+    setState(() {});
+  }
+
+  Widget _buildVariableInput(_TemplateVariableField field) {
+    final allowsManualOverride = field.key == 'CLIENTE';
+    final editable = field.isUsedInTemplate &&
+        (!field.isAutomatic || allowsManualOverride) &&
+        !field.readOnly;
+    return _field(
+      _variables[field.key]!,
+      field.label,
+      fieldKey: ValueKey('variable_${field.key}'),
+      hint: field.hint,
+      prefixIcon: field.icon,
+      keyboardType: field.keyboardType,
+      maxLines: field.maxLines,
+      textCapitalization: field.key == 'CLIENTE'
+          ? TextCapitalization.words
+          : TextCapitalization.none,
+      enabled: editable,
+      readOnly: field.key == 'FECHA',
+      onTap: editable && field.key == 'FECHA'
+          ? () => _selectVariableDate(field.key)
+          : null,
+      onChanged: (_) => _recalculateVariableFields(changedKey: field.key),
+      disabledMessage: field.readOnly
+          ? 'Calculado automáticamente'
+          : field.isAutomatic && !allowsManualOverride
+              ? 'Valor automático'
+              : field.isUsedInTemplate
+                  ? null
+                  : 'No se usa en esta plantilla',
+    );
+  }
+
+  Future<List<GroupClient>> _searchActiveClients(String search) {
+    final override = widget.clientSearch;
+    if (override != null) return override(search);
+    return _clientsApi.list(
+      groupId: widget.groupId,
+      search: search,
+      active: true,
+    );
+  }
+
+  Widget _buildClientInput(_TemplateVariableField field) {
+    return _ClientAutocompleteField(
+      key: const ValueKey('client_autocomplete'),
+      fieldKey: ValueKey('variable_${field.key}'),
+      controller: _variables[field.key]!,
+      label: field.label,
+      hint: field.hint,
+      selectedClientId: _selectedClientId,
+      search: _searchActiveClients,
+      onSelected: (client) {
+        setState(() {
+          _selectedClientId = client.id;
+          _selectedClientName = client.name.trim();
+          _variables[field.key]!.text = client.name.trim();
+          _recalculateVariableFields(changedKey: field.key);
+        });
+      },
+      onChanged: (value) {
+        if (_selectedClientId != null &&
+            value.trim() != (_selectedClientName ?? '').trim()) {
+          _selectedClientId = null;
+          _selectedClientName = null;
+        }
+        _recalculateVariableFields(changedKey: field.key);
+        setState(() {});
+      },
+    );
   }
 
   void _addSection() {
@@ -959,7 +1414,8 @@ class _PresupuestoTemplateEditorScreenState
         'title': 'Presupuesto para [CLIENTE]',
         'subtitle': '[MES] de [ANO]',
         'intro': '',
-        'variables': {for (final key in _variableKeys) key: ''},
+        'variableFields': <Map<String, dynamic>>[],
+        'variables': <String, dynamic>{},
         'sections': <Map<String, dynamic>>[],
         'images': List.generate(
           6,
@@ -977,6 +1433,8 @@ class _PresupuestoTemplateEditorScreenState
         ..._newTemplateSource(),
         'name': 'Nuevo presupuesto',
         'title': 'Presupuesto para [CLIENTE]',
+        'variables': <String, dynamic>{},
+        'images': <Map<String, dynamic>>[],
       };
 
   @override
@@ -1014,9 +1472,9 @@ class _PresupuestoTemplateEditorScreenState
 
                 if (wide) {
                   return Align(
-                    alignment: Alignment.topCenter,
+                    alignment: Alignment.topLeft,
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1360),
+                      constraints: const BoxConstraints(maxWidth: 1800),
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
                         child: Row(
@@ -1041,7 +1499,7 @@ class _PresupuestoTemplateEditorScreenState
                 return Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1360),
+                    constraints: const BoxConstraints(maxWidth: 1480),
                     child: leftPane,
                   ),
                 );
@@ -1073,14 +1531,19 @@ class _PresupuestoTemplateEditorScreenState
       ? const Color(0xFF3A5F78).withValues(alpha: alpha)
       : theme.colorScheme.outlineVariant.withValues(alpha: alpha);
 
+  bool get _mustSelectDefaultTemplate =>
+      !widget.templateOnly &&
+      widget.createDocumentDraft &&
+      _documentFlow.presupuestoId == null &&
+      _selectedDefaultKey == null;
+
   List<_EditorStep> _editorSteps() {
     final steps = <_EditorStep>[];
     final canChooseTemplate = widget.templateOnly ||
         (widget.createDocumentDraft && _documentFlow.presupuestoId == null);
     final baseChildren = <Widget>[
-      if (canChooseTemplate && _defaultTemplates.isNotEmpty)
-        _buildDefaultTemplatesCard(),
-      if (canChooseTemplate && (_templates.isNotEmpty || widget.templateOnly))
+      if (canChooseTemplate) _buildDefaultTemplatesCard(),
+      if (widget.templateOnly && (_templates.isNotEmpty || widget.templateOnly))
         _buildTemplateSelectorCard(),
     ];
     if (baseChildren.isNotEmpty) {
@@ -1106,12 +1569,13 @@ class _PresupuestoTemplateEditorScreenState
         icon: Icons.view_agenda_outlined,
         children: [_buildSectionsCard()],
       ),
-      _EditorStep(
-        title: 'Imagenes',
-        subtitle: 'Fotos que apareceran en el documento.',
-        icon: Icons.collections_outlined,
-        children: [_buildImagesCard()],
-      ),
+      if (_images.isNotEmpty)
+        _EditorStep(
+          title: 'Imagenes',
+          subtitle: 'Fotos que apareceran en el documento.',
+          icon: Icons.collections_outlined,
+          children: [_buildImagesCard()],
+        ),
     ]);
     return steps;
   }
@@ -1164,7 +1628,9 @@ class _PresupuestoTemplateEditorScreenState
                     selected: i == activeStep,
                     label: Text('${i + 1}. ${steps[i].title}'),
                     avatar: Icon(steps[i].icon, size: 16),
-                    onSelected: (_) => setState(() => _activeStep = i),
+                    onSelected: _mustSelectDefaultTemplate && i > 0
+                        ? null
+                        : (_) => setState(() => _activeStep = i),
                   ),
               ],
             ),
@@ -1180,6 +1646,7 @@ class _PresupuestoTemplateEditorScreenState
     int activeStep,
   ) {
     final isLastStep = steps.isEmpty || activeStep >= steps.length - 1;
+    final selectionBlocked = _mustSelectDefaultTemplate;
     final saveLabel =
         widget.templateOnly ? 'Guardar como plantilla' : 'Guardar borrador';
     final footerText = widget.templateOnly
@@ -1236,11 +1703,12 @@ class _PresupuestoTemplateEditorScreenState
             ),
           ),
         FilledButton.icon(
-          onPressed: _saving || _creatingDocumentFromTemplate
-              ? null
-              : isLastStep
-                  ? () => _save()
-                  : () => setState(() => _activeStep = activeStep + 1),
+          onPressed:
+              _saving || _creatingDocumentFromTemplate || selectionBlocked
+                  ? null
+                  : isLastStep
+                      ? () => _save()
+                      : () => setState(() => _activeStep = activeStep + 1),
           icon: _saving
               ? const SizedBox(
                   width: 16,
@@ -1258,7 +1726,9 @@ class _PresupuestoTemplateEditorScreenState
                 ? 'Guardando...'
                 : isLastStep
                     ? saveLabel
-                    : 'Siguiente',
+                    : selectionBlocked
+                        ? 'Selecciona una plantilla'
+                        : 'Siguiente',
           ),
         ),
       ],
@@ -1373,32 +1843,39 @@ class _PresupuestoTemplateEditorScreenState
             spacing: 10,
             runSpacing: 10,
             children: [
+              if (_selectedDefaultTemplate != null)
+                _heroChip(
+                  theme,
+                  icon: Icons.account_tree_outlined,
+                  label: _string(_selectedDefaultTemplate!['name']) ??
+                      'Tipo seleccionado',
+                ),
               _heroChip(
                 theme,
                 icon: Icons.person_outline_rounded,
-                label: _variableController('CLIENTE').text.trim().isEmpty
+                label: _variableValue('CLIENTE').isEmpty
                     ? 'Cliente'
-                    : _variableController('CLIENTE').text.trim(),
+                    : _variableValue('CLIENTE'),
               ),
               _heroChip(
                 theme,
                 icon: Icons.euro_rounded,
-                label:
-                    _variableController('IMPORTE_MENSUAL').text.trim().isEmpty
-                        ? 'Precio'
-                        : _variableController('IMPORTE_MENSUAL').text.trim(),
+                label: _primaryPriceValue().isEmpty
+                    ? 'Precio'
+                    : _primaryPriceValue(),
               ),
               _heroChip(
                 theme,
                 icon: Icons.segment_rounded,
                 label: '${_sections.length} secciones',
               ),
-              _heroChip(
-                theme,
-                icon: Icons.photo_library_outlined,
-                label:
-                    '${_images.where((img) => img.url.trim().isNotEmpty).length}/6 imagenes',
-              ),
+              if (_images.isNotEmpty)
+                _heroChip(
+                  theme,
+                  icon: Icons.photo_library_outlined,
+                  label:
+                      '${_images.where((img) => img.url.trim().isNotEmpty).length}/${_images.length} imagenes',
+                ),
             ],
           ),
         ],
@@ -1473,28 +1950,63 @@ class _PresupuestoTemplateEditorScreenState
           ],
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final columns =
-              _defaultTemplates.length > 1 && constraints.maxWidth >= 920
-                  ? 2
-                  : 1;
-          const spacing = 12.0;
-          final itemWidth =
-              (constraints.maxWidth - (spacing * (columns - 1))) / columns;
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
-            children: [
-              for (final template in _defaultTemplates)
-                SizedBox(
-                  width: itemWidth,
-                  child: _defaultTemplateQueueItem(theme, template),
+      child: _loadErrorMessage != null
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: theme.colorScheme.error.withValues(alpha: 0.35),
                 ),
-            ],
-          );
-        },
-      ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: Text(_loadErrorMessage!)),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: _load,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Reintentar'),
+                  ),
+                ],
+              ),
+            )
+          : _defaultTemplates.isEmpty
+              ? Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _editorInsetBg(theme),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _editorBorder(theme)),
+                  ),
+                  child: const Text(
+                    'No hay tipos de presupuesto disponibles. Vuelve a intentarlo mas tarde.',
+                  ),
+                )
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final columns = _defaultTemplates.length > 1 &&
+                            constraints.maxWidth >= 920
+                        ? 2
+                        : 1;
+                    const spacing = 12.0;
+                    final itemWidth =
+                        (constraints.maxWidth - (spacing * (columns - 1))) /
+                            columns;
+                    return Wrap(
+                      spacing: spacing,
+                      runSpacing: spacing,
+                      children: [
+                        for (final template in _defaultTemplates)
+                          SizedBox(
+                            width: itemWidth,
+                            child: _defaultTemplateQueueItem(theme, template),
+                          ),
+                      ],
+                    );
+                  },
+                ),
     );
   }
 
@@ -1505,6 +2017,7 @@ class _PresupuestoTemplateEditorScreenState
     final key = _string(template['key']);
     final creating = _creatingDefaultKey == key;
     final previewing = _previewingDefaultKey == key;
+    final selected = key != null && key == _selectedDefaultKey;
     final cs = theme.colorScheme;
 
     Widget templateInfo() {
@@ -1549,25 +2062,38 @@ class _PresupuestoTemplateEditorScreenState
                     height: 1.4,
                   ),
                 ),
+                if ((_string(template['category']) ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    _string(template['category'])!,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 9),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.edit_note_rounded,
-                      size: 16,
-                      color: cs.primary,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Totalmente editable',
-                      style: theme.textTheme.labelSmall?.copyWith(
+                if (template['editable'] != false)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.edit_note_rounded,
+                        size: 16,
                         color: cs.primary,
-                        fontWeight: FontWeight.w700,
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          'Totalmente editable',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -1600,17 +2126,26 @@ class _PresupuestoTemplateEditorScreenState
         ),
       );
       final useButton = FilledButton.icon(
-        onPressed: creating || previewing || key == null
+        onPressed: creating || previewing || key == null || selected
             ? null
-            : () => _createFromDefault(template),
+            : () => _useDefaultTemplate(template),
         icon: creating
             ? const SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Icon(Icons.add_rounded, size: 19),
-        label: Text(creating ? 'Preparando...' : 'Usar plantilla'),
+            : Icon(
+                selected ? Icons.check_rounded : Icons.add_rounded,
+                size: 19,
+              ),
+        label: Text(
+          creating
+              ? 'Preparando...'
+              : selected
+                  ? 'Seleccionada'
+                  : 'Usar plantilla',
+        ),
         style: FilledButton.styleFrom(
           minimumSize: const Size(148, 44),
           shape: RoundedRectangleBorder(
@@ -1658,9 +2193,12 @@ class _PresupuestoTemplateEditorScreenState
                 : cs.primaryContainer.withValues(alpha: 0.16),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _isDark(theme)
-                  ? const Color(0xFF3F7596).withValues(alpha: 0.46)
-                  : cs.primary.withValues(alpha: 0.18),
+              color: selected
+                  ? cs.primary
+                  : _isDark(theme)
+                      ? const Color(0xFF3F7596).withValues(alpha: 0.46)
+                      : cs.primary.withValues(alpha: 0.18),
+              width: selected ? 2 : 1,
             ),
           ),
           child: horizontal
@@ -1812,6 +2350,14 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Widget _buildMainCopyCard() {
+    final priceKey = _primaryPriceKey();
+    final clientDefinition = _variableFieldDefinitions['CLIENTE'];
+    final clientField =
+        clientDefinition == null ? null : _buildClientInput(clientDefinition);
+    final priceDefinition =
+        priceKey == null ? null : _variableFieldDefinitions[priceKey];
+    final priceField =
+        priceKey == null ? null : _buildVariableInput(priceDefinition!);
     return _card(
       title: 'Datos del PDF',
       subtitle: 'Lo esencial para que el cliente entienda el presupuesto.',
@@ -1830,32 +2376,23 @@ class _PresupuestoTemplateEditorScreenState
           ),
           LayoutBuilder(
             builder: (context, constraints) {
-              final clientField = _field(
-                _variableController('CLIENTE'),
-                'Nombre del cliente [CLIENTE]',
-                hint: 'Ej. Comunidad Las Alondras',
-                prefixIcon: Icons.person_outline_rounded,
-                textCapitalization: TextCapitalization.words,
-              );
-              final priceField = _field(
-                _variableController('IMPORTE_MENSUAL'),
-                'Importe mensual [IMPORTE_MENSUAL]',
-                hint: 'Ej. 714,48 EUR / mes',
-                prefixIcon: Icons.euro_rounded,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-              );
-
-              if (constraints.maxWidth < 620) {
-                return Column(children: [clientField, priceField]);
+              final primaryFields = <Widget>[
+                if (clientField != null) clientField,
+                if (priceField != null) priceField,
+              ];
+              if (primaryFields.isEmpty) return const SizedBox.shrink();
+              if (primaryFields.length == 1 || constraints.maxWidth < 620) {
+                return Column(
+                  children: primaryFields,
+                );
               }
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: clientField),
+                  Expanded(child: primaryFields[0]),
                   const SizedBox(width: 12),
-                  Expanded(child: priceField),
+                  Expanded(child: primaryFields[1]),
                 ],
               );
             },
@@ -1894,82 +2431,74 @@ class _PresupuestoTemplateEditorScreenState
 
   Widget _buildTagFields() {
     final theme = Theme.of(context);
-    final knownKeys = {
+    final primaryPriceKey = _primaryPriceKey();
+    final primaryKeys = {
       'CLIENTE',
-      'IMPORTE_MENSUAL',
-      for (final field in _tagFields) field.key,
+      if (primaryPriceKey != null) primaryPriceKey,
     };
-    final customFields = _variables.keys
-        .where((key) => !knownKeys.contains(key))
-        .map(
-          (key) => _TemplateVariableField(
-            key: key,
-            label: '${key.replaceAll('_', ' ')} [$key]',
-            hint: 'Valor para [$key]',
-            icon: Icons.data_object_rounded,
-          ),
+    final fields = _variableFieldDefinitions.values
+        .where(
+          (field) =>
+              !primaryKeys.contains(field.key) &&
+              _isVariableFieldVisible(field),
         )
-        .toList(growable: false)
-      ..sort((a, b) => a.key.compareTo(b.key));
-    final fields = [..._tagFields, ...customFields];
+        .toList(growable: false);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 2),
-        Divider(color: _editorBorder(theme, alpha: 0.72)),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Icon(
-              Icons.data_object_rounded,
-              size: 20,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(width: 9),
-            Text(
-              'Valores de etiquetas',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w800,
+    if (fields.isEmpty) return const SizedBox.shrink();
+
+    return KeyedSubtree(
+      key: ValueKey(_variableSchemaKey),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 2),
+          Divider(color: _editorBorder(theme, alpha: 0.72)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                Icons.data_object_rounded,
+                size: 20,
+                color: theme.colorScheme.primary,
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Estos valores sustituyen las etiquetas entre corchetes en el documento.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(width: 9),
+              Text(
+                'Valores de etiquetas',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 14),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final fieldWidth = constraints.maxWidth < 620
-                ? constraints.maxWidth
-                : (constraints.maxWidth - 12) / 2;
-            return Wrap(
-              spacing: 12,
-              children: [
-                for (final field in fields)
-                  SizedBox(
-                    width: fieldWidth,
-                    child: _field(
-                      _variableController(field.key),
-                      field.label,
-                      hint: field.hint,
-                      prefixIcon: field.icon,
-                      keyboardType: field.keyboardType,
-                      maxLines: field.maxLines,
+          const SizedBox(height: 4),
+          Text(
+            'Estos valores sustituyen las etiquetas entre corchetes en el documento.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final fieldWidth = constraints.maxWidth < 620
+                  ? constraints.maxWidth
+                  : (constraints.maxWidth - 12) / 2;
+              return Wrap(
+                spacing: 12,
+                children: [
+                  for (final field in fields)
+                    SizedBox(
+                      width: fieldWidth,
+                      child: _buildVariableInput(field),
                     ),
-                  ),
-              ],
-            );
-          },
-        ),
-        Divider(color: _editorBorder(theme, alpha: 0.72)),
-        const SizedBox(height: 14),
-      ],
+                ],
+              );
+            },
+          ),
+          Divider(color: _editorBorder(theme, alpha: 0.72)),
+          const SizedBox(height: 14),
+        ],
+      ),
     );
   }
 
@@ -2016,10 +2545,23 @@ class _PresupuestoTemplateEditorScreenState
     );
   }
 
+  bool _isVariableFieldVisible(_TemplateVariableField field) {
+    if (field.key != 'FRECUENCIA_LIMPIEZA_GARAJE' &&
+        field.key != 'PRECIO_LIMPIEZA_GARAJE') {
+      return true;
+    }
+    final relatedSections = _sections.where(
+      (section) =>
+          section.isGarageCleaning || section.referencesVariable(field.key),
+    );
+    return relatedSections.isEmpty ||
+        relatedSections.any((section) => section.enabled);
+  }
+
   Widget _buildLivePreviewCard() {
     final theme = Theme.of(context);
-    final client = _variableController('CLIENTE').text.trim();
-    final price = _variableController('IMPORTE_MENSUAL').text.trim();
+    final client = _variableValue('CLIENTE');
+    final price = _primaryPriceValue();
     final titleTemplate = _title.text.trim().isEmpty
         ? 'Presupuesto para ${client.isEmpty ? '[CLIENTE]' : client}'
         : _title.text.trim();
@@ -2037,124 +2579,151 @@ class _PresupuestoTemplateEditorScreenState
       title: 'Vista previa',
       subtitle: 'Asi se vera el documento mientras editas.',
       icon: Icons.preview_outlined,
-      child: Container(
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: _isDark(theme)
-                ? const Color(0xFFBFE7FF).withValues(alpha: 0.22)
-                : theme.colorScheme.outlineVariant.withValues(alpha: 0.8),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: DefaultTextStyle(
-          style: theme.textTheme.bodyMedium!.copyWith(
-            color: const Color(0xFF20242A),
-            height: 1.35,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final previewWidth =
+              constraints.maxWidth < 640 ? 640.0 : constraints.maxWidth;
+          return Scrollbar(
+            controller: _previewHorizontalScrollController,
+            thumbVisibility: true,
+            trackVisibility: true,
+            interactive: true,
+            scrollbarOrientation: ScrollbarOrientation.bottom,
+            child: SingleChildScrollView(
+              controller: _previewHorizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SizedBox(
+                width: previewWidth,
+                child: Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: _isDark(theme)
+                          ? const Color(0xFFBFE7FF).withValues(alpha: 0.22)
+                          : theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.8),
                     ),
-                    child: Icon(
-                      Icons.description_outlined,
-                      color: theme.colorScheme.primary,
-                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                  child: DefaultTextStyle(
+                    style: theme.textTheme.bodyMedium!.copyWith(
+                      color: const Color(0xFF20242A),
+                      height: 1.35,
+                    ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          client.isEmpty ? 'Nombre del cliente' : client,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: const Color(0xFF20242A),
+                        Row(
+                          children: [
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.description_outlined,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    client.isEmpty
+                                        ? 'Nombre del cliente'
+                                        : client,
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      color: const Color(0xFF20242A),
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  if (price.isNotEmpty)
+                                    Text(
+                                      price,
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.primary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        _RestrictedMarkdownText(
+                          data: title,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: const Color(0xFF111827),
                             fontWeight: FontWeight.w900,
+                            height: 1.1,
                           ),
                         ),
-                        if (price.isNotEmpty)
-                          Text(
-                            price,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w800,
+                        if (subtitle.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          _RestrictedMarkdownText(
+                            data: subtitle,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: const Color(0xFF667085),
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
+                        ],
+                        if (intro.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _RestrictedMarkdownText(data: intro),
+                        ],
+                        if (visibleImages.isNotEmpty) ...[
+                          const SizedBox(height: 18),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: AspectRatio(
+                              aspectRatio: 16 / 9,
+                              child: Image.network(
+                                visibleImages.first.url,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (enabledSections.isNotEmpty) ...[
+                          const SizedBox(height: 18),
+                          for (final section in enabledSections)
+                            _previewSection(theme, section),
+                        ],
+                        if (enabledSections.isEmpty && intro.isEmpty) ...[
+                          const SizedBox(height: 18),
+                          Text(
+                            'Anade texto o secciones para completar la vista previa.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFF667085),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 22),
-              _RestrictedMarkdownText(
-                data: title,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  color: const Color(0xFF111827),
-                  fontWeight: FontWeight.w900,
-                  height: 1.1,
                 ),
               ),
-              if (subtitle.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                _RestrictedMarkdownText(
-                  data: subtitle,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: const Color(0xFF667085),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-              if (intro.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                _RestrictedMarkdownText(data: intro),
-              ],
-              if (visibleImages.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Image.network(
-                      visibleImages.first.url,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ],
-              if (enabledSections.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                for (final section in enabledSections)
-                  _previewSection(theme, section),
-              ],
-              if (enabledSections.isEmpty && intro.isEmpty) ...[
-                const SizedBox(height: 18),
-                Text(
-                  'Anade texto o secciones para completar la vista previa.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF667085),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -2198,7 +2767,61 @@ class _PresupuestoTemplateEditorScreenState
                 ),
               ),
           ],
+          if (section.table != null) ...[
+            const SizedBox(height: 8),
+            _previewTable(theme, section.table!),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _previewTable(ThemeData theme, _TemplateTableState table) {
+    if (table.columns.isEmpty) return const SizedBox.shrink();
+    final rows = <TableRow>[
+      TableRow(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        ),
+        children: [
+          for (final column in table.columns)
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: Text(
+                _resolvePreviewTags(column.text),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: const Color(0xFF111827),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+        ],
+      ),
+      for (final row in table.rows)
+        TableRow(
+          children: [
+            for (var i = 0; i < table.columns.length; i++)
+              Padding(
+                padding: const EdgeInsets.all(6),
+                child: Text(
+                  _resolvePreviewTags(i < row.length ? row[i].text : ''),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: const Color(0xFF344054),
+                  ),
+                ),
+              ),
+          ],
+        ),
+    ];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: table.columns.length * 135,
+        child: Table(
+          border: TableBorder.all(color: const Color(0xFFD0D5DD)),
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: rows,
+        ),
       ),
     );
   }
@@ -2239,7 +2862,8 @@ class _PresupuestoTemplateEditorScreenState
         runSpacing: 12,
         children: [
           OutlinedButton.icon(
-            onPressed: _previewing ? null : _previewPdf,
+            onPressed:
+                _previewing || _mustSelectDefaultTemplate ? null : _previewPdf,
             icon: _previewing
                 ? const SizedBox(
                     width: 16,
@@ -2250,7 +2874,9 @@ class _PresupuestoTemplateEditorScreenState
             label: const Text('Previsualizar'),
           ),
           FilledButton.icon(
-            onPressed: _downloading ? null : _downloadPdf,
+            onPressed: _downloading || _mustSelectDefaultTemplate
+                ? null
+                : _downloadPdf,
             icon: _downloading
                 ? const SizedBox(
                     width: 16,
@@ -2338,6 +2964,7 @@ class _PresupuestoTemplateEditorScreenState
   Widget _field(
     TextEditingController controller,
     String label, {
+    Key? fieldKey,
     int maxLines = 1,
     int? minLines,
     String? hint,
@@ -2346,45 +2973,70 @@ class _PresupuestoTemplateEditorScreenState
     TextInputType? keyboardType,
     TextCapitalization textCapitalization = TextCapitalization.none,
     bool markdown = false,
+    bool enabled = true,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    ValueChanged<String>? onChanged,
+    String? disabledMessage,
+    bool showLabel = true,
   }) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: dense ? 8 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 2, bottom: 7),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.15,
+          if (showLabel)
+            Padding(
+              padding: const EdgeInsets.only(left: 2, bottom: 7),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.15,
+                      ),
                     ),
                   ),
-                ),
-                if (markdown)
-                  _markdownToolbar(
-                    theme,
-                    controller,
-                    allowLineBreak: maxLines != 1,
-                  ),
-              ],
+                  if ((!enabled || readOnly) && disabledMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        disabledMessage,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  if (markdown)
+                    _markdownToolbar(
+                      theme,
+                      controller,
+                      allowLineBreak: maxLines != 1,
+                    ),
+                ],
+              ),
             ),
-          ),
           TextField(
+            key: fieldKey,
             controller: controller,
+            enabled: enabled,
+            readOnly: readOnly,
+            onTap: onTap,
             maxLines: maxLines,
             minLines: minLines,
             keyboardType: keyboardType,
             textCapitalization: textCapitalization,
-            onChanged: (_) => setState(() {}),
+            onChanged: (value) {
+              onChanged?.call(value);
+              setState(() {});
+            },
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: theme.textTheme.bodyMedium?.copyWith(
@@ -2571,7 +3223,13 @@ class _PresupuestoTemplateEditorScreenState
           ),
         ),
         subtitle: Text(
-          section.enabled ? '$itemsCount items activos' : 'Seccion desactivada',
+          section.isOptional
+              ? section.enabled
+                  ? '$itemsCount elementos · Incluida en el PDF'
+                  : 'Opcional · No se incluirá en el PDF'
+              : section.enabled
+                  ? '$itemsCount items activos'
+                  : 'Seccion desactivada',
         ),
         leading: Container(
           width: 42,
@@ -2592,16 +3250,29 @@ class _PresupuestoTemplateEditorScreenState
         trailing: Wrap(
           spacing: 4,
           children: [
-            IconButton(
-              tooltip: section.enabled ? 'Desactivar' : 'Activar',
-              onPressed: () =>
-                  setState(() => section.enabled = !section.enabled),
-              icon: Icon(
-                section.enabled
-                    ? Icons.toggle_on_rounded
-                    : Icons.toggle_off_outlined,
+            if (section.isOptional)
+              Tooltip(
+                message: section.enabled
+                    ? 'Quitar del presupuesto'
+                    : 'Incluir en el presupuesto',
+                child: Switch(
+                  key: ValueKey('section_enabled_${section.key}'),
+                  value: section.enabled,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onChanged: (value) => setState(() => section.enabled = value),
+                ),
+              )
+            else
+              IconButton(
+                tooltip: section.enabled ? 'Desactivar' : 'Activar',
+                onPressed: () =>
+                    setState(() => section.enabled = !section.enabled),
+                icon: Icon(
+                  section.enabled
+                      ? Icons.toggle_on_rounded
+                      : Icons.toggle_off_outlined,
+                ),
               ),
-            ),
             IconButton(
               tooltip: 'Subir',
               onPressed: index == 0 ? null : () => _moveSection(index, -1),
@@ -2645,6 +3316,191 @@ class _PresupuestoTemplateEditorScreenState
             minLines: 4,
             hint: 'Cada linea se mostrara como un punto independiente.',
             markdown: true,
+          ),
+          if (section.table != null) _sectionTableEditor(section.table!),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTableEditor(_TemplateTableState table) {
+    final theme = Theme.of(context);
+    double columnWidth(int index) {
+      if (table.columns.length == 4) {
+        return switch (index) {
+          0 => 145,
+          1 => 105,
+          2 => 145,
+          _ => 135,
+        };
+      }
+      return 135;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _editorInsetBg(theme),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _editorBorder(theme)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Tabla',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => setState(table.addRow),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Anadir fila'),
+              ),
+            ],
+          ),
+          if (table.hasComputedColumns) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final entry in table.bulkValues.entries)
+                  SizedBox(
+                    width: 190,
+                    child: _field(
+                      entry.value,
+                      entry.key < table.columns.length
+                          ? table.columns[entry.key].text
+                          : 'Valor',
+                      dense: true,
+                      fieldKey: ValueKey('table_bulk_${entry.key}'),
+                      keyboardType: TextInputType.text,
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: FilledButton.icon(
+                    onPressed: table.selectedRows.isEmpty
+                        ? null
+                        : () => setState(table.applyToSelectedRows),
+                    icon: const Icon(Icons.playlist_add_check_rounded),
+                    label: Text(
+                      table.selectedRows.isEmpty
+                          ? 'Selecciona meses'
+                          : table.selectedRows.length == 1
+                              ? 'Aplicar a 1 mes'
+                              : 'Aplicar a ${table.selectedRows.length} meses',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          Scrollbar(
+            controller: table.horizontalScrollController,
+            thumbVisibility: true,
+            trackVisibility: true,
+            interactive: true,
+            scrollbarOrientation: ScrollbarOrientation.bottom,
+            child: SingleChildScrollView(
+              controller: table.horizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (table.hasComputedColumns)
+                        SizedBox(
+                          width: 42,
+                          child: Checkbox(
+                            tristate: true,
+                            value: table.selectedRows.isEmpty
+                                ? false
+                                : table.selectedRows.length == table.rows.length
+                                    ? true
+                                    : null,
+                            onChanged: (value) => setState(
+                              () => table.toggleAllRows(value == true),
+                            ),
+                          ),
+                        ),
+                      for (var columnIndex = 0;
+                          columnIndex < table.columns.length;
+                          columnIndex++)
+                        SizedBox(
+                          width: columnWidth(columnIndex),
+                          child: _field(
+                            table.columns[columnIndex],
+                            'Encabezado',
+                            dense: true,
+                            showLabel: false,
+                          ),
+                        ),
+                      const SizedBox(width: 42),
+                    ],
+                  ),
+                  for (var rowIndex = 0;
+                      rowIndex < table.rows.length;
+                      rowIndex++)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (table.hasComputedColumns)
+                          SizedBox(
+                            width: 42,
+                            child: Checkbox(
+                              value: table.selectedRows.contains(rowIndex),
+                              onChanged: (value) => setState(
+                                () => table.toggleRow(rowIndex, value == true),
+                              ),
+                            ),
+                          ),
+                        for (var columnIndex = 0;
+                            columnIndex < table.columns.length;
+                            columnIndex++)
+                          SizedBox(
+                            width: columnWidth(columnIndex),
+                            child: _field(
+                              table.cell(rowIndex, columnIndex),
+                              'Fila ${rowIndex + 1}',
+                              fieldKey: ValueKey(
+                                'table_cell_${rowIndex}_$columnIndex',
+                              ),
+                              dense: true,
+                              showLabel: false,
+                              readOnly: table.isReadOnlyColumn(columnIndex),
+                              disabledMessage:
+                                  table.isReadOnlyColumn(columnIndex)
+                                      ? 'Calculado'
+                                      : null,
+                              onChanged: (_) => table.recalculateRow(rowIndex),
+                            ),
+                          ),
+                        SizedBox(
+                          width: 42,
+                          child: IconButton(
+                            tooltip: 'Eliminar fila',
+                            onPressed: () => setState(
+                              () => table.removeRow(rowIndex),
+                            ),
+                            icon: const Icon(Icons.delete_outline_rounded),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -2755,6 +3611,250 @@ class _PresupuestoTemplateEditorScreenState
   }
 }
 
+class _ClientAutocompleteField extends StatefulWidget {
+  const _ClientAutocompleteField({
+    super.key,
+    required this.fieldKey,
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.selectedClientId,
+    required this.search,
+    required this.onSelected,
+    required this.onChanged,
+  });
+
+  final Key fieldKey;
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final String? selectedClientId;
+  final Future<List<GroupClient>> Function(String search) search;
+  final ValueChanged<GroupClient> onSelected;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_ClientAutocompleteField> createState() =>
+      _ClientAutocompleteFieldState();
+}
+
+class _ClientAutocompleteFieldState extends State<_ClientAutocompleteField> {
+  final MenuController _menuController = MenuController();
+  final FocusNode _focusNode = FocusNode();
+  Timer? _debounce;
+  List<GroupClient> _results = const [];
+  bool _loading = false;
+  bool _searched = false;
+  int _requestRevision = 0;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _scheduleSearch(String value) {
+    _debounce?.cancel();
+    final query = value.trim();
+    if (query.length < 2) {
+      _requestRevision++;
+      setState(() {
+        _results = const [];
+        _loading = false;
+        _searched = false;
+      });
+      if (_menuController.isOpen) _menuController.close();
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 280), () {
+      _performSearch(query);
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    final revision = ++_requestRevision;
+    setState(() {
+      _loading = true;
+      _searched = false;
+    });
+    try {
+      final clients = await widget.search(query);
+      if (!mounted || revision != _requestRevision) return;
+      setState(() {
+        _results = clients.where((client) => client.isActive).toList();
+        _loading = false;
+        _searched = true;
+      });
+      _openMenuAfterBuild();
+    } catch (_) {
+      if (!mounted || revision != _requestRevision) return;
+      setState(() {
+        _results = const [];
+        _loading = false;
+        _searched = true;
+      });
+      _openMenuAfterBuild();
+    }
+  }
+
+  void _searchFromButton() {
+    _debounce?.cancel();
+    _focusNode.requestFocus();
+    _performSearch(widget.controller.text.trim());
+  }
+
+  void _openMenuAfterBuild() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_focusNode.hasFocus || _menuController.isOpen) return;
+      _menuController.open();
+    });
+  }
+
+  void _select(GroupClient client) {
+    widget.controller.value = TextEditingValue(
+      text: client.name.trim(),
+      selection: TextSelection.collapsed(offset: client.name.trim().length),
+    );
+    widget.onSelected(client);
+    _menuController.close();
+    _focusNode.unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final menuChildren = <Widget>[
+      if (_loading)
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 15,
+                height: 15,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 10),
+              Text('Buscando clientes...'),
+            ],
+          ),
+        )
+      else if (_searched && _results.isEmpty)
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Text('Sin coincidencias · puedes usar el nombre escrito'),
+        )
+      else
+        for (final client in _results)
+          MenuItemButton(
+            onPressed: () => _select(client),
+            leadingIcon: const Icon(Icons.business_outlined, size: 18),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 260),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    client.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if ((client.billing?.legalName ?? '').trim().isNotEmpty &&
+                      client.billing!.legalName!.trim() != client.name.trim())
+                    Text(
+                      client.billing!.legalName!.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 7),
+            child: Text(
+              widget.label,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.15,
+              ),
+            ),
+          ),
+          MenuAnchor(
+            controller: _menuController,
+            crossAxisUnconstrained: false,
+            menuChildren: menuChildren,
+            builder: (context, controller, child) => TextField(
+              key: widget.fieldKey,
+              controller: widget.controller,
+              focusNode: _focusNode,
+              enabled: true,
+              textCapitalization: TextCapitalization.words,
+              onChanged: (value) {
+                widget.onChanged(value);
+                _scheduleSearch(value);
+              },
+              onTap: () => _scheduleSearch(widget.controller.text),
+              decoration: InputDecoration(
+                hintText: widget.hint,
+                prefixIcon: Icon(
+                  Icons.person_search_outlined,
+                  size: 20,
+                  color: cs.primary,
+                ),
+                suffixIcon: _loading
+                    ? const Padding(
+                        padding: EdgeInsets.all(14),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : widget.selectedClientId == null
+                        ? IconButton(
+                            tooltip: 'Buscar clientes',
+                            onPressed: _searchFromButton,
+                            icon: const Icon(Icons.search_rounded, size: 19),
+                          )
+                        : Icon(
+                            Icons.check_circle_rounded,
+                            size: 19,
+                            color: cs.primary,
+                          ),
+                filled: true,
+                fillColor: cs.surfaceContainerLowest,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: cs.outlineVariant),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.78),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: cs.primary, width: 1.4),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RestrictedMarkdownText extends StatelessWidget {
   const _RestrictedMarkdownText({
     required this.data,
@@ -2826,12 +3926,14 @@ List<InlineSpan> _restrictedMarkdownSpans(String text) {
 
 class _TemplateSectionState {
   _TemplateSectionState({
+    required this.original,
     required this.key,
     required this.order,
     required this.enabled,
     required this.title,
     required this.body,
     required this.items,
+    this.table,
   });
 
   factory _TemplateSectionState.fromMap(
@@ -2842,23 +3944,56 @@ class _TemplateSectionState {
         ? (map['items'] as List).map((e) => e.toString()).join('\n')
         : '';
     return _TemplateSectionState(
+      original: Map<String, dynamic>.from(map),
       key: _string(map['key']) ?? 'section_$fallbackOrder',
       order: _int(map['order']) ?? fallbackOrder,
       enabled: map['enabled'] != false,
       title: TextEditingController(text: _string(map['title']) ?? ''),
       body: TextEditingController(text: _string(map['body']) ?? ''),
       items: TextEditingController(text: items),
+      table: _asMap(map['table']) == null
+          ? null
+          : _TemplateTableState.fromMap(_asMap(map['table'])!),
     );
   }
 
+  final Map<String, dynamic> original;
   final String key;
   int order;
   bool enabled;
   final TextEditingController title;
   final TextEditingController body;
   final TextEditingController items;
+  final _TemplateTableState? table;
+
+  bool get isGarageCleaning {
+    final normalizedKey = key.toLowerCase();
+    final normalizedTitle = title.text.toLowerCase();
+    return normalizedKey.contains('garage') ||
+        normalizedKey.contains('garaje') ||
+        normalizedTitle.contains('garaje');
+  }
+
+  bool get isOptional =>
+      original['optional'] == true ||
+      original['isOptional'] == true ||
+      isGarageCleaning;
+
+  bool referencesVariable(String variableKey) {
+    final marker = '[$variableKey]';
+    if (title.text.contains(marker) ||
+        body.text.contains(marker) ||
+        items.text.contains(marker)) {
+      return true;
+    }
+    return jsonEncode(<String, dynamic>{
+      ...original,
+      if (table != null) 'table': table!.toJson(),
+    }).contains(variableKey);
+  }
 
   Map<String, dynamic> toJson() => {
+        ...original,
         'key': key,
         'order': order,
         'title': title.text,
@@ -2869,17 +4004,354 @@ class _TemplateSectionState {
             .where((line) => line.isNotEmpty)
             .toList(),
         'enabled': enabled,
+        if (table != null) 'table': table!.toJson(),
       };
 
   void dispose() {
     title.dispose();
     body.dispose();
     items.dispose();
+    table?.dispose();
   }
+}
+
+class _TemplateComputedColumn {
+  const _TemplateComputedColumn({
+    required this.targetIndex,
+    required this.operation,
+    required this.sourceIndexes,
+    required this.format,
+    required this.currency,
+    required this.readOnly,
+  });
+
+  factory _TemplateComputedColumn.fromMap(Map<String, dynamic> map) {
+    return _TemplateComputedColumn(
+      targetIndex: _int(map['targetIndex']) ?? -1,
+      operation: _string(map['operation']) ?? '',
+      sourceIndexes: map['sourceIndexes'] is List
+          ? (map['sourceIndexes'] as List)
+              .map(_int)
+              .whereType<int>()
+              .toList(growable: false)
+          : const [],
+      format: _string(map['format']) ?? '',
+      currency: _string(map['currency']) ?? 'EUR',
+      readOnly: map['readOnly'] == true,
+    );
+  }
+
+  final int targetIndex;
+  final String operation;
+  final List<int> sourceIndexes;
+  final String format;
+  final String currency;
+  final bool readOnly;
+}
+
+class _TemplateTableState {
+  _TemplateTableState({
+    required this.original,
+    required this.columns,
+    required this.rows,
+    required this.computedColumns,
+    required this.bulkValues,
+  });
+
+  factory _TemplateTableState.fromMap(Map<String, dynamic> map) {
+    final rawColumns =
+        map['columns'] is List ? map['columns'] as List : const <dynamic>[];
+    final columns = rawColumns
+        .map((value) => TextEditingController(text: value?.toString() ?? ''))
+        .toList();
+    final rows = <List<TextEditingController>>[];
+    if (map['rows'] is List) {
+      for (final rawRow in map['rows'] as List) {
+        final values = rawRow is List ? rawRow : const <dynamic>[];
+        rows.add([
+          for (var i = 0; i < values.length || i < columns.length; i++)
+            TextEditingController(
+              text: i < values.length ? values[i]?.toString() ?? '' : '',
+            ),
+        ]);
+      }
+    }
+    var computedColumns = map['computedColumns'] is List
+        ? (map['computedColumns'] as List)
+            .map(_asMap)
+            .whereType<Map<String, dynamic>>()
+            .map(_TemplateComputedColumn.fromMap)
+            .where((value) => value.targetIndex >= 0)
+            .toList(growable: false)
+        : const <_TemplateComputedColumn>[];
+    if (computedColumns.isEmpty) {
+      final frequencyIndex = _tableColumnIndex(
+        columns,
+        const ['FRECUENCIA', 'FRECUENCIA MENSUAL'],
+      );
+      final priceIndex = _tableColumnIndex(
+        columns,
+        const [
+          'VALOR POR LIMPIEZA',
+          'PRECIO POR LIMPIEZA',
+          'PRECIO POR VISITA',
+          'PRECIO VISITA',
+        ],
+      );
+      final totalIndex = _tableColumnIndex(
+        columns,
+        const ['TOTAL MENSUAL', 'IMPORTE MENSUAL'],
+      );
+      if (frequencyIndex != null && priceIndex != null && totalIndex != null) {
+        computedColumns = <_TemplateComputedColumn>[
+          _TemplateComputedColumn(
+            targetIndex: totalIndex,
+            operation: 'multiply',
+            sourceIndexes: <int>[frequencyIndex, priceIndex],
+            format: 'currency',
+            currency: 'EUR',
+            readOnly: true,
+          ),
+        ];
+      }
+    }
+    final sourceIndexes = <int>{
+      for (final computed in computedColumns) ...computed.sourceIndexes,
+    };
+    final state = _TemplateTableState(
+      original: Map<String, dynamic>.from(map),
+      columns: columns,
+      rows: rows,
+      computedColumns: computedColumns,
+      bulkValues: <int, TextEditingController>{
+        for (final index in sourceIndexes)
+          index: TextEditingController(
+            text: rows.isNotEmpty && index < rows.first.length
+                ? rows.first[index].text
+                : '',
+          ),
+      },
+    );
+    state.recalculateAll();
+    return state;
+  }
+
+  final Map<String, dynamic> original;
+  final List<TextEditingController> columns;
+  final List<List<TextEditingController>> rows;
+  final List<_TemplateComputedColumn> computedColumns;
+  final Map<int, TextEditingController> bulkValues;
+  final Set<int> selectedRows = <int>{};
+  final ScrollController horizontalScrollController = ScrollController();
+
+  bool get hasComputedColumns => computedColumns.isNotEmpty;
+
+  bool isReadOnlyColumn(int index) => computedColumns.any(
+        (computed) => computed.targetIndex == index && computed.readOnly,
+      );
+
+  void toggleAllRows(bool selected) {
+    selectedRows
+      ..clear()
+      ..addAll(selected ? List.generate(rows.length, (index) => index) : []);
+  }
+
+  void toggleRow(int index, bool selected) {
+    if (selected) {
+      selectedRows.add(index);
+    } else {
+      selectedRows.remove(index);
+    }
+  }
+
+  void applyToSelectedRows() {
+    for (final rowIndex in selectedRows) {
+      if (rowIndex < 0 || rowIndex >= rows.length) continue;
+      for (final entry in bulkValues.entries) {
+        cell(rowIndex, entry.key).text = entry.value.text;
+      }
+      recalculateRow(rowIndex);
+    }
+  }
+
+  void applyVariableValue(String key, String value) {
+    if (key != 'PRECIO_VISITA') return;
+    final headerIndex = _tableColumnIndex(
+      columns,
+      const [
+        'VALOR POR LIMPIEZA',
+        'PRECIO POR LIMPIEZA',
+        'PRECIO POR VISITA',
+        'PRECIO VISITA',
+      ],
+    );
+    final calculatedIndex = computedColumns
+        .where((computed) => computed.sourceIndexes.length >= 2)
+        .map((computed) => computed.sourceIndexes[1])
+        .firstOrNull;
+    final columnIndex = headerIndex ?? calculatedIndex;
+    if (columnIndex != null) applyGlobalValue(columnIndex, value);
+  }
+
+  void applyGlobalValue(int columnIndex, String value) {
+    if (columnIndex < 0 || columnIndex >= columns.length) return;
+    bulkValues[columnIndex]?.text = value;
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      cell(rowIndex, columnIndex).text = value;
+    }
+    recalculateAll();
+  }
+
+  double? totalAmount() {
+    final totalColumn = _tableColumnIndex(
+          columns,
+          const ['TOTAL MENSUAL', 'IMPORTE MENSUAL', 'TOTAL'],
+        ) ??
+        computedColumns.map((computed) => computed.targetIndex).firstOrNull;
+    if (totalColumn == null) return null;
+    var total = 0.0;
+    var found = false;
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      final value = _parseLocalizedNumber(cell(rowIndex, totalColumn).text);
+      if (value == null) continue;
+      total += value;
+      found = true;
+    }
+    return found ? total : null;
+  }
+
+  void recalculateAll() {
+    for (var index = 0; index < rows.length; index++) {
+      recalculateRow(index);
+    }
+  }
+
+  void recalculateRow(int rowIndex) {
+    if (rowIndex < 0 || rowIndex >= rows.length) return;
+    for (final computed in computedColumns) {
+      if (computed.operation != 'multiply' || computed.sourceIndexes.isEmpty) {
+        continue;
+      }
+      var result = 1.0;
+      var valid = true;
+      for (final sourceIndex in computed.sourceIndexes) {
+        final value = _parseLocalizedNumber(cell(rowIndex, sourceIndex).text);
+        if (value == null) {
+          valid = false;
+          break;
+        }
+        result *= value;
+      }
+      cell(rowIndex, computed.targetIndex).text = valid
+          ? _formatCalculatedValue(
+              result,
+              format: computed.format,
+              currency: computed.currency,
+            )
+          : '';
+    }
+  }
+
+  TextEditingController cell(int rowIndex, int columnIndex) {
+    final row = rows[rowIndex];
+    while (row.length < columns.length) {
+      row.add(TextEditingController());
+    }
+    return row[columnIndex];
+  }
+
+  void addRow() {
+    rows.add(List.generate(columns.length, (_) => TextEditingController()));
+  }
+
+  void removeRow(int index) {
+    if (index < 0 || index >= rows.length) return;
+    final removed = rows.removeAt(index);
+    for (final controller in removed) {
+      controller.dispose();
+    }
+    final nextSelection = <int>{};
+    for (final selected in selectedRows) {
+      if (selected < index) nextSelection.add(selected);
+      if (selected > index) nextSelection.add(selected - 1);
+    }
+    selectedRows
+      ..clear()
+      ..addAll(nextSelection);
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        ...original,
+        'columns': columns.map((controller) => controller.text).toList(),
+        'rows': [
+          for (final row in rows)
+            row.map((controller) => controller.text).toList(),
+        ],
+      };
+
+  void dispose() {
+    horizontalScrollController.dispose();
+    for (final controller in columns) {
+      controller.dispose();
+    }
+    for (final row in rows) {
+      for (final controller in row) {
+        controller.dispose();
+      }
+    }
+    for (final controller in bulkValues.values) {
+      controller.dispose();
+    }
+  }
+}
+
+int? _tableColumnIndex(
+  List<TextEditingController> columns,
+  List<String> candidates,
+) {
+  final normalizedCandidates = candidates.map(_normalizeTableColumn).toSet();
+  for (var index = 0; index < columns.length; index++) {
+    if (normalizedCandidates.contains(
+      _normalizeTableColumn(columns[index].text),
+    )) {
+      return index;
+    }
+  }
+  return null;
+}
+
+String _normalizeTableColumn(String value) => value
+    .trim()
+    .toUpperCase()
+    .replaceAll('_', ' ')
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .replaceAll('Á', 'A')
+    .replaceAll('É', 'E')
+    .replaceAll('Í', 'I')
+    .replaceAll('Ó', 'O')
+    .replaceAll('Ú', 'U');
+
+bool _isCleaningTemplateSource(Map<String, dynamic> source) {
+  final templateKey = _string(source['key']) ??
+      _string(source['templateKey']) ??
+      _string(source['presupuestoType']);
+  final rawPageLayout = source['pageLayout'];
+  final pageLayout = _asMap(rawPageLayout);
+  final pageLayoutName = pageLayout == null
+      ? _string(rawPageLayout)
+      : _string(pageLayout['key']) ?? _string(pageLayout['name']);
+  return templateKey == 'stair_cleaning_annual_maintenance' ||
+      pageLayoutName == 'cleaning_three_page';
+}
+
+bool _isGardenPoolText(String? value) {
+  final normalized = value?.trim().toLowerCase() ?? '';
+  return normalized.contains('jardin') || normalized.contains('piscina');
 }
 
 class _TemplateImageState {
   _TemplateImageState({
+    required this.original,
     required this.slot,
     required this.enabled,
     required this.label,
@@ -2889,6 +4361,7 @@ class _TemplateImageState {
 
   factory _TemplateImageState.fromMap(Map<String, dynamic> map) {
     return _TemplateImageState(
+      original: Map<String, dynamic>.from(map),
       slot: _string(map['slot']) ?? 'photo_1',
       enabled: map['enabled'] != false,
       label: TextEditingController(text: _string(map['label']) ?? ''),
@@ -2897,6 +4370,7 @@ class _TemplateImageState {
     );
   }
 
+  final Map<String, dynamic> original;
   final String slot;
   bool enabled;
   final TextEditingController label;
@@ -2912,6 +4386,7 @@ class _TemplateImageState {
   }
 
   Map<String, dynamic> toJson() => {
+        ...original,
         'slot': slot,
         'label': label.text,
         'url': url,
@@ -2936,4 +4411,42 @@ String? _string(dynamic value) {
 int? _int(dynamic value) {
   if (value is int) return value;
   return int.tryParse(value?.toString() ?? '');
+}
+
+double? _parseLocalizedNumber(String source) {
+  final match = RegExp(r'-?[\d.,]+').firstMatch(source.trim());
+  if (match == null) return null;
+  var normalized = match.group(0)!;
+  final hasComma = normalized.contains(',');
+  final hasDot = normalized.contains('.');
+  if (hasComma && hasDot) {
+    normalized = normalized.replaceAll('.', '').replaceAll(',', '.');
+  } else if (hasComma) {
+    normalized = normalized.replaceAll(',', '.');
+  } else if (hasDot) {
+    final parts = normalized.split('.');
+    if (parts.length > 1 && parts.last.length == 3) {
+      normalized = parts.join();
+    }
+  }
+  return double.tryParse(normalized);
+}
+
+String _formatCalculatedValue(
+  double value, {
+  required String format,
+  required String currency,
+}) {
+  if (format == 'currency') {
+    final digits = value == value.roundToDouble() ? 0 : 2;
+    final symbol = currency == 'EUR' ? '€' : currency;
+    return NumberFormat.currency(
+      locale: 'es_ES',
+      symbol: symbol,
+      decimalDigits: digits,
+    ).format(value).replaceAll('\u00a0', ' ');
+  }
+  return value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toStringAsFixed(2);
 }

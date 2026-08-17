@@ -23,6 +23,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_ban
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_document_workspace.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/client_search_select.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -109,6 +110,8 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   final Map<String, List<Receipt>> _pickerReceiptsByClient = {};
   final Map<String, List<Map<String, dynamic>>> _pickerPresupuestosByClient =
       {};
+  final Set<String> _wordPresupuestoIds = <String>{};
+  final Map<String, MailOutgoingAttachment> _wordPresupuestoAttachments = {};
   final Set<String> _selectedPresupuestoIds = <String>{};
   final Set<String> _selectedReceiptIds = <String>{};
 
@@ -340,10 +343,16 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         .where((id) => id.isNotEmpty)
         .toSet()
         .toList(growable: false);
-    final presupuestoIds = _selectedPresupuestoIds
+    final selectedPresupuestoIds = _selectedPresupuestoIds
         .map((id) => id.trim())
         .where((id) => id.isNotEmpty)
         .toSet()
+        .toList(growable: false);
+    final wordPresupuestoIds = selectedPresupuestoIds
+        .where(_wordPresupuestoIds.contains)
+        .toList(growable: false);
+    final presupuestoIds = selectedPresupuestoIds
+        .where((id) => !_wordPresupuestoIds.contains(id))
         .toList(growable: false);
     final receiptIds = _selectedReceiptIds
         .map((id) => id.trim())
@@ -351,7 +360,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         .toSet()
         .toList(growable: false);
     final hasDocumentIds = invoiceIds.isNotEmpty ||
-        presupuestoIds.isNotEmpty ||
+        selectedPresupuestoIds.isNotEmpty ||
         receiptIds.isNotEmpty;
     final hasManualPdfAttachment = _manualPdfAttachmentCount > 0;
     if (_useClientMode && !hasDocumentIds && !hasManualPdfAttachment) {
@@ -370,12 +379,15 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final mailDomain = context.read<MailDomain>();
     setState(() => _sending = true);
     try {
+      final wordPresupuestoAttachments =
+          await _prepareWordPresupuestoAttachments(wordPresupuestoIds);
       debugPrint('[MailCompose] send requested '
           'to=${to.join(',')} '
           'cc=${_ccList.join(',')} '
           'bcc=${_bccList.join(',')} '
           'invoiceIds=${invoiceIds.join(',')} '
           'presupuestoIds=${presupuestoIds.join(',')} '
+          'wordPresupuestoIds=${wordPresupuestoIds.join(',')} '
           'receiptIds=${receiptIds.join(',')} '
           'receiptPdfAttachments=0 (frontend fallback disabled) '
           'attachInvoicePdf=$_attachInvoicePdf '
@@ -391,15 +403,21 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         subject: subject,
         textBody: body,
         htmlBody: _quillToHtml(_quillController.document),
-        attachments: _attachments,
+        attachments: <MailOutgoingAttachment>[
+          ..._attachments,
+          ...wordPresupuestoAttachments,
+        ],
         invoiceIds: invoiceIds,
         presupuestoIds: presupuestoIds,
         receiptIds: receiptIds,
-        // Always attach PDFs when document IDs are present via the inline wizard.
-        attachInvoicePdf: hasDocumentIds ? true : null,
+        // Word-style presupuestos are uploaded above as exact PDF attachments;
+        // only legacy presupuesto IDs reach the backend PDF renderer.
+        attachInvoicePdf: invoiceIds.isNotEmpty ? true : null,
         attachPresupuestoPdf: presupuestoIds.isNotEmpty ? true : null,
         attachReceiptPdf: receiptIds.isNotEmpty ? true : null,
-        includeInvoiceLinks: hasDocumentIds ? _includeInvoiceLinks : null,
+        includeInvoiceLinks: invoiceIds.isNotEmpty || presupuestoIds.isNotEmpty
+            ? _includeInvoiceLinks
+            : null,
         applyDefaultFooter: true,
         templateId: _selectedComposeTemplateId,
       );
@@ -419,6 +437,68 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  Future<List<MailOutgoingAttachment>> _prepareWordPresupuestoAttachments(
+    List<String> ids,
+  ) async {
+    if (ids.isEmpty) return const [];
+    final authHeaders = await AuthenticatedHttpClient.authorizedHeaders(
+      includeJsonContentType: false,
+    );
+    final auth = authHeaders['Authorization'] ?? '';
+    final token = auth.startsWith('Bearer ')
+        ? auth.substring('Bearer '.length).trim()
+        : '';
+    if (token.isEmpty) {
+      throw Exception('No se pudo autenticar la descarga del presupuesto.');
+    }
+
+    final attachments = <MailOutgoingAttachment>[];
+    for (final id in ids) {
+      final cached = _wordPresupuestoAttachments[id];
+      if (cached != null) {
+        attachments.add(cached);
+        continue;
+      }
+      final response = await _presupuestosApi.downloadTemplatePdf(id);
+      final bytes = InvoiceEditorPdf.validatePdf(response);
+      final fileName = _wordPresupuestoFileName(id);
+      final upload = await uploadImageToAzure(
+        scope: 'users',
+        accessToken: token,
+        bytes: bytes,
+        mimeType: 'application/pdf',
+      );
+      final attachment = MailOutgoingAttachment(
+        storageKey: upload.blobName,
+        filename: fileName,
+        contentType: 'application/pdf',
+        size: bytes.length,
+      );
+      _wordPresupuestoAttachments[id] = attachment;
+      attachments.add(attachment);
+    }
+    return attachments;
+  }
+
+  String _wordPresupuestoFileName(String id) {
+    Map<String, dynamic>? document;
+    for (final items in _pickerPresupuestosByClient.values) {
+      for (final item in items) {
+        if (_mailPresupuestoId(item) == id && _isWordPresupuesto(item)) {
+          document = item;
+          break;
+        }
+      }
+      if (document != null) break;
+    }
+    final number =
+        (document?['presupuestoNumber'] ?? document?['budgetNumber'] ?? id)
+            .toString()
+            .trim()
+            .replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '-');
+    return 'presupuesto-${number.isEmpty ? id : number}.pdf';
   }
 
   String? _currentGroupId() {
@@ -463,6 +543,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _ccList.clear();
       _bccList.clear();
       _attachments.clear();
+      _wordPresupuestoAttachments.clear();
       _selectedPresupuestoIds.clear();
       _selectedReceiptIds.clear();
       _selectedComposeTemplateId = null;
@@ -944,9 +1025,28 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   }) async {
     final cached = _pickerPresupuestosByClient[clientId];
     if (cached != null) return cached;
-    final list = await _presupuestosApi.listByGroup(
-      groupId: groupId,
-      clientId: clientId,
+    final responses = await Future.wait<List<Map<String, dynamic>>>([
+      _presupuestosApi.listByGroup(
+        groupId: groupId,
+        clientId: clientId,
+      ),
+      _presupuestosApi.listDocumentsByGroup(groupId),
+    ]);
+    final documents = responses[1]
+        .where(presupuestoHasDocumentContent)
+        .where((item) => presupuestoDocumentStatus(item) == 'issued')
+        .where((item) => _wordPresupuestoBelongsToClient(item, clientId))
+        .map((item) => <String, dynamic>{
+              ...item,
+              '_mailPresupuestoType': 'word',
+            });
+    final byId = <String, Map<String, dynamic>>{
+      for (final item in responses[0]) _mailPresupuestoId(item): item,
+      for (final item in documents) _mailPresupuestoId(item): item,
+    }..remove('');
+    final list = byId.values.toList(growable: false);
+    _wordPresupuestoIds.addAll(
+      documents.map(_mailPresupuestoId).where((id) => id.isNotEmpty),
     );
     list.sort((a, b) {
       final aDate = _parseSortDate(a['createdAt'] ?? a['updatedAt']);
@@ -957,10 +1057,59 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     return list;
   }
 
+  String _mailPresupuestoId(Map<String, dynamic> item) =>
+      (item['presupuestoId'] ?? item['_id'] ?? item['id'] ?? '')
+          .toString()
+          .trim();
+
+  bool _isWordPresupuesto(Map<String, dynamic> item) =>
+      item['_mailPresupuestoType'] == 'word' ||
+      presupuestoHasDocumentContent(item);
+
+  bool _wordPresupuestoBelongsToClient(
+    Map<String, dynamic> item,
+    String clientId,
+  ) {
+    final snapshot = item['clientSnapshot'];
+    final client = item['client'];
+    final ids = <Object?>[
+      item['clientId'],
+      if (snapshot is Map) snapshot['_id'] ?? snapshot['id'],
+      if (client is Map) client['_id'] ?? client['id'],
+    ];
+    final normalizedClientId = clientId.trim();
+    if (ids.any((value) => value?.toString().trim() == normalizedClientId)) {
+      return true;
+    }
+    if (ids.any((value) => (value?.toString().trim() ?? '').isNotEmpty)) {
+      return false;
+    }
+
+    GroupClient? selectedClient;
+    for (final candidate in _pickerClients) {
+      if (candidate.id == normalizedClientId) {
+        selectedClient = candidate;
+        break;
+      }
+    }
+    if (selectedClient == null) return false;
+    final expectedName = selectedClient.name.trim().toLowerCase();
+    return expectedName.isNotEmpty &&
+        presupuestoDocumentClientName(item).trim().toLowerCase() ==
+            expectedName;
+  }
+
+  String _wordPresupuestoSectionLabel(AppLocalizations l) =>
+      l.localeName.toLowerCase().startsWith('es')
+          ? 'Presupuestos Word'
+          : 'Word budgets';
+
   Future<void> _openPresupuestoPdfPreviewById(String id) async {
     final l = AppLocalizations.of(context)!;
     try {
-      final r = await _presupuestosApi.previewPdf(id);
+      final r = _wordPresupuestoIds.contains(id)
+          ? await _presupuestosApi.previewTemplatePdf(id)
+          : await _presupuestosApi.previewPdf(id);
       final bytes = InvoiceEditorPdf.validatePdf(r);
       await pdf_launcher.launchPdfPreview(
         bytes,

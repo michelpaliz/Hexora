@@ -94,7 +94,8 @@ void main() {
     );
   });
 
-  test('document amount prefers populated Word variables over empty totals', () {
+  test('document amount prefers populated Word variables over empty totals',
+      () {
     expect(
       presupuestoDocumentAmount(<String, dynamic>{
         'total': 0,
@@ -107,6 +108,81 @@ void main() {
       1400.5,
     );
   });
+
+  test('cleaning draft ignores stale garden title and sums monthly schedule',
+      () {
+    final cleaningDraft = <String, dynamic>{
+      'templateKey': 'stair_cleaning_annual_maintenance',
+      'documentTitle': 'Mantenimiento de jardines y piscinas Michel S.L',
+      'amount': 0,
+      'documentContent': <String, dynamic>{
+        'title': 'Limpieza anual de escaleras y zonas comunes',
+        'sections': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'table': <String, dynamic>{
+              'columns': <String>[
+                'Mes',
+                'Frecuencia',
+                'Valor por limpieza',
+                'Total mensual',
+              ],
+              'rows': <List<String>>[
+                <String>['Enero', '2', '480 €', '960 €'],
+                <String>['Febrero', '4', '480 €', '1.920 €'],
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(
+      presupuestoDocumentTitle(cleaningDraft),
+      'Limpieza anual de escaleras y zonas comunes',
+    );
+    expect(presupuestoDocumentAmount(cleaningDraft), 2880);
+  });
+
+  test('zero-amount list summary loads its cleaning document content',
+      () async {
+    final api = _FakeDocumentApi(<String, dynamic>{
+      '_id': 'cleaning-1',
+      'status': 'draft',
+      'hasDocumentContent': true,
+      'documentTitle': 'Mantenimiento de jardines y piscinas Michel S.L',
+      'amount': 0,
+    })
+      ..templateContent = <String, dynamic>{
+        'key': 'stair_cleaning_annual_maintenance',
+        'title': 'Mantenimiento de jardines y piscinas Michel S.L',
+        'sections': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'table': <String, dynamic>{
+              'columns': <String>[
+                'Mes',
+                'Frecuencia',
+                'Valor por limpieza',
+                'Total mensual',
+              ],
+              'rows': <List<String>>[
+                <String>['Enero', '2', '480 €', '960 €'],
+                <String>['Febrero', '4', '480 €', '1.920 €'],
+              ],
+            },
+          },
+        ],
+      };
+    final workspace = PresupuestoDocumentWorkspace(api: api);
+
+    await workspace.refresh('group-1');
+
+    expect(api.templateContentCalls, 1);
+    expect(
+      presupuestoDocumentTitle(workspace.drafts.single),
+      'Limpieza anual de escaleras y zonas comunes',
+    );
+    expect(presupuestoDocumentAmount(workspace.drafts.single), 2880);
+  });
 }
 
 class _FakeDocumentApi extends PresupuestosApi {
@@ -118,11 +194,14 @@ class _FakeDocumentApi extends PresupuestosApi {
   String? issuedId;
   bool holdIssue = false;
   Completer<void>? _issueGate;
+  Map<String, dynamic>? templateContent;
+  int templateContentCalls = 0;
 
   @override
   Future<List<Map<String, dynamic>>> listDocumentsByGroup(
-    String groupId,
-  ) async =>
+    String groupId, {
+    String? search,
+  }) async =>
       documents.map(Map<String, dynamic>.from).toList(growable: false);
 
   @override
@@ -141,6 +220,14 @@ class _FakeDocumentApi extends PresupuestosApi {
     };
     documents = [issued];
     return <String, dynamic>{'presupuesto': issued};
+  }
+
+  @override
+  Future<Map<String, dynamic>> getTemplateContent(
+    String presupuestoId,
+  ) async {
+    templateContentCalls++;
+    return <String, dynamic>{'content': templateContent};
   }
 
   void completeIssue() => _issueGate?.complete();
