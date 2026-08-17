@@ -3,5 +3,87 @@
         "rrule"
     ],
     "java.configuration.updateBuildConfiguration": "interactive",
-    "CodeGPT.apiKey": "OpenAI"
+    "CodeGPT.apiKey": "OpenAI",
+    "[markdown]": {
+        "editor.fontFamily": "Consolas, 'Courier New', monospace",
+        "editor.fontSize": 15,
+        "editor.fontWeight": "500",
+        "editor.lineHeight": 24,
+        "editor.wordWrap": "on"
+    },
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": [
+                    "text.html.markdown",
+                    "meta.paragraph.markdown"
+                ],
+                "settings": {
+                    "foreground": "#1F2937"
+                }
+            },
+            {
+                "scope": [
+                    "markup.heading.markdown",
+                    "punctuation.definition.heading.markdown"
+                ],
+                "settings": {
+                    "foreground": "#0057B8",
+                    "fontStyle": "bold"
+                }
+            },
+            {
+                "scope": [
+                    "markup.bold.markdown",
+                    "punctuation.definition.bold.markdown"
+                ],
+                "settings": {
+                    "foreground": "#003E8A",
+                    "fontStyle": "bold"
+                }
+            },
+            {
+                "scope": [
+                    "markup.italic.markdown",
+                    "punctuation.definition.italic.markdown"
+                ],
+                "settings": {
+                    "foreground": "#6B3E00",
+                    "fontStyle": "italic"
+                }
+            },
+            {
+                "scope": [
+                    "markup.inline.raw.string.markdown",
+                    "markup.fenced_code.block.markdown",
+                    "punctuation.definition.raw.markdown"
+                ],
+                "settings": {
+                    "foreground": "#006B3C",
+                    "fontStyle": "bold"
+                }
+            },
+            {
+                "scope": [
+                    "markup.underline.link.markdown",
+                    "string.other.link.title.markdown"
+                ],
+                "settings": {
+                    "foreground": "#005A9E",
+                    "fontStyle": "underline"
+                }
+            },
+            {
+                "scope": [
+                    "markup.list.markdown",
+                    "punctuation.definition.list.begin.markdown",
+                    "punctuation.definition.quote.begin.markdown"
+                ],
+                "settings": {
+                    "foreground": "#6F42C1",
+                    "fontStyle": "bold"
+                }
+            }
+        ]
+    }
 }
