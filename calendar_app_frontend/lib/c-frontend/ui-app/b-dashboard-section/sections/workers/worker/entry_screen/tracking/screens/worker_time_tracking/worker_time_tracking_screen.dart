@@ -17,6 +17,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/wo
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/time_tracking_excel_import_dialog.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart'; // keep only if added to pubspec
 
@@ -77,8 +78,7 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     super.dispose();
   }
 
-  bool _isSpanish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+  bool _isSpanish(BuildContext context) => context.isSpanishLocale;
 
   String _advanceInputErrorText(BuildContext context) => _isSpanish(context)
       ? 'El anticipo debe ser un número mayor o igual a 0.'
@@ -373,7 +373,7 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final isSpanish = context.isSpanishLocale;
     final previewPdfLabel = isSpanish ? 'Ver PDF' : 'Preview PDF';
     final downloadPdfLabel = isSpanish ? 'Descargar PDF' : 'Download PDF';
     final monthlyCalendarPdfLabel = isSpanish

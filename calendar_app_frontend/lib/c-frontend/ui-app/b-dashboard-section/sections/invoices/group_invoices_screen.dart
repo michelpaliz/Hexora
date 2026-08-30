@@ -16,6 +16,7 @@ import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
 import 'package:hexora/b-backend/receipts/receipts_api.dart';
+import 'package:hexora/b-backend/shared/content_disposition.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/vat/vat_summary_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/invoice_editor_mobile_screen.dart';
@@ -351,8 +352,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         _billingApi.getByGroup(widget.group.id),
       ]);
       if (!mounted) return;
-      final issuedReceipts =
-          List<Receipt>.from(results[3] as List<Receipt>);
+      final issuedReceipts = List<Receipt>.from(results[3] as List<Receipt>);
       final draftReceipts = List<Receipt>.from(results[4] as List<Receipt>);
 
       try {
@@ -855,7 +855,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         status: 'issued',
         currency: currency.isEmpty ? 'EUR' : currency,
       );
-      final fileName = _fileNameFromHeaders(
+      final fileName = downloadFileNameFromHeaders(
         response.headers,
         fallback: 'invoice_concepts_${from ?? 'all'}_${to ?? 'all'}.xlsx',
       );
@@ -874,36 +874,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
   }
 
-  String _fileNameFromHeaders(
-    Map<String, String> headers, {
-    required String fallback,
-  }) {
-    final raw =
-        headers['content-disposition'] ?? headers['Content-Disposition'];
-    if (raw != null && raw.isNotEmpty) {
-      final utf8Match =
-          RegExp(r"filename\\*=UTF-8''([^;]+)", caseSensitive: false)
-              .firstMatch(raw);
-      if (utf8Match != null) {
-        final name = Uri.decodeComponent(utf8Match.group(1)!);
-        if (name.trim().isNotEmpty) return name;
-      }
-      final match = RegExp(r'filename="?([^";]+)"?', caseSensitive: false)
-          .firstMatch(raw);
-      if (match != null) {
-        final name = match.group(1);
-        if (name != null && name.trim().isNotEmpty) return name.trim();
-      }
-    }
-    final now = DateTime.now();
-    final y = now.year.toString().padLeft(4, '0');
-    final m = now.month.toString().padLeft(2, '0');
-    final d = now.day.toString().padLeft(2, '0');
-    return fallback.isNotEmpty ? fallback : 'invoices-$y$m$d.zip';
-  }
-
   String _zipFileNameFromHeaders(Map<String, String> headers) {
-    return _fileNameFromHeaders(
+    return downloadFileNameFromHeaders(
       headers,
       fallback:
           'invoices-${DateTime.now().year.toString().padLeft(4, '0')}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}.zip',

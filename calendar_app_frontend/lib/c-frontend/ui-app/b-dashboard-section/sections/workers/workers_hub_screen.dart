@@ -15,6 +15,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/wo
 import 'package:hexora/c-frontend/ui-app/shared/widgets/sidebar_item.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:provider/provider.dart';
 
 enum _WorkersSection {
@@ -39,9 +40,6 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
 
   _WorkersSection _section = _WorkersSection.workers;
   bool _sideMenuCollapsed = false;
-
-  bool _isSpanish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
 
   Widget _buildSectionContent() {
     return IndexedStack(
@@ -161,7 +159,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final isEs = _isSpanish(context);
+    final isEs = context.isSpanishLocale;
 
     final navItems = [
       (
@@ -346,15 +344,12 @@ class _WorkersHistorialContentState extends State<_WorkersHistorialContent> {
     }
   }
 
-  bool _isSpanish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final isEs = _isSpanish(context);
+    final isEs = context.isSpanishLocale;
 
     if (_loading) return const LoadingList();
 
@@ -526,14 +521,11 @@ class _RegisterHoursInline extends StatelessWidget {
 
   final Group group;
 
-  bool _isSpanish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
-
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final isEs = _isSpanish(context);
+    final isEs = context.isSpanishLocale;
 
     return Center(
       child: Column(

@@ -11,6 +11,7 @@ import 'package:hexora/b-backend/shared/backend_api_exception.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 
 enum _TimeHistoryPreset {
   last7Days,
@@ -68,7 +69,7 @@ class _WorkerTimeHistoryGraphViewState
         if (data is _WorkerComparisonPoint) {
           return _WorkerComparisonTooltip(
             point: data,
-            isSpanish: _isSpanish(context),
+            isSpanish: context.isSpanishLocale,
           );
         }
         final chartPoint = data as _WorkingTimeChartPoint;
@@ -76,7 +77,7 @@ class _WorkerTimeHistoryGraphViewState
           title: chartPoint.tooltipTitle,
           bucket: chartPoint.bucket,
           showWorkerBreakdown: _selectedWorkerId == null && !_compareWorkers,
-          isSpanish: _isSpanish(context),
+          isSpanish: context.isSpanishLocale,
         );
       },
     );
@@ -84,9 +85,6 @@ class _WorkerTimeHistoryGraphViewState
   }
 
   Future<String> _getToken() => _userDomain.getAuthToken();
-
-  bool _isSpanish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
 
   DateTimeRange get _effectiveRange {
     if (_selectedPreset == _TimeHistoryPreset.custom && _customRange != null) {
@@ -219,7 +217,7 @@ class _WorkerTimeHistoryGraphViewState
       initialDateRange: _effectiveRange,
       firstDate: DateTime(2020, 1, 1),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      saveText: _isSpanish(context) ? 'Aplicar' : 'Apply',
+      saveText: context.isSpanishLocale ? 'Aplicar' : 'Apply',
     );
     if (picked == null) return;
     setState(() {
@@ -285,16 +283,16 @@ class _WorkerTimeHistoryGraphViewState
     if (history == null) {
       return EmptyView(
         icon: Icons.bar_chart_rounded,
-        title: _isSpanish(context)
+        title: context.isSpanishLocale
             ? 'Sin datos de horas'
             : 'No working-time data yet',
-        subtitle: _isSpanish(context)
+        subtitle: context.isSpanishLocale
             ? 'Todavia no hay historial para graficar.'
             : 'There is no history available to chart yet.',
       );
     }
 
-    final isSpanish = _isSpanish(context);
+    final isSpanish = context.isSpanishLocale;
     final typo = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final materialLocalizations = MaterialLocalizations.of(context);
@@ -812,12 +810,9 @@ class _FilterPanel extends StatelessWidget {
   final ValueChanged<_TimeHistoryPreset> onPresetChanged;
   final VoidCallback onPickCustomRange;
 
-  bool _isSpanish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
-
   @override
   Widget build(BuildContext context) {
-    final isSpanish = _isSpanish(context);
+    final isSpanish = context.isSpanishLocale;
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
     final localizations = MaterialLocalizations.of(context);

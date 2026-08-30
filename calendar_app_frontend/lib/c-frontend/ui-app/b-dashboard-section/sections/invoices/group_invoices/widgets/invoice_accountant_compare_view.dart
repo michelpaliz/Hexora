@@ -5,6 +5,7 @@ import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/audit_format_utils.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class InvoiceAccountantCompareView extends StatefulWidget {
@@ -64,30 +65,6 @@ class _InvoiceAccountantCompareViewState
     super.dispose();
   }
 
-  String? _fmtDate(DateTime? value) {
-    if (value == null) return null;
-    return '${value.year.toString().padLeft(4, '0')}-'
-        '${value.month.toString().padLeft(2, '0')}-'
-        '${value.day.toString().padLeft(2, '0')}';
-  }
-
-  String _date(dynamic value) {
-    final text = value?.toString().trim() ?? '';
-    if (text.isEmpty) return '—';
-    return text.length >= 10 ? text.substring(0, 10) : text;
-  }
-
-  String _money(dynamic value) {
-    final number = value is num ? value.toDouble() : double.tryParse('$value');
-    if (number == null) return '—';
-    final fixed = number.toStringAsFixed(2).split('.');
-    final whole = fixed.first.replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+$)'),
-      (m) => '${m[1]}.',
-    );
-    return '$whole,${fixed.last}';
-  }
-
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -137,8 +114,8 @@ class _InvoiceAccountantCompareViewState
         fileName: picked.name,
         groupId: widget.groupId,
         status: _status,
-        from: _fmtDate(_from),
-        to: _fmtDate(_to),
+        from: formatAuditQueryDate(_from),
+        to: formatAuditQueryDate(_to),
         clientId: _clientId,
         currency: _currency,
         tolerance: _toleranceCtrl.text.trim(),
@@ -593,9 +570,9 @@ class _InvoiceAccountantCompareViewState
                       cs: cs,
                     ),
                   ),
-                  _dateChip(_tx('Desde', 'From'), _fmtDate(_from),
+                  _dateChip(_tx('Desde', 'From'), formatAuditQueryDate(_from),
                       () => _pickDate(true), cs),
-                  _dateChip(_tx('Hasta', 'To'), _fmtDate(_to),
+                  _dateChip(_tx('Hasta', 'To'), formatAuditQueryDate(_to),
                       () => _pickDate(false), cs),
                   if (hasFilters)
                     TextButton.icon(
@@ -1171,7 +1148,7 @@ class _InvoiceAccountantCompareViewState
                       children: [
                         if (total != null)
                           Text(
-                            _money(total),
+                            formatAuditMoney(total),
                             style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700),
@@ -1328,11 +1305,11 @@ class _InvoiceAccountantCompareViewState
                           cs),
                       _metaChip(
                           Icons.calendar_today_outlined,
-                          '${_tx('Asesoría', 'Accountant')}: ${_date(accountant['issueDate'])}',
+                          '${_tx('Asesoría', 'Accountant')}: ${formatAuditDate(accountant['issueDate'])}',
                           cs),
                       _metaChip(
                           Icons.calendar_today_outlined,
-                          'Hexora: ${_date(hexora['issueDate'])}',
+                          'Hexora: ${formatAuditDate(hexora['issueDate'])}',
                           cs),
                     ],
                   ),
@@ -1520,7 +1497,7 @@ class _InvoiceAccountantCompareViewState
           Expanded(
             flex: 3,
             child: Text(
-              _money(accountantVal),
+              formatAuditMoney(accountantVal),
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 12,
@@ -1531,7 +1508,7 @@ class _InvoiceAccountantCompareViewState
           Expanded(
             flex: 3,
             child: Text(
-              _money(hexoraVal),
+              formatAuditMoney(hexoraVal),
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 12,
@@ -1542,7 +1519,7 @@ class _InvoiceAccountantCompareViewState
           Expanded(
             flex: 2,
             child: Text(
-              hasDelta ? _money(deltaVal) : '—',
+              hasDelta ? formatAuditMoney(deltaVal) : '—',
               textAlign: TextAlign.right,
               style: TextStyle(
                 fontSize: 12,
@@ -1592,9 +1569,9 @@ class _InvoiceAccountantCompareViewState
               reason['hexora'] != null) ...[
             const SizedBox(height: 4),
             Text(
-              '${_tx('Asesoría', 'Accountant')}: ${_money(reason['accountant'])} · '
-              'Hexora: ${_money(reason['hexora'])} · '
-              'Δ ${_money(reason['delta'])}',
+              '${_tx('Asesoría', 'Accountant')}: ${formatAuditMoney(reason['accountant'])} · '
+              'Hexora: ${formatAuditMoney(reason['hexora'])} · '
+              'Δ ${formatAuditMoney(reason['delta'])}',
               style: TextStyle(
                   fontSize: 11, color: cs.onSurfaceVariant),
             ),

@@ -18,6 +18,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/wo
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/nav_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
@@ -33,6 +34,21 @@ enum _InlineSection {
   historial,
   telegramImport,
   registerHours
+}
+
+String _formatMoney(
+  BuildContext context,
+  num amount, {
+  String? currency,
+}) {
+  final locale = AppLocalizations.of(context)!.localeName;
+  final formatted = NumberFormat.currency(
+    locale: locale,
+    symbol: '',
+    decimalDigits: 2,
+  ).format(amount).trim();
+  if (currency == null || currency.isEmpty) return formatted;
+  return '$formatted $currency';
 }
 
 class _WorkersNavHeader extends StatelessWidget {
@@ -392,8 +408,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     }
   }
 
-  bool _isSpanish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+  bool _isSpanish(BuildContext context) => context.isSpanishLocale;
 
   String _activeWorkersLabel(BuildContext context) =>
       _isSpanish(context) ? 'activos' : 'active';
@@ -405,17 +420,6 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   String _defaultTotalsErrorLabel(BuildContext context) => _isSpanish(context)
       ? 'No se pudo cargar el total.'
       : 'Could not load total.';
-
-  String _money(BuildContext context, num amount, {String? currency}) {
-    final locale = AppLocalizations.of(context)!.localeName;
-    final formatted = NumberFormat.currency(
-      locale: locale,
-      symbol: '',
-      decimalDigits: 2,
-    ).format(amount).trim();
-    if (currency == null || currency.isEmpty) return formatted;
-    return '$formatted $currency';
-  }
 
   String _selectedMonthLabel(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
@@ -593,7 +597,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
           else ...[
             if (!multiCurrency && totalPay != null)
               Text(
-                _money(context, totalPay, currency: currency),
+                _formatMoney(context, totalPay, currency: currency),
                 style: t.bodyMedium.copyWith(
                   fontWeight: FontWeight.w900,
                   color: cs.primary,
@@ -607,7 +611,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: Text(
-                    _money(context, pay, currency: curr),
+                    _formatMoney(context, pay, currency: curr),
                     style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
                   ),
                 );
@@ -1201,8 +1205,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
   late int _year;
   bool _hideEmpty = false;
 
-  bool get _isSpanish =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+  bool get _isSpanish => context.isSpanishLocale;
 
   String _formatMonth(String monthStr) {
     try {
@@ -1225,17 +1228,6 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
     super.initState();
     _year = DateTime.now().year;
     _load();
-  }
-
-  String _money(num amount, {String? currency}) {
-    final locale = AppLocalizations.of(context)!.localeName;
-    final formatted = NumberFormat.currency(
-      locale: locale,
-      symbol: '',
-      decimalDigits: 2,
-    ).format(amount).trim();
-    if (currency == null || currency.isEmpty) return formatted;
-    return '$formatted $currency';
   }
 
   Future<void> _load() async {
@@ -1364,7 +1356,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
                             .copyWith(color: cs.onSurfaceVariant, fontSize: 10),
                       ),
                       Text(
-                        _money(totalPay, currency: currency),
+                        _formatMoney(context, totalPay, currency: currency),
                         style: t.bodyLarge.copyWith(
                           fontWeight: FontWeight.w800,
                           color: cs.primary,
@@ -1381,7 +1373,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
                       final curr = item['currency']?.toString() ?? '-';
                       final pay = (item['totalPay'] as num?)?.toDouble() ?? 0;
                       return Text(
-                        _money(pay, currency: curr),
+                        _formatMoney(context, pay, currency: curr),
                         style: t.bodyMedium.copyWith(
                             fontWeight: FontWeight.w700, color: cs.primary),
                       );
@@ -1587,7 +1579,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
                             if (!isEmpty) ...[
                               if (!itemMultiCurrency && pay != null)
                                 Text(
-                                  _money(pay, currency: curr),
+                                  _formatMoney(context, pay, currency: curr),
                                   style: t.bodySmall
                                       .copyWith(fontWeight: FontWeight.w700),
                                 )
@@ -1607,7 +1599,8 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
                                                   ?.toDouble() ??
                                               0;
                                       return Text(
-                                        _money(itemPay, currency: itemCurr),
+                                        _formatMoney(context, itemPay,
+                                            currency: itemCurr),
                                         style: t.bodySmall.copyWith(
                                             fontWeight: FontWeight.w700),
                                       );

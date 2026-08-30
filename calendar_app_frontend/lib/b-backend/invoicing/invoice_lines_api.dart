@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:hexora/a-models/invoice/invoice_line.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/shared/json_response_decoder.dart';
 import 'package:http/http.dart' as http;
 
 class InvoiceLineEvidenceException implements Exception {
@@ -134,24 +135,15 @@ class InvoiceLinesApi {
   }
 
   T _decode<T>(http.Response r, T Function(dynamic) map) {
-    final ok = r.statusCode >= 200 && r.statusCode < 300;
-    dynamic body;
-    if (r.body.isNotEmpty) {
-      try {
-        body = jsonDecode(r.body);
-      } catch (_) {
-        body = r.body;
-      }
-    }
-    if (ok) return map(body);
-
-    String msg = r.reasonPhrase ?? 'Request failed';
-    if (body is Map && body['message'] != null) {
-      msg = body['message'].toString();
-    } else if (body is String && body.trim().isNotEmpty) {
-      msg = body.trim();
-    }
-    throw Exception(msg);
+    return decodeJsonResponse<T>(
+      r,
+      url: r.request?.url ?? Uri.parse(_base),
+      method: r.request?.method ?? 'REQUEST',
+      map: map,
+      createException: (context) => Exception(context.message),
+      errorMessageKeys: const ['message'],
+      shouldLogError: (_) => false,
+    );
   }
 
   Future<List<InvoiceLine>> list(String invoiceId) async {

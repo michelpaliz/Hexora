@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/shared/json_response_decoder.dart';
 import 'package:http/http.dart' as http;
 
 class ProvidersApiException implements Exception {
@@ -47,36 +48,19 @@ class ProvidersApi {
     required String method,
     required T Function(dynamic json) map,
   }) {
-    final ok = r.statusCode >= 200 && r.statusCode < 300;
-    dynamic body;
-    if (r.body.isNotEmpty) {
-      try {
-        body = jsonDecode(r.body);
-      } catch (_) {
-        body = r.body;
-      }
-    }
-
-    if (ok) return map(body);
-
-    String msg = r.reasonPhrase ?? 'Request failed';
-    if (body is Map && body['message'] != null) {
-      msg = body['message'].toString();
-    } else if (body is Map && body['error'] != null) {
-      msg = body['error'].toString();
-    } else if (body is String && body.trim().isNotEmpty) {
-      msg = body.trim();
-    }
-
-    final ex = ProvidersApiException(
-      statusCode: r.statusCode,
-      message: msg,
+    return decodeJsonResponse<T>(
+      r,
       url: url,
       method: method,
-      responseBody: r.body.isEmpty ? null : r.body,
+      map: map,
+      createException: (context) => ProvidersApiException(
+        statusCode: context.statusCode,
+        message: context.message,
+        url: context.url,
+        method: context.method,
+        responseBody: context.responseBody,
+      ),
     );
-    if (kDebugMode) debugPrint(ex.toString());
-    throw ex;
   }
 
   Future<List<Map<String, dynamic>>> list({String? groupId}) async {
@@ -104,7 +88,8 @@ class ProvidersApi {
               .toList();
         }
         if (j is Map) {
-          final items = j['providers'] ?? j['data'] ?? j['items'] ?? j['results'];
+          final items =
+              j['providers'] ?? j['data'] ?? j['items'] ?? j['results'];
           if (items is List) {
             return items
                 .whereType<Map>()
@@ -146,7 +131,8 @@ class ProvidersApi {
       r,
       url: uri,
       method: 'POST',
-      map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 
@@ -177,7 +163,8 @@ class ProvidersApi {
       r,
       url: uri,
       method: 'PUT',
-      map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 

@@ -1,8 +1,6 @@
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/shared/json_response_decoder.dart';
 import 'package:http/http.dart' as http;
 
 class VatSummaryApiException implements Exception {
@@ -65,40 +63,23 @@ class VatSummaryApi {
     required String method,
     required T Function(dynamic json) map,
   }) {
-    final ok = r.statusCode >= 200 && r.statusCode < 300;
-    dynamic body;
-    if (r.body.isNotEmpty) {
-      try {
-        body = jsonDecode(r.body);
-      } catch (_) {
-        body = r.body;
-      }
-    }
-
-    if (ok) return map(body);
-
-    String msg = r.reasonPhrase ?? 'Request failed';
-    if (body is Map && body['message'] != null) {
-      msg = body['message'].toString();
-    } else if (body is Map && body['error'] != null) {
-      msg = body['error'].toString();
-    } else if (body is String && body.trim().isNotEmpty) {
-      msg = body.trim();
-    }
-
-    final ex = VatSummaryApiException(
-      statusCode: r.statusCode,
-      message: msg,
+    return decodeJsonResponse<T>(
+      r,
       url: url,
       method: method,
-      responseBody: r.body.isEmpty ? null : r.body,
+      map: map,
+      createException: (context) => VatSummaryApiException(
+        statusCode: context.statusCode,
+        message: context.message,
+        url: context.url,
+        method: context.method,
+        responseBody: context.responseBody,
+      ),
+      shouldLogError: (context) => !(context.statusCode == 400 &&
+          context.message
+              .toLowerCase()
+              .contains('only eur currency is supported')),
     );
-    final isKnownEurOnly = r.statusCode == 400 &&
-        msg.toLowerCase().contains('only eur currency is supported');
-    if (kDebugMode && !isKnownEurOnly) {
-      debugPrint(ex.toString());
-    }
-    throw ex;
   }
 
   Future<Map<String, dynamic>> getSummary({

@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/expenses/expenses_api.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/audit_format_utils.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/audit_presentation_utils.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/audit_badge.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/audit_date_field.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/audit_info_chip.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/audit_section_label.dart';
 import 'package:hexora/c-frontend/ui-app/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -55,30 +61,6 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
     super.dispose();
   }
 
-  String? _fmtDate(DateTime? value) {
-    if (value == null) return null;
-    return '${value.year.toString().padLeft(4, '0')}-'
-        '${value.month.toString().padLeft(2, '0')}-'
-        '${value.day.toString().padLeft(2, '0')}';
-  }
-
-  String _date(dynamic value) {
-    final text = value?.toString().trim() ?? '';
-    if (text.isEmpty) return '—';
-    return text.length >= 10 ? text.substring(0, 10) : text;
-  }
-
-  String _money(dynamic value) {
-    final number = value is num ? value.toDouble() : double.tryParse('$value');
-    if (number == null) return '—';
-    final fixed = number.toStringAsFixed(2).split('.');
-    final whole = fixed.first.replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+$)'),
-      (m) => '${m[1]}.',
-    );
-    return '$whole,${fixed.last}';
-  }
-
   List<Map<String, dynamic>> get _rows {
     final raw = _response?['rows'];
     if (raw is! List) return const [];
@@ -104,8 +86,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
         groupId: widget.groupId,
         providerId: _providerId,
         clientId: _clientId,
-        from: _fmtDate(_from),
-        to: _fmtDate(_to),
+        from: formatAuditQueryDate(_from),
+        to: formatAuditQueryDate(_to),
         currency: _currency,
       );
       if (mounted) setState(() => _response = result);
@@ -139,10 +121,12 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
         jobType: 'expense_vat_audit_excel',
         title: 'Auditoría IVA gastos',
         description:
-            'Periodo ${_fmtDate(_from) ?? 'inicio'} a ${_fmtDate(_to) ?? 'hoy'}',
+            'Periodo ${formatAuditQueryDate(_from) ?? 'inicio'} a ${formatAuditQueryDate(_to) ?? 'hoy'}',
         params: <String, dynamic>{
-          if (_fmtDate(_from) != null) 'from': _fmtDate(_from),
-          if (_fmtDate(_to) != null) 'to': _fmtDate(_to),
+          if (formatAuditQueryDate(_from) != null)
+            'from': formatAuditQueryDate(_from),
+          if (formatAuditQueryDate(_to) != null)
+            'to': formatAuditQueryDate(_to),
           if ((_providerId ?? '').trim().isNotEmpty) 'providerId': _providerId,
           if ((_clientId ?? '').trim().isNotEmpty) 'clientId': _clientId,
           if (_currency.trim().isNotEmpty) 'currency': _currency,
@@ -239,30 +223,6 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
-  }
-
-  String _reviewLabel(String status) {
-    switch (status) {
-      case 'confirmed_ok': return _tx('Confirmado', 'Confirmed');
-      case 'needs_fix': return _tx('A corregir', 'Needs fix');
-      default: return _tx('Sin revisar', 'Unreviewed');
-    }
-  }
-
-  String _reasonLabel(String code) {
-    switch (code.toUpperCase()) {
-      case 'SUBTOTAL_MISMATCH': return _tx('Discrepancia en base', 'Base mismatch');
-      case 'TAX_TOTAL_MISMATCH': return _tx('Discrepancia en IVA', 'VAT mismatch');
-      case 'TOTAL_MISMATCH': return _tx('Discrepancia en total', 'Total mismatch');
-      case 'IMPOSSIBLE_ZERO_TOTAL': return _tx('Total imposible (0)', 'Impossible zero total');
-      default: return code;
-    }
-  }
-
-  Color _statusColor(bool isSuspect, String review, ColorScheme cs) {
-    if (isSuspect) return cs.error;
-    if (review == 'confirmed_ok') return cs.tertiary;
-    return cs.onSurfaceVariant;
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -443,7 +403,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                       _statChip(
                         Icons.account_balance_wallet_outlined,
                         'Base',
-                        '${_money(totals['subtotal'])} EUR',
+                        '${formatAuditMoney(totals['subtotal'])} EUR',
                         baseChipColor,
                         cs,
                         t,
@@ -451,7 +411,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                       _statChip(
                         Icons.percent_rounded,
                         'IVA',
-                        '${_money(totals['taxTotal'])} EUR',
+                        '${formatAuditMoney(totals['taxTotal'])} EUR',
                         vatChipColor,
                         cs,
                         t,
@@ -459,7 +419,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                       _statChip(
                         Icons.euro_rounded,
                         _tx('Total', 'Total'),
-                        '${_money(totals['total'])} EUR',
+                        '${formatAuditMoney(totals['total'])} EUR',
                         totalChipColor,
                         cs,
                         t,
@@ -692,10 +652,16 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                 runSpacing: 10,
                 crossAxisAlignment: WrapCrossAlignment.end,
                 children: [
-                  _dateField(_tx('Desde', 'From'), _fmtDate(_from),
-                      () => _pickDate(true)),
-                  _dateField(_tx('Hasta', 'To'), _fmtDate(_to),
-                      () => _pickDate(false)),
+                  AuditDateField(
+                    label: _tx('Desde', 'From'),
+                    value: formatAuditQueryDate(_from),
+                    onTap: () => _pickDate(true),
+                  ),
+                  AuditDateField(
+                    label: _tx('Hasta', 'To'),
+                    value: formatAuditQueryDate(_to),
+                    onTap: () => _pickDate(false),
+                  ),
                   SizedBox(
                     width: 120,
                     child: DropdownButtonFormField<String>(
@@ -834,7 +800,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
     final isSuspect = row['isSuspect'] == true;
     final review = (row['reviewStatus'] ?? 'unreviewed').toString();
     final isSelected = _selectedRow?['id']?.toString() == id;
-    final accentColor = _statusColor(isSuspect, review, cs);
+    final accentColor = auditStatusColor(isSuspect, review, cs);
     final delta = row['deltaTotal'];
     final hasDelta = delta is num && delta.abs() > 0.009;
 
@@ -891,7 +857,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                                   color: cs.error.withValues(alpha: 0.3)),
                             ),
                             child: Text(
-                              'Δ ${_money(delta)} €',
+                              'Δ ${formatAuditMoney(delta)} €',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -916,7 +882,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                     Row(
                       children: [
                         Text(
-                          _date(row['issueDate']),
+                          formatAuditDate(row['issueDate']),
                           style: TextStyle(
                             fontSize: 10,
                             color: cs.onSurfaceVariant.withValues(alpha: 0.7),
@@ -938,7 +904,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
   }
 
   Widget _miniStatusBadge(bool isSuspect, String review, ColorScheme cs) {
-    final color = _statusColor(isSuspect, review, cs);
+    final color = auditStatusColor(isSuspect, review, cs);
     final label = isSuspect
         ? 'Issue'
         : review == 'confirmed_ok'
@@ -1007,7 +973,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
 
     final delta = row['deltaTotal'];
     final hasDelta = delta is num && delta.abs() > 0.009;
-    final accentColor = _statusColor(isSuspect, review, cs);
+    final accentColor = auditStatusColor(isSuspect, review, cs);
 
     return Container(
       decoration: BoxDecoration(
@@ -1060,19 +1026,21 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                         spacing: 6,
                         runSpacing: 4,
                         children: [
-                          _badge(
-                            isSuspect ? _tx('Incidencia', 'Issue') : _tx('Correcto', 'Correct'),
-                            isSuspect ? cs.error : cs.tertiary,
-                            t,
+                          AuditBadge(
+                            label: isSuspect
+                                ? _tx('Incidencia', 'Issue')
+                                : _tx('Correcto', 'Correct'),
+                            color: isSuspect ? cs.error : cs.tertiary,
+                            textStyle: t.bodySmall,
                           ),
-                          _badge(
-                            _reviewLabel(review),
-                            review == 'confirmed_ok'
+                          AuditBadge(
+                            label: auditReviewLabel(review, _tx),
+                            color: review == 'confirmed_ok'
                                 ? cs.tertiary
                                 : review == 'needs_fix'
                                     ? cs.error
                                     : cs.onSurfaceVariant,
-                            t,
+                            textStyle: t.bodySmall,
                           ),
                         ],
                       ),
@@ -1104,36 +1072,57 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      _infoChip(Icons.calendar_today_outlined,
-                          _date(row['issueDate']), cs),
-                      _infoChip(Icons.category_outlined,
-                          (row['expenseTypeLabel'] ?? row['expenseType'] ?? '—').toString(),
-                          cs),
-                      _infoChip(Icons.percent_rounded,
-                          (row['vatTypes'] ?? '—').toString(), cs),
-                      _infoChip(Icons.attach_file_rounded,
-                          (row['fileName'] ?? '—').toString(), cs),
-                      _infoChip(Icons.upload_outlined,
-                          '${_tx('Subido', 'Uploaded')}: ${_date(row['uploadedAt'])}',
-                          cs),
+                      AuditInfoChip(
+                        icon: Icons.calendar_today_outlined,
+                        value: formatAuditDate(row['issueDate']),
+                      ),
+                      AuditInfoChip(
+                        icon: Icons.category_outlined,
+                        value: (row['expenseTypeLabel'] ??
+                                row['expenseType'] ??
+                                '—')
+                            .toString(),
+                      ),
+                      AuditInfoChip(
+                        icon: Icons.percent_rounded,
+                        value: (row['vatTypes'] ?? '—').toString(),
+                      ),
+                      AuditInfoChip(
+                        icon: Icons.attach_file_rounded,
+                        value: (row['fileName'] ?? '—').toString(),
+                      ),
+                      AuditInfoChip(
+                        icon: Icons.upload_outlined,
+                        value:
+                            '${_tx('Subido', 'Uploaded')}: ${formatAuditDate(row['uploadedAt'])}',
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
                   // ── Amounts comparison table ─────────────────────────
-                  _sectionLabel(_tx('Comparativa de importes', 'Amount comparison'), cs, t),
+                  AuditSectionLabel(
+                    label: _tx(
+                      'Comparativa de importes',
+                      'Amount comparison',
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   _amountTable(row, hasDelta, cs, t),
                   // ── Reasons ──────────────────────────────────────────
                   if (reasons.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _sectionLabel(_tx('Motivos detectados', 'Detected reasons'), cs, t),
+                    AuditSectionLabel(
+                      label: _tx('Motivos detectados', 'Detected reasons'),
+                    ),
                     const SizedBox(height: 8),
                     ...reasons.map((reason) => _reasonChip(reason, cs, t)),
                   ],
                   // ── Review notes ──────────────────────────────────────
                   if ((row['reviewNotes'] ?? '').toString().trim().isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _sectionLabel(_tx('Notas de revisión', 'Review notes'), cs, t),
+                    AuditSectionLabel(
+                      label: _tx('Notas de revisión', 'Review notes'),
+                    ),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.all(10),
@@ -1152,7 +1141,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                   ],
                   // ── Actions ───────────────────────────────────────────
                   const SizedBox(height: 16),
-                  _sectionLabel(_tx('Acciones', 'Actions'), cs, t),
+                  AuditSectionLabel(label: _tx('Acciones', 'Actions')),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
@@ -1226,18 +1215,18 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
     final rows = [
       [
         _tx('Base', 'Base'),
-        _money(row['storedSubtotal']),
-        _money(row['derivedSubtotal']),
+        formatAuditMoney(row['storedSubtotal']),
+        formatAuditMoney(row['derivedSubtotal']),
       ],
       [
         'IVA',
-        _money(row['storedTaxTotal']),
-        _money(row['derivedTaxTotal']),
+        formatAuditMoney(row['storedTaxTotal']),
+        formatAuditMoney(row['derivedTaxTotal']),
       ],
       [
         _tx('Total', 'Total'),
-        _money(row['storedTotal']),
-        _money(row['derivedTotal']),
+        formatAuditMoney(row['storedTotal']),
+        formatAuditMoney(row['derivedTotal']),
       ],
     ];
 
@@ -1388,7 +1377,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                   Expanded(
                     flex: 6,
                     child: Text(
-                      '${_money(row['deltaTotal'])} €',
+                      '${formatAuditMoney(row['deltaTotal'])} €',
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         fontSize: 12,
@@ -1428,7 +1417,10 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _reasonLabel((reason['code'] ?? '').toString()),
+                    auditReasonLabel(
+                      (reason['code'] ?? '').toString(),
+                      _tx,
+                    ),
                     style: t.bodySmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: cs.error,
@@ -1452,51 +1444,6 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
     );
   }
 
-  Widget _infoChip(IconData icon, String value, ColorScheme cs) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
-          const SizedBox(width: 5),
-          Text(
-            value,
-            style: TextStyle(fontSize: 11, color: cs.onSurface),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionLabel(String label, ColorScheme cs, AppTypography t) {
-    return Row(
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            color: cs.onSurfaceVariant,
-            letterSpacing: 0.6,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.25),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _emptyState(ColorScheme cs, AppTypography t) {
     return Center(
       child: Column(
@@ -1515,20 +1462,6 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
   }
 
   // ── Shared widgets ────────────────────────────────────────────────────────
-
-  Widget _badge(String label, Color color, AppTypography t) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          color: color.withValues(alpha: 0.1),
-        ),
-        child: Text(
-          label,
-          style: t.bodySmall.copyWith(
-              color: color, fontWeight: FontWeight.w700, fontSize: 11),
-        ),
-      );
 
   Widget _actionBtn(
     String label,
@@ -1576,22 +1509,5 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
         ),
       );
 
-  Widget _dateField(String label, String? value, VoidCallback onTap) =>
-      SizedBox(
-        width: 150,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: label,
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-            ),
-            child: Text(value ?? '—', style: const TextStyle(fontSize: 13)),
-          ),
-        ),
-      );
 }
 

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/shared/json_response_decoder.dart';
 import 'package:http/http.dart' as http;
 
 class BillingProfileApi {
@@ -18,27 +19,14 @@ class BillingProfileApi {
       Uri.parse('$_base/group/$groupId/logo/upload');
 
   T _decode<T>(http.Response r, T Function(dynamic) map) {
-    final ok = r.statusCode >= 200 && r.statusCode < 300;
-    dynamic body;
-    if (r.body.isNotEmpty) {
-      try {
-        body = jsonDecode(r.body);
-      } catch (_) {
-        body = r.body;
-      }
-    }
-
-    if (ok) return map(body);
-
-    String message = r.reasonPhrase ?? 'Request failed';
-    if (body is Map && body['message'] != null) {
-      message = body['message'].toString();
-    } else if (body is Map && body['error'] != null) {
-      message = body['error'].toString();
-    } else if (body is String && body.trim().isNotEmpty) {
-      message = body.trim();
-    }
-    throw Exception(message);
+    return decodeJsonResponse<T>(
+      r,
+      url: r.request?.url ?? _u(),
+      method: r.request?.method ?? 'REQUEST',
+      map: map,
+      createException: (context) => Exception(context.message),
+      shouldLogError: (_) => false,
+    );
   }
 
   Future<BillingProfile> upsert(BillingProfile profile) async {

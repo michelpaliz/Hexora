@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/expenses/expenses_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
+import 'package:hexora/b-backend/shared/content_disposition.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/b-backend/vat/vat_summary_api.dart';
 
@@ -193,7 +194,7 @@ class _VatSummaryViewState extends State<VatSummaryView>
         status: 'issued',
         currency: 'EUR',
       );
-      final fileName = _fileNameFromHeaders(
+      final fileName = downloadFileNameFromHeaders(
         response.headers,
         fallback: 'invoice_vat_audit_${from}_$to.xlsx',
       );
@@ -213,30 +214,6 @@ class _VatSummaryViewState extends State<VatSummaryView>
     } finally {
       if (mounted) setState(() => _exportingVatAudit = false);
     }
-  }
-
-  String _fileNameFromHeaders(
-    Map<String, String> headers, {
-    required String fallback,
-  }) {
-    final raw =
-        headers['content-disposition'] ?? headers['Content-Disposition'];
-    if (raw != null && raw.isNotEmpty) {
-      final utf8Match =
-          RegExp(r"filename\*=UTF-8''([^;]+)", caseSensitive: false)
-              .firstMatch(raw);
-      if (utf8Match != null) {
-        final name = Uri.decodeComponent(utf8Match.group(1)!);
-        if (name.trim().isNotEmpty) return name;
-      }
-      final plainMatch =
-          RegExp(r'filename="?([^"]+)"?', caseSensitive: false).firstMatch(raw);
-      if (plainMatch != null) {
-        final name = plainMatch.group(1)?.trim();
-        if (name != null && name.isNotEmpty) return name;
-      }
-    }
-    return fallback;
   }
 
   @override

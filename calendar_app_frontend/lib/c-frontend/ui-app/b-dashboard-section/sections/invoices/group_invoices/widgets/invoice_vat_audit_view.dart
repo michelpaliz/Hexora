@@ -4,6 +4,12 @@ import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/audit_format_utils.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/audit_presentation_utils.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/audit_badge.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/audit_date_field.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/audit_info_chip.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/audit_section_label.dart';
 import 'package:hexora/c-frontend/ui-app/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
@@ -61,30 +67,6 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
     super.dispose();
   }
 
-  String? _fmtDate(DateTime? value) {
-    if (value == null) return null;
-    return '${value.year.toString().padLeft(4, '0')}-'
-        '${value.month.toString().padLeft(2, '0')}-'
-        '${value.day.toString().padLeft(2, '0')}';
-  }
-
-  String _date(dynamic value) {
-    final text = value?.toString().trim() ?? '';
-    if (text.isEmpty) return '—';
-    return text.length >= 10 ? text.substring(0, 10) : text;
-  }
-
-  String _money(dynamic value) {
-    final number = value is num ? value.toDouble() : double.tryParse('$value');
-    if (number == null) return '—';
-    final fixed = number.toStringAsFixed(2).split('.');
-    final whole = fixed.first.replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+$)'),
-      (m) => '${m[1]}.',
-    );
-    return '$whole,${fixed.last}';
-  }
-
   List<Map<String, dynamic>> get _allRows {
     final raw = _response?['rows'];
     if (raw is! List) return const [];
@@ -114,8 +96,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
         groupId: widget.groupId,
         clientId: _clientId,
         status: _status,
-        from: _fmtDate(_from),
-        to: _fmtDate(_to),
+        from: formatAuditQueryDate(_from),
+        to: formatAuditQueryDate(_to),
         currency: _currency,
       );
       if (!mounted) return;
@@ -151,10 +133,12 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
         jobType: 'invoice_vat_audit_excel',
         title: 'Auditoría IVA ingresos',
         description:
-            'Periodo ${_fmtDate(_from) ?? 'inicio'} a ${_fmtDate(_to) ?? 'hoy'}',
+            'Periodo ${formatAuditQueryDate(_from) ?? 'inicio'} a ${formatAuditQueryDate(_to) ?? 'hoy'}',
         params: <String, dynamic>{
-          if (_fmtDate(_from) != null) 'from': _fmtDate(_from),
-          if (_fmtDate(_to) != null) 'to': _fmtDate(_to),
+          if (formatAuditQueryDate(_from) != null)
+            'from': formatAuditQueryDate(_from),
+          if (formatAuditQueryDate(_to) != null)
+            'to': formatAuditQueryDate(_to),
           if (_status.trim().isNotEmpty) 'status': _status,
           if ((_clientId ?? '').trim().isNotEmpty) 'clientId': _clientId,
           if (_currency.trim().isNotEmpty) 'currency': _currency,
@@ -280,30 +264,6 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
-  }
-
-  String _reviewLabel(String status) {
-    switch (status) {
-      case 'confirmed_ok': return _tx('Confirmado', 'Confirmed');
-      case 'needs_fix': return _tx('A corregir', 'Needs fix');
-      default: return _tx('Sin revisar', 'Unreviewed');
-    }
-  }
-
-  String _reasonLabel(String code) {
-    switch (code.toUpperCase()) {
-      case 'SUBTOTAL_MISMATCH': return _tx('Discrepancia en base', 'Base mismatch');
-      case 'TAX_TOTAL_MISMATCH': return _tx('Discrepancia en IVA', 'VAT mismatch');
-      case 'TOTAL_MISMATCH': return _tx('Discrepancia en total', 'Total mismatch');
-      case 'IMPOSSIBLE_ZERO_TOTAL': return _tx('Total imposible (0)', 'Impossible zero total');
-      default: return code;
-    }
-  }
-
-  Color _statusColor(bool isSuspect, String review, ColorScheme cs) {
-    if (isSuspect) return cs.error;
-    if (review == 'confirmed_ok') return cs.tertiary;
-    return cs.onSurfaceVariant;
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -473,7 +433,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                       _statChip(
                         Icons.account_balance_wallet_outlined,
                         'Base',
-                        '${_money(totals['subtotal'])} EUR',
+                        '${formatAuditMoney(totals['subtotal'])} EUR',
                         cs.secondary,
                         cs,
                         t,
@@ -481,7 +441,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                       _statChip(
                         Icons.percent_rounded,
                         'IVA',
-                        '${_money(totals['taxTotal'])} EUR',
+                        '${formatAuditMoney(totals['taxTotal'])} EUR',
                         cs.secondary,
                         cs,
                         t,
@@ -489,7 +449,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                       _statChip(
                         Icons.euro_rounded,
                         _tx('Total', 'Total'),
-                        '${_money(totals['total'])} EUR',
+                        '${formatAuditMoney(totals['total'])} EUR',
                         cs.primary,
                         cs,
                         t,
@@ -698,10 +658,16 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                 runSpacing: 10,
                 crossAxisAlignment: WrapCrossAlignment.end,
                 children: [
-                  _dateField(
-                      _tx('Desde', 'From'), _fmtDate(_from), () => _pickDate(isFrom: true)),
-                  _dateField(
-                      _tx('Hasta', 'To'), _fmtDate(_to), () => _pickDate(isFrom: false)),
+                  AuditDateField(
+                    label: _tx('Desde', 'From'),
+                    value: formatAuditQueryDate(_from),
+                    onTap: () => _pickDate(isFrom: true),
+                  ),
+                  AuditDateField(
+                    label: _tx('Hasta', 'To'),
+                    value: formatAuditQueryDate(_to),
+                    onTap: () => _pickDate(isFrom: false),
+                  ),
                   SizedBox(
                     width: 150,
                     child: DropdownButtonFormField<String>(
@@ -861,7 +827,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
     final isSuspect = row['isSuspect'] == true;
     final review = (row['reviewStatus'] ?? 'unreviewed').toString();
     final isSelected = _selectedRow?['id']?.toString() == id;
-    final accentColor = _statusColor(isSuspect, review, cs);
+    final accentColor = auditStatusColor(isSuspect, review, cs);
     final delta = row['deltaTotal'];
     final hasDelta = delta is num && delta.abs() > 0.009;
 
@@ -914,7 +880,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                               border: Border.all(
                                   color: cs.error.withValues(alpha: 0.3)),
                             ),
-                            child: Text('Δ ${_money(delta)} €',
+                            child: Text('Δ ${formatAuditMoney(delta)} €',
                                 style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
@@ -934,7 +900,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Text(_date(row['issueDate']),
+                        Text(formatAuditDate(row['issueDate']),
                             style: TextStyle(
                                 fontSize: 10,
                                 color: cs.onSurfaceVariant
@@ -955,7 +921,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
   }
 
   Widget _miniStatusBadge(bool isSuspect, String review, ColorScheme cs) {
-    final color = _statusColor(isSuspect, review, cs);
+    final color = auditStatusColor(isSuspect, review, cs);
     final label = isSuspect
         ? 'Issue'
         : review == 'confirmed_ok'
@@ -1019,7 +985,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
         : const <Map<String, dynamic>>[];
     final delta = row['deltaTotal'];
     final hasDelta = delta is num && delta.abs() > 0.009;
-    final accentColor = _statusColor(isSuspect, review, cs);
+    final accentColor = auditStatusColor(isSuspect, review, cs);
     final reviewNotes =
         (row['reviewNotes'] ?? row['review']?['notes'] ?? '').toString().trim();
 
@@ -1070,21 +1036,21 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                         spacing: 6,
                         runSpacing: 4,
                         children: [
-                          _badge(
-                            isSuspect
+                          AuditBadge(
+                            label: isSuspect
                                 ? _tx('Incidencia', 'Issue')
                                 : _tx('Correcta', 'Correct'),
-                            isSuspect ? cs.error : cs.tertiary,
-                            t,
+                            color: isSuspect ? cs.error : cs.tertiary,
+                            textStyle: t.bodySmall,
                           ),
-                          _badge(
-                            _reviewLabel(review),
-                            review == 'confirmed_ok'
+                          AuditBadge(
+                            label: auditReviewLabel(review, _tx),
+                            color: review == 'confirmed_ok'
                                 ? cs.tertiary
                                 : review == 'needs_fix'
                                     ? cs.error
                                     : cs.onSurfaceVariant,
-                            t,
+                            textStyle: t.bodySmall,
                           ),
                         ],
                       ),
@@ -1113,39 +1079,47 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      _infoChip(Icons.calendar_today_outlined,
-                          _date(row['issueDate']), cs),
+                      AuditInfoChip(
+                        icon: Icons.calendar_today_outlined,
+                        value: formatAuditDate(row['issueDate']),
+                      ),
                       if ((row['status'] ?? '').toString().isNotEmpty)
-                        _infoChip(Icons.circle_outlined,
-                            (row['status'] ?? '').toString(), cs),
+                        AuditInfoChip(
+                          icon: Icons.circle_outlined,
+                          value: (row['status'] ?? '').toString(),
+                        ),
                       if ((row['derivedSource'] ?? '').toString().isNotEmpty)
-                        _infoChip(Icons.source_outlined,
-                            (row['derivedSource'] ?? '').toString(), cs),
+                        AuditInfoChip(
+                          icon: Icons.source_outlined,
+                          value: (row['derivedSource'] ?? '').toString(),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 14),
                   // Comparison table
-                  _sectionLabel(
-                      _tx('Comparativa de importes', 'Amount comparison'),
-                      cs,
-                      t),
+                  AuditSectionLabel(
+                    label: _tx(
+                      'Comparativa de importes',
+                      'Amount comparison',
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   _amountTable(row, hasDelta, cs, t),
                   // Reasons
                   if (reasons.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _sectionLabel(
-                        _tx('Motivos detectados', 'Detected reasons'),
-                        cs,
-                        t),
+                    AuditSectionLabel(
+                      label: _tx('Motivos detectados', 'Detected reasons'),
+                    ),
                     const SizedBox(height: 8),
                     ...reasons.map((r) => _reasonChip(r, cs, t)),
                   ],
                   // Review notes
                   if (reviewNotes.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    _sectionLabel(
-                        _tx('Notas de revisión', 'Review notes'), cs, t),
+                    AuditSectionLabel(
+                      label: _tx('Notas de revisión', 'Review notes'),
+                    ),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.all(10),
@@ -1162,7 +1136,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                   ],
                   // Actions
                   const SizedBox(height: 16),
-                  _sectionLabel(_tx('Acciones', 'Actions'), cs, t),
+                  AuditSectionLabel(label: _tx('Acciones', 'Actions')),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
@@ -1225,9 +1199,9 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
   Widget _amountTable(
       Map<String, dynamic> row, bool hasDelta, ColorScheme cs, AppTypography t) {
     final tableRows = [
-      [_tx('Base', 'Base'), _money(row['storedSubtotal']), _money(row['derivedSubtotal'])],
-      ['IVA', _money(row['storedTaxTotal']), _money(row['derivedTaxTotal'])],
-      [_tx('Total', 'Total'), _money(row['storedTotal']), _money(row['derivedTotal'])],
+      [_tx('Base', 'Base'), formatAuditMoney(row['storedSubtotal']), formatAuditMoney(row['derivedSubtotal'])],
+      ['IVA', formatAuditMoney(row['storedTaxTotal']), formatAuditMoney(row['derivedTaxTotal'])],
+      [_tx('Total', 'Total'), formatAuditMoney(row['storedTotal']), formatAuditMoney(row['derivedTotal'])],
     ];
 
     return Container(
@@ -1355,7 +1329,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                   ),
                   Expanded(
                     flex: 6,
-                    child: Text('${_money(row['deltaTotal'])} €',
+                    child: Text('${formatAuditMoney(row['deltaTotal'])} €',
                         textAlign: TextAlign.right,
                         style: TextStyle(
                             fontSize: 12,
@@ -1392,7 +1366,10 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _reasonLabel((reason['code'] ?? '').toString()),
+                    auditReasonLabel(
+                      (reason['code'] ?? '').toString(),
+                      _tx,
+                    ),
                     style: t.bodySmall.copyWith(
                         fontWeight: FontWeight.w700,
                         color: cs.error,
@@ -1412,61 +1389,6 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
       ),
     );
   }
-
-  Widget _infoChip(IconData icon, String value, ColorScheme cs) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon,
-              size: 11,
-              color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
-          const SizedBox(width: 5),
-          Text(value, style: TextStyle(fontSize: 11, color: cs.onSurface)),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionLabel(String label, ColorScheme cs, AppTypography t) {
-    return Row(
-      children: [
-        Text(label.toUpperCase(),
-            style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: cs.onSurfaceVariant,
-                letterSpacing: 0.6)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.25)),
-        ),
-      ],
-    );
-  }
-
-  Widget _badge(String label, Color color, AppTypography t) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          color: color.withValues(alpha: 0.1),
-        ),
-        child: Text(label,
-            style: t.bodySmall.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 11)),
-      );
 
   Widget _actionBtn(String label, IconData icon, Color color, bool busy,
       VoidCallback onTap, AppTypography t, ColorScheme cs) =>
@@ -1523,23 +1445,5 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
         ),
       );
 
-  Widget _dateField(String label, String? value, VoidCallback onTap) =>
-      SizedBox(
-        width: 150,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: label,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 9),
-            ),
-            child:
-                Text(value ?? '—', style: const TextStyle(fontSize: 13)),
-          ),
-        ),
-      );
 }
 

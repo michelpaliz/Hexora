@@ -41,33 +41,16 @@ extension InvoiceEditorControllerDraftFileOps on InvoiceEditorController {
     }
   }
 
-  String _fileNameFromHeaders(Map<String, String> headers, Invoice invoice) {
-    final raw =
-        headers['content-disposition'] ?? headers['Content-Disposition'];
-    if (raw != null && raw.isNotEmpty) {
-      final utf8Match =
-          RegExp(r"filename\\*=UTF-8''([^;]+)", caseSensitive: false)
-              .firstMatch(raw);
-      if (utf8Match != null) {
-        final name = Uri.decodeComponent(utf8Match.group(1)!);
-        if (name.trim().isNotEmpty) return name;
-      }
-      final match = RegExp(r'filename="?([^";]+)"?', caseSensitive: false)
-          .firstMatch(raw);
-      if (match != null) {
-        final name = match.group(1);
-        if (name != null && name.trim().isNotEmpty) return name.trim();
-      }
-    }
-    final number = invoice.invoiceNumber.trim();
-    if (number.isEmpty) return 'BORRADOR.pdf';
-    return 'invoice-$number.pdf';
-  }
-
   Future<void> downloadDraftPdf(BuildContext context, Invoice draft) async {
     try {
       final r = await _invoicesApi.downloadPdf(draft.id);
-      final fileName = _fileNameFromHeaders(r.headers, draft);
+      final invoiceNumber = draft.invoiceNumber.trim();
+      final fileName = downloadFileNameFromHeaders(
+        r.headers,
+        fallback: invoiceNumber.isEmpty
+            ? 'BORRADOR.pdf'
+            : 'invoice-$invoiceNumber.pdf',
+      );
       await launchFileDownload(
         r.bodyBytes,
         fileName: fileName,

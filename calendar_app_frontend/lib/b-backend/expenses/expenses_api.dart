@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/shared/content_disposition.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -76,27 +77,6 @@ class ExpensesApi {
       return MediaType('application', 'json');
     }
     return MediaType('application', 'octet-stream');
-  }
-
-  String? _filenameFromContentDisposition(String? value) {
-    final header = value?.trim() ?? '';
-    if (header.isEmpty) return null;
-    final encodedMatch = RegExp(
-      r'''filename\*=UTF-8''([^;]+)''',
-      caseSensitive: false,
-    ).firstMatch(header);
-    if (encodedMatch != null) {
-      final encoded = encodedMatch.group(1)?.trim();
-      if (encoded != null && encoded.isNotEmpty) {
-        return Uri.decodeComponent(encoded.replaceAll('"', ''));
-      }
-    }
-    final quotedMatch = RegExp(
-      r'''filename="?([^";]+)"?''',
-      caseSensitive: false,
-    ).firstMatch(header);
-    final fileName = quotedMatch?.group(1)?.trim();
-    return (fileName == null || fileName.isEmpty) ? null : fileName;
   }
 
   Future<Map<String, dynamic>> _sendBatchMultipartRequest({
@@ -199,6 +179,18 @@ class ExpensesApi {
     );
     if (kDebugMode) debugPrint(ex.toString());
     throw ex;
+  }
+
+  Future<Map<String, dynamic>> _getMap(Uri uri) async {
+    final response =
+        await AuthenticatedHttpClient.get(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      response,
+      url: uri,
+      method: 'GET',
+      map: (json) =>
+          json is Map ? Map<String, dynamic>.from(json) : <String, dynamic>{},
+    );
   }
 
   Future<Map<String, dynamic>> uploadExpense({
@@ -543,14 +535,7 @@ class ExpensesApi {
       '/reprocess-ocr/jobs/${Uri.encodeComponent(trimmedJobId)}',
       {'groupId': trimmedGroupId},
     );
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
-    return _decode<Map<String, dynamic>>(
-      r,
-      url: uri,
-      method: 'GET',
-      map: (j) =>
-          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-    );
+    return _getMap(uri);
   }
 
   Future<Map<String, dynamic>> applyExpenseOcrReprocessSuggestions({
@@ -594,14 +579,7 @@ class ExpensesApi {
       'groupId': trimmedGroupId,
       'reason': reason,
     });
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
-    return _decode<Map<String, dynamic>>(
-      r,
-      url: uri,
-      method: 'GET',
-      map: (j) =>
-          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-    );
+    return _getMap(uri);
   }
 
   Future<void> deleteExpense(String id) async {
@@ -840,14 +818,7 @@ class ExpensesApi {
       throw ArgumentError('jobId is required');
     }
     final uri = _u('/import-json-batch/jobs/$trimmedJobId');
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
-    return _decode<Map<String, dynamic>>(
-      r,
-      url: uri,
-      method: 'GET',
-      map: (j) =>
-          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-    );
+    return _getMap(uri);
   }
 
   Future<Map<String, dynamic>> getBatchAiImportJobResult(String jobId) async {
@@ -856,14 +827,7 @@ class ExpensesApi {
       throw ArgumentError('jobId is required');
     }
     final uri = _u('/import-json-batch/jobs/$trimmedJobId/result');
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
-    return _decode<Map<String, dynamic>>(
-      r,
-      url: uri,
-      method: 'GET',
-      map: (j) =>
-          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-    );
+    return _getMap(uri);
   }
 
   Future<Map<String, dynamic>> getBatchExpensePreviewJobStatus(
@@ -873,14 +837,7 @@ class ExpensesApi {
       throw ArgumentError('jobId is required');
     }
     final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId');
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
-    return _decode<Map<String, dynamic>>(
-      r,
-      url: uri,
-      method: 'GET',
-      map: (j) =>
-          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-    );
+    return _getMap(uri);
   }
 
   Future<Map<String, dynamic>> getBatchExpensePreviewJobResult(
@@ -890,14 +847,7 @@ class ExpensesApi {
       throw ArgumentError('jobId is required');
     }
     final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId/result');
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
-    return _decode<Map<String, dynamic>>(
-      r,
-      url: uri,
-      method: 'GET',
-      map: (j) =>
-          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-    );
+    return _getMap(uri);
   }
 
   Future<Map<String, dynamic>> confirmBatchExpenseImports({
@@ -951,10 +901,10 @@ class ExpensesApi {
         responseBody: r.body.isEmpty ? null : r.body,
       );
     }
-    final contentDisposition =
-        r.headers['content-disposition'] ?? r.headers['Content-Disposition'];
-    final fileName = _filenameFromContentDisposition(contentDisposition) ??
-        'importacion-incidencias-$trimmedBatchId.xlsx';
+    final fileName = downloadFileNameFromHeaders(
+      r.headers,
+      fallback: 'importacion-incidencias-$trimmedBatchId.xlsx',
+    );
     return ExpenseBatchIncidentExport(
       bytes: r.bodyBytes,
       fileName: fileName,
@@ -965,26 +915,12 @@ class ExpensesApi {
 
   Future<Map<String, dynamic>> fetchExpense(String id) async {
     final uri = _u('/$id');
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
-    return _decode<Map<String, dynamic>>(
-      r,
-      url: uri,
-      method: 'GET',
-      map: (j) =>
-          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-    );
+    return _getMap(uri);
   }
 
   Future<Map<String, dynamic>> fetchExpenseFile(String id) async {
     final uri = _u('/$id/file');
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
-    return _decode<Map<String, dynamic>>(
-      r,
-      url: uri,
-      method: 'GET',
-      map: (j) =>
-          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-    );
+    return _getMap(uri);
   }
 
   Future<List<Map<String, dynamic>>> summary({
@@ -1044,14 +980,7 @@ class ExpensesApi {
       if ((currency ?? '').trim().isNotEmpty) 'currency': currency!.trim(),
     };
     final uri = _u('/summary-totals', params);
-    final r = await AuthenticatedHttpClient.get(uri, headers: await _headers());
-    return _decode<Map<String, dynamic>>(
-      r,
-      url: uri,
-      method: 'GET',
-      map: (j) =>
-          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-    );
+    return _getMap(uri);
   }
 
   Future<Map<String, dynamic>> getVatAudit({

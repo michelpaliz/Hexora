@@ -3,6 +3,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:intl/intl.dart';
 
 class WorkerAppBarTitle extends StatelessWidget {
@@ -29,8 +30,7 @@ class WorkerAppBarTitle extends StatelessWidget {
   final String? currency;
   final VoidCallback? onOpenAdvanceDialog;
 
-  bool _isEs(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+  bool _isEs(BuildContext context) => context.isSpanishLocale;
 
   String _advanceLabel(BuildContext context) =>
       _isEs(context) ? 'Anticipo' : 'Advance';

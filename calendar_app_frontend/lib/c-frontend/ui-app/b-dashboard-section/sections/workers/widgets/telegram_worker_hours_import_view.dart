@@ -9,6 +9,7 @@ import 'package:hexora/b-backend/shared/backend_api_exception.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -281,8 +282,7 @@ class _TelegramWorkerHoursImportViewState
     super.dispose();
   }
 
-  bool _isSpanish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+  bool _isSpanish(BuildContext context) => context.isSpanishLocale;
 
   Future<String> _token() => context.read<UserDomain>().getAuthToken();
 

@@ -8,6 +8,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/wo
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/widgets/year_switcher.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:intl/intl.dart';
 
 import 'month_list.dart';
@@ -104,8 +105,7 @@ class _WorkerMonthlyOverviewInlineState
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final isSpanish =
-        Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+    final isSpanish = context.isSpanishLocale;
     final locale = Localizations.localeOf(context).toString();
     return Column(
       children: [

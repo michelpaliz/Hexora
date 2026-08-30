@@ -12,6 +12,7 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_month_picker_dialog.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -108,8 +109,7 @@ class _TimeTrackingExcelImportDialogState
 
   Future<String> _token() => _userDomain.getAuthToken();
 
-  bool get _isSpanish =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+  bool get _isSpanish => context.isSpanishLocale;
 
   String get _monthValue =>
       '${_selectedMonthDate.year}-${_selectedMonthDate.month.toString().padLeft(2, '0')}';

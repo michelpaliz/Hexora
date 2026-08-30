@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/shared/json_response_decoder.dart';
 import 'package:http/http.dart' as http;
 
 class EmailApi {
@@ -37,31 +38,20 @@ class EmailApi {
   }
 
   T _decode<T>(http.Response r, T Function(dynamic) map) {
-    final ok = r.statusCode >= 200 && r.statusCode < 300;
-    dynamic body;
-    if (r.body.isNotEmpty) {
-      try {
-        body = jsonDecode(r.body);
-      } catch (_) {
-        body = r.body;
-      }
-    }
-
-    if (ok) {
-      return map(body);
-    }
-
-    String message = r.reasonPhrase ?? 'Request failed';
-    if (body is Map && body['message'] != null) {
-      message = body['message'].toString();
-    } else if (body is String && body.trim().isNotEmpty) {
-      message = body.trim();
-    }
-    throw Exception(message);
+    return decodeJsonResponse<T>(
+      r,
+      url: r.request?.url ?? _u(),
+      method: r.request?.method ?? 'REQUEST',
+      map: map,
+      createException: (context) => Exception(context.message),
+      errorMessageKeys: const ['message'],
+      shouldLogError: (_) => false,
+    );
   }
 
   Future<Map<String, dynamic>> getStatus() async {
-    final r = await AuthenticatedHttpClient.get(_u('/status'), headers: _headers());
+    final r =
+        await AuthenticatedHttpClient.get(_u('/status'), headers: _headers());
     return _decode<Map<String, dynamic>>(r, (j) {
       if (j is Map<String, dynamic>) return j;
       return <String, dynamic>{};

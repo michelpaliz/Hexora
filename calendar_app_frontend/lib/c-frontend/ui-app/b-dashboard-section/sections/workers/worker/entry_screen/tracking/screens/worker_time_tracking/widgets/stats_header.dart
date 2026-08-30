@@ -3,6 +3,7 @@ import 'package:hexora/a-models/group_model/worker/timeEntry.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 
 class StatsHeader extends StatefulWidget {
   const StatsHeader({
@@ -91,8 +92,7 @@ class _StatsHeaderState extends State<StatsHeader> {
     return num.tryParse(v.toString()) ?? 0;
   }
 
-  bool _isEs(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+  bool _isEs(BuildContext context) => context.isSpanishLocale;
 
   String _advanceLabel(BuildContext context) =>
       _isEs(context) ? 'Anticipo' : 'Advance';

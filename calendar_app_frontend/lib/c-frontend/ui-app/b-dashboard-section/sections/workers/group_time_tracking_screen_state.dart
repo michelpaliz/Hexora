@@ -14,6 +14,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/wo
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -107,13 +108,10 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     }
   }
 
-  bool _isSpanish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
-
   String _customRangeLabel(BuildContext context) =>
-      _isSpanish(context) ? 'Rango personalizado' : 'Custom range';
+      context.isSpanishLocale ? 'Rango personalizado' : 'Custom range';
 
-  String _failedTotalsLabel(BuildContext context) => _isSpanish(context)
+  String _failedTotalsLabel(BuildContext context) => context.isSpanishLocale
       ? 'No se pudo cargar el total de trabajadores activos.'
       : 'Failed to load active workers total.';
 
@@ -160,7 +158,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     final picked = await showWorkerMonthPickerDialog(
       context: context,
       initialDate: DateTime(_periodYear, _periodMonth, 1),
-      isSpanish: _isSpanish(context),
+      isSpanish: context.isSpanishLocale,
       firstYear: 2018,
       maxYear: 2100,
       allowFutureMonths: true,
@@ -337,7 +335,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
-    final isEs = _isSpanish(context);
+    final isEs = context.isSpanishLocale;
 
     final activeWorkers =
         (_activeTotals?['activeWorkersCount'] as num?)?.toInt() ?? 0;

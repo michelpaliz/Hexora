@@ -251,36 +251,21 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     }
   }
 
-  String _fileNameFromHeaders(Map<String, String> headers) {
-    final raw =
-        headers['content-disposition'] ?? headers['Content-Disposition'];
-    if (raw != null && raw.isNotEmpty) {
-      final utf8Match =
-          RegExp(r"filename\\*=UTF-8''([^;]+)", caseSensitive: false)
-              .firstMatch(raw);
-      if (utf8Match != null) {
-        final name = Uri.decodeComponent(utf8Match.group(1)!);
-        if (name.trim().isNotEmpty) return name;
-      }
-      final match = RegExp(r'filename="?([^";]+)"?', caseSensitive: false)
-          .firstMatch(raw);
-      if (match != null) {
-        final name = match.group(1);
-        if (name != null && name.trim().isNotEmpty) return name.trim();
-      }
-    }
-    final fallback = _invoice.invoiceNumber.trim().isNotEmpty
-        ? _invoice.invoiceNumber.trim()
-        : _invoice.id.trim();
-    return fallback.endsWith('.pdf') ? fallback : 'invoice-$fallback.pdf';
-  }
-
   Future<void> _downloadPdf() async {
     if (_downloadingPdf) return;
     setState(() => _downloadingPdf = true);
     try {
       final r = await _invoicesApi.downloadPdf(_invoice.id);
-      final fileName = _fileNameFromHeaders(r.headers);
+      final invoiceName = _invoice.invoiceNumber.trim().isNotEmpty
+          ? _invoice.invoiceNumber.trim()
+          : _invoice.id.trim();
+      final fallback = invoiceName.endsWith('.pdf')
+          ? invoiceName
+          : 'invoice-$invoiceName.pdf';
+      final fileName = downloadFileNameFromHeaders(
+        r.headers,
+        fallback: fallback,
+      );
       await launchFileDownload(
         r.bodyBytes,
         fileName: fileName,
