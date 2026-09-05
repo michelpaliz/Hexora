@@ -1,5 +1,6 @@
 // models/client.dart
 import 'package:hexora/a-models/invoice/client_billing.dart';
+import 'package:hexora/a-models/group_model/worker/geofenced_visit.dart';
 
 class GroupClient {
   String id;
@@ -19,6 +20,7 @@ class GroupClient {
   bool isActive;
   Map<String, dynamic>? meta;
   ClientBilling? billing;
+  ClientServiceLocation? serviceLocation;
   bool? hasCurrentMonthInvoice;
   bool? missingCurrentMonthInvoice;
   int? currentMonthInvoiceCount;
@@ -39,6 +41,7 @@ class GroupClient {
     this.isActive = true,
     this.meta,
     this.billing,
+    this.serviceLocation,
     this.hasCurrentMonthInvoice,
     this.missingCurrentMonthInvoice,
     this.currentMonthInvoiceCount,
@@ -58,6 +61,7 @@ class GroupClient {
     bool? isActive,
     Map<String, dynamic>? meta,
     ClientBilling? billing,
+    ClientServiceLocation? serviceLocation,
     bool? hasCurrentMonthInvoice,
     bool? missingCurrentMonthInvoice,
     int? currentMonthInvoiceCount,
@@ -76,6 +80,7 @@ class GroupClient {
       isActive: isActive ?? this.isActive,
       meta: meta ?? this.meta,
       billing: billing ?? this.billing,
+      serviceLocation: serviceLocation ?? this.serviceLocation,
       hasCurrentMonthInvoice:
           hasCurrentMonthInvoice ?? this.hasCurrentMonthInvoice,
       missingCurrentMonthInvoice:
@@ -102,6 +107,10 @@ class GroupClient {
         'isActive': isActive,
         if (meta != null) 'meta': meta,
         if (billing != null) 'billing': billing!.toJson(),
+        if (serviceLocation != null)
+          'serviceLocation': serviceLocation!.toJson()
+            ..remove('clientId')
+            ..remove('clientName'),
         if (hasCurrentMonthInvoice != null)
           'hasCurrentMonthInvoice': hasCurrentMonthInvoice,
         if (missingCurrentMonthInvoice != null)
@@ -121,6 +130,8 @@ class GroupClient {
     final rawId = (json['id'] ?? json['_id'] ?? '').toString();
     final contact = (json['contact'] as Map?)?.cast<String, dynamic>();
     final billingJson = (json['billing'] as Map?)?.cast<String, dynamic>();
+    final serviceLocationJson =
+        (json['serviceLocation'] as Map?)?.cast<String, dynamic>();
     return GroupClient(
       id: rawId,
       name: (json['name'] ?? '').toString(),
@@ -131,26 +142,29 @@ class GroupClient {
       email: contact?['email']?.toString(),
       isActive: json['isActive'] is bool ? json['isActive'] as bool : true,
       meta: (json['meta'] as Map?)?.cast<String, dynamic>(),
-      billing:
-          billingJson != null ? ClientBilling.fromJson(billingJson) : null,
-      hasCurrentMonthInvoice:
-          _parseBool(json['hasCurrentMonthInvoice'] ?? json['has_current_month_invoice']),
+      billing: billingJson != null ? ClientBilling.fromJson(billingJson) : null,
+      serviceLocation: serviceLocationJson == null
+          ? null
+          : ClientServiceLocation.fromJson(<String, dynamic>{
+              'clientId': rawId,
+              'clientName': json['name'],
+              'serviceLocation': serviceLocationJson,
+            }),
+      hasCurrentMonthInvoice: _parseBool(
+          json['hasCurrentMonthInvoice'] ?? json['has_current_month_invoice']),
       missingCurrentMonthInvoice: _parseBool(
         json['missingCurrentMonthInvoice'] ??
             json['missing_current_month_invoice'],
       ),
       currentMonthInvoiceCount: _parseInt(
-        json['currentMonthInvoiceCount'] ??
-            json['current_month_invoice_count'],
+        json['currentMonthInvoiceCount'] ?? json['current_month_invoice_count'],
       ),
       lastCurrentMonthInvoiceAt: _parseDate(
         json['lastCurrentMonthInvoiceAt'] ??
             json['last_current_month_invoice_at'],
       ),
-      createdAt:
-          _parseDate(json['createdAt']),
-      updatedAt:
-          _parseDate(json['updatedAt']),
+      createdAt: _parseDate(json['createdAt']),
+      updatedAt: _parseDate(json['updatedAt']),
     );
   }
 

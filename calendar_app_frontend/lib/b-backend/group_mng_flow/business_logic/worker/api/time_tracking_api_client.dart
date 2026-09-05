@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:hexora/a-models/group_model/worker/timeEntry.dart';
+import 'package:hexora/a-models/group_model/worker/geofenced_visit.dart';
 import 'package:hexora/a-models/group_model/worker/working_time_excel_import.dart';
 import 'package:hexora/a-models/group_model/worker/working_time_history.dart';
 import 'package:hexora/a-models/group_model/worker/working_time_import_instructions.dart';
@@ -876,5 +877,161 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
       res,
       fallbackMessage: 'Failed to confirm JSON import',
     );
+  }
+
+  @override
+  Future<LocationTrackingSession> startLocationTracking(
+    String groupId,
+    String token, {
+    required String deviceId,
+    required String platform,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$_root${_ttPath(groupId)}/location-tracking/start'),
+      headers: _headers(token),
+      body: jsonEncode(<String, dynamic>{
+        'deviceId': deviceId,
+        'platform': platform,
+      }),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to start location tracking',
+      );
+    }
+    final decoded = res.body.trim().isEmpty
+        ? const <String, dynamic>{}
+        : Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+    final session = LocationTrackingSession.fromJson(
+      decoded,
+      fallbackGroupId: groupId,
+      fallbackDeviceId: deviceId,
+      fallbackPlatform: platform,
+    );
+    if (session.id.isEmpty) {
+      throw const BackendApiException(
+        statusCode: 500,
+        message: 'Location tracking response did not include a session id',
+      );
+    }
+    return session;
+  }
+
+  @override
+  Future<List<ClientServiceLocation>> getClientLocations(
+    String groupId,
+    String token,
+  ) async {
+    final res = await _client.get(
+      Uri.parse('$_root${_ttPath(groupId)}/client-locations'),
+      headers: _headers(token, json: false),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to load client locations',
+      );
+    }
+    final decoded =
+        res.body.trim().isEmpty ? const <dynamic>[] : jsonDecode(res.body);
+    final raw = decoded is List
+        ? decoded
+        : decoded is Map && decoded['locations'] is List
+            ? decoded['locations'] as List
+            : decoded is Map && decoded['items'] is List
+                ? decoded['items'] as List
+                : decoded is Map && decoded['data'] is List
+                    ? decoded['data'] as List
+                    : const <dynamic>[];
+    return raw
+        .whereType<Map>()
+        .map((item) => ClientServiceLocation.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .where((item) =>
+            item.clientId.isNotEmpty && item.isEnabled && item.radiusMeters > 0)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> sendLocationEvent(
+    String groupId,
+    String token,
+    LocationBoundaryEvent event,
+  ) async {
+    final res = await _client.post(
+      Uri.parse('$_root${_ttPath(groupId)}/location-events'),
+      headers: _headers(token),
+      body: jsonEncode(event.toJson()),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to register location event',
+      );
+    }
+  }
+
+  @override
+  Future<void> stopLocationTracking(
+    String groupId,
+    String sessionId,
+    String token,
+  ) async {
+    final uri = Uri.parse(
+      '$_root${_ttPath(groupId)}/location-tracking/'
+      '${Uri.encodeComponent(sessionId)}/stop',
+    );
+    final res = await _client.post(uri, headers: _headers(token));
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to stop location tracking',
+      );
+    }
+  }
+
+  @override
+  Future<List<WorkerVisit>> getWorkerVisits(
+    String groupId,
+    String token, {
+    DateTime? from,
+    DateTime? to,
+    String? workerId,
+  }) async {
+    final uri = Uri.parse('$_root${_ttPath(groupId)}/worker-visits').replace(
+      queryParameters: <String, String>{
+        if (from != null) 'from': from.toUtc().toIso8601String(),
+        if (to != null) 'to': to.toUtc().toIso8601String(),
+        if (workerId != null && workerId.trim().isNotEmpty)
+          'workerId': workerId.trim(),
+      },
+    );
+    final res = await _client.get(
+      uri,
+      headers: _headers(token, json: false),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to load worker visits',
+      );
+    }
+    final decoded =
+        res.body.trim().isEmpty ? const <dynamic>[] : jsonDecode(res.body);
+    final raw = decoded is List
+        ? decoded
+        : decoded is Map && decoded['visits'] is List
+            ? decoded['visits'] as List
+            : decoded is Map && decoded['items'] is List
+                ? decoded['items'] as List
+                : decoded is Map && decoded['data'] is List
+                    ? decoded['data'] as List
+                    : const <dynamic>[];
+    return raw
+        .whereType<Map>()
+        .map((item) => WorkerVisit.fromJson(Map<String, dynamic>.from(item)))
+        .toList(growable: false);
   }
 }

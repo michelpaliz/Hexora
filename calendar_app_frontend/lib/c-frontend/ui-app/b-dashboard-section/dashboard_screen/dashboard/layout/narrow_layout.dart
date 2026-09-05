@@ -6,6 +6,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/expenses/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/presupuestos_module_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/mail_console_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/maps/client_map_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/telegram/telegram_section_screen.dart';
 
 import '../controller/group_dashboard_sections.dart';
@@ -48,6 +49,13 @@ class NarrowLayout extends StatelessWidget {
         break;
       case Sections.telegram:
         child = const TelegramSectionScreen();
+        break;
+      case Sections.maps:
+        child = ClientMapScreen(
+          group: state.group,
+          embedded: true,
+          canEdit: state.canSeeAdmin,
+        );
         break;
       case Sections.chat:
       case Sections.notifications:

@@ -13,6 +13,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/expenses/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/presupuestos_module_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/mail_console_screen.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/maps/client_map_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/user_profile_popup.dart';
@@ -60,6 +61,7 @@ class WideLayout extends StatelessWidget {
     final showBudgetsInline = kIsWeb && state.activeSection == Sections.budgets;
     final showExpensesInline =
         kIsWeb && state.activeSection == Sections.expenses;
+    final showMapInline = state.activeSection == Sections.maps;
     final showEmailsInline = state.activeSection == 'emails';
     final showEnableBankingInline =
         kIsWeb && state.activeSection == 'enableBanking';
@@ -115,28 +117,37 @@ class WideLayout extends StatelessWidget {
                               group: state.group,
                               embedded: true,
                             )
-                          : showEmailsInline
-                              ? const MailConsoleScreen(embedded: true)
-                              : showEnableBankingInline
-                                  ? EnableBankingScreen(
-                                      group: state.group,
-                                      embedded: true,
-                                    )
-                                  : GroupDashboardRightPanel(
-                                      activeAnchor: state.activeSection,
-                                      counts: state.counts,
-                                      group: state.group,
-                                      user: state.user,
-                                      role: state.role,
-                                      fetchReadSas: state.fetchReadSas,
-                                      usersInGroup: const [],
-                                      onOpenCalendar: () =>
-                                          state.openSection('calendar'),
-                                      onOpenNotifications: () =>
-                                          state.openSection('notifications'),
-                                      onOpenSettings: () =>
-                                          state.openSection('settings'),
-                                    ),
+                          : showMapInline
+                              ? ClientMapScreen(
+                                  key: ValueKey(
+                                    'group-map-${state.group.id}-${state.activeSection}',
+                                  ),
+                                  group: state.group,
+                                  embedded: true,
+                                  canEdit: state.canSeeAdmin,
+                                )
+                              : showEmailsInline
+                                  ? const MailConsoleScreen(embedded: true)
+                                  : showEnableBankingInline
+                                      ? EnableBankingScreen(
+                                          group: state.group,
+                                          embedded: true,
+                                        )
+                                      : GroupDashboardRightPanel(
+                                          activeAnchor: state.activeSection,
+                                          counts: state.counts,
+                                          group: state.group,
+                                          user: state.user,
+                                          role: state.role,
+                                          fetchReadSas: state.fetchReadSas,
+                                          usersInGroup: const [],
+                                          onOpenCalendar: () =>
+                                              state.openSection('calendar'),
+                                          onOpenNotifications: () => state
+                                              .openSection('notifications'),
+                                          onOpenSettings: () =>
+                                              state.openSection('settings'),
+                                        ),
         ),
       ],
     );
@@ -195,6 +206,8 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
         return l.calendar;
       case Sections.services:
         return 'Servicios';
+      case Sections.maps:
+        return l.localeName.startsWith('es') ? 'Mapa' : 'Map';
       case Sections.invoices:
         return l.localeName.startsWith('es') ? 'Ingresos' : 'Income';
       case Sections.budgets:
@@ -247,6 +260,12 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
         icon: Icons.design_services_outlined,
         label: l.localeName.startsWith('es') ? 'Operaciones' : 'Operations',
         section: Sections.services,
+        adminOnly: false,
+      ),
+      (
+        icon: Icons.map_outlined,
+        label: l.localeName.startsWith('es') ? 'Mapa' : 'Map',
+        section: Sections.maps,
         adminOnly: false,
       ),
       (

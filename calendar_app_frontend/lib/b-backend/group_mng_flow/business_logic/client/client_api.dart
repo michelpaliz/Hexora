@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
 import 'package:hexora/a-models/group_model/client/client.dart';
+import 'package:hexora/a-models/group_model/worker/geofenced_visit.dart';
 import 'package:hexora/a-models/group_model/client/client_invoice_stats.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
@@ -167,6 +168,37 @@ class ClientsApi {
     return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
   }
 
+  Future<ClientServiceLocation> updateServiceLocation(
+    String clientId,
+    ClientServiceLocation location,
+  ) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/${Uri.encodeComponent(clientId)}/service-location'),
+      headers: _headers(),
+      body: jsonEncode(<String, dynamic>{
+        'latitude': location.latitude,
+        'longitude': location.longitude,
+        'radiusMeters': location.radiusMeters,
+        if ((location.label ?? '').trim().isNotEmpty)
+          'label': location.label!.trim(),
+        'isEnabled': location.isEnabled,
+      }),
+    );
+    return _decode<ClientServiceLocation>(r, (json) {
+      if (json is! Map) throw Exception('Unexpected service location payload');
+      final map = Map<String, dynamic>.from(json);
+      final client = map['client'];
+      final clientMap = client is Map ? Map<String, dynamic>.from(client) : map;
+      final nested = clientMap['serviceLocation'] ?? map['serviceLocation'];
+      return ClientServiceLocation.fromJson(<String, dynamic>{
+        'clientId': clientId,
+        'clientName': clientMap['name'],
+        'serviceLocation': nested is Map
+            ? Map<String, dynamic>.from(nested)
+            : location.toJson(),
+      });
+    });
+  }
   // PATCH /clients/:id/active  { isActive: true|false }
   Future<GroupClient> setActive(String id, bool isActive) async {
     final r = await AuthenticatedHttpClient.patch(

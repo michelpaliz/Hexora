@@ -52,13 +52,16 @@
     <array>
       <string>fetch</string>
       <string>remote-notification</string>
+      <string>location</string>
     </array>
 
     <!-- 📍 Location (geolocator) -->
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Your location is used to enhance event and calendar features.</string>
+    <string>Hexora uses your location to detect arrivals and departures at assigned client sites while tracking is active.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>Your location is used to enhance event and calendar features.</string>
+    <string>Hexora uses background location only during an active tracking session to record arrivals and departures at client sites.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Hexora uses background location only during an active tracking session to record arrivals and departures at client sites.</string>
 
     <!-- 📷 Camera / Photos (image_picker) -->
     <key>NSCameraUsageDescription</key>

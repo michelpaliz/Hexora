@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:hexora/a-models/group_model/worker/timeEntry.dart';
+import 'package:hexora/a-models/group_model/worker/geofenced_visit.dart';
 import 'package:hexora/a-models/group_model/worker/working_time_excel_import.dart';
 import 'package:hexora/a-models/group_model/worker/working_time_history.dart';
 import 'package:hexora/a-models/group_model/worker/working_time_import_instructions.dart';
@@ -221,5 +222,37 @@ abstract class ITimeTrackingApiClient {
     String? workerId,
     String? duplicateStrategy,
     required List<Map<String, dynamic>> entries,
+  });
+
+  Future<LocationTrackingSession> startLocationTracking(
+    String groupId,
+    String token, {
+    required String deviceId,
+    required String platform,
+  });
+
+  Future<List<ClientServiceLocation>> getClientLocations(
+    String groupId,
+    String token,
+  );
+
+  Future<void> sendLocationEvent(
+    String groupId,
+    String token,
+    LocationBoundaryEvent event,
+  );
+
+  Future<void> stopLocationTracking(
+    String groupId,
+    String sessionId,
+    String token,
+  );
+
+  Future<List<WorkerVisit>> getWorkerVisits(
+    String groupId,
+    String token, {
+    DateTime? from,
+    DateTime? to,
+    String? workerId,
   });
 }
