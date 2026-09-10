@@ -1,3 +1,5 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/mobile_section_tabs.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'dart:convert';
 import 'dart:async';
 

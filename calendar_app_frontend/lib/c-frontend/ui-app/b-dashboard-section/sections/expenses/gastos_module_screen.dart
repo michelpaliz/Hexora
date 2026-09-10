@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/vat/vat_summary_api.dart';
@@ -69,28 +70,9 @@ class _GastosModuleScreenState extends State<GastosModuleScreen>
     );
 
     if (isNarrow && !widget.embedded) {
-      final cs = Theme.of(context).colorScheme;
-      final t = AppTypography.of(context);
       return Scaffold(
-        appBar: AppBar(
-          backgroundColor: cs.surface,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0.5,
-          centerTitle: true,
-          iconTheme: IconThemeData(color: cs.onSurface),
-          actionsIconTheme: IconThemeData(color: cs.onSurface),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
-          title: Text(
-            title,
-            style: t.bodyLarge.copyWith(
-              fontWeight: FontWeight.w800,
-              color: cs.onSurface,
-            ),
-          ),
+        appBar: SectionAppBar(
+          title: title,
         ),
         body: body,
       );
@@ -131,6 +113,17 @@ class _GastosModuleBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isNarrow) {
+      return SafeArea(
+        top: false,
+        child: _GastosTab(
+          isNarrow: true,
+          group: group,
+          selectedSection: 'supplier_invoices',
+          onSectionSelected: onGastosSectionSelected,
+        ),
+      );
+    }
     return Padding(
       padding: EdgeInsets.fromLTRB(10, showFolderTab ? 0 : 8, 10, 8),
       child: FolderPanel(

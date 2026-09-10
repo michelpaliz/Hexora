@@ -337,8 +337,9 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
           key: ValueKey(inv.id),
           padding: const EdgeInsets.only(bottom: 6),
           child: InvoiceListItem(
+            mobile: true,
             invoice: inv,
-            client: _clientFor(inv.clientId, l),
+            client: _clientForInvoice(inv, l),
             onTap: () => _openInvoiceDetail(inv),
             onDelete: invDraft ? () => s._deleteInvoice(inv) : null,
             onEdit: invDraft ? () => s._openEditDraft(inv) : null,
@@ -745,61 +746,16 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final s = widget.state;
 
-    final tabBar = TabBar(
+    final tabBar = MobileSectionTabs(
       controller: _tabController,
-      isScrollable: true,
-      tabAlignment: TabAlignment.center,
-      dividerColor: Colors.transparent,
-      splashFactory: NoSplash.splashFactory,
-      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
-      indicatorSize: TabBarIndicatorSize.tab,
-      indicator: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
-      labelColor: cs.onPrimaryContainer,
-      unselectedLabelColor: cs.onSurfaceVariant,
-      labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-      unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-      tabs: [
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.receipt_long_outlined, size: 15),
-            const SizedBox(width: 5),
-            Text(isSpanish ? 'Facturas' : 'Invoices'),
-          ]),
-        ),
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.description_outlined, size: 15),
-            const SizedBox(width: 5),
-            Text(isSpanish ? 'Recibos' : l.receiptsTitle),
-          ]),
-        ),
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.people_outline, size: 15),
-            const SizedBox(width: 5),
-            Text(isSpanish ? 'Clientes' : 'Clients'),
-          ]),
-        ),
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.request_quote_outlined, size: 15),
-            const SizedBox(width: 5),
-            Text(isSpanish ? 'Presupuestos' : 'Quotes'),
-          ]),
-        ),
+      labels: [
+        isSpanish ? 'Facturas' : 'Invoices',
+        isSpanish ? 'Recibos' : l.receiptsTitle,
+        isSpanish ? 'Clientes' : 'Clients',
+        isSpanish ? 'Presupuestos' : 'Quotes',
       ],
     );
 
@@ -830,40 +786,8 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── title row ──────────────────────────────────────────────────
-            SizedBox(
-              height: 44,
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 48,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                      tooltip:
-                          MaterialLocalizations.of(context).backButtonTooltip,
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        isSpanish ? 'Facturas' : 'Invoices',
-                        style:
-                            t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
-            ),
-            Expanded(child: body),
-          ],
-        ),
-      ),
+      appBar: SectionAppBar(title: isSpanish ? 'Facturas' : 'Invoices'),
+      body: SafeArea(child: body),
     );
   }
 }
@@ -1028,6 +952,7 @@ class _ClientMobileInvoicesScreenState
             key: ValueKey(inv.id),
             padding: const EdgeInsets.only(bottom: 6),
             child: InvoiceListItem(
+              mobile: true,
               invoice: inv,
               client: _clientFor(inv.clientId),
               onTap: () => _openInvoiceDetail(inv),
@@ -1094,48 +1019,8 @@ class _ClientMobileInvoicesScreenState
     );
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: cs.surface,
-        foregroundColor: cs.onSurface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: IconButton(
-            style: IconButton.styleFrom(
-              backgroundColor: cs.surfaceContainerHighest,
-              foregroundColor: cs.primary,
-            ),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
-        ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: cs.primaryContainer,
-              child: Text(
-                c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
-                style: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: cs.onPrimaryContainer,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                c.name,
-                style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+      appBar: SectionAppBar(
+        title: c.name,
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
