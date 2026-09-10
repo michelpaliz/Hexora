@@ -68,7 +68,9 @@ class _InvoicesViewState extends State<InvoicesView> {
     if (_issuingAll || _confirmingIssueAll || widget.onIssueAll == null) {
       return;
     }
-    final drafts = widget.drafts;
+    final drafts = widget.drafts
+        .where((invoice) => invoice.isDraft)
+        .toList(growable: false);
     if (drafts.isEmpty) return;
 
     final isEs = l.localeName.toLowerCase().startsWith('es');
@@ -118,6 +120,9 @@ class _InvoicesViewState extends State<InvoicesView> {
     final t = widget.typography;
     final cs = widget.colorScheme;
     final isEs = l.localeName.toLowerCase().startsWith('es');
+    final selectableDrafts = widget.drafts
+        .where((invoice) => invoice.isDraft)
+        .toList(growable: false);
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -155,10 +160,10 @@ class _InvoicesViewState extends State<InvoicesView> {
                             ),
                           ),
                           if (widget.onIssueAll != null &&
-                              widget.drafts.isNotEmpty) ...[
+                              selectableDrafts.isNotEmpty) ...[
                             const SizedBox(width: 8),
                             _IssueAllButton(
-                              count: widget.drafts.length,
+                              count: selectableDrafts.length,
                               loading: _issuingAll,
                               isEs: isEs,
                               onTap: () => _handleIssueAll(l),
@@ -191,12 +196,17 @@ class _InvoicesViewState extends State<InvoicesView> {
                                     final inv = widget.drafts[i];
                                     final client =
                                         _clientOrUnknown(l, inv.clientId);
-                                    return widget.invoiceItemBuilder(
-                                      inv,
-                                      client,
-                                      onTap: () => widget.onSelectInvoice(inv),
-                                      onDelete: () => widget.onDeleteDraft(inv),
-                                      onEdit: () => widget.onEditDraft(inv),
+                                    return KeyedSubtree(
+                                      key: ValueKey(inv.id),
+                                      child: widget.invoiceItemBuilder(
+                                        inv,
+                                        client,
+                                        onTap: () =>
+                                            widget.onSelectInvoice(inv),
+                                        onDelete: () =>
+                                            widget.onDeleteDraft(inv),
+                                        onEdit: () => widget.onEditDraft(inv),
+                                      ),
                                     );
                                   },
                                 ),
@@ -220,10 +230,14 @@ class _InvoicesViewState extends State<InvoicesView> {
                                     final inv = widget.invoices[i];
                                     final client =
                                         _clientOrUnknown(l, inv.clientId);
-                                    return widget.invoiceItemBuilder(
-                                      inv,
-                                      client,
-                                      onTap: () => widget.onSelectInvoice(inv),
+                                    return KeyedSubtree(
+                                      key: ValueKey(inv.id),
+                                      child: widget.invoiceItemBuilder(
+                                        inv,
+                                        client,
+                                        onTap: () =>
+                                            widget.onSelectInvoice(inv),
+                                      ),
                                     );
                                   },
                                 ),

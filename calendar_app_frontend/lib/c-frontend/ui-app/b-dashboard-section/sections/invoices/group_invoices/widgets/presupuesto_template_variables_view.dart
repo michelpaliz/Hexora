@@ -168,6 +168,11 @@ class _PresupuestoTemplateVariablesViewState
   Map<String, dynamic> _changedVariables() {
     final changes = <String, dynamic>{};
     for (final variable in _variables) {
+      final key = variable.key.toUpperCase();
+      if (variable.isAutomatic ||
+          const {'FECHA', 'DIA', 'MES', 'ANO', 'AÑO'}.contains(key)) {
+        continue;
+      }
       if (variable.clearCustom) {
         changes[variable.key] = null;
         continue;

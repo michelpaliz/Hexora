@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
+import 'package:hexora/a-models/presupuesto/presupuesto_kind.dart';
 
 class PresupuestosApiException implements Exception {
   final int statusCode;
@@ -154,6 +155,8 @@ class PresupuestosApi {
   Uri buildListByGroupUri(
     String groupId, {
     String? clientId,
+    PresupuestoKind? presupuestoKind,
+    String? status,
     String? sortBy,
     String? sortDir,
     int? limit,
@@ -161,6 +164,8 @@ class PresupuestosApi {
     final query = <String, String>{
       if (clientId != null && clientId.trim().isNotEmpty)
         'clientId': clientId.trim(),
+      if (presupuestoKind != null) 'presupuestoKind': presupuestoKind.apiValue,
+      if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
       if (sortBy != null && sortBy.trim().isNotEmpty) 'sortBy': sortBy.trim(),
       if (sortDir != null && sortDir.trim().isNotEmpty)
         'sortDir': sortDir.trim(),
@@ -183,6 +188,9 @@ class PresupuestosApi {
   String _resolveErrorMessage(http.Response r, dynamic body) {
     if (body is Map && body['message'] != null) {
       return body['message'].toString();
+    }
+    if (body is Map && body['error'] != null) {
+      return body['error'].toString();
     }
     if (body is String && body.trim().isNotEmpty) {
       return body.trim();
@@ -295,6 +303,7 @@ class PresupuestosApi {
     List<Map<String, dynamic>>? lines,
     List<Map<String, dynamic>>? blocks,
     Map<String, dynamic>? totals,
+    num? advancePercent,
   }) async {
     final payload = <String, dynamic>{
       if (clientId != null && clientId.trim().isNotEmpty)
@@ -316,6 +325,7 @@ class PresupuestosApi {
       if (lines != null) 'lines': lines,
       if (blocks != null) 'blocks': blocks,
       if (totals != null) 'totals': totals,
+      if (advancePercent != null) 'advancePercent': advancePercent,
     };
     final r = await AuthenticatedHttpClient.patch(
       _u('/$id/draft'),
@@ -433,6 +443,8 @@ class PresupuestosApi {
   Future<List<Map<String, dynamic>>> listByGroup({
     required String groupId,
     String? clientId,
+    PresupuestoKind? presupuestoKind,
+    String? status,
     String? sortBy,
     String? sortDir,
     int? limit,
@@ -440,6 +452,8 @@ class PresupuestosApi {
     final uri = buildListByGroupUri(
       groupId,
       clientId: clientId,
+      presupuestoKind: presupuestoKind,
+      status: status,
       sortBy: sortBy,
       sortDir: sortDir,
       limit: limit,
@@ -625,6 +639,80 @@ class PresupuestosApi {
       headers: _headers(),
     );
     return _decodeMap(r);
+  }
+
+  Future<List<Map<String, dynamic>>> listImageLibrary(String groupId) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/image-library/group/${groupId.trim()}'),
+      headers: _headers(),
+    );
+    final body = _tryDecodeBody(r.body);
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      _decodeMap(r);
+    }
+
+    dynamic rows = body;
+    if (body is Map) {
+      rows = body['images'] ??
+          body['assets'] ??
+          body['imageAssets'] ??
+          body['items'] ??
+          body['data'];
+      if (rows is Map) {
+        rows = rows['images'] ?? rows['assets'] ?? rows['items'];
+      }
+    }
+    if (rows is! List) return const <Map<String, dynamic>>[];
+    return rows
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> uploadImageLibraryAsset({
+    required String groupId,
+    required List<int> bytes,
+    required String fileName,
+    String? name,
+  }) async {
+    final path = '/image-library/group/${groupId.trim()}';
+    final auth = await _requireAuthToken(path: path, method: 'POST');
+    final req = http.MultipartRequest('POST', _u(path));
+    req.headers['Authorization'] = auth;
+    if ((name ?? '').trim().isNotEmpty) req.fields['name'] = name!.trim();
+    req.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+    );
+    final streamed = await req.send();
+    return _decodeMap(await http.Response.fromStream(streamed));
+  }
+
+  Future<Map<String, dynamic>> attachImageLibraryAsset({
+    required String targetId,
+    required String imageId,
+    required String slot,
+    String? label,
+    bool enabled = true,
+  }) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u('/image-library/targets/${targetId.trim()}'),
+      headers: _headers(),
+      body: jsonEncode(<String, dynamic>{
+        'imageId': imageId.trim(),
+        'slot': slot.trim(),
+        'label': (label ?? '').trim(),
+        'enabled': enabled,
+      }),
+    );
+    return _decodeMap(r);
+  }
+
+  Future<void> deleteImageLibraryAsset(String imageId) async {
+    final r = await AuthenticatedHttpClient.delete(
+      _u('/image-library/${imageId.trim()}'),
+      headers: _headers(),
+    );
+    if (r.statusCode < 200 || r.statusCode >= 300) _decodeMap(r);
   }
 
   Future<Map<String, dynamic>> uploadTemplateImage({

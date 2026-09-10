@@ -129,6 +129,8 @@ class StatementsController extends ChangeNotifier {
   double? allEntriesMinAmount;
   double? allEntriesMaxAmount;
   String? allEntriesClientProviderQuery;
+  String? allEntriesDescriptionSearch;
+  String? allEntriesNotesSearch;
   String allEntriesSort = 'date_desc';
 
   // Batch freshness status
@@ -792,7 +794,11 @@ class StatementsController extends ChangeNotifier {
       amountType: allEntriesAmountType,
       minAmount: allEntriesMinAmount,
       maxAmount: allEntriesMaxAmount,
+      clientProviderQuery: allEntriesClientProviderQuery,
+      descriptionSearch: allEntriesDescriptionSearch,
+      notesSearch: allEntriesNotesSearch,
       sort: allEntriesSort,
+      applyDateFilters: true,
       applyAmountFilters: true,
     );
 
@@ -898,8 +904,11 @@ class StatementsController extends ChangeNotifier {
     double? minAmount,
     double? maxAmount,
     String? clientProviderQuery,
+    String? descriptionSearch,
+    String? notesSearch,
     String? sort,
     String? cursor,
+    bool applyDateFilters = false,
     bool applyAmountFilters = false,
   }) async {
     _repairHotReloadState();
@@ -907,7 +916,9 @@ class StatementsController extends ChangeNotifier {
     loadingAllEntries = true;
     allEntriesError = null;
     if (size != null) allEntriesSize = size;
-    allEntriesYear = year;
+    if (applyDateFilters || year != null) {
+      allEntriesYear = year;
+    }
     if (dateFrom != null) {
       final trimmed = dateFrom.trim();
       allEntriesDateFrom = trimmed.isEmpty ? null : trimmed;
@@ -934,6 +945,15 @@ class StatementsController extends ChangeNotifier {
     } else if (amountType != null && amountType.trim().isNotEmpty) {
       allEntriesAmountType = amountType.trim();
     }
+    if (descriptionSearch != null) {
+      final trimmedDescription = descriptionSearch.trim();
+      allEntriesDescriptionSearch =
+          trimmedDescription.isEmpty ? null : trimmedDescription;
+    }
+    if (notesSearch != null) {
+      final trimmedNotes = notesSearch.trim();
+      allEntriesNotesSearch = trimmedNotes.isEmpty ? null : trimmedNotes;
+    }
 
     if (allEntriesPage <= 1) {
       _allEntriesCursorByPage
@@ -948,7 +968,9 @@ class StatementsController extends ChangeNotifier {
           '[Statements] loadAllEntries size=$allEntriesSize page=$allEntriesPage '
           'year=$allEntriesYear from=$allEntriesDateFrom to=$allEntriesDateTo '
           'amountType=$allEntriesAmountType min=$allEntriesMinAmount max=$allEntriesMaxAmount '
-          'clientProvider=$allEntriesClientProviderQuery sort=$allEntriesSort groupId=$groupId',
+          'clientProvider=$allEntriesClientProviderQuery descriptionSearch=$allEntriesDescriptionSearch '
+          'notesSearch=$allEntriesNotesSearch '
+          'sort=$allEntriesSort groupId=$groupId',
         );
       }
 
@@ -1018,7 +1040,9 @@ class StatementsController extends ChangeNotifier {
         '[Statements] aggregated request groupId=$gid page=$page size=$size '
         'cursor=$cursorToUse year=$allEntriesYear from=$allEntriesDateFrom to=$allEntriesDateTo '
         'amountType=$allEntriesAmountType min=$allEntriesMinAmount max=$allEntriesMaxAmount '
-        'clientProvider=$allEntriesClientProviderQuery sort=$allEntriesSort',
+        'clientProvider=$allEntriesClientProviderQuery descriptionSearch=$allEntriesDescriptionSearch '
+        'notesSearch=$allEntriesNotesSearch '
+        'sort=$allEntriesSort',
       );
     }
 
@@ -1038,6 +1062,8 @@ class StatementsController extends ChangeNotifier {
       minAmount: allEntriesMinAmount,
       maxAmount: allEntriesMaxAmount,
       clientProviderQuery: allEntriesClientProviderQuery,
+      descriptionSearch: allEntriesDescriptionSearch,
+      notesSearch: allEntriesNotesSearch,
       sort: allEntriesSort,
     );
 

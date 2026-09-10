@@ -140,7 +140,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             .format(invoice.registeredAt!.toLocal())
         : null;
     final occurrenceDateLabel = invoice.occurrenceDate != null
-        ? DateFormat.yMMMd(l.localeName).add_Hm().format(invoice.occurrenceDate!)
+        ? DateFormat.yMMMd(l.localeName)
+            .add_Hm()
+            .format(invoice.occurrenceDate!)
         : null;
 
     final money = NumberFormat.currency(locale: l.localeName, symbol: '€');
@@ -233,7 +235,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                           ),
                         ),
                         Text(
-                          invoice.invoiceNumber,
+                          invoice.displayNumber(draftLabel: l.statusDraft),
                           style: t.bodyLarge.copyWith(
                             fontWeight: FontWeight.w900,
                             color: cs.onSurface,
@@ -246,7 +248,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                       [
                         if (linesCountLabel != dash)
                           '${l.invoiceLinesTitle}: $linesCountLabel'
-                          '${registeredDateLabel == null ? '' : ' � $registeredDateLabel'}',
+                              '${registeredDateLabel == null ? '' : ' � $registeredDateLabel'}',
                         if (linesCountLabel == dash &&
                             registeredDateLabel != null)
                           registeredDateLabel,
@@ -326,16 +328,18 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                     children: [
                       // ═══ METADATA GROUP ═══
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                          color:
+                              cs.surfaceContainerHighest.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (invoice.recurringSeriesId?.trim().isNotEmpty == true)
+                            if (invoice.recurringSeriesId?.trim().isNotEmpty ==
+                                true)
                               _MetaIcon(
                                 icon: Icons.repeat_rounded,
                                 tooltip:

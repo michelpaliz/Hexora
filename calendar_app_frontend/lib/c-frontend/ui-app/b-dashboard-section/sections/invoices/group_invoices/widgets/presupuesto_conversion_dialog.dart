@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
+import 'package:hexora/a-models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_advance_final_flow.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -177,8 +178,7 @@ class _PresupuestoConversionDialogState
     for (final key in ['total', 'totalAmount', 'amount']) {
       final v = p[key];
       if (v is num) return v.toDouble();
-      final parsed =
-          double.tryParse((v ?? '').toString().replaceAll(',', '.'));
+      final parsed = double.tryParse((v ?? '').toString().replaceAll(',', '.'));
       if (parsed != null) return parsed;
     }
     return 0;
@@ -188,8 +188,7 @@ class _PresupuestoConversionDialogState
     for (final key in ['subtotal', 'baseAmount', 'taxableBase']) {
       final v = p[key];
       if (v is num) return v.toDouble();
-      final parsed =
-          double.tryParse((v ?? '').toString().replaceAll(',', '.'));
+      final parsed = double.tryParse((v ?? '').toString().replaceAll(',', '.'));
       if (parsed != null) return parsed;
     }
     return 0;
@@ -245,12 +244,13 @@ class _PresupuestoConversionDialogState
       _browseError = null;
     });
     try {
-      final items =
-          await widget.api.listByGroup(groupId: widget.groupId);
+      final items = await widget.api.listByGroup(
+        groupId: widget.groupId,
+        presupuestoKind: PresupuestoKind.structured,
+      );
       if (!mounted) return;
       setState(() {
-        _browseItems =
-            items.where((e) => _isIssued(e)).toList(growable: false);
+        _browseItems = items.where((e) => _isIssued(e)).toList(growable: false);
       });
     } catch (e) {
       if (!mounted) return;
@@ -266,8 +266,7 @@ class _PresupuestoConversionDialogState
     try {
       final detail = await widget.api.getById(_id(_presupuesto!));
       if (!mounted) return;
-      final candidates =
-          extractAdvanceInvoiceCandidatesFromPresupuesto(detail);
+      final candidates = extractAdvanceInvoiceCandidatesFromPresupuesto(detail);
       setState(() {
         _advanceCandidates = candidates;
         _selectedCandidate = candidates.isEmpty
@@ -477,8 +476,7 @@ class _PresupuestoConversionDialogState
                 submitting: _submitting,
                 isSpanish: isSpanish,
                 onBack: _canGoBack ? _back : null,
-                onSubmitAdvance:
-                    _step == _Step.advance ? _submitAdvance : null,
+                onSubmitAdvance: _step == _Step.advance ? _submitAdvance : null,
                 onSubmitFinal: _step == _Step.final_ ? _submitFinal : null,
                 cs: cs,
                 t: t,
@@ -636,9 +634,8 @@ class _DialogHeader extends StatelessWidget {
         break;
       case _Step.final_:
         title = isSpanish ? 'Factura Final' : 'Final Invoice';
-        subtitle = isSpanish
-            ? 'Cierre del presupuesto'
-            : 'Close out the presupuesto';
+        subtitle =
+            isSpanish ? 'Cierre del presupuesto' : 'Close out the presupuesto';
         break;
       case _Step.success:
         title = isSpanish ? '¡Factura Creada!' : 'Invoice Created!';
@@ -677,11 +674,9 @@ class _DialogHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style:
-                        t.bodyLarge.copyWith(fontWeight: FontWeight.w800)),
+                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800)),
                 Text(subtitle,
-                    style: t.bodySmall
-                        .copyWith(color: cs.onSurfaceVariant)),
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
               ],
             ),
           ),
@@ -716,7 +711,8 @@ class _StepIndicator extends StatelessWidget {
       _Step.actionPick,
       _Step.advance, // shown as the "form" step
     ];
-    final activeIndex = steps.indexOf(step == _Step.final_ ? _Step.advance : step);
+    final activeIndex =
+        steps.indexOf(step == _Step.final_ ? _Step.advance : step);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -763,9 +759,7 @@ class _Dot extends StatelessWidget {
             ? Border.all(color: cs.primary.withValues(alpha: 0.4), width: 2.5)
             : null,
       ),
-      child: done
-          ? null
-          : null,
+      child: done ? null : null,
     );
   }
 }
@@ -945,8 +939,8 @@ class _BrowseStepState extends State<_BrowseStep> {
                               widget.isSpanish
                                   ? 'No hay presupuestos emitidos'
                                   : 'No issued presupuestos found',
-                              style: widget.t.bodySmall.copyWith(
-                                  color: widget.cs.onSurfaceVariant),
+                              style: widget.t.bodySmall
+                                  .copyWith(color: widget.cs.onSurfaceVariant),
                             ),
                           )
                         : ListView.separated(
@@ -958,9 +952,8 @@ class _BrowseStepState extends State<_BrowseStep> {
                               final dt = widget.date(p);
                               final dateLabel = dt == null
                                   ? '—'
-                                  : DateFormat.yMMMd(widget.isSpanish
-                                          ? 'es'
-                                          : 'en')
+                                  : DateFormat.yMMMd(
+                                          widget.isSpanish ? 'es' : 'en')
                                       .format(dt.toLocal());
                               final totalFmt = NumberFormat.currency(
                                 locale: widget.isSpanish ? 'es' : 'en',
@@ -1004,8 +997,8 @@ class _BrowseStepState extends State<_BrowseStep> {
                                             ),
                                             Text(
                                               '${widget.number(p)} · $dateLabel',
-                                              style: widget.t.bodySmall
-                                                  .copyWith(
+                                              style:
+                                                  widget.t.bodySmall.copyWith(
                                                 color:
                                                     widget.cs.onSurfaceVariant,
                                                 fontSize: 11,
@@ -1115,7 +1108,9 @@ class _ActionPickStep extends StatelessWidget {
                 : 'Create a partial advance (e.g. 70%)',
             disabled: !actionState.canCreateAdvance,
             disabledReason: actionState.hasAdvance
-                ? (isSpanish ? 'Ya existe un anticipo' : 'Advance already exists')
+                ? (isSpanish
+                    ? 'Ya existe un anticipo'
+                    : 'Advance already exists')
                 : (isSpanish
                     ? 'El presupuesto debe estar emitido'
                     : 'Presupuesto must be issued'),
@@ -1133,7 +1128,9 @@ class _ActionPickStep extends StatelessWidget {
                 : 'Close out the presupuesto. If there is an advance, it is deducted automatically.',
             disabled: !actionState.canCreateFinal,
             disabledReason: actionState.hasFinal
-                ? (isSpanish ? 'Ya existe factura final' : 'Final invoice already exists')
+                ? (isSpanish
+                    ? 'Ya existe factura final'
+                    : 'Final invoice already exists')
                 : (isSpanish
                     ? 'El presupuesto debe estar emitido'
                     : 'Presupuesto must be issued'),
@@ -1190,8 +1187,7 @@ class _PresupuestoSummaryCard extends StatelessWidget {
                   children: [
                     Text(
                       clientName,
-                      style: t.bodyMedium
-                          .copyWith(fontWeight: FontWeight.w900),
+                      style: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1333,8 +1329,7 @@ class _ActionCard extends StatelessWidget {
               Icon(
                 icon,
                 size: 22,
-                color:
-                    (disabled ? cs.onSurfaceVariant : cs.primary).withValues(
+                color: (disabled ? cs.onSurfaceVariant : cs.primary).withValues(
                   alpha: effectiveAlpha,
                 ),
               ),
@@ -1445,11 +1440,10 @@ class _AdvanceFormStep extends StatelessWidget {
                     controller: percentCtrl,
                     label: isSpanish ? 'Porcentaje (%)' : 'Percent (%)',
                     hint: '70',
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                          RegExp(r'[0-9.,]')),
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                     ],
                     validator: (v) {
                       final n = double.tryParse(
@@ -1469,16 +1463,14 @@ class _AdvanceFormStep extends StatelessWidget {
                     controller: taxRateCtrl,
                     label: isSpanish ? 'IVA (%)' : 'VAT (%)',
                     hint: '21',
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                          RegExp(r'[0-9.,]')),
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                     ],
                     validator: (v) {
                       if ((v ?? '').trim().isEmpty) return null;
-                      final n = double.tryParse(
-                          v!.trim().replaceAll(',', '.'));
+                      final n = double.tryParse(v!.trim().replaceAll(',', '.'));
                       if (n == null || n < 0) {
                         return isSpanish ? 'Debe ser ≥ 0' : 'Must be ≥ 0';
                       }
@@ -1589,8 +1581,8 @@ class _FinalFormStep extends StatelessWidget {
             isSpanish
                 ? 'Factura anticipo vinculada (opcional)'
                 : 'Linked advance invoice (optional)',
-            style: t.bodySmall
-                .copyWith(fontWeight: FontWeight.w700, fontSize: 12),
+            style:
+                t.bodySmall.copyWith(fontWeight: FontWeight.w700, fontSize: 12),
           ),
           const SizedBox(height: 4),
           if (loading)
@@ -1695,8 +1687,7 @@ class _AdvanceCandidateDropdown extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   c.number,
-                  style: t.bodySmall
-                      .copyWith(fontWeight: FontWeight.w700),
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (c.isIssued) ...[
@@ -1770,8 +1761,7 @@ class _SuccessStep extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             isSpanish ? '¡Borrador creado!' : 'Draft created!',
-            style:
-                t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+            style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
@@ -1896,8 +1886,9 @@ class _InfoStrip extends StatelessWidget {
           Icon(
             icon,
             size: 14,
-            color:
-                subtle ? cs.onSurfaceVariant : cs.primary.withValues(alpha: 0.7),
+            color: subtle
+                ? cs.onSurfaceVariant
+                : cs.primary.withValues(alpha: 0.7),
           ),
           const SizedBox(width: 6),
           Expanded(

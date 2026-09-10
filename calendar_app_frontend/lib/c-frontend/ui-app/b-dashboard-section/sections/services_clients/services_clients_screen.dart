@@ -125,8 +125,17 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) =>
-          AddClientSheet(groupId: widget.group.id, api: _clientsApi),
+      builder: (sheetContext) => AddClientSheet(
+        groupId: widget.group.id,
+        api: _clientsApi,
+        existingClients: _clients,
+        onOpenExisting: (client) {
+          Navigator.of(sheetContext).pop();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _openEditClientSheet(client);
+          });
+        },
+      ),
     );
     if (created != null && mounted) {
       setState(() => _clients.insert(0, created));
@@ -170,6 +179,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         groupId: widget.group.id, // harmless on edit
         api: _clientsApi,
         client: c,
+        existingClients: _clients,
       ),
     );
 
@@ -615,8 +625,10 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                   groupId: widget.group.id,
                   api: _clientsApi,
                   client: _editingClient,
+                  existingClients: _clients,
                   closeOnSave: false,
                   onSaved: _handleClientSaved,
+                  onOpenExisting: _startEditClient,
                 );
               }
 

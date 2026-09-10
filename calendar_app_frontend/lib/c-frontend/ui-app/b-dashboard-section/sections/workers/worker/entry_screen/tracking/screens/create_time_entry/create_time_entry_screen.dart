@@ -23,12 +23,14 @@ class CreateTimeEntryScreen extends StatefulWidget {
     required this.workers,
     this.embedded = false,
     this.initialSelectedIds,
+    this.onCreated,
   }) : assert(workers.length > 0);
 
   final Group group;
   final List<Worker> workers;
   final bool embedded;
   final Set<String>? initialSelectedIds;
+  final VoidCallback? onCreated;
 
   @override
   State<CreateTimeEntryScreen> createState() => _CreateTimeEntryScreenState();
@@ -143,6 +145,7 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(l.timeEntryCreated)));
+      widget.onCreated?.call();
       if (widget.embedded) {
         final now = DateTime.now();
         setState(() {

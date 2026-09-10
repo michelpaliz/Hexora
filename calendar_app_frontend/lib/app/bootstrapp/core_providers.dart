@@ -29,7 +29,13 @@ final List<SingleChildWidget> coreProviders = [
   ChangeNotifierProvider(create: (_) => NotificationDomain()),
 
   // ðŸ” Token store (single source of truth)
-  Provider<TokenStore>(create: (_) => SecureTokenStore()),
+  Provider<TokenStore>(
+    create: (_) {
+      final store = SecureTokenStore();
+      TokenService.configureStore(store);
+      return store;
+    },
+  ),
 
   // User stack (token from injected store, not static)
   Provider<IUserApiClient>(create: (_) => UserApiClient()),

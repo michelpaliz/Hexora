@@ -14,6 +14,7 @@ import 'package:hexora/b-backend/telegram/domain/telegram_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/controller/group_dashboard_state.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/telegram/components/telegram_client_document_picker_dialog.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/telegram/components/telegram_issued_presupuesto_picker_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/telegram/components/telegram_worker_document_picker_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -356,6 +357,54 @@ class _TelegramChatViewState extends State<TelegramChatView> {
     _composerFocusNode.requestFocus();
   }
 
+  Future<void> _handlePickIssuedPresupuesto() async {
+    final groupId = _currentGroupId();
+    if (groupId == null || groupId.isEmpty) {
+      if (!mounted) return;
+      final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isSpanish
+                ? 'Selecciona un grupo para cargar sus presupuestos.'
+                : 'Select a group to load its budgets.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final selection = await showTelegramIssuedPresupuestoPickerDialog(
+      context,
+      groupId: groupId,
+    );
+    if (!mounted || selection == null) return;
+
+    final chatId = widget.chat.id;
+    final topicId = widget.forumTopic?.forumTopicId;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final shouldAutoScroll = _isNearBottom();
+    final sent = await widget.domain.sendPresupuesto(
+      chatId,
+      presupuestoId: selection.id,
+      caption: selection.isDraft
+          ? (isSpanish ? 'Borrador de presupuesto' : 'Budget draft')
+          : (isSpanish ? 'Presupuesto emitido' : 'Issued budget'),
+      forumTopicId: topicId,
+    );
+    if (!mounted ||
+        _activeChatId != chatId ||
+        _activeForumTopicId != topicId ||
+        !sent) {
+      return;
+    }
+
+    if (shouldAutoScroll) {
+      _jumpToBottom(animated: true);
+    }
+    _composerFocusNode.requestFocus();
+  }
+
   void _handleClearAttachment() {
     widget.domain.clearAttachment(
       widget.chat.id,
@@ -528,6 +577,7 @@ class _TelegramChatViewState extends State<TelegramChatView> {
                 onPickAttachment: _handlePickAttachment,
                 onPickClientDocument: _handlePickClientDocument,
                 onPickWorkerDocument: _handlePickWorkerDocument,
+                onPickIssuedPresupuesto: _handlePickIssuedPresupuesto,
                 onClearAttachment: _handleClearAttachment,
                 onClearReply: _handleClearReply,
                 onKeyEvent: _handleComposerKey,
@@ -1145,6 +1195,7 @@ class TelegramChatComposer extends StatelessWidget {
     required this.onPickAttachment,
     required this.onPickClientDocument,
     required this.onPickWorkerDocument,
+    required this.onPickIssuedPresupuesto,
     required this.onClearAttachment,
     required this.onClearReply,
     required this.onKeyEvent,
@@ -1161,6 +1212,7 @@ class TelegramChatComposer extends StatelessWidget {
   final VoidCallback onPickAttachment;
   final VoidCallback onPickClientDocument;
   final VoidCallback onPickWorkerDocument;
+  final VoidCallback onPickIssuedPresupuesto;
   final VoidCallback onClearAttachment;
   final VoidCallback onClearReply;
   final KeyEventResult Function(FocusNode node, KeyEvent event) onKeyEvent;
@@ -1293,6 +1345,15 @@ class TelegramChatComposer extends StatelessWidget {
                 tooltip: l.chatComposerAttachWorkerPdf,
                 icon: Icons.badge_rounded,
                 onPressed: attachEnabled ? onPickWorkerDocument : null,
+                cs: cs,
+              ),
+              const SizedBox(width: 4),
+              _AttachButton(
+                tooltip: Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Presupuestos'
+                    : 'Budgets',
+                icon: Icons.request_quote_rounded,
+                onPressed: attachEnabled ? onPickIssuedPresupuesto : null,
                 cs: cs,
               ),
               // ── Hint ───────────────────────────────────────

@@ -1,3 +1,4 @@
+import 'package:hexora/a-models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 
 enum PresupuestoDocumentSection { drafts, issued }
@@ -130,8 +131,20 @@ List<Map<String, dynamic>> filterPresupuestoDocuments(
       .toList(growable: false);
 }
 
-bool presupuestoHasDocumentContent(Map<String, dynamic> document) =>
-    document['hasDocumentContent'] == true;
+bool presupuestoHasDocumentContent(Map<String, dynamic> document) {
+  return PresupuestoKind.fromJson(document) == PresupuestoKind.document;
+}
+
+bool presupuestoHasProposalContent(Map<String, dynamic> document) {
+  if (document['proposalTemplate'] is Map ||
+      document['documentContent'] is Map ||
+      document['templateContent'] is Map) {
+    return true;
+  }
+  final contentFlag = document['hasDocumentContent'];
+  return contentFlag == true ||
+      contentFlag?.toString().trim().toLowerCase() == 'true';
+}
 
 String presupuestoDocumentStatus(Map<String, dynamic> document) =>
     (document['status'] ?? '').toString().trim().toLowerCase();
@@ -355,7 +368,7 @@ String? presupuestoDocumentIssueValidation(
   if (presupuestoDocumentClientName(document).isEmpty) {
     return 'Indica el nombre del cliente antes de emitir.';
   }
-  if (!presupuestoHasDocumentContent(document)) {
+  if (!presupuestoHasProposalContent(document)) {
     return 'El presupuesto no contiene un documento para emitir.';
   }
   if (presupuestoDocumentId(document).isEmpty) {

@@ -15,6 +15,28 @@ class _MailComposeView extends StatelessWidget {
     final canSend = state._hasRecipientCandidate() &&
         state._quillController.document.toPlainText().trim().isNotEmpty &&
         state._subjectCtrl.text.trim().isNotEmpty;
+    final hasRecipient = state._hasRecipientCandidate();
+    final hasSubject = state._subjectCtrl.text.trim().isNotEmpty;
+    final hasMessage =
+        state._quillController.document.toPlainText().trim().isNotEmpty;
+    final sendLabel = state._isSpanishLocale ? 'Enviar correo' : 'Send email';
+    final disabledSendHint = !hasRecipient
+        ? (state._isSpanishLocale
+            ? 'Selecciona un destinatario para enviar.'
+            : 'Select a recipient to send.')
+        : !hasSubject && !hasMessage
+            ? (state._isSpanishLocale
+                ? 'Introduce un asunto y un mensaje para enviar.'
+                : 'Enter a subject and message to send.')
+            : !hasSubject
+                ? (state._isSpanishLocale
+                    ? 'Introduce un asunto para enviar.'
+                    : 'Enter a subject to send.')
+                : !hasMessage
+                    ? (state._isSpanishLocale
+                        ? 'Escribe un mensaje para enviar.'
+                        : 'Write a message to send.')
+                    : null;
     final recipientClients = state._recipientClientsWithEmail();
 
     final inputDecoration = InputDecoration(
@@ -174,14 +196,17 @@ class _MailComposeView extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(56, 0, 12, 6),
                       child: Row(children: [
-                        Icon(Icons.send_rounded,
-                            size: 12, color: cs.primary.withValues(alpha: 0.8)),
+                        Icon(
+                          Icons.alternate_email_rounded,
+                          size: 12,
+                          color: cs.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             state._selectedRecipientClientEmail()!,
                             style: t.bodySmall.copyWith(
-                              color: cs.primary,
+                              color: cs.onSurfaceVariant,
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1166,8 +1191,8 @@ class _MailComposeView extends StatelessWidget {
                 sending: state._sending,
                 enabled: canSend,
                 onSend: state._send,
-                label:
-                    state._sending ? l.mailComposeSending : l.mailComposeSend,
+                label: state._sending ? l.mailComposeSending : sendLabel,
+                disabledHint: disabledSendHint,
               ),
             ],
           ),
@@ -1186,9 +1211,8 @@ class _MailComposeView extends StatelessWidget {
                     sending: state._sending,
                     enabled: canSend,
                     onSend: state._send,
-                    label: state._sending
-                        ? l.mailComposeSending
-                        : l.mailComposeSend,
+                    label: state._sending ? l.mailComposeSending : sendLabel,
+                    disabledHint: disabledSendHint,
                   ),
                 ],
               ),
@@ -1214,7 +1238,8 @@ class _MailComposeView extends StatelessWidget {
         sending: state._sending,
         enabled: canSend,
         onSend: state._send,
-        label: state._sending ? l.mailComposeSending : l.mailComposeSend,
+        label: state._sending ? l.mailComposeSending : sendLabel,
+        disabledHint: disabledSendHint,
       ),
     );
   }
@@ -1745,7 +1770,6 @@ class _ClientSearchField extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final selected = _selected;
     final hasSelection = selected != null;
-    final email = (selected?.billing?.email ?? selected?.email ?? '').trim();
 
     if (loading) {
       return Row(
@@ -1791,11 +1815,7 @@ class _ClientSearchField extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                hasSelection
-                    ? (email.isNotEmpty
-                        ? '${selected.name} · $email'
-                        : selected.name)
-                    : l.selectClientFirst,
+                hasSelection ? selected.name : l.selectClientFirst,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: t.bodySmall.copyWith(

@@ -12,7 +12,6 @@ class _InlineInvoiceFlowPanel extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-
     if (state._inlineInvoiceLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -831,6 +830,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final invoicesLabel = isSpanish ? 'Facturas' : 'Invoices';
     final q = _invoiceSearchCtrl.text.trim().toLowerCase();
     final filteredInvoices = _invoices.where((invoice) {
       if (!_matchesDateFilter(invoice.issueDate ?? invoice.registeredAt)) {
@@ -873,9 +874,9 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
 
     Widget stepHeader() {
       final steps = [
-        l.invoiceBillToLabel,
-        l.mailComposeInvoiceIdsLabel,
-        l.preview,
+        isSpanish ? 'Cliente' : 'Client',
+        invoicesLabel,
+        isSpanish ? 'Revisar' : 'Review',
       ];
       // Build interleaved list: step — connector — step — connector — step
       final items = <Widget>[];
@@ -1024,7 +1025,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
               decoration: InputDecoration(
                 isDense: true,
                 prefixIcon: const Icon(Icons.search, size: 18),
-                hintText: l.mailComposeInvoiceIdsHint,
+                hintText: isSpanish ? 'Buscar por número' : 'Search by number',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide(
@@ -1107,7 +1108,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
             Row(
               children: [
                 Text(
-                  '${l.mailComposeInvoiceIdsLabel}: $selectedCount',
+                  '${isSpanish ? 'Seleccionadas' : 'Selected'}: $selectedCount',
                   style: t.bodySmall.copyWith(
                     color: selectedCount > 0 ? cs.primary : cs.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
@@ -1157,7 +1158,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 6),
                                     child: Text(
-                                      l.mailComposeInvoiceIdsLabel,
+                                      invoicesLabel,
                                       style: t.bodySmall.copyWith(
                                         color: cs.onSurface,
                                         fontWeight: FontWeight.w700,
@@ -1377,7 +1378,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                 : ListView(
                     children: [
                       if (selectedInvoices.isNotEmpty) ...[
-                        _previewSectionLabel(l.mailComposeInvoiceIdsLabel, cs),
+                        _previewSectionLabel(invoicesLabel, cs),
                         ...selectedInvoices.map(
                           (invoice) => _buildPreviewItemCard(
                             typeIcon: Icons.receipt_long_outlined,
@@ -1471,6 +1472,49 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.attach_file_rounded,
+                  size: 18,
+                  color: cs.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isSpanish ? 'Adjuntar facturas' : 'Attach invoices',
+                      style: t.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isSpanish
+                          ? 'Selecciona el cliente y las facturas que quieres enviar.'
+                          : 'Select the client and invoices you want to send.',
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           stepHeader(),
           const SizedBox(height: 10),
           Expanded(child: stepBody()),

@@ -178,6 +178,43 @@ class RecurringReceiptsApi extends RecurringInvoicesApi {
     );
   }
 
+  @override
+  Uri buildRunSeriesUri(String id) =>
+      _u('/${Uri.encodeComponent(id.trim())}/run');
+
+  @override
+  Future<Map<String, dynamic>> runSeries(String id) async {
+    final trimmedId = id.trim();
+    if (trimmedId.isEmpty) {
+      throw ArgumentError.value(id, 'id', 'Series id is required');
+    }
+
+    final uri = buildRunSeriesUri(trimmedId);
+    final r = await AuthenticatedHttpClient.post(uri, headers: _headers());
+    if (r.statusCode == 404 || r.statusCode == 405) {
+      final fallbackUri = _u('/run');
+      final fallback = await AuthenticatedHttpClient.post(
+        fallbackUri,
+        headers: _headers(),
+        body: jsonEncode(<String, dynamic>{'seriesId': trimmedId}),
+      );
+      return _decode<Map<String, dynamic>>(
+        fallback,
+        url: fallbackUri,
+        method: 'POST',
+        map: (j) =>
+            (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      );
+    }
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
   Invoice _invoiceFromReceipt(Receipt r) {
     final subtotal = r.subtotal ??
         r.lines.fold<num>(0, (sum, line) {

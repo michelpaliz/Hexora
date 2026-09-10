@@ -769,6 +769,15 @@ class InvoicesApi {
   }
 
   /// POST /api/invoices/issue-all -> backend sorts and issues draft invoices.
+  Map<String, dynamic> buildIssueAllPayload({
+    required String groupId,
+    required List<String> invoiceIds,
+  }) =>
+      {
+        'invoiceIds': invoiceIds,
+        'groupId': groupId,
+      };
+
   Future<InvoiceBatchIssueResult> issueAll({
     required String groupId,
     required List<String> invoiceIds,
@@ -777,10 +786,9 @@ class InvoicesApi {
     final r = await AuthenticatedHttpClient.post(
       uri,
       headers: _headers(),
-      body: jsonEncode({
-        'groupId': groupId,
-        'invoiceIds': invoiceIds,
-      }),
+      body: jsonEncode(
+        buildIssueAllPayload(groupId: groupId, invoiceIds: invoiceIds),
+      ),
     );
 
     dynamic body;
@@ -1033,15 +1041,23 @@ class InvoicesApi {
 
   Future<Invoice> updateDraft(String id, Map<String, dynamic> payload) async {
     final uri = _u('/$id/draft');
+    final draftPayload = sanitizeDraftPayload(payload);
     final r = await AuthenticatedHttpClient.patch(
       uri,
       headers: _headers(),
-      body: jsonEncode(payload),
+      body: jsonEncode(draftPayload),
     );
     return _decode<Invoice>(r, (j) {
       if (j is Map<String, dynamic>) return Invoice.fromJson(j);
       throw Exception('Unexpected invoice payload');
     });
+  }
+
+  Map<String, dynamic> sanitizeDraftPayload(Map<String, dynamic> payload) {
+    return Map<String, dynamic>.from(payload)
+      ..remove('invoiceNumber')
+      ..remove('sequenceNumber')
+      ..remove('yearYY');
   }
 
   Future<Invoice> updateIssued(String id, Map<String, dynamic> payload) async {

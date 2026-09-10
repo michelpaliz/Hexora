@@ -91,7 +91,8 @@ class RecurringInvoicesApi {
       r,
       url: uri,
       method: 'POST',
-      map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 
@@ -109,7 +110,8 @@ class RecurringInvoicesApi {
       r,
       url: uri,
       method: 'PUT',
-      map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 
@@ -129,7 +131,10 @@ class RecurringInvoicesApi {
       method: 'GET',
       map: (j) {
         if (j is List) {
-          return j.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          return j
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
         }
         if (j is Map && j['series'] is List) {
           return (j['series'] as List)
@@ -159,7 +164,8 @@ class RecurringInvoicesApi {
       r,
       url: uri,
       method: 'POST',
-      map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 
@@ -170,7 +176,8 @@ class RecurringInvoicesApi {
       r,
       url: uri,
       method: 'POST',
-      map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 
@@ -181,7 +188,43 @@ class RecurringInvoicesApi {
       r,
       url: uri,
       method: 'POST',
-      map: (j) => (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Uri buildRunSeriesUri(String id) =>
+      _u('/${Uri.encodeComponent(id.trim())}/run');
+
+  Future<Map<String, dynamic>> runSeries(String id) async {
+    final trimmedId = id.trim();
+    if (trimmedId.isEmpty) {
+      throw ArgumentError.value(id, 'id', 'Series id is required');
+    }
+
+    final uri = buildRunSeriesUri(trimmedId);
+    final r = await AuthenticatedHttpClient.post(uri, headers: _headers());
+    if (r.statusCode == 404 || r.statusCode == 405) {
+      final fallbackUri = _u('/run');
+      final fallback = await AuthenticatedHttpClient.post(
+        fallbackUri,
+        headers: _headers(),
+        body: jsonEncode(<String, dynamic>{'seriesId': trimmedId}),
+      );
+      return _decode<Map<String, dynamic>>(
+        fallback,
+        url: fallbackUri,
+        method: 'POST',
+        map: (j) =>
+            (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+      );
+    }
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'POST',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
     );
   }
 

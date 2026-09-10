@@ -26,6 +26,8 @@ import 'package:hexora/b-backend/mail/repository/mail_repository.dart';
 import 'package:hexora/b-backend/telegram/api/telegram_api_client.dart';
 import 'package:hexora/b-backend/telegram/domain/telegram_domain.dart';
 import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
+import 'package:hexora/b-backend/user/domain/user_domain.dart';
+import 'package:hexora/c-frontend/utils/location/geofenced_visit_tracking_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
@@ -118,6 +120,12 @@ final List<SingleChildWidget> featureProviders = [
   Provider<ITimeTrackingApiClient>(create: (_) => TimeTrackingApiClient()),
   Provider<ITimeTrackingRepository>(
     create: (ctx) => TimeTrackingRepository(ctx.read<ITimeTrackingApiClient>()),
+  ),
+  ChangeNotifierProvider<GeofencedVisitTrackingService>(
+    create: (ctx) => GeofencedVisitTrackingService(
+      api: ctx.read<ITimeTrackingApiClient>(),
+      userDomain: ctx.read<UserDomain>(),
+    )..restore(),
   ),
 
   // EventDomain: depends on GroupDomain + IEventRepository

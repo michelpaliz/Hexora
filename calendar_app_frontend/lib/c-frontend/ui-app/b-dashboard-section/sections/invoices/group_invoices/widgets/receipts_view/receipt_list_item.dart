@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -14,6 +15,8 @@ class ReceiptListItem extends StatefulWidget {
   final VoidCallback? onIssue;
   final VoidCallback? onDelete;
   final VoidCallback? onDownload;
+  final VoidCallback? onMarkSent;
+  final VoidCallback? onMarkUnsent;
 
   const ReceiptListItem({
     super.key,
@@ -25,6 +28,8 @@ class ReceiptListItem extends StatefulWidget {
     this.onIssue,
     this.onDelete,
     this.onDownload,
+    this.onMarkSent,
+    this.onMarkUnsent,
   });
 
   @override
@@ -84,6 +89,9 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
     Color iconColor,
     Color iconBg,
   ) {
+    final deliveryStatus = normalizedDeliveryStatus(
+      widget.receipt.deliveryStatus,
+    );
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -204,6 +212,30 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                     widget.onDownload!();
                   },
                 ),
+              if (issued &&
+                  deliveryStatus != 'sent' &&
+                  widget.onMarkSent != null)
+                ListTile(
+                  leading:
+                      Icon(Icons.mark_email_read_outlined, color: cs.primary),
+                  title: const Text('Marcar como enviado'),
+                  onTap: () {
+                    Navigator.of(sheetCtx).pop();
+                    widget.onMarkSent!();
+                  },
+                ),
+              if (issued &&
+                  deliveryStatus == 'sent' &&
+                  widget.onMarkUnsent != null)
+                ListTile(
+                  leading: Icon(Icons.mark_email_unread_outlined,
+                      color: cs.onSurfaceVariant),
+                  title: const Text('Marcar como no enviado'),
+                  onTap: () {
+                    Navigator.of(sheetCtx).pop();
+                    widget.onMarkUnsent!();
+                  },
+                ),
               if (widget.onIssue != null)
                 ListTile(
                   leading: Icon(Icons.publish_outlined, color: cs.tertiary),
@@ -268,6 +300,11 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
 
     final status = (widget.receipt.status ?? 'draft').toLowerCase();
     final issued = status.contains('issue');
+    final deliveryStatus = normalizedDeliveryStatus(
+      widget.receipt.deliveryStatus,
+    );
+    final canMarkSent = issued && deliveryStatus != 'sent';
+    final canMarkUnsent = issued && deliveryStatus == 'sent';
 
     final iconBg = issued
         ? cs.primary.withValues(alpha: 0.10)
@@ -416,6 +453,16 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
 
               // Right side
               if (isMobile) ...[
+                if (issued) ...[
+                  DeliveryStatusBadge(
+                    status: widget.receipt.deliveryStatus,
+                    channel: widget.receipt.deliveryChannel,
+                    sentAt: widget.receipt.sentAt,
+                    deliveryError: widget.receipt.deliveryError,
+                    compact: true,
+                  ),
+                  const SizedBox(width: 3),
+                ],
                 // Status icon + ⋮ menu button
                 Icon(
                   issued ? Icons.task_alt_rounded : Icons.edit_note_rounded,
@@ -470,6 +517,15 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                       label: l.receiptLinesTitle,
                     ),
                     const SizedBox(width: 8),
+                    if (issued) ...[
+                      DeliveryStatusBadge(
+                        status: widget.receipt.deliveryStatus,
+                        channel: widget.receipt.deliveryChannel,
+                        sentAt: widget.receipt.sentAt,
+                        deliveryError: widget.receipt.deliveryError,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     Container(
                       width: 1,
                       height: 14,
@@ -542,6 +598,20 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                               tooltip: l.download,
                               color: cs.onSurfaceVariant,
                               onTap: widget.onDownload!,
+                            ),
+                          if (canMarkSent && widget.onMarkSent != null)
+                            _ActionBtn(
+                              icon: Icons.mark_email_read_outlined,
+                              tooltip: 'Marcar como enviado',
+                              color: cs.primary,
+                              onTap: widget.onMarkSent!,
+                            ),
+                          if (canMarkUnsent && widget.onMarkUnsent != null)
+                            _ActionBtn(
+                              icon: Icons.mark_email_unread_outlined,
+                              tooltip: 'Marcar como no enviado',
+                              color: cs.onSurfaceVariant,
+                              onTap: widget.onMarkUnsent!,
                             ),
                           if (widget.onIssue != null)
                             _ActionBtn(

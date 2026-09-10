@@ -21,6 +21,7 @@ class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
     String groupId,
     String token, {
     String? workerId,
+    String? month,
     DateTime? from,
     DateTime? to,
     double? advanceAmount,
@@ -128,9 +129,13 @@ class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
       throw UnimplementedError();
 
   @override
-  Future<List<Worker>> getWorkers(String groupId, String token,
-          {WorkerStatus? status}) =>
-      throw UnimplementedError();
+  Future<List<Worker>> getWorkers(
+    String groupId,
+    String token, {
+    WorkerStatus? status,
+    String? month,
+  }) async =>
+      [_worker()];
 
   @override
   Future<Worker> addWorker(String groupId, Worker worker, String token) =>
@@ -138,8 +143,15 @@ class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
 
   @override
   Future<Worker> updateWorker(
-          String groupId, String workerId, Worker worker, String token) =>
-      throw UnimplementedError();
+    String groupId,
+    String workerId,
+    Worker worker,
+    String token, {
+    String? month,
+    DateTime? from,
+    DateTime? to,
+  }) async =>
+      worker;
 
   @override
   Future<TimeEntry> createTimeEntry(
@@ -164,6 +176,10 @@ class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
     String? workerId,
   }) =>
       throw UnimplementedError();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError(invocation.memberName.toString());
 }
 
 class _FakeUserRepository implements IUserRepository {
@@ -271,7 +287,7 @@ void main() {
       );
 
       await c.load();
-      await c.setAdvanceAmount(80);
+      await c.saveAdvanceAmount(80);
       await c.previewPayrollPdf(lang: 'es');
 
       expect(c.totals?['grossPay'], 200.0);
@@ -295,7 +311,7 @@ void main() {
       );
 
       await c.load();
-      await c.setAdvanceAmount(500);
+      await c.saveAdvanceAmount(500);
 
       expect(c.totals?['grossPay'], 200.0);
       expect(c.totals?['advanceAmount'], 500.0);

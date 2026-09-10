@@ -9,6 +9,7 @@ import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_document_draft_flow.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_image_library_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_pdf_preview_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:intl/intl.dart';
@@ -128,9 +129,11 @@ class _PresupuestoTemplateEditorScreenState
   final Map<String, TextEditingController> _variables = {};
   final List<_TemplateSectionState> _sections = [];
   final List<_TemplateImageState> _images = [];
+  final Set<String> _libraryImageBusySlots = <String>{};
   late final PresupuestoDocumentDraftFlow _documentFlow;
   final Map<String, String> _loadedDocumentVariables = {};
   final Map<String, _TemplateVariableField> _variableFieldDefinitions = {};
+  List<String> _unresolvedKeys = const [];
   dynamic _variableFieldsSource = const <dynamic>[];
   String _variableSchemaKey = 'unselected';
 
@@ -543,6 +546,8 @@ class _PresupuestoTemplateEditorScreenState
       final calculation = calculationMap == null
           ? null
           : _VariableCalculation.fromMap(calculationMap);
+      final isAutomaticDate = const {'FECHA', 'DIA', 'MES', 'ANO', 'AÑO'}
+          .contains(key.toUpperCase());
       definitions[key] = _TemplateVariableField(
         key: key,
         label: '$label [$key]',
@@ -556,10 +561,11 @@ class _PresupuestoTemplateEditorScreenState
                 ? TextInputType.datetime
                 : TextInputType.text,
         maxLines: type.contains('textarea') ? 3 : 1,
-        isAutomatic: definition['isAutomatic'] == true,
+        isAutomatic: definition['isAutomatic'] == true || isAutomaticDate,
         isUsedInTemplate: definition['isUsedInTemplate'] != false,
-        readOnly:
-            definition['readOnly'] == true || (calculation?.readOnly ?? false),
+        readOnly: definition['readOnly'] == true ||
+            isAutomaticDate ||
+            (calculation?.readOnly ?? false),
         calculation: calculation,
       );
     }
@@ -736,6 +742,9 @@ class _PresupuestoTemplateEditorScreenState
         if (creating) {
           _rememberCurrentDocumentVariables();
           _selectedTemplateSnapshot = jsonEncode(content);
+          final refreshed =
+              await widget.api.getTemplateVariables(presupuestoId);
+          _applyLoadedDocumentVariables(refreshed);
         } else {
           await _saveChangedDocumentVariables(presupuestoId);
         }
@@ -838,24 +847,20 @@ class _PresupuestoTemplateEditorScreenState
     }
     setState(() => _previewing = true);
     try {
-      final response = !widget.templateOnly &&
-              _documentFlow.presupuestoId == null &&
-              _selectedDefaultKey != null
-          ? await widget.api.previewDefaultTemplatePdf(
-              key: _selectedDefaultKey!,
+      if (!widget.templateOnly) {
+        await _save(silent: true);
+        if (!mounted || !await _confirmUnresolvedVariables('previsualizar')) {
+          return;
+        }
+      }
+      final response = widget.templateOnly
+          ? await widget.api.previewLiveTemplatePdf(
               groupId: widget.groupId,
+              template: _payload(includeTemplateId: false),
             )
-          : widget.templateOnly
-              ? await widget.api.previewLiveTemplatePdf(
-                  groupId: widget.groupId,
-                  template: _payload(includeTemplateId: false),
-                )
-              : await () async {
-                  await _save(silent: true);
-                  return widget.api.previewTemplatePdf(
-                    _documentFlow.presupuestoId!,
-                  );
-                }();
+          : await widget.api.previewTemplatePdf(
+              _documentFlow.presupuestoId!,
+            );
       final bytes = InvoiceEditorPdf.validatePdf(response);
       if (!mounted) return;
       await PresupuestoPdfPreviewDialog.show(
@@ -876,6 +881,31 @@ class _PresupuestoTemplateEditorScreenState
     } finally {
       if (mounted) setState(() => _previewing = false);
     }
+  }
+
+  Future<bool> _confirmUnresolvedVariables(String action) async {
+    if (_unresolvedKeys.isEmpty) return true;
+    final keys = _unresolvedKeys.map((key) => '[$key]').join(', ');
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Variables sin completar'),
+            content: Text(
+              'Todavía quedan variables sin valor: $keys. Si continúas, aparecerán entre corchetes en el PDF.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Volver a editar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text('Continuar y $action'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   String _friendlyPdfError(PresupuestosApiException e) {
@@ -1065,6 +1095,55 @@ class _PresupuestoTemplateEditorScreenState
     }
   }
 
+  Future<void> _chooseLibraryImage(_TemplateImageState image) async {
+    if (_libraryImageBusySlots.contains(image.slot)) return;
+    final selected = await showPresupuestoImageLibraryPicker(
+      context,
+      api: widget.api,
+      groupId: widget.groupId,
+    );
+    if (selected == null || !mounted) return;
+
+    setState(() => _libraryImageBusySlots.add(image.slot));
+    try {
+      final targetId = widget.templateOnly
+          ? await _ensureTemplate()
+          : await _ensureDocumentDraft();
+      final response = await widget.api.attachImageLibraryAsset(
+        targetId: targetId,
+        imageId: selected.id,
+        slot: image.slot,
+        label: image.label.text,
+        enabled: image.enabled,
+      );
+      final attached = _extractImage(response, image.slot);
+      if (!mounted) return;
+      setState(() {
+        image.apply(
+          attached ??
+              <String, dynamic>{
+                'url': selected.readUrl,
+                'label': image.label.text.trim().isEmpty
+                    ? selected.name
+                    : image.label.text,
+                'enabled': image.enabled,
+              },
+        );
+      });
+      showSuccessSnack(context, 'Imagen añadida desde la biblioteca.');
+    } on PresupuestosApiException catch (e) {
+      if (mounted) showErrorSnack(context, e.message);
+    } catch (e) {
+      if (mounted) {
+        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _libraryImageBusySlots.remove(image.slot));
+      }
+    }
+  }
+
   Future<String> _ensureTemplate() async {
     final existing = _templateId?.trim();
     if (existing != null && existing.isNotEmpty) return existing;
@@ -1087,10 +1166,14 @@ class _PresupuestoTemplateEditorScreenState
     Map<String, dynamic> response,
     String slot,
   ) {
-    final image = _asMap(response['image']);
+    final image = _asMap(response['image']) ??
+        _asMap(response['attachedImage']) ??
+        _asMap(response['asset']);
     if (image != null) return image;
-    final template = _asMap(response['template']);
-    final images = template?['images'] ?? response['images'];
+    final target = _asMap(response['target']) ??
+        _asMap(response['template']) ??
+        _asMap(response['presupuesto']);
+    final images = target?['images'] ?? response['images'];
     if (images is List) {
       for (final item in images) {
         final row = _asMap(item);
@@ -1146,17 +1229,34 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   void _applyLoadedDocumentVariables(Map<String, dynamic> payload) {
+    final rawVariables = payload['variables'];
     final rawFields = payload['variableFields'] ??
         (payload['variables'] is List ? payload['variables'] : null);
-    final definitions = _readVariableFieldDefinitions(rawFields);
+    final definitions = _readVariableFieldDefinitions(rawVariables)
+      ..addAll(_readVariableFieldDefinitions(rawFields));
     final fieldValues = _readVariableFieldValues(rawFields);
-    final rawVariables = payload['variables'];
     final explicitValues = rawVariables is Map
         ? <String, String>{
             for (final entry in rawVariables.entries)
-              entry.key.toString(): entry.value?.toString() ?? '',
+              entry.key.toString(): _asMap(entry.value) == null
+                  ? entry.value?.toString() ?? ''
+                  : _displayedVariableValue(_asMap(entry.value)!)?.toString() ??
+                      '',
           }
         : _readVariableFieldValues(rawVariables);
+    final rawUnresolved = payload['unresolvedKeys'];
+    _unresolvedKeys = rawUnresolved is List
+        ? rawUnresolved
+            .map((item) => item.toString().trim())
+            .where((key) => key.isNotEmpty)
+            .toList(growable: false)
+        : const [];
+    for (final key in _unresolvedKeys) {
+      definitions.putIfAbsent(
+        key,
+        () => _readVariableFieldDefinitions(<String>[key])[key]!,
+      );
+    }
 
     for (final controller in _variables.values) {
       controller.dispose();
@@ -1198,7 +1298,13 @@ class _PresupuestoTemplateEditorScreenState
   Future<void> _saveChangedDocumentVariables(String presupuestoId) async {
     final changes = <String, dynamic>{};
     for (final entry in _variables.entries) {
-      if (_variableFieldDefinitions[entry.key]?.readOnly == true) continue;
+      final definition = _variableFieldDefinitions[entry.key];
+      final key = entry.key.toUpperCase();
+      if (definition?.readOnly == true ||
+          definition?.isAutomatic == true ||
+          const {'FECHA', 'DIA', 'MES', 'ANO', 'AÑO'}.contains(key)) {
+        continue;
+      }
       final value = entry.value.text.trim();
       if (_loadedDocumentVariables[entry.key] == value) continue;
       changes[entry.key] = value.isEmpty ? null : value;
@@ -1208,7 +1314,8 @@ class _PresupuestoTemplateEditorScreenState
       presupuestoId,
       variables: changes,
     );
-    _rememberCurrentDocumentVariables();
+    final refreshed = await widget.api.getTemplateVariables(presupuestoId);
+    _applyLoadedDocumentVariables(refreshed);
   }
 
   String _fileName(String suffix) {
@@ -1310,12 +1417,14 @@ class _PresupuestoTemplateEditorScreenState
 
   Widget _buildVariableInput(_TemplateVariableField field) {
     final allowsManualOverride = field.key == 'CLIENTE';
-    final editable = field.isUsedInTemplate &&
-        (!field.isAutomatic || allowsManualOverride) &&
-        !field.readOnly;
+    final editable =
+        (!field.isAutomatic || allowsManualOverride) && !field.readOnly;
+    if (field.readOnly) {
+      return _readOnlySummaryField(field);
+    }
     return _field(
       _variables[field.key]!,
-      field.label,
+      _variableDisplayLabel(field),
       fieldKey: ValueKey('variable_${field.key}'),
       hint: field.hint,
       prefixIcon: field.icon,
@@ -1330,15 +1439,75 @@ class _PresupuestoTemplateEditorScreenState
           ? () => _selectVariableDate(field.key)
           : null,
       onChanged: (_) => _recalculateVariableFields(changedKey: field.key),
-      disabledMessage: field.readOnly
-          ? 'Calculado automáticamente'
-          : field.isAutomatic && !allowsManualOverride
-              ? 'Valor automático'
-              : field.isUsedInTemplate
-                  ? null
-                  : 'No se usa en esta plantilla',
+      disabledMessage:
+          field.readOnly || (field.isAutomatic && !allowsManualOverride)
+              ? 'Solo lectura'
+              : null,
     );
   }
+
+  Widget _readOnlySummaryField(_TemplateVariableField field) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final value = _variables[field.key]?.text.trim() ?? '';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 7),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _variableDisplayLabel(field),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.15,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Calculado',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Row(
+              children: [
+                Icon(field.icon, size: 19, color: cs.primary),
+                const SizedBox(width: 10),
+                Text(
+                  value.isEmpty ? '—' : value,
+                  key: ValueKey('variable_${field.key}'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: cs.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _variableDisplayLabel(_TemplateVariableField field) =>
+      field.label.replaceAll('[${field.key}]', '').trim();
 
   Future<List<GroupClient>> _searchActiveClients(String search) {
     final override = widget.clientSearch;
@@ -1355,8 +1524,8 @@ class _PresupuestoTemplateEditorScreenState
       key: const ValueKey('client_autocomplete'),
       fieldKey: ValueKey('variable_${field.key}'),
       controller: _variables[field.key]!,
-      label: field.label,
-      hint: field.hint,
+      label: _variableDisplayLabel(field),
+      hint: 'Buscar cliente...',
       selectedClientId: _selectedClientId,
       search: _searchActiveClients,
       onSelected: (client) {
@@ -1364,6 +1533,14 @@ class _PresupuestoTemplateEditorScreenState
           _selectedClientId = client.id;
           _selectedClientName = client.name.trim();
           _variables[field.key]!.text = client.name.trim();
+          _recalculateVariableFields(changedKey: field.key);
+        });
+      },
+      onClear: () {
+        setState(() {
+          _selectedClientId = null;
+          _selectedClientName = null;
+          _variables[field.key]!.clear();
           _recalculateVariableFields(changedKey: field.key);
         });
       },
@@ -1510,8 +1687,9 @@ class _PresupuestoTemplateEditorScreenState
 
   bool _isDark(ThemeData theme) => theme.brightness == Brightness.dark;
 
-  Color _editorPageBg(ThemeData theme) =>
-      _isDark(theme) ? const Color(0xFF071018) : theme.scaffoldBackgroundColor;
+  Color _editorPageBg(ThemeData theme) => _isDark(theme)
+      ? theme.colorScheme.surface
+      : theme.scaffoldBackgroundColor;
 
   Color _editorCardBg(ThemeData theme) =>
       _isDark(theme) ? const Color(0xFF101A28) : theme.colorScheme.surface;
@@ -1584,58 +1762,119 @@ class _PresupuestoTemplateEditorScreenState
     final theme = Theme.of(context);
     if (steps.isEmpty) return const SizedBox.shrink();
     final step = steps[activeStep];
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
-      color: _editorCardBg(theme),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: _editorBorder(theme)),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStepper(theme, steps, activeStep),
+          const SizedBox(height: 12),
+          Text(
+            step.subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(step.icon, size: 20, color: theme.colorScheme.primary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Paso ${activeStep + 1} de ${steps.length}: ${step.title}',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+    );
+  }
+
+  Widget _buildStepper(
+    ThemeData theme,
+    List<_EditorStep> steps,
+    int activeStep,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < steps.length; i++)
+          Expanded(
+            child: _stepBlock(theme, steps, i, activeStep),
+          ),
+      ],
+    );
+  }
+
+  Widget _stepBlock(
+    ThemeData theme,
+    List<_EditorStep> steps,
+    int index,
+    int activeStep,
+  ) {
+    final cs = theme.colorScheme;
+    final done = index < activeStep;
+    final current = index == activeStep;
+    final blocked = _mustSelectDefaultTemplate && index > 0;
+    final leadColor =
+        index <= activeStep ? cs.primary : _editorBorder(theme, alpha: 0.7);
+    final trailColor =
+        index < activeStep ? cs.primary : _editorBorder(theme, alpha: 0.7);
+
+    return InkWell(
+      key: ValueKey('editor_step_${steps[index].title}'),
+      borderRadius: BorderRadius.circular(16),
+      onTap: blocked ? null : () => setState(() => _activeStep = index),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: index == 0
+                    ? const SizedBox.shrink()
+                    : Container(height: 2, color: leadColor),
+              ),
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: done
+                      ? cs.primary
+                      : current
+                          ? cs.primary.withValues(alpha: 0.14)
+                          : Colors.transparent,
+                  border: Border.all(
+                    color: done || current
+                        ? cs.primary
+                        : _editorBorder(theme),
+                    width: current ? 2 : 1.4,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              step.subtitle,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                child: done
+                    ? Icon(Icons.check_rounded, size: 16, color: cs.onPrimary)
+                    : Text(
+                        '${index + 1}',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: current ? cs.primary : cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
               ),
+              Expanded(
+                child: index == steps.length - 1
+                    ? const SizedBox.shrink()
+                    : Container(height: 2, color: trailColor),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            steps[index].title,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: current
+                  ? cs.primary
+                  : done
+                      ? cs.onSurface
+                      : cs.onSurfaceVariant,
+              fontWeight: current ? FontWeight.w800 : FontWeight.w600,
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (var i = 0; i < steps.length; i++)
-                  ChoiceChip(
-                    selected: i == activeStep,
-                    label: Text('${i + 1}. ${steps[i].title}'),
-                    avatar: Icon(steps[i].icon, size: 16),
-                    onSelected: _mustSelectDefaultTemplate && i > 0
-                        ? null
-                        : (_) => setState(() => _activeStep = i),
-                  ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1650,17 +1889,21 @@ class _PresupuestoTemplateEditorScreenState
     final saveLabel =
         widget.templateOnly ? 'Guardar como plantilla' : 'Guardar borrador';
     final footerText = widget.templateOnly
-        ? 'Crea o actualiza una plantilla reutilizable.'
-        : 'Guarda este presupuesto como borrador para continuar editandolo.';
+        ? (isLastStep
+            ? 'Crea o actualiza una plantilla reutilizable.'
+            : 'Podrás crear o actualizar la plantilla en el último paso.')
+        : (isLastStep
+            ? 'Guarda este presupuesto como borrador para continuar editandolo.'
+            : 'El presupuesto se guardará como borrador en el último paso.');
     final info = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           Icons.cloud_done_outlined,
-          size: 20,
+          size: 18,
           color: theme.colorScheme.primary,
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 9),
         Flexible(
           child: Text(
             footerText,
@@ -1672,20 +1915,16 @@ class _PresupuestoTemplateEditorScreenState
         ),
       ],
     );
-    final actions = Wrap(
-      alignment: WrapAlignment.end,
-      spacing: 10,
-      runSpacing: 8,
-      children: [
-        OutlinedButton.icon(
-          onPressed: activeStep <= 0
-              ? null
-              : () => setState(() => _activeStep = activeStep - 1),
-          icon: const Icon(Icons.arrow_back_rounded, size: 18),
-          label: const Text('Anterior'),
-        ),
-        if (widget.templateOnly && isLastStep)
-          OutlinedButton.icon(
+    final nextTitle = isLastStep ? null : steps[activeStep + 1].title;
+    final backButton = OutlinedButton.icon(
+      onPressed: activeStep <= 0
+          ? null
+          : () => setState(() => _activeStep = activeStep - 1),
+      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+      label: const Text('Atrás'),
+    );
+    final createFromTemplateButton = widget.templateOnly && isLastStep
+        ? OutlinedButton.icon(
             onPressed: _creatingDocumentFromTemplate || _saving
                 ? null
                 : _createDocumentFromCurrentTemplate,
@@ -1701,8 +1940,16 @@ class _PresupuestoTemplateEditorScreenState
                   ? 'Creando...'
                   : 'Crear presupuesto',
             ),
-          ),
-        FilledButton.icon(
+          )
+        : null;
+    final primaryLabel = _saving
+        ? 'Guardando...'
+        : isLastStep
+            ? saveLabel
+            : selectionBlocked
+                ? 'Selecciona una plantilla'
+                : 'Continuar a ${nextTitle!.toLowerCase()}';
+    Widget primaryButton({bool compact = false}) => FilledButton.icon(
           onPressed:
               _saving || _creatingDocumentFromTemplate || selectionBlocked
                   ? null
@@ -1722,19 +1969,23 @@ class _PresupuestoTemplateEditorScreenState
                   size: 18,
                 ),
           label: Text(
-            _saving
-                ? 'Guardando...'
-                : isLastStep
-                    ? saveLabel
-                    : selectionBlocked
-                        ? 'Selecciona una plantilla'
-                        : 'Siguiente',
+            primaryLabel,
+            overflow: compact ? TextOverflow.ellipsis : TextOverflow.clip,
+            softWrap: false,
           ),
-        ),
-      ],
-    );
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 46),
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            textStyle: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        );
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: _editorPanelBg(theme),
         borderRadius: BorderRadius.circular(18),
@@ -1749,8 +2000,19 @@ class _PresupuestoTemplateEditorScreenState
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 info,
-                const SizedBox(height: 12),
-                Align(alignment: Alignment.centerRight, child: actions),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    backButton,
+                    if (createFromTemplateButton != null) ...[
+                      const SizedBox(width: 8),
+                      createFromTemplateButton,
+                    ],
+                    const SizedBox(width: 8),
+                    Flexible(child: primaryButton(compact: true)),
+                  ],
+                ),
               ],
             );
           }
@@ -1758,7 +2020,13 @@ class _PresupuestoTemplateEditorScreenState
             children: [
               Expanded(child: info),
               const SizedBox(width: 16),
-              actions,
+              backButton,
+              if (createFromTemplateButton != null) ...[
+                const SizedBox(width: 10),
+                createFromTemplateButton,
+              ],
+              const SizedBox(width: 10),
+              primaryButton(),
             ],
           );
         },
@@ -1774,9 +2042,9 @@ class _PresupuestoTemplateEditorScreenState
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: _isDark(theme)
               ? const [Color(0xFF173653), Color(0xFF101A28)]
@@ -1797,40 +2065,42 @@ class _PresupuestoTemplateEditorScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   widget.templateOnly
                       ? Icons.auto_awesome_motion_rounded
                       : Icons.description_outlined,
                   color: theme.colorScheme.onPrimary,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       title,
-                      style: theme.textTheme.headlineSmall?.copyWith(
+                      style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                         height: 1.1,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: theme.textTheme.bodyLarge?.copyWith(
+                      style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
-                        height: 1.45,
+                        height: 1.3,
                       ),
                     ),
                   ],
@@ -1838,10 +2108,10 @@ class _PresupuestoTemplateEditorScreenState
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               if (_selectedDefaultTemplate != null)
                 _heroChip(
@@ -1889,12 +2159,12 @@ class _PresupuestoTemplateEditorScreenState
     required String label,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: _isDark(theme)
             ? const Color(0xFF0B1624).withValues(alpha: 0.86)
             : theme.colorScheme.surface.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _editorBorder(theme, alpha: 0.8),
         ),
@@ -1902,11 +2172,11 @@ class _PresupuestoTemplateEditorScreenState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
+          Icon(icon, size: 15, color: theme.colorScheme.primary),
+          const SizedBox(width: 6),
           Text(
             label,
-            style: theme.textTheme.labelLarge?.copyWith(
+            style: theme.textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -2372,7 +2642,6 @@ class _PresupuestoTemplateEditorScreenState
             hint: widget.templateOnly
                 ? 'Ej. Mantenimiento mensual comunidades'
                 : 'Ej. Mantenimiento anual Las Alondras',
-            prefixIcon: Icons.description_outlined,
           ),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -2403,7 +2672,6 @@ class _PresupuestoTemplateEditorScreenState
             'Titulo del PDF',
             maxLines: 2,
             hint: 'Ej. Presupuesto para [CLIENTE]',
-            prefixIcon: Icons.title_rounded,
             markdown: true,
           ),
           _field(
@@ -2411,7 +2679,6 @@ class _PresupuestoTemplateEditorScreenState
             'Subtitulo',
             maxLines: 2,
             hint: 'Ej. [MES] de [ANO]',
-            prefixIcon: Icons.short_text_rounded,
             markdown: true,
           ),
           _field(
@@ -2420,7 +2687,6 @@ class _PresupuestoTemplateEditorScreenState
             maxLines: 6,
             minLines: 5,
             hint: 'Explica brevemente el servicio y el precio propuesto.',
-            prefixIcon: Icons.notes_rounded,
             textCapitalization: TextCapitalization.sentences,
             markdown: true,
           ),
@@ -2440,8 +2706,22 @@ class _PresupuestoTemplateEditorScreenState
         .where(
           (field) =>
               !primaryKeys.contains(field.key) &&
-              _isVariableFieldVisible(field),
+              !_isRedundantPricingField(field) &&
+              (_documentFlow.presupuestoId != null ||
+                  _isVariableFieldVisible(field)),
         )
+        .toList(growable: false);
+    final automaticFields = fields
+        .where((field) => field.isAutomatic || field.readOnly)
+        .toList(growable: false);
+    final editableFields = fields
+        .where((field) => !field.isAutomatic && !field.readOnly)
+        .toList(growable: false);
+    final usedFields = editableFields
+        .where((field) => field.isUsedInTemplate)
+        .toList(growable: false);
+    final optionalFields = editableFields
+        .where((field) => !field.isUsedInTemplate)
         .toList(growable: false);
 
     if (fields.isEmpty) return const SizedBox.shrink();
@@ -2463,7 +2743,7 @@ class _PresupuestoTemplateEditorScreenState
               ),
               const SizedBox(width: 9),
               Text(
-                'Valores de etiquetas',
+                'Detalles del presupuesto',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -2472,31 +2752,173 @@ class _PresupuestoTemplateEditorScreenState
           ),
           const SizedBox(height: 4),
           Text(
-            'Estos valores sustituyen las etiquetas entre corchetes en el documento.',
+            'Completa únicamente la información que aparecerá en este documento.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 14),
+          if (automaticFields.isNotEmpty) ...[
+            _automaticVariablesPanel(theme, automaticFields),
+            const SizedBox(height: 18),
+          ],
+          if (usedFields.isNotEmpty) _variableFieldsGrid(usedFields),
+          if (optionalFields.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: _editorInsetBg(theme),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _editorBorder(theme, alpha: 0.65)),
+              ),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+                childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
+                leading: Icon(
+                  Icons.tune_rounded,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                title: const Text('Otros campos opcionales'),
+                subtitle: Text(
+                  '${optionalFields.length} campos no utilizados por la plantilla actual',
+                ),
+                children: [_variableFieldsGrid(optionalFields)],
+              ),
+            ),
+          Divider(color: _editorBorder(theme, alpha: 0.72)),
+          const SizedBox(height: 14),
+        ],
+      ),
+    );
+  }
+
+  bool _isRedundantPricingField(_TemplateVariableField field) {
+    if (!_variables.containsKey('TOTAL_MENSUAL')) return false;
+    if (field.key == 'IMPORTE_MENSUAL') return true;
+    return !field.isUsedInTemplate &&
+        const {'FRECUENCIA_MENSUAL', 'PRECIO_VISITA'}.contains(field.key);
+  }
+
+  Widget _variableFieldsGrid(List<_TemplateVariableField> fields) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fieldWidth = constraints.maxWidth < 620
+            ? constraints.maxWidth
+            : (constraints.maxWidth - 12) / 2;
+        return Wrap(
+          spacing: 12,
+          children: [
+            for (final field in fields)
+              SizedBox(
+                width: fieldWidth,
+                child: _buildVariableInput(field),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _automaticVariablesPanel(
+    ThemeData theme,
+    List<_TemplateVariableField> fields,
+  ) {
+    final cs = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.055),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome_rounded, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Datos automáticos',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Se completan al guardar; no necesitas escribirlos.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
-              final fieldWidth = constraints.maxWidth < 620
+              final tileWidth = constraints.maxWidth < 480
                   ? constraints.maxWidth
-                  : (constraints.maxWidth - 12) / 2;
+                  : (constraints.maxWidth - 10) / 2;
               return Wrap(
-                spacing: 12,
+                spacing: 10,
+                runSpacing: 10,
                 children: [
                   for (final field in fields)
-                    SizedBox(
-                      width: fieldWidth,
-                      child: _buildVariableInput(field),
+                    Tooltip(
+                      message: '[${field.key}]',
+                      child: Container(
+                        width: tileWidth,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _editorPanelBg(theme),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _editorBorder(theme, alpha: 0.65),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(field.icon, size: 18, color: cs.primary),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _variableDisplayLabel(field),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _variables[field.key]!.text.trim().isEmpty
+                                        ? 'Se calculará al guardar'
+                                        : _variables[field.key]!.text.trim(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                 ],
               );
             },
           ),
-          Divider(color: _editorBorder(theme, alpha: 0.72)),
-          const SizedBox(height: 14),
         ],
       ),
     );
@@ -2536,11 +2958,21 @@ class _PresupuestoTemplateEditorScreenState
                 ],
               ),
             )
-          : Column(
-              children: [
-                for (var i = 0; i < _sections.length; i++)
-                  _sectionTile(_sections[i], i),
-              ],
+          : ReorderableListView.builder(
+              shrinkWrap: true,
+              primary: false,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              padding: EdgeInsets.zero,
+              itemCount: _sections.length,
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  if (newIndex > oldIndex) newIndex -= 1;
+                  final section = _sections.removeAt(oldIndex);
+                  _sections.insert(newIndex, section);
+                });
+              },
+              itemBuilder: (context, i) => _sectionTile(_sections[i], i),
             ),
     );
   }
@@ -2698,6 +3130,9 @@ class _PresupuestoTemplateEditorScreenState
                               child: Image.network(
                                 visibleImages.first.url,
                                 fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Center(
+                                  child: Icon(Icons.broken_image_outlined),
+                                ),
                               ),
                             ),
                           ),
@@ -2731,9 +3166,8 @@ class _PresupuestoTemplateEditorScreenState
   Widget _previewSection(ThemeData theme, _TemplateSectionState section) {
     final title = _resolvePreviewTags(section.title.text.trim());
     final body = _resolvePreviewTags(section.body.text.trim());
-    final items = section.items.text
-        .split('\n')
-        .map((line) => line.trim())
+    final items = section.itemControllers
+        .map((controller) => controller.text.trim())
         .where((line) => line.isNotEmpty)
         .map(_resolvePreviewTags)
         .toList(growable: false);
@@ -3003,14 +3437,17 @@ class _PresupuestoTemplateEditorScreenState
                       ),
                     ),
                   ),
-                  if ((!enabled || readOnly) && disabledMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text(
-                        disabledMessage,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                          fontStyle: FontStyle.italic,
+                  if (disabledMessage != null)
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text(
+                          disabledMessage,
+                          textAlign: TextAlign.end,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                       ),
                     ),
@@ -3199,12 +3636,12 @@ class _PresupuestoTemplateEditorScreenState
 
   Widget _sectionTile(_TemplateSectionState section, int index) {
     final theme = Theme.of(context);
-    final itemsCount = section.items.text
-        .split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
+    final cs = theme.colorScheme;
+    final itemsCount = section.itemControllers
+        .where((controller) => controller.text.trim().isNotEmpty)
         .length;
     return Card(
+      key: ValueKey('section_card_${section.key}'),
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
       color: _editorPanelBg(theme),
@@ -3231,24 +3668,30 @@ class _PresupuestoTemplateEditorScreenState
                   ? '$itemsCount items activos'
                   : 'Seccion desactivada',
         ),
-        leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: section.enabled
-                ? theme.colorScheme.primary.withValues(alpha: 0.12)
-                : _editorSoftAccentBg(theme),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(
-            section.enabled ? Icons.checklist_rounded : Icons.pause_circle,
-            color: section.enabled
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurfaceVariant,
+        leading: ReorderableDragStartListener(
+          index: index,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.grab,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: section.enabled
+                    ? cs.primary.withValues(alpha: 0.12)
+                    : _editorSoftAccentBg(theme),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                Icons.drag_indicator_rounded,
+                color: section.enabled
+                    ? cs.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
         ),
-        trailing: Wrap(
-          spacing: 4,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             if (section.isOptional)
               Tooltip(
@@ -3273,22 +3716,62 @@ class _PresupuestoTemplateEditorScreenState
                       : Icons.toggle_off_outlined,
                 ),
               ),
-            IconButton(
-              tooltip: 'Subir',
-              onPressed: index == 0 ? null : () => _moveSection(index, -1),
-              icon: const Icon(Icons.keyboard_arrow_up_rounded),
-            ),
-            IconButton(
-              tooltip: 'Bajar',
-              onPressed: index == _sections.length - 1
-                  ? null
-                  : () => _moveSection(index, 1),
-              icon: const Icon(Icons.keyboard_arrow_down_rounded),
-            ),
-            IconButton(
-              tooltip: 'Eliminar seccion',
-              onPressed: () => _removeSection(index),
-              icon: const Icon(Icons.delete_outline_rounded),
+            PopupMenuButton<String>(
+              tooltip: 'Más acciones',
+              icon: const Icon(Icons.more_vert_rounded),
+              onSelected: (value) {
+                switch (value) {
+                  case 'duplicate':
+                    _duplicateSection(index);
+                  case 'up':
+                    _moveSection(index, -1);
+                  case 'down':
+                    _moveSection(index, 1);
+                  case 'delete':
+                    _removeSection(index);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'duplicate',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: Icon(Icons.copy_all_outlined),
+                    title: Text('Duplicar sección'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'up',
+                  enabled: index != 0,
+                  child: const ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: Icon(Icons.arrow_upward_rounded),
+                    title: Text('Mover arriba'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'down',
+                  enabled: index != _sections.length - 1,
+                  child: const ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: Icon(Icons.arrow_downward_rounded),
+                    title: Text('Mover abajo'),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: Icon(Icons.delete_outline_rounded, color: cs.error),
+                    title: Text('Eliminar', style: TextStyle(color: cs.error)),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -3309,15 +3792,167 @@ class _PresupuestoTemplateEditorScreenState
             hint: 'Explica esta parte del presupuesto con claridad.',
             markdown: true,
           ),
-          _field(
-            section.items,
-            'Items de lista (uno por linea)',
-            maxLines: 5,
-            minLines: 4,
-            hint: 'Cada linea se mostrara como un punto independiente.',
-            markdown: true,
-          ),
+          _sectionItemsEditor(section),
           if (section.table != null) _sectionTableEditor(section.table!),
+        ],
+      ),
+    );
+  }
+
+  void _duplicateSection(int index) {
+    if (index < 0 || index >= _sections.length) return;
+    final source = _sections[index];
+    final existingKeys = _sections.map((section) => section.key).toSet();
+    var newKey = '${source.key}_copy';
+    var suffix = 2;
+    while (existingKeys.contains(newKey)) {
+      newKey = '${source.key}_copy$suffix';
+      suffix++;
+    }
+    final title = source.title.text.trim();
+    final duplicated = _TemplateSectionState.fromMap({
+      ...source.toJson(),
+      'key': newKey,
+      'title': title.isEmpty ? 'Seccion (copia)' : '$title (copia)',
+    });
+    setState(() => _sections.insert(index + 1, duplicated));
+  }
+
+  Widget _sectionItemsEditor(_TemplateSectionState section) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final controllers = section.itemControllers;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Elementos de la lista',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.15,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${controllers.length} '
+                  '${controllers.length == 1 ? 'elemento' : 'elementos'}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (controllers.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: _editorInsetBg(theme),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _editorBorder(theme, alpha: 0.7)),
+              ),
+              child: Text(
+                'Todavía no hay elementos en esta lista.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            )
+          else
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              primary: false,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              padding: EdgeInsets.zero,
+              itemCount: controllers.length,
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  if (newIndex > oldIndex) newIndex -= 1;
+                  section.moveItem(oldIndex, newIndex);
+                });
+              },
+              itemBuilder: (context, i) => _sectionItemRow(section, i),
+            ),
+          OutlinedButton.icon(
+            onPressed: () => setState(section.addItem),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Añadir elemento'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionItemRow(_TemplateSectionState section, int index) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Padding(
+      key: ValueKey('${section.key}_item_$index'),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          ReorderableDragStartListener(
+            index: index,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.grab,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(
+                  Icons.drag_indicator_rounded,
+                  size: 18,
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: TextField(
+              key: ValueKey('${section.key}_item_field_$index'),
+              controller: section.itemControllers[index],
+              textCapitalization: TextCapitalization.sentences,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Describe este elemento',
+                filled: true,
+                fillColor: _editorInsetBg(theme),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 11,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: _editorBorder(theme)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: _editorBorder(theme)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: cs.primary, width: 1.4),
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Eliminar elemento',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => setState(() => section.removeItemAt(index)),
+            icon: const Icon(Icons.close_rounded, size: 18),
+          ),
         ],
       ),
     );
@@ -3572,7 +4207,13 @@ class _PresupuestoTemplateEditorScreenState
                           ),
                         ],
                       )
-                    : Image.network(url, fit: BoxFit.cover),
+                    : Image.network(
+                        url,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
               ),
               const SizedBox(height: 10),
               _field(
@@ -3581,6 +4222,22 @@ class _PresupuestoTemplateEditorScreenState
                 dense: true,
                 hint: 'Describe brevemente esta imagen',
               ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _libraryImageBusySlots.contains(image.slot)
+                      ? null
+                      : () => _chooseLibraryImage(image),
+                  icon: _libraryImageBusySlots.contains(image.slot)
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.photo_library_outlined),
+                  label: const Text('Usar de la biblioteca'),
+                ),
+              ),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
@@ -3622,6 +4279,7 @@ class _ClientAutocompleteField extends StatefulWidget {
     required this.search,
     required this.onSelected,
     required this.onChanged,
+    this.onClear,
   });
 
   final Key fieldKey;
@@ -3632,6 +4290,7 @@ class _ClientAutocompleteField extends StatefulWidget {
   final Future<List<GroupClient>> Function(String search) search;
   final ValueChanged<GroupClient> onSelected;
   final ValueChanged<String> onChanged;
+  final VoidCallback? onClear;
 
   @override
   State<_ClientAutocompleteField> createState() =>
@@ -3809,11 +4468,24 @@ class _ClientAutocompleteFieldState extends State<_ClientAutocompleteField> {
               onTap: () => _scheduleSearch(widget.controller.text),
               decoration: InputDecoration(
                 hintText: widget.hint,
-                prefixIcon: Icon(
-                  Icons.person_search_outlined,
-                  size: 20,
-                  color: cs.primary,
-                ),
+                prefixIcon: widget.selectedClientId == null
+                    ? Icon(
+                        Icons.search_rounded,
+                        size: 20,
+                        color: cs.onSurfaceVariant,
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(9),
+                        child: CircleAvatar(
+                          radius: 11,
+                          backgroundColor: cs.primary.withValues(alpha: 0.16),
+                          child: Icon(
+                            Icons.apartment_rounded,
+                            size: 14,
+                            color: cs.primary,
+                          ),
+                        ),
+                      ),
                 suffixIcon: _loading
                     ? const Padding(
                         padding: EdgeInsets.all(14),
@@ -3825,13 +4497,17 @@ class _ClientAutocompleteFieldState extends State<_ClientAutocompleteField> {
                             onPressed: _searchFromButton,
                             icon: const Icon(Icons.search_rounded, size: 19),
                           )
-                        : Icon(
-                            Icons.check_circle_rounded,
-                            size: 19,
-                            color: cs.primary,
+                        : TextButton(
+                            onPressed: () {
+                              widget.onClear?.call();
+                              _focusNode.requestFocus();
+                            },
+                            child: const Text('Cambiar'),
                           ),
                 filled: true,
-                fillColor: cs.surfaceContainerLowest,
+                fillColor: widget.selectedClientId == null
+                    ? cs.surfaceContainerLowest
+                    : cs.primary.withValues(alpha: 0.05),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide(color: cs.outlineVariant),
@@ -3839,7 +4515,9 @@ class _ClientAutocompleteFieldState extends State<_ClientAutocompleteField> {
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.78),
+                    color: widget.selectedClientId == null
+                        ? cs.outlineVariant.withValues(alpha: 0.78)
+                        : cs.primary.withValues(alpha: 0.35),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -3932,7 +4610,7 @@ class _TemplateSectionState {
     required this.enabled,
     required this.title,
     required this.body,
-    required this.items,
+    required this.itemControllers,
     this.table,
   });
 
@@ -3941,8 +4619,11 @@ class _TemplateSectionState {
     int fallbackOrder = 1,
   }) {
     final items = map['items'] is List
-        ? (map['items'] as List).map((e) => e.toString()).join('\n')
-        : '';
+        ? (map['items'] as List)
+            .map((e) => e.toString())
+            .where((e) => e.trim().isNotEmpty)
+            .toList()
+        : const <String>[];
     return _TemplateSectionState(
       original: Map<String, dynamic>.from(map),
       key: _string(map['key']) ?? 'section_$fallbackOrder',
@@ -3950,7 +4631,9 @@ class _TemplateSectionState {
       enabled: map['enabled'] != false,
       title: TextEditingController(text: _string(map['title']) ?? ''),
       body: TextEditingController(text: _string(map['body']) ?? ''),
-      items: TextEditingController(text: items),
+      itemControllers: [
+        for (final item in items) TextEditingController(text: item),
+      ],
       table: _asMap(map['table']) == null
           ? null
           : _TemplateTableState.fromMap(_asMap(map['table'])!),
@@ -3963,7 +4646,7 @@ class _TemplateSectionState {
   bool enabled;
   final TextEditingController title;
   final TextEditingController body;
-  final TextEditingController items;
+  final List<TextEditingController> itemControllers;
   final _TemplateTableState? table;
 
   bool get isGarageCleaning {
@@ -3979,11 +4662,29 @@ class _TemplateSectionState {
       original['isOptional'] == true ||
       isGarageCleaning;
 
+  void addItem() => itemControllers.add(TextEditingController());
+
+  void removeItemAt(int index) {
+    if (index < 0 || index >= itemControllers.length) return;
+    itemControllers.removeAt(index).dispose();
+  }
+
+  void moveItem(int oldIndex, int newIndex) {
+    if (oldIndex < 0 ||
+        oldIndex >= itemControllers.length ||
+        newIndex < 0 ||
+        newIndex >= itemControllers.length) {
+      return;
+    }
+    final controller = itemControllers.removeAt(oldIndex);
+    itemControllers.insert(newIndex, controller);
+  }
+
   bool referencesVariable(String variableKey) {
     final marker = '[$variableKey]';
     if (title.text.contains(marker) ||
         body.text.contains(marker) ||
-        items.text.contains(marker)) {
+        itemControllers.any((controller) => controller.text.contains(marker))) {
       return true;
     }
     return jsonEncode(<String, dynamic>{
@@ -3998,10 +4699,9 @@ class _TemplateSectionState {
         'order': order,
         'title': title.text,
         'body': body.text,
-        'items': items.text
-            .split('\n')
-            .map((line) => line.trim())
-            .where((line) => line.isNotEmpty)
+        'items': itemControllers
+            .map((controller) => controller.text.trim())
+            .where((text) => text.isNotEmpty)
             .toList(),
         'enabled': enabled,
         if (table != null) 'table': table!.toJson(),
@@ -4010,7 +4710,9 @@ class _TemplateSectionState {
   void dispose() {
     title.dispose();
     body.dispose();
-    items.dispose();
+    for (final controller in itemControllers) {
+      controller.dispose();
+    }
     table?.dispose();
   }
 }
@@ -4378,7 +5080,7 @@ class _TemplateImageState {
   String blobName;
 
   void apply(Map<String, dynamic> map) {
-    url = _string(map['url']) ?? url;
+    url = _string(map['url']) ?? _string(map['readUrl']) ?? url;
     blobName = _string(map['blobName']) ?? blobName;
     final nextLabel = _string(map['label']);
     if (nextLabel != null) label.text = nextLabel;

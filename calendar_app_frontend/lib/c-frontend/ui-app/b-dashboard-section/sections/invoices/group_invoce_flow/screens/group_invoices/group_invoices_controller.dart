@@ -44,8 +44,10 @@ class GroupInvoicesController extends ChangeNotifier {
       ]);
 
       final clients = results[0] as List<GroupClient>;
-      final invoices = results[1] as List<Invoice>;
-      final drafts = results[2] as List<Invoice>;
+      final invoices = [...results[1] as List<Invoice>]
+        ..sort(_compareInvoicesNewestFirst);
+      final drafts = [...results[2] as List<Invoice>]
+        ..sort(_compareInvoicesNewestFirst);
       final billing = results[3] as BillingProfile?;
 
       // keep selection if still exists, but replace it with the refreshed object
@@ -80,6 +82,20 @@ class GroupInvoicesController extends ChangeNotifier {
     } catch (e) {
       _set(_s.copyWith(loading: false, error: e.toString()));
     }
+  }
+
+  int _compareInvoicesNewestFirst(Invoice a, Invoice b) {
+    final aDate = a.issueDate ?? a.registeredAt;
+    final bDate = b.issueDate ?? b.registeredAt;
+    if (aDate != null && bDate != null) {
+      final dateComparison = bDate.compareTo(aDate);
+      if (dateComparison != 0) return dateComparison;
+    } else if (aDate != null) {
+      return -1;
+    } else if (bDate != null) {
+      return 1;
+    }
+    return a.id.compareTo(b.id);
   }
 
   // --- UI state toggles ---
@@ -286,10 +302,10 @@ class GroupInvoicesController extends ChangeNotifier {
     List<Invoice> drafts,
   ) async {
     final draftIds = drafts
-        .where(
-            (invoice) => (invoice.status ?? '').toLowerCase().contains('draft'))
+        .where((invoice) => invoice.isDraft)
         .map((invoice) => invoice.id.trim())
         .where((id) => id.isNotEmpty)
+        .toSet()
         .toList(growable: false);
     if (draftIds.isEmpty) return;
 
@@ -310,6 +326,15 @@ class GroupInvoicesController extends ChangeNotifier {
     } on InvoicesBatchIssueException catch (e) {
       final issuedCount = e.failure?.issuedCount ?? 0;
       final failedInvoiceId = e.failure?.failedInvoiceId;
+      Invoice? failedDraft;
+      if (failedInvoiceId != null) {
+        for (final draft in drafts) {
+          if (draft.id == failedInvoiceId) {
+            failedDraft = draft;
+            break;
+          }
+        }
+      }
       if (context.mounted) {
         try {
           await loadAll();
@@ -326,8 +351,8 @@ class GroupInvoicesController extends ChangeNotifier {
               : '$issuedCount invoices issued before the error',
         if (failedInvoiceId != null)
           isSpanish
-              ? 'Factura fallida: $failedInvoiceId'
-              : 'Failed invoice: $failedInvoiceId',
+              ? 'Fila fallida: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)'
+              : 'Failed row: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)',
         message,
       ];
       final text = parts.join(' · ');

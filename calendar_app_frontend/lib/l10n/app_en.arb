@@ -2826,7 +2826,8 @@
   "mailConsoleReplyPlaceholder": "Write a reply…",
   "mailConsoleReplySend": "Reply",
   "mailConsoleReplySending": "Sending…",
-  "mailConsoleReplySent": "Reply sent.",
+  "mailConsoleReplySent": "Reply sent successfully.",
+  "mailConsoleReplyFailed": "The reply could not be sent.",
   "mailConversationReplyTo": "Reply to {name}…",
   "@mailConversationReplyTo": {
     "description": "Reply placeholder with recipient name.",

@@ -16,6 +16,7 @@ class AzureMapsView extends StatefulWidget {
     required this.clientId,
     required this.accessToken,
     required this.pins,
+    required this.selectedPinId,
     required this.selection,
     required this.userLocation,
     required this.cameraTarget,
@@ -28,6 +29,7 @@ class AzureMapsView extends StatefulWidget {
   final String clientId;
   final String accessToken;
   final List<AzureMapPin> pins;
+  final String? selectedPinId;
   final AzureMapSelection? selection;
   final AzureMapUserLocation? userLocation;
   final AzureMapCameraTarget? cameraTarget;
@@ -66,6 +68,7 @@ class _AzureMapsViewState extends State<AzureMapsView> {
         clientId: widget.clientId,
         accessToken: widget.accessToken,
         pins: widget.pins,
+        selectedPinId: widget.selectedPinId,
         selection: widget.selection,
         userLocation: widget.userLocation,
       );
@@ -90,6 +93,12 @@ class _AzureMapsViewState extends State<AzureMapsView> {
       _post(<String, dynamic>{
         'action': 'pins',
         'pins': widget.pins.map((pin) => pin.toJson()).toList(growable: false),
+      });
+    }
+    if (oldWidget.selectedPinId != widget.selectedPinId) {
+      _post(<String, dynamic>{
+        'action': 'selected-pin',
+        'selectedPinId': widget.selectedPinId,
       });
     }
     if (!_sameSelection(oldWidget.selection, widget.selection)) {
@@ -164,16 +173,20 @@ class _AzureMapsViewState extends State<AzureMapsView> {
       'accessToken': widget.accessToken,
     });
     _post(<String, dynamic>{
+      'action': 'user-location',
+      'userLocation': widget.userLocation?.toJson(),
+    });
+    _post(<String, dynamic>{
       'action': 'pins',
       'pins': widget.pins.map((pin) => pin.toJson()).toList(growable: false),
     });
     _post(<String, dynamic>{
-      'action': 'selection',
-      'selection': widget.selection?.toJson(),
+      'action': 'selected-pin',
+      'selectedPinId': widget.selectedPinId,
     });
     _post(<String, dynamic>{
-      'action': 'user-location',
-      'userLocation': widget.userLocation?.toJson(),
+      'action': 'selection',
+      'selection': widget.selection?.toJson(),
     });
   }
 

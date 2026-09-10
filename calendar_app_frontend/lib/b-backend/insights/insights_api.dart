@@ -548,15 +548,17 @@ class InsightsApi {
       if (timeoutMs != null) 'timeoutMs': timeoutMs,
     };
 
-    final usesAuto = endpoint == InsightsChatEndpoint.chatAuto ||
-        endpoint == InsightsChatEndpoint.chatAutoStream;
-    if (usesAuto) {
+    final safeGroupId = groupId?.trim() ?? '';
+    if (safeGroupId.isNotEmpty) {
+      payload['groupId'] = safeGroupId;
+    }
+
+    final hasExplicitDateRange =
+        extra?['dateFrom']?.toString().trim().isNotEmpty == true &&
+            extra?['dateTo']?.toString().trim().isNotEmpty == true;
+    if (!hasExplicitDateRange) {
       final safeDays = days.clamp(30, 180);
       payload['days'] = safeDays;
-      final safeGroupId = groupId?.trim() ?? '';
-      if (safeGroupId.isNotEmpty) {
-        payload['groupId'] = safeGroupId;
-      }
     }
 
     if (extra != null && extra.isNotEmpty) {
@@ -675,7 +677,12 @@ class InsightsApi {
   Future<InsightsExcelExport> exportChatExcel({
     required String groupId,
     required String message,
+    int? days,
+    String? dateFrom,
+    String? dateTo,
   }) async {
+    final hasExplicitDateRange =
+        dateFrom?.trim().isNotEmpty == true && dateTo?.trim().isNotEmpty == true;
     return downloadInsightsExcelFromAction(
       InsightsExcelExportAction(
         type: 'export_excel',
@@ -684,6 +691,9 @@ class InsightsApi {
         body: <String, dynamic>{
           'groupId': groupId.trim(),
           'message': message.trim(),
+          if (!hasExplicitDateRange && days != null) 'days': days.clamp(30, 180),
+          if (dateFrom?.trim().isNotEmpty == true) 'dateFrom': dateFrom!.trim(),
+          if (dateTo?.trim().isNotEmpty == true) 'dateTo': dateTo!.trim(),
         },
         filename: null,
       ),

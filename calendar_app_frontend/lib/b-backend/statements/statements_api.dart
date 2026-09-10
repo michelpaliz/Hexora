@@ -611,6 +611,8 @@ class StatementsApi {
     double? minAmount,
     double? maxAmount,
     String? clientProviderQuery,
+    String? descriptionSearch,
+    String? notesSearch,
     String sort = 'date_desc',
   }) async {
     final boundedSize = size < 1 ? 50 : (size > 200 ? 200 : size);
@@ -627,6 +629,10 @@ class StatementsApi {
       if (maxAmount != null) 'maxAmount': maxAmount.toString(),
       if (clientProviderQuery != null && clientProviderQuery.trim().isNotEmpty)
         'clientProviderQuery': clientProviderQuery.trim(),
+      if (descriptionSearch != null && descriptionSearch.trim().isNotEmpty)
+        'descriptionSearch': descriptionSearch.trim(),
+      if (notesSearch != null && notesSearch.trim().isNotEmpty)
+        'notesSearch': notesSearch.trim(),
       if (sort.trim().isNotEmpty) 'sort': sort.trim(),
     };
 

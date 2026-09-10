@@ -6,6 +6,7 @@ import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/receipts_view/receipt_detail_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/receipts_view/receipt_list_item.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/receipt_delivery_utils.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -152,6 +153,121 @@ class _GroupedReceiptList extends StatelessWidget {
   }
 }
 
+class _IssuedReceiptsTab extends StatefulWidget {
+  const _IssuedReceiptsTab({
+    required this.receipts,
+    required this.clients,
+    required this.unknownClientLabel,
+    required this.onSelect,
+    required this.onPreview,
+    required this.onDownload,
+    required this.onMarkSent,
+    required this.onMarkUnsent,
+  });
+
+  final List<Receipt> receipts;
+  final List<GroupClient> clients;
+  final String unknownClientLabel;
+  final ValueChanged<Receipt> onSelect;
+  final Future<void> Function(Receipt) onPreview;
+  final ValueChanged<Receipt> onDownload;
+  final ValueChanged<Receipt> onMarkSent;
+  final ValueChanged<Receipt> onMarkUnsent;
+
+  @override
+  State<_IssuedReceiptsTab> createState() => _IssuedReceiptsTabState();
+}
+
+class _IssuedReceiptsTabState extends State<_IssuedReceiptsTab> {
+  ReceiptDeliveryFilter _filter = ReceiptDeliveryFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final filtered = filterReceiptsByDelivery(widget.receipts, _filter);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
+          child: Row(
+            children: [
+              Icon(Icons.filter_alt_outlined,
+                  size: 16, color: cs.onSurfaceVariant),
+              const SizedBox(width: 7),
+              Expanded(
+                child: DropdownButtonFormField<ReceiptDeliveryFilter>(
+                  key: const ValueKey('receipt-delivery-filter'),
+                  initialValue: _filter,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Estado de envío',
+                    border: OutlineInputBorder(),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: ReceiptDeliveryFilter.all,
+                      child: Text('Todos'),
+                    ),
+                    DropdownMenuItem(
+                      value: ReceiptDeliveryFilter.notSent,
+                      child: Text('No enviados'),
+                    ),
+                    DropdownMenuItem(
+                      value: ReceiptDeliveryFilter.sent,
+                      child: Text('Enviados'),
+                    ),
+                    DropdownMenuItem(
+                      value: ReceiptDeliveryFilter.failed,
+                      child: Text('Error de envío'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _filter = value);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${filtered.length}',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+              ? Center(
+                  child: Text(
+                    'No hay recibos con este estado de envío.',
+                    style: TextStyle(color: cs.onSurfaceVariant),
+                  ),
+                )
+              : _GroupedReceiptList(
+                  receipts: filtered,
+                  clients: widget.clients,
+                  unknownClientLabel: widget.unknownClientLabel,
+                  padding: const EdgeInsets.all(10),
+                  itemBuilder: (receipt, client) => ReceiptListItem(
+                    receipt: receipt,
+                    client: client,
+                    onTap: () => widget.onSelect(receipt),
+                    onPreview: () => widget.onPreview(receipt),
+                    onDownload: () => widget.onDownload(receipt),
+                    onMarkSent: () => widget.onMarkSent(receipt),
+                    onMarkUnsent: () => widget.onMarkUnsent(receipt),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 class GroupReceiptsView extends StatelessWidget {
@@ -166,6 +282,8 @@ class GroupReceiptsView extends StatelessWidget {
   final VoidCallback onCreateReceipt;
   final ValueChanged<Receipt> onEditReceipt;
   final ValueChanged<Receipt> onIssueReceipt;
+  final ValueChanged<Receipt> onMarkReceiptSent;
+  final ValueChanged<Receipt> onMarkReceiptUnsent;
   final ValueChanged<Receipt> onDeleteReceipt;
   final Future<void> Function(Receipt) onPreviewPdf;
   final ValueChanged<Receipt> onDownloadPdf;
@@ -184,6 +302,8 @@ class GroupReceiptsView extends StatelessWidget {
     required this.onCreateReceipt,
     required this.onEditReceipt,
     required this.onIssueReceipt,
+    required this.onMarkReceiptSent,
+    required this.onMarkReceiptUnsent,
     required this.onDeleteReceipt,
     required this.onPreviewPdf,
     required this.onDownloadPdf,
@@ -386,18 +506,15 @@ class GroupReceiptsView extends StatelessWidget {
                               onDelete: () => onDeleteReceipt(r),
                             ),
                           ),
-                          _GroupedReceiptList(
+                          _IssuedReceiptsTab(
                             receipts: receipts,
                             clients: clients,
                             unknownClientLabel: l.unknownClient,
-                            padding: const EdgeInsets.all(10),
-                            itemBuilder: (r, client) => ReceiptListItem(
-                              receipt: r,
-                              client: client,
-                              onTap: () => onSelectReceipt(r),
-                              onPreview: () => onPreviewPdf(r),
-                              onDownload: () => onDownloadPdf(r),
-                            ),
+                            onSelect: onSelectReceipt,
+                            onPreview: onPreviewPdf,
+                            onDownload: onDownloadPdf,
+                            onMarkSent: onMarkReceiptSent,
+                            onMarkUnsent: onMarkReceiptUnsent,
                           ),
                         ],
                       ),
@@ -499,6 +616,8 @@ class GroupReceiptsView extends StatelessWidget {
                       onPreviewPdf: () => onPreviewPdf(selectedReceipt!),
                       onDownloadPdf: () => onDownloadPdf(selectedReceipt!),
                       onIssue: () => onIssueReceipt(selectedReceipt!),
+                      onMarkSent: () => onMarkReceiptSent(selectedReceipt!),
+                      onMarkUnsent: () => onMarkReceiptUnsent(selectedReceipt!),
                       onDeleteDraft: () => onDeleteReceipt(selectedReceipt!),
                       onImportJson: () => onImportJson(selectedReceipt!),
                       onLoadInlinePdf: () => onLoadInlinePdf(selectedReceipt!),

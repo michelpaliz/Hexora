@@ -15,7 +15,7 @@ import '../widgets/app_bar_user_title.dart';
 import '../widgets/home_section_nav.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage> {
     if (user != null && user != _lastUser) {
       _lastUser = user;
 
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         final userDomain = context.read<UserDomain>();
         final groupDomain = context.read<GroupDomain>();
         final notificationDomain = context.read<NotificationDomain>();
@@ -51,9 +51,6 @@ class _HomePageState extends State<HomePage> {
           user.id,
           notificationDomain: notificationDomain,
         );
-
-        // refresh groups stream
-        await groupDomain.refreshGroupsForCurrentUser(userDomain);
       });
     }
   }

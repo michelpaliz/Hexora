@@ -802,7 +802,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       }
 
       if (!context.mounted) return;
-      final inv = await saveDraft(context);
+      await saveDraft(context);
       if (!context.mounted) return;
 
       _showDraftSuccessSnack(
@@ -813,9 +813,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
                 : 'Invoice updated')
             : editing
                 ? l.invoiceDraftUpdatedSnackTitle
-                : (inv.invoiceNumber.isNotEmpty
-                    ? l.invoiceDraftSavedSnack(inv.invoiceNumber)
-                    : l.invoiceDraftSavedSnackTitle),
+                : l.invoiceDraftSavedSnackTitle,
         message: editingIssued
             ? (Localizations.localeOf(context).languageCode == 'es'
                 ? 'Los cambios y el historial se guardaron correctamente.'
@@ -1029,7 +1027,9 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       } else {
         await pdf_launcher.launchPdfPreview(
           bytes,
-          fileName: 'invoice-${_savedInvoice!.invoiceNumber}.pdf',
+          fileName: _savedInvoice!.isDraft
+              ? 'invoice-draft-${_savedInvoice!.id}.pdf'
+              : 'invoice-${_savedInvoice!.invoiceNumber}.pdf',
         );
       }
       _previewedPdf = true;
@@ -1365,7 +1365,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
       await pdf_launcher.launchPdfPreview(
         bytes,
-        fileName: 'invoice-${draft.invoiceNumber}.pdf',
+        fileName: 'invoice-draft-${draft.id}.pdf',
       );
     } catch (e) {
       if (!context.mounted) return;

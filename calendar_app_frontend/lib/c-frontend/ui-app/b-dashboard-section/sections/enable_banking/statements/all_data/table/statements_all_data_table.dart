@@ -25,6 +25,10 @@ class StatementsAllDataTable extends StatelessWidget {
     required this.tableTheme,
     required this.onDateFilterTap,
     required this.dateFilterActive,
+    required this.onDescriptionFilterTap,
+    required this.descriptionFilterActive,
+    required this.onNotesFilterTap,
+    required this.notesFilterActive,
     required this.onAmountFilterTap,
     required this.amountFilterActive,
     required this.onClientProviderFilterTap,
@@ -47,6 +51,10 @@ class StatementsAllDataTable extends StatelessWidget {
   final StatementsTableTheme tableTheme;
   final VoidCallback onDateFilterTap;
   final bool dateFilterActive;
+  final VoidCallback onDescriptionFilterTap;
+  final bool descriptionFilterActive;
+  final VoidCallback onNotesFilterTap;
+  final bool notesFilterActive;
   final VoidCallback onAmountFilterTap;
   final bool amountFilterActive;
   final VoidCallback onClientProviderFilterTap;
@@ -142,6 +150,10 @@ class StatementsAllDataTable extends StatelessWidget {
                 tableTheme: tableTheme,
                 onDateFilterTap: onDateFilterTap,
                 dateFilterActive: dateFilterActive,
+                onDescriptionFilterTap: onDescriptionFilterTap,
+                descriptionFilterActive: descriptionFilterActive,
+                onNotesFilterTap: onNotesFilterTap,
+                notesFilterActive: notesFilterActive,
                 onAmountFilterTap: onAmountFilterTap,
                 amountFilterActive: amountFilterActive,
                 onClientProviderFilterTap: onClientProviderFilterTap,

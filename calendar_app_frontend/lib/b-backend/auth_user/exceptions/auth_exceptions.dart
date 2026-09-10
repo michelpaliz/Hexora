@@ -12,6 +12,16 @@ class WrongPasswordAuthException implements Exception {
   String toString() => 'The password entered is incorrect.';
 }
 
+class LoginRequestFailedAuthException implements Exception {
+  final String message;
+  final int statusCode;
+
+  LoginRequestFailedAuthException(this.message, {required this.statusCode});
+
+  @override
+  String toString() => message;
+}
+
 // ==========================
 // REGISTER EXCEPTIONS
 // ==========================

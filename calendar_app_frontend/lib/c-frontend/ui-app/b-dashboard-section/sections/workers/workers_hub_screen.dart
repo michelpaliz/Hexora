@@ -6,6 +6,7 @@ import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/group_time_tracking_screen_state.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/loading_list.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/geofenced_visits_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/telegram_worker_hours_import_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/worker_current_month_summary_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/time_tracking_excel_import_dialog.dart';
@@ -22,6 +23,7 @@ enum _WorkersSection {
   workers,
   graphs,
   historial,
+  visits,
   telegramImport,
   registerHours
 }
@@ -57,6 +59,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
           group: widget.group,
         ),
         WorkerCurrentMonthSummaryView(group: widget.group),
+        GeofencedVisitsView(group: widget.group),
         TelegramWorkerHoursImportView(group: widget.group),
         _RegisterHoursImportPanel(group: widget.group),
       ],
@@ -179,6 +182,12 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
         label: isEs ? 'Resumen del mes' : 'Summary this month',
         mobileLabel: isEs ? 'Resumen' : 'Summary',
         section: _WorkersSection.historial,
+      ),
+      (
+        icon: Icons.location_on_outlined,
+        label: isEs ? 'Visitas' : 'Visits',
+        mobileLabel: isEs ? 'Visitas' : 'Visits',
+        section: _WorkersSection.visits,
       ),
       (
         icon: Icons.telegram,

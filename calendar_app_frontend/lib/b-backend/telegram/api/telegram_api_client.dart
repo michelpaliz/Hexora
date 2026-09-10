@@ -75,6 +75,16 @@ abstract class ITelegramApiClient {
     String? forumTopicId,
   });
 
+  /// Generate and send a draft or issued presupuesto to a Telegram chat.
+  Future<TelegramChatMessage?> sendChatPresupuesto({
+    required String chatId,
+    required String accountId,
+    required String presupuestoId,
+    String? caption,
+    String? replyToMessageId,
+    String? forumTopicId,
+  });
+
   /// Create an export job
   Future<TelegramExport> createExport({
     required TelegramExportRequest request,
@@ -474,6 +484,56 @@ class TelegramApiClient implements ITelegramApiClient {
     final streamed = await _client.send(req);
     final response = await http.Response.fromStream(streamed);
     return _decodeMessageObject(response);
+  }
+
+  @override
+  Future<TelegramChatMessage?> sendChatPresupuesto({
+    required String chatId,
+    required String accountId,
+    required String presupuestoId,
+    String? caption,
+    String? replyToMessageId,
+    String? forumTopicId,
+  }) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u(
+        '/chats/${Uri.encodeComponent(chatId)}/presupuestos/'
+        '${Uri.encodeComponent(presupuestoId)}',
+      ),
+      body: jsonEncode({
+        'accountId': accountId,
+        if (caption != null && caption.trim().isNotEmpty)
+          'caption': caption.trim(),
+        if (replyToMessageId != null && replyToMessageId.trim().isNotEmpty)
+          'replyToMessageId': replyToMessageId.trim(),
+        if (forumTopicId != null && forumTopicId.trim().isNotEmpty)
+          'forumTopicId': forumTopicId.trim(),
+      }),
+      headers: _headers(),
+      client: _client,
+    );
+    final data = _decode(r);
+    if (data is! Map) return null;
+    final json = Map<String, dynamic>.from(data);
+    for (final candidate in <dynamic>[
+      json['telegramMessage'],
+      json['sentMessage'],
+      json['message'],
+      json['item'],
+      json['data'],
+      json['result'],
+      json,
+    ]) {
+      if (candidate is! Map) continue;
+      final message = Map<String, dynamic>.from(candidate);
+      if (message['messageId'] == null &&
+          message['message_id'] == null &&
+          message['id'] == null) {
+        continue;
+      }
+      return TelegramChatMessage.fromJson(message);
+    }
+    return null;
   }
 
   @override

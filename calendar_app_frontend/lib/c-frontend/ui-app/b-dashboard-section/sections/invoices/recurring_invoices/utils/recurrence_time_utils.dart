@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -114,40 +114,20 @@ DateTime utcDateTime(
 ]) {
   final location = tryGetLocation(timezone);
   if (location != null) {
-    return tz
-        .TZDateTime(
-          location,
-          date.year,
-          date.month,
-          date.day,
-          time.hour,
-          time.minute,
-        )
-        .toUtc();
+    return tz.TZDateTime(
+      location,
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    ).toUtc();
   }
   return localDateTime(date, time).toUtc();
 }
 
-String utcDateString(
-  DateTime date,
-  TimeOfDay time, [
-  String? timezone,
-]) =>
-    DateFormat('yyyy-MM-dd').format(utcDateTime(date, time, timezone));
-
-/// Returns local time string (NOT UTC) to preserve clock time across DST changes.
-/// For recurring schedules, we want "19:00" to always mean "19:00 local time"
-/// regardless of whether DST is active or not.
-String utcTimeString(
-  DateTime date,
-  TimeOfDay time, [
-  String? timezone,
-]) {
-  // Return local time instead of UTC to preserve clock time across DST
-  final h = time.hour.toString().padLeft(2, '0');
-  final m = time.minute.toString().padLeft(2, '0');
-  return '$h:$m';
-}
+/// Serializes a recurrence calendar date without applying a timezone shift.
+String dateOnlyString(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
 
 DateTime utcToZoned(DateTime utc, String? timezone) {
   final location = tryGetLocation(timezone);
@@ -216,6 +196,7 @@ String ruleSummary(Map? rule, AppLocalizations l) {
   }
   return '$base$startLabel$timeLabel';
 }
+
 Future<String?> showTimezonePicker({
   required BuildContext context,
   required String initial,
@@ -284,4 +265,3 @@ Future<String?> showTimezonePicker({
     },
   );
 }
-

@@ -162,8 +162,21 @@ class _RecurringDetailGeneratedTabState
   }
 
   int _compareInvoiceNumberAsc(Invoice a, Invoice b) {
-    final aNumber = a.invoiceNumber.trim().isNotEmpty ? a.invoiceNumber : a.id;
-    final bNumber = b.invoiceNumber.trim().isNotEmpty ? b.invoiceNumber : b.id;
+    final aNumber = a.invoiceNumber.trim();
+    final bNumber = b.invoiceNumber.trim();
+    if (aNumber.isEmpty || bNumber.isEmpty) {
+      final aDate = a.issueDate ?? a.registeredAt;
+      final bDate = b.issueDate ?? b.registeredAt;
+      if (aDate != null && bDate != null) {
+        final dateComparison = aDate.compareTo(bDate);
+        if (dateComparison != 0) return dateComparison;
+      } else if (aDate != null) {
+        return -1;
+      } else if (bDate != null) {
+        return 1;
+      }
+      return a.id.compareTo(b.id);
+    }
 
     final aDigits = RegExp(r'\d+')
         .allMatches(aNumber)
@@ -454,7 +467,7 @@ class _RecurringDetailGeneratedTabState
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
-                  inv.invoiceNumber.trim().isEmpty ? '-' : inv.invoiceNumber,
+                  inv.displayNumber(draftLabel: l.statusDraft),
                   style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
                 ),
                 Text(
@@ -644,9 +657,9 @@ class _RecurringDetailGeneratedTabState
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                resolved.invoiceNumber.isEmpty
-                                    ? '-'
-                                    : resolved.invoiceNumber,
+                                resolved.displayNumber(
+                                  draftLabel: l.statusDraft,
+                                ),
                                 style: t.bodySmall.copyWith(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 13,

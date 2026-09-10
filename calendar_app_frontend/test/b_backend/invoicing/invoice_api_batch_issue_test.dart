@@ -9,6 +9,29 @@ void main() {
       expect(uri.path, '/api/invoices/issue-all');
     });
 
+    test('sends only draft ids and group id', () {
+      final payload = InvoicesApi().buildIssueAllPayload(
+        groupId: 'group-1',
+        invoiceIds: ['invoice-2', 'invoice-1'],
+      );
+
+      expect(payload, {
+        'invoiceIds': ['invoice-2', 'invoice-1'],
+        'groupId': 'group-1',
+      });
+    });
+
+    test('removes numbering fields from draft updates', () {
+      final payload = InvoicesApi().sanitizeDraftPayload({
+        'clientId': 'client-1',
+        'invoiceNumber': '001-26',
+        'sequenceNumber': 1,
+        'yearYY': 26,
+      });
+
+      expect(payload, {'clientId': 'client-1'});
+    });
+
     test('parses a successful batch response', () {
       final result = InvoiceBatchIssueResult.fromJson({
         'ok': true,

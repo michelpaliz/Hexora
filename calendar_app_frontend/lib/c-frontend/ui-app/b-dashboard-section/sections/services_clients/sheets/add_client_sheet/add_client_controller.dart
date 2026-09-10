@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/client_billing.dart';
+import 'package:hexora/a-models/group_model/worker/geofenced_visit.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/c-frontend/utils/address/spain_postal_code_autofill.dart';
 import 'dart:developer' as devtools show log;
@@ -40,10 +41,16 @@ class AddClientController {
   final billingCountry = TextEditingController();
   final billingEmail = TextEditingController();
   final billingPhone = TextEditingController();
+  final serviceLatitude = TextEditingController();
+  final serviceLongitude = TextEditingController();
+  final serviceRadius = TextEditingController(text: '75');
+  final serviceLocationLabel = TextEditingController();
   String billingDocType = 'invoice';
 
   bool active = true;
   bool billingExpanded = false;
+  bool serviceLocationExpanded = false;
+  bool serviceLocationEnabled = true;
   bool saving = false;
   final Map<String, bool> _touched = {};
 
@@ -79,6 +86,16 @@ class AddClientController {
       billingLegalName.text = c.name;
       billingEmail.text = c.email ?? '';
       billingPhone.text = c.phone ?? '';
+    }
+
+    final serviceLocation = c.serviceLocation;
+    if (serviceLocation != null) {
+      serviceLatitude.text = serviceLocation.latitude.toStringAsFixed(6);
+      serviceLongitude.text = serviceLocation.longitude.toStringAsFixed(6);
+      serviceRadius.text = serviceLocation.radiusMeters.toStringAsFixed(0);
+      serviceLocationLabel.text = serviceLocation.label ?? '';
+      serviceLocationEnabled = serviceLocation.isEnabled;
+      serviceLocationExpanded = true;
     }
 
     autofillBillingAddressFromPostalCode();
@@ -186,12 +203,20 @@ class AddClientController {
       billingCountry,
       billingEmail,
       billingPhone,
+      serviceLatitude,
+      serviceLongitude,
+      serviceRadius,
+      serviceLocationLabel,
     ]) {
       c.dispose();
     }
   }
 
   Future<GroupClient> save() async {
+    final trimmedName = name.text.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError('El nombre del cliente es obligatorio.');
+    }
     // Send only non-null billing fields to avoid backend wiping values.
     final billingPatch = billingPayload(includeNulls: false);
 
@@ -202,7 +227,7 @@ class AddClientController {
 
     if (isEdit) {
       final patch = <String, dynamic>{
-        'name': name.text.trim(),
+        'name': trimmedName,
         'entityType': norm(entityType.text),
         'propertyKind': norm(propertyKind.text),
         'isActive': active,
@@ -219,12 +244,12 @@ class AddClientController {
     }
 
     devtools.log(
-        'POST /clients payload name=${name.text.trim()} groupId=$groupId billing=$billingPatch',
+        'POST /clients payload name=$trimmedName groupId=$groupId billing=$billingPatch',
         name: 'AddClientController');
     return api.create(
       GroupClient(
         id: '',
-        name: name.text.trim(),
+        name: trimmedName,
         groupId: groupId,
         entityType: norm(entityType.text),
         propertyKind: norm(propertyKind.text),
@@ -235,5 +260,47 @@ class AddClientController {
         createdAt: DateTime.now(),
       ),
     );
+  }
+
+  String? serviceLocationValidationError() {
+    final latitude = double.tryParse(serviceLatitude.text.trim());
+    final longitude = double.tryParse(serviceLongitude.text.trim());
+    final radius = double.tryParse(serviceRadius.text.trim());
+    final hasAnyCoordinate = serviceLatitude.text.trim().isNotEmpty ||
+        serviceLongitude.text.trim().isNotEmpty;
+    if (!hasAnyCoordinate && client?.serviceLocation == null) return null;
+    if (latitude == null || latitude < -90 || latitude > 90) {
+      return 'La latitud debe estar entre -90 y 90.';
+    }
+    if (longitude == null || longitude < -180 || longitude > 180) {
+      return 'La longitud debe estar entre -180 y 180.';
+    }
+    if (radius == null || radius < 10 || radius > 1000) {
+      return 'El radio debe estar entre 10 y 1.000 metros.';
+    }
+    return null;
+  }
+
+  Future<GroupClient> saveServiceLocation(GroupClient saved) async {
+    if (client == null) return saved;
+    final latitude = double.tryParse(serviceLatitude.text.trim());
+    final longitude = double.tryParse(serviceLongitude.text.trim());
+    final radius = double.tryParse(serviceRadius.text.trim());
+    if (latitude == null || longitude == null || radius == null) return saved;
+    final location = await api.updateServiceLocation(
+      saved.id,
+      ClientServiceLocation(
+        clientId: saved.id,
+        clientName: saved.name,
+        latitude: latitude,
+        longitude: longitude,
+        radiusMeters: radius,
+        label: serviceLocationLabel.text.trim().isEmpty
+            ? null
+            : serviceLocationLabel.text.trim(),
+        isEnabled: serviceLocationEnabled,
+      ),
+    );
+    return saved.copyWith(serviceLocation: location);
   }
 }

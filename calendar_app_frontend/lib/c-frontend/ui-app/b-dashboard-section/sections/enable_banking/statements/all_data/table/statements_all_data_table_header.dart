@@ -16,6 +16,10 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     required this.tableTheme,
     required this.onDateFilterTap,
     required this.dateFilterActive,
+    required this.onDescriptionFilterTap,
+    required this.descriptionFilterActive,
+    required this.onNotesFilterTap,
+    required this.notesFilterActive,
     required this.onAmountFilterTap,
     required this.amountFilterActive,
     required this.onClientProviderFilterTap,
@@ -32,6 +36,10 @@ class StatementsAllDataTableHeader extends StatelessWidget {
   final StatementsTableTheme tableTheme;
   final VoidCallback onDateFilterTap;
   final bool dateFilterActive;
+  final VoidCallback onDescriptionFilterTap;
+  final bool descriptionFilterActive;
+  final VoidCallback onNotesFilterTap;
+  final bool notesFilterActive;
   final VoidCallback onAmountFilterTap;
   final bool amountFilterActive;
   final VoidCallback onClientProviderFilterTap;
@@ -79,22 +87,13 @@ class StatementsAllDataTableHeader extends StatelessWidget {
               onChanged: (checked) => onToggleAll(checked == true),
             ),
           ),
-          if (isDesktop) ...[
-            _fixedCell(
-              label.statementsHeaderBatch,
-              StatementsAllDataTableLayout.batchWidth,
-              headerStyle,
-              align: TextAlign.center,
-              tooltip: label.statementsColumnBatchTooltip,
-            ),
-            const SizedBox(width: StatementsAllDataTableLayout.columnGap),
-          ],
-          _filterableCell(
+          _compactFilterCell(
             context,
             text: label.statementsHeaderDate,
             width: StatementsAllDataTableLayout.dateWidth,
             style: headerStyle,
             active: dateFilterActive,
+            icon: Icons.calendar_month_rounded,
             tooltip: dateFilterActive
                 ? '${label.statementsHeaderDate}: filtro activo'
                 : '${label.statementsHeaderDate}: filtrar',
@@ -104,11 +103,16 @@ class StatementsAllDataTableHeader extends StatelessWidget {
           if (isCompact)
             Expanded(
               flex: 4,
-              child: Text(
-                label.statementsHeaderDescription,
+              child: _compactFilterCell(
+                context,
+                text: label.statementsHeaderDescription,
                 style: headerStyle,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+                active: descriptionFilterActive,
+                icon: Icons.search_rounded,
+                tooltip: descriptionFilterActive
+                    ? '${label.statementsHeaderDescription}: búsqueda activa'
+                    : '${label.statementsHeaderDescription}: buscar',
+                onTap: onDescriptionFilterTap,
               ),
             )
           else
@@ -117,11 +121,16 @@ class StatementsAllDataTableHeader extends StatelessWidget {
                 minWidth: StatementsAllDataTableLayout.descMinWidth,
                 maxWidth: StatementsAllDataTableLayout.descMaxWidth,
               ),
-              child: Text(
-                label.statementsHeaderDescription,
+              child: _compactFilterCell(
+                context,
+                text: label.statementsHeaderDescription,
                 style: headerStyle,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+                active: descriptionFilterActive,
+                icon: Icons.search_rounded,
+                tooltip: descriptionFilterActive
+                    ? '${label.statementsHeaderDescription}: búsqueda activa'
+                    : '${label.statementsHeaderDescription}: buscar',
+                onTap: onDescriptionFilterTap,
               ),
             ),
           const SizedBox(width: StatementsAllDataTableLayout.columnGap),
@@ -203,15 +212,21 @@ class StatementsAllDataTableHeader extends StatelessWidget {
             ),
             if (isDesktop) ...[
               const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
-              _fixedCell(
-                Localizations.localeOf(context)
+              _filterableCell(
+                context,
+                text: Localizations.localeOf(context)
                         .languageCode
                         .toLowerCase()
                         .startsWith('es')
                     ? 'Notas'
                     : 'Notes',
-                StatementsAllDataTableLayout.notesWidth,
-                headerStyle,
+                width: StatementsAllDataTableLayout.notesWidth,
+                style: headerStyle,
+                active: notesFilterActive,
+                tooltip: notesFilterActive
+                    ? 'Notas: bÃºsqueda activa'
+                    : 'Notas: buscar',
+                onTap: onNotesFilterTap,
               ),
             ],
           ],
@@ -354,5 +369,65 @@ class StatementsAllDataTableHeader extends StatelessWidget {
 
     if (width == null) return content;
     return SizedBox(width: width, child: content);
+  }
+
+  Widget _compactFilterCell(
+    BuildContext context, {
+    required String text,
+    double? width,
+    required TextStyle style,
+    required bool active,
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final content = Align(
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              text,
+              style: style,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Tooltip(
+            message: tooltip,
+            child: Material(
+              color: active
+                  ? cs.primary.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(7),
+                side: BorderSide(
+                  color: active
+                      ? cs.primary.withValues(alpha: 0.3)
+                      : tableTheme.border.withValues(alpha: 0.45),
+                ),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(7),
+                onTap: onTap,
+                child: SizedBox.square(
+                  dimension: 28,
+                  child: Icon(
+                    icon,
+                    size: 17,
+                    color: active ? cs.primary : tableTheme.headerText,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return width == null ? content : SizedBox(width: width, child: content);
   }
 }

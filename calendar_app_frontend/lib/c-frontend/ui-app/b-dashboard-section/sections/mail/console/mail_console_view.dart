@@ -91,9 +91,8 @@ class _MailConsoleView extends StatelessWidget {
                         fontWeight: state._folder == folder
                             ? FontWeight.w700
                             : FontWeight.w500,
-                        color: state._folder == folder
-                            ? cs.primary
-                            : cs.onSurface,
+                        color:
+                            state._folder == folder ? cs.primary : cs.onSurface,
                       ),
                     ),
                     selected: state._folder == folder,
@@ -123,8 +122,8 @@ class _MailConsoleView extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.view_list_outlined,
-                    color: cs.onSurfaceVariant),
+                leading:
+                    Icon(Icons.view_list_outlined, color: cs.onSurfaceVariant),
                 title: Text('Templates',
                     style: t.bodySmall.copyWith(fontWeight: FontWeight.w500)),
                 onTap: () {
@@ -178,8 +177,14 @@ class _MailConsoleView extends StatelessWidget {
         }
         return _ConversationPane(
           thread: selectedThread,
+          folder: state._folder,
+          replyTarget: state._replyTarget,
+          onStartReply: state._startReply,
           onReply: state._sendReply,
+          onCloseReply: state._closeReplyComposer,
+          replySubjectController: state._replySubjectCtrl,
           replyController: state._replyCtrl,
+          replyFocus: state._replyFocus,
           sendingReply: state._sendingReply,
           onDownloadAttachment: _asyncValueChanged(
             (a) => state._downloadAttachment(a, domain),
@@ -200,10 +205,10 @@ class _MailConsoleView extends StatelessWidget {
                 isDetailView: isDetailView,
                 onBack: isDetailView ? mobileBack : null,
                 onOpenFolderMenu: isDetailView ? null : openFolderSheet,
-                onRefresh: isDetailView ? null : _asyncCallback(state._refreshAll),
+                onRefresh:
+                    isDetailView ? null : _asyncCallback(state._refreshAll),
                 onCompose: isDetailView ? null : state._openCompose,
-                hasUnread:
-                    selectedThread?.messages.any((m) => m.unread),
+                hasUnread: selectedThread?.messages.any((m) => m.unread),
                 onToggleRead: selectedThread != null
                     ? _asyncCallback(
                         () => state._markSelectedRead(
@@ -265,8 +270,8 @@ class _MailConsoleView extends StatelessWidget {
               : null,
           title: Text(
             appBarTitle(),
-            style: t.bodySmall
-                .copyWith(fontWeight: FontWeight.w700, fontSize: 16),
+            style:
+                t.bodySmall.copyWith(fontWeight: FontWeight.w700, fontSize: 16),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -375,8 +380,8 @@ class _MailConsoleView extends StatelessWidget {
             children: [
               Text(
                 l.mailConsoleTitle,
-                style:
-                    t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 13),
+                style: t.bodySmall
+                    .copyWith(fontWeight: FontWeight.w800, fontSize: 13),
               ),
               const SizedBox(height: 8),
               FilledButton.icon(
@@ -467,17 +472,14 @@ class _MailConsoleView extends StatelessWidget {
 
       if (!threadsState.loading && threads.isEmpty) {
         return _EmptyCard(
-          title: isThreadSearch
-              ? l.mailThreadSearchNoResults
-              : l.mailThreadsEmpty,
+          title:
+              isThreadSearch ? l.mailThreadSearchNoResults : l.mailThreadsEmpty,
           subtitle: isThreadSearch
               ? '"$activeQuery" · ${l.mailThreadSearchNoResultsHint}'
               : l.mailConsoleSelectThread,
-          icon: isThreadSearch
-              ? Icons.search_off_rounded
-              : Icons.inbox_outlined,
-          actionLabel:
-              isThreadSearch ? l.mailSearchClear : l.mailComposeTitle,
+          icon:
+              isThreadSearch ? Icons.search_off_rounded : Icons.inbox_outlined,
+          actionLabel: isThreadSearch ? l.mailSearchClear : l.mailComposeTitle,
           onAction:
               isThreadSearch ? state._clearThreadSearch : state._openCompose,
         );
@@ -552,8 +554,8 @@ class _MailConsoleView extends StatelessWidget {
                 onRefresh: _asyncCallback(state._refreshAll),
                 onToggleRead: _asyncCallback(
                   () => state._markSelectedRead(
-                    unread:
-                        !(selectedThread?.messages.any((m) => m.unread) ?? false),
+                    unread: !(selectedThread?.messages.any((m) => m.unread) ??
+                        false),
                   ),
                 ),
                 onArchive: _asyncCallback(
@@ -624,8 +626,14 @@ class _MailConsoleView extends StatelessWidget {
                               : const Center(child: CircularProgressIndicator())
                           : _ConversationPane(
                               thread: selectedThread,
+                              folder: state._folder,
+                              replyTarget: state._replyTarget,
+                              onStartReply: state._startReply,
                               onReply: state._sendReply,
+                              onCloseReply: state._closeReplyComposer,
+                              replySubjectController: state._replySubjectCtrl,
                               replyController: state._replyCtrl,
+                              replyFocus: state._replyFocus,
                               sendingReply: state._sendingReply,
                               onDownloadAttachment: _asyncValueChanged(
                                 (attachment) => state._downloadAttachment(
@@ -744,24 +752,20 @@ class _MobileThreadList extends StatelessWidget {
 
       if (!threadsState.loading && threads.isEmpty) {
         return _EmptyCard(
-          title: isThreadSearch
-              ? l.mailThreadSearchNoResults
-              : l.mailThreadsEmpty,
+          title:
+              isThreadSearch ? l.mailThreadSearchNoResults : l.mailThreadsEmpty,
           subtitle: isThreadSearch
               ? '"$activeQuery" · ${l.mailThreadSearchNoResultsHint}'
               : l.mailConsoleSelectThread,
-          icon: isThreadSearch
-              ? Icons.search_off_rounded
-              : Icons.inbox_outlined,
-          actionLabel:
-              isThreadSearch ? l.mailSearchClear : l.mailComposeTitle,
+          icon:
+              isThreadSearch ? Icons.search_off_rounded : Icons.inbox_outlined,
+          actionLabel: isThreadSearch ? l.mailSearchClear : l.mailComposeTitle,
           onAction:
               isThreadSearch ? state._clearThreadSearch : state._openCompose,
         );
       }
 
-      final itemCount =
-          threads.length + (threadsState.loadingMore ? 1 : 0);
+      final itemCount = threads.length + (threadsState.loadingMore ? 1 : 0);
 
       return ListView.separated(
         controller: state._threadScroll,
@@ -846,8 +850,8 @@ class _MobileThreadList extends StatelessWidget {
                               )),
                     filled: false,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 40, vertical: 9),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 40, vertical: 9),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,

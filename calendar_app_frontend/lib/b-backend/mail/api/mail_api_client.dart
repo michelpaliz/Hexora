@@ -70,6 +70,24 @@ class MailApiClient implements IMailApiClient {
     return 'Request failed ($statusCode).';
   }
 
+  String _extractReplyErrorMessage(String responseBody) {
+    if (responseBody.trim().isEmpty) return '';
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is! Map) return '';
+      final error = decoded['error'];
+      if (error is String && error.trim().isNotEmpty) return error.trim();
+      if (error is Map) {
+        final nested = (error['message'] ?? error['detail'])?.toString().trim();
+        if (nested != null && nested.isNotEmpty) return nested;
+      }
+      final message = decoded['message']?.toString().trim();
+      return message == null || message.isEmpty ? '' : message;
+    } catch (_) {
+      return '';
+    }
+  }
+
   bool _isTrashDuplicateFailure(HttpFailure failure) {
     if (failure.statusCode != 500) return false;
     final m = failure.message.toLowerCase();
@@ -354,7 +372,8 @@ class MailApiClient implements IMailApiClient {
       body: jsonEncode(payload),
       client: _client,
     );
-    _decode(r);
+    if (r.statusCode >= 200 && r.statusCode < 300) return;
+    throw HttpFailure(r.statusCode, _extractReplyErrorMessage(r.body));
   }
 
   @override

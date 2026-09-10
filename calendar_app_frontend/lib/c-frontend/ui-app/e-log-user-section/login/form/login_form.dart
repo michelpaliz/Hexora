@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/email_verification_state.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/home_page.dart';
@@ -31,6 +34,8 @@ class _LoginFormState extends State<LoginForm> {
   @override
   void initState() {
     super.initState();
+    // Stored verification data is cleanup-only. It must never open the prompt.
+    unawaited(EmailVerificationState.clearPersisted());
     _email.addListener(_recomputeCanSubmit);
     _password.addListener(_recomputeCanSubmit);
     _recomputeCanSubmit();
@@ -93,6 +98,7 @@ class _LoginFormState extends State<LoginForm> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => Padding(
+        key: const Key('email_verification_prompt'),
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -177,6 +183,7 @@ class _LoginFormState extends State<LoginForm> {
 
           // Email
           TextFieldWidget(
+            key: const Key('login_email_field'),
             controller: _email,
             keyboardType: TextInputType.emailAddress,
             decoration: TextFieldStyles.saucyInputDecoration(
@@ -194,6 +201,7 @@ class _LoginFormState extends State<LoginForm> {
 
           // Password
           TextFieldWidget(
+            key: const Key('login_password_field'),
             controller: _password,
             keyboardType: TextInputType.visiblePassword,
             obscureText: !_showPassword,
@@ -240,6 +248,7 @@ class _LoginFormState extends State<LoginForm> {
           SizedBox(
             height: 56,
             child: ElevatedButton(
+              key: const Key('login_submit_button'),
               style: ButtonStyleHelper.resolved(context, enabled: _canSubmit),
               onPressed: _canSubmit
                   ? () async {
@@ -249,13 +258,13 @@ class _LoginFormState extends State<LoginForm> {
                       try {
                         await authService.logIn(
                             email: email, password: password);
-                        if (!mounted) return;
+                        if (!context.mounted) return;
 
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(builder: (_) => const HomePage()),
                         );
                       } catch (e) {
-                        if (!mounted) return;
+                        if (!context.mounted) return;
 
                         if (e is EmailNotVerifiedAuthException) {
                           _promptEmailVerification(email);

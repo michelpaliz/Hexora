@@ -2,7 +2,6 @@ class StatementsAllDataTableLayout {
   static const double leadingSpacer = 2.0;
   static const double checkWidth = 28.0;
 
-  static const double batchWidth = 60.0;
   static const double dateWidth = 96.0;
 
   static const double amountWidth = 110.0;

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -34,6 +34,7 @@ class RecurringScheduleForm extends StatelessWidget {
   final String? errorText;
   final bool startReadOnly;
   final bool allowExecutionTimeEditWhenStartReadOnly;
+  final bool showInvoiceDatePolicy;
 
   const RecurringScheduleForm({
     super.key,
@@ -66,6 +67,7 @@ class RecurringScheduleForm extends StatelessWidget {
     this.errorText,
     this.startReadOnly = false,
     this.allowExecutionTimeEditWhenStartReadOnly = false,
+    this.showInvoiceDatePolicy = true,
   });
 
   @override
@@ -80,13 +82,15 @@ class RecurringScheduleForm extends StatelessWidget {
       borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.55)),
     );
     final fieldFill = cs.surface;
-    final inputTextStyle = t.bodySmall.copyWith(color: cs.onSurface, fontSize: 13);
+    final inputTextStyle =
+        t.bodySmall.copyWith(color: cs.onSurface, fontSize: 13);
     final labelStyle = t.bodySmall.copyWith(
       fontWeight: FontWeight.w700,
       color: cs.onSurfaceVariant,
       fontSize: 11,
     );
-    final hintStyle = t.bodySmall.copyWith(color: cs.onSurfaceVariant, fontSize: 11);
+    final hintStyle =
+        t.bodySmall.copyWith(color: cs.onSurfaceVariant, fontSize: 11);
     final buttonStyle = OutlinedButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       foregroundColor: cs.onSurface,
@@ -174,7 +178,7 @@ class RecurringScheduleForm extends StatelessWidget {
         final endTypeField = Theme(
           data: dropdownTheme,
           child: DropdownButtonFormField<String>(
-            value: endType,
+            initialValue: endType,
             style: inputTextStyle,
             dropdownColor: cs.surface,
             decoration: fieldDecoration(
@@ -313,16 +317,14 @@ class RecurringScheduleForm extends StatelessWidget {
               : 'Offset from execution date.\nInvoice date is calculated with +/- day offset.\nExample: +4 and run on 24 -> invoice dated 28.';
           final String selectedModeText;
           if (invoiceDateMode == 'fixed_day') {
-            selectedModeText =
-                isEs ? 'Dia fijo del mes' : 'Fixed day of month';
+            selectedModeText = isEs ? 'Dia fijo del mes' : 'Fixed day of month';
           } else if (invoiceDateMode == 'offset_days') {
             selectedModeText = isEs
                 ? 'Dias respecto a ejecucion'
                 : 'Offset from execution date';
           } else {
-            selectedModeText = isEs
-                ? 'Misma fecha de ejecucion'
-                : 'Same as execution date';
+            selectedModeText =
+                isEs ? 'Misma fecha de ejecucion' : 'Same as execution date';
           }
           ({String executionDay, String issueDay}) previewValues() {
             final executionDay = billDayCtrl.text.trim().isEmpty
@@ -453,7 +455,7 @@ class RecurringScheduleForm extends StatelessWidget {
               Theme(
                 data: dropdownTheme,
                 child: DropdownButtonFormField<String>(
-                  value: normalizedFreq,
+                  initialValue: normalizedFreq,
                   style: inputTextStyle,
                   dropdownColor: cs.surface,
                   decoration: fieldDecoration(
@@ -520,13 +522,15 @@ class RecurringScheduleForm extends StatelessWidget {
               ),
               timezoneField,
             ),
-            if (scheduleInfoTooltip != null) const SizedBox(height: tightSpacing),
+            if (scheduleInfoTooltip != null)
+              const SizedBox(height: tightSpacing),
             const SizedBox(height: fieldSpacing),
-            twoCol(
-              invoiceModeSelector(),
-              invoiceModeCompanion,
-            ),
-            if (invoiceDateMode == 'fixed_day') ...[
+            if (showInvoiceDatePolicy)
+              twoCol(
+                invoiceModeSelector(),
+                invoiceModeCompanion,
+              ),
+            if (showInvoiceDatePolicy && invoiceDateMode == 'fixed_day') ...[
               const SizedBox(height: fieldSpacing),
               twoCol(
                 TextFormField(
@@ -541,12 +545,13 @@ class RecurringScheduleForm extends StatelessWidget {
                 Theme(
                   data: dropdownTheme,
                   child: DropdownButtonFormField<String>(
-                    value: invoiceDateClampPolicy,
+                    initialValue: invoiceDateClampPolicy,
                     style: inputTextStyle,
                     dropdownColor: cs.surface,
                     decoration: fieldDecoration(
-                      label:
-                          isEs ? 'Si el dia no existe' : 'If day does not exist',
+                      label: isEs
+                          ? 'Si el dia no existe'
+                          : 'If day does not exist',
                       icon: Icons.rule_outlined,
                     ),
                     items: [
@@ -576,7 +581,8 @@ class RecurringScheduleForm extends StatelessWidget {
                 Expanded(
                   child: Text(
                     l.recurringInvoicesExceptionsLabel,
-                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 13),
+                    style: t.bodySmall
+                        .copyWith(fontWeight: FontWeight.w800, fontSize: 13),
                   ),
                 ),
                 TextButton.icon(
@@ -637,4 +643,3 @@ class RecurringScheduleForm extends StatelessWidget {
     );
   }
 }
-

@@ -77,6 +77,10 @@ class _FakeStatementsApi extends StatementsApi {
 class _FakeAggregatedStatementsApi extends StatementsApi {
   int aggregatedCalls = 0;
   int listImportsCalls = 0;
+  String? lastDescriptionSearch;
+  String? lastNotesSearch;
+  int? lastYear;
+  String? lastAmountType;
 
   @override
   Future<List<Map<String, dynamic>>> listImports() async {
@@ -96,9 +100,16 @@ class _FakeAggregatedStatementsApi extends StatementsApi {
     String amountType = 'all',
     double? minAmount,
     double? maxAmount,
+    String? clientProviderQuery,
+    String? descriptionSearch,
+    String? notesSearch,
     String sort = 'date_desc',
   }) async {
     aggregatedCalls += 1;
+    lastDescriptionSearch = descriptionSearch;
+    lastNotesSearch = notesSearch;
+    lastYear = year;
+    lastAmountType = amountType;
     return StatementEntriesPage(
       items: const [
         StatementEntry({'id': 'e1', 'amount': 10, 'date': '2026-03-01'}),
@@ -133,6 +144,49 @@ void main() {
     expect(c.allEntriesTotal, 2);
     expect(c.allEntriesPage, 1);
     expect(c.allEntriesSize, 50);
+  });
+
+  test('description and notes search are sent and retained across pagination',
+      () async {
+    final api = _FakeAggregatedStatementsApi();
+    final c = StatementsController(
+      api: api,
+      clientsApi: ClientsApi(),
+      groupId: 'g1',
+      useAggregated: true,
+    );
+
+    await c.loadAllEntries(
+      descriptionSearch: '  openai chatgpt  ',
+      notesSearch: '  pendiente revisar  ',
+      year: 2026,
+      amountType: 'expense',
+      applyDateFilters: true,
+      applyAmountFilters: true,
+    );
+
+    expect(api.lastDescriptionSearch, 'openai chatgpt');
+    expect(api.lastNotesSearch, 'pendiente revisar');
+    expect(api.lastYear, 2026);
+    expect(api.lastAmountType, 'expense');
+    expect(c.allEntriesDescriptionSearch, 'openai chatgpt');
+    expect(c.allEntriesNotesSearch, 'pendiente revisar');
+
+    await c.loadAllEntries(page: 2);
+
+    expect(api.lastDescriptionSearch, 'openai chatgpt');
+    expect(api.lastNotesSearch, 'pendiente revisar');
+    expect(api.lastYear, 2026);
+    expect(api.lastAmountType, 'expense');
+    expect(c.allEntriesDescriptionSearch, 'openai chatgpt');
+    expect(c.allEntriesNotesSearch, 'pendiente revisar');
+
+    await c.loadAllEntries(descriptionSearch: '', notesSearch: '');
+
+    expect(api.lastDescriptionSearch, isNull);
+    expect(api.lastNotesSearch, isNull);
+    expect(c.allEntriesDescriptionSearch, isNull);
+    expect(c.allEntriesNotesSearch, isNull);
   });
 
   test('diagnostic: loadAllEntries fetches batches concurrently (capped)',

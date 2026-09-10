@@ -70,16 +70,43 @@ class _GroupListSectionState extends State<GroupListSection> {
           key: ValueKey('groups-${user.id}'),
           stream: groupDomain.watchGroupsForUser(user.id),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting &&
-                !snapshot.hasData) {
+            final currentGroups = snapshot.data ?? const <Group>[];
+            final hasCachedGroups = currentGroups.isNotEmpty;
+            if (groupDomain.groupsLoadError != null && !hasCachedGroups) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ErrorText(
+                      loc.localeName.startsWith('es')
+                          ? 'No se pudieron cargar los grupos.'
+                          : 'Groups could not be loaded.',
+                    ),
+                    TextButton.icon(
+                      onPressed: () =>
+                          groupDomain.refreshGroupsForCurrentUser(userDomain),
+                      icon: const Icon(Icons.refresh_rounded, size: 17),
+                      label: Text(
+                        loc.localeName.startsWith('es')
+                            ? 'Reintentar'
+                            : 'Retry',
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            if (!hasCachedGroups &&
+                (groupDomain.groupsLoading ||
+                    snapshot.connectionState == ConnectionState.waiting)) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
               return ErrorText('Error: ${snapshot.error}');
-            } else if (snapshot.hasData && snapshot.data!.isEmpty) {
+            } else if (snapshot.hasData && currentGroups.isEmpty) {
               return NoGroupsText(loc.noGroupsAvailable);
             }
 
-            final all = snapshot.data ?? [];
+            final all = currentGroups;
 
             // Filter when full page + search is visible
             List<Group> filtered = all;
@@ -213,8 +240,7 @@ class _GroupListSectionState extends State<GroupListSection> {
                               loc.groups,
                               style: t.bodyLarge.copyWith(
                                 fontWeight: FontWeight.w800,
-                                color:
-                                    Theme.of(context).colorScheme.onSurface,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                           ),

@@ -17,7 +17,10 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_ban
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/statements/statements_formatters.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/statements/statements_shared.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
+    as pdf_launcher;
 import 'package:hexora/c-frontend/ui-app/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -36,6 +39,69 @@ class InsightsChatFab extends StatefulWidget {
 
   @override
   State<InsightsChatFab> createState() => _InsightsChatFabState();
+}
+
+class _InsightsAsyncIconButton extends StatefulWidget {
+  const _InsightsAsyncIconButton({
+    required this.tooltip,
+    required this.semanticLabel,
+    required this.errorFallback,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final String semanticLabel;
+  final String errorFallback;
+  final Future<void> Function()? onPressed;
+
+  @override
+  State<_InsightsAsyncIconButton> createState() =>
+      _InsightsAsyncIconButtonState();
+}
+
+class _InsightsAsyncIconButtonState extends State<_InsightsAsyncIconButton> {
+  bool _loading = false;
+
+  Future<void> _run() async {
+    final action = widget.onPressed;
+    if (action == null || _loading) return;
+    setState(() => _loading = true);
+    try {
+      await action();
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '').trim();
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(message.isEmpty ? widget.errorFallback : message),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      child: Tooltip(
+        message: widget.tooltip,
+        child: IconButton.filledTonal(
+          visualDensity: VisualDensity.compact,
+          onPressed: widget.onPressed == null || _loading ? null : _run,
+          icon: _loading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.visibility_outlined, size: 18),
+        ),
+      ),
+    );
+  }
 }
 
 class _InsightsChatFabState extends State<InsightsChatFab> {
@@ -179,6 +245,7 @@ class _ChatMessage {
   final Map<String, dynamic>? exportAction;
   final String? view;
   final Map<String, dynamic>? table;
+  final Map<String, dynamic>? tableQuery;
   final List<String>? followUps;
   final _InsightsMenu? menu;
   final Map<String, dynamic>? eventAssistant;
@@ -197,6 +264,7 @@ class _ChatMessage {
     this.exportAction,
     this.view,
     this.table,
+    this.tableQuery,
     this.followUps,
     this.menu,
     this.eventAssistant,
@@ -216,6 +284,7 @@ class _ChatMessage {
     Map<String, dynamic>? exportAction,
     String? view,
     Map<String, dynamic>? table,
+    Map<String, dynamic>? tableQuery,
     List<String>? followUps,
     _InsightsMenu? menu,
     Map<String, dynamic>? eventAssistant,
@@ -234,6 +303,7 @@ class _ChatMessage {
       exportAction: exportAction ?? this.exportAction,
       view: view ?? this.view,
       table: table ?? this.table,
+      tableQuery: tableQuery ?? this.tableQuery,
       followUps: followUps ?? this.followUps,
       menu: menu ?? this.menu,
       eventAssistant: eventAssistant ?? this.eventAssistant,
@@ -254,6 +324,7 @@ class _ChatMessage {
         'exportAction': exportAction,
         'view': view,
         'table': table,
+        'tableQuery': tableQuery,
         'followUps': followUps,
         'menu': menu?.toJson(),
         'eventAssistant': eventAssistant,
@@ -275,6 +346,7 @@ class _ChatMessage {
     final exportAction = _safeMap(json['exportAction']);
     final view = _safeString(json['view']).trim();
     final table = _safeMap(json['table']);
+    final tableQuery = _safeMap(json['tableQuery']);
     final followUps = _safeStringList(json['followUps']);
     final menu = _InsightsMenu.fromDynamic(json['menu']);
     final eventAssistant = _safeMap(json['eventAssistant']);
@@ -293,6 +365,7 @@ class _ChatMessage {
       exportAction: exportAction,
       view: view.isEmpty ? null : view,
       table: table,
+      tableQuery: tableQuery,
       followUps: followUps,
       menu: menu,
       eventAssistant: eventAssistant,
@@ -561,6 +634,8 @@ bool _looksLikeActionToken(String text) {
 
 const String _incomeInvoicesByAmountAction =
     '__menu__:category_income:facturas_por_importe';
+const String _linkedIncomeReviewAction =
+    '__menu__:category_income:linked_income_review';
 const String _financeBreakdownAction = '__menu__::finance_follow_up:breakdown';
 
 bool _isIncomeInvoicesByAmountAction(String? text) {
@@ -602,6 +677,15 @@ Map<String, dynamic>? _extractStructuredTableMap(dynamic raw) {
   final table = _safeMap(map['table']);
   if (table != null) return table;
   return _extractStructuredTableMap(map['data']);
+}
+
+Map<String, dynamic>? _extractTableQueryMap(dynamic raw) {
+  final map = _safeMap(raw);
+  if (map == null || map.isEmpty) return null;
+  final direct = _safeMap(map['tableQuery']);
+  final endpoint = direct?['endpoint']?.toString().trim() ?? '';
+  if (direct != null && endpoint.isNotEmpty) return direct;
+  return _extractTableQueryMap(map['data']);
 }
 
 List<String>? _extractFollowUps(dynamic raw) {
@@ -736,6 +820,134 @@ String _visibleMessageText(
 
 enum _InsightsResponseMode { auto, stream }
 
+class _InsightsDateRange {
+  const _InsightsDateRange({
+    required this.from,
+    required this.inclusiveTo,
+  });
+
+  final DateTime from;
+  final DateTime inclusiveTo;
+
+  DateTime get normalizedFrom => DateTime(from.year, from.month, from.day);
+  DateTime get normalizedInclusiveTo =>
+      DateTime(inclusiveTo.year, inclusiveTo.month, inclusiveTo.day);
+
+  Map<String, dynamic> toApiJson() {
+    final exclusiveTo = normalizedInclusiveTo.add(const Duration(days: 1));
+    return <String, dynamic>{
+      'dateFrom': _formatInsightsApiDate(normalizedFrom),
+      'dateTo': _formatInsightsApiDate(exclusiveTo),
+    };
+  }
+
+  String label({required bool isEs}) {
+    final start = _formatInsightsUiDate(normalizedFrom, isEs: isEs);
+    final end = _formatInsightsUiDate(normalizedInclusiveTo, isEs: isEs);
+    return start == end ? start : '$start - $end';
+  }
+
+  bool sameRange(_InsightsDateRange? other) {
+    if (other == null) return false;
+    return normalizedFrom == other.normalizedFrom &&
+        normalizedInclusiveTo == other.normalizedInclusiveTo;
+  }
+}
+
+class _InsightsRemoteTableState {
+  _InsightsRemoteTableState({this.pageSize = 50});
+
+  Map<String, dynamic>? table;
+  Map<String, dynamic>? pagination;
+  bool loading = false;
+  String? error;
+  int requestSerial = 0;
+  bool loadedOnce = false;
+  int page = 1;
+  int pageSize;
+
+  int get totalRows =>
+      _readInt(pagination?['totalRows']) ??
+      _readInt(table?['totalAvailable']) ??
+      0;
+
+  int get totalPages =>
+      (_readInt(pagination?['totalPages']) ?? 1).clamp(1, 999999).toInt();
+
+  int get effectivePage =>
+      (_readInt(pagination?['page']) ?? page).clamp(1, totalPages).toInt();
+
+  int get effectivePageSize =>
+      (_readInt(pagination?['pageSize']) ?? pageSize).clamp(1, 500).toInt();
+}
+
+String _twoDigitInsights(int value) => value.toString().padLeft(2, '0');
+
+String _formatInsightsApiDate(DateTime date) {
+  return '${date.year}-${_twoDigitInsights(date.month)}-${_twoDigitInsights(date.day)}';
+}
+
+String _formatInsightsUiDate(DateTime date, {required bool isEs}) {
+  const esMonths = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sept',
+    'oct',
+    'nov',
+    'dic',
+  ];
+  const enMonths = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sept',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final months = isEs ? esMonths : enMonths;
+  return '${date.day} ${months[date.month - 1]} ${date.year}';
+}
+
+_InsightsDateRange _insightsRangeForPreset(String preset) {
+  final today = DateTime.now();
+  final current = DateTime(today.year, today.month, today.day);
+  switch (preset) {
+    case 'today':
+      return _InsightsDateRange(from: current, inclusiveTo: current);
+    case 'week':
+      final start = current.subtract(Duration(days: current.weekday - 1));
+      return _InsightsDateRange(
+        from: start,
+        inclusiveTo: start.add(const Duration(days: 6)),
+      );
+    case 'lastMonth':
+      final start = DateTime(current.year, current.month - 1);
+      return _InsightsDateRange(
+        from: start,
+        inclusiveTo: DateTime(current.year, current.month, 0),
+      );
+    case 'month':
+    default:
+      final start = DateTime(current.year, current.month);
+      return _InsightsDateRange(
+        from: start,
+        inclusiveTo: DateTime(current.year, current.month + 1, 0),
+      );
+  }
+}
+
 enum _InsightsChatEndpointType {
   chat,
   chatAuto,
@@ -791,6 +1003,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
   bool _takingTooLong = false;
   Timer? _slowTimer;
   _InsightsChatEndpointType _endpointType = _InsightsChatEndpointType.chatAuto;
+  _InsightsDateRange? _dateRange;
   String? _lastUserMessage;
   String? _lastTimeoutMessage;
   int _chatTimeoutCount = 0;
@@ -812,6 +1025,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
   int get timeoutMs => _timeoutMs;
   bool get takingTooLong => _takingTooLong;
   _InsightsChatEndpointType get endpointType => _endpointType;
+  _InsightsDateRange? get dateRange => _dateRange;
   String? get lastTimeoutMessage => _lastTimeoutMessage;
   int get chatTimeoutCount => _chatTimeoutCount;
 
@@ -836,6 +1050,39 @@ class _InsightsChatRuntime extends ChangeNotifier {
     if (_timeoutMs == safe) return;
     _timeoutMs = safe;
     notifyListeners();
+  }
+
+  void setDateRange(_InsightsDateRange? range) {
+    if (range == null && _dateRange == null) return;
+    if (range != null && range.sameRange(_dateRange)) return;
+    _dateRange = range;
+    notifyListeners();
+  }
+
+  Map<String, dynamic> _dateRangePayload() {
+    return _dateRange?.toApiJson() ?? const <String, dynamic>{};
+  }
+
+  Map<String, dynamic> _scopePayload() {
+    final datePayload = _dateRangePayload();
+    if (datePayload.isNotEmpty) return datePayload;
+    return <String, dynamic>{'days': _days};
+  }
+
+  InsightsExcelExportAction _withScope(
+    InsightsExcelExportAction action,
+  ) {
+    final scopePayload = _scopePayload();
+    return InsightsExcelExportAction(
+      type: action.type,
+      endpoint: action.endpoint,
+      method: action.method,
+      body: <String, dynamic>{
+        ...action.body,
+        ...scopePayload,
+      },
+      filename: action.filename,
+    );
   }
 
   void setSheetOpen(bool open, {bool notify = true}) {
@@ -1045,7 +1292,9 @@ class _InsightsChatRuntime extends ChangeNotifier {
       '[insights_export_auto] endpoint=${action.endpoint} '
       'method=${action.method} body=${jsonEncode(action.body)}',
     );
-    final export = await _api.downloadInsightsExcelFromAction(action);
+    final export = await _api.downloadInsightsExcelFromAction(
+      _withScope(action),
+    );
     debugPrint(
       '[insights_export_auto] contentType=${export.mimeType} '
       'size=${export.bytes.lengthInBytes} filename=${export.fileName}',
@@ -1134,8 +1383,8 @@ class _InsightsChatRuntime extends ChangeNotifier {
             index: 1,
             label: isEs ? 'Resumen de ingresos' : 'Revenue summary',
             action: isEs
-                ? 'Dame un resumen de ingresos de los ultimos 90 dias.'
-                : 'Give me a revenue summary for the last 90 days.',
+                ? 'Dame un resumen de ingresos del periodo seleccionado.'
+                : 'Give me a revenue summary for the selected period.',
           ),
           _InsightsMenuOption(
             index: 2,
@@ -1150,6 +1399,13 @@ class _InsightsChatRuntime extends ChangeNotifier {
             action: isEs
                 ? 'Muestra los clientes que generan mas ingresos.'
                 : 'Show the clients generating the most revenue.',
+          ),
+          _InsightsMenuOption(
+            index: 4,
+            label: isEs
+                ? 'Ingresos vinculados que requieren revisión'
+                : 'Linked income requiring review',
+            action: _linkedIncomeReviewAction,
           ),
         ],
       );
@@ -1166,8 +1422,8 @@ class _InsightsChatRuntime extends ChangeNotifier {
             index: 1,
             label: isEs ? 'Resumen de gastos' : 'Expense summary',
             action: isEs
-                ? 'Dame un resumen de gastos de los ultimos 90 dias.'
-                : 'Give me an expense summary for the last 90 days.',
+                ? 'Dame un resumen de gastos del periodo seleccionado.'
+                : 'Give me an expense summary for the selected period.',
           ),
           _InsightsMenuOption(
             index: 2,
@@ -1198,8 +1454,8 @@ class _InsightsChatRuntime extends ChangeNotifier {
             index: 1,
             label: isEs ? 'Facturas emitidas' : 'Issued invoices',
             action: isEs
-                ? 'Resume las facturas emitidas de los ultimos 90 dias.'
-                : 'Summarize issued invoices for the last 90 days.',
+                ? 'Resume las facturas emitidas del periodo seleccionado.'
+                : 'Summarize issued invoices for the selected period.',
           ),
           _InsightsMenuOption(
             index: 2,
@@ -1524,6 +1780,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
     final extra = <String, dynamic>{
       'conversationId': activeConversationId,
       'resetConversation': shouldResetConversation,
+      ..._scopePayload(),
     };
     if (shouldResetConversation) {
       _resetConversationOnNextSend = false;
@@ -1532,7 +1789,8 @@ class _InsightsChatRuntime extends ChangeNotifier {
       '[insights_send] source=${source.name} '
       'message=${jsonEncode(trimmed)} '
       'conversationId=$activeConversationId '
-      'resetConversation=$shouldResetConversation',
+      'resetConversation=$shouldResetConversation '
+      'scope=${jsonEncode(_scopePayload())}',
     );
     _lastUserMessage = trimmed;
     _lastTimeoutMessage = null;
@@ -1571,6 +1829,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
         final canExport = _extractCanExport(response.raw);
         final responseView = _extractResponseView(response.raw);
         final responseTable = _extractStructuredTableMap(response.raw);
+        final responseTableQuery = _extractTableQueryMap(response.raw);
         final responseFollowUps = _extractFollowUps(response.raw);
         final responseMenu = _menuForResponse(
           raw: response.raw,
@@ -1597,6 +1856,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
               exportAction: exportAction,
               view: responseView,
               table: responseTable,
+              tableQuery: responseTableQuery,
               followUps: responseFollowUps,
               menu: responseMenu,
             ),
@@ -1616,6 +1876,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
               exportAction: exportAction,
               view: responseView,
               table: responseTable,
+              tableQuery: responseTableQuery,
               followUps: responseFollowUps,
               menu: responseMenu,
             ),
@@ -1638,6 +1899,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
         var latestCanExport = false;
         String? latestView;
         Map<String, dynamic>? latestTable;
+        Map<String, dynamic>? latestTableQuery;
         List<String>? latestFollowUps;
         _InsightsMenu? latestMenu;
         notifyListeners();
@@ -1665,6 +1927,8 @@ class _InsightsChatRuntime extends ChangeNotifier {
           latestCanExport = latestCanExport || _extractCanExport(event.raw);
           latestView = _extractResponseView(event.raw) ?? latestView;
           latestTable = _extractStructuredTableMap(event.raw) ?? latestTable;
+          latestTableQuery =
+              _extractTableQueryMap(event.raw) ?? latestTableQuery;
           latestFollowUps = _extractFollowUps(event.raw) ?? latestFollowUps;
           if (event.hasTimeout) {
             timedOut = true;
@@ -1690,6 +1954,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
               exportAction: latestExportAction ?? current.exportAction,
               view: latestView ?? current.view,
               table: latestTable ?? current.table,
+              tableQuery: latestTableQuery ?? current.tableQuery,
               followUps: latestFollowUps ?? current.followUps,
               menu: latestMenu ?? current.menu,
             );
@@ -1708,6 +1973,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
             exportAction: latestExportAction ?? current.exportAction,
             view: latestView ?? current.view,
             table: latestTable ?? current.table,
+            tableQuery: latestTableQuery ?? current.tableQuery,
             followUps: latestFollowUps ?? current.followUps,
             menu: latestMenu ?? current.menu,
           );
@@ -1744,6 +2010,8 @@ class _InsightsChatRuntime extends ChangeNotifier {
           final fallbackView = _extractResponseView(fallbackResponse.raw);
           final fallbackTable =
               _extractStructuredTableMap(fallbackResponse.raw);
+          final fallbackTableQuery =
+              _extractTableQueryMap(fallbackResponse.raw);
           final fallbackFollowUps = _extractFollowUps(fallbackResponse.raw);
           final fallbackText = fallbackResponse.text.trim().isEmpty
               ? l.insightsChatNoResponse
@@ -1761,6 +2029,8 @@ class _InsightsChatRuntime extends ChangeNotifier {
                 fallbackAction ?? latestExportAction ?? current.exportAction,
             view: fallbackView ?? latestView ?? current.view,
             table: fallbackTable ?? latestTable ?? current.table,
+            tableQuery:
+                fallbackTableQuery ?? latestTableQuery ?? current.tableQuery,
             followUps:
                 fallbackFollowUps ?? latestFollowUps ?? current.followUps,
             menu: fallbackMenu ?? latestMenu ?? current.menu,
@@ -1776,6 +2046,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
             exportAction: latestExportAction ?? current.exportAction,
             view: latestView ?? current.view,
             table: latestTable ?? current.table,
+            tableQuery: latestTableQuery ?? current.tableQuery,
             followUps: latestFollowUps ?? current.followUps,
             menu: latestMenu ?? current.menu,
           );
@@ -1858,16 +2129,26 @@ class _InsightsChatRuntime extends ChangeNotifier {
     required String groupId,
     required String message,
   }) {
-    return _api.exportChatExcel(
-      groupId: groupId,
-      message: message,
+    return _api.downloadInsightsExcelFromAction(
+      _withScope(
+        InsightsExcelExportAction(
+          type: 'export_excel',
+          endpoint: '/api/insights/chat/export/excel',
+          method: 'POST',
+          body: <String, dynamic>{
+            'groupId': groupId.trim(),
+            'message': message.trim(),
+          },
+          filename: null,
+        ),
+      ),
     );
   }
 
   Future<InsightsExcelExport> downloadExcelFromAction(
     InsightsExcelExportAction action,
   ) {
-    return _api.downloadInsightsExcelFromAction(action);
+    return _api.downloadInsightsExcelFromAction(_withScope(action));
   }
 
   Future<Map<String, dynamic>> executeJsonAction(
@@ -1895,6 +2176,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
       extra: <String, dynamic>{
         'conversationId': _conversationId,
         'resetConversation': false,
+        ..._scopePayload(),
       },
     );
     final text = response.text.trim().isEmpty
@@ -1903,6 +2185,7 @@ class _InsightsChatRuntime extends ChangeNotifier {
     _messages[messageIndex] = message.copyWith(
       text: text,
       table: _extractStructuredTableMap(response.raw) ?? message.table,
+      tableQuery: _extractTableQueryMap(response.raw) ?? message.tableQuery,
       followUps: _extractFollowUps(response.raw) ?? message.followUps,
       menu: _menuForResponse(
             raw: response.raw,
@@ -2025,12 +2308,21 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   String? _selectedAssistantMessageKey;
   String? _eventActionMessageKey;
   final Map<String, _PendingInvoiceLinkEdit> _pendingInvoiceLinkEdits = {};
+  final Map<String, Map<String, dynamic>> _pendingInsightsInvoiceRowPatches =
+      {};
   final Map<String, Map<String, dynamic>> _invoiceDisplayCache = {};
+  final Map<String, _InsightsDateRange> _tableDateFilters = {};
+  final Map<String, _InsightsRemoteTableState> _remoteTableStates = {};
   bool _loadingInvoiceDisplayCache = false;
   bool _bulkLinkingInvoices = false;
   final Map<String, String> _bulkLinkErrors = {};
   final Set<String> _searchingBankIncomeRows = {};
   final Set<String> _linkingBankIncomeRows = {};
+  final Set<String> _unlinkingLinkedIncomeRows = {};
+  bool _bulkUnlinkingLinkedIncome = false;
+  int _bulkUnlinkingLinkedIncomeProgress = 0;
+  int _bulkUnlinkingLinkedIncomeTotal = 0;
+  bool _desktopChatPaneCollapsed = false;
 
   @override
   void initState() {
@@ -2129,6 +2421,13 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
           })();
     final resolvedAction =
         (action?.trim().isNotEmpty ?? false) ? action!.trim() : '$index';
+    if (resolvedAction == _linkedIncomeReviewAction) {
+      await _openLinkedIncomeReview(
+        sourceMessage: message,
+        displayLabel: displayLabel,
+      );
+      return;
+    }
     if (message != null &&
         _runtime.handleLocalMenuChoice(
           context: context,
@@ -2148,6 +2447,10 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
 
   Future<void> _sendStarterChoice(_InsightsMenuOption option) async {
     if (_runtime.sending) return;
+    if (option.action?.trim() == _linkedIncomeReviewAction) {
+      await _openLinkedIncomeReview(displayLabel: option.label);
+      return;
+    }
     if (_runtime.openLocalStarterArea(context: context, option: option)) {
       return;
     }
@@ -2158,6 +2461,222 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
       source: _InsightsSendSource.newConversationAction,
       displayTextOverride: option.label,
     );
+  }
+
+  List<Map<String, dynamic>> _linkedIncomeReviewColumns(bool isEs) => [
+        {'key': 'date', 'label': isEs ? 'Fecha' : 'Date'},
+        {'key': 'concept', 'label': isEs ? 'Concepto' : 'Description'},
+        {
+          'key': 'amountFormatted',
+          'label': isEs ? 'Ingreso' : 'Income',
+          'align': 'right',
+        },
+        {
+          'key': 'linkedInvoices',
+          'label': isEs ? 'Facturas vinculadas' : 'Linked invoices',
+        },
+        {
+          'key': 'linkedInvoicesTotalFormatted',
+          'label': isEs ? 'Total facturas' : 'Invoice total',
+          'align': 'right',
+        },
+        {
+          'key': 'matchScoreFormatted',
+          'label': isEs ? 'Coincidencia' : 'Match',
+        },
+        {
+          'key': 'reviewReasons',
+          'label': isEs ? 'Motivo' : 'Reason',
+        },
+        {
+          'key': '__linkedIncomeReviewActions',
+          'label': isEs ? 'Acciones' : 'Actions',
+        },
+      ];
+
+  bool _messageIsLinkedIncomeReview(_ChatMessage message) =>
+      message.table?['kind']?.toString() == 'linkedIncomeReview';
+
+  Map<String, dynamic> _normalizeLinkedIncomeReviewRow(
+    Map<String, dynamic> row,
+  ) {
+    final linkedInvoices = row['linkedInvoices'] is List
+        ? (row['linkedInvoices'] as List)
+            .map(_safeMap)
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    final invoiceIds = linkedInvoices
+        .map((invoice) =>
+            (invoice['invoiceId'] ?? invoice['id'])?.toString().trim() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    final invoiceNumbers = linkedInvoices
+        .map((invoice) =>
+            (invoice['invoiceNumber'] ?? invoice['number'])
+                ?.toString()
+                .trim() ??
+            '')
+        .where((number) => number.isNotEmpty)
+        .toList(growable: false);
+    return <String, dynamic>{
+      ...row,
+      'linkedInvoices': linkedInvoices,
+      if (invoiceIds.isNotEmpty) ...{
+        'invoiceIds': invoiceIds,
+        'existingLinkedInvoiceIds': invoiceIds,
+        'hasExistingInvoiceLink': true,
+      },
+      if (invoiceNumbers.isNotEmpty) ...{
+        'invoiceNumbers': invoiceNumbers,
+        'invoiceNumber': invoiceNumbers.join(' + '),
+      },
+    };
+  }
+
+  Map<String, dynamic> _linkedIncomeReviewPayload(
+    Map<String, dynamic> response,
+  ) {
+    final data = _safeMap(response['data']);
+    if (data?['rows'] is List) return data!;
+    return response;
+  }
+
+  Future<void> _openLinkedIncomeReview({
+    _ChatMessage? sourceMessage,
+    String? displayLabel,
+  }) async {
+    if (widget.groupId.trim().isEmpty) return;
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
+    final label = displayLabel?.trim().isNotEmpty == true
+        ? displayLabel!.trim()
+        : (isEs
+            ? 'Ingresos vinculados que requieren revisión'
+            : 'Linked income requiring review');
+    final conversationId = sourceMessage?.conversationId;
+    await _runtime.appendMessage(
+      _ChatMessage(
+        isUser: true,
+        text: _linkedIncomeReviewAction,
+        displayText: label,
+        timestamp: DateTime.now(),
+        conversationId: conversationId,
+      ),
+    );
+    final loadingMessage = _ChatMessage(
+      isUser: false,
+      text: isEs
+          ? 'Buscando ingresos vinculados que requieren revisión...'
+          : 'Finding linked income requiring review...',
+      timestamp: DateTime.now(),
+      conversationId: conversationId,
+      sourceUserMessage: _linkedIncomeReviewAction,
+      view: 'table',
+      table: <String, dynamic>{
+        'kind': 'linkedIncomeReview',
+        'loading': true,
+        'threshold': 60,
+        'columns': _linkedIncomeReviewColumns(isEs),
+        'rows': const <Map<String, dynamic>>[],
+      },
+    );
+    await _runtime.appendMessage(loadingMessage);
+    if (!mounted) return;
+    setState(() => _selectedAssistantMessageKey = _messageKey(loadingMessage));
+    await _refreshLinkedIncomeReview(loadingMessage);
+  }
+
+  Future<void> _refreshLinkedIncomeReview(_ChatMessage message) async {
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
+    final current = _findMessageByKey(
+          _runtime.messages,
+          _messageKey(message),
+        ) ??
+        message;
+    final previousTable = current.table ?? const <String, dynamic>{};
+    final loadingMessage = current.copyWith(
+      table: <String, dynamic>{
+        ...previousTable,
+        'kind': 'linkedIncomeReview',
+        'loading': true,
+        'loadError': null,
+        'columns': _linkedIncomeReviewColumns(isEs),
+      },
+    );
+    await _runtime.replaceMessage(current, loadingMessage);
+
+    try {
+      final response = await _runtime.executeJsonAction(<String, dynamic>{
+        'endpoint': '/api/statements/entries/linked-income-review',
+        'method': 'GET',
+        'query': <String, dynamic>{
+          'groupId': widget.groupId.trim(),
+          'threshold': 60,
+          'limit': 50,
+        },
+      });
+      final payload = _linkedIncomeReviewPayload(response);
+      final rawRows = payload['rows'];
+      final rows = rawRows is List
+          ? rawRows
+              .map(_safeMap)
+              .whereType<Map<String, dynamic>>()
+              .map(_normalizeLinkedIncomeReviewRow)
+              .toList(growable: false)
+          : const <Map<String, dynamic>>[];
+      final threshold = payload['threshold'] is num
+          ? payload['threshold'] as num
+          : previousTable['threshold'] is num
+              ? previousTable['threshold'] as num
+              : 60;
+      final next = loadingMessage.copyWith(
+        text: payload['message']?.toString().trim().isNotEmpty == true
+            ? payload['message'].toString().trim()
+            : (isEs
+                ? 'Revisión de ingresos vinculados.'
+                : 'Linked income review.'),
+        table: <String, dynamic>{
+          'kind': 'linkedIncomeReview',
+          'loading': false,
+          'loadError': null,
+          'threshold': threshold,
+          'count': payload['count'] ?? rows.length,
+          'columns': _linkedIncomeReviewColumns(isEs),
+          'rows': rows,
+        },
+      );
+      await _runtime.replaceMessage(loadingMessage, next);
+    } catch (error) {
+      final latest = _findMessageByKey(
+            _runtime.messages,
+            _messageKey(loadingMessage),
+          ) ??
+          loadingMessage;
+      final messageText = error is InsightsApiException
+          ? error.message
+          : error.toString().replaceFirst('Exception: ', '').trim();
+      await _runtime.replaceMessage(
+        latest,
+        latest.copyWith(
+          text: isEs
+              ? 'No se pudo cargar la revisión de ingresos vinculados.'
+              : 'Could not load linked income review.',
+          table: <String, dynamic>{
+            ...(latest.table ?? previousTable),
+            'kind': 'linkedIncomeReview',
+            'loading': false,
+            'loadError': messageText,
+            'columns': _linkedIncomeReviewColumns(isEs),
+          },
+        ),
+      );
+    }
   }
 
   void _prefillEventCreationShortcut(bool isEs) {
@@ -2579,6 +3098,228 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     return '${message.isUser ? 'u' : 'a'}::${message.timestamp.toIso8601String()}';
   }
 
+  Map<String, dynamic>? _tableQueryForMessage(_ChatMessage message) {
+    final direct = _safeMap(message.tableQuery);
+    if ((direct?['endpoint']?.toString().trim().isNotEmpty ?? false)) {
+      return direct;
+    }
+    final fromTable = _safeMap(message.table?['tableQuery']);
+    if ((fromTable?['endpoint']?.toString().trim().isNotEmpty ?? false)) {
+      return fromTable;
+    }
+    return null;
+  }
+
+  bool _messageUsesRemoteTableData(_ChatMessage message) =>
+      _tableQueryForMessage(message) != null;
+
+  _InsightsRemoteTableState? _remoteTableStateFor(_ChatMessage message) {
+    return _remoteTableStates[_messageKey(message)];
+  }
+
+  Map<String, dynamic>? _effectiveTableForMessage(_ChatMessage message) {
+    final remote = _remoteTableStateFor(message);
+    if (remote?.loadedOnce == true && remote?.table != null) {
+      return remote!.table;
+    }
+    return message.table;
+  }
+
+  Map<String, dynamic>? _tableFromDataResponse(Map<String, dynamic> response) {
+    final direct = _safeMap(response['table']);
+    if (direct != null) return direct;
+    final data = _safeMap(response['data']);
+    if (data != null) {
+      final nested = _safeMap(data['table']);
+      if (nested != null) return nested;
+      if (data['columns'] is List && data['rows'] is List) return data;
+    }
+    if (response['columns'] is List && response['rows'] is List) {
+      return response;
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _paginationFromDataResponse(
+    Map<String, dynamic> response,
+  ) {
+    final direct = _safeMap(response['pagination']);
+    if (direct != null) return direct;
+    final data = _safeMap(response['data']);
+    return _safeMap(data?['pagination']);
+  }
+
+  Map<String, dynamic> _tableDataRequestBody({
+    required Map<String, dynamic> tableQuery,
+    required int page,
+    required int pageSize,
+    _InsightsDateRange? filter,
+  }) {
+    final body = tableQuery.map(
+      (key, value) => MapEntry(key.toString(), value),
+    )..removeWhere((key, _) {
+        final normalized = key.trim().toLowerCase();
+        return normalized == 'endpoint' || normalized == 'method';
+      });
+    body.addAll(<String, dynamic>{
+      'groupId': widget.groupId.trim(),
+      'page': page,
+      'pageSize': pageSize,
+    });
+    if (filter != null) {
+      body.addAll(<String, dynamic>{
+        'filterDateFrom': _formatInsightsApiDate(filter.normalizedFrom),
+        'filterDateTo': _formatInsightsApiDate(
+          filter.normalizedInclusiveTo.add(const Duration(days: 1)),
+        ),
+      });
+    }
+    return body;
+  }
+
+  int _initialRemoteTablePageSize(_ChatMessage message) {
+    final table = message.table;
+    final directPageSize = _readInt(table?['pageSize']);
+    if (directPageSize != null && directPageSize > 0) {
+      return directPageSize.clamp(1, 100).toInt();
+    }
+    final truncatedTo = _readInt(table?['truncatedTo']);
+    if (truncatedTo != null && truncatedTo > 0) {
+      return truncatedTo.clamp(1, 100).toInt();
+    }
+    final previewRows = (table?['rows'] is List)
+        ? (table!['rows'] as List)
+            .where((row) => _safeMap(row)?['isSummaryRow'] != true)
+            .length
+        : 0;
+    if (previewRows > 0) return previewRows.clamp(1, 100).toInt();
+    return 50;
+  }
+
+  Future<void> _loadRemoteTableData(
+    _ChatMessage message, {
+    int page = 1,
+    int? pageSize,
+    _InsightsDateRange? filter,
+  }) async {
+    final tableQuery = _tableQueryForMessage(message);
+    if (tableQuery == null || widget.groupId.trim().isEmpty) return;
+    final messageKey = _messageKey(message);
+    final state = _remoteTableStates.putIfAbsent(
+      messageKey,
+      () => _InsightsRemoteTableState(
+        pageSize: pageSize ?? _initialRemoteTablePageSize(message),
+      ),
+    );
+    final requestSerial = state.requestSerial + 1;
+    final nextPageSize = pageSize ?? state.effectivePageSize;
+    setState(() {
+      state
+        ..loading = true
+        ..error = null
+        ..requestSerial = requestSerial
+        ..page = page
+        ..pageSize = nextPageSize;
+    });
+
+    try {
+      final response = await _runtime.executeJsonAction(<String, dynamic>{
+        'endpoint': tableQuery['endpoint']?.toString().trim() ?? '',
+        'method': tableQuery['method']?.toString().trim().isNotEmpty == true
+            ? tableQuery['method'].toString().trim()
+            : 'POST',
+        'body': _tableDataRequestBody(
+          tableQuery: tableQuery,
+          page: page,
+          pageSize: nextPageSize,
+          filter: filter,
+        ),
+      });
+      if (!mounted) return;
+      final latest = _remoteTableStates[messageKey];
+      if (latest == null || latest.requestSerial != requestSerial) return;
+      final table = _tableFromDataResponse(response);
+      final pagination = _paginationFromDataResponse(response);
+      setState(() {
+        latest
+          ..table = table ?? latest.table
+          ..pagination = pagination
+          ..loading = false
+          ..error = null
+          ..loadedOnce = table != null || latest.loadedOnce
+          ..page = _readInt(pagination?['page']) ?? page
+          ..pageSize = _readInt(pagination?['pageSize']) ?? nextPageSize;
+      });
+    } on InsightsApiException catch (e) {
+      if (!mounted) return;
+      final latest = _remoteTableStates[messageKey];
+      if (latest == null || latest.requestSerial != requestSerial) return;
+      setState(() {
+        latest
+          ..loading = false
+          ..error = e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final latest = _remoteTableStates[messageKey];
+      if (latest == null || latest.requestSerial != requestSerial) return;
+      setState(() {
+        latest
+          ..loading = false
+          ..error = e.toString();
+      });
+    }
+  }
+
+  void _ensureRemoteTableDataLoaded(_ChatMessage message) {
+    if (!_messageUsesRemoteTableData(message)) return;
+    final state = _remoteTableStateFor(message);
+    if (state?.loadedOnce == true || state?.loading == true) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final filter = _tableDateFilterFor(message);
+      unawaited(_loadRemoteTableData(message, page: 1, filter: filter));
+    });
+  }
+
+  Future<void> _clearTableDateFilter(_ChatMessage message) async {
+    final messageKey = _messageKey(message);
+    setState(() => _tableDateFilters.remove(messageKey));
+    if (_messageUsesRemoteTableData(message)) {
+      await _loadRemoteTableData(message, page: 1);
+    }
+  }
+
+  Future<void> _applyTableDateFilter(
+    _ChatMessage message,
+    _InsightsDateRange range,
+  ) async {
+    final messageKey = _messageKey(message);
+    setState(() => _tableDateFilters[messageKey] = range);
+    if (_messageUsesRemoteTableData(message)) {
+      await _loadRemoteTableData(message, page: 1, filter: range);
+    }
+  }
+
+  Future<void> _changeRemoteTablePage(
+    _ChatMessage message,
+    int page,
+  ) async {
+    final filter = _tableDateFilterFor(message);
+    await _loadRemoteTableData(message, page: page, filter: filter);
+  }
+
+  Future<void> _reloadRemoteTableForMessage(_ChatMessage message) async {
+    if (!_messageUsesRemoteTableData(message)) return;
+    final state = _remoteTableStateFor(message);
+    await _loadRemoteTableData(
+      message,
+      page: state?.effectivePage ?? 1,
+      pageSize: state?.effectivePageSize,
+      filter: _tableDateFilterFor(message),
+    );
+  }
+
   String _invoiceLinkKey(String messageKey, String entryId) =>
       '$messageKey::$entryId';
 
@@ -2742,6 +3483,7 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   bool _rowIsUnlinkedInvoice(Map<String, dynamic> row) {
+    if (_rowHasExistingInvoiceLink(row)) return false;
     for (final key in const [
       'estado',
       'status',
@@ -2765,8 +3507,25 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
 
   bool _rowHasExistingInvoiceLink(Map<String, dynamic> row) {
     if (row['hasExistingInvoiceLink'] == true) return true;
-    final status = row['linkStatus']?.toString().trim().toLowerCase();
-    if (status == 'linked') return true;
+    for (final key in const [
+      'linkStatus',
+      'linkStatusLabel',
+      'estado',
+      'status',
+      'statusLabel',
+      'paymentStatus',
+      'paymentStatusLabel',
+    ]) {
+      final status = _normalizedInsightText(row[key]);
+      if (status == 'linked' ||
+          status == 'vinculado' ||
+          status == 'paid' ||
+          status == 'pagada' ||
+          status.contains('vinculado') ||
+          status.contains('linked')) {
+        return true;
+      }
+    }
     final ids = row['existingLinkedInvoiceIds'];
     if (ids is List &&
         ids.where((id) => id.toString().trim().isNotEmpty).isNotEmpty) {
@@ -2774,6 +3533,52 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     }
     final id = row['existingLinkedInvoiceId']?.toString().trim() ?? '';
     return id.isNotEmpty;
+  }
+
+  Map<String, dynamic> _linkedInvoiceRowPatch({
+    required Map<String, dynamic> invoiceRow,
+    required Map<String, dynamic> incomeRow,
+    required bool isEs,
+  }) {
+    final entryId = _rowEntryId(incomeRow);
+    final amountFormatted = (incomeRow['amountFormatted'] ??
+                incomeRow['importeFormatted'] ??
+                incomeRow['amount'] ??
+                incomeRow['importe'])
+            ?.toString()
+            .trim() ??
+        '';
+    final date = (incomeRow['date'] ??
+                incomeRow['fecha'] ??
+                incomeRow['bookingDate'] ??
+                incomeRow['booking_date'])
+            ?.toString()
+            .trim() ??
+        '';
+    final concept = (incomeRow['description'] ??
+                incomeRow['concept'] ??
+                incomeRow['concepto'])
+            ?.toString()
+            .trim() ??
+        '';
+    return <String, dynamic>{
+      'hasExistingInvoiceLink': true,
+      'linkStatus': 'linked',
+      'linkStatusLabel': isEs ? 'Vinculada/pagada' : 'Linked/paid',
+      'estado': isEs ? 'Vinculada/pagada' : 'Linked/paid',
+      'status': 'linked',
+      'statusLabel': isEs ? 'Vinculada/pagada' : 'Linked/paid',
+      'paymentStatus': 'paid',
+      'paymentStatusLabel': isEs ? 'Pagada' : 'Paid',
+      if (entryId != null) 'linkedEntryId': entryId,
+      if (entryId != null) 'bankEntryId': entryId,
+      if (amountFormatted.isNotEmpty) 'paymentAmountFormatted': amountFormatted,
+      if (amountFormatted.isNotEmpty) 'importePago': amountFormatted,
+      if (date.isNotEmpty) 'paymentDate': date,
+      if (date.isNotEmpty) 'fechaPago': date,
+      if (concept.isNotEmpty) 'paymentConcept': concept,
+      if (concept.isNotEmpty) 'conceptoPago': concept,
+    };
   }
 
   List<String> _linkedInvoiceIdsFromRow(Map<String, dynamic> row) {
@@ -3118,6 +3923,14 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     _ChatMessage message,
     Map<String, dynamic> row,
   ) {
+    final invoiceId = _invoiceIdFromInsightsInvoiceRow(row);
+    if (invoiceId.isNotEmpty) {
+      final invoicePatch = _pendingInsightsInvoiceRowPatches[
+          '${_messageKey(message)}::$invoiceId'];
+      if (invoicePatch != null) {
+        row = <String, dynamic>{...row, ...invoicePatch};
+      }
+    }
     final entryId = _rowEntryId(row);
     if (entryId == null) return row;
     final key = _invoiceLinkKey(_messageKey(message), entryId);
@@ -3142,6 +3955,10 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   ) {
     final entryId = _rowEntryId(row) ?? '';
     final invoiceIds = <String>{
+      for (final invoice in _linkedIncomeReviewInvoices(row))
+        if (((invoice['invoiceId'] ?? invoice['id'])?.toString().trim() ?? '')
+            .isNotEmpty)
+          (invoice['invoiceId'] ?? invoice['id']).toString().trim(),
       for (final key in const [
         'matchedInvoiceIds',
         'existingLinkedInvoiceIds',
@@ -3393,8 +4210,9 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
 
   Future<void> _pickInvoiceLinkForRow(
     _ChatMessage message,
-    Map<String, dynamic> row,
-  ) async {
+    Map<String, dynamic> row, {
+    bool showSuggestions = false,
+  }) async {
     final entryId = _rowEntryId(row);
     if (entryId == null || _runtime.sending) return;
     final isEs = Localizations.localeOf(context)
@@ -3419,12 +4237,20 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
       controller.dispose();
       return;
     }
-    await StatementsShared.showInvoiceLinkDialog(
-      context,
-      controller,
-      entry,
-      expenseOnly: false,
-    );
+    if (showSuggestions) {
+      await StatementsShared.showInvoiceSuggestionsDialog(
+        context,
+        controller,
+        entry,
+      );
+    } else {
+      await StatementsShared.showInvoiceLinkDialog(
+        context,
+        controller,
+        entry,
+        expenseOnly: false,
+      );
+    }
     final updated = (controller.entries.isNotEmpty
             ? controller.entries.first
             : controller.allEntries.isNotEmpty
@@ -3470,68 +4296,90 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     final actionBorder =
         isDark ? cs.primary.withValues(alpha: 0.18) : const Color(0xFFBDD3F0);
     final actionForeground = isDark ? cs.primary : const Color(0xFF245C99);
+    final suggestLabel = isEs ? 'Sugerir' : 'Suggest';
     final editLabel = (row['hasExistingInvoiceLink'] == true ||
             (row['linkStatus']?.toString() == 'linked'))
         ? (isEs ? 'Editar vínculo' : 'Edit link')
         : (isEs ? 'Vincular' : 'Link');
 
+    final tooltipText = pending?.displayLabel.trim().isNotEmpty == true
+        ? pending!.displayLabel.trim()
+        : value.trim();
+
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 170),
-      child: Column(
+      constraints: const BoxConstraints(maxWidth: 240),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (canEdit) ...[
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: [
-                InkWell(
-                  onTap: () => _pickInvoiceLinkForRow(message, row),
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: actionBackground,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: actionBorder,
-                      ),
-                    ),
-                    child: Text(
-                      editLabel,
-                      style: t.caption.copyWith(
-                        color: actionForeground,
-                        fontWeight: FontWeight.w700,
-                      ),
+            Tooltip(
+              message: isEs
+                  ? 'Buscar coincidencias sugeridas'
+                  : 'Find suggested matches',
+              child: InkWell(
+                onTap: () => _pickInvoiceLinkForRow(
+                  message,
+                  row,
+                  showSuggestions: true,
+                ),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: actionBackground,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: actionBorder),
+                  ),
+                  child: Text(
+                    suggestLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.caption.copyWith(
+                      color: actionForeground,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ],
-          if (pending != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              pending.displayLabel,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: t.caption.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
+            const SizedBox(width: 6),
+            Tooltip(
+              message: tooltipText.isEmpty ? editLabel : tooltipText,
+              child: InkWell(
+                onTap: () => _pickInvoiceLinkForRow(message, row),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: actionBackground,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: actionBorder,
+                    ),
+                  ),
+                  child: Text(
+                    editLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.caption.copyWith(
+                      color: actionForeground,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
           if (bulkError != null && bulkError.trim().isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              bulkError,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: t.caption.copyWith(
+            const SizedBox(width: 6),
+            Tooltip(
+              message: bulkError,
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: 15,
                 color: cs.error,
-                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -3680,16 +4528,26 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
           .whereType<Map<String, dynamic>>()
           .where((column) {
         final key = column['key']?.toString() ?? '';
-        return key.isNotEmpty && key != 'actions';
+        return key.isNotEmpty &&
+            key != 'actions' &&
+            !_isBankIncomeMatchMetadataKey(key);
       }).toList(growable: false);
       if (parsed.isNotEmpty) return parsed;
     }
     final first = rows.isNotEmpty ? rows.first : const <String, dynamic>{};
     return first.keys
-        .where((key) => key != 'actions' && _safeMap(first[key]) == null)
+        .where((key) =>
+            key != 'actions' &&
+            !_isBankIncomeMatchMetadataKey(key) &&
+            _safeMap(first[key]) == null)
         .take(6)
         .map((key) => {'key': key, 'label': key})
         .toList(growable: false);
+  }
+
+  bool _isBankIncomeMatchMetadataKey(String key) {
+    final normalized = key.trim().toLowerCase();
+    return normalized.startsWith('match') || normalized == 'scoring';
   }
 
   List<Map<String, dynamic>> _bankIncomeCandidateColumnsFromResponse(
@@ -3705,11 +4563,233 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
           .whereType<Map<String, dynamic>>()
           .where((column) {
         final key = column['key']?.toString() ?? '';
-        return key.isNotEmpty && key != 'actions';
+        return key.isNotEmpty &&
+            key != 'actions' &&
+            !_isBankIncomeMatchMetadataKey(key);
       }).toList(growable: false);
       if (parsed.isNotEmpty) return parsed;
     }
     return _candidateColumnsFromTable(null, rows);
+  }
+
+  Map<String, dynamic>? _bankIncomeScoringFromResponse(
+    Map<String, dynamic>? response,
+  ) {
+    if (response == null) return null;
+    final direct = _safeMap(response['scoring']);
+    if (direct != null) return direct;
+    for (final key in const ['data', 'result', 'payload', 'table']) {
+      final nested = _safeMap(response[key]);
+      final scoring = _bankIncomeScoringFromResponse(nested);
+      if (scoring != null) return scoring;
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _bankIncomeGroupMatchingFromResponse(
+    Map<String, dynamic>? response,
+  ) {
+    if (response == null) return null;
+    final direct = _safeMap(response['groupMatching']);
+    if (direct != null) return direct;
+    for (final key in const ['data', 'result', 'payload', 'table']) {
+      final nested = _safeMap(response[key]);
+      final policy = _bankIncomeGroupMatchingFromResponse(nested);
+      if (policy != null) return policy;
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> _bankIncomeMatchedInvoices(
+    Map<String, dynamic> row,
+  ) {
+    final raw = row['matchedInvoices'];
+    if (raw is! List) return const <Map<String, dynamic>>[];
+    return raw
+        .map(_safeMap)
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+  }
+
+  int _bankIncomeMatchedInvoiceCount(Map<String, dynamic> row) {
+    final backendCount = row['matchedInvoiceCount'];
+    if (backendCount is num && backendCount > 0) return backendCount.toInt();
+    final invoices = _bankIncomeMatchedInvoices(row);
+    return invoices.isEmpty ? 1 : invoices.length;
+  }
+
+  bool _isGroupedBankIncomeCandidate(Map<String, dynamic> row) {
+    return row['isCombinedMatch'] == true ||
+        row['matchMode']?.toString().trim().toLowerCase() == 'grouped' ||
+        _bankIncomeMatchedInvoiceCount(row) > 1;
+  }
+
+  String _bankIncomeInvoiceCountLabel(
+    Map<String, dynamic> row,
+    bool isEs,
+  ) {
+    final count = _bankIncomeMatchedInvoiceCount(row);
+    if (isEs) return '$count ${count == 1 ? 'factura' : 'facturas'}';
+    return '$count ${count == 1 ? 'invoice' : 'invoices'}';
+  }
+
+  bool _bankIncomeMatchIsMedium(Map<String, dynamic> row) {
+    final confidence = _bankIncomeMatchConfidence(row).toLowerCase();
+    return confidence == 'media' || confidence == 'medium';
+  }
+
+  String? _bankIncomeCombinationLabel(
+    Map<String, dynamic> row,
+    bool isEs,
+  ) {
+    final unique = row['combinationUnique'];
+    final rawCount = row['combinationMatchCount'];
+    final count = rawCount is num ? rawCount.toInt() : null;
+    if (unique == true && count == 1) {
+      return isEs ? 'Combinación única' : 'Unique combination';
+    }
+    if (count != null && count > 1) {
+      return isEs
+          ? '$count combinaciones posibles'
+          : '$count possible combinations';
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> _bankIncomeCombinationOptions(
+    Map<String, dynamic> row,
+  ) {
+    final raw = row['combinationOptions'];
+    if (raw is! List) return const <Map<String, dynamic>>[];
+    return raw
+        .map(_safeMap)
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+  }
+
+  String _bankIncomeCombinationId(Map<String, dynamic> option) {
+    return option['combinationId']?.toString().trim() ?? '';
+  }
+
+  String _confidenceFromFormattedScore(dynamic value) {
+    final formatted = value?.toString().trim() ?? '';
+    if (formatted.isEmpty) return '';
+    final parts = formatted.split('·');
+    if (parts.length < 2) return '';
+    final label = parts.last.trim();
+    final normalized = label.toLowerCase();
+    if (const ['alta', 'media', 'baja', 'high', 'medium', 'low']
+        .contains(normalized)) {
+      return label;
+    }
+    return '';
+  }
+
+  Map<String, dynamic> _bankIncomeCandidateForCombination(
+    Map<String, dynamic> candidate,
+    Map<String, dynamic>? option,
+  ) {
+    if (option == null) return candidate;
+    final invoices = option['invoices'] is List
+        ? (option['invoices'] as List)
+            .map(_safeMap)
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    final scoreFormatted =
+        (option['scoreFormatted'] ?? option['matchScoreFormatted'])
+            ?.toString()
+            .trim();
+    final confidence =
+        (option['matchConfidenceLabel'] ?? option['confidenceLabel'])
+                ?.toString()
+                .trim() ??
+            _confidenceFromFormattedScore(scoreFormatted);
+    final action = _safeMap(option['action']);
+    final actions = option['actions'] is List
+        ? option['actions'] as List
+        : action == null
+            ? const <dynamic>[]
+            : <dynamic>[action];
+    return <String, dynamic>{
+      ...candidate,
+      'selectedCombinationId': _bankIncomeCombinationId(option),
+      'matchScoreFormatted': scoreFormatted,
+      'matchScorePercent':
+          option['matchScorePercent'] ?? option['scorePercent'],
+      'matchConfidenceLabel': confidence,
+      'matchReason': option['reason'] ?? option['matchReason'],
+      'matchComponents': option['matchComponents'] ??
+          option['scoreComponents'] ??
+          const <String, dynamic>{},
+      'matchedInvoices': invoices,
+      'matchedInvoiceCount': option['matchedInvoiceCount'] ??
+          option['invoiceCount'] ??
+          invoices.length,
+      'matchedInvoicesTotalFormatted':
+          option['totalFormatted'] ?? option['matchedInvoicesTotalFormatted'],
+      'deltaFormatted': option['deltaFormatted'],
+      'invoiceDateSpanDays': option['invoiceDateSpanDays'],
+      'actions': actions,
+      'action': action,
+    };
+  }
+
+  bool _bankIncomeCandidateHasScore(Map<String, dynamic> row) {
+    return (row['matchScoreFormatted']?.toString().trim().isNotEmpty ??
+            false) ||
+        row['matchScorePercent'] is num ||
+        row['matchScore'] is num;
+  }
+
+  String _bankIncomeMatchConfidence(Map<String, dynamic> row) {
+    return row['matchConfidenceLabel']?.toString().trim() ?? '';
+  }
+
+  bool _bankIncomeMatchIsLow(Map<String, dynamic> row) {
+    final confidence = _bankIncomeMatchConfidence(row).toLowerCase();
+    return confidence == 'baja' || confidence == 'low';
+  }
+
+  String _formatBankIncomeMatchNumber(dynamic value) {
+    final number = value is num ? value : num.tryParse(value?.toString() ?? '');
+    if (number == null) return value?.toString().trim() ?? '';
+    if (number == number.roundToDouble()) return number.toInt().toString();
+    return number.toStringAsFixed(1);
+  }
+
+  String _bankIncomeMatchScoreText(
+    Map<String, dynamic> row,
+    bool isEs,
+  ) {
+    final formatted = row['matchScoreFormatted']?.toString().trim() ?? '';
+    if (formatted.isNotEmpty) return formatted;
+    final percent = _formatBankIncomeMatchNumber(row['matchScorePercent']);
+    final confidence = _bankIncomeMatchConfidence(row);
+    if (percent.isNotEmpty && confidence.isNotEmpty) {
+      return '$percent% · $confidence';
+    }
+    if (percent.isNotEmpty) return '$percent%';
+    return isEs ? 'Sin puntuación' : 'No score';
+  }
+
+  Color _bankIncomeMatchColor(
+    ColorScheme cs,
+    Map<String, dynamic> row,
+  ) {
+    final confidence = _bankIncomeMatchConfidence(row).toLowerCase();
+    if (confidence == 'alta' || confidence == 'high') {
+      return const Color(0xFF087A55);
+    }
+    if (confidence == 'media' || confidence == 'medium') {
+      return const Color(0xFFA65A00);
+    }
+    if (confidence == 'baja' || confidence == 'low') {
+      return cs.brightness == Brightness.dark
+          ? const Color(0xFFE0A39B)
+          : const Color(0xFF8C514B);
+    }
+    return cs.onSurfaceVariant;
   }
 
   double _bankIncomeCandidateColumnWidth(Map<String, dynamic> column) {
@@ -3724,324 +4804,2528 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     return 170;
   }
 
-  Future<Map<String, dynamic>?> _showBankIncomeCandidatesDialog({
-    required Future<Map<String, dynamic>> responseFuture,
+  bool _isBankIncomeCandidateAmountColumn(Map<String, dynamic> column) {
+    final key = column['key']?.toString().trim().toLowerCase() ?? '';
+    final align = column['align']?.toString().trim().toLowerCase() ?? '';
+    return align == 'right' ||
+        key.contains('amount') ||
+        key.contains('importe') ||
+        key.contains('total');
+  }
+
+  String _bankIncomeCandidateValue(
+    Map<String, dynamic> row,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = row[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  Future<void> _showBankIncomeScoringInfo({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> scoring,
+    Map<String, dynamic>? groupMatching,
     required bool isEs,
   }) async {
-    return showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (dialogContext) {
-        final cs = Theme.of(dialogContext).colorScheme;
-        final t = AppTypography.of(dialogContext);
+    final weights = _safeMap(scoring['weights']) ?? const <String, dynamic>{};
+    final entries = <(String, dynamic)>[
+      (isEs ? 'Importe' : 'Amount', weights['amount']),
+      (isEs ? 'Cliente' : 'Client', weights['client']),
+      (isEs ? 'Nº factura' : 'Invoice no.', weights['invoiceNumber']),
+      (isEs ? 'Fecha' : 'Date', weights['date']),
+    ].where((entry) => entry.$2 is num).toList(growable: false);
+    if (entries.isEmpty && groupMatching == null) return;
+
+    await showDialog<void>(
+      context: sourceContext,
+      builder: (context) {
+        final cs = Theme.of(context).colorScheme;
+        final t = AppTypography.of(context);
         return AlertDialog(
-          backgroundColor: cs.surface,
-          surfaceTintColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 28,
-            vertical: 28,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(26),
-            side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(24, 22, 20, 0),
-          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 10),
-          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-          title: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      cs.primary.withValues(alpha: 0.24),
-                      cs.secondaryContainer.withValues(alpha: 0.42),
-                    ],
-                  ),
-                ),
-                child: Icon(
-                  Icons.account_balance_wallet_rounded,
-                  size: 18,
-                  color: cs.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  isEs ? 'Ingresos candidatos' : 'Income candidates',
-                  style: t.titleLarge.copyWith(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Container(
-            width: 900,
-            height: 430,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  cs.surfaceContainerHighest.withValues(alpha: 0.30),
-                  cs.surfaceContainerLow.withValues(alpha: 0.12),
-                ],
-              ),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.28),
-              ),
-            ),
-            padding: const EdgeInsets.all(14),
-            child: FutureBuilder<Map<String, dynamic>>(
-              future: responseFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+          title: Text(isEs ? 'Cómo se ordenan' : 'How candidates are ranked'),
+          content: SizedBox(
+            width: 320,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final entry in entries)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
                       children: [
-                        const CircularProgressIndicator(strokeWidth: 2.5),
-                        const SizedBox(height: 12),
+                        Expanded(
+                          child: Text(
+                            entry.$1,
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
                         Text(
-                          isEs
-                              ? 'Buscando ingresos bancarios...'
-                              : 'Searching bank income...',
+                          '${_formatBankIncomeMatchNumber((entry.$2 as num) * 100)}%',
                           style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ],
                     ),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  final msg = snapshot.error
-                      .toString()
-                      .replaceFirst('Exception: ', '')
-                      .trim();
-                  return Center(
+                  ),
+                if (groupMatching?['enabled'] == true) ...[
+                  const Divider(height: 24),
+                  Align(
+                    alignment: Alignment.centerLeft,
                     child: Text(
-                      msg.isEmpty
-                          ? (isEs
-                              ? 'No se pudo buscar ingresos.'
-                              : 'Could not search income.')
-                          : msg,
-                      textAlign: TextAlign.center,
-                      style: t.bodySmall.copyWith(
-                        color: cs.error,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      isEs ? 'Coincidencias agrupadas' : 'Grouped matches',
+                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w900),
                     ),
-                  );
-                }
-
-                final response = snapshot.data;
-                final rows = _bankIncomeCandidateRowsFromResponse(response);
-                final columns = _bankIncomeCandidateColumnsFromResponse(
-                  response,
-                  rows,
-                );
-                debugPrint(
-                  'bank income search response rows=${rows.length} columns=${columns.length}',
-                );
-                if (rows.isEmpty) {
-                  debugPrint(
-                    'bank income search response ${jsonEncode(response)}',
-                  );
-                  return Center(
-                    child: Text(
+                  ),
+                  const SizedBox(height: 8),
+                  for (final policy in <String>[
+                    if (groupMatching?['sameClientOnly'] == true)
+                      isEs ? 'Solo el mismo cliente' : 'Same client only',
+                    if (groupMatching?['maximumInvoices'] is num)
                       isEs
-                          ? 'No hay ingresos candidatos para esta factura.'
-                          : 'No income candidates found for this invoice.',
-                      textAlign: TextAlign.center,
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  );
-                }
-
-                final columnWidths = [
-                  for (final column in columns)
-                    _bankIncomeCandidateColumnWidth(column),
-                ];
-                final tableWidth = (columnWidths.fold<double>(
-                          0,
-                          (sum, width) => sum + width,
-                        ) +
-                        132)
-                    .clamp(720, 1280)
-                    .toDouble();
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+                          ? 'Máximo ${groupMatching!['maximumInvoices']} facturas'
+                          : 'Maximum ${groupMatching!['maximumInvoices']} invoices',
+                    isEs
+                        ? 'Facturas emitidas sin vincular'
+                        : 'Unlinked issued invoices',
+                    if (groupMatching?['invoiceDateWindowDays'] is num)
                       isEs
-                          ? '${rows.length} ingreso${rows.length == 1 ? '' : 's'} encontrado${rows.length == 1 ? '' : 's'}'
-                          : '${rows.length} income candidate${rows.length == 1 ? '' : 's'} found',
-                      style: t.caption.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w800,
+                          ? 'Fechas dentro de ${groupMatching!['invoiceDateWindowDays']} días'
+                          : 'Invoice dates within ${groupMatching!['invoiceDateWindowDays']} days',
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.check_rounded,
+                              size: 15, color: cs.primary),
+                          const SizedBox(width: 7),
+                          Expanded(child: Text(policy, style: t.bodySmall)),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: SizedBox(
-                            width: tableWidth,
-                            child: Column(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: cs.surfaceContainerHighest
-                                        .withValues(alpha: 0.42),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: cs.outlineVariant
-                                          .withValues(alpha: 0.28),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      for (int i = 0; i < columns.length; i++)
-                                        SizedBox(
-                                          width: columnWidths[i],
-                                          child: Text(
-                                            columns[i]['label']?.toString() ??
-                                                columns[i]['key']?.toString() ??
-                                                '',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: t.caption.copyWith(
-                                              color: cs.onSurfaceVariant,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                        ),
-                                      const SizedBox(width: 108),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Expanded(
-                                  child: ListView.separated(
-                                    itemCount: rows.length,
-                                    separatorBuilder: (_, __) =>
-                                        const SizedBox(height: 8),
-                                    itemBuilder: (_, index) {
-                                      final row = rows[index];
-                                      final action =
-                                          _linkInvoiceToEntryAction(row);
-                                      final canLink = action != null;
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: cs.surfaceContainerHighest
-                                              .withValues(alpha: 0.22),
-                                          borderRadius:
-                                              BorderRadius.circular(14),
-                                          border: Border.all(
-                                            color: cs.outlineVariant
-                                                .withValues(alpha: 0.20),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            for (int i = 0;
-                                                i < columns.length;
-                                                i++)
-                                              SizedBox(
-                                                width: columnWidths[i],
-                                                child: Text(
-                                                  row[columns[i]['key']
-                                                                  ?.toString() ??
-                                                              '']
-                                                          ?.toString() ??
-                                                      '',
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: t.bodySmall.copyWith(
-                                                    color: cs.onSurface,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                              ),
-                                            const SizedBox(width: 12),
-                                            SizedBox(
-                                              height: 34,
-                                              child: FilledButton.tonalIcon(
-                                                style: FilledButton.styleFrom(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                    horizontal: 14,
-                                                  ),
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                ),
-                                                onPressed: canLink
-                                                    ? () => Navigator.of(
-                                                          dialogContext,
-                                                        ).pop(row)
-                                                    : null,
-                                                icon: const Icon(
-                                                  Icons.link_rounded,
-                                                  size: 15,
-                                                ),
-                                                label: Text(
-                                                  action?['label']
-                                                          ?.toString() ??
-                                                      (isEs
-                                                          ? 'Vincular'
-                                                          : 'Link'),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
+                ],
+              ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
+              onPressed: () => Navigator.of(context).pop(),
               child: Text(isEs ? 'Cerrar' : 'Close'),
             ),
           ],
         );
       },
     );
+  }
+
+  Widget _bankIncomeMatchDetailsContent(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final components =
+        _safeMap(row['matchComponents']) ?? const <String, dynamic>{};
+    final signals = _safeMap(row['matchSignals']) ?? const <String, dynamic>{};
+    final grouped = _isGroupedBankIncomeCandidate(row);
+    final componentRows = grouped
+        ? <(String, Map<String, dynamic>?)>[
+            (
+              isEs ? 'Importe combinado' : 'Combined amount',
+              _safeMap(components['amount'])
+            ),
+            (
+              isEs ? 'Combinación única' : 'Unique combination',
+              _safeMap(components['combinationUniqueness'])
+            ),
+            (
+              isEs ? 'Fechas de las facturas' : 'Invoice dates',
+              _safeMap(components['date'])
+            ),
+            (
+              isEs ? 'Cliente en concepto' : 'Client in description',
+              _safeMap(components['client'])
+            ),
+            (
+              isEs ? 'Referencias de factura' : 'Invoice references',
+              _safeMap(components['invoiceNumber'])
+            ),
+          ]
+        : <(String, Map<String, dynamic>?)>[
+            (isEs ? 'Importe' : 'Amount', _safeMap(components['amount'])),
+            (isEs ? 'Cliente' : 'Client', _safeMap(components['client'])),
+            (
+              isEs ? 'Nº factura' : 'Invoice no.',
+              _safeMap(components['invoiceNumber'])
+            ),
+            (isEs ? 'Fecha' : 'Date', _safeMap(components['date'])),
+          ];
+    final amountDelta = signals['amountDelta'];
+    final dateDays = signals['dateDays'];
+    final invoiceNumberMatch = signals['invoiceNumberMatch'];
+    final clientName = signals['clientName']?.toString().trim() ?? '';
+    final scorePercent = _formatBankIncomeMatchNumber(
+      row['matchScorePercent'],
+    );
+
+    Widget detailRow(String label, String value) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Flexible(
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                style: t.bodySmall.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          grouped
+              ? (isEs
+                  ? 'Cómo se calcula la coincidencia agrupada'
+                  : 'How the grouped match is calculated')
+              : (isEs ? 'Cómo se calcula' : 'How it is calculated'),
+          style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 12),
+        for (final entry in componentRows)
+          if (entry.$2 != null)
+            detailRow(
+              entry.$1,
+              '${_formatBankIncomeMatchNumber(entry.$2!['points'])} / '
+              '${_formatBankIncomeMatchNumber((entry.$2!['weight'] as num?) == null ? null : (entry.$2!['weight'] as num) * 100)} '
+              '${isEs ? 'puntos' : 'points'}',
+            ),
+        if (grouped && components['date'] != null) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.36),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              isEs
+                  ? 'Se consideran las fechas de todas las facturas, su proximidad al ingreso y si fueron emitidas juntas.'
+                  : 'All invoice dates, their proximity to the deposit, and whether they were issued together are considered.',
+              style: t.caption.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+        ],
+        if (scorePercent.isNotEmpty) ...[
+          const Divider(height: 22),
+          detailRow(
+            isEs ? 'Total' : 'Total',
+            '$scorePercent / 100',
+          ),
+        ],
+        if (signals.isNotEmpty) ...[
+          const Divider(height: 24),
+          if (amountDelta != null)
+            detailRow(
+              isEs ? 'Diferencia de importe' : 'Amount difference',
+              amountDelta is num
+                  ? _formatEuroAmount(amountDelta, 'EUR')
+                  : amountDelta.toString(),
+            ),
+          if (dateDays != null)
+            detailRow(
+              isEs ? 'Diferencia de fecha' : 'Date difference',
+              '${_formatBankIncomeMatchNumber(dateDays)} '
+              '${isEs ? 'días' : 'days'}',
+            ),
+          if (invoiceNumberMatch is bool)
+            detailRow(
+              isEs ? 'Número de factura detectado' : 'Invoice number detected',
+              invoiceNumberMatch ? (isEs ? 'Sí' : 'Yes') : (isEs ? 'No' : 'No'),
+            ),
+          if (clientName.isNotEmpty)
+            detailRow(
+              isEs ? 'Cliente esperado' : 'Expected client',
+              clientName,
+            ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _showBankIncomeMatchDetails({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> row,
+    required bool isEs,
+  }) async {
+    final narrow = MediaQuery.sizeOf(sourceContext).width < 700;
+    if (narrow) {
+      await showModalBottomSheet<void>(
+        context: sourceContext,
+        showDragHandle: true,
+        isScrollControlled: true,
+        builder: (context) => SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            child: _bankIncomeMatchDetailsContent(
+              context,
+              row: row,
+              isEs: isEs,
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    await showDialog<void>(
+      context: sourceContext,
+      builder: (context) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: _bankIncomeMatchDetailsContent(
+              context,
+              row: row,
+              isEs: isEs,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBankIncomeMatchCell(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+    bool compact = false,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final color = _bankIncomeMatchColor(cs, row);
+    final score = _bankIncomeMatchScoreText(row, isEs);
+    final reason = row['matchReason']?.toString().trim() ?? '';
+    final confidence = _bankIncomeMatchConfidence(row);
+    final percent = _formatBankIncomeMatchNumber(row['matchScorePercent']);
+    final grouped = _isGroupedBankIncomeCandidate(row);
+    final invoiceCount = grouped ? _bankIncomeMatchedInvoiceCount(row) : null;
+    final combination =
+        grouped ? _bankIncomeCombinationLabel(row, isEs)?.toLowerCase() : null;
+    final groupedSemantic = !grouped
+        ? ''
+        : combination != null
+            ? ', $combination ${isEs ? 'de' : 'for'} $invoiceCount ${isEs ? 'facturas' : 'invoices'}'
+            : ', $invoiceCount ${isEs ? 'facturas' : 'invoices'}';
+    final semanticLabel = isEs
+        ? 'Coincidencia ${percent.isEmpty ? score : '$percent por ciento'}, '
+            'confianza ${confidence.isEmpty ? 'sin indicar' : confidence.toLowerCase()}$groupedSemantic.'
+        : 'Match ${percent.isEmpty ? score : '$percent percent'}, '
+            '${confidence.isEmpty ? 'confidence not specified' : '${confidence.toLowerCase()} confidence'}$groupedSemantic.';
+
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: Tooltip(
+        message: isEs ? 'Ver cómo se calcula' : 'See score details',
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => _showBankIncomeMatchDetails(
+            sourceContext: context,
+            row: row,
+            isEs: isEs,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: color.withValues(alpha: 0.30)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.analytics_outlined, size: 13, color: color),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          score,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.caption.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (reason.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    reason,
+                    maxLines: compact ? 3 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.caption.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupedInvoiceBadge(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+    required bool expanded,
+    required VoidCallback onPressed,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final label = _bankIncomeInvoiceCountLabel(row, isEs);
+    return Semantics(
+      button: true,
+      expanded: expanded,
+      label: '$label. ${isEs ? 'Ver facturas incluidas' : 'View invoices'}',
+      child: Tooltip(
+        message: isEs ? 'Ver facturas incluidas' : 'View included invoices',
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onPressed,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(8, 4, 5, 4),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.62),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: cs.primary.withValues(alpha: 0.24)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.library_books_outlined, size: 13, color: cs.primary),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: t.caption.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 17,
+                  color: cs.primary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBankIncomeCombinationBadge(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+    VoidCallback? onPressed,
+  }) {
+    final label = _bankIncomeCombinationLabel(row, isEs);
+    if (label == null) return const SizedBox.shrink();
+    final t = AppTypography.of(context);
+    final unique =
+        row['combinationUnique'] == true && row['combinationMatchCount'] == 1;
+    final color = unique ? const Color(0xFF087A55) : const Color(0xFFA65A00);
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.26)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            unique ? Icons.verified_outlined : Icons.alt_route_rounded,
+            size: 13,
+            color: color,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: t.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (onPressed != null) ...[
+            const SizedBox(width: 2),
+            Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: color),
+          ],
+        ],
+      ),
+    );
+    return Semantics(
+      button: onPressed != null,
+      label: label,
+      child: onPressed == null
+          ? badge
+          : InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: onPressed,
+              child: badge,
+            ),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _showBankIncomeCombinationSelector({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> candidate,
+    required bool isEs,
+    String? selectedCombinationId,
+  }) async {
+    final options = _bankIncomeCombinationOptions(candidate);
+    if (options.length < 2) return null;
+    final recommendedCombinationId =
+        candidate['recommendedCombinationId']?.toString().trim() ?? '';
+    Map<String, dynamic>? selectedOption;
+    for (final option in options) {
+      if (_bankIncomeCombinationId(option) == selectedCombinationId) {
+        selectedOption = option;
+        break;
+      }
+    }
+    if (selectedOption == null && recommendedCombinationId.isNotEmpty) {
+      for (final option in options) {
+        if (_bankIncomeCombinationId(option) == recommendedCombinationId) {
+          selectedOption = option;
+          break;
+        }
+      }
+    }
+    selectedOption ??= options.cast<Map<String, dynamic>?>().firstWhere(
+          (option) => option?['recommended'] == true,
+          orElse: () => options.first,
+        );
+
+    Widget content(
+      BuildContext context,
+      StateSetter setSelectorState, {
+      required bool mobile,
+    }) {
+      final cs = Theme.of(context).colorScheme;
+      final t = AppTypography.of(context);
+      return Column(
+        mainAxisSize: mobile ? MainAxisSize.max : MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            isEs ? 'Elegir combinación' : 'Choose combination',
+            style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isEs
+                ? 'Revisa las facturas de cada alternativa antes de continuar.'
+                : 'Review the invoices in each alternative before continuing.',
+            style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          Flexible(
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: options.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final option = options[index];
+                final optionId = _bankIncomeCombinationId(option);
+                final selected = identical(option, selectedOption) ||
+                    (optionId.isNotEmpty &&
+                        optionId ==
+                            _bankIncomeCombinationId(
+                              selectedOption ?? const <String, dynamic>{},
+                            ));
+                final invoices = option['invoices'] is List
+                    ? (option['invoices'] as List)
+                        .map(_safeMap)
+                        .whereType<Map<String, dynamic>>()
+                        .toList(growable: false)
+                    : const <Map<String, dynamic>>[];
+                final score =
+                    (option['scoreFormatted'] ?? option['matchScoreFormatted'])
+                            ?.toString()
+                            .trim() ??
+                        (isEs ? 'Sin puntuación' : 'No score');
+                final reason =
+                    (option['reason'] ?? option['matchReason'])?.toString() ??
+                        '';
+                final total = option['totalFormatted']?.toString() ?? '';
+                final delta = option['deltaFormatted']?.toString() ?? '';
+                final span = option['invoiceDateSpanDays'];
+                return Semantics(
+                  button: true,
+                  selected: selected,
+                  label:
+                      '${isEs ? 'Combinación' : 'Combination'} ${index + 1}: $score',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () =>
+                        setSelectorState(() => selectedOption = option),
+                    child: Container(
+                      padding: const EdgeInsets.all(11),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? cs.primaryContainer.withValues(alpha: 0.34)
+                            : cs.surfaceContainerHighest
+                                .withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? cs.primary.withValues(alpha: 0.52)
+                              : cs.outlineVariant.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            selected
+                                ? Icons.check_circle_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            size: 20,
+                            color: selected ? cs.primary : cs.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 5,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      score,
+                                      style: t.bodySmall.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    if (option['recommended'] == true ||
+                                        (recommendedCombinationId.isNotEmpty &&
+                                            optionId ==
+                                                recommendedCombinationId))
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: cs.primary
+                                              .withValues(alpha: 0.10),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        child: Text(
+                                          isEs ? 'Recomendada' : 'Recommended',
+                                          style: t.caption.copyWith(
+                                            color: cs.primary,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                if (reason.trim().isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    reason,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.caption.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 6),
+                                for (final invoice in invoices)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 2,
+                                    ),
+                                    child: Text(
+                                      [
+                                        _bankIncomeCandidateValue(
+                                          invoice,
+                                          const ['invoiceNumber', 'number'],
+                                        ),
+                                        _bankIncomeCandidateValue(
+                                          invoice,
+                                          const ['issueDate', 'date'],
+                                        ),
+                                        _bankIncomeCandidateValue(
+                                          invoice,
+                                          const ['amountFormatted', 'amount'],
+                                        ),
+                                      ]
+                                          .where((value) => value.isNotEmpty)
+                                          .join(' · '),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: t.caption.copyWith(
+                                        color: cs.onSurface,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 5),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 4,
+                                  children: [
+                                    if (total.isNotEmpty)
+                                      Text(
+                                          '${isEs ? 'Total' : 'Total'}: $total',
+                                          style: t.caption),
+                                    if (delta.isNotEmpty)
+                                      Text(
+                                          '${isEs ? 'Diferencia' : 'Difference'}: $delta',
+                                          style: t.caption),
+                                    if (span is num)
+                                      Text(
+                                        isEs
+                                            ? 'Intervalo: ${span.toInt()} días'
+                                            : 'Date span: ${span.toInt()} days',
+                                        style: t.caption,
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: selectedOption == null
+                  ? null
+                  : () => Navigator.of(context).pop(selectedOption),
+              child: Text(isEs ? 'Usar combinación' : 'Use combination'),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final mobile = MediaQuery.sizeOf(sourceContext).width < 700;
+    if (mobile) {
+      return showModalBottomSheet<Map<String, dynamic>>(
+        context: sourceContext,
+        showDragHandle: true,
+        isScrollControlled: true,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setSelectorState) => FractionallySizedBox(
+            heightFactor: 0.82,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                child: content(
+                  context,
+                  setSelectorState,
+                  mobile: true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return showDialog<Map<String, dynamic>>(
+      context: sourceContext,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSelectorState) => Dialog(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620, maxHeight: 640),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: content(
+                context,
+                setSelectorState,
+                mobile: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _previewMatchedInvoice(
+    Map<String, dynamic> invoice,
+    bool isEs,
+  ) async {
+    final invoiceId = _invoiceIdFromInsightsInvoiceRow(invoice);
+    final invoiceNumber = _bankIncomeCandidateValue(
+      invoice,
+      const ['invoiceNumber', 'number'],
+    );
+    if (invoiceId.isEmpty) {
+      throw Exception(
+        isEs
+            ? 'Esta factura no incluye un identificador para la vista previa.'
+            : 'This invoice does not include an ID for preview.',
+      );
+    }
+    final response = await _invoicesApi.previewPdf(invoiceId);
+    final bytes = InvoiceEditorPdf.validatePdf(response);
+    final safeNumber = invoiceNumber.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '-');
+    await pdf_launcher.launchPdfPreview(
+      bytes,
+      fileName: safeNumber.isEmpty
+          ? 'invoice-preview.pdf'
+          : 'invoice-$safeNumber.pdf',
+    );
+  }
+
+  Widget _buildGroupedBankIncomeDetails(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final invoices = _bankIncomeMatchedInvoices(row);
+    final invoiceTotal = _bankIncomeCandidateValue(
+      row,
+      const ['matchedInvoicesTotalFormatted', 'matchedInvoicesTotal'],
+    );
+    final bankAmount = _bankIncomeCandidateValue(
+      row,
+      const ['amountFormatted', 'amount', 'importe'],
+    );
+    final delta = _bankIncomeCandidateValue(
+      row,
+      const ['deltaFormatted', 'delta'],
+    );
+    final combinationCount = row['combinationMatchCount'] is num
+        ? (row['combinationMatchCount'] as num).toInt()
+        : null;
+    final combinationValue =
+        row['combinationUnique'] == true && combinationCount == 1
+            ? (isEs ? 'Única' : 'Unique')
+            : combinationCount != null && combinationCount > 1
+                ? (isEs
+                    ? '$combinationCount posibles'
+                    : '$combinationCount possible')
+                : null;
+    final invoiceDateSpanDays = row['invoiceDateSpanDays'] is num
+        ? (row['invoiceDateSpanDays'] as num).toInt()
+        : null;
+
+    Widget summaryValue(String label, String value) {
+      if (value.isEmpty) return const SizedBox.shrink();
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: t.caption.copyWith(color: cs.onSurfaceVariant),
+          ),
+          Text(
+            value,
+            style: t.caption.copyWith(fontWeight: FontWeight.w900),
+          ),
+        ],
+      );
+    }
+
+    Widget invoiceLine(Map<String, dynamic> invoice) {
+      final number = _bankIncomeCandidateValue(
+        invoice,
+        const ['invoiceNumber', 'number'],
+      );
+      final date = _bankIncomeCandidateValue(
+        invoice,
+        const ['issueDate', 'date'],
+      );
+      final amount = _bankIncomeCandidateValue(
+        invoice,
+        const ['amountFormatted', 'amount'],
+      );
+      final canPreview = _invoiceIdFromInsightsInvoiceRow(invoice).isNotEmpty;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.56),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Icon(
+                Icons.receipt_long_outlined,
+                size: 15,
+                color: cs.primary,
+              ),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    number.isEmpty
+                        ? (isEs ? 'Factura' : 'Invoice')
+                        : '${isEs ? 'Factura' : 'Invoice'} $number',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 3),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: [
+                      if (date.isNotEmpty)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.calendar_today_outlined,
+                                size: 12, color: cs.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              date,
+                              style: t.caption.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      if (amount.isNotEmpty)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.payments_outlined,
+                                size: 13, color: cs.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              amount,
+                              style: t.caption.copyWith(
+                                color: cs.primary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            _InsightsAsyncIconButton(
+              tooltip: isEs ? 'Vista previa PDF' : 'PDF preview',
+              semanticLabel: isEs
+                  ? 'Ver vista previa de la factura $number'
+                  : 'Preview invoice $number',
+              errorFallback: isEs
+                  ? 'No se pudo abrir la vista previa.'
+                  : 'Could not open the preview.',
+              onPressed: canPreview
+                  ? () => _previewMatchedInvoice(invoice, isEs)
+                  : null,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: cs.surface.withValues(alpha: 0.58),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isEs ? 'Facturas incluidas' : 'Included invoices',
+            style: t.caption.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          for (final invoice in invoices) invoiceLine(invoice),
+          const Divider(height: 18),
+          Wrap(
+            spacing: 18,
+            runSpacing: 6,
+            children: [
+              summaryValue(
+                isEs ? 'Total facturas' : 'Invoice total',
+                invoiceTotal,
+              ),
+              summaryValue(
+                isEs ? 'Ingreso bancario' : 'Bank income',
+                bankAmount,
+              ),
+              summaryValue(isEs ? 'Diferencia' : 'Difference', delta),
+              if (combinationValue != null)
+                summaryValue(
+                  isEs ? 'Combinación' : 'Combination',
+                  combinationValue,
+                ),
+              if (invoiceDateSpanDays != null)
+                summaryValue(
+                  isEs ? 'Intervalo entre fechas' : 'Invoice date span',
+                  isEs
+                      ? '$invoiceDateSpanDays días'
+                      : '$invoiceDateSpanDays days',
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showGroupedBankIncomeDetails({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> row,
+    required bool isEs,
+  }) async {
+    final narrow = MediaQuery.sizeOf(sourceContext).width < 700;
+    if (narrow) {
+      await showModalBottomSheet<void>(
+        context: sourceContext,
+        showDragHandle: true,
+        isScrollControlled: true,
+        builder: (context) => SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+            child: _buildGroupedBankIncomeDetails(
+              context,
+              row: row,
+              isEs: isEs,
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    await showDialog<void>(
+      context: sourceContext,
+      builder: (context) => AlertDialog(
+        title: Text(isEs ? 'Facturas incluidas' : 'Included invoices'),
+        content: SizedBox(
+          width: 520,
+          child: _buildGroupedBankIncomeDetails(
+            context,
+            row: row,
+            isEs: isEs,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(isEs ? 'Cerrar' : 'Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _confirmBankIncomeCandidateLink({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> row,
+    required bool isEs,
+    required Future<void> Function() onConfirm,
+  }) async {
+    final grouped = _isGroupedBankIncomeCandidate(row);
+    final lowConfidence = _bankIncomeMatchIsLow(row);
+    final mediumConfidence = _bankIncomeMatchIsMedium(row);
+    if (!grouped && !lowConfidence) {
+      await onConfirm();
+      return true;
+    }
+
+    final count = _bankIncomeMatchedInvoiceCount(row);
+    var submitting = false;
+    String? errorMessage;
+    final confirmed = await showDialog<bool>(
+      context: sourceContext,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setConfirmationState) {
+          final cs = Theme.of(context).colorScheme;
+          final t = AppTypography.of(context);
+          final percent =
+              _formatBankIncomeMatchNumber(row['matchScorePercent']);
+          final depositDate = _bankIncomeCandidateValue(
+            row,
+            const ['date', 'fecha'],
+          );
+          final depositAmount = _bankIncomeCandidateValue(
+            row,
+            const ['amountFormatted', 'amount', 'importe'],
+          );
+          final selectedScore = _bankIncomeMatchScoreText(row, isEs);
+          final mobile = MediaQuery.sizeOf(context).width < 700;
+
+          Future<void> submitLink() async {
+            setConfirmationState(() {
+              submitting = true;
+              errorMessage = null;
+            });
+            try {
+              await onConfirm();
+              if (context.mounted) {
+                Navigator.of(context).pop(true);
+              }
+            } catch (error) {
+              if (!context.mounted) rethrow;
+              setConfirmationState(() {
+                submitting = false;
+                errorMessage =
+                    error.toString().replaceFirst('Exception: ', '').trim();
+              });
+            }
+          }
+
+          Widget confirmButton() => FilledButton(
+                onPressed: submitting ? null : submitLink,
+                child: submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        grouped
+                            ? (isEs
+                                ? 'Vincular $count facturas'
+                                : 'Link $count invoices')
+                            : (isEs
+                                ? 'Vincular de todas formas'
+                                : 'Link anyway'),
+                      ),
+              );
+          return PopScope(
+            canPop: !submitting,
+            child: AlertDialog(
+              title: Text(
+                grouped
+                    ? (isEs
+                        ? 'Vincular ingreso con $count facturas'
+                        : 'Link income to $count invoices')
+                    : (isEs ? 'Revisar coincidencia' : 'Review match'),
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (grouped) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: cs.primaryContainer.withValues(alpha: 0.30),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Wrap(
+                            spacing: 16,
+                            runSpacing: 7,
+                            children: [
+                              if (depositDate.isNotEmpty)
+                                Text(
+                                  '${isEs ? 'Ingreso' : 'Deposit'}: $depositDate',
+                                  style: t.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              if (depositAmount.isNotEmpty)
+                                Text(
+                                  depositAmount,
+                                  style: t.bodySmall.copyWith(
+                                    color: cs.primary,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              Text(
+                                selectedScore,
+                                style: t.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (lowConfidence || (grouped && mediumConfidence)) ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: (lowConfidence
+                                    ? const Color(0xFF8C514B)
+                                    : const Color(0xFFA65A00))
+                                .withValues(alpha: 0.09),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            grouped && lowConfidence
+                                ? (isEs
+                                    ? 'La coincidencia agrupada es baja${percent.isEmpty ? '' : ' ($percent%)'}. Revisa todas las facturas antes de continuar.'
+                                    : 'This grouped match has low confidence${percent.isEmpty ? '' : ' ($percent%)'}. Review every invoice before continuing.')
+                                : grouped && mediumConfidence
+                                    ? (isEs
+                                        ? 'La suma coincide exactamente, pero revisa la proximidad de las fechas antes de vincular.'
+                                        : 'The sum matches exactly, but review the date proximity before linking.')
+                                    : (isEs
+                                        ? 'La coincidencia es baja${percent.isEmpty ? '' : ' ($percent%)'}. Revisa el concepto, la fecha y el cliente antes de vincular.'
+                                        : 'This is a low-confidence match${percent.isEmpty ? '' : ' ($percent%)'}. Review the description, date, and client before linking.'),
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurface,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (grouped) ...[
+                        Text(
+                          isEs
+                              ? 'Este ingreso bancario se vinculará con las siguientes facturas:'
+                              : 'This bank income will be linked to the following invoices:',
+                          style: t.bodySmall,
+                        ),
+                        _buildGroupedBankIncomeDetails(
+                          context,
+                          row: row,
+                          isEs: isEs,
+                        ),
+                      ],
+                      if (errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: cs.errorContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            errorMessage!,
+                            style: t.bodySmall.copyWith(
+                              color: cs.onErrorContainer,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (mobile) ...[
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: confirmButton(),
+                        ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton(
+                            onPressed: submitting
+                                ? null
+                                : () => Navigator.of(context).pop(false),
+                            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: mobile
+                  ? null
+                  : [
+                      TextButton(
+                        onPressed: submitting
+                            ? null
+                            : () => Navigator.of(context).pop(false),
+                        child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                      ),
+                      confirmButton(),
+                    ],
+            ),
+          );
+        },
+      ),
+    );
+    return confirmed == true;
+  }
+
+  int _highestBankIncomeMatchIndex(List<Map<String, dynamic>> rows) {
+    if (rows.isEmpty) return 0;
+    final usePercent = rows.any((row) => row['matchScorePercent'] is num);
+    var bestIndex = 0;
+    num? bestScore;
+    for (var index = 0; index < rows.length; index++) {
+      final row = rows[index];
+      final score = usePercent
+          ? row['matchScorePercent'] as num?
+          : row['matchScore'] as num?;
+      if (score != null && (bestScore == null || score > bestScore)) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    }
+    return bestIndex;
+  }
+
+  Widget _buildTargetInvoiceSummary(
+    BuildContext context, {
+    required Map<String, dynamic> invoiceRow,
+    required bool isEs,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final invoiceNumber = _bankIncomeCandidateValue(
+      invoiceRow,
+      const [
+        'invoiceNumber',
+        'invoice_number',
+        'number',
+        'factura',
+      ],
+    );
+    final client = _bankIncomeCandidateValue(
+      invoiceRow,
+      const [
+        'clientName',
+        'client',
+        'cliente',
+        'customerName',
+        'counterpartyName',
+      ],
+    );
+    final date = _bankIncomeCandidateValue(
+      invoiceRow,
+      const [
+        'issueDate',
+        'issue_date',
+        'invoiceDate',
+        'invoice_date',
+        'date',
+        'fecha',
+      ],
+    );
+    final amount = _bankIncomeCandidateValue(
+      invoiceRow,
+      const [
+        'totalFormatted',
+        'amountFormatted',
+        'importeFormatted',
+        'total',
+        'amount',
+        'importe',
+      ],
+    );
+    final details = <(IconData, String)>[
+      if (invoiceNumber.isNotEmpty)
+        (Icons.receipt_long_outlined, invoiceNumber),
+      if (client.isNotEmpty) (Icons.person_outline_rounded, client),
+      if (date.isNotEmpty) (Icons.calendar_today_outlined, date),
+      if (amount.isNotEmpty) (Icons.payments_outlined, amount),
+    ];
+
+    return Semantics(
+      container: true,
+      label: isEs ? 'Factura que se va a vincular' : 'Invoice being linked',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: cs.primaryContainer.withValues(alpha: 0.34),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.primary.withValues(alpha: 0.16)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.description_outlined,
+                size: 17,
+                color: cs.primary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isEs ? 'Factura consultada' : 'Selected invoice',
+                    style: t.caption.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  if (details.isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 6,
+                      children: [
+                        for (final detail in details)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                detail.$1,
+                                size: 13,
+                                color: cs.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 5),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 230,
+                                ),
+                                child: Text(
+                                  detail.$2,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.caption.copyWith(
+                                    color: cs.onSurface,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _showBankIncomeCandidatesDialog({
+    required Future<Map<String, dynamic>> responseFuture,
+    required Map<String, dynamic> invoiceRow,
+    required Future<void> Function(Map<String, dynamic> candidate)
+        onLinkCandidate,
+    required bool isEs,
+  }) async {
+    int? selectedCandidateIndex;
+    final expandedCandidateIndexes = <int>{};
+    final selectedCombinationIds = <int, String>{};
+    var linkingCandidate = false;
+    String? linkError;
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (routeContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final cs = Theme.of(dialogContext).colorScheme;
+            final t = AppTypography.of(dialogContext);
+            final screenSize = MediaQuery.sizeOf(dialogContext);
+            final narrow = screenSize.width < 700;
+            return AlertDialog(
+              backgroundColor: cs.surface,
+              surfaceTintColor: Colors.transparent,
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: narrow ? 12 : 28,
+                vertical: narrow ? 16 : 28,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.45)),
+              ),
+              titlePadding: const EdgeInsets.fromLTRB(22, 18, 14, 0),
+              contentPadding: const EdgeInsets.fromLTRB(22, 14, 22, 20),
+              title: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        colors: [
+                          cs.primary.withValues(alpha: 0.24),
+                          cs.secondaryContainer.withValues(alpha: 0.42),
+                        ],
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.account_balance_wallet_rounded,
+                      size: 18,
+                      color: cs.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      isEs ? 'Ingresos candidatos' : 'Income candidates',
+                      style: t.titleLarge.copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  Tooltip(
+                    message: isEs ? 'Cerrar' : 'Close',
+                    child: IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 960,
+                height: (screenSize.height * (narrow ? 0.68 : 0.52))
+                    .clamp(340.0, 480.0),
+                child: FutureBuilder<Map<String, dynamic>>(
+                  future: responseFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(strokeWidth: 2.5),
+                            const SizedBox(height: 12),
+                            Text(
+                              isEs
+                                  ? 'Buscando ingresos bancarios...'
+                                  : 'Searching bank income...',
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      final msg = snapshot.error
+                          .toString()
+                          .replaceFirst('Exception: ', '')
+                          .trim();
+                      return Center(
+                        child: Text(
+                          msg.isEmpty
+                              ? (isEs
+                                  ? 'No se pudo buscar ingresos.'
+                                  : 'Could not search income.')
+                              : msg,
+                          textAlign: TextAlign.center,
+                          style: t.bodySmall.copyWith(
+                            color: cs.error,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      );
+                    }
+
+                    final response = snapshot.data;
+                    final rows = _bankIncomeCandidateRowsFromResponse(response);
+                    final columns = _bankIncomeCandidateColumnsFromResponse(
+                      response,
+                      rows,
+                    );
+                    final scoring = _bankIncomeScoringFromResponse(response);
+                    final groupMatching =
+                        _bankIncomeGroupMatchingFromResponse(response);
+                    final hasGroupedMatches =
+                        rows.any(_isGroupedBankIncomeCandidate);
+                    final hasCombinationData = rows.any(
+                      (row) => _bankIncomeCombinationLabel(row, isEs) != null,
+                    );
+                    final hasScores = rows.any(_bankIncomeCandidateHasScore) ||
+                        hasGroupedMatches;
+                    debugPrint(
+                      'bank income search response rows=${rows.length} columns=${columns.length}',
+                    );
+                    if (rows.isEmpty) {
+                      debugPrint(
+                        'bank income search response ${jsonEncode(response)}',
+                      );
+                      return Center(
+                        child: Text(
+                          isEs
+                              ? 'No hay ingresos candidatos para esta factura.'
+                              : 'No income candidates found for this invoice.',
+                          textAlign: TextAlign.center,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      );
+                    }
+
+                    final bestCandidateIndex =
+                        _highestBankIncomeMatchIndex(rows);
+                    selectedCandidateIndex ??= bestCandidateIndex;
+
+                    Map<String, dynamic> candidateAt(int index) {
+                      final candidate = rows[index];
+                      final selectedId = selectedCombinationIds[index];
+                      if (selectedId == null || selectedId.isEmpty) {
+                        return candidate;
+                      }
+                      Map<String, dynamic>? selectedOption;
+                      for (final option
+                          in _bankIncomeCombinationOptions(candidate)) {
+                        if (_bankIncomeCombinationId(option) == selectedId) {
+                          selectedOption = option;
+                          break;
+                        }
+                      }
+                      return _bankIncomeCandidateForCombination(
+                        candidate,
+                        selectedOption,
+                      );
+                    }
+
+                    Future<void> chooseCombination(int index) async {
+                      final candidate = rows[index];
+                      final option = await _showBankIncomeCombinationSelector(
+                        sourceContext: dialogContext,
+                        candidate: candidate,
+                        isEs: isEs,
+                        selectedCombinationId: selectedCombinationIds[index],
+                      );
+                      if (option == null || !dialogContext.mounted) return;
+                      final combinationId = _bankIncomeCombinationId(option);
+                      if (combinationId.isEmpty) return;
+                      setDialogState(() {
+                        selectedCombinationIds[index] = combinationId;
+                      });
+                    }
+
+                    final columnWidths = [
+                      for (final column in columns)
+                        _bankIncomeCandidateColumnWidth(column),
+                    ];
+                    final matchColumnWidth = hasCombinationData
+                        ? 420.0
+                        : hasGroupedMatches
+                            ? 340.0
+                            : 250.0;
+                    const actionColumnWidth = 64.0;
+                    const tableHorizontalPadding = 52.0;
+                    final requiredTableWidth = columnWidths.fold<double>(
+                          0,
+                          (sum, width) => sum + width,
+                        ) +
+                        (hasScores ? matchColumnWidth : 0) +
+                        actionColumnWidth +
+                        tableHorizontalPadding;
+                    final tableWidth =
+                        requiredTableWidth < 720 ? 720.0 : requiredTableWidth;
+
+                    Widget summaryHeader() {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isEs
+                                      ? '${rows.length} ingreso${rows.length == 1 ? '' : 's'} encontrado${rows.length == 1 ? '' : 's'}'
+                                      : '${rows.length} income candidate${rows.length == 1 ? '' : 's'} found',
+                                  style: t.caption.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                if (hasScores) ...[
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    isEs
+                                        ? 'Ordenados según importe, cliente, número de factura y proximidad de fecha.'
+                                        : 'Ranked by amount, client, invoice number, and date proximity.',
+                                    style: t.caption.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                      height: 1.25,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          if (scoring != null || groupMatching != null) ...[
+                            const SizedBox(width: 8),
+                            Semantics(
+                              button: true,
+                              label: isEs
+                                  ? 'Información sobre la puntuación'
+                                  : 'Scoring information',
+                              child: Tooltip(
+                                message: isEs
+                                    ? 'Ver pesos de coincidencia'
+                                    : 'View match weights',
+                                child: IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: () => _showBankIncomeScoringInfo(
+                                    sourceContext: dialogContext,
+                                    scoring:
+                                        scoring ?? const <String, dynamic>{},
+                                    groupMatching: groupMatching,
+                                    isEs: isEs,
+                                  ),
+                                  icon: const Icon(Icons.info_outline_rounded),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    }
+
+                    Widget selectionFooter() {
+                      final selectedIndex = selectedCandidateIndex;
+                      final selectedRow = selectedIndex != null &&
+                              selectedIndex >= 0 &&
+                              selectedIndex < rows.length
+                          ? candidateAt(selectedIndex)
+                          : null;
+                      final action = selectedRow == null
+                          ? null
+                          : _linkInvoiceToEntryAction(selectedRow);
+                      final score = selectedRow == null ||
+                              !_bankIncomeCandidateHasScore(selectedRow)
+                          ? ''
+                          : _bankIncomeMatchScoreText(selectedRow, isEs);
+                      final selectedLabel = Text(
+                        score.isEmpty
+                            ? (isEs
+                                ? 'Selecciona un ingreso para continuar.'
+                                : 'Select an income to continue.')
+                            : '${isEs ? 'Seleccionado' : 'Selected'}: $score',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.caption.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      );
+                      final linkButton = FilledButton.icon(
+                        onPressed: action == null || linkingCandidate
+                            ? null
+                            : () async {
+                                setDialogState(() {
+                                  linkingCandidate = true;
+                                  linkError = null;
+                                });
+                                try {
+                                  final linked =
+                                      await _confirmBankIncomeCandidateLink(
+                                    sourceContext: dialogContext,
+                                    row: selectedRow!,
+                                    isEs: isEs,
+                                    onConfirm: () =>
+                                        onLinkCandidate(selectedRow),
+                                  );
+                                  if (linked && dialogContext.mounted) {
+                                    Navigator.of(dialogContext)
+                                        .pop(selectedRow);
+                                    return;
+                                  }
+                                } catch (error) {
+                                  linkError = error
+                                      .toString()
+                                      .replaceFirst('Exception: ', '')
+                                      .trim();
+                                }
+                                if (dialogContext.mounted) {
+                                  setDialogState(() {
+                                    linkingCandidate = false;
+                                  });
+                                }
+                              },
+                        icon: linkingCandidate
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.link_rounded, size: 16),
+                        label: Text(
+                          narrow
+                              ? (isEs ? 'Vincular' : 'Link')
+                              : (isEs
+                                  ? 'Vincular seleccionado'
+                                  : 'Link selected'),
+                        ),
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (linkError != null) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: cs.errorContainer,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  linkError!,
+                                  style: t.caption.copyWith(
+                                    color: cs.onErrorContainer,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            if (narrow) ...[
+                              selectedLabel,
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: linkButton,
+                              ),
+                            ] else
+                              Row(
+                                children: [
+                                  Expanded(child: selectedLabel),
+                                  const SizedBox(width: 12),
+                                  linkButton,
+                                ],
+                              ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (narrow) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildTargetInvoiceSummary(
+                            context,
+                            invoiceRow: invoiceRow,
+                            isEs: isEs,
+                          ),
+                          const SizedBox(height: 10),
+                          summaryHeader(),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: rows.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                final baseCandidate = rows[index];
+                                final row = candidateAt(index);
+                                final combinationOptions =
+                                    _bankIncomeCombinationOptions(
+                                  baseCandidate,
+                                );
+                                final action = _linkInvoiceToEntryAction(row);
+                                final canLink = action != null;
+                                final isSelected =
+                                    selectedCandidateIndex == index;
+                                final isRecommended =
+                                    index == bestCandidateIndex;
+                                final grouped =
+                                    _isGroupedBankIncomeCandidate(row);
+                                final expanded =
+                                    expandedCandidateIndexes.contains(index);
+                                final date = _bankIncomeCandidateValue(
+                                  row,
+                                  const ['date', 'fecha'],
+                                );
+                                final description = _bankIncomeCandidateValue(
+                                  row,
+                                  const ['description', 'concept', 'concepto'],
+                                );
+                                final amount = _bankIncomeCandidateValue(
+                                  row,
+                                  const [
+                                    'amountFormatted',
+                                    'importeFormatted',
+                                    'amount',
+                                    'importe',
+                                  ],
+                                );
+                                return InkWell(
+                                  borderRadius: BorderRadius.circular(10),
+                                  onTap: canLink
+                                      ? () => setDialogState(
+                                            () =>
+                                                selectedCandidateIndex = index,
+                                          )
+                                      : null,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? cs.primaryContainer
+                                              .withValues(alpha: 0.34)
+                                          : cs.surfaceContainerHighest
+                                              .withValues(alpha: 0.22),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? cs.primary.withValues(alpha: 0.55)
+                                            : cs.outlineVariant
+                                                .withValues(alpha: 0.24),
+                                        width: isSelected ? 1.5 : 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                description,
+                                                maxLines: 3,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: t.bodySmall.copyWith(
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Text(
+                                              amount,
+                                              style: t.bodySmall.copyWith(
+                                                color: cs.primary,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (date.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            date,
+                                            style: t.caption.copyWith(
+                                              color: cs.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                        if (_bankIncomeCandidateHasScore(
+                                            row)) ...[
+                                          const SizedBox(height: 10),
+                                          _buildBankIncomeMatchCell(
+                                            context,
+                                            row: row,
+                                            isEs: isEs,
+                                            compact: true,
+                                          ),
+                                        ],
+                                        if (grouped) ...[
+                                          const SizedBox(height: 8),
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 6,
+                                            children: [
+                                              _buildGroupedInvoiceBadge(
+                                                context,
+                                                row: row,
+                                                isEs: isEs,
+                                                expanded: expanded,
+                                                onPressed: () =>
+                                                    setDialogState(() {
+                                                  if (expanded) {
+                                                    expandedCandidateIndexes
+                                                        .remove(index);
+                                                  } else {
+                                                    expandedCandidateIndexes
+                                                        .add(index);
+                                                  }
+                                                }),
+                                              ),
+                                              if (_bankIncomeCombinationLabel(
+                                                    row,
+                                                    isEs,
+                                                  ) !=
+                                                  null)
+                                                _buildBankIncomeCombinationBadge(
+                                                  context,
+                                                  row: row,
+                                                  isEs: isEs,
+                                                  onPressed: combinationOptions
+                                                              .length >
+                                                          1
+                                                      ? () => chooseCombination(
+                                                            index,
+                                                          )
+                                                      : null,
+                                                ),
+                                            ],
+                                          ),
+                                          if (expanded)
+                                            _buildGroupedBankIncomeDetails(
+                                              context,
+                                              row: row,
+                                              isEs: isEs,
+                                            ),
+                                        ],
+                                        const SizedBox(height: 8),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (isRecommended) ...[
+                                                Icon(
+                                                  Icons.auto_awesome_rounded,
+                                                  size: 13,
+                                                  color: cs.primary,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  isEs
+                                                      ? 'Mejor coincidencia'
+                                                      : 'Best match',
+                                                  style: t.caption.copyWith(
+                                                    color: cs.primary,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                              ],
+                                              Icon(
+                                                isSelected
+                                                    ? Icons.check_circle_rounded
+                                                    : Icons.circle_outlined,
+                                                size: 18,
+                                                color: isSelected
+                                                    ? cs.primary
+                                                    : cs.onSurfaceVariant,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          selectionFooter(),
+                        ],
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTargetInvoiceSummary(
+                          context,
+                          invoiceRow: invoiceRow,
+                          isEs: isEs,
+                        ),
+                        const SizedBox(height: 10),
+                        summaryHeader(),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: SizedBox(
+                                width: tableWidth,
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 9,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: cs.surfaceContainerHighest
+                                            .withValues(alpha: 0.42),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: cs.outlineVariant
+                                              .withValues(alpha: 0.28),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          for (int i = 0;
+                                              i < columns.length;
+                                              i++)
+                                            SizedBox(
+                                              width: columnWidths[i],
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                  right: 18,
+                                                ),
+                                                child: Text(
+                                                  columns[i]['label']
+                                                          ?.toString() ??
+                                                      columns[i]['key']
+                                                          ?.toString() ??
+                                                      '',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  textAlign:
+                                                      _isBankIncomeCandidateAmountColumn(
+                                                    columns[i],
+                                                  )
+                                                          ? TextAlign.right
+                                                          : TextAlign.left,
+                                                  style: t.caption.copyWith(
+                                                    color: cs.onSurfaceVariant,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          if (hasScores)
+                                            SizedBox(
+                                              width: matchColumnWidth,
+                                              child: Text(
+                                                isEs ? 'Coincidencia' : 'Match',
+                                                style: t.caption.copyWith(
+                                                  color: cs.onSurfaceVariant,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                            ),
+                                          SizedBox(
+                                            width: actionColumnWidth,
+                                            child: Center(
+                                              child: Text(
+                                                isEs ? 'Elegir' : 'Select',
+                                                style: t.caption.copyWith(
+                                                  color: cs.onSurfaceVariant,
+                                                  fontWeight: FontWeight.w900,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Expanded(
+                                      child: ListView.separated(
+                                        itemCount: rows.length,
+                                        separatorBuilder: (_, __) =>
+                                            const SizedBox(height: 6),
+                                        itemBuilder: (_, index) {
+                                          final baseCandidate = rows[index];
+                                          final row = candidateAt(index);
+                                          final combinationOptions =
+                                              _bankIncomeCombinationOptions(
+                                            baseCandidate,
+                                          );
+                                          final action =
+                                              _linkInvoiceToEntryAction(row);
+                                          final canLink = action != null;
+                                          final isSelected =
+                                              selectedCandidateIndex == index;
+                                          final isRecommended =
+                                              index == bestCandidateIndex;
+                                          final grouped =
+                                              _isGroupedBankIncomeCandidate(
+                                            row,
+                                          );
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: isSelected
+                                                  ? cs.primaryContainer
+                                                      .withValues(alpha: 0.30)
+                                                  : cs.surfaceContainerHighest
+                                                      .withValues(alpha: 0.22),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: isSelected
+                                                    ? cs.primary
+                                                        .withValues(alpha: 0.52)
+                                                    : cs.outlineVariant
+                                                        .withValues(
+                                                            alpha: 0.20),
+                                                width: isSelected ? 1.5 : 1,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                for (int i = 0;
+                                                    i < columns.length;
+                                                    i++)
+                                                  SizedBox(
+                                                    width: columnWidths[i],
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                        right: 18,
+                                                      ),
+                                                      child: Text(
+                                                        row[columns[i]['key']
+                                                                        ?.toString() ??
+                                                                    '']
+                                                                ?.toString() ??
+                                                            '',
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        textAlign:
+                                                            _isBankIncomeCandidateAmountColumn(
+                                                          columns[i],
+                                                        )
+                                                                ? TextAlign
+                                                                    .right
+                                                                : TextAlign
+                                                                    .left,
+                                                        style: t.bodySmall
+                                                            .copyWith(
+                                                          color:
+                                                              _isBankIncomeCandidateAmountColumn(
+                                                            columns[i],
+                                                          )
+                                                                  ? cs.primary
+                                                                  : cs.onSurface,
+                                                          fontWeight:
+                                                              _isBankIncomeCandidateAmountColumn(
+                                                            columns[i],
+                                                          )
+                                                                  ? FontWeight
+                                                                      .w900
+                                                                  : FontWeight
+                                                                      .w700,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (hasScores)
+                                                  SizedBox(
+                                                    width: matchColumnWidth,
+                                                    child: Row(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Expanded(
+                                                          child: _bankIncomeCandidateHasScore(
+                                                            row,
+                                                          )
+                                                              ? _buildBankIncomeMatchCell(
+                                                                  context,
+                                                                  row: row,
+                                                                  isEs: isEs,
+                                                                )
+                                                              : Text(
+                                                                  isEs
+                                                                      ? 'Sin puntuación'
+                                                                      : 'No score',
+                                                                  style: t
+                                                                      .caption
+                                                                      .copyWith(
+                                                                    color: cs
+                                                                        .onSurfaceVariant,
+                                                                  ),
+                                                                ),
+                                                        ),
+                                                        if (grouped) ...[
+                                                          const SizedBox(
+                                                              width: 8),
+                                                          _buildGroupedInvoiceBadge(
+                                                            context,
+                                                            row: row,
+                                                            isEs: isEs,
+                                                            expanded: false,
+                                                            onPressed: () =>
+                                                                _showGroupedBankIncomeDetails(
+                                                              sourceContext:
+                                                                  dialogContext,
+                                                              row: row,
+                                                              isEs: isEs,
+                                                            ),
+                                                          ),
+                                                          if (_bankIncomeCombinationLabel(
+                                                                row,
+                                                                isEs,
+                                                              ) !=
+                                                              null) ...[
+                                                            const SizedBox(
+                                                                width: 8),
+                                                            _buildBankIncomeCombinationBadge(
+                                                              context,
+                                                              row: row,
+                                                              isEs: isEs,
+                                                              onPressed: combinationOptions
+                                                                          .length >
+                                                                      1
+                                                                  ? () =>
+                                                                      chooseCombination(
+                                                                        index,
+                                                                      )
+                                                                  : null,
+                                                            ),
+                                                          ],
+                                                        ],
+                                                      ],
+                                                    ),
+                                                  ),
+                                                SizedBox(
+                                                  width: actionColumnWidth,
+                                                  child: Center(
+                                                    child: Semantics(
+                                                      button: true,
+                                                      label: isEs
+                                                          ? '${isSelected ? 'Ingreso seleccionado' : 'Seleccionar ingreso'}${isRecommended ? ', mejor coincidencia' : ''}'
+                                                          : '${isSelected ? 'Income selected' : 'Select income'}${isRecommended ? ', best match' : ''}',
+                                                      child: Tooltip(
+                                                        message: isRecommended
+                                                            ? (isEs
+                                                                ? 'Mejor coincidencia'
+                                                                : 'Best match')
+                                                            : (isEs
+                                                                ? 'Seleccionar ingreso'
+                                                                : 'Select income'),
+                                                        child: IconButton(
+                                                          visualDensity:
+                                                              VisualDensity
+                                                                  .compact,
+                                                          onPressed: canLink
+                                                              ? () =>
+                                                                  setDialogState(
+                                                                    () => selectedCandidateIndex =
+                                                                        index,
+                                                                  )
+                                                              : null,
+                                                          icon: Icon(
+                                                            isSelected
+                                                                ? Icons
+                                                                    .check_circle_rounded
+                                                                : Icons
+                                                                    .radio_button_unchecked_rounded,
+                                                            size: 20,
+                                                            color: isSelected
+                                                                ? cs.primary
+                                                                : cs.onSurfaceVariant,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        selectionFooter(),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _applyLinkedCandidatePatches({
+    required _ChatMessage message,
+    required Map<String, dynamic> originalInvoiceRow,
+    required Map<String, dynamic> candidate,
+    required Map<String, dynamic> linkAction,
+    required bool isEs,
+  }) {
+    final body = _safeMap(linkAction['body']);
+    final actionInvoiceIds = body?['invoiceIds'];
+    final invoiceIds = actionInvoiceIds is List
+        ? actionInvoiceIds
+            .map((id) => id.toString().trim())
+            .where((id) => id.isNotEmpty)
+            .toList(growable: false)
+        : <String>[];
+    final originalInvoiceId =
+        _invoiceIdFromInsightsInvoiceRow(originalInvoiceRow);
+    final affectedIds = invoiceIds.isNotEmpty
+        ? invoiceIds
+        : <String>[if (originalInvoiceId.isNotEmpty) originalInvoiceId];
+    final tableRows = _tableRowsFromMessage(message);
+    final matchedInvoices = _bankIncomeMatchedInvoices(candidate);
+
+    setState(() {
+      for (final invoiceId in affectedIds) {
+        Map<String, dynamic>? affectedRow;
+        for (final tableRow in tableRows) {
+          if (_invoiceIdFromInsightsInvoiceRow(tableRow) == invoiceId) {
+            affectedRow = tableRow;
+            break;
+          }
+        }
+        if (affectedRow == null) {
+          for (final matchedInvoice in matchedInvoices) {
+            if (_invoiceIdFromInsightsInvoiceRow(matchedInvoice) == invoiceId) {
+              affectedRow = matchedInvoice;
+              break;
+            }
+          }
+        }
+        affectedRow ??= originalInvoiceRow;
+        final stateKey = '${_messageKey(message)}::$invoiceId';
+        _pendingInsightsInvoiceRowPatches[stateKey] = _linkedInvoiceRowPatch(
+          invoiceRow: affectedRow,
+          incomeRow: candidate,
+          isEs: isEs,
+        );
+      }
+    });
+  }
+
+  Future<void> _linkBankIncomeCandidate({
+    required _ChatMessage message,
+    required Map<String, dynamic> invoiceRow,
+    required Map<String, dynamic> candidate,
+    required String stateKey,
+    required bool isEs,
+  }) async {
+    final linkAction = _linkInvoiceToEntryAction(candidate);
+    if (linkAction == null) {
+      throw Exception(isEs
+          ? 'El ingreso no incluye acción de vínculo.'
+          : 'The income candidate has no link action.');
+    }
+    if (mounted) {
+      setState(() => _linkingBankIncomeRows.add(stateKey));
+    }
+    try {
+      await _runtime.executeJsonAction(linkAction);
+      if (mounted) {
+        _applyLinkedCandidatePatches(
+          message: message,
+          originalInvoiceRow: invoiceRow,
+          candidate: candidate,
+          linkAction: linkAction,
+          isEs: isEs,
+        );
+      }
+      if (_messageUsesRemoteTableData(message)) {
+        await _reloadRemoteTableForMessage(message);
+      } else {
+        try {
+          await _runtime.refreshMessageFromSourceAction(
+            message: message,
+            groupId: widget.groupId,
+          );
+        } on InsightsApiException catch (error) {
+          debugPrint(
+            '[insights_link_income] post-link chat refresh skipped: '
+            'status=${error.statusCode} code=${error.code} '
+            'message=${error.message}',
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _linkingBankIncomeRows.remove(stateKey));
+      }
+    }
   }
 
   Future<void> _searchAndLinkBankIncomeForInvoiceRow(
@@ -4062,26 +7346,27 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
       final responseFuture = _runtime.executeJsonAction(searchAction);
       final candidate = await _showBankIncomeCandidatesDialog(
         responseFuture: responseFuture,
+        invoiceRow: row,
+        onLinkCandidate: (candidate) => _linkBankIncomeCandidate(
+          message: message,
+          invoiceRow: row,
+          candidate: candidate,
+          stateKey: stateKey,
+          isEs: isEs,
+        ),
         isEs: isEs,
       );
       if (!mounted || candidate == null) return;
-      final linkAction = _linkInvoiceToEntryAction(candidate);
-      if (linkAction == null) {
-        throw Exception(isEs
-            ? 'El ingreso no incluye accion de vinculo.'
-            : 'The income candidate has no link action.');
-      }
-      setState(() => _linkingBankIncomeRows.add(stateKey));
-      await _runtime.executeJsonAction(linkAction);
-      await _runtime.refreshMessageFromSourceAction(
-        message: message,
-        groupId: widget.groupId,
-      );
-      if (!mounted) return;
+      final grouped = _isGroupedBankIncomeCandidate(candidate);
+      final count = _bankIncomeMatchedInvoiceCount(candidate);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            isEs ? 'Ingreso vinculado a la factura.' : 'Income linked.',
+            grouped
+                ? (isEs
+                    ? 'Ingreso vinculado correctamente con $count facturas.'
+                    : 'Income linked successfully to $count invoices.')
+                : (isEs ? 'Ingreso vinculado a la factura.' : 'Income linked.'),
           ),
         ),
       );
@@ -4192,6 +7477,1061 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     );
   }
 
+  Widget _buildLinkedInvoiceStatusCell({
+    required String value,
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isDark,
+  }) {
+    final accent = isDark ? Colors.greenAccent : const Color(0xFF0F9F72);
+    final label = value.trim().isEmpty ? 'Vinculada/pagada' : value.trim();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: isDark ? 0.16 : 0.11),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: accent.withValues(alpha: 0.36)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.link_rounded, size: 13, color: accent),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: t.caption.copyWith(
+              color: accent,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _linkedIncomeReviewInvoices(
+    Map<String, dynamic> row,
+  ) {
+    final raw = row['linkedInvoices'];
+    if (raw is! List) return const <Map<String, dynamic>>[];
+    return raw
+        .map(_safeMap)
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+  }
+
+  Map<String, dynamic>? _linkedIncomeReviewUnlinkAction(
+    Map<String, dynamic> row,
+  ) {
+    final direct = _safeMap(row['unlinkAction']);
+    if ((direct?['endpoint']?.toString().trim().isNotEmpty ?? false)) {
+      return direct;
+    }
+    final actions = row['actions'];
+    if (actions is List) {
+      for (final raw in actions) {
+        final action = _safeMap(raw);
+        if (action == null) continue;
+        final endpoint = action['endpoint']?.toString().trim() ?? '';
+        if (endpoint.isEmpty) continue;
+        final descriptor = _normalizedInsightText([
+          action['type'],
+          action['name'],
+          action['label'],
+          action['action'],
+        ].whereType<Object>().join(' '));
+        final body = _safeMap(action['body']);
+        final invoiceIds = body?['invoiceIds'];
+        final clearsInvoices = invoiceIds is List && invoiceIds.isEmpty;
+        if (clearsInvoices ||
+            descriptor.contains('unlink') ||
+            descriptor.contains('desvinc')) {
+          return action;
+        }
+      }
+    }
+    final entryId = _rowEntryId(row) ?? '';
+    if (entryId.isEmpty) return null;
+    return <String, dynamic>{
+      'endpoint': '/api/statements/entries/$entryId/invoice',
+      'method': 'POST',
+      'body': <String, dynamic>{'invoiceIds': <String>[]},
+    };
+  }
+
+  Color _linkedIncomeReviewConfidenceColor(
+    Map<String, dynamic> row,
+    bool isDark,
+  ) {
+    final percent = row['matchScorePercent'];
+    if (percent is num && percent >= 80) {
+      return isDark ? Colors.greenAccent : const Color(0xFF07875F);
+    }
+    if (percent is num && percent >= 60) {
+      return isDark ? const Color(0xFFFFB45B) : const Color(0xFFA65A00);
+    }
+    return isDark ? const Color(0xFFFF8A80) : const Color(0xFFB33A3A);
+  }
+
+  Widget _buildLinkedIncomeReviewScoreCell(
+    Map<String, dynamic> row, {
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isDark,
+  }) {
+    final score = row['matchScoreFormatted']?.toString().trim() ?? '';
+    final color = _linkedIncomeReviewConfidenceColor(row, isDark);
+    return Semantics(
+      label: score.isEmpty ? 'Sin puntuación' : score,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDark ? 0.16 : 0.10),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.38)),
+        ),
+        child: Text(
+          score.isEmpty ? 'Sin puntuación' : score,
+          maxLines: 1,
+          style: t.caption.copyWith(
+            color: color,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLinkedIncomeReviewInvoicesCell(
+    Map<String, dynamic> row, {
+    required ColorScheme cs,
+    required AppTypography t,
+  }) {
+    final invoices = _linkedIncomeReviewInvoices(row);
+    if (invoices.isEmpty) {
+      return Text(
+        '-',
+        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+      );
+    }
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 330),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var index = 0; index < invoices.length; index++) ...[
+            if (index > 0)
+              Divider(
+                height: 10,
+                thickness: 0.5,
+                color: cs.outlineVariant.withValues(alpha: 0.45),
+              ),
+            Text(
+              (invoices[index]['invoiceNumber'] ??
+                      invoices[index]['number'] ??
+                      'Factura')
+                  .toString(),
+              style: t.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              [
+                invoices[index]['clientName'],
+                invoices[index]['issueDate'],
+                invoices[index]['amountFormatted'],
+              ]
+                  .map((value) => value?.toString().trim() ?? '')
+                  .where((value) => value.isNotEmpty)
+                  .join(' · '),
+              style: t.caption.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.25,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLinkedIncomeReviewReasonsCell(
+    Map<String, dynamic> row, {
+    required ColorScheme cs,
+    required AppTypography t,
+  }) {
+    final reasons = _stringList(row['reviewReasons']);
+    if (reasons.isEmpty) {
+      return Text('-', style: t.bodySmall.copyWith(color: cs.onSurfaceVariant));
+    }
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 320),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final reason in reasons)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Icon(
+                      Icons.circle,
+                      size: 4,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      reason,
+                      style: t.caption.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLinkedIncomeReviewActionsCell(
+    _ChatMessage message,
+    Map<String, dynamic> row, {
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isEs,
+  }) {
+    final entryId = _rowEntryId(row) ?? '';
+    final unlinkAction = _linkedIncomeReviewUnlinkAction(row);
+    final unlinking = _bulkUnlinkingLinkedIncome ||
+        (entryId.isNotEmpty &&
+            _unlinkingLinkedIncomeRows.contains(
+              '${_messageKey(message)}::$entryId',
+            ));
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: [
+        Tooltip(
+          message:
+              isEs ? 'Revisar facturas vinculadas' : 'Review linked invoices',
+          child: OutlinedButton.icon(
+            onPressed:
+                unlinking ? null : () => _reviewLinkedIncomeRow(message, row),
+            icon: const Icon(Icons.manage_search_rounded, size: 14),
+            label: Text(isEs ? 'Revisar' : 'Review'),
+            style: OutlinedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              textStyle: t.caption.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+        Tooltip(
+          message: unlinkAction == null
+              ? (isEs
+                  ? 'El servidor no proporcionó una acción para desvincular'
+                  : 'The server did not provide an unlink action')
+              : (isEs ? 'Desvincular facturas' : 'Unlink invoices'),
+          child: TextButton.icon(
+            onPressed: unlinking || unlinkAction == null
+                ? null
+                : () => _confirmUnlinkLinkedIncome(
+                      message,
+                      row,
+                      unlinkAction,
+                    ),
+            icon: unlinking
+                ? const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.link_off_rounded, size: 14),
+            label: Text(isEs ? 'Desvincular' : 'Unlink'),
+            style: TextButton.styleFrom(
+              foregroundColor: cs.error,
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              textStyle: t.caption.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLinkedIncomeReviewTableCell(
+    _ChatMessage message,
+    Map<String, dynamic> row,
+    Map<String, dynamic> column, {
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isDark,
+    required bool isEs,
+    required TextStyle cellStyle,
+  }) {
+    final key = column['key']?.toString() ?? '';
+    switch (key) {
+      case 'linkedInvoices':
+        return _buildLinkedIncomeReviewInvoicesCell(row, cs: cs, t: t);
+      case 'matchScoreFormatted':
+        return _buildLinkedIncomeReviewScoreCell(
+          row,
+          cs: cs,
+          t: t,
+          isDark: isDark,
+        );
+      case 'reviewReasons':
+        return _buildLinkedIncomeReviewReasonsCell(row, cs: cs, t: t);
+      case '__linkedIncomeReviewActions':
+        return _buildLinkedIncomeReviewActionsCell(
+          message,
+          row,
+          cs: cs,
+          t: t,
+          isEs: isEs,
+        );
+      default:
+        final rightAligned = column['align']?.toString() == 'right';
+        return Align(
+          alignment:
+              rightAligned ? Alignment.centerRight : Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: key == 'concept' ? 300 : 170,
+            ),
+            child: Text(
+              row[key]?.toString() ?? '',
+              maxLines: key == 'concept' ? 3 : 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: rightAligned ? TextAlign.right : TextAlign.left,
+              style: cellStyle,
+            ),
+          ),
+        );
+    }
+  }
+
+  Widget _buildLinkedIncomeReviewResults(
+    BuildContext context, {
+    required _ChatMessage message,
+    required List<Map<String, dynamic>> rows,
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isDark,
+    required bool isEs,
+    required bool loading,
+  }) {
+    final borderColor =
+        cs.outlineVariant.withValues(alpha: isDark ? 0.30 : 0.55);
+    final mutedSurface = isDark
+        ? cs.surfaceContainerHighest.withValues(alpha: 0.16)
+        : cs.surfaceContainerLow.withValues(alpha: 0.55);
+
+    Widget detailLabel(String label) => Padding(
+          padding: const EdgeInsets.only(bottom: 5),
+          child: Text(
+            label.toUpperCase(),
+            style: t.caption.copyWith(
+              color: cs.onSurfaceVariant,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        );
+
+    Widget desktopRow(Map<String, dynamic> row, int index) {
+      return Container(
+        decoration: BoxDecoration(
+          color: index.isEven ? cs.surface : mutedSurface,
+          border: Border(bottom: BorderSide(color: borderColor, width: 0.6)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      row['date']?.toString() ?? '',
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      row['concept']?.toString() ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      row['amountFormatted']?.toString() ?? '',
+                      textAlign: TextAlign.right,
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 125,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _buildLinkedIncomeReviewScoreCell(
+                        row,
+                        cs: cs,
+                        t: t,
+                        isDark: isDark,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 210,
+                    child: _buildLinkedIncomeReviewActionsCell(
+                      message,
+                      row,
+                      cs: cs,
+                      t: t,
+                      isEs: isEs,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(
+                  alpha: isDark ? 0.22 : 0.34,
+                ),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        detailLabel(
+                          isEs ? 'Facturas vinculadas' : 'Linked invoices',
+                        ),
+                        _buildLinkedIncomeReviewInvoicesCell(
+                          row,
+                          cs: cs,
+                          t: t,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  SizedBox(
+                    width: 130,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        detailLabel(
+                          isEs ? 'Total facturas' : 'Invoice total',
+                        ),
+                        Text(
+                          row['linkedInvoicesTotalFormatted']?.toString() ?? '',
+                          textAlign: TextAlign.right,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 22),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        detailLabel(isEs ? 'Motivo' : 'Reason'),
+                        _buildLinkedIncomeReviewReasonsCell(
+                          row,
+                          cs: cs,
+                          t: t,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget mobileCard(Map<String, dynamic> row) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    row['date']?.toString() ?? '',
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                _buildLinkedIncomeReviewScoreCell(
+                  row,
+                  cs: cs,
+                  t: t,
+                  isDark: isDark,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              row['concept']?.toString() ?? '',
+              style: t.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              row['amountFormatted']?.toString() ?? '',
+              style: t.bodyMedium.copyWith(
+                color: cs.primary,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const Divider(height: 20),
+            detailLabel(isEs ? 'Facturas vinculadas' : 'Linked invoices'),
+            _buildLinkedIncomeReviewInvoicesCell(row, cs: cs, t: t),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    isEs ? 'Total facturas' : 'Invoice total',
+                    style: t.caption.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+                Text(
+                  row['linkedInvoicesTotalFormatted']?.toString() ?? '',
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            detailLabel(isEs ? 'Motivo' : 'Reason'),
+            _buildLinkedIncomeReviewReasonsCell(row, cs: cs, t: t),
+            const SizedBox(height: 12),
+            _buildLinkedIncomeReviewActionsCell(
+              message,
+              row,
+              cs: cs,
+              t: t,
+              isEs: isEs,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 900;
+        final content = compact
+            ? Column(
+                children: [
+                  for (var index = 0; index < rows.length; index++) ...[
+                    if (index > 0) const SizedBox(height: 8),
+                    mobileCard(rows[index]),
+                  ],
+                ],
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: borderColor),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      color: isDark
+                          ? cs.surfaceContainerHighest.withValues(alpha: 0.55)
+                          : const Color(0xFFEAF2FF),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                              width: 100, child: Text(isEs ? 'Fecha' : 'Date')),
+                          const SizedBox(width: 10),
+                          Expanded(
+                              child: Text(isEs ? 'Concepto' : 'Description')),
+                          const SizedBox(width: 14),
+                          SizedBox(
+                            width: 120,
+                            child: Text(
+                              isEs ? 'Ingreso' : 'Income',
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          SizedBox(
+                            width: 125,
+                            child: Text(isEs ? 'Coincidencia' : 'Match'),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 210,
+                            child: Text(isEs ? 'Acciones' : 'Actions'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    for (var index = 0; index < rows.length; index++)
+                      desktopRow(rows[index], index),
+                  ],
+                ),
+              );
+        return Stack(
+          children: [
+            content,
+            if (loading)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    color: cs.surface.withValues(alpha: isDark ? 0.34 : 0.56),
+                    alignment: Alignment.topCenter,
+                    padding: const EdgeInsets.only(top: 18),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.surface,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isEs
+                                ? 'Actualizando revisión...'
+                                : 'Refreshing review...',
+                            style: t.bodySmall
+                                .copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _reviewLinkedIncomeRow(
+    _ChatMessage message,
+    Map<String, dynamic> row,
+  ) async {
+    final messageKey = _messageKey(message);
+    await _pickInvoiceLinkForRow(message, row);
+    if (!mounted) return;
+    final latest = _findMessageByKey(_runtime.messages, messageKey);
+    if (latest != null) {
+      await _refreshLinkedIncomeReview(latest);
+    }
+  }
+
+  Future<void> _confirmUnlinkLinkedIncome(
+    _ChatMessage message,
+    Map<String, dynamic> row,
+    Map<String, dynamic> unlinkAction,
+  ) async {
+    if (_bulkUnlinkingLinkedIncome) return;
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
+    final invoices = _linkedIncomeReviewInvoices(row);
+    final concept =
+        (row['concept'] ?? row['description'])?.toString().trim() ?? '';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Desvincular ingreso' : 'Unlink income'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isEs
+                    ? 'Se eliminará la relación con ${invoices.length} factura(s). Esta acción no elimina el ingreso ni las facturas.'
+                    : 'The relationship with ${invoices.length} invoice(s) will be removed. This does not delete the income or invoices.',
+              ),
+              if (concept.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  concept,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.of(dialogContext).bodySmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ],
+              if (invoices.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                for (final invoice in invoices)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      [
+                        invoice['invoiceNumber'],
+                        invoice['clientName'],
+                        invoice['amountFormatted'],
+                      ]
+                          .map((value) => value?.toString().trim() ?? '')
+                          .where((value) => value.isNotEmpty)
+                          .join(' · '),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.link_off_rounded, size: 16),
+            label: Text(isEs ? 'Desvincular' : 'Unlink'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+              foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final entryId = _rowEntryId(row) ?? '';
+    if (entryId.isEmpty) return;
+    final messageKey = _messageKey(message);
+    final stateKey = '$messageKey::$entryId';
+    setState(() => _unlinkingLinkedIncomeRows.add(stateKey));
+    try {
+      await _runtime.executeJsonAction(unlinkAction);
+      if (!mounted) return;
+      final latest = _findMessageByKey(_runtime.messages, messageKey);
+      if (latest != null) {
+        await _refreshLinkedIncomeReview(latest);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEs
+                ? 'Ingreso desvinculado correctamente.'
+                : 'Income unlinked successfully.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      final text = error is InsightsApiException
+          ? error.message
+          : error.toString().replaceFirst('Exception: ', '').trim();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            text.isEmpty
+                ? (isEs
+                    ? 'No se pudo desvincular el ingreso.'
+                    : 'Could not unlink income.')
+                : text,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _unlinkingLinkedIncomeRows.remove(stateKey));
+      }
+    }
+  }
+
+  Widget _buildBulkUnlinkLinkedIncomeButton(
+    _ChatMessage message, {
+    required bool isEs,
+    required bool compact,
+  }) {
+    final rows = _tableRowsFromMessage(message)
+        .where((row) => row['isSummaryRow'] != true)
+        .where((row) => _linkedIncomeReviewUnlinkAction(row) != null)
+        .toList(growable: false);
+    final busy = _bulkUnlinkingLinkedIncome;
+    final label = busy
+        ? '$_bulkUnlinkingLinkedIncomeProgress/$_bulkUnlinkingLinkedIncomeTotal'
+        : (isEs ? 'Desvincular todos' : 'Unlink all');
+    final tooltip = busy
+        ? (isEs ? 'Desvinculando ingresos' : 'Unlinking income')
+        : (isEs
+            ? 'Desvincular los ${rows.length} ingresos pendientes'
+            : 'Unlink all ${rows.length} pending income entries');
+    if (compact) {
+      return Tooltip(
+        message: tooltip,
+        child: IconButton(
+          onPressed: busy || rows.isEmpty
+              ? null
+              : () => _confirmBulkUnlinkLinkedIncome(message, rows),
+          icon: busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.link_off_rounded, size: 18),
+          style: IconButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+            backgroundColor:
+                Theme.of(context).colorScheme.error.withValues(alpha: 0.08),
+          ),
+        ),
+      );
+    }
+    return Tooltip(
+      message: tooltip,
+      child: OutlinedButton.icon(
+        onPressed: busy || rows.isEmpty
+            ? null
+            : () => _confirmBulkUnlinkLinkedIncome(message, rows),
+        icon: busy
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.link_off_rounded, size: 16),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.error,
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.38),
+          ),
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmBulkUnlinkLinkedIncome(
+    _ChatMessage message,
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (_bulkUnlinkingLinkedIncome || rows.isEmpty) return;
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
+    final invoiceLinkCount = rows.fold<int>(
+      0,
+      (total, row) => total + _linkedIncomeReviewInvoices(row).length,
+    );
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final cs = Theme.of(dialogContext).colorScheme;
+        final t = AppTypography.of(dialogContext);
+        return AlertDialog(
+          icon: Icon(Icons.link_off_rounded, color: cs.error),
+          title: Text(isEs ? 'Desvincular todos' : 'Unlink all'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEs
+                      ? 'Se eliminarán los vínculos de ${rows.length} ingresos pendientes.'
+                      : 'The links for ${rows.length} pending income entries will be removed.',
+                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: cs.errorContainer.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    isEs
+                        ? '$invoiceLinkCount relaciones con facturas dejarán de estar vinculadas. No se eliminarán ingresos ni facturas.'
+                        : '$invoiceLinkCount invoice relationships will be unlinked. No income entries or invoices will be deleted.',
+                    style: t.bodySmall.copyWith(
+                      color: cs.onErrorContainer,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  isEs
+                      ? 'Los resultados se actualizarán al finalizar. Esta acción no se ejecutará sin tu confirmación.'
+                      : 'Results will refresh when finished. This action will not run without your confirmation.',
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(isEs ? 'Cancelar' : 'Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.link_off_rounded, size: 16),
+              label: Text(
+                isEs
+                    ? 'Desvincular ${rows.length} ingresos'
+                    : 'Unlink ${rows.length} entries',
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: cs.error,
+                foregroundColor: cs.onError,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messageKey = _messageKey(message);
+    final failures = <String>[];
+    setState(() {
+      _bulkUnlinkingLinkedIncome = true;
+      _bulkUnlinkingLinkedIncomeProgress = 0;
+      _bulkUnlinkingLinkedIncomeTotal = rows.length;
+    });
+    try {
+      for (final row in rows) {
+        final action = _linkedIncomeReviewUnlinkAction(row);
+        if (action == null) {
+          failures.add(_rowEntryId(row) ?? '?');
+        } else {
+          try {
+            await _runtime.executeJsonAction(action);
+          } catch (_) {
+            failures.add(_rowEntryId(row) ?? '?');
+          }
+        }
+        if (mounted) {
+          setState(() => _bulkUnlinkingLinkedIncomeProgress += 1);
+        }
+      }
+
+      if (!mounted) return;
+      final latest = _findMessageByKey(_runtime.messages, messageKey);
+      if (latest != null) {
+        await _refreshLinkedIncomeReview(latest);
+      }
+      if (!mounted) return;
+      final succeeded = rows.length - failures.length;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            failures.isEmpty
+                ? (isEs
+                    ? 'Se desvincularon $succeeded ingresos correctamente.'
+                    : '$succeeded income entries were unlinked successfully.')
+                : (isEs
+                    ? 'Se desvincularon $succeeded de ${rows.length} ingresos. ${failures.length} requieren reintento.'
+                    : 'Unlinked $succeeded of ${rows.length} entries. ${failures.length} require retry.'),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _bulkUnlinkingLinkedIncome = false;
+          _bulkUnlinkingLinkedIncomeProgress = 0;
+          _bulkUnlinkingLinkedIncomeTotal = 0;
+        });
+      }
+    }
+  }
+
   String? _resolveSelectedAssistantKey(List<_ChatMessage> messages) {
     if (_selectedAssistantMessageKey != null) {
       for (final message in messages) {
@@ -4216,6 +8556,70 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
       if (_messageKey(message) == key) return message;
     }
     return null;
+  }
+
+  String? _actionLabelFromRaw(String? raw, {required bool isEs}) {
+    final trimmed = raw?.trim() ?? '';
+    if (trimmed.isEmpty || _looksLikeActionToken(trimmed)) return null;
+    final visible = _visibleTextForRawValue(
+      trimmed,
+      isUser: true,
+      isEs: isEs,
+    ).trim();
+    if (visible.isEmpty ||
+        visible == (isEs ? 'Opcion seleccionada' : 'Option selected')) {
+      return null;
+    }
+    return visible;
+  }
+
+  String? _actionLabelFromUserMessage(
+    _ChatMessage message, {
+    required bool isEs,
+  }) {
+    if (!message.isUser) return null;
+    final display = message.displayText?.trim() ?? '';
+    if (display.isNotEmpty && display.toLowerCase() != 'back') {
+      return display;
+    }
+    return _actionLabelFromRaw(message.text, isEs: isEs);
+  }
+
+  String _selectedResponseActionLabel(
+    List<_ChatMessage> messages,
+    _ChatMessage selectedMessage, {
+    required bool isEs,
+  }) {
+    final selectedKey = _messageKey(selectedMessage);
+    final selectedIndex =
+        messages.indexWhere((message) => _messageKey(message) == selectedKey);
+    final labels = <String>[];
+    final seen = <String>{};
+
+    void addLabel(String? value) {
+      final trimmed = value?.trim() ?? '';
+      if (trimmed.isEmpty) return;
+      final key = trimmed.toLowerCase();
+      if (seen.add(key)) labels.add(trimmed);
+    }
+
+    if (selectedIndex > 0) {
+      final start = (selectedIndex - 6).clamp(0, selectedIndex);
+      for (int i = start; i < selectedIndex; i++) {
+        addLabel(_actionLabelFromUserMessage(messages[i], isEs: isEs));
+      }
+    }
+    addLabel(_actionLabelFromRaw(
+      selectedMessage.sourceUserMessage,
+      isEs: isEs,
+    ));
+
+    final trail =
+        labels.length > 2 ? labels.sublist(labels.length - 2) : labels;
+    if (trail.isEmpty) {
+      return isEs ? 'Respuesta generada por el chat' : 'Generated from chat';
+    }
+    return trail.join(' + ');
   }
 
   void _selectAssistantMessage(_ChatMessage message) {
@@ -4664,8 +9068,76 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
 
   bool _messageHasStructuredTable(_ChatMessage message) {
     if (message.view != 'table') return false;
+    if (_messageIsLinkedIncomeReview(message)) return true;
     final rows = message.table?['rows'];
     return rows is List && rows.isNotEmpty;
+  }
+
+  bool _messageHasIncomeMenu(
+    _ChatMessage message,
+    _InsightsMenu menu,
+  ) {
+    final menuId = _normalizedInsightText(menu.id);
+    final optionText = _normalizedInsightText(
+      menu.options.map((option) => option.label).join(' '),
+    );
+    if (menuId.contains('root') ||
+        ((optionText.contains('gastos') || optionText.contains('expenses')) &&
+            (optionText.contains('clientes') ||
+                optionText.contains('clients')))) {
+      return false;
+    }
+    final text = _normalizedInsightText([
+      menu.id,
+      menu.title,
+      message.text,
+      message.displayText,
+      message.sourceUserMessage,
+      for (final option in menu.options) option.label,
+    ].whereType<String>().join(' '));
+    return text.contains('ingres') || text.contains('income');
+  }
+
+  List<_InsightsMenuOption> _menuOptionsWithLinkedIncomeReview(
+    _ChatMessage message,
+    _InsightsMenu menu, {
+    required bool isEs,
+  }) {
+    if (!_messageHasIncomeMenu(message, menu)) return menu.options;
+    final existing = menu.options
+        .where((option) =>
+            option.action?.trim() != _linkedIncomeReviewAction &&
+            !_normalizedInsightText(option.label).contains('requieren revis'))
+        .toList(growable: false)
+      ..sort((a, b) => a.index.compareTo(b.index));
+    var nextTrailingIndex = 5;
+    final renumbered = <_InsightsMenuOption>[];
+    for (final option in existing) {
+      if (option.index < 4) {
+        renumbered.add(option);
+      } else {
+        renumbered.add(
+          _InsightsMenuOption(
+            index: nextTrailingIndex++,
+            label: option.label,
+            action: option.action?.trim().isNotEmpty == true
+                ? option.action
+                : '${option.index}',
+          ),
+        );
+      }
+    }
+    renumbered.add(
+      _InsightsMenuOption(
+        index: 4,
+        label: isEs
+            ? 'Ingresos vinculados que requieren revisión'
+            : 'Linked income requiring review',
+        action: _linkedIncomeReviewAction,
+      ),
+    );
+    renumbered.sort((a, b) => a.index.compareTo(b.index));
+    return renumbered;
   }
 
   Widget _buildMenuActions(
@@ -4683,7 +9155,14 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
         : (message.followUps ?? const <String>[])
             .where((item) => !_looksLikeExcelExportOption(item))
             .toList(growable: false);
-    final menuOptions = (menu?.options ?? const <_InsightsMenuOption>[])
+    final resolvedMenuOptions = menu == null
+        ? const <_InsightsMenuOption>[]
+        : _menuOptionsWithLinkedIncomeReview(
+            message,
+            menu,
+            isEs: isEs,
+          );
+    final menuOptions = resolvedMenuOptions
         .where((option) => !_isExcelExportMenuOption(option))
         .toList(growable: false);
     final hasBack = menu?.hasBackAction ?? false;
@@ -4812,7 +9291,7 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   List<Map<String, dynamic>> _tableColumnsFromMessage(_ChatMessage message) {
-    final columns = message.table?['columns'];
+    final columns = _effectiveTableForMessage(message)?['columns'];
     if (columns is! List) return const [];
     return columns
         .map((item) => _safeMap(item))
@@ -4821,7 +9300,7 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   List<Map<String, dynamic>> _tableRowsFromMessage(_ChatMessage message) {
-    final rows = message.table?['rows'];
+    final rows = _effectiveTableForMessage(message)?['rows'];
     if (rows is! List) return const [];
     return rows
         .map((item) => _safeMap(item))
@@ -4830,7 +9309,328 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   Map<String, dynamic>? _tableSummaryFromMessage(_ChatMessage message) {
-    return _safeMap(message.table?['summary']);
+    return _safeMap(_effectiveTableForMessage(message)?['summary']);
+  }
+
+  _InsightsDateRange? _tableDateFilterFor(_ChatMessage message) {
+    return _tableDateFilters[_messageKey(message)];
+  }
+
+  DateTime? _parseInsightsTableDate(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty) return null;
+    final parsed = DateTime.tryParse(raw);
+    if (parsed != null) {
+      return DateTime(parsed.year, parsed.month, parsed.day);
+    }
+    final match =
+        RegExp(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$').firstMatch(raw);
+    if (match == null) return null;
+    final day = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final rawYear = int.tryParse(match.group(3)!);
+    if (day == null || month == null || rawYear == null) return null;
+    final year = rawYear < 100 ? 2000 + rawYear : rawYear;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    final date = DateTime(year, month, day);
+    if (date.year != year || date.month != month || date.day != day) {
+      return null;
+    }
+    return date;
+  }
+
+  String? _tableDateColumnKey(List<Map<String, dynamic>> columns) {
+    const preferredKeys = [
+      'date',
+      'fecha',
+      'bookingDate',
+      'booking_date',
+      'valueDate',
+      'value_date',
+      'transactionDate',
+      'transaction_date',
+      'issueDate',
+      'issue_date',
+      'invoiceDate',
+      'invoice_date',
+      'createdAt',
+      'created_at',
+    ];
+    for (final preferred in preferredKeys) {
+      for (final column in columns) {
+        final key = column['key']?.toString().trim() ?? '';
+        if (key == preferred) return key;
+      }
+    }
+    for (final column in columns) {
+      final key = column['key']?.toString().trim() ?? '';
+      final label = (column['label']?.toString() ?? '').trim().toLowerCase();
+      if (key.toLowerCase().contains('date') ||
+          label == 'fecha' ||
+          label.contains('date')) {
+        return key;
+      }
+    }
+    return null;
+  }
+
+  DateTime? _tableRowDate(
+    Map<String, dynamic> row, {
+    String? dateColumnKey,
+  }) {
+    if (dateColumnKey != null && dateColumnKey.isNotEmpty) {
+      final parsed = _parseInsightsTableDate(row[dateColumnKey]);
+      if (parsed != null) return parsed;
+    }
+    for (final key in const [
+      'date',
+      'fecha',
+      'bookingDate',
+      'booking_date',
+      'valueDate',
+      'value_date',
+      'transactionDate',
+      'transaction_date',
+      'issueDate',
+      'issue_date',
+      'invoiceDate',
+      'invoice_date',
+      'createdAt',
+      'created_at',
+    ]) {
+      final parsed = _parseInsightsTableDate(row[key]);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  bool _tableRowMatchesDateFilter(
+    Map<String, dynamic> row,
+    _InsightsDateRange? filter,
+    String? dateColumnKey,
+  ) {
+    if (filter == null) return true;
+    final date = _tableRowDate(row, dateColumnKey: dateColumnKey);
+    if (date == null) return false;
+    return !date.isBefore(filter.normalizedFrom) &&
+        !date.isAfter(filter.normalizedInclusiveTo);
+  }
+
+  List<Map<String, dynamic>> _filteredTableDataRowsForMessage(
+    _ChatMessage message,
+  ) {
+    if (_messageUsesRemoteTableData(message)) {
+      return _tableRowsFromMessage(message)
+          .where((row) => row['isSummaryRow'] != true)
+          .toList(growable: false);
+    }
+    final filter = _tableDateFilterFor(message);
+    final dateColumnKey =
+        _tableDateColumnKey(_tableColumnsFromMessage(message));
+    return _tableRowsFromMessage(message)
+        .where((row) => row['isSummaryRow'] != true)
+        .where((row) => _tableRowMatchesDateFilter(row, filter, dateColumnKey))
+        .toList(growable: false);
+  }
+
+  num? _tableRowAmount(
+    Map<String, dynamic> row, {
+    String? amountColumnKey,
+  }) {
+    for (final value in [
+      if (amountColumnKey != null && amountColumnKey.isNotEmpty)
+        row[amountColumnKey],
+      row['amount'],
+      row['importe'],
+      row['amountFormatted'],
+      row['importeFormatted'],
+    ]) {
+      final parsed = StatementsFormatters.parseAmount(value);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  String _formatInsightsTableTotal(
+    BuildContext context,
+    num total, {
+    String fallbackCurrency = 'EUR',
+  }) {
+    final formatted = StatementsFormatters.formatAmount(context, total);
+    final currency = fallbackCurrency.trim().isEmpty ? 'EUR' : fallbackCurrency;
+    return '$formatted $currency';
+  }
+
+  String? _currencyFromFormattedAmount(String value) {
+    final raw = value.trim();
+    if (raw.isEmpty) return null;
+    final suffix =
+        RegExp(r'\s([A-Z]{3}|€|\$|£)$').firstMatch(raw)?.group(1)?.trim();
+    if (suffix != null && suffix.isNotEmpty) return suffix;
+    final prefix = RegExp(r'^(€|\$|£)\s?').firstMatch(raw)?.group(1)?.trim();
+    if (prefix != null && prefix.isNotEmpty) return prefix;
+    return null;
+  }
+
+  Widget _compactDateRangePickerShell(
+    BuildContext pickerContext,
+    Widget? child,
+  ) {
+    final media = MediaQuery.of(pickerContext);
+    final availableWidth = media.size.width - 32;
+    final availableHeight = media.size.height - 32;
+    final maxWidth = availableWidth < 520 ? availableWidth : 520.0;
+    final maxHeight = availableHeight < 620 ? availableHeight : 620.0;
+    final theme = Theme.of(pickerContext);
+
+    return Theme(
+      data: theme.copyWith(
+        datePickerTheme: theme.datePickerTheme.copyWith(
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: maxWidth,
+            maxHeight: maxHeight,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Material(
+              type: MaterialType.transparency,
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTableDateFilterDialog(_ChatMessage message) async {
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
+    final current = _tableDateFilterFor(message);
+    final dateColumnKey =
+        _tableDateColumnKey(_tableColumnsFromMessage(message));
+    final rowDates = _tableRowsFromMessage(message)
+        .where((row) => row['isSummaryRow'] != true)
+        .map((row) => _tableRowDate(row, dateColumnKey: dateColumnKey))
+        .whereType<DateTime>()
+        .toList(growable: false);
+    final now = DateTime.now();
+    rowDates.sort();
+    final firstDate =
+        rowDates.isNotEmpty ? rowDates.first : DateTime(now.year - 1);
+    final lastDate =
+        rowDates.isNotEmpty ? rowDates.last : DateTime(now.year + 1);
+    Future<void> applyRange(_InsightsDateRange range) async {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).maybePop();
+      await _applyTableDateFilter(message, range);
+    }
+
+    Future<void> pickCustomRange() async {
+      final rootNavigator = Navigator.of(context, rootNavigator: true);
+      final initialStart = current?.normalizedFrom ?? firstDate;
+      final initialEnd = current?.normalizedInclusiveTo ?? lastDate;
+      final picked = await showDateRangePicker(
+        context: context,
+        firstDate: firstDate,
+        lastDate: lastDate,
+        initialDateRange: DateTimeRange(
+          start: initialStart.isBefore(firstDate) ? firstDate : initialStart,
+          end: initialEnd.isAfter(lastDate) ? lastDate : initialEnd,
+        ),
+        helpText: isEs ? 'Filtrar fechas de la tabla' : 'Filter table dates',
+        builder: _compactDateRangePickerShell,
+      );
+      if (picked == null || !mounted) return;
+      rootNavigator.maybePop();
+      await _applyTableDateFilter(
+        message,
+        _InsightsDateRange(
+          from: picked.start,
+          inclusiveTo: picked.end,
+        ),
+      );
+    }
+
+    Widget presetButton({
+      required String label,
+      required IconData icon,
+      required _InsightsDateRange range,
+    }) {
+      final selected = range.sameRange(current);
+      return Tooltip(
+        message: label,
+        child: ActionChip(
+          avatar: Icon(icon, size: 15),
+          label: Text(label),
+          onPressed: () => applyRange(range),
+          visualDensity: VisualDensity.compact,
+          backgroundColor: selected
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.14)
+              : null,
+        ),
+      );
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Filtrar fechas' : 'Filter dates'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              presetButton(
+                label: isEs ? 'Hoy' : 'Today',
+                icon: Icons.today_rounded,
+                range: _insightsRangeForPreset('today'),
+              ),
+              presetButton(
+                label: isEs ? 'Esta semana' : 'This week',
+                icon: Icons.view_week_rounded,
+                range: _insightsRangeForPreset('week'),
+              ),
+              presetButton(
+                label: isEs ? 'Este mes' : 'This month',
+                icon: Icons.calendar_view_month_rounded,
+                range: _insightsRangeForPreset('month'),
+              ),
+              presetButton(
+                label: isEs ? 'Mes pasado' : 'Last month',
+                icon: Icons.history_rounded,
+                range: _insightsRangeForPreset('lastMonth'),
+              ),
+              Tooltip(
+                message: isEs ? 'Rango personalizado' : 'Custom range',
+                child: ActionChip(
+                  avatar: const Icon(Icons.date_range_rounded, size: 15),
+                  label: Text(isEs ? 'Personalizado' : 'Custom'),
+                  onPressed: pickCustomRange,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildInsightsTableView(
@@ -4842,6 +9642,14 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final remoteTable = _remoteTableStateFor(message);
+    final usesRemoteTable = _messageUsesRemoteTableData(message);
+    final linkedIncomeReview = _messageIsLinkedIncomeReview(message);
+    final linkedIncomeReviewLoading =
+        linkedIncomeReview && message.table?['loading'] == true;
+    final linkedIncomeReviewError = linkedIncomeReview
+        ? (message.table?['loadError']?.toString().trim())
+        : null;
     final baseColumns = _tableColumnsFromMessage(message);
     final rows = _tableRowsFromMessage(message)
         .map((row) => _rowWithPendingLink(message, row))
@@ -4858,9 +9666,18 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
             .where((column) => column['key']?.toString() != 'linkStatusLabel')
             .toList(growable: false);
     final summary = _tableSummaryFromMessage(message);
-    final dataRows = rows
+    final allDataRows = rows
         .where((row) => row['isSummaryRow'] != true)
         .toList(growable: false);
+    final tableFilter = _tableDateFilterFor(message);
+    final dateColumnKey = _tableDateColumnKey(columns);
+    final dataRows = usesRemoteTable
+        ? allDataRows
+        : allDataRows
+            .where((row) =>
+                _tableRowMatchesDateFilter(row, tableFilter, dateColumnKey))
+            .toList(growable: false);
+    final tableFilterActive = tableFilter != null;
     final hasBankIncomeSearch = _rowsHaveBankIncomeSearch(dataRows);
     final hasUnlinkedIncomeLinkActions = !hasManualLinking &&
         (_messageLooksLikeUnlinkedIncome(message) ||
@@ -4885,21 +9702,26 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
           (row) => row?['isSummaryRow'] == true,
           orElse: () => null,
         );
-    final hasMore = message.table?['hasMore'] == true;
-    final truncatedTo = message.table?['truncatedTo'];
-    final totalAvailable = message.table?['totalAvailable'];
+    final effectiveTable = _effectiveTableForMessage(message);
+    final hasMore = usesRemoteTable
+        ? ((remoteTable?.totalPages ?? 1) > 1)
+        : message.table?['hasMore'] == true;
+    final truncatedTo = effectiveTable?['truncatedTo'];
+    final totalAvailable = usesRemoteTable
+        ? remoteTable?.totalRows
+        : effectiveTable?['totalAvailable'];
     final summaryLabel = summary?['label']?.toString().trim().isNotEmpty == true
         ? summary!['label'].toString().trim()
         : (summaryRow?['label']?.toString().trim().isNotEmpty == true
             ? summaryRow!['label'].toString().trim()
             : null);
-    final rightAlignedColumnKey = displayedColumns
+    final rightAlignedColumnKey = displayedColumns.reversed
         .firstWhere(
           (column) => column['align']?.toString() == 'right',
           orElse: () => const <String, dynamic>{},
         )['key']
         ?.toString();
-    final summaryAmount =
+    final rawSummaryAmount =
         summary?['amountFormatted']?.toString().trim().isNotEmpty == true
             ? summary!['amountFormatted'].toString().trim()
             : ((rightAlignedColumnKey != null &&
@@ -4911,6 +9733,23 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                         true)
                 ? summaryRow![rightAlignedColumnKey].toString().trim()
                 : '');
+    final filteredTotal = tableFilterActive && !usesRemoteTable
+        ? dataRows
+            .map((row) => _tableRowAmount(
+                  row,
+                  amountColumnKey: rightAlignedColumnKey,
+                ))
+            .whereType<num>()
+            .fold<num>(0, (sum, amount) => sum + amount)
+        : null;
+    final summaryAmount = filteredTotal == null
+        ? rawSummaryAmount
+        : _formatInsightsTableTotal(
+            context,
+            filteredTotal,
+            fallbackCurrency:
+                _currencyFromFormattedAmount(rawSummaryAmount) ?? 'EUR',
+          );
 
     const lightHeaderBackground = Color(0xFFEAF2FF);
     const lightHeaderForeground = Color(0xFF24364B);
@@ -4919,241 +9758,654 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     const lightRowOdd = Color(0xFFF8FAFD);
     const lightRowHover = Color(0xFFF1F6FF);
     const lightUnlinkedRow = Color(0xFFFFFBF3);
+    final reviewWarning =
+        isDark ? const Color(0xFFFFB45B) : const Color(0xFF9A5B00);
 
     final headerStyle = t.bodySmall.copyWith(
       color: isDark ? cs.onSurfaceVariant : lightHeaderForeground,
       fontWeight: FontWeight.w700,
-      fontSize: 12,
+      fontSize: 11.5,
     );
     final cellStyle = t.bodySmall.copyWith(
       color: isDark ? cs.onSurface : const Color(0xFF344052),
       fontWeight: FontWeight.w500,
-      fontSize: 12.5,
-      height: 1.35,
+      fontSize: 12,
+      height: 1.15,
     );
+    final hasSummaryBar = (summaryLabel != null && summaryLabel.isNotEmpty) ||
+        summaryAmount.isNotEmpty;
+    final remoteLoading = remoteTable?.loading == true;
+    final tableLoading = remoteLoading || linkedIncomeReviewLoading;
+    final remoteError = remoteTable?.error?.trim();
+    final tableError = (linkedIncomeReviewError?.isNotEmpty ?? false)
+        ? linkedIncomeReviewError
+        : remoteError;
+    final remoteTotalPages = remoteTable?.totalPages ?? 1;
+    final remotePage = remoteTable?.effectivePage ?? 1;
+    final remoteTotalRows = remoteTable?.loadedOnce == true
+        ? remoteTable!.totalRows
+        : dataRows.length;
+
+    Widget buildBulkLinkButton({bool compact = false}) {
+      if (compact) {
+        return TextButton.icon(
+          onPressed: _bulkLinkingInvoices
+              ? null
+              : () => _linkAllSuggestedInvoices(
+                    message,
+                    dataRows,
+                    isEs,
+                  ),
+          icon: _bulkLinkingInvoices
+              ? SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: cs.primary,
+                  ),
+                )
+              : const Icon(Icons.link_rounded, size: 14),
+          label: Text(
+            isEs
+                ? 'Vincular ${bulkLinkableRows.length} sugeridas'
+                : 'Link ${bulkLinkableRows.length} suggested',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: cs.primary,
+            minimumSize: const Size(0, 30),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: t.bodySmall.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        );
+      }
+
+      return FilledButton.tonalIcon(
+        onPressed: _bulkLinkingInvoices
+            ? null
+            : () => _linkAllSuggestedInvoices(
+                  message,
+                  dataRows,
+                  isEs,
+                ),
+        icon: _bulkLinkingInvoices
+            ? SizedBox(
+                width: compact ? 12 : 14,
+                height: compact ? 12 : 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: cs.primary,
+                ),
+              )
+            : Icon(Icons.link_rounded, size: compact ? 14 : 16),
+        label: Text(
+          isEs
+              ? 'Vincular sugeridas (${bulkLinkableRows.length})'
+              : 'Link suggested (${bulkLinkableRows.length})',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        style: FilledButton.styleFrom(
+          minimumSize: compact ? const Size(0, 30) : null,
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 11 : 16,
+            vertical: compact ? 7 : 10,
+          ),
+          tapTargetSize: compact
+              ? MaterialTapTargetSize.shrinkWrap
+              : MaterialTapTargetSize.padded,
+          textStyle: t.bodySmall.copyWith(
+            fontSize: compact ? 12 : 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    Widget buildPaginationControls() {
+      if (!usesRemoteTable || remoteTotalPages <= 1) {
+        return const SizedBox.shrink();
+      }
+      final canPrevious = remotePage > 1 && !remoteLoading;
+      final canNext = remotePage < remoteTotalPages && !remoteLoading;
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Text(
+            isEs
+                ? 'Pagina $remotePage de $remoteTotalPages'
+                : 'Page $remotePage of $remoteTotalPages',
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: isEs ? 'Pagina anterior' : 'Previous page',
+            child: IconButton(
+              onPressed: canPrevious
+                  ? () => _changeRemoteTablePage(message, remotePage - 1)
+                  : null,
+              icon: const Icon(Icons.chevron_left_rounded, size: 18),
+              constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          Tooltip(
+            message: isEs ? 'Pagina siguiente' : 'Next page',
+            child: IconButton(
+              onPressed: canNext
+                  ? () => _changeRemoteTablePage(message, remotePage + 1)
+                  : null,
+              icon: const Icon(Icons.chevron_right_rounded, size: 18),
+              constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      );
+    }
+
+    Widget buildSummaryTrailing() {
+      return Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: isDark
+              ? cs.surfaceContainerHighest.withValues(alpha: 0.42)
+              : cs.surface.withValues(alpha: 0.78),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: isDark ? 0.28 : 0.38),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (bulkLinkableRows.isNotEmpty) buildBulkLinkButton(compact: true),
+            if (bulkLinkableRows.isNotEmpty && summaryAmount.isNotEmpty)
+              Container(
+                width: 1,
+                height: 20,
+                color: cs.outlineVariant.withValues(alpha: 0.55),
+              ),
+            if (summaryAmount.isNotEmpty)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                child: Text(
+                  summaryAmount,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (bulkLinkableRows.isNotEmpty) ...[
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.tonalIcon(
-              onPressed: _bulkLinkingInvoices
-                  ? null
-                  : () => _linkAllSuggestedInvoices(
-                        message,
-                        dataRows,
-                        isEs,
-                      ),
-              icon: _bulkLinkingInvoices
-                  ? SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: cs.primary,
-                      ),
-                    )
-                  : const Icon(Icons.link_rounded, size: 16),
-              label: Text(
-                isEs
-                    ? 'Vincular sugeridas (${bulkLinkableRows.length})'
-                    : 'Link suggested (${bulkLinkableRows.length})',
+        if (linkedIncomeReview) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: reviewWarning.withValues(alpha: isDark ? 0.12 : 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: reviewWarning.withValues(alpha: 0.24),
               ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.fact_check_outlined,
+                  size: 17,
+                  color: reviewWarning,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isEs
+                        ? 'Revisión requerida: coincidencia inferior al ${_formatBankIncomeMatchNumber(message.table?['threshold'] ?? 60)}%'
+                        : 'Review required: match below ${_formatBankIncomeMatchNumber(message.table?['threshold'] ?? 60)}%',
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurface,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
         ],
-        Scrollbar(
-          thumbVisibility: true,
-          notificationPredicate: (notification) =>
-              notification.metrics.axis == Axis.horizontal,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            primary: false,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 620),
-              decoration: BoxDecoration(
+        if (bulkLinkableRows.isNotEmpty && !hasSummaryBar) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: buildBulkLinkButton(),
+          ),
+          const SizedBox(height: 10),
+        ],
+        if (linkedIncomeReview && dataRows.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 30),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? cs.surfaceContainerHighest.withValues(alpha: 0.16)
+                  : lightRowEven,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
                 color: isDark
-                    ? cs.surfaceContainerHighest.withValues(alpha: 0.16)
-                    : lightRowEven,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark
-                      ? cs.outlineVariant.withValues(alpha: 0.28)
-                      : lightTableBorder,
-                ),
-                boxShadow: isDark
-                    ? null
-                    : [
-                        BoxShadow(
-                          color:
-                              const Color(0xFF274060).withValues(alpha: 0.06),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                    ? cs.outlineVariant.withValues(alpha: 0.28)
+                    : lightTableBorder,
               ),
-              clipBehavior: Clip.antiAlias,
-              child: DataTable(
-                headingRowHeight: 38,
-                dataRowMinHeight:
-                    (hasManualLinking || hasUnlinkedIncomeLinkActions)
-                        ? 54
-                        : 38,
-                dataRowMaxHeight:
-                    (hasManualLinking || hasUnlinkedIncomeLinkActions)
-                        ? 88
-                        : 46,
-                horizontalMargin: 14,
-                columnSpacing: 18,
-                dividerThickness: 0.5,
-                headingRowColor: WidgetStateProperty.all(
-                  isDark
-                      ? cs.surfaceContainerHighest.withValues(alpha: 0.55)
-                      : lightHeaderBackground,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (linkedIncomeReviewLoading)
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  )
+                else
+                  Icon(
+                    linkedIncomeReviewError?.isNotEmpty == true
+                        ? Icons.error_outline_rounded
+                        : Icons.verified_outlined,
+                    color: linkedIncomeReviewError?.isNotEmpty == true
+                        ? cs.error
+                        : cs.onSurfaceVariant,
+                    size: 27,
+                  ),
+                const SizedBox(height: 10),
+                Text(
+                  linkedIncomeReviewLoading
+                      ? (isEs ? 'Cargando revisión...' : 'Loading review...')
+                      : linkedIncomeReviewError?.isNotEmpty == true
+                          ? linkedIncomeReviewError!
+                          : (isEs
+                              ? 'No hay ingresos vinculados que requieran revisión.'
+                              : 'There is no linked income requiring review.'),
+                  textAlign: TextAlign.center,
+                  style: t.bodySmall.copyWith(
+                    color: linkedIncomeReviewError?.isNotEmpty == true
+                        ? cs.error
+                        : cs.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                headingTextStyle: headerStyle,
-                dataTextStyle: cellStyle,
-                columns: [
-                  for (final column in displayedColumns)
-                    DataColumn(
-                      numeric: column['align']?.toString() == 'right',
-                      label: Text(column['label']?.toString() ?? ''),
-                    ),
+                if (!linkedIncomeReviewLoading &&
+                    linkedIncomeReviewError?.isNotEmpty == true) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: () => _refreshLinkedIncomeReview(message),
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: Text(isEs ? 'Reintentar' : 'Retry'),
+                  ),
                 ],
-                rows: [
-                  for (final entry in dataRows.asMap().entries)
-                    DataRow(
-                      color: WidgetStateProperty.resolveWith((states) {
-                        if (states.contains(WidgetState.hovered)) {
-                          return isDark
-                              ? cs.primary.withValues(alpha: 0.08)
-                              : lightRowHover;
-                        }
-                        if (_rowIsUnlinkedInvoice(entry.value)) {
-                          return isDark
-                              ? const Color(0xFFFFB020).withValues(alpha: 0.075)
-                              : lightUnlinkedRow;
-                        }
-                        if (isDark) return null;
-                        return entry.key.isEven ? lightRowEven : lightRowOdd;
-                      }),
-                      cells: [
+              ],
+            ),
+          )
+        else if (tableFilterActive && dataRows.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? cs.surfaceContainerHighest.withValues(alpha: 0.16)
+                  : lightRowEven,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark
+                    ? cs.outlineVariant.withValues(alpha: 0.28)
+                    : lightTableBorder,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.filter_alt_off_rounded,
+                  color: cs.onSurfaceVariant,
+                  size: 26,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  isEs
+                      ? 'No hay movimientos dentro del intervalo seleccionado.'
+                      : 'No movements within the selected interval.',
+                  textAlign: TextAlign.center,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (linkedIncomeReview)
+          _buildLinkedIncomeReviewResults(
+            context,
+            message: message,
+            rows: dataRows,
+            cs: cs,
+            t: t,
+            isDark: isDark,
+            isEs: isEs,
+            loading: tableLoading,
+          )
+        else
+          Stack(
+            children: [
+              Scrollbar(
+                thumbVisibility: true,
+                notificationPredicate: (notification) =>
+                    notification.metrics.axis == Axis.horizontal,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  primary: false,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 620),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? cs.surfaceContainerHighest.withValues(alpha: 0.16)
+                          : lightRowEven,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark
+                            ? cs.outlineVariant.withValues(alpha: 0.28)
+                            : lightTableBorder,
+                      ),
+                      boxShadow: isDark
+                          ? null
+                          : [
+                              BoxShadow(
+                                color: const Color(0xFF274060)
+                                    .withValues(alpha: 0.06),
+                                blurRadius: 18,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: DataTable(
+                      headingRowHeight: 32,
+                      dataRowMinHeight: linkedIncomeReview
+                          ? 62
+                          : (hasManualLinking || hasUnlinkedIncomeLinkActions)
+                              ? 34
+                              : 30,
+                      dataRowMaxHeight: linkedIncomeReview
+                          ? double.infinity
+                          : (hasManualLinking || hasUnlinkedIncomeLinkActions)
+                              ? 48
+                              : 34,
+                      horizontalMargin: 10,
+                      columnSpacing: 14,
+                      dividerThickness: 0.5,
+                      headingRowColor: WidgetStateProperty.all(
+                        isDark
+                            ? cs.surfaceContainerHighest.withValues(alpha: 0.55)
+                            : lightHeaderBackground,
+                      ),
+                      headingTextStyle: headerStyle,
+                      dataTextStyle: cellStyle,
+                      columns: [
                         for (final column in displayedColumns)
-                          DataCell(
-                            Tooltip(
-                              message: _tableCellValue(entry.value, column),
-                              waitDuration: const Duration(milliseconds: 350),
-                              child: column['key']?.toString() ==
-                                      '__bankIncomeSearchAction'
-                                  ? _buildBankIncomeSearchCell(
-                                      context,
-                                      message: message,
-                                      row: entry.value,
-                                      cs: cs,
-                                      t: t,
-                                      isEs: isEs,
-                                    )
-                                  : column['key']?.toString() ==
-                                          '__unlinkedIncomeLinkAction'
-                                      ? _buildUnlinkedIncomeLinkActionCell(
-                                          context,
-                                          message: message,
-                                          row: entry.value,
+                          DataColumn(
+                            numeric: column['align']?.toString() == 'right',
+                            label: Text(column['label']?.toString() ?? ''),
+                          ),
+                      ],
+                      rows: [
+                        for (final entry in dataRows.asMap().entries)
+                          DataRow(
+                            color: WidgetStateProperty.resolveWith((states) {
+                              if (states.contains(WidgetState.hovered)) {
+                                return isDark
+                                    ? cs.primary.withValues(alpha: 0.08)
+                                    : lightRowHover;
+                              }
+                              if (_rowIsUnlinkedInvoice(entry.value)) {
+                                return isDark
+                                    ? const Color(0xFFFFB020)
+                                        .withValues(alpha: 0.075)
+                                    : lightUnlinkedRow;
+                              }
+                              if (isDark) return null;
+                              return entry.key.isEven
+                                  ? lightRowEven
+                                  : lightRowOdd;
+                            }),
+                            cells: [
+                              for (final column in displayedColumns)
+                                DataCell(
+                                  linkedIncomeReview
+                                      ? _buildLinkedIncomeReviewTableCell(
+                                          message,
+                                          entry.value,
+                                          column,
                                           cs: cs,
                                           t: t,
+                                          isDark: isDark,
+                                          isEs: isEs,
+                                          cellStyle: cellStyle,
                                         )
-                                      : column['key']?.toString() ==
-                                              'linkStatusLabel'
-                                          ? _buildInvoiceLinkStatusCell(
-                                              context,
-                                              message: message,
-                                              row: entry.value,
-                                              value: _tableCellValue(
-                                                entry.value,
-                                                column,
-                                              ),
-                                              cs: cs,
-                                              t: t,
-                                            )
-                                          : column['key']?.toString() ==
-                                                  'transactionLinkedStateLabel'
-                                              ? _buildTransactionLinkedStateCell(
-                                                  entry.value,
+                                      : Tooltip(
+                                          message: _tableCellValue(
+                                              entry.value, column),
+                                          waitDuration:
+                                              const Duration(milliseconds: 350),
+                                          child: column['key']?.toString() ==
+                                                  '__bankIncomeSearchAction'
+                                              ? _buildBankIncomeSearchCell(
+                                                  context,
+                                                  message: message,
+                                                  row: entry.value,
                                                   cs: cs,
                                                   t: t,
                                                   isEs: isEs,
                                                 )
-                                              : Align(
-                                                  alignment: column['align']
-                                                              ?.toString() ==
-                                                          'right'
-                                                      ? Alignment.centerRight
-                                                      : Alignment.centerLeft,
-                                                  child: ConstrainedBox(
-                                                    constraints: BoxConstraints(
-                                                      maxWidth: (column['key']
-                                                                      ?.toString() ==
-                                                                  'description' ||
-                                                              column['key']
-                                                                      ?.toString() ==
-                                                                  'concept')
-                                                          ? 360
-                                                          : 180,
-                                                    ),
-                                                    child: _rowIsUnlinkedInvoice(
-                                                              entry.value,
-                                                            ) &&
-                                                            _isInvoiceStatusColumn(
-                                                              column,
-                                                            )
-                                                        ? _buildUnlinkedInvoiceStatusCell(
-                                                            value:
-                                                                _tableCellValue(
-                                                              entry.value,
-                                                              column,
-                                                            ),
-                                                            cs: cs,
-                                                            t: t,
-                                                            isDark: isDark,
-                                                          )
-                                                        : Text(
-                                                            _tableCellValue(
-                                                              entry.value,
-                                                              column,
-                                                            ),
-                                                            maxLines: 2,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                            textAlign:
-                                                                column['align']
-                                                                            ?.toString() ==
-                                                                        'right'
-                                                                    ? TextAlign
-                                                                        .right
-                                                                    : TextAlign
-                                                                        .left,
-                                                            style: cellStyle,
+                                              : column['key']?.toString() ==
+                                                      '__unlinkedIncomeLinkAction'
+                                                  ? _buildUnlinkedIncomeLinkActionCell(
+                                                      context,
+                                                      message: message,
+                                                      row: entry.value,
+                                                      cs: cs,
+                                                      t: t,
+                                                    )
+                                                  : column['key']?.toString() ==
+                                                          'linkStatusLabel'
+                                                      ? _buildInvoiceLinkStatusCell(
+                                                          context,
+                                                          message: message,
+                                                          row: entry.value,
+                                                          value:
+                                                              _tableCellValue(
+                                                            entry.value,
+                                                            column,
                                                           ),
-                                                  ),
-                                                ),
-                            ),
+                                                          cs: cs,
+                                                          t: t,
+                                                        )
+                                                      : column['key']
+                                                                  ?.toString() ==
+                                                              'transactionLinkedStateLabel'
+                                                          ? _buildTransactionLinkedStateCell(
+                                                              entry.value,
+                                                              cs: cs,
+                                                              t: t,
+                                                              isEs: isEs,
+                                                            )
+                                                          : Align(
+                                                              alignment: column[
+                                                                              'align']
+                                                                          ?.toString() ==
+                                                                      'right'
+                                                                  ? Alignment
+                                                                      .centerRight
+                                                                  : Alignment
+                                                                      .centerLeft,
+                                                              child:
+                                                                  ConstrainedBox(
+                                                                constraints:
+                                                                    BoxConstraints(
+                                                                  maxWidth: (column['key']?.toString() ==
+                                                                              'description' ||
+                                                                          column['key']?.toString() ==
+                                                                              'concept')
+                                                                      ? 360
+                                                                      : 180,
+                                                                ),
+                                                                child: _isInvoiceStatusColumn(
+                                                                  column,
+                                                                )
+                                                                    ? (_rowHasExistingInvoiceLink(
+                                                                        entry
+                                                                            .value,
+                                                                      )
+                                                                        ? _buildLinkedInvoiceStatusCell(
+                                                                            value:
+                                                                                _tableCellValue(
+                                                                              entry.value,
+                                                                              column,
+                                                                            ),
+                                                                            cs: cs,
+                                                                            t: t,
+                                                                            isDark:
+                                                                                isDark,
+                                                                          )
+                                                                        : _rowIsUnlinkedInvoice(
+                                                                            entry.value,
+                                                                          )
+                                                                            ? _buildUnlinkedInvoiceStatusCell(
+                                                                                value: _tableCellValue(
+                                                                                  entry.value,
+                                                                                  column,
+                                                                                ),
+                                                                                cs: cs,
+                                                                                t: t,
+                                                                                isDark: isDark,
+                                                                              )
+                                                                            : Text(
+                                                                                _tableCellValue(
+                                                                                  entry.value,
+                                                                                  column,
+                                                                                ),
+                                                                                maxLines: 1,
+                                                                                overflow: TextOverflow.ellipsis,
+                                                                                textAlign: column['align']?.toString() == 'right' ? TextAlign.right : TextAlign.left,
+                                                                                style: cellStyle,
+                                                                              ))
+                                                                    : Text(
+                                                                        _tableCellValue(
+                                                                          entry
+                                                                              .value,
+                                                                          column,
+                                                                        ),
+                                                                        maxLines:
+                                                                            1,
+                                                                        overflow:
+                                                                            TextOverflow.ellipsis,
+                                                                        textAlign: column['align']?.toString() ==
+                                                                                'right'
+                                                                            ? TextAlign.right
+                                                                            : TextAlign.left,
+                                                                        style:
+                                                                            cellStyle,
+                                                                      ),
+                                                              ),
+                                                            ),
+                                        ),
+                                ),
+                            ],
                           ),
                       ],
                     ),
-                ],
+                  ),
+                ),
               ),
-            ),
+              if (tableLoading)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color:
+                            cs.surface.withValues(alpha: isDark ? 0.34 : 0.52),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.surface,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.42),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: cs.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isEs ? 'Cargando tabla...' : 'Loading table...',
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ),
-        if ((summaryLabel != null && summaryLabel.isNotEmpty) ||
-            summaryAmount.isNotEmpty) ...[
+        if (hasSummaryBar) ...[
           const SizedBox(height: 10),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: cs.primary.withValues(alpha: isDark ? 0.12 : 0.08),
               borderRadius: BorderRadius.circular(12),
@@ -5162,10 +10414,12 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
               children: [
                 Expanded(
                   child: Text(
-                    summaryLabel ??
-                        (hasMore
-                            ? (isEs ? 'Total mostrado' : 'Displayed total')
-                            : (isEs ? 'Total periodo' : 'Period total')),
+                    tableFilterActive
+                        ? (isEs ? 'Total filtrado' : 'Filtered total')
+                        : summaryLabel ??
+                            (hasMore
+                                ? (isEs ? 'Total mostrado' : 'Displayed total')
+                                : (isEs ? 'Total periodo' : 'Period total')),
                     style: t.bodySmall.copyWith(
                       color: cs.onSurface,
                       fontWeight: FontWeight.w800,
@@ -5173,41 +10427,96 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                     ),
                   ),
                 ),
-                if (summaryAmount.isNotEmpty)
-                  SizedBox(
-                    width: 180,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        summaryAmount,
-                        textAlign: TextAlign.right,
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: buildSummaryTrailing(),
                   ),
+                ),
               ],
             ),
           ),
         ],
-        if (hasMore) const SizedBox(height: 14),
-        if (hasMore)
-          Text(
-            _isFiniteNum(totalAvailable) && _isFiniteNum(truncatedTo)
-                ? (isEs
-                    ? 'Mostrando ${truncatedTo.toInt()} de ${totalAvailable.toInt()} filas.'
-                    : 'Showing ${truncatedTo.toInt()} of ${totalAvailable.toInt()} rows.')
-                : (isEs
-                    ? 'Hay mas resultados disponibles.'
-                    : 'More results are available.'),
-            style: t.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+        if (tableError != null &&
+            tableError.isNotEmpty &&
+            !(linkedIncomeReview && dataRows.isEmpty)) ...[
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: cs.errorContainer.withValues(alpha: isDark ? 0.28 : 0.52),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: cs.error.withValues(alpha: 0.20),
+              ),
             ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline_rounded, size: 16, color: cs.error),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    tableError,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(
+                      color: cs.onErrorContainer,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: tableLoading
+                      ? null
+                      : linkedIncomeReview
+                          ? () => _refreshLinkedIncomeReview(message)
+                          : () => _changeRemoteTablePage(message, remotePage),
+                  icon: const Icon(Icons.refresh_rounded, size: 14),
+                  label: Text(isEs ? 'Reintentar' : 'Retry'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (tableFilterActive || hasMore || usesRemoteTable)
+          const SizedBox(height: 12),
+        if (tableFilterActive || hasMore || usesRemoteTable)
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  usesRemoteTable
+                      ? (isEs
+                          ? 'Mostrando ${dataRows.length} de $remoteTotalRows movimientos.'
+                          : 'Showing ${dataRows.length} of $remoteTotalRows movements.')
+                      : tableFilterActive
+                          ? (isEs
+                              ? 'Mostrando ${dataRows.length} de ${allDataRows.length} filas cargadas.'
+                              : 'Showing ${dataRows.length} of ${allDataRows.length} loaded rows.')
+                          : _isFiniteNum(totalAvailable) &&
+                                  _isFiniteNum(truncatedTo)
+                              ? (isEs
+                                  ? 'Mostrando ${truncatedTo.toInt()} de ${totalAvailable.toInt()} filas.'
+                                  : 'Showing ${truncatedTo.toInt()} of ${totalAvailable.toInt()} rows.')
+                              : (isEs
+                                  ? 'Hay mas resultados disponibles.'
+                                  : 'More results are available.'),
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (usesRemoteTable) buildPaginationControls(),
+            ],
           ),
       ],
     );
@@ -5659,13 +10968,311 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     final modeLabel = mode == _InsightsResponseMode.auto
         ? l.insightsChatModeAuto
         : l.insightsChatModeStream;
+    final dateRange = _runtime.dateRange;
     final helperText = isEs
         ? 'Contexto activo: ultimos $days dias · modo $modeLabel. Puedes pedir resumenes, tendencias, clientes con mas carga o gastos e ingresos.'
         : 'Active context: last $days days · $modeLabel mode. Ask for summaries, trends, busiest clients, or expense and revenue breakdowns.';
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dateRangeLabel = dateRange?.label(isEs: isEs);
+    final contextTooltip =
+        dateRangeLabel == null ? helperText : '$helperText\n$dateRangeLabel';
+
+    Future<void> showContextInfo() async {
+      _InsightsDateRange? draftRange = _runtime.dateRange;
+      final now = DateTime.now();
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            Widget presetButton({
+              required String label,
+              required _InsightsDateRange? range,
+              IconData? icon,
+            }) {
+              final selected = range == null
+                  ? draftRange == null
+                  : range.sameRange(draftRange);
+              return ChoiceChip(
+                avatar: icon == null
+                    ? null
+                    : Icon(
+                        icon,
+                        size: 14,
+                        color: selected
+                            ? cs.onPrimaryContainer
+                            : cs.onSurfaceVariant,
+                      ),
+                label: Text(label),
+                selected: selected,
+                onSelected: (_) => setDialogState(() => draftRange = range),
+                visualDensity: VisualDensity.compact,
+              );
+            }
+
+            Future<void> pickCustomRange() async {
+              final initial = draftRange;
+              final picked = await showDateRangePicker(
+                context: dialogContext,
+                firstDate: DateTime(now.year - 10, now.month, now.day),
+                lastDate: DateTime(now.year + 2, 12, 31),
+                initialDateRange: initial == null
+                    ? null
+                    : DateTimeRange(
+                        start: initial.normalizedFrom,
+                        end: initial.normalizedInclusiveTo,
+                      ),
+                builder: _compactDateRangePickerShell,
+              );
+              if (picked == null) return;
+              setDialogState(() {
+                draftRange = _InsightsDateRange(
+                  from: picked.start,
+                  inclusiveTo: picked.end,
+                );
+              });
+            }
+
+            return AlertDialog(
+              title: Text(isEs ? 'Contexto del chat' : 'Chat context'),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(helperText),
+                    const SizedBox(height: 14),
+                    Text(
+                      isEs ? 'Periodo' : 'Period',
+                      style: t.bodySmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        presetButton(
+                          label: isEs ? 'Automatico' : 'Automatic',
+                          range: null,
+                          icon: Icons.auto_awesome_rounded,
+                        ),
+                        presetButton(
+                          label: isEs ? 'Hoy' : 'Today',
+                          range: _insightsRangeForPreset('today'),
+                        ),
+                        presetButton(
+                          label: isEs ? 'Esta semana' : 'This week',
+                          range: _insightsRangeForPreset('week'),
+                        ),
+                        presetButton(
+                          label: isEs ? 'Este mes' : 'This month',
+                          range: _insightsRangeForPreset('month'),
+                        ),
+                        presetButton(
+                          label: isEs ? 'Mes pasado' : 'Last month',
+                          range: _insightsRangeForPreset('lastMonth'),
+                        ),
+                        ActionChip(
+                          avatar:
+                              const Icon(Icons.date_range_rounded, size: 14),
+                          label: Text(isEs ? 'Personalizado' : 'Custom'),
+                          onPressed: pickCustomRange,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                    if (draftRange != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.event_available_rounded,
+                              size: 15,
+                              color: cs.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                draftRange!.label(isEs: isEs),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: t.bodySmall.copyWith(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Text(
+                      isEs
+                          ? 'Si eliges un periodo, gana sobre fechas escritas en el mensaje.'
+                          : 'When selected, this period overrides dates typed in the message.',
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => setDialogState(() => draftRange = null),
+                  child: Text(isEs ? 'Automatico' : 'Automatic'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    _runtime.setDateRange(draftRange);
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: Text(isEs ? 'Aplicar' : 'Apply'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
+
+    Widget buildContextInfoButton() {
+      return Tooltip(
+        message: contextTooltip,
+        child: IconButton(
+          tooltip: isEs ? 'Ver contexto activo' : 'View active context',
+          onPressed: showContextInfo,
+          icon: const Icon(Icons.info_outline_rounded, size: 17),
+          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          style: IconButton.styleFrom(
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            foregroundColor: cs.primary,
+            backgroundColor: cs.primary.withValues(alpha: 0.10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget buildDateRangeChip() {
+      if (dateRangeLabel == null) return const SizedBox.shrink();
+      return InputChip(
+        avatar: Icon(
+          Icons.event_rounded,
+          size: 14,
+          color: cs.primary,
+        ),
+        label: Text(
+          dateRangeLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        onPressed: showContextInfo,
+        onDeleted: () => _runtime.setDateRange(null),
+        deleteIcon: const Icon(Icons.close_rounded, size: 14),
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelStyle: t.bodySmall.copyWith(
+          color: cs.primary,
+          fontWeight: FontWeight.w800,
+          fontSize: 11,
+        ),
+        side: BorderSide(
+          color: cs.primary.withValues(alpha: 0.22),
+        ),
+        backgroundColor: cs.primary.withValues(alpha: 0.08),
+      );
+    }
+
+    Widget buildStartOverButton() {
+      final label = isEs ? 'Nueva sesion' : 'New session';
+      return Tooltip(
+        message: label,
+        child: IconButton(
+          tooltip: label,
+          onPressed: sending ? null : _confirmClearChat,
+          icon: const Icon(Icons.restart_alt_rounded, size: 18),
+          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          style: IconButton.styleFrom(
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            foregroundColor: cs.onSurfaceVariant,
+            backgroundColor: cs.surfaceContainerHighest.withValues(
+              alpha: isDark ? 0.34 : 0.52,
+            ),
+            disabledForegroundColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget buildDesktopPaneToggleButton({required bool collapsed}) {
+      final label = collapsed
+          ? (isEs ? 'Mostrar chat' : 'Show chat')
+          : (isEs ? 'Compactar chat' : 'Compact chat');
+      return Tooltip(
+        message: label,
+        child: IconButton(
+          tooltip: label,
+          onPressed: () => setState(
+            () => _desktopChatPaneCollapsed = !collapsed,
+          ),
+          icon: Icon(
+            collapsed
+                ? Icons.keyboard_double_arrow_right_rounded
+                : Icons.keyboard_double_arrow_left_rounded,
+            size: 18,
+          ),
+          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          style: IconButton.styleFrom(
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            foregroundColor: cs.onSurfaceVariant,
+            backgroundColor: cs.surfaceContainerHighest.withValues(
+              alpha: isDark ? 0.34 : 0.52,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      );
+    }
+
     final isDesktopEmbedded =
         widget.embedded && MediaQuery.of(context).size.width >= 1180;
+    final desktopChatPaneWidth =
+        (MediaQuery.of(context).size.width * 0.25).clamp(360.0, 480.0);
     final selectedAssistantKey = _resolveSelectedAssistantKey(messages);
     final selectedAssistantMessage =
         _findMessageByKey(messages, selectedAssistantKey);
@@ -6021,6 +11628,8 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
       final selectedKey = _messageKey(selectedAssistantMessage);
       final isTableResponse =
           _messageHasStructuredTable(selectedAssistantMessage);
+      final isLinkedIncomeReview =
+          _messageIsLinkedIncomeReview(selectedAssistantMessage);
       if (!isTableResponse) {
         return Center(
           child: Padding(
@@ -6057,9 +11666,102 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
           ),
         );
       }
+      _ensureRemoteTableDataLoaded(selectedAssistantMessage);
+      final remoteTable = _remoteTableStateFor(selectedAssistantMessage);
       final rowCount = _tableRowsFromMessage(selectedAssistantMessage)
           .where((r) => r['isSummaryRow'] != true)
           .length;
+      final tableDateFilter = _tableDateFilterFor(selectedAssistantMessage);
+      final visibleRowCount =
+          _filteredTableDataRowsForMessage(selectedAssistantMessage).length;
+      final remoteTotalRows =
+          remoteTable?.loadedOnce == true ? remoteTable?.totalRows : null;
+      final rowCountLabel = isLinkedIncomeReview
+          ? '$rowCount ${isEs ? 'pendientes' : 'pending'}'
+          : _messageUsesRemoteTableData(selectedAssistantMessage)
+              ? '${remoteTotalRows ?? rowCount} ${isEs ? 'movs.' : 'movs'}'
+              : tableDateFilter == null
+                  ? '$rowCount ${isEs ? 'filas' : 'rows'}'
+                  : '$visibleRowCount/$rowCount ${isEs ? 'filas' : 'rows'}';
+      final selectedActionLabel = _selectedResponseActionLabel(
+        messages,
+        selectedAssistantMessage,
+        isEs: isEs,
+      );
+      Widget headerFilterControl() {
+        final filterLabel = tableDateFilter?.label(isEs: isEs);
+        if (filterLabel == null) {
+          return Tooltip(
+            message: isEs ? 'Filtrar fechas' : 'Filter dates',
+            child: OutlinedButton.icon(
+              onPressed: () =>
+                  _showTableDateFilterDialog(selectedAssistantMessage),
+              icon: const Icon(Icons.filter_alt_rounded, size: 15),
+              label: Text(isEs ? 'Filtrar fechas' : 'Filter dates'),
+              style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                minimumSize: const Size(0, 34),
+              ),
+            ),
+          );
+        }
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 210),
+              child: InputChip(
+                avatar: Icon(
+                  Icons.event_rounded,
+                  size: 14,
+                  color: cs.primary,
+                ),
+                label: Text(
+                  filterLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onPressed: () =>
+                    _showTableDateFilterDialog(selectedAssistantMessage),
+                onDeleted: () =>
+                    _clearTableDateFilter(selectedAssistantMessage),
+                deleteIcon: const Icon(Icons.close_rounded, size: 14),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                labelStyle: t.bodySmall.copyWith(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                ),
+                side: BorderSide(
+                  color: cs.primary.withValues(alpha: 0.22),
+                ),
+                backgroundColor: cs.primary.withValues(alpha: 0.08),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Tooltip(
+              message: isEs ? 'Limpiar filtro' : 'Clear filter',
+              child: IconButton(
+                onPressed: () =>
+                    _clearTableDateFilter(selectedAssistantMessage),
+                icon: const Icon(Icons.filter_alt_off_rounded, size: 17),
+                constraints: const BoxConstraints.tightFor(
+                  width: 34,
+                  height: 34,
+                ),
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+        );
+      }
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -6105,9 +11807,13 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                       Row(
                         children: [
                           Text(
-                            isEs
-                                ? 'Respuesta seleccionada'
-                                : 'Selected response',
+                            isLinkedIncomeReview
+                                ? (isEs
+                                    ? 'Revisión de ingresos vinculados'
+                                    : 'Linked income review')
+                                : (isEs
+                                    ? 'Respuesta seleccionada'
+                                    : 'Selected response'),
                             style: t.bodySmall.copyWith(
                               fontWeight: FontWeight.w800,
                               fontSize: 13.5,
@@ -6126,7 +11832,7 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
-                                '$rowCount ${isEs ? 'filas' : 'rows'}',
+                                rowCountLabel,
                                 style: t.bodySmall.copyWith(
                                   color: cs.primary,
                                   fontSize: 10,
@@ -6137,44 +11843,41 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                           ],
                         ],
                       ),
-                      if (selectedAssistantMessage.sourceUserMessage
-                              ?.trim()
-                              .isNotEmpty ==
-                          true) ...[
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.search_rounded,
-                              size: 11,
-                              color:
-                                  cs.onSurfaceVariant.withValues(alpha: 0.65),
-                            ),
-                            const SizedBox(width: 3),
-                            Expanded(
-                              child: Text(
-                                _visibleTextForRawValue(
-                                  selectedAssistantMessage.sourceUserMessage!
-                                      .trim(),
-                                  isUser: true,
-                                  isEs: isEs,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: t.bodySmall.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 11.5,
-                                  height: 1.3,
-                                  fontStyle: FontStyle.italic,
-                                ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.alt_route_rounded,
+                            size: 12,
+                            color: cs.primary.withValues(alpha: 0.75),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              selectedActionLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 11.5,
+                                height: 1.3,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+                if (!isLinkedIncomeReview) headerFilterControl(),
+                if (isLinkedIncomeReview)
+                  _buildBulkUnlinkLinkedIncomeButton(
+                    selectedAssistantMessage,
+                    isEs: isEs,
+                    compact: MediaQuery.sizeOf(context).width < 1100,
+                  ),
                 if (exportAction != null) ...[
                   const SizedBox(width: 8),
                   Tooltip(
@@ -6223,24 +11926,18 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     final panel = Column(
       children: [
         // ── Drag handle + header ─────────────────────────────────────
-        Container(
-          padding: EdgeInsets.fromLTRB(
-            14,
-            widget.embedded ? 12 : 10,
-            8,
-            10,
-          ),
-          decoration: BoxDecoration(
-            color: isDark
-                ? cs.surfaceContainerHighest.withValues(alpha: 0.5)
-                : cs.surfaceContainerLow.withValues(alpha: 0.7),
-            borderRadius: widget.embedded
-                ? const BorderRadius.vertical(top: Radius.circular(16))
-                : const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              if (!widget.embedded) ...[
+        if (!widget.embedded)
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? cs.surfaceContainerHighest.withValues(alpha: 0.5)
+                  : cs.surfaceContainerLow.withValues(alpha: 0.7),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
                 Center(
                   child: Container(
                     width: 36,
@@ -6252,56 +11949,55 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            cs.primary.withValues(alpha: 0.2),
+                            cs.primary.withValues(alpha: 0.08),
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: cs.primary,
+                        size: 15,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l.insightsChatTitle,
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: l.insightsChatClearTooltip,
+                      onPressed: sending ? null : _confirmClearChat,
+                      icon: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                        color: cs.onSurfaceVariant,
+                      ),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
               ],
-              Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          cs.primary.withValues(alpha: 0.2),
-                          cs.primary.withValues(alpha: 0.08),
-                        ],
-                      ),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      Icons.auto_awesome_rounded,
-                      color: cs.primary,
-                      size: 15,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l.insightsChatTitle,
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: l.insightsChatClearTooltip,
-                    onPressed: sending ? null : _confirmClearChat,
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 18,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    constraints:
-                        const BoxConstraints(minWidth: 32, minHeight: 32),
-                    padding: EdgeInsets.zero,
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
 
         // ── Toolbar chips ────────────────────────────────────────────
         Padding(
@@ -6310,6 +12006,17 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
+                buildContextInfoButton(),
+                const SizedBox(width: 6),
+                buildStartOverButton(),
+                const SizedBox(width: 6),
+                if (dateRangeLabel != null) ...[
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 190),
+                    child: buildDateRangeChip(),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 PopupMenuButton<int>(
                   tooltip: l.insightsChatDaysTooltip,
                   onSelected: _runtime.setDays,
@@ -6412,44 +12119,6 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
         ),
 
         // ── Message list ─────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(
-                alpha: isDark ? 0.32 : 0.5,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.35),
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.insights_rounded,
-                  size: 15,
-                  color: cs.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    helperText,
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 12,
-                      height: 1.35,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
         Expanded(
           child: messages.isEmpty && !sending
               ? Padding(
@@ -6664,309 +12333,382 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
             bottom: false,
             child: Column(
               children: [
-                panel.children.first,
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
                     child: Row(
                       children: [
-                        Expanded(
-                          flex: 3,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: cs.surface
-                                  .withValues(alpha: isDark ? 0.20 : 0.35),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: cs.outlineVariant.withValues(
-                                  alpha: isDark ? 0.18 : 0.22,
-                                ),
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: Column(
-                              children: [
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: [
-                                        PopupMenuButton<int>(
-                                          tooltip: l.insightsChatDaysTooltip,
-                                          onSelected: _runtime.setDays,
-                                          itemBuilder: (context) => const [
-                                            PopupMenuItem(
-                                                value: 30, child: Text('30d')),
-                                            PopupMenuItem(
-                                                value: 60, child: Text('60d')),
-                                            PopupMenuItem(
-                                                value: 90, child: Text('90d')),
-                                            PopupMenuItem(
-                                                value: 120,
-                                                child: Text('120d')),
-                                            PopupMenuItem(
-                                                value: 180,
-                                                child: Text('180d')),
-                                          ],
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 5,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: canvas,
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: cs.outlineVariant
-                                                    .withValues(alpha: 0.6),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  Icons.calendar_today_rounded,
-                                                  size: 11,
-                                                  color: cs.onSurfaceVariant,
-                                                ),
-                                                const SizedBox(width: 5),
-                                                Text(
-                                                  '${l.insightsChatDaysPrefix}: ${days}d',
-                                                  style: t.bodySmall.copyWith(
-                                                    color: cs.onSurface,
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        ChoiceChip(
-                                          avatar: Icon(
-                                            Icons.auto_fix_high_rounded,
-                                            size: 13,
-                                            color: mode ==
-                                                    _InsightsResponseMode.auto
-                                                ? cs.onPrimaryContainer
-                                                : cs.onSurfaceVariant,
-                                          ),
-                                          label: Text(l.insightsChatModeAuto),
-                                          selected: mode ==
-                                              _InsightsResponseMode.auto,
-                                          selectedColor: cs.primaryContainer,
-                                          backgroundColor: canvas,
-                                          visualDensity: VisualDensity.compact,
-                                          labelStyle: t.bodySmall.copyWith(
-                                            fontSize: 11,
-                                            color: mode ==
-                                                    _InsightsResponseMode.auto
-                                                ? cs.onPrimaryContainer
-                                                : cs.onSurfaceVariant,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                          side: BorderSide(
-                                            color: cs.outlineVariant
-                                                .withValues(alpha: 0.6),
-                                          ),
-                                          onSelected: sending
-                                              ? null
-                                              : (_) => _runtime.setMode(
-                                                  _InsightsResponseMode.auto),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        ChoiceChip(
-                                          avatar: Icon(
-                                            Icons.stream_rounded,
-                                            size: 13,
-                                            color: mode ==
-                                                    _InsightsResponseMode.stream
-                                                ? cs.onPrimaryContainer
-                                                : cs.onSurfaceVariant,
-                                          ),
-                                          label: Text(l.insightsChatModeStream),
-                                          selected: mode ==
-                                              _InsightsResponseMode.stream,
-                                          selectedColor: cs.primaryContainer,
-                                          backgroundColor: canvas,
-                                          visualDensity: VisualDensity.compact,
-                                          labelStyle: t.bodySmall.copyWith(
-                                            fontSize: 11,
-                                            color: mode ==
-                                                    _InsightsResponseMode.stream
-                                                ? cs.onPrimaryContainer
-                                                : cs.onSurfaceVariant,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                          side: BorderSide(
-                                            color: cs.outlineVariant
-                                                .withValues(alpha: 0.6),
-                                          ),
-                                          onSelected: sending
-                                              ? null
-                                              : (_) => _runtime.setMode(
-                                                  _InsightsResponseMode.stream),
-                                        ),
-                                      ],
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          width: _desktopChatPaneCollapsed
+                              ? 48
+                              : desktopChatPaneWidth.toDouble(),
+                          child: _desktopChatPaneCollapsed
+                              ? Container(
+                                  decoration: BoxDecoration(
+                                    color: cs.surface.withValues(
+                                      alpha: isDark ? 0.20 : 0.35,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: cs.outlineVariant.withValues(
+                                        alpha: isDark ? 0.18 : 0.22,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          cs.surfaceContainerHighest.withValues(
-                                        alpha: isDark ? 0.32 : 0.5,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Icon(
-                                          Icons.insights_rounded,
-                                          size: 15,
-                                          color: cs.primary,
+                                  child: Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          8,
+                                          8,
+                                          8,
+                                          6,
                                         ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
+                                        child: Column(
+                                          children: [
+                                            buildDesktopPaneToggleButton(
+                                              collapsed: true,
+                                            ),
+                                            const SizedBox(height: 6),
+                                            buildContextInfoButton(),
+                                            const SizedBox(height: 6),
+                                            buildStartOverButton(),
+                                          ],
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Center(
+                                          child: RotatedBox(
+                                            quarterTurns: 3,
+                                            child: Text(
+                                              isEs ? 'Chat' : 'Chat',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: t.bodySmall.copyWith(
+                                                color: cs.onSurfaceVariant,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : Container(
+                                  decoration: BoxDecoration(
+                                    color: cs.surface.withValues(
+                                        alpha: isDark ? 0.20 : 0.35),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: cs.outlineVariant.withValues(
+                                        alpha: isDark ? 0.18 : 0.22,
+                                      ),
+                                    ),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            12, 8, 12, 6),
+                                        child: SingleChildScrollView(
+                                          scrollDirection: Axis.horizontal,
+                                          child: Row(
+                                            children: [
+                                              buildContextInfoButton(),
+                                              const SizedBox(width: 6),
+                                              buildStartOverButton(),
+                                              const SizedBox(width: 6),
+                                              if (dateRangeLabel != null) ...[
+                                                ConstrainedBox(
+                                                  constraints:
+                                                      const BoxConstraints(
+                                                    maxWidth: 190,
+                                                  ),
+                                                  child: buildDateRangeChip(),
+                                                ),
+                                                const SizedBox(width: 6),
+                                              ],
+                                              buildDesktopPaneToggleButton(
+                                                collapsed: false,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              PopupMenuButton<int>(
+                                                tooltip:
+                                                    l.insightsChatDaysTooltip,
+                                                onSelected: _runtime.setDays,
+                                                itemBuilder: (context) =>
+                                                    const [
+                                                  PopupMenuItem(
+                                                      value: 30,
+                                                      child: Text('30d')),
+                                                  PopupMenuItem(
+                                                      value: 60,
+                                                      child: Text('60d')),
+                                                  PopupMenuItem(
+                                                      value: 90,
+                                                      child: Text('90d')),
+                                                  PopupMenuItem(
+                                                      value: 120,
+                                                      child: Text('120d')),
+                                                  PopupMenuItem(
+                                                      value: 180,
+                                                      child: Text('180d')),
+                                                ],
+                                                child: Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 5,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: canvas,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            20),
+                                                    border: Border.all(
+                                                      color: cs.outlineVariant
+                                                          .withValues(
+                                                              alpha: 0.6),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons
+                                                            .calendar_today_rounded,
+                                                        size: 11,
+                                                        color:
+                                                            cs.onSurfaceVariant,
+                                                      ),
+                                                      const SizedBox(width: 5),
+                                                      Text(
+                                                        '${l.insightsChatDaysPrefix}: ${days}d',
+                                                        style: t.bodySmall
+                                                            .copyWith(
+                                                          color: cs.onSurface,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 11,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              ChoiceChip(
+                                                avatar: Icon(
+                                                  Icons.auto_fix_high_rounded,
+                                                  size: 13,
+                                                  color: mode ==
+                                                          _InsightsResponseMode
+                                                              .auto
+                                                      ? cs.onPrimaryContainer
+                                                      : cs.onSurfaceVariant,
+                                                ),
+                                                label: Text(
+                                                    l.insightsChatModeAuto),
+                                                selected: mode ==
+                                                    _InsightsResponseMode.auto,
+                                                selectedColor:
+                                                    cs.primaryContainer,
+                                                backgroundColor: canvas,
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                labelStyle:
+                                                    t.bodySmall.copyWith(
+                                                  fontSize: 11,
+                                                  color: mode ==
+                                                          _InsightsResponseMode
+                                                              .auto
+                                                      ? cs.onPrimaryContainer
+                                                      : cs.onSurfaceVariant,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                side: BorderSide(
+                                                  color: cs.outlineVariant
+                                                      .withValues(alpha: 0.6),
+                                                ),
+                                                onSelected: sending
+                                                    ? null
+                                                    : (_) => _runtime.setMode(
+                                                        _InsightsResponseMode
+                                                            .auto),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              ChoiceChip(
+                                                avatar: Icon(
+                                                  Icons.stream_rounded,
+                                                  size: 13,
+                                                  color: mode ==
+                                                          _InsightsResponseMode
+                                                              .stream
+                                                      ? cs.onPrimaryContainer
+                                                      : cs.onSurfaceVariant,
+                                                ),
+                                                label: Text(
+                                                    l.insightsChatModeStream),
+                                                selected: mode ==
+                                                    _InsightsResponseMode
+                                                        .stream,
+                                                selectedColor:
+                                                    cs.primaryContainer,
+                                                backgroundColor: canvas,
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                labelStyle:
+                                                    t.bodySmall.copyWith(
+                                                  fontSize: 11,
+                                                  color: mode ==
+                                                          _InsightsResponseMode
+                                                              .stream
+                                                      ? cs.onPrimaryContainer
+                                                      : cs.onSurfaceVariant,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                side: BorderSide(
+                                                  color: cs.outlineVariant
+                                                      .withValues(alpha: 0.6),
+                                                ),
+                                                onSelected: sending
+                                                    ? null
+                                                    : (_) => _runtime.setMode(
+                                                        _InsightsResponseMode
+                                                            .stream),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                          child: buildDesktopMessageList()),
+                                      if (latestIncomeAmountPromptMessage !=
+                                          null)
+                                        _buildIncomeAmountPromptInput(
+                                          context,
+                                          promptMessage:
+                                              latestIncomeAmountPromptMessage,
+                                          cs: cs,
+                                          t: t,
+                                          isEs: isEs,
+                                        ),
+                                      if (latestAssistantMenuMessage !=
+                                          null) ...[
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              12, 4, 12, 0),
+                                          child: _buildMenuActions(
+                                            context,
+                                            message: latestAssistantMenuMessage,
+                                            cs: cs,
+                                            t: t,
+                                            isEs: isEs,
+                                          ),
+                                        ),
+                                      ],
+                                      if (latestAssistantMenuMessage !=
+                                          null) ...[
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              12, 4, 12, 0),
                                           child: Text(
-                                            helperText,
+                                            isEs
+                                                ? 'Selecciona una opcion para continuar.'
+                                                : 'Select an option to continue.',
                                             style: t.bodySmall.copyWith(
                                               color: cs.onSurfaceVariant,
                                               fontSize: 12,
-                                              height: 1.35,
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ),
                                       ],
-                                    ),
-                                  ),
-                                ),
-                                Expanded(child: buildDesktopMessageList()),
-                                if (latestIncomeAmountPromptMessage != null)
-                                  _buildIncomeAmountPromptInput(
-                                    context,
-                                    promptMessage:
-                                        latestIncomeAmountPromptMessage,
-                                    cs: cs,
-                                    t: t,
-                                    isEs: isEs,
-                                  ),
-                                if (latestAssistantMenuMessage != null) ...[
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(12, 4, 12, 0),
-                                    child: _buildMenuActions(
-                                      context,
-                                      message: latestAssistantMenuMessage,
-                                      cs: cs,
-                                      t: t,
-                                      isEs: isEs,
-                                    ),
-                                  ),
-                                ],
-                                if (latestAssistantMenuMessage != null) ...[
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(12, 4, 12, 0),
-                                    child: Text(
-                                      isEs
-                                          ? 'Selecciona una opcion para continuar.'
-                                          : 'Select an option to continue.',
-                                      style: t.bodySmall.copyWith(
-                                        color: cs.onSurfaceVariant,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                if (error != null) ...[
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(12, 4, 12, 0),
-                                    child: Text(
-                                      error,
-                                      style: t.bodySmall.copyWith(
-                                        color: cs.error,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                if (showTimeoutActions) ...[
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(12, 4, 12, 0),
-                                    child: Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
-                                      children: [
-                                        OutlinedButton.icon(
-                                          onPressed: _retryLast,
-                                          icon: const Icon(
-                                              Icons.refresh_rounded,
-                                              size: 14),
-                                          label: Text(
-                                            retryText,
-                                            style: t.bodySmall
-                                                .copyWith(fontSize: 12),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 6),
-                                            minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
-                                          ),
-                                        ),
-                                        FilledButton.tonalIcon(
-                                          onPressed: _quickSummary,
-                                          icon: const Icon(
-                                              Icons.summarize_outlined,
-                                              size: 14),
-                                          label: Text(
-                                            quickSummaryText,
-                                            style: t.bodySmall
-                                                .copyWith(fontSize: 12),
-                                          ),
-                                          style: FilledButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 6),
-                                            minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
+                                      if (error != null) ...[
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              12, 4, 12, 0),
+                                          child: Text(
+                                            error,
+                                            style: t.bodySmall.copyWith(
+                                              color: cs.error,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ),
                                       ],
-                                    ),
+                                      if (showTimeoutActions) ...[
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              12, 4, 12, 0),
+                                          child: Wrap(
+                                            spacing: 6,
+                                            runSpacing: 6,
+                                            children: [
+                                              OutlinedButton.icon(
+                                                onPressed: _retryLast,
+                                                icon: const Icon(
+                                                    Icons.refresh_rounded,
+                                                    size: 14),
+                                                label: Text(
+                                                  retryText,
+                                                  style: t.bodySmall
+                                                      .copyWith(fontSize: 12),
+                                                ),
+                                                style: OutlinedButton.styleFrom(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              ),
+                                              FilledButton.tonalIcon(
+                                                onPressed: _quickSummary,
+                                                icon: const Icon(
+                                                    Icons.summarize_outlined,
+                                                    size: 14),
+                                                label: Text(
+                                                  quickSummaryText,
+                                                  style: t.bodySmall
+                                                      .copyWith(fontSize: 12),
+                                                ),
+                                                style: FilledButton.styleFrom(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                      if (showComposer && !showEmptyComposer)
+                                        _buildChatComposer(
+                                          context,
+                                          cs: cs,
+                                          t: t,
+                                          isEs: isEs,
+                                        ),
+                                      const SizedBox(height: 12),
+                                    ],
                                   ),
-                                ],
-                                if (showComposer && !showEmptyComposer)
-                                  _buildChatComposer(
-                                    context,
-                                    cs: cs,
-                                    t: t,
-                                    isEs: isEs,
-                                  ),
-                                const SizedBox(height: 12),
-                              ],
-                            ),
-                          ),
+                                ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(

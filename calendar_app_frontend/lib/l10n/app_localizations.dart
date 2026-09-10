@@ -10646,8 +10646,14 @@ abstract class AppLocalizations {
   /// No description provided for @mailConsoleReplySent.
   ///
   /// In en, this message translates to:
-  /// **'Reply sent.'**
+  /// **'Reply sent successfully.'**
   String get mailConsoleReplySent;
+
+  /// No description provided for @mailConsoleReplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The reply could not be sent.'**
+  String get mailConsoleReplyFailed;
 
   /// Reply placeholder with recipient name.
   ///

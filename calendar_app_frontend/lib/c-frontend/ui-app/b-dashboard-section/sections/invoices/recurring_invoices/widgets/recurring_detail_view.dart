@@ -84,6 +84,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
 
   bool _savingRule = false;
   bool _savingTemplate = false;
+  bool _runningNow = false;
   bool _loadingGenerated = false;
   String? _generatedError;
   List<Invoice> _generated = [];
@@ -91,6 +92,8 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
   int? _generatedCount;
   String? _ruleErrorText;
   Map<String, dynamic> _initialRuleSnapshot = const <String, dynamic>{};
+
+  bool get _isReceiptFlow => widget.api is RecurringReceiptsApi;
 
   @override
   void initState() {
@@ -256,10 +259,11 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       'billDay': _billDayCtrl.text.trim(),
       'weekDay': _weekDayCtrl.text.trim(),
       'timezone': _timezoneCtrl.text.trim(),
-      'invoiceDateMode': _invoiceDateMode,
-      'invoiceDateClampPolicy': _invoiceDateClampPolicy,
-      'invoiceDateDay': _invoiceDateDayCtrl.text.trim(),
-      'invoiceDateOffsetDays': _invoiceDateOffsetDaysCtrl.text.trim(),
+      if (!_isReceiptFlow) 'invoiceDateMode': _invoiceDateMode,
+      if (!_isReceiptFlow) 'invoiceDateClampPolicy': _invoiceDateClampPolicy,
+      if (!_isReceiptFlow) 'invoiceDateDay': _invoiceDateDayCtrl.text.trim(),
+      if (!_isReceiptFlow)
+        'invoiceDateOffsetDays': _invoiceDateOffsetDaysCtrl.text.trim(),
       'exceptions': _exceptions.map(dateFmt.format).toList(growable: false),
     };
   }
@@ -390,15 +394,14 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     final billDay = int.tryParse(_billDayCtrl.text.trim());
     final weekDay = int.tryParse(_weekDayCtrl.text.trim());
     final count = int.tryParse(_countCtrl.text.trim());
-    final tzName = _timezoneCtrl.text.trim();
-    final utcDate = utcDateString(_startDate, _startTime, tzName);
-    final utcTime = utcTimeString(_startDate, _startTime, tzName);
+    final startDate = dateOnlyString(_startDate);
+    final localTime = formatTimeOfDay(_startTime);
     final rule = <String, dynamic>{
       'freq': canonicalFrequencyForApi(_freq),
       'frequency': canonicalFrequencyForApi(_freq),
       'interval': interval,
-      'startDate': utcDate,
-      'timeOfDay': utcTime,
+      'startDate': startDate,
+      'timeOfDay': localTime,
       'timezone': _timezoneCtrl.text.trim().isNotEmpty
           ? _timezoneCtrl.text.trim()
           : 'Europe/Madrid',
@@ -418,14 +421,12 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       rule['count'] = count;
     }
     if (_exceptions.isNotEmpty) {
-      rule['exceptions'] = _exceptions
-          .map((d) => utcDateString(d, _startTime, _timezoneCtrl.text))
-          .toList();
+      rule['exceptions'] = _exceptions.map(dateOnlyString).toList();
     }
     return rule;
   }
 
-  Future<bool> _saveRule() async {
+  Future<bool> _saveRule({bool showSuccess = true}) async {
     if (_savingRule) return false;
     final id = seriesId(widget.series);
     if (id.isEmpty) return false;
@@ -436,7 +437,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       final invoiceDay = int.tryParse(_invoiceDateDayCtrl.text.trim());
       final invoiceOffset =
           int.tryParse(_invoiceDateOffsetDaysCtrl.text.trim());
-      if (_invoiceDateMode == 'fixed_day') {
+      if (!_isReceiptFlow && _invoiceDateMode == 'fixed_day') {
         if (invoiceDay == null || invoiceDay < 1 || invoiceDay > 31) {
           setState(() {
             _ruleErrorText = l.localeName.toLowerCase().startsWith('es')
@@ -447,7 +448,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
           return false;
         }
       }
-      if (_invoiceDateMode == 'offset_days') {
+      if (!_isReceiptFlow && _invoiceDateMode == 'offset_days') {
         if (invoiceOffset == null ||
             invoiceOffset < -365 ||
             invoiceOffset > 365) {
@@ -460,24 +461,24 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
           return false;
         }
       }
-      final tzName = _timezoneCtrl.text.trim();
       final payload = <String, dynamic>{
         'rule': _buildRule(),
         'frequency': canonicalFrequencyForApi(_freq),
         'interval': int.tryParse(_intervalCtrl.text.trim()) ?? 1,
-        'startDate': utcDateString(_startDate, _startTime, tzName),
-        'timeOfDay': utcTimeString(_startDate, _startTime, tzName),
+        'startDate': dateOnlyString(_startDate),
+        'timeOfDay': formatTimeOfDay(_startTime),
         'timezone': _timezoneCtrl.text.trim().isNotEmpty
             ? _timezoneCtrl.text.trim()
             : 'Europe/Madrid',
-        'invoiceDateMode': _invoiceDateMode,
-        'invoiceDateClampPolicy': _invoiceDateClampPolicy,
-        if (_invoiceDateMode == 'fixed_day') 'invoiceDateDay': invoiceDay,
-        if (_invoiceDateMode == 'offset_days')
+        if (!_isReceiptFlow) 'invoiceDateMode': _invoiceDateMode,
+        if (!_isReceiptFlow) 'invoiceDateClampPolicy': _invoiceDateClampPolicy,
+        if (!_isReceiptFlow && _invoiceDateMode == 'fixed_day')
+          'invoiceDateDay': invoiceDay,
+        if (!_isReceiptFlow && _invoiceDateMode == 'offset_days')
           'invoiceDateOffsetDays': invoiceOffset,
       };
       if (_endType == 'date' && _endDate != null) {
-        payload['endDate'] = utcDateString(_endDate!, _startTime, tzName);
+        payload['endDate'] = dateOnlyString(_endDate!);
       } else if (_endType == 'count' && count != null) {
         payload['count'] = count;
       }
@@ -489,9 +490,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         payload['billDay'] = int.tryParse(_weekDayCtrl.text.trim());
       }
       if (_exceptions.isNotEmpty) {
-        payload['exceptions'] = _exceptions
-            .map((d) => utcDateString(d, _startTime, tzName))
-            .toList();
+        payload['exceptions'] = _exceptions.map(dateOnlyString).toList();
       }
       await widget.api.update(id, payload);
       _initialRuleSnapshot = _buildCurrentRuleSnapshot();
@@ -502,9 +501,11 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       final successText = locale.toLowerCase().startsWith('es')
           ? 'Regla guardada'
           : 'Rule saved';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successText)),
-      );
+      if (showSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(successText)),
+        );
+      }
       return true;
     } catch (e) {
       if (!mounted) return false;
@@ -888,7 +889,9 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     }
 
     Future<void> handleRunNow() async {
+      if (_runningNow) return;
       final messenger = ScaffoldMessenger.of(context);
+      setState(() => _runningNow = true);
       try {
         final l = AppLocalizations.of(context)!;
         final isEs = l.localeName.toLowerCase().startsWith('es');
@@ -918,13 +921,40 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
               ) ??
               false;
           if (!shouldSaveAndRun || !mounted) return;
-          final saved = await _saveRule();
+          final saved = await _saveRule(showSuccess: false);
           if (!saved || !mounted) return;
         }
-        final result = await widget.api.run();
+        final id = seriesId(widget.series);
+        final previousCount = _generatedCount ?? _generated.length;
+        final result = await widget.api.runSeries(id);
         if (!mounted) return;
-        final created = result['created']?.toString() ?? '0';
+        await widget.onUpdated();
+        await _loadGenerated();
+        if (!mounted) return;
+        final nested = result['data'];
+        final rawCreated = result['created'] ??
+            result['createdCount'] ??
+            result['receiptsCreated'] ??
+            (nested is Map
+                ? nested['created'] ??
+                    nested['createdCount'] ??
+                    nested['receiptsCreated']
+                : null);
+        final parsedCreated = rawCreated is num
+            ? rawCreated.toInt()
+            : int.tryParse(rawCreated?.toString() ?? '');
+        final refreshedCount = _generatedCount ?? _generated.length;
+        final createdCount = parsedCreated ??
+            (refreshedCount > previousCount
+                ? refreshedCount - previousCount
+                : 0);
+        final created = createdCount.toString();
         final isReceiptFlow = widget.api is RecurringReceiptsApi;
+        final backendMessage = (result['message'] ??
+                (nested is Map ? nested['message'] : null) ??
+                '')
+            .toString()
+            .trim();
         final zeroMessage = isReceiptFlow
             ? (isEs
                 ? 'No habia recibos pendientes para generar con la configuracion guardada.'
@@ -938,17 +968,19 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              created == '0' ? zeroMessage : createdMessage,
+              createdCount == 0 && backendMessage.isNotEmpty
+                  ? backendMessage
+                  : (createdCount == 0 ? zeroMessage : createdMessage),
             ),
           ),
         );
-        await widget.onUpdated();
-        await _loadGenerated();
       } catch (e) {
         if (!mounted) return;
         messenger.showSnackBar(
           SnackBar(content: Text(e.toString())),
         );
+      } finally {
+        if (mounted) setState(() => _runningNow = false);
       }
     }
 
@@ -1022,6 +1054,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
             cancelTooltip: l.recurringInvoicesCancelCta,
             onRunNow: handleRunNow,
             runNowTooltip: l.recurringInvoicesRunNowCta,
+            runningNow: _runningNow,
           ),
         ],
         child: Padding(
@@ -1092,6 +1125,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                               invoiceDateOffsetDaysCtrl:
                                   _invoiceDateOffsetDaysCtrl,
                               invoiceDateClampPolicy: _invoiceDateClampPolicy,
+                              showInvoiceDatePolicy: !_isReceiptFlow,
                               timezoneLabel: timezoneLabel,
                               exceptions: _exceptions,
                               onFreqChanged: (v) => setState(
@@ -1204,6 +1238,7 @@ class _RecurringDetailActionBar extends StatelessWidget {
     required this.cancelTooltip,
     required this.onRunNow,
     required this.runNowTooltip,
+    required this.runningNow,
   });
 
   final String status;
@@ -1217,6 +1252,7 @@ class _RecurringDetailActionBar extends StatelessWidget {
   final String cancelTooltip;
   final VoidCallback onRunNow;
   final String runNowTooltip;
+  final bool runningNow;
 
   @override
   Widget build(BuildContext context) {
@@ -1256,7 +1292,8 @@ class _RecurringDetailActionBar extends StatelessWidget {
             _RecurringDetailActionButton(
               icon: Icons.play_arrow_rounded,
               tooltip: runNowTooltip,
-              onPressed: onRunNow,
+              onPressed: runningNow ? null : onRunNow,
+              loading: runningNow,
               foreground: cs.onPrimary,
               background: cs.primary,
               borderColor: cs.primary,
@@ -1276,14 +1313,16 @@ class _RecurringDetailActionButton extends StatelessWidget {
     this.foreground,
     this.background,
     this.borderColor,
+    this.loading = false,
   });
 
   final IconData icon;
   final String tooltip;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color? foreground;
   final Color? background;
   final Color? borderColor;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -1310,7 +1349,15 @@ class _RecurringDetailActionButton extends StatelessWidget {
                     ),
               ),
             ),
-            child: Icon(icon, size: 17, color: fg),
+            child: loading
+                ? Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: fg,
+                    ),
+                  )
+                : Icon(icon, size: 17, color: fg),
           ),
         ),
       ),

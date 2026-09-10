@@ -946,6 +946,84 @@ class TelegramDomain extends ChangeNotifier {
     }
   }
 
+  Future<bool> sendPresupuesto(
+    String chatId, {
+    required String presupuestoId,
+    String caption = 'Presupuesto emitido',
+    String? forumTopicId,
+  }) async {
+    if (account == null || !isConnected || presupuestoId.trim().isEmpty) {
+      return false;
+    }
+
+    final effectiveTopicId = _effectiveTopicId(chatId, forumTopicId);
+    final isForumChat = _chatById(chatId)?.isForumChat == true;
+    final composer = _composerStateFor(
+      chatId,
+      forumTopicId: effectiveTopicId,
+    );
+    if (composer.sending) return false;
+    if (isForumChat && (effectiveTopicId == null || effectiveTopicId.isEmpty)) {
+      composer.error = 'Select a topic to send a message.';
+      notifyListeners();
+      return false;
+    }
+
+    composer.sending = true;
+    composer.error = null;
+    notifyListeners();
+
+    final replyTarget = composer.replyTarget;
+    try {
+      final sentMessage = await _apiClient.sendChatPresupuesto(
+        chatId: chatId,
+        accountId: account!.id,
+        presupuestoId: presupuestoId.trim(),
+        caption: caption,
+        replyToMessageId: replyTarget?.messageId,
+        forumTopicId: effectiveTopicId,
+      );
+      if (sentMessage != null) {
+        final hydrated = _hydrateSentMessage(
+          sentMessage,
+          replyTarget: replyTarget,
+          forumTopicId: effectiveTopicId,
+        );
+        final feed = _feedFor(chatId, forumTopicId: effectiveTopicId);
+        final merged = _mergeMessages(
+          feed.messages,
+          <TelegramChatMessage>[hydrated],
+        );
+        feed.messages = merged;
+        feed.paging = TelegramChatMessagePaging(
+          beforeMessageId: feed.paging.beforeMessageId ??
+              (merged.isNotEmpty ? merged.first.messageId : hydrated.messageId),
+          afterMessageId:
+              merged.isNotEmpty ? merged.last.messageId : hydrated.messageId,
+          hasMoreHistory: feed.paging.hasMoreHistory,
+          pollCursor:
+              merged.isNotEmpty ? merged.last.messageId : hydrated.messageId,
+        );
+        _touchChat(chatId, timestamp: hydrated.timestamp);
+      } else {
+        await loadMessages(
+          chatId,
+          force: true,
+          forumTopicId: effectiveTopicId,
+        );
+      }
+      composer.replyTarget = null;
+      composer.error = null;
+      return true;
+    } catch (e) {
+      composer.error = e.toString();
+      return false;
+    } finally {
+      composer.sending = false;
+      notifyListeners();
+    }
+  }
+
   // ===== Export Creation =====
   Future<void> createExport(TelegramExportRequest request) async {
     if (_creatingExport) return;

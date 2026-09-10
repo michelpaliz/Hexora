@@ -892,6 +892,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
         worker: _selectedWorker!,
         repo: _repo,
         getToken: _token,
+        onDataChanged: _reloadActiveTotals,
         onBack: () {
           _tabController.animateTo(0);
           setState(() => _showOverview = false);
@@ -986,6 +987,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                   },
                   tabController: _tabController,
                   enableAddHoursTab: kIsWeb,
+                  onTimeEntryChanged: _reloadActiveTotals,
                 ),
               ),
             ],

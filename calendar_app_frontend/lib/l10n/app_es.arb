@@ -2795,7 +2795,8 @@
   "mailConsoleReplyPlaceholder": "Escribe una respuesta…",
   "mailConsoleReplySend": "Responder",
   "mailConsoleReplySending": "Enviando…",
-  "mailConsoleReplySent": "Respuesta enviada.",
+  "mailConsoleReplySent": "Respuesta enviada correctamente.",
+  "mailConsoleReplyFailed": "No se pudo enviar la respuesta.",
   "mailConversationReplyTo": "Responder a {name}…",
   "@mailConversationReplyTo": {
     "description": "Placeholder de respuesta con nombre del destinatario.",

@@ -41,7 +41,9 @@ User userFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
       optStringAny(json, ['name']) ??
       optStringAny(json, ['userName']);
 
-  final email = requireString(json, 'email');
+  // Public/group member profiles may intentionally redact the email.
+  final email =
+      optStringAny(json, ['email', 'emailAddress', 'email_address']) ?? '';
 
   final userName = requireStringAny(json, ['userName', 'username']);
   final emailVerified = optBool(json, 'emailVerified') ?? false;

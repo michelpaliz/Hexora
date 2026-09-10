@@ -5910,7 +5910,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailConsoleReplySending => 'Sending…';
 
   @override
-  String get mailConsoleReplySent => 'Reply sent.';
+  String get mailConsoleReplySent => 'Reply sent successfully.';
+
+  @override
+  String get mailConsoleReplyFailed => 'The reply could not be sent.';
 
   @override
   String mailConversationReplyTo(Object name) {

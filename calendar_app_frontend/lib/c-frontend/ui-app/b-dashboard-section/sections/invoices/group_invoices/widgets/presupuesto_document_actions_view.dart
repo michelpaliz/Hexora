@@ -9,7 +9,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:intl/intl.dart';
 
-enum PresupuestoDocumentActionMode { drafts, issued, edit, preview }
+enum PresupuestoDocumentActionMode { all, drafts, issued, edit, preview }
 
 /// Screens at or above this width show the presupuesto editor as a centered
 /// dialog instead of a full-page route, so it doesn't navigate away from
@@ -43,7 +43,8 @@ class _PresupuestoDocumentActionsViewState
   late final PresupuestoDocumentWorkspace _workspace;
   final TextEditingController _search = TextEditingController();
   bool _loading = true;
-  bool _fileBusy = false;
+  String? _fileBusyId;
+  String? _checkingVariablesId;
   String? _error;
 
   @override
@@ -87,6 +88,7 @@ class _PresupuestoDocumentActionsViewState
 
   List<Map<String, dynamic>> get _visibleDocuments {
     final documents = switch (widget.mode) {
+      PresupuestoDocumentActionMode.all => _workspace.documents,
       PresupuestoDocumentActionMode.drafts ||
       PresupuestoDocumentActionMode.edit =>
         _workspace.drafts,
@@ -122,6 +124,8 @@ class _PresupuestoDocumentActionsViewState
 
   int get _sectionDocumentCount {
     switch (widget.mode) {
+      case PresupuestoDocumentActionMode.all:
+        return _workspace.documents.length;
       case PresupuestoDocumentActionMode.drafts:
       case PresupuestoDocumentActionMode.edit:
         return _workspace.drafts.length;
@@ -173,11 +177,19 @@ class _PresupuestoDocumentActionsViewState
     required bool preview,
   }) async {
     final id = presupuestoDocumentId(document);
-    if (id.isEmpty || _fileBusy) return;
-    setState(() => _fileBusy = true);
+    if (id.isEmpty || _fileBusyId != null) return;
+    setState(() => _fileBusyId = id);
     try {
       final number = _documentNumber(document).replaceAll('/', '-');
       final fileName = 'presupuesto-$number-documento.pdf';
+      final variables = await _api.getTemplateVariables(id);
+      if (!mounted ||
+          !await _confirmUnresolvedVariables(
+            _unresolvedKeys(variables),
+            action: preview ? 'previsualizar' : 'descargar',
+          )) {
+        return;
+      }
       if (preview) {
         final response = await _api.previewTemplatePdf(id);
         final bytes = InvoiceEditorPdf.validatePdf(response);
@@ -206,7 +218,7 @@ class _PresupuestoDocumentActionsViewState
         showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
-      if (mounted) setState(() => _fileBusy = false);
+      if (mounted) setState(() => _fileBusyId = null);
     }
   }
 
@@ -225,6 +237,43 @@ class _PresupuestoDocumentActionsViewState
     }
   }
 
+  List<String> _unresolvedKeys(Map<String, dynamic> payload) {
+    final raw = payload['unresolvedKeys'];
+    if (raw is! List) return const [];
+    return raw
+        .map((item) => item.toString().trim())
+        .where((key) => key.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<bool> _confirmUnresolvedVariables(
+    List<String> unresolved, {
+    required String action,
+  }) async {
+    if (unresolved.isEmpty) return true;
+    final keys = unresolved.map((key) => '[$key]').join(', ');
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Variables sin completar'),
+            content: Text(
+              'Todavía quedan variables sin valor: $keys. Si continúas, aparecerán entre corchetes en el PDF.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text('Continuar y $action'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   Future<void> _issue(Map<String, dynamic> document) async {
     final validation = presupuestoDocumentIssueValidation(document);
     if (validation != null) {
@@ -232,13 +281,45 @@ class _PresupuestoDocumentActionsViewState
       return;
     }
     final id = presupuestoDocumentId(document);
-    if (_workspace.isIssuing(id)) return;
+    if (_workspace.isIssuing(id) || _checkingVariablesId == id) return;
+    setState(() => _checkingVariablesId = id);
+    List<String> unresolved;
+    try {
+      unresolved = _unresolvedKeys(await _api.getTemplateVariables(id));
+    } on PresupuestosApiException catch (e) {
+      if (mounted) showErrorSnack(context, e.message);
+      return;
+    } catch (e) {
+      if (mounted) {
+        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _checkingVariablesId = null);
+    }
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Emitir presupuesto'),
-        content: const Text(
-          '¿Emitir este presupuesto? Se asignará un número definitivo.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '¿Emitir este presupuesto? Se asignará un número definitivo.',
+            ),
+            if (unresolved.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Text(
+                'Atención: siguen sin valor ${unresolved.map((key) => '[$key]').join(', ')}. Aparecerán entre corchetes en el PDF.',
+                style: TextStyle(
+                  color: Theme.of(dialogContext).colorScheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
           TextButton(
@@ -493,13 +574,15 @@ class _PresupuestoDocumentActionsViewState
               document: document,
               clients: widget.clients,
               mode: widget.mode,
-              fileBusy: _fileBusy,
+              fileBusy: _fileBusyId == presupuestoDocumentId(document),
+              fileActionsDisabled: _fileBusyId != null,
               issuing: _workspace.isIssuing(
-                presupuestoDocumentId(document),
-              ),
-              onOpen: presupuestoDocumentStatus(document) == 'issued'
-                  ? () => _openPdf(document, preview: true)
-                  : () => _openEditor(document),
+                    presupuestoDocumentId(document),
+                  ) ||
+                  _checkingVariablesId == presupuestoDocumentId(document),
+              onOpen: presupuestoDocumentStatus(document) == 'draft'
+                  ? () => _openEditor(document)
+                  : () => _openPdf(document, preview: true),
               onPreview: () => _openPdf(document, preview: true),
               onDownload: () => _openPdf(document, preview: false),
               onIssue: () => _issue(document),
@@ -513,6 +596,8 @@ class _PresupuestoDocumentActionsViewState
 
   String get _title {
     switch (widget.mode) {
+      case PresupuestoDocumentActionMode.all:
+        return 'Propuestas';
       case PresupuestoDocumentActionMode.drafts:
         return 'Borradores';
       case PresupuestoDocumentActionMode.issued:
@@ -526,6 +611,8 @@ class _PresupuestoDocumentActionsViewState
 
   String get _subtitle {
     switch (widget.mode) {
+      case PresupuestoDocumentActionMode.all:
+        return 'Todas las propuestas, borradores y documentos emitidos.';
       case PresupuestoDocumentActionMode.drafts:
         return 'Documentos de presupuesto pendientes de emitir.';
       case PresupuestoDocumentActionMode.issued:
@@ -552,6 +639,7 @@ class _DocumentRow extends StatelessWidget {
     required this.clients,
     required this.mode,
     required this.fileBusy,
+    required this.fileActionsDisabled,
     required this.issuing,
     required this.onOpen,
     required this.onPreview,
@@ -564,6 +652,7 @@ class _DocumentRow extends StatelessWidget {
   final List<GroupClient> clients;
   final PresupuestoDocumentActionMode mode;
   final bool fileBusy;
+  final bool fileActionsDisabled;
   final bool issuing;
   final VoidCallback onOpen;
   final VoidCallback onPreview;
@@ -572,6 +661,7 @@ class _DocumentRow extends StatelessWidget {
   final VoidCallback onDelete;
 
   bool get _isIssued => presupuestoDocumentStatus(document) == 'issued';
+  bool get _isDraft => presupuestoDocumentStatus(document) == 'draft';
 
   static String _initials(String source) {
     final trimmed = source.trim();
@@ -590,7 +680,11 @@ class _DocumentRow extends StatelessWidget {
     final date = _documentDate(document, issued: _isIssued);
     final amount = presupuestoDocumentAmount(document);
     final client = _clientName(document, clients);
-    final accent = _isIssued ? Colors.green.shade700 : cs.primary;
+    final accent = _isIssued
+        ? Colors.green.shade700
+        : _isDraft
+            ? cs.primary
+            : cs.error;
     final title = presupuestoDocumentTitle(document);
 
     return Container(
@@ -655,6 +749,11 @@ class _DocumentRow extends StatelessWidget {
                             ),
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        _DocumentPill(
+                          label: 'Documento',
+                          color: accent,
+                        ),
                         if (_isIssued) ...[
                           const SizedBox(width: 8),
                           _DocumentPill(
@@ -696,7 +795,7 @@ class _DocumentRow extends StatelessWidget {
                               ? 'Sin fecha'
                               : DateFormat('d MMM y', 'es').format(date),
                         ),
-                        if (!_isIssued) ...[
+                        if (_isDraft) ...[
                           const SizedBox(width: 12),
                           _DocumentMeta(
                             icon: Icons.image_outlined,
@@ -724,7 +823,11 @@ class _DocumentRow extends StatelessWidget {
                       ),
                     const SizedBox(height: 3),
                     _DocumentPill(
-                      label: _isIssued ? 'Emitido' : 'Borrador',
+                      label: _isIssued
+                          ? 'Emitido'
+                          : _isDraft
+                              ? 'Borrador'
+                              : 'Anulado',
                       color: accent,
                     ),
                   ],
@@ -786,7 +889,7 @@ class _DocumentRow extends StatelessWidget {
                                   ? 'Sin fecha'
                                   : '${_isIssued ? 'Emitido' : 'Actualizado'} ${DateFormat('d MMM y', 'es').format(date)}',
                             ),
-                            if (!_isIssued)
+                            if (_isDraft)
                               _DocumentMeta(
                                 icon: Icons.image_outlined,
                                 label:
@@ -808,134 +911,154 @@ class _DocumentRow extends StatelessWidget {
   }
 
   Widget _actions(BuildContext context) {
+    final theme = Theme.of(context);
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _compactAction(
-            context,
-            tooltip: _isIssued ? 'Abrir documento' : 'Editar documento',
-            icon: _isIssued ? Icons.open_in_new_rounded : Icons.edit_outlined,
-            onPressed: onOpen,
-          ),
-          const SizedBox(width: 2),
-          _compactAction(
-            context,
-            tooltip: 'Vista previa',
-            icon: Icons.visibility_outlined,
-            onPressed: fileBusy ? null : onPreview,
-          ),
-          const SizedBox(width: 3),
-          if (_isIssued)
-            _compactAction(
-              context,
-              tooltip: 'Descargar PDF',
-              icon: Icons.download_rounded,
-              onPressed: fileBusy ? null : onDownload,
-            )
-          else ...[
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 32),
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 11),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: issuing ? null : onIssue,
-              icon: issuing
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.send_rounded, size: 15),
-              label: Text(
-                'Emitir',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: cs.onPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            Tooltip(
-              message: 'Más acciones',
-              child: PopupMenuButton<String>(
-                padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints.tightFor(width: 32, height: 32),
-                onSelected: (value) {
-                  if (value == 'delete') onDelete();
-                },
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                itemBuilder: (context) => [
-                  PopupMenuItem<String>(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline_rounded, color: cs.error),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Eliminar borrador',
-                          style: TextStyle(color: cs.error),
-                        ),
-                      ],
-                    ),
+          ),
+          onPressed: fileActionsDisabled ? null : onDownload,
+          icon: fileBusy
+              ? const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
                   ),
-                ],
-                icon: Icon(
-                  Icons.more_horiz_rounded,
-                  size: 18,
-                  color: cs.onSurfaceVariant,
+                )
+              : const Icon(Icons.download_rounded, size: 19),
+          label: Text(
+            'Descargar',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: cs.onPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        PopupMenuButton<String>(
+          tooltip: 'Más acciones',
+          offset: const Offset(0, 46),
+          elevation: 8,
+          color: cs.surfaceContainerLowest,
+          surfaceTintColor: Colors.transparent,
+          constraints: const BoxConstraints(minWidth: 220),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          onSelected: (value) {
+            switch (value) {
+              case 'open':
+                onOpen();
+              case 'preview':
+                onPreview();
+              case 'issue':
+                onIssue();
+              case 'delete':
+                onDelete();
+            }
+          },
+          itemBuilder: (context) => <PopupMenuEntry<String>>[
+            if (_isDraft)
+              PopupMenuItem<String>(
+                value: 'open',
+                child: _actionMenuItem(
+                  context,
+                  icon: Icons.edit_note_rounded,
+                  label: 'Editar documento',
                 ),
               ),
+            PopupMenuItem<String>(
+              value: 'preview',
+              enabled: !fileActionsDisabled,
+              child: _actionMenuItem(
+                context,
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'Vista previa del PDF',
+              ),
             ),
+            if (_isDraft)
+              PopupMenuItem<String>(
+                value: 'issue',
+                enabled: !issuing,
+                child: _actionMenuItem(
+                  context,
+                  icon: Icons.publish_rounded,
+                  label: issuing ? 'Comprobando…' : 'Emitir presupuesto',
+                  color: cs.primary,
+                ),
+              ),
+            if (_isDraft) const PopupMenuDivider(),
+            if (_isDraft)
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: _actionMenuItem(
+                  context,
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Eliminar borrador',
+                  color: cs.error,
+                ),
+              ),
           ],
-        ],
-      ),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.42),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            child: Icon(
+              Icons.more_vert_rounded,
+              size: 20,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _compactAction(
+  Widget _actionMenuItem(
     BuildContext context, {
-    required String tooltip,
     required IconData icon,
-    required VoidCallback? onPressed,
+    required String label,
+    Color? color,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          fixedSize: const Size(32, 32),
-          minimumSize: const Size(32, 32),
-          maximumSize: const Size(32, 32),
-          padding: EdgeInsets.zero,
-          foregroundColor: cs.onSurfaceVariant,
-          hoverColor: cs.primary.withValues(alpha: 0.08),
-          highlightColor: cs.primary.withValues(alpha: 0.12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+    final foreground = color ?? Theme.of(context).colorScheme.onSurfaceVariant;
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: foreground.withValues(alpha: 0.09),
+            borderRadius: BorderRadius.circular(10),
           ),
+          child: Icon(icon, size: 18, color: foreground),
         ),
-        icon: Icon(icon, size: 17),
-      ),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      ],
     );
   }
 
@@ -1015,6 +1138,7 @@ class _DocumentEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final issued = mode == PresupuestoDocumentActionMode.issued;
+    final all = mode == PresupuestoDocumentActionMode.all;
     final searching = searchQuery.isNotEmpty;
     final cs = Theme.of(context).colorScheme;
     return Container(
@@ -1048,8 +1172,10 @@ class _DocumentEmptyState extends StatelessWidget {
             searching
                 ? 'No hay resultados para "$searchQuery"'
                 : issued
-                    ? 'No hay documentos emitidos'
-                    : 'No hay borradores',
+                    ? 'No hay documentos emitidos.'
+                    : all
+                        ? 'No hay propuestas.'
+                        : 'No hay borradores.',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -1060,7 +1186,9 @@ class _DocumentEmptyState extends StatelessWidget {
                 ? 'Prueba con otro nombre de cliente o documento.'
                 : issued
                     ? 'Los presupuestos emitidos apareceran aqui.'
-                    : 'Crea un presupuesto para verlo listado aqui.',
+                    : all
+                        ? 'Las propuestas aparecerán aquí.'
+                        : 'Crea una propuesta para verla listada aquí.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,

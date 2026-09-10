@@ -7,6 +7,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 void main() {
   final draft = <String, dynamic>{
     '_id': 'document-1',
+    'presupuestoKind': 'document',
     'status': 'draft',
     'hasDocumentContent': true,
     'clientName': 'Comunidad Las Alondras',
@@ -42,6 +43,51 @@ void main() {
 
     expect(drafts.map(presupuestoDocumentId), ['document-1']);
     expect(issued.map(presupuestoDocumentId), ['document-2']);
+  });
+
+  test('uses proposalTemplate only as the missing-kind legacy fallback', () {
+    expect(
+      presupuestoHasDocumentContent(<String, dynamic>{
+        '_id': 'legacy-document',
+        'proposalTemplate': <String, dynamic>{'title': 'Mantenimiento anual'},
+      }),
+      isTrue,
+    );
+    expect(
+      presupuestoHasDocumentContent(<String, dynamic>{
+        '_id': 'legacy-flag-only',
+        'hasDocumentContent': 'true',
+      }),
+      isFalse,
+    );
+    expect(
+      presupuestoHasDocumentContent(<String, dynamic>{
+        '_id': 'invoice-style',
+        'status': 'draft',
+        'blocks': <dynamic>[],
+        'totals': <String, dynamic>{'total': 300},
+      }),
+      isFalse,
+    );
+  });
+
+  test('explicit kind takes priority over legacy content heuristics', () {
+    expect(
+      presupuestoHasDocumentContent(<String, dynamic>{
+        'presupuestoKind': 'document',
+        'hasDocumentContent': false,
+      }),
+      isTrue,
+    );
+    expect(
+      presupuestoHasDocumentContent(<String, dynamic>{
+        'presupuestoKind': 'structured',
+        'hasDocumentContent': true,
+        'proposalTemplate': <String, dynamic>{'title': 'Stale metadata'},
+        'documentTitle': 'Stale metadata',
+      }),
+      isFalse,
+    );
   });
 
   test('Word-style draft issues without invoice lines and moves to issued',
@@ -147,6 +193,7 @@ void main() {
       () async {
     final api = _FakeDocumentApi(<String, dynamic>{
       '_id': 'cleaning-1',
+      'presupuestoKind': 'document',
       'status': 'draft',
       'hasDocumentContent': true,
       'documentTitle': 'Mantenimiento de jardines y piscinas Michel S.L',

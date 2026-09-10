@@ -58,12 +58,35 @@ class UnnumberedReceiptDraftLookup {
 
 class ReceiptsApi {
   final String _base = '${ApiConstants.baseUrl}/receipts';
+  final http.Client? client;
+
+  ReceiptsApi({this.client});
 
   Map<String, String> _headers() => {
         'Content-Type': 'application/json; charset=UTF-8',
       };
 
   Uri _u([String path = '']) => Uri.parse('$_base$path');
+
+  Uri buildMarkSentUri(String receiptId) => _u('/$receiptId/mark-sent');
+  Uri buildMarkUnsentUri(String receiptId) => _u('/$receiptId/mark-unsent');
+
+  Future<http.Response> _post(Uri uri, Map<String, dynamic> payload) {
+    final body = jsonEncode(payload);
+    final injectedClient = client;
+    if (injectedClient != null) {
+      return injectedClient.post(uri, headers: _headers(), body: body);
+    }
+    return AuthenticatedHttpClient.post(uri, headers: _headers(), body: body);
+  }
+
+  Future<http.Response> _get(Uri uri) {
+    final injectedClient = client;
+    if (injectedClient != null) {
+      return injectedClient.get(uri, headers: _headers());
+    }
+    return AuthenticatedHttpClient.get(uri, headers: _headers());
+  }
 
   T _decode<T>(http.Response r, T Function(dynamic) map) {
     final ok = r.statusCode >= 200 && r.statusCode < 300;
@@ -137,8 +160,7 @@ class ReceiptsApi {
   }
 
   Future<Receipt> getById(String id) async {
-    final r =
-        await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
+    final r = await _get(_u('/$id'));
     return _decode<Receipt>(r, (j) => Receipt.fromJson(j));
   }
 
@@ -228,6 +250,39 @@ class ReceiptsApi {
       return getById(id);
     }
     throw Exception('Unexpected receipt payload');
+  }
+
+  Future<Receipt> markSent(
+    String id, {
+    required String channel,
+    DateTime? sentAt,
+  }) async {
+    final response = await _post(
+      buildMarkSentUri(id),
+      <String, dynamic>{
+        'channel': channel,
+        if (sentAt != null) 'sentAt': sentAt.toUtc().toIso8601String(),
+      },
+    );
+    return _decode<Receipt>(response, (json) {
+      if (json is Map) {
+        return Receipt.fromJson(Map<String, dynamic>.from(json));
+      }
+      throw Exception('Unexpected receipt payload');
+    });
+  }
+
+  Future<Receipt> markUnsent(String id) async {
+    final response = await _post(
+      buildMarkUnsentUri(id),
+      const <String, dynamic>{},
+    );
+    return _decode<Receipt>(response, (json) {
+      if (json is Map) {
+        return Receipt.fromJson(Map<String, dynamic>.from(json));
+      }
+      throw Exception('Unexpected receipt payload');
+    });
   }
 
   Future<UnnumberedReceiptDraftLookup> lookupUnnumberedDraft({

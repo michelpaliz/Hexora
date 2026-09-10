@@ -24,23 +24,29 @@ void main() {
         if (path.endsWith('/client-locations')) {
           return http.Response(
             jsonEncode(<String, dynamic>{
-              'locations': <Map<String, dynamic>>[
-                <String, dynamic>{
-                  'clientId': 'client-1',
-                  'clientName': 'Piscina principal',
-                  'latitude': 38.8401,
-                  'longitude': 0.1057,
-                  'radiusMeters': 75,
-                  'isEnabled': true,
-                },
-                <String, dynamic>{
-                  'clientId': 'client-disabled',
-                  'latitude': 1,
-                  'longitude': 1,
-                  'radiusMeters': 50,
-                  'isEnabled': false,
-                },
-              ],
+              'data': <String, dynamic>{
+                'clients': <Map<String, dynamic>>[
+                  <String, dynamic>{
+                    'client': <String, dynamic>{
+                      '_id': <String, dynamic>{r'$oid': 'client-1'},
+                      'name': 'Piscina principal',
+                    },
+                    'serviceLocation': <String, dynamic>{
+                      'latitude': 38.8401,
+                      'longitude': 0.1057,
+                      'radiusMeters': 75,
+                      'isEnabled': true,
+                    },
+                  },
+                  <String, dynamic>{
+                    'clientId': 'client-disabled',
+                    'latitude': 1,
+                    'longitude': 1,
+                    'radiusMeters': 50,
+                    'isEnabled': false,
+                  },
+                ],
+              },
             }),
             200,
           );

@@ -276,7 +276,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
       ),
       (
         icon: Icons.description_outlined,
-        label: l.localeName.startsWith('es') ? 'Presupuestos' : 'Budgets',
+        label: l.localeName.startsWith('es') ? 'Propuestas' : 'Proposals',
         section: Sections.budgets,
         adminOnly: true,
       ),

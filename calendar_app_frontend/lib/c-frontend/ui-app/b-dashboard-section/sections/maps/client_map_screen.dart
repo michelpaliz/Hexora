@@ -9,10 +9,37 @@ import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/api/i_time_tracking_api_client.dart';
 import 'package:hexora/b-backend/maps/maps_api.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/geofenced_visits_view.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/sidebar_item.dart';
 import 'package:provider/provider.dart';
 
 import 'widgets/azure_maps_view.dart';
+
+enum _MapSection {
+  live,
+  clientLocations,
+  todayVisits,
+  visitHistory,
+  myRoute,
+  myMap,
+  myVisits,
+  workday,
+  gpsStatus,
+}
+
+class _MapNavItem {
+  const _MapNavItem({
+    required this.section,
+    required this.icon,
+    required this.label,
+    required this.mobileLabel,
+  });
+
+  final _MapSection section;
+  final IconData icon;
+  final String label;
+  final String mobileLabel;
+}
 
 class ClientMapScreen extends StatefulWidget {
   const ClientMapScreen({
@@ -35,6 +62,9 @@ class ClientMapScreen extends StatefulWidget {
 }
 
 class _ClientMapScreenState extends State<ClientMapScreen> {
+  static const double _expandedMenuWidth = 214;
+  static const double _collapsedMenuWidth = 64;
+
   late final MapsApi _mapsApi;
   late final ClientsApi _clientsApi;
   final _clientFilter = TextEditingController();
@@ -55,6 +85,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
   bool _mapReady = false;
   bool _editing = false;
   bool _saving = false;
+  bool _removingLocation = false;
   bool _searching = false;
   bool _locating = false;
   bool _autoLocationRequested = false;
@@ -65,6 +96,8 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
   Timer? _tokenTimer;
   Timer? _reverseGeocodeTimer;
   Timer? _mapReadyTimer;
+  late _MapSection _section;
+  bool _sideMenuCollapsed = false;
 
   bool get _isSpanish =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
@@ -74,6 +107,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     super.initState();
     _mapsApi = widget.mapsApi ?? MapsApi();
     _clientsApi = widget.clientsApi ?? ClientsApi();
+    _section = widget.canEdit ? _MapSection.live : _MapSection.myMap;
     _load();
   }
 
@@ -116,7 +150,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       setState(() {
         _mapToken = mapToken;
         _clients = clients;
-        _locations = locations;
+        _locations = _mergeLocations(clients, locations);
         _mapGeneration++;
       });
       _scheduleTokenRefresh(mapToken);
@@ -213,6 +247,35 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       )
       .toList(growable: false);
 
+  List<ClientServiceLocation> _mergeLocations(
+    List<GroupClient> clients,
+    List<ClientServiceLocation> endpointLocations,
+  ) {
+    final merged = <String, ClientServiceLocation>{};
+    for (final client in clients) {
+      final location = client.serviceLocation;
+      if (location == null || !location.isEnabled) continue;
+      merged[client.id] = ClientServiceLocation(
+        clientId: client.id,
+        clientName: client.name,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        radiusMeters: location.radiusMeters,
+        label: location.label,
+        isEnabled: location.isEnabled,
+      );
+    }
+    for (final location in endpointLocations) {
+      if (location.clientId.isEmpty) continue;
+      if (location.isEnabled) {
+        merged[location.clientId] = location;
+      } else {
+        merged.remove(location.clientId);
+      }
+    }
+    return merged.values.toList(growable: false);
+  }
+
   List<GroupClient> get _filteredClients {
     final query = _clientFilter.text.trim().toLowerCase();
     if (query.isEmpty) return _clients;
@@ -224,6 +287,11 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
   ClientServiceLocation? _locationFor(String clientId) {
     for (final location in _locations) {
       if (location.clientId == clientId) return location;
+    }
+    for (final client in _clients) {
+      if (client.id == clientId && client.serviceLocation?.isEnabled == true) {
+        return client.serviceLocation;
+      }
     }
     return null;
   }
@@ -279,7 +347,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       _selectedClient = client;
       _editing = true;
       _enabled = location?.isEnabled ?? true;
-      _radius = (location?.radiusMeters ?? 75).clamp(10, 1000).toDouble();
+      _radius = (location?.radiusMeters ?? 75).clamp(25, 500).toDouble();
       _labelController.text = location?.label ?? '';
       _resolvedAddress = location?.label;
       _selection = location == null
@@ -537,6 +605,61 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     }
   }
 
+  Future<void> _removeLocation(GroupClient client) async {
+    if (_removingLocation) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          _isSpanish ? 'Eliminar ubicación' : 'Remove location',
+        ),
+        content: Text(
+          _isSpanish
+              ? 'Se eliminarán el pin y el radio de llegada de ${client.name}. ¿Quieres continuar?'
+              : 'The map pin and arrival radius for ${client.name} will be removed. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: Text(_isSpanish ? 'Eliminar' : 'Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _removingLocation = true);
+    try {
+      await _clientsApi.clearServiceLocation(client.id);
+      if (!mounted) return;
+      setState(() {
+        _locations = _locations
+            .where((location) => location.clientId != client.id)
+            .toList(growable: false);
+        for (final item in _clients) {
+          if (item.id == client.id) item.serviceLocation = null;
+        }
+        _selectedClient = null;
+        _editing = false;
+        _selection = null;
+        _resolvedAddress = null;
+      });
+      _showMessage(
+        _isSpanish ? 'Ubicación eliminada.' : 'Location removed.',
+      );
+    } catch (error) {
+      if (mounted) _showMessage(_messageFromError(error));
+    } finally {
+      if (mounted) setState(() => _removingLocation = false);
+    }
+  }
+
   void _cancelEditing() {
     setState(() {
       _editing = false;
@@ -571,13 +694,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                         : 'Map credentials are unavailable.',
                     onRetry: _load,
                   )
-                : Column(
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: 12),
-                      Expanded(child: _buildResponsiveBody(token)),
-                    ],
-                  );
+                : _buildMapHub(token);
 
     if (widget.embedded) {
       return Padding(
@@ -596,52 +713,359 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  List<_MapNavItem> get _navItems => widget.canEdit
+      ? <_MapNavItem>[
+          _MapNavItem(
+            section: _MapSection.live,
+            icon: Icons.location_searching_rounded,
+            label: _isSpanish ? 'Mapa en directo' : 'Live map',
+            mobileLabel: _isSpanish ? 'En directo' : 'Live',
+          ),
+          _MapNavItem(
+            section: _MapSection.clientLocations,
+            icon: Icons.add_location_alt_outlined,
+            label: _isSpanish ? 'Ubicaciones de clientes' : 'Client locations',
+            mobileLabel: _isSpanish ? 'Ubicaciones' : 'Locations',
+          ),
+          _MapNavItem(
+            section: _MapSection.todayVisits,
+            icon: Icons.today_outlined,
+            label: _isSpanish ? 'Visitas de hoy' : "Today's visits",
+            mobileLabel: _isSpanish ? 'Hoy' : 'Today',
+          ),
+          _MapNavItem(
+            section: _MapSection.visitHistory,
+            icon: Icons.history_rounded,
+            label: _isSpanish ? 'Historial de visitas' : 'Visit history',
+            mobileLabel: _isSpanish ? 'Historial' : 'History',
+          ),
+        ]
+      : <_MapNavItem>[
+          _MapNavItem(
+            section: _MapSection.myRoute,
+            icon: Icons.route_outlined,
+            label: _isSpanish ? 'Mi ruta de hoy' : 'My route today',
+            mobileLabel: _isSpanish ? 'Mi ruta' : 'My route',
+          ),
+          _MapNavItem(
+            section: _MapSection.myMap,
+            icon: Icons.map_outlined,
+            label: _isSpanish ? 'Mapa' : 'Map',
+            mobileLabel: _isSpanish ? 'Mapa' : 'Map',
+          ),
+          _MapNavItem(
+            section: _MapSection.myVisits,
+            icon: Icons.place_outlined,
+            label: _isSpanish ? 'Mis visitas' : 'My visits',
+            mobileLabel: _isSpanish ? 'Visitas' : 'Visits',
+          ),
+          _MapNavItem(
+            section: _MapSection.workday,
+            icon: Icons.play_circle_outline_rounded,
+            label:
+                _isSpanish ? 'Iniciar/detener jornada' : 'Start/stop workday',
+            mobileLabel: _isSpanish ? 'Jornada' : 'Workday',
+          ),
+          _MapNavItem(
+            section: _MapSection.gpsStatus,
+            icon: Icons.gps_fixed_rounded,
+            label: _isSpanish ? 'Estado del GPS' : 'GPS status',
+            mobileLabel: 'GPS',
+          ),
+        ];
+
+  void _selectSection(_MapSection section) {
+    if (_section == section) return;
+    setState(() {
+      _section = section;
+      if (section != _MapSection.clientLocations) {
+        _editing = false;
+        _selection = null;
+      }
+    });
+  }
+
+  Widget _buildMapHub(AzureMapsToken token) {
     final cs = Theme.of(context).colorScheme;
-    final typography = AppTypography.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
+    final navItems = _navItems;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sectionContent = _buildSectionContent(token);
+        if (constraints.maxWidth < 760) {
+          return Column(
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+                child: Row(
+                  children: [
+                    for (final item in navItems)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 7),
+                        child: ChoiceChip(
+                          selected: _section == item.section,
+                          showCheckmark: false,
+                          avatar: Icon(item.icon, size: 17),
+                          label: Text(item.mobileLabel),
+                          onSelected: (_) => _selectSection(item.section),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(child: sectionContent),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              width:
+                  _sideMenuCollapsed ? _collapsedMenuWidth : _expandedMenuWidth,
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.65),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 9, 8, 8),
+                    child: Row(
+                      mainAxisAlignment: _sideMenuCollapsed
+                          ? MainAxisAlignment.center
+                          : MainAxisAlignment.start,
+                      children: [
+                        if (!_sideMenuCollapsed) ...[
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: cs.primaryContainer,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.map_outlined,
+                              size: 17,
+                              color: cs.onPrimaryContainer,
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Text(
+                              _isSpanish ? 'Mapas y visitas' : 'Maps & visits',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ],
+                        IconButton.filledTonal(
+                          tooltip: _sideMenuCollapsed
+                              ? (_isSpanish ? 'Expandir menú' : 'Expand menu')
+                              : (_isSpanish
+                                  ? 'Contraer menú'
+                                  : 'Collapse menu'),
+                          onPressed: () => setState(
+                            () => _sideMenuCollapsed = !_sideMenuCollapsed,
+                          ),
+                          icon: Icon(
+                            _sideMenuCollapsed
+                                ? Icons.keyboard_double_arrow_right_rounded
+                                : Icons.keyboard_double_arrow_left_rounded,
+                          ),
+                          iconSize: 18,
+                          style: IconButton.styleFrom(
+                            minimumSize: const Size(40, 34),
+                            fixedSize: const Size(40, 34),
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Divider(
+                    height: 1,
+                    color: cs.outlineVariant.withValues(alpha: 0.45),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                      children: [
+                        for (final item in navItems)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: SidebarItem(
+                              icon: item.icon,
+                              label: item.label,
+                              isSelected: _section == item.section,
+                              collapsed: _sideMenuCollapsed,
+                              onTap: () => _selectSection(item.section),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: sectionContent),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSectionContent(AzureMapsToken token) {
+    return switch (_section) {
+      _MapSection.live => _buildNoticeSection(
+          message: _isSpanish
+              ? 'Se muestran las ubicaciones configuradas de clientes y tu posición. Las posiciones en directo de trabajadores aún no están disponibles.'
+              : 'Configured client locations and your position are shown. Live worker positions are not available yet.',
+          child: _buildResponsiveBody(
+            token,
+            canManageLocations: false,
+            showSidePanel: true,
+          ),
+        ),
+      _MapSection.clientLocations => _buildResponsiveBody(
+          token,
+          canManageLocations: true,
+          showSidePanel: true,
+        ),
+      _MapSection.todayVisits => GeofencedVisitsView(
+          key: ValueKey('map-today-visits-${widget.group.id}'),
+          group: widget.group,
+          todayOnly: true,
+        ),
+      _MapSection.visitHistory => GeofencedVisitsView(
+          key: ValueKey('map-visit-history-${widget.group.id}'),
+          group: widget.group,
+          showTrackingCard: false,
+        ),
+      _MapSection.myRoute => _buildUnavailableSection(
+          icon: Icons.route_outlined,
+          title: _isSpanish ? 'Mi ruta de hoy' : 'My route today',
+          message: _isSpanish
+              ? 'La planificación diaria, el orden de visitas y la ruta optimizada necesitan los nuevos endpoints de rutas.'
+              : 'Daily assignments, visit order, and route optimization require the new route endpoints.',
+        ),
+      _MapSection.myMap => _buildResponsiveBody(
+          token,
+          canManageLocations: false,
+          showSidePanel: false,
+        ),
+      _MapSection.myVisits => GeofencedVisitsView(
+          key: ValueKey('map-my-visits-${widget.group.id}'),
+          group: widget.group,
+          todayOnly: true,
+          showTrackingCard: false,
+        ),
+      _MapSection.workday || _MapSection.gpsStatus => GeofencedVisitsView(
+          key: ValueKey('map-tracking-${widget.group.id}-${_section.name}'),
+          group: widget.group,
+          todayOnly: true,
+          showVisits: false,
+        ),
+    };
+  }
+
+  Widget _buildNoticeSection({
+    required String message,
+    required Widget child,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: cs.primaryContainer.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.16)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline_rounded, size: 17, color: cs.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: child),
+      ],
+    );
+  }
+
+  Widget _buildUnavailableSection({
+    required IconData icon,
+    required String title,
+    required String message,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: cs.outlineVariant),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 42, color: cs.primary),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildActions({required bool canManageLocations}) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 44,
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(Icons.map_outlined, color: cs.onPrimaryContainer),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isSpanish ? 'Mapa de clientes' : 'Client map',
-                  style: typography.titleLarge.copyWith(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _isSpanish
-                      ? '${_locations.length} ubicaciones configuradas'
-                      : '${_locations.length} configured locations',
-                  style: typography.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
+          IconButton.filledTonal(
             tooltip: _isSpanish ? 'Mi ubicación' : 'My location',
             onPressed:
                 _locating ? null : () => _loadUserLocation(showErrors: true),
@@ -655,18 +1079,28 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                     color: _userLocation == null ? null : cs.primary,
                   ),
           ),
-          IconButton(
+          const SizedBox(width: 8),
+          IconButton.filledTonal(
             tooltip: _isSpanish ? 'Actualizar' : 'Refresh',
             onPressed: _load,
             icon: const Icon(Icons.refresh_rounded),
           ),
-          if (widget.canEdit) ...[
-            const SizedBox(width: 6),
-            FilledButton.icon(
-              onPressed: _chooseClient,
-              icon: const Icon(Icons.add_location_alt_outlined, size: 19),
-              label:
-                  Text(_isSpanish ? 'Ubicar cliente' : 'Set client location'),
+          if (canManageLocations) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _chooseClient,
+                icon: const Icon(Icons.add_location_alt_outlined, size: 19),
+                label: Text(
+                  _isSpanish ? 'Ubicar cliente' : 'Set client location',
+                ),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
           ],
         ],
@@ -674,23 +1108,47 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     );
   }
 
-  Widget _buildResponsiveBody(AzureMapsToken token) {
+  Widget _buildResponsiveBody(
+    AzureMapsToken token, {
+    required bool canManageLocations,
+    required bool showSidePanel,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final map = _buildMap(token);
-        final panel = _buildSidePanel();
-        if (constraints.maxWidth >= 900) {
+        final panel = _buildSidePanel(canManageLocations: canManageLocations);
+        if (showSidePanel && constraints.maxWidth >= 900) {
           return Row(
             children: [
               Expanded(child: map),
               const SizedBox(width: 12),
-              SizedBox(width: 360, child: panel),
+              SizedBox(
+                width: 360,
+                child: Column(
+                  children: [
+                    _buildActions(canManageLocations: canManageLocations),
+                    const SizedBox(height: 10),
+                    Expanded(child: panel),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+        if (!showSidePanel) {
+          return Column(
+            children: [
+              _buildActions(canManageLocations: false),
+              const SizedBox(height: 10),
+              Expanded(child: map),
             ],
           );
         }
         return Column(
           children: [
             Expanded(flex: 5, child: map),
+            const SizedBox(height: 10),
+            _buildActions(canManageLocations: canManageLocations),
             const SizedBox(height: 10),
             Expanded(flex: 4, child: panel),
           ],
@@ -716,6 +1174,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                 clientId: token.clientId,
                 accessToken: token.accessToken,
                 pins: _pins,
+                selectedPinId: _editing ? null : _selectedClient?.id,
                 selection: _selection,
                 userLocation: _userLocation,
                 cameraTarget: _cameraTarget,
@@ -839,7 +1298,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     );
   }
 
-  Widget _buildSidePanel() {
+  Widget _buildSidePanel({required bool canManageLocations}) {
     final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
@@ -847,11 +1306,14 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
       ),
-      child: _editing ? _buildEditor() : _buildClientBrowser(),
+      child: _editing
+          ? _buildEditor()
+          : _buildClientBrowser(canManageLocations: canManageLocations),
     );
   }
 
-  Widget _buildClientBrowser() {
+  Widget _buildClientBrowser({required bool canManageLocations}) {
+    final cs = Theme.of(context).colorScheme;
     final selected = _selectedClient;
     final selectedLocation =
         selected == null ? null : _locationFor(selected.id);
@@ -864,7 +1326,8 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               hintText: _isSpanish ? 'Buscar cliente' : 'Search clients',
-              prefixIcon: const Icon(Icons.search_rounded),
+              prefixIcon:
+                  Icon(Icons.search_rounded, color: cs.onSurfaceVariant),
               suffixIcon: _clientFilter.text.isEmpty
                   ? null
                   : IconButton(
@@ -872,9 +1335,24 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                         _clientFilter.clear();
                         setState(() {});
                       },
-                      icon: const Icon(Icons.close_rounded),
+                      icon: const Icon(Icons.close_rounded, size: 18),
                     ),
               isDense: true,
+              filled: true,
+              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+              contentPadding: const EdgeInsets.symmetric(vertical: 13),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: cs.primary, width: 1.4),
+              ),
             ),
           ),
         ),
@@ -883,54 +1361,43 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             client: selected,
             location: selectedLocation,
             isSpanish: _isSpanish,
-            canEdit: widget.canEdit,
+            canEdit: canManageLocations,
             onEdit: () => _beginEditing(selected),
+            onRemove: () => _removeLocation(selected),
+            isRemoving: _removingLocation,
           ),
-        const Divider(height: 1),
         Expanded(
           child: _filteredClients.isEmpty
               ? Center(
-                  child: Text(
-                    _isSpanish ? 'No hay clientes.' : 'No clients found.',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.person_search_rounded,
+                        size: 34,
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _isSpanish ? 'No hay clientes.' : 'No clients found.',
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      ),
+                    ],
                   ),
                 )
-              : ListView.separated(
+              : ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   itemCount: _filteredClients.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 2),
                   itemBuilder: (_, index) {
                     final client = _filteredClients[index];
                     final location = _locationFor(client.id);
-                    return ListTile(
+                    return _ClientLocationTile(
+                      client: client,
+                      location: location,
+                      isSpanish: _isSpanish,
                       selected: _selectedClient?.id == client.id,
-                      leading: CircleAvatar(
-                        child: Text(
-                          client.name.trim().isEmpty
-                              ? '?'
-                              : client.name.trim()[0].toUpperCase(),
-                        ),
-                      ),
-                      title: Text(
-                        client.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        location == null
-                            ? (_isSpanish ? 'Sin ubicación' : 'No location')
-                            : location.label ??
-                                '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: Icon(
-                        location == null
-                            ? Icons.add_location_alt_outlined
-                            : Icons.location_on_rounded,
-                        color: location == null ? null : Colors.green.shade600,
-                      ),
                       onTap: location == null
-                          ? widget.canEdit
+                          ? canManageLocations
                               ? () => _beginEditing(client)
                               : null
                           : () => _selectClient(client.id),
@@ -1053,9 +1520,9 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
           ),
           Slider(
             value: _radius,
-            min: 10,
-            max: 300,
-            divisions: 58,
+            min: 25,
+            max: 500,
+            divisions: 95,
             label: '${_radius.round()} m',
             onChanged: (value) {
               setState(() {
@@ -1123,6 +1590,8 @@ class _SelectedClientCard extends StatelessWidget {
     required this.isSpanish,
     required this.canEdit,
     required this.onEdit,
+    required this.onRemove,
+    required this.isRemoving,
   });
 
   final GroupClient client;
@@ -1130,41 +1599,277 @@ class _SelectedClientCard extends StatelessWidget {
   final bool isSpanish;
   final bool canEdit;
   final VoidCallback onEdit;
+  final VoidCallback onRemove;
+  final bool isRemoving;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cs.primaryContainer.withValues(alpha: 0.32),
-        borderRadius: BorderRadius.circular(14),
+        color: cs.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(client.name,
-              style: const TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 5),
-          Text(location.label ??
-              '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}'),
-          const SizedBox(height: 4),
-          Text(
-            isSpanish
-                ? 'Radio: ${location.radiusMeters.round()} m'
-                : 'Radius: ${location.radiusMeters.round()} m',
-            style: Theme.of(context).textTheme.bodySmall,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  Icons.location_on_rounded,
+                  color: cs.onPrimary,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      client.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      location.label ??
+                          '${location.latitude.toStringAsFixed(5)}, '
+                              '${location.longitude.toStringAsFixed(5)}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          if (canEdit) ...[
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
-              label: Text(isSpanish ? 'Editar ubicación' : 'Edit location'),
-            ),
-          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: cs.outlineVariant),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.radar_rounded,
+                        size: 14, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 5),
+                    Text(
+                      isSpanish
+                          ? '${location.radiusMeters.round()} m radio'
+                          : '${location.radiusMeters.round()} m radius',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              if (canEdit) ...[
+                IconButton(
+                  tooltip: isSpanish ? 'Eliminar ubicación' : 'Remove location',
+                  onPressed: isRemoving ? null : onRemove,
+                  color: cs.error,
+                  visualDensity: VisualDensity.compact,
+                  icon: isRemoving
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.location_off_outlined, size: 19),
+                ),
+                TextButton.icon(
+                  onPressed: isRemoving ? null : onEdit,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  ),
+                  icon: const Icon(Icons.edit_location_alt_outlined, size: 17),
+                  label: Text(isSpanish ? 'Editar' : 'Edit'),
+                ),
+              ],
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+Color _clientAvatarHueColor(
+  BuildContext context,
+  String seed, {
+  required double saturation,
+  required double lightness,
+}) {
+  final trimmed = seed.trim();
+  final hash = trimmed.isEmpty
+      ? 0
+      : trimmed.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+  final hue = (hash * 47) % 360;
+  return HSLColor.fromAHSL(1, hue.toDouble(), saturation, lightness).toColor();
+}
+
+Color _clientAvatarBackground(BuildContext context, String seed) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return _clientAvatarHueColor(
+    context,
+    seed,
+    saturation: 0.5,
+    lightness: isDark ? 0.26 : 0.88,
+  );
+}
+
+Color _clientAvatarForeground(BuildContext context, String seed) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return _clientAvatarHueColor(
+    context,
+    seed,
+    saturation: 0.55,
+    lightness: isDark ? 0.8 : 0.32,
+  );
+}
+
+class _LocationBadge extends StatelessWidget {
+  const _LocationBadge({required this.hasLocation});
+
+  final bool hasLocation;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    const locatedColor = Color(0xFF16A34A);
+    final color = hasLocation ? locatedColor : cs.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: hasLocation
+            ? locatedColor.withValues(alpha: 0.12)
+            : cs.surfaceContainerHighest.withValues(alpha: 0.6),
+        shape: BoxShape.circle,
+        border: hasLocation ? null : Border.all(color: cs.outlineVariant),
+      ),
+      child: Icon(
+        hasLocation
+            ? Icons.location_on_rounded
+            : Icons.add_location_alt_outlined,
+        size: 16,
+        color: color,
+      ),
+    );
+  }
+}
+
+class _ClientLocationTile extends StatelessWidget {
+  const _ClientLocationTile({
+    required this.client,
+    required this.location,
+    required this.isSpanish,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final GroupClient client;
+  final ClientServiceLocation? location;
+  final bool isSpanish;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final hasLocation = location != null;
+    final name = client.name.trim();
+    final initial = name.isEmpty ? '?' : name[0].toUpperCase();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      child: Material(
+        color:
+            selected ? cs.primary.withValues(alpha: 0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 34,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: selected ? cs.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                CircleAvatar(
+                  radius: 19,
+                  backgroundColor: _clientAvatarBackground(context, name),
+                  child: Text(
+                    initial,
+                    style: TextStyle(
+                      color: _clientAvatarForeground(context, name),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        client.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        hasLocation
+                            ? (location!.label ??
+                                '${location!.latitude.toStringAsFixed(5)}, '
+                                    '${location!.longitude.toStringAsFixed(5)}')
+                            : (isSpanish ? 'Sin ubicación' : 'No location'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _LocationBadge(hasLocation: hasLocation),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

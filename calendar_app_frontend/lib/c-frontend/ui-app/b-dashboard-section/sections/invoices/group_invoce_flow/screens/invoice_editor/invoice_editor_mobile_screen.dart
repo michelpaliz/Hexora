@@ -3,8 +3,8 @@ import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_controller.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_dates_step.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_form/invoice_content_section.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_form/invoice_header_fields.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/client_search_select.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -255,34 +255,19 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
   Widget _buildDatesStep() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      child: Column(
-        children: [
-          InvoiceHeaderFields(
-            clients: widget.clients,
-            clientId: _c.clientId,
-            onClientChanged: _c.setClientId,
-            currencyController: _c.currency,
-            invoiceDate: _c.invoiceDate,
-            dueDate: _c.dueDate,
-            onPickInvoiceDate: () => _c.pickDate(context, _c.invoiceDate),
-            onPickDueDate: () => _c.pickDate(context, _c.dueDate),
-            onCurrencyChanged: (_) => _c.notifyUi(),
-            showDates: true,
-            showClient: false,
-            showCurrency: true,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _c.notes,
-            minLines: 3,
-            maxLines: 5,
-            onChanged: (_) => _c.notifyUi(),
-            decoration: const InputDecoration(
-              labelText: 'Notas',
-              prefixIcon: Icon(Icons.notes_rounded),
-            ),
-          ),
-        ],
+      child: InvoiceDatesStep(
+        currencyController: _c.currency,
+        invoiceDate: _c.invoiceDate,
+        dueDate: _c.dueDate,
+        notesController: _c.notes,
+        onPickInvoiceDate: () => _c.pickDate(context, _c.invoiceDate),
+        onPickDueDate: () => _c.pickDate(
+          context,
+          _c.dueDate,
+          firstAllowedDate: _c.invoiceDate.value,
+        ),
+        onCurrencyChanged: (_) => _c.notifyUi(),
+        onNotesChanged: (_) => _c.notifyUi(),
       ),
     );
   }

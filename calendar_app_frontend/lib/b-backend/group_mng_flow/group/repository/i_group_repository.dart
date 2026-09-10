@@ -15,7 +15,11 @@ typedef TokenSupplier = Future<String> Function();
 abstract class IGroupRepository {
   // Streams (Single source of truth for groups by user)
   Stream<List<Group>> userGroups$(String userId);
-  Future<void> refreshUserGroupsByIds(String userId, List<String> groupIds);
+  Future<void> refreshUserGroupsByIds(
+    String userId,
+    List<String> groupIds, {
+    String? userName,
+  });
 
   // CRUD + queries
   Future<Group> createGroup(Group group);

@@ -18,6 +18,11 @@ class Receipt {
   final BillingProfile? issuerSnapshot;
   final ClientBilling? clientSnapshot;
   final List<ReceiptLine> lines;
+  final String deliveryStatus;
+  final DateTime? sentAt;
+  final String? sentBy;
+  final String? deliveryChannel;
+  final String? deliveryError;
 
   const Receipt({
     required this.id,
@@ -35,6 +40,11 @@ class Receipt {
     this.issuerSnapshot,
     this.clientSnapshot,
     this.lines = const [],
+    this.deliveryStatus = 'not_sent',
+    this.sentAt,
+    this.sentBy,
+    this.deliveryChannel,
+    this.deliveryError,
   });
 
   factory Receipt.fromJson(Map<String, dynamic> json) {
@@ -45,11 +55,39 @@ class Receipt {
       return null;
     }
 
+    DateTime? parseUtcDate(dynamic v) {
+      final parsed = parseDate(v);
+      if (parsed == null || parsed.isUtc) return parsed;
+      return DateTime.utc(
+        parsed.year,
+        parsed.month,
+        parsed.day,
+        parsed.hour,
+        parsed.minute,
+        parsed.second,
+        parsed.millisecond,
+        parsed.microsecond,
+      );
+    }
+
     final linesJson = json['lines'] as List?;
     final totals = json['totals'];
     num? readNum(dynamic v) {
       if (v is num) return v;
       return num.tryParse(v?.toString() ?? '');
+    }
+
+    String? readSender(dynamic value) {
+      if (value == null) return null;
+      if (value is Map) {
+        for (final key in const ['displayName', 'name', 'email', '_id', 'id']) {
+          final text = value[key]?.toString().trim() ?? '';
+          if (text.isNotEmpty) return text;
+        }
+        return null;
+      }
+      final text = value.toString().trim();
+      return text.isEmpty ? null : text;
     }
 
     return Receipt(
@@ -85,6 +123,11 @@ class Receipt {
               .whereType<Map<String, dynamic>>()
               .map(ReceiptLine.fromJson)
               .toList(),
+      deliveryStatus: (json['deliveryStatus'] ?? 'not_sent').toString(),
+      sentAt: parseUtcDate(json['sentAt']),
+      sentBy: readSender(json['sentBy']),
+      deliveryChannel: json['deliveryChannel']?.toString(),
+      deliveryError: json['deliveryError']?.toString(),
     );
   }
 

@@ -18,12 +18,25 @@ class ClientServiceLocation {
   final bool isEnabled;
 
   factory ClientServiceLocation.fromJson(Map<String, dynamic> json) {
-    final nested = json['serviceLocation'] is Map
-        ? Map<String, dynamic>.from(json['serviceLocation'] as Map)
-        : json;
+    final client = json['client'] is Map
+        ? Map<String, dynamic>.from(json['client'] as Map)
+        : const <String, dynamic>{};
+    final rawLocation = json['serviceLocation'] ??
+        json['location'] ??
+        client['serviceLocation'];
+    final nested =
+        rawLocation is Map ? Map<String, dynamic>.from(rawLocation) : json;
     return ClientServiceLocation(
-      clientId: _text(json['clientId'] ?? json['_id'] ?? json['id']),
-      clientName: _optionalText(json['clientName'] ?? json['name']),
+      clientId: _identifier(
+        json['clientId'] ??
+            client['_id'] ??
+            client['id'] ??
+            json['_id'] ??
+            json['id'],
+      ),
+      clientName: _optionalText(
+        json['clientName'] ?? client['name'] ?? json['name'],
+      ),
       latitude: _number(nested['latitude']),
       longitude: _number(nested['longitude']),
       radiusMeters: _number(nested['radiusMeters'], fallback: 75),
@@ -112,6 +125,7 @@ class LocationBoundaryEvent {
     required this.accuracyMeters,
     required this.recordedAt,
     this.source = 'background_geofence',
+    this.participantWorkerIds = const <String>[],
   });
 
   final String trackingSessionId;
@@ -123,6 +137,7 @@ class LocationBoundaryEvent {
   final double accuracyMeters;
   final DateTime recordedAt;
   final String source;
+  final List<String> participantWorkerIds;
 
   factory LocationBoundaryEvent.fromJson(Map<String, dynamic> json) =>
       LocationBoundaryEvent(
@@ -135,6 +150,7 @@ class LocationBoundaryEvent {
         accuracyMeters: _number(json['accuracyMeters']),
         recordedAt: _date(json['recordedAt']) ?? DateTime.now().toUtc(),
         source: _text(json['source'], fallback: 'background_geofence'),
+        participantWorkerIds: _stringList(json['participantWorkerIds']),
       );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -147,7 +163,33 @@ class LocationBoundaryEvent {
         'accuracyMeters': accuracyMeters,
         'recordedAt': recordedAt.toUtc().toIso8601String(),
         'source': source,
+        if (eventType == 'arrival' && participantWorkerIds.isNotEmpty)
+          'participantWorkerIds': _stringList(participantWorkerIds),
       };
+}
+
+class VisitWorkerSummary {
+  const VisitWorkerSummary({
+    required this.id,
+    this.displayName,
+    this.userId,
+  });
+
+  final String id;
+  final String? displayName;
+  final String? userId;
+
+  factory VisitWorkerSummary.fromJson(dynamic raw) {
+    if (raw is Map) {
+      final json = Map<String, dynamic>.from(raw);
+      return VisitWorkerSummary(
+        id: _identifier(json['_id'] ?? json['id']),
+        displayName: _optionalText(json['displayName'] ?? json['name']),
+        userId: _identifierOrNull(json['userId']),
+      );
+    }
+    return VisitWorkerSummary(id: _identifier(raw));
+  }
 }
 
 class WorkerVisit {
@@ -161,6 +203,11 @@ class WorkerVisit {
     this.departedAt,
     this.durationMinutes,
     this.status,
+    this.responsibleWorker,
+    this.participantWorkers = const <VisitWorkerSummary>[],
+    this.recordedByUserId,
+    this.lastSeenAt,
+    this.source,
   });
 
   final String id;
@@ -172,14 +219,31 @@ class WorkerVisit {
   final DateTime? departedAt;
   final int? durationMinutes;
   final String? status;
+  final VisitWorkerSummary? responsibleWorker;
+  final List<VisitWorkerSummary> participantWorkers;
+  final String? recordedByUserId;
+  final DateTime? lastSeenAt;
+  final String? source;
+
+  int get teamSize => 1 + participantWorkers.length;
 
   factory WorkerVisit.fromJson(Map<String, dynamic> json) {
-    final client = json['client'] is Map
-        ? Map<String, dynamic>.from(json['client'] as Map)
+    final rawClient = json['clientId'] is Map
+        ? json['clientId']
+        : json['client'] ?? json['clientId'];
+    final client = rawClient is Map
+        ? Map<String, dynamic>.from(rawClient)
         : const <String, dynamic>{};
-    final worker = json['worker'] is Map
-        ? Map<String, dynamic>.from(json['worker'] as Map)
-        : const <String, dynamic>{};
+    final rawWorker = json['workerId'] is Map
+        ? json['workerId']
+        : json['worker'] ?? json['workerId'];
+    final worker = VisitWorkerSummary.fromJson(rawWorker);
+    final participants = json['participantWorkerIds'] is List
+        ? (json['participantWorkerIds'] as List)
+            .map(VisitWorkerSummary.fromJson)
+            .where((item) => item.id.isNotEmpty)
+            .toList(growable: false)
+        : const <VisitWorkerSummary>[];
     final arrivedAt = _date(
       json['arrivedAt'] ??
           json['arrivalAt'] ??
@@ -193,22 +257,23 @@ class WorkerVisit {
           json['endedAt'],
     );
     final rawDuration = json['durationMinutes'] ?? json['duration'];
-    final calculatedDuration = arrivedAt != null && departedAt != null
-        ? departedAt.difference(arrivedAt).inMinutes
-        : null;
     return WorkerVisit(
       id: _text(json['_id'] ?? json['id'] ?? json['visitId']),
-      clientId: _text(json['clientId'] ?? client['_id'] ?? client['id']),
+      clientId: _identifier(client['_id'] ?? client['id'] ?? rawClient),
       clientName: _optionalText(json['clientName'] ?? client['name']),
-      workerId:
-          _optionalText(json['workerId'] ?? worker['_id'] ?? worker['id']),
-      workerName: _optionalText(json['workerName'] ?? worker['name']),
+      workerId: worker.id.isEmpty ? null : worker.id,
+      workerName: _optionalText(json['workerName']) ?? worker.displayName,
       arrivedAt: arrivedAt,
       departedAt: departedAt,
       durationMinutes: rawDuration is num
           ? rawDuration.round()
-          : int.tryParse(rawDuration?.toString() ?? '') ?? calculatedDuration,
+          : int.tryParse(rawDuration?.toString() ?? ''),
       status: _optionalText(json['status']),
+      responsibleWorker: worker.id.isEmpty ? null : worker,
+      participantWorkers: participants,
+      recordedByUserId: _identifierOrNull(json['recordedByUserId']),
+      lastSeenAt: _date(json['lastSeenAt']),
+      source: _optionalText(json['source']),
     );
   }
 }
@@ -227,6 +292,27 @@ Map<String, dynamic> _nestedEnvelope(
 String _text(dynamic value, {String fallback = ''}) {
   final result = value?.toString().trim() ?? '';
   return result.isEmpty ? fallback : result;
+}
+
+String _identifier(dynamic value) {
+  if (value is Map) {
+    return _text(value[r'$oid'] ?? value['_id'] ?? value['id']);
+  }
+  return _text(value);
+}
+
+String? _identifierOrNull(dynamic value) {
+  final result = _identifier(value);
+  return result.isEmpty ? null : result;
+}
+
+List<String> _stringList(dynamic value) {
+  if (value is! List) return const <String>[];
+  final seen = <String>{};
+  return value
+      .map(_identifier)
+      .where((item) => item.isNotEmpty && seen.add(item))
+      .toList(growable: false);
 }
 
 String? _optionalText(dynamic value) {

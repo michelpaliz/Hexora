@@ -27,6 +27,7 @@ class WorkerTimeTrackingScreen extends StatelessWidget {
   final int? initialYear;
   final int? initialMonth;
   final bool embedded;
+  final VoidCallback? onDataChanged;
 
   const WorkerTimeTrackingScreen({
     super.key,
@@ -35,6 +36,7 @@ class WorkerTimeTrackingScreen extends StatelessWidget {
     this.initialYear,
     this.initialMonth,
     this.embedded = false,
+    this.onDataChanged,
   });
 
   @override
@@ -51,14 +53,22 @@ class WorkerTimeTrackingScreen extends StatelessWidget {
         initialYear: initialYear,
         initialMonth: initialMonth,
       )..load(),
-      child: _WorkerTimeTrackingView(embedded: embedded),
+      child: _WorkerTimeTrackingView(
+        embedded: embedded,
+        onDataChanged: onDataChanged,
+      ),
     );
   }
 }
 
 class _WorkerTimeTrackingView extends StatefulWidget {
   final bool embedded;
-  const _WorkerTimeTrackingView({required this.embedded});
+  final VoidCallback? onDataChanged;
+
+  const _WorkerTimeTrackingView({
+    required this.embedded,
+    this.onDataChanged,
+  });
 
   @override
   State<_WorkerTimeTrackingView> createState() =>
@@ -177,7 +187,16 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
         ),
       ),
     );
-    if (created == true) await c.load();
+    if (created == true) {
+      await c.load();
+      widget.onDataChanged?.call();
+    }
+  }
+
+  Future<void> _reloadAfterEntryChange(BuildContext context) async {
+    final c = context.read<WorkerTimeTrackingController>();
+    await c.load();
+    widget.onDataChanged?.call();
   }
 
   Future<void> _exportExcel(BuildContext context) async {
@@ -212,6 +231,7 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     );
     if (imported) {
       await c.load();
+      widget.onDataChanged?.call();
     }
   }
 
@@ -423,7 +443,8 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                                 repo: context.read<ITimeTrackingRepository>(),
                                 getToken: () =>
                                     context.read<UserDomain>().getAuthToken(),
-                                onUpdated: c.load,
+                                onUpdated: () =>
+                                    _reloadAfterEntryChange(context),
                                 worker: c.worker,
                                 showMissingDays: _showMissingDays,
                               ),

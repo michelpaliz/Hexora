@@ -10,6 +10,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
+import 'package:hexora/a-models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/invoicing/billing_profile_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
@@ -40,12 +41,15 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/invoice_accountant_compare_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/invoice_vat_audit_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_invoice_conversion_view.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_document_workspace.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/invoice_sort_query.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_invoices_side_menu.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/group_receipts_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/invoice_row_item.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/receipts_view/receipt_detail_card.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/receipts_view/receipt_list_item.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/receipts_view/receipt_delivery_dialog.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/receipt_delivery_utils.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_receipts_flow/screens/receipt_editor/receipt_editor_wizard_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/recurring_invoices_screen.dart';
@@ -150,6 +154,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   String? _error;
   bool _busyProfile = false;
   bool _disableReceiptPreviewInteraction = false;
+  final Set<String> _updatingReceiptDeliveryIds = <String>{};
   String _selectedMenu = 'clients';
   bool _businessExpanded = false;
   bool _facturacionExpanded = false;
@@ -181,8 +186,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   InvoiceSortState get _effectiveInvoiceSortState =>
       _invoiceSortState ??
-      const InvoiceSortState(
-          by: InvoiceSortBy.number, dir: InvoiceSortDir.desc);
+      const InvoiceSortState(by: InvoiceSortBy.date, dir: InvoiceSortDir.desc);
 
   bool get _effectiveSortingInvoices => _sortingInvoices ?? false;
 
@@ -1173,6 +1177,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         groupId: widget.group.id,
         api: _clientsApi,
         client: client,
+        existingClients: _clients,
       ),
     );
     if (updated != null && mounted) {
@@ -1191,9 +1196,16 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => AddClientSheet(
+      builder: (sheetContext) => AddClientSheet(
         groupId: widget.group.id,
         api: _clientsApi,
+        existingClients: _clients,
+        onOpenExisting: (client) {
+          Navigator.of(sheetContext).pop();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _openEditClient(client);
+          });
+        },
       ),
     );
     if (created != null && mounted) {
@@ -1250,9 +1262,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         ),
         content: Text(
           l.groupInvoicesRemoveInvoiceMessage(
-            invoice.invoiceNumber.isNotEmpty
-                ? invoice.invoiceNumber
-                : l.invoicesListTitle,
+            invoice.displayNumber(draftLabel: l.statusDraft),
           ),
         ),
         actions: [
@@ -1483,11 +1493,13 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   Future<void> _issueAllDraftInvoices([List<Invoice>? scopedDrafts]) async {
     if (_issuingAllDrafts == true || _confirmingIssueAllDrafts) return;
     final source = scopedDrafts ?? _drafts;
-    final draftsToIssue = source.where(_isDraftInvoice).toList(growable: false);
+    final draftsToIssue =
+        source.where((invoice) => invoice.isDraft).toList(growable: false);
     if (draftsToIssue.isEmpty) return;
     final invoiceIds = draftsToIssue
         .map((invoice) => invoice.id.trim())
         .where((id) => id.isNotEmpty)
+        .toSet()
         .toList(growable: false);
     if (invoiceIds.isEmpty) return;
 
@@ -1544,6 +1556,19 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       successCount = result.issuedCount;
 
       if (!mounted) return;
+      if (result.invoices.isNotEmpty) {
+        final draftsById = {
+          for (final invoice in draftsToIssue) invoice.id: invoice,
+        };
+        setState(() {
+          for (final issued in result.invoices) {
+            final original = draftsById[issued.id];
+            if (original != null) {
+              _applyIssuedInvoiceLocally(original: original, updated: issued);
+            }
+          }
+        });
+      }
       await _refreshInvoiceListsOnly();
       if (!mounted) return;
 
@@ -1556,6 +1581,15 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     } on InvoicesBatchIssueException catch (e) {
       final issuedCount = e.failure?.issuedCount ?? 0;
       final failedInvoiceId = e.failure?.failedInvoiceId;
+      Invoice? failedDraft;
+      if (failedInvoiceId != null) {
+        for (final draft in draftsToIssue) {
+          if (draft.id == failedInvoiceId) {
+            failedDraft = draft;
+            break;
+          }
+        }
+      }
 
       if (mounted) {
         try {
@@ -1574,8 +1608,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
               : '$issuedCount invoices issued before the error',
         if (failedInvoiceId != null)
           isSpanish
-              ? 'Factura fallida: $failedInvoiceId'
-              : 'Failed invoice: $failedInvoiceId',
+              ? 'Fila fallida: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)'
+              : 'Failed row: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)',
         message,
       ];
       final text = parts.join(' · ');
@@ -1778,6 +1812,75 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       }
       _selectedReceipt = refreshed;
     });
+  }
+
+  void _replaceReceipt(Receipt updated) {
+    _receiptDrafts.removeWhere((receipt) => receipt.id == updated.id);
+    _receipts.removeWhere((receipt) => receipt.id == updated.id);
+    if (receiptIsIssued(updated)) {
+      _receipts = replaceReceiptById(_receipts, updated);
+    } else {
+      _receiptDrafts = replaceReceiptById(_receiptDrafts, updated);
+    }
+    if (_selectedReceipt?.id == updated.id) _selectedReceipt = updated;
+  }
+
+  Future<void> _markReceiptSent(Receipt receipt) async {
+    if (!receiptIsIssued(receipt) ||
+        _updatingReceiptDeliveryIds.contains(receipt.id)) {
+      return;
+    }
+    final selection = await showDialog<ReceiptMarkSentSelection>(
+      context: context,
+      builder: (_) => const ReceiptMarkSentDialog(),
+    );
+    if (selection == null || !mounted) return;
+
+    setState(() => _updatingReceiptDeliveryIds.add(receipt.id));
+    try {
+      final updated = await _receiptsApi.markSent(
+        receipt.id,
+        channel: selection.channel,
+        sentAt: selection.sentAt,
+      );
+      if (!mounted) return;
+      setState(() => _replaceReceipt(updated));
+      showSuccessSnack(context, 'Estado de envío actualizado.');
+    } catch (error) {
+      if (!mounted) return;
+      showErrorSnack(context, receiptDeliveryErrorMessage(error));
+    } finally {
+      if (mounted) {
+        setState(() => _updatingReceiptDeliveryIds.remove(receipt.id));
+      }
+    }
+  }
+
+  Future<void> _markReceiptUnsent(Receipt receipt) async {
+    if (!receiptIsIssued(receipt) ||
+        _updatingReceiptDeliveryIds.contains(receipt.id)) {
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const ReceiptMarkUnsentDialog(),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _updatingReceiptDeliveryIds.add(receipt.id));
+    try {
+      final updated = await _receiptsApi.markUnsent(receipt.id);
+      if (!mounted) return;
+      setState(() => _replaceReceipt(updated));
+      showSuccessSnack(context, 'Estado de envío actualizado.');
+    } catch (error) {
+      if (!mounted) return;
+      showErrorSnack(context, receiptDeliveryErrorMessage(error));
+    } finally {
+      if (mounted) {
+        setState(() => _updatingReceiptDeliveryIds.remove(receipt.id));
+      }
+    }
   }
 
   dynamic _normalizeReceiptJsonImportPayload(dynamic decoded) {

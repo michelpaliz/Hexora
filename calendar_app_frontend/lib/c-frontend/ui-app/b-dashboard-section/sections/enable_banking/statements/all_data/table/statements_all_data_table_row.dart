@@ -8,10 +8,10 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../shared/statement_entry_notes_dialog.dart';
 import '../../statements_controller.dart';
 import '../../statements_formatters.dart';
 import '../../statements_shared.dart';
-import '../../shared/statement_entry_notes_dialog.dart';
 import 'statements_all_data_table_layout.dart';
 import 'statements_all_data_table_theme.dart';
 
@@ -110,15 +110,6 @@ class StatementsAllDataTableRow extends StatelessWidget {
     );
   }
 
-  String _shortBatchId(String batchId) {
-    final trimmed = batchId.trim();
-    if (trimmed.isEmpty) return '-';
-    final digitsOnly = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-    final source = digitsOnly.isNotEmpty ? digitsOnly : trimmed;
-    if (source.length <= 3) return source;
-    return source.substring(source.length - 3);
-  }
-
   String _displayDescription(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty || RegExp(r'\d').hasMatch(trimmed)) return trimmed;
@@ -140,8 +131,6 @@ class StatementsAllDataTableRow extends StatelessWidget {
         ? StatementsAllDataTableLayout.actionsWidth
         : StatementsAllDataTableLayout.compactActionsWidth;
     final entryId = (entry['_id'] ?? entry['id'])?.toString() ?? '';
-    final batchId = entry['_batchId']?.toString() ?? '';
-    final shortBatchId = _shortBatchId(batchId);
     final date = StatementsShared.entryText(entry, ['date']);
     final valueDate = StatementsShared.entryText(entry, ['valueDate']);
     final desc = _displayDescription(
@@ -450,35 +439,6 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                   : (_) => onToggleRow(entryId),
                             ),
                           ),
-                          if (isDesktop) ...[
-                            SizedBox(
-                              width: StatementsAllDataTableLayout.batchWidth,
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Tooltip(
-                                      message: batchId.isEmpty ? '-' : batchId,
-                                      child: Text(
-                                        shortBatchId,
-                                        textAlign: TextAlign.center,
-                                        style: typography.bodySmall.copyWith(
-                                          color: tableTheme.textSecondary,
-                                          fontSize: 12.5,
-                                          fontFeatures: const [
-                                            FontFeature.tabularFigures()
-                                          ],
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                  // Copy action removed per request.
-                                ],
-                              ),
-                            ),
-                            const SizedBox(
-                                width: StatementsAllDataTableLayout.columnGap),
-                          ],
                           SizedBox(
                             width: StatementsAllDataTableLayout.dateWidth,
                             child: Text.rich(

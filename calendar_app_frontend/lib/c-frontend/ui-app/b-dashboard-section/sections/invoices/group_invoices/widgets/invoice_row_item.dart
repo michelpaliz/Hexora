@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -149,16 +149,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final isIssued =
         (widget.invoice.status ?? '').toLowerCase().contains('issue');
     final isLinked = widget.invoice.isLinkedResolved;
-    final delivery = invoiceDeliveryViewData(widget.invoice.deliveryStatus);
-    final normalizedDeliveryStatus =
-        normalizeDeliveryStatus(widget.invoice.deliveryStatus);
-    final sentAtLabel = widget.invoice.sentAt == null
-        ? null
-        : DateFormat.yMMMd(l.localeName)
-            .add_Hm()
-            .format(widget.invoice.sentAt!.toLocal());
-    final channelLabel =
-        invoiceDeliveryChannelLabelEs(widget.invoice.deliveryChannel);
     final invoiceType = (widget.invoice.invoiceType ?? '').trim().toLowerCase();
     final showInvoiceType = invoiceType == 'advance' || invoiceType == 'final';
     final isEs = l.localeName.toLowerCase().startsWith('es');
@@ -187,11 +177,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       if (issuedAtLabel != null) issuedAtLabel,
     ].join(' · ');
 
-    final deliveryIcon = switch (normalizedDeliveryStatus) {
-      'sent' => Icons.mark_email_read_outlined,
-      'failed' => Icons.error_outline,
-      _ => Icons.mark_email_unread_outlined,
-    };
     final statusIconColor =
         isIssued ? cs.primary : cs.onSurface.withValues(alpha: 0.45);
     final linkIconColor =
@@ -203,16 +188,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         : (isLinked
             ? l.statementsInvoiceAlreadyLinkedBadge
             : l.statementsUnlinked);
-    final effectiveDeliveryColor = switch (normalizedDeliveryStatus) {
-      'sent' => cs.primary,
-      'failed' => cs.error,
-      _ => cs.onSurface.withValues(alpha: 0.45),
-    };
-    final deliveryTooltip = [
-      delivery.labelEs,
-      if (sentAtLabel != null) sentAtLabel,
-      if (normalizedDeliveryStatus == 'sent') channelLabel,
-    ].join(' · ');
 
     final isSelected = widget.selected;
     final isActive = isSelected || _hovered;
@@ -422,7 +397,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                           Expanded(
                             child: Text(
                               [
-                                widget.invoice.invoiceNumber,
+                                widget.invoice.displayNumber(
+                                  draftLabel: l.statusDraft,
+                                ),
                                 if (_lineCount != null || _loadingMeta)
                                   '${l.invoiceLinesTitle}: $linesCountLabel',
                                 if (dateLabel.isNotEmpty) dateLabel,
@@ -443,15 +420,20 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                           _StatusPill(
                             isIssued: isIssued,
                             isLinked: isLinked,
-                            deliveryIcon: deliveryIcon,
                             statusIconColor: statusIconColor,
                             linkIconColor: linkIconColor,
-                            deliveryColor: effectiveDeliveryColor,
                             statusTooltip: isIssued
                                 ? '${l.statusIssued}\n$issuedByTooltip'
                                 : l.statusDraft,
                             linkTooltip: linkTooltip,
-                            deliveryTooltip: deliveryTooltip,
+                            deliveryBadge: DeliveryStatusBadge(
+                              status: widget.invoice.deliveryStatus,
+                              channel: widget.invoice.deliveryChannel,
+                              sentAt: widget.invoice.sentAt,
+                              deliveryError: widget.invoice.deliveryError,
+                              compact: true,
+                              feminine: true,
+                            ),
                           ),
                           const SizedBox(width: 6),
 
@@ -715,24 +697,20 @@ class _DetailChip extends StatelessWidget {
 class _StatusPill extends StatelessWidget {
   final bool isIssued;
   final bool isLinked;
-  final IconData deliveryIcon;
   final Color statusIconColor;
   final Color linkIconColor;
-  final Color deliveryColor;
   final String statusTooltip;
   final String linkTooltip;
-  final String deliveryTooltip;
+  final Widget deliveryBadge;
 
   const _StatusPill({
     required this.isIssued,
     required this.isLinked,
-    required this.deliveryIcon,
     required this.statusIconColor,
     required this.linkIconColor,
-    required this.deliveryColor,
     required this.statusTooltip,
     required this.linkTooltip,
-    required this.deliveryTooltip,
+    required this.deliveryBadge,
   });
 
   @override
@@ -760,11 +738,7 @@ class _StatusPill extends StatelessWidget {
             color: linkIconColor,
             tooltip: linkTooltip,
           ),
-          _PillIcon(
-            icon: deliveryIcon,
-            color: deliveryColor,
-            tooltip: deliveryTooltip,
-          ),
+          deliveryBadge,
           Icon(
             Icons.keyboard_arrow_down_rounded,
             size: 12,

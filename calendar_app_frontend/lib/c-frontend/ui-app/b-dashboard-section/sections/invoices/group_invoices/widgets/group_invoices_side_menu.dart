@@ -97,7 +97,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
         (
           key: 'budgets',
           icon: Icons.request_quote_outlined,
-          label: 'Presupuestos'
+          label: 'Presupuestos por partidas'
         ),
         (key: 'receipts', icon: Icons.description_outlined, label: 'Recibos'),
       ];
@@ -374,10 +374,16 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           onPressed: () => onMenuChanged('recurring'),
                         ),
                         const SizedBox(height: 4),
-                        GroupInvoicesSectionLabel(l.budgetsMenuSection),
+                        GroupInvoicesSectionLabel(
+                          isEs
+                              ? 'Presupuestos por partidas'
+                              : 'Itemized budgets',
+                        ),
                         GroupInvoicesSubMenuItem(
                           icon: Icons.add_rounded,
-                          label: l.budgetsMenuNew,
+                          label: isEs
+                              ? 'Nuevo presupuesto por partidas'
+                              : 'New itemized budget',
                           selected: selectedMenu == 'budgets_new',
                           primaryAction: true,
                           indent: childIndent,
@@ -385,7 +391,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                         ),
                         GroupInvoicesSubMenuItem(
                           icon: Icons.format_list_bulleted_outlined,
-                          label: l.budgetsMenuList,
+                          label: isEs ? 'Todos' : 'All',
                           selected: selectedMenu == 'budgets_list',
                           indent: childIndent,
                           onPressed: () => onMenuChanged('budgets_list'),

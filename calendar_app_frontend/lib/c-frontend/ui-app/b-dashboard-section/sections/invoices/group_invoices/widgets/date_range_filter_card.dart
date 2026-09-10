@@ -11,6 +11,7 @@ class DateRangeFilterCard extends StatelessWidget {
   final DateTime? fromDate;
   final DateTime? toDate;
   final bool showLabel;
+  final bool showCollapsedRange;
   final List<Widget>? labelActions;
   final VoidCallback onToggleExpanded;
   final VoidCallback onClear;
@@ -25,6 +26,7 @@ class DateRangeFilterCard extends StatelessWidget {
     required this.fromDate,
     required this.toDate,
     this.showLabel = true,
+    this.showCollapsedRange = true,
     this.labelActions,
     required this.onToggleExpanded,
     required this.onClear,
@@ -124,7 +126,7 @@ class DateRangeFilterCard extends StatelessWidget {
               onPickFrom: onPickFrom,
               onPickTo: onPickTo,
             ),
-          ] else if (hasFilter) ...[
+          ] else if (hasFilter && showCollapsedRange) ...[
             const SizedBox(height: 4),
             Text(
               '$fromLabel — $toLabel',

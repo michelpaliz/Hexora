@@ -20,7 +20,8 @@ class InvoicePdfPreviewCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     final ready = savedInvoice != null;
-    final subtitle = ready ? l.invoicePdfReadyToPreview : l.invoiceSaveDraftToPreview;
+    final subtitle =
+        ready ? l.invoicePdfReadyToPreview : l.invoiceSaveDraftToPreview;
 
     return Card(
       elevation: 1,
@@ -63,7 +64,8 @@ class InvoicePdfPreviewCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+                border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.35)),
               ),
               child: Row(
                 children: [
@@ -94,7 +96,9 @@ class InvoicePdfPreviewCard extends StatelessWidget {
                         if (ready) ...[
                           const SizedBox(height: 4),
                           Text(
-                            savedInvoice!.invoiceNumber,
+                            savedInvoice!.displayNumber(
+                              draftLabel: l.statusDraft.toUpperCase(),
+                            ),
                             style: t.bodyMedium.copyWith(
                               fontWeight: FontWeight.w800,
                             ),

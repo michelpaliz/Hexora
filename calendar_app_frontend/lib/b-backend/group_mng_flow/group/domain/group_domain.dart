@@ -35,6 +35,13 @@ class GroupDomain extends ChangeNotifier {
       ValueNotifier<Map<String, UserInviteStatus>?>(null);
 
   bool _groupsInitialized = false;
+  bool _groupsLoading = false;
+  Object? _groupsLoadError;
+  String? _lastGroupRefreshKey;
+  int _groupsRefreshGeneration = 0;
+
+  bool get groupsLoading => _groupsLoading;
+  Object? get groupsLoadError => _groupsLoadError;
 
   GroupDomain({
     required this.groupRepository,
@@ -49,18 +56,45 @@ class GroupDomain extends ChangeNotifier {
   void setCurrentUser(User? user) {
     if (user == null) return;
     currentUser = user;
-
-    if (!_groupsInitialized) {
-      _groupsInitialized = true;
-      _initialRefreshForUser(currentUser);
-    }
+    final refreshKey = _groupRefreshKey(user);
+    if (_groupsInitialized && _lastGroupRefreshKey == refreshKey) return;
+    _groupsInitialized = true;
+    _lastGroupRefreshKey = refreshKey;
+    unawaited(_refreshGroupsForUser(user));
   }
 
-  Future<void> _initialRefreshForUser(User user) async {
+  String _groupRefreshKey(User user) {
+    final ids = user.groupIds.toSet().toList()..sort();
+    return '${user.id}|${user.userName}|${ids.join(',')}';
+  }
+
+  int _beginGroupsRefresh() {
+    final generation = ++_groupsRefreshGeneration;
+    _groupsLoading = true;
+    _groupsLoadError = null;
+    notifyListeners();
+    return generation;
+  }
+
+  void _finishGroupsRefresh(int generation, {Object? error}) {
+    if (generation != _groupsRefreshGeneration) return;
+    _groupsLoading = false;
+    _groupsLoadError = error;
+    notifyListeners();
+  }
+
+  Future<void> _refreshGroupsForUser(User user) async {
+    final generation = _beginGroupsRefresh();
     try {
-      await groupRepository.refreshUserGroupsByIds(user.id, user.groupIds);
+      await groupRepository.refreshUserGroupsByIds(
+        user.id,
+        user.groupIds,
+        userName: user.userName,
+      );
+      _finishGroupsRefresh(generation);
     } catch (e) {
       devtools.log('❌ initial group refresh failed: $e');
+      _finishGroupsRefresh(generation, error: e);
     }
   }
 
@@ -84,13 +118,26 @@ class GroupDomain extends ChangeNotifier {
 
   /// Re-fetches the current user, then refreshes the repo stream from latest groupIds.
   Future<void> refreshGroupsForCurrentUser(UserDomain userDomain) async {
-    final freshUser = await userDomain.getUser();
-    if (freshUser != null) {
-      userDomain.setCurrentUser(freshUser);
+    final generation = _beginGroupsRefresh();
+    try {
+      final freshUser = await userDomain.getUser();
+      final effectiveUser = freshUser ?? userDomain.user;
+      if (effectiveUser == null) {
+        throw StateError('No current user is available.');
+      }
+      if (freshUser != null) userDomain.setCurrentUser(freshUser);
+      currentUser = effectiveUser;
+      _groupsInitialized = true;
+      _lastGroupRefreshKey = _groupRefreshKey(effectiveUser);
       await groupRepository.refreshUserGroupsByIds(
-        freshUser.id,
-        freshUser.groupIds,
+        effectiveUser.id,
+        effectiveUser.groupIds,
+        userName: effectiveUser.userName,
       );
+      _finishGroupsRefresh(generation);
+    } catch (error) {
+      devtools.log('❌ group refresh failed: $error');
+      _finishGroupsRefresh(generation, error: error);
     }
   }
 

@@ -20,6 +20,7 @@ class WorkerMonthlyOverviewInline extends StatefulWidget {
   final ITimeTrackingRepository repo;
   final Future<String> Function() getToken;
   final VoidCallback? onBack;
+  final VoidCallback? onDataChanged;
 
   const WorkerMonthlyOverviewInline({
     super.key,
@@ -28,6 +29,7 @@ class WorkerMonthlyOverviewInline extends StatefulWidget {
     required this.repo,
     required this.getToken,
     this.onBack,
+    this.onDataChanged,
   });
 
   @override
@@ -102,6 +104,34 @@ class _WorkerMonthlyOverviewInlineState
     }
   }
 
+  Future<void> _reloadMonth(int year, int month) async {
+    try {
+      final token = await widget.getToken();
+      final fromLocal = DateTime(year, month, 1);
+      final toLocal =
+          month < 12 ? DateTime(year, month + 1, 1) : DateTime(year + 1, 1, 1);
+      final totals = await widget.repo.getWorkerTotals(
+        widget.group.id,
+        token,
+        workerId: widget.worker.id,
+        from: fromLocal.toUtc(),
+        to: toLocal.toUtc(),
+      );
+
+      if (!mounted || _year != year) return;
+      setState(() {
+        _monthlyTotals = {
+          ..._monthlyTotals,
+          month: totals,
+        };
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -139,15 +169,14 @@ class _WorkerMonthlyOverviewInlineState
                                       locale: locale,
                                       selectedMonth: _selectedMonth,
                                       monthlyTotals: _monthlyTotals,
-                                      onTapMonth: (month) =>
-                                          setState(() => _selectedMonth = month),
+                                      onTapMonth: (month) => setState(
+                                          () => _selectedMonth = month),
                                       subtitleBuilder: (totals) {
                                         final hours =
                                             totals?['totalHours'] ?? '0.00';
                                         final pay =
                                             totals?['totalPay'] ?? '0.00';
-                                        final curr =
-                                            totals?['currency'] ?? '';
+                                        final curr = totals?['currency'] ?? '';
                                         return l.totalHoursAndPayFormat(
                                           hours.toString(),
                                           '$pay $curr',
@@ -158,8 +187,8 @@ class _WorkerMonthlyOverviewInlineState
                                       year: _year,
                                       selectedMonth: _selectedMonth,
                                       monthlyTotals: _monthlyTotals,
-                                      onTapMonth: (month) =>
-                                          setState(() => _selectedMonth = month),
+                                      onTapMonth: (month) => setState(
+                                          () => _selectedMonth = month),
                                       monthNameBuilder: (month) {
                                         return DateFormat.MMMM(locale)
                                             .format(DateTime(_year, month, 1))
@@ -170,8 +199,7 @@ class _WorkerMonthlyOverviewInlineState
                                             totals?['totalHours'] ?? '0.00';
                                         final pay =
                                             totals?['totalPay'] ?? '0.00';
-                                        final curr =
-                                            totals?['currency'] ?? '';
+                                        final curr = totals?['currency'] ?? '';
                                         return l.totalHoursAndPayFormat(
                                           hours.toString(),
                                           '$pay $curr',
@@ -194,6 +222,10 @@ class _WorkerMonthlyOverviewInlineState
                       initialYear: _year,
                       initialMonth: _selectedMonth,
                       embedded: true,
+                      onDataChanged: () {
+                        _reloadMonth(_year, _selectedMonth);
+                        widget.onDataChanged?.call();
+                      },
                     ),
                   ),
                 ],

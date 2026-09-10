@@ -29,6 +29,9 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   final TextEditingController _yearController = TextEditingController();
   final TextEditingController _fromController = TextEditingController();
   final TextEditingController _toController = TextEditingController();
+  final TextEditingController _descriptionSearchController =
+      TextEditingController();
+  final TextEditingController _notesSearchController = TextEditingController();
   final TextEditingController _clientProviderController =
       TextEditingController();
   final List<int> _sizeOptions = const [50, 100, 200];
@@ -68,6 +71,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     _yearController.dispose();
     _fromController.dispose();
     _toController.dispose();
+    _descriptionSearchController.dispose();
+    _notesSearchController.dispose();
     _clientProviderController.removeListener(_onClientProviderTyped);
     _clientProviderController.dispose();
     super.dispose();
@@ -166,6 +171,31 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       if (localDate.isAfter(end)) return false;
     }
     return true;
+  }
+
+  bool _entryMatchesDescriptionSearch(Map<String, dynamic> entry) {
+    final words = _descriptionSearchController.text
+        .trim()
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty);
+    final searchableText = const [
+      'description',
+      'details',
+      'merchantNormalized'
+    ].map((key) => entry[key]?.toString().toLowerCase() ?? '').join(' ');
+    return words.every(searchableText.contains);
+  }
+
+  bool _entryMatchesNotesSearch(Map<String, dynamic> entry) {
+    final words = _notesSearchController.text
+        .trim()
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty);
+    if (words.isEmpty) return true;
+    final notes = StatementsShared.entryText(entry, ['notes']).toLowerCase();
+    return words.every(notes.contains);
   }
 
   String _clientProviderLabel(
@@ -597,6 +627,160 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     }
   }
 
+  Future<void> _showDescriptionFilterDialog(StatementsController s) async {
+    final queryController =
+        TextEditingController(text: _descriptionSearchController.text);
+    var applied = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final l = AppLocalizations.of(dialogContext)!;
+        final cs = Theme.of(dialogContext).colorScheme;
+        final isSpanish = l.localeName.toLowerCase().startsWith('es');
+
+        void applyAndClose() {
+          _descriptionSearchController.text = queryController.text.trim();
+          applied = true;
+          Navigator.of(dialogContext).pop();
+        }
+
+        return AlertDialog(
+          backgroundColor: cs.surface,
+          surfaceTintColor: Colors.transparent,
+          title: Text(l.statementsHeaderDescription),
+          content: SizedBox(
+            width: 400,
+            child: TextField(
+              controller: queryController,
+              enabled: !s.loadingAllEntries,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => applyAndClose(),
+              decoration: InputDecoration(
+                labelText: isSpanish
+                    ? 'Buscar por descripción'
+                    : 'Search by description',
+                helperText: isSpanish
+                    ? 'Todas las palabras deben coincidir.'
+                    : 'Every word must match.',
+                border: const OutlineInputBorder(),
+                isDense: true,
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon: IconButton(
+                  tooltip: l.statementsClearFilters,
+                  onPressed: queryController.clear,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: s.loadingAllEntries
+                  ? null
+                  : () {
+                      _descriptionSearchController.clear();
+                      applied = true;
+                      Navigator.of(dialogContext).pop();
+                    },
+              child: Text(isSpanish ? 'Limpiar' : 'Clear'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l.close),
+            ),
+            FilledButton.icon(
+              onPressed: s.loadingAllEntries ? null : applyAndClose,
+              icon: const Icon(Icons.search_rounded, size: 18),
+              label: Text(isSpanish ? 'Buscar' : 'Search'),
+            ),
+          ],
+        );
+      },
+    );
+    queryController.dispose();
+    if (applied && mounted) {
+      await _applyFilters(s);
+    }
+  }
+
+  Future<void> _showNotesFilterDialog(StatementsController s) async {
+    final queryController =
+        TextEditingController(text: _notesSearchController.text);
+    var applied = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final l = AppLocalizations.of(dialogContext)!;
+        final cs = Theme.of(dialogContext).colorScheme;
+        final isSpanish = l.localeName.toLowerCase().startsWith('es');
+
+        void applyAndClose() {
+          _notesSearchController.text = queryController.text.trim();
+          applied = true;
+          Navigator.of(dialogContext).pop();
+        }
+
+        return AlertDialog(
+          backgroundColor: cs.surface,
+          surfaceTintColor: Colors.transparent,
+          title: Text(isSpanish ? 'Notas' : 'Notes'),
+          content: SizedBox(
+            width: 400,
+            child: TextField(
+              controller: queryController,
+              enabled: !s.loadingAllEntries,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => applyAndClose(),
+              decoration: InputDecoration(
+                labelText: isSpanish ? 'Buscar en notas' : 'Search by notes',
+                helperText: isSpanish
+                    ? 'Todas las palabras deben estar en la nota.'
+                    : 'Every word must appear in the note.',
+                border: const OutlineInputBorder(),
+                isDense: true,
+                prefixIcon: const Icon(Icons.sticky_note_2_outlined, size: 20),
+                suffixIcon: IconButton(
+                  tooltip: l.statementsClearFilters,
+                  onPressed: queryController.clear,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: s.loadingAllEntries
+                  ? null
+                  : () {
+                      _notesSearchController.clear();
+                      applied = true;
+                      Navigator.of(dialogContext).pop();
+                    },
+              child: Text(isSpanish ? 'Limpiar' : 'Clear'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l.close),
+            ),
+            FilledButton.icon(
+              onPressed: s.loadingAllEntries ? null : applyAndClose,
+              icon: const Icon(Icons.search_rounded, size: 18),
+              label: Text(isSpanish ? 'Buscar' : 'Search'),
+            ),
+          ],
+        );
+      },
+    );
+    queryController.dispose();
+    if (applied && mounted) {
+      await _applyFilters(s);
+    }
+  }
+
   Future<void> _showClientProviderFilterDialog(StatementsController s) async {
     final queryController =
         TextEditingController(text: _clientProviderController.text);
@@ -685,7 +869,10 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       minAmount: _amountMinFilter,
       maxAmount: _amountMaxFilter,
       clientProviderQuery: _clientProviderController.text.trim(),
+      descriptionSearch: _descriptionSearchController.text.trim(),
+      notesSearch: _notesSearchController.text.trim(),
       sort: 'date_desc',
+      applyDateFilters: true,
       applyAmountFilters: true,
     );
     _selectedIds.clear();
@@ -760,6 +947,30 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
           ),
           onDeleted: () async {
             _clientProviderController.clear();
+            await _applyFilters(s);
+          },
+        ),
+      );
+    }
+    if ((s.allEntriesDescriptionSearch ?? '').isNotEmpty) {
+      chips.add(
+        InputChip(
+          label: Text(
+            '${l.statementsHeaderDescription}: ${s.allEntriesDescriptionSearch}',
+          ),
+          onDeleted: () async {
+            _descriptionSearchController.clear();
+            await _applyFilters(s);
+          },
+        ),
+      );
+    }
+    if ((s.allEntriesNotesSearch ?? '').isNotEmpty) {
+      chips.add(
+        InputChip(
+          label: Text('Notas: ${s.allEntriesNotesSearch}'),
+          onDeleted: () async {
+            _notesSearchController.clear();
             await _applyFilters(s);
           },
         ),
@@ -1261,7 +1472,17 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final dateFilteredEntries = s.isUsingAggregatedEntriesPath
         ? s.allEntries
         : s.allEntries.where(_entryMatchesDateFilters).toList(growable: false);
-    final partyFilteredEntries = dateFilteredEntries
+    final descriptionFilteredEntries = s.isUsingAggregatedEntriesPath
+        ? dateFilteredEntries
+        : dateFilteredEntries
+            .where(_entryMatchesDescriptionSearch)
+            .toList(growable: false);
+    final notesFilteredEntries = s.isUsingAggregatedEntriesPath
+        ? descriptionFilteredEntries
+        : descriptionFilteredEntries
+            .where(_entryMatchesNotesSearch)
+            .toList(growable: false);
+    final partyFilteredEntries = notesFilteredEntries
         .where((entry) => _entryMatchesClientProviderFilter(l, s, entry))
         .toList(growable: false);
     final amountFilteredEntries = s.isUsingAggregatedEntriesPath
@@ -1330,6 +1551,14 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     if (s.allEntriesDateTo != null &&
         _toController.text != s.allEntriesDateTo) {
       _toController.text = s.allEntriesDateTo ?? '';
+    }
+    final descriptionSearch = s.allEntriesDescriptionSearch ?? '';
+    if (_descriptionSearchController.text != descriptionSearch) {
+      _descriptionSearchController.text = descriptionSearch;
+    }
+    final notesSearch = s.allEntriesNotesSearch ?? '';
+    if (_notesSearchController.text != notesSearch) {
+      _notesSearchController.text = notesSearch;
     }
 
     final freshnessBatchId = _resolveFreshnessBatchId(s);
@@ -1517,6 +1746,14 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                         dateFilterActive: s.allEntriesYear != null ||
                             (s.allEntriesDateFrom?.isNotEmpty ?? false) ||
                             (s.allEntriesDateTo?.isNotEmpty ?? false),
+                        onDescriptionFilterTap: () =>
+                            _showDescriptionFilterDialog(s),
+                        descriptionFilterActive:
+                            (s.allEntriesDescriptionSearch?.isNotEmpty ??
+                                false),
+                        onNotesFilterTap: () => _showNotesFilterDialog(s),
+                        notesFilterActive:
+                            (s.allEntriesNotesSearch?.isNotEmpty ?? false),
                         onAmountFilterTap: _showAmountFilterDialog,
                         amountFilterActive: _amountMinFilter != null ||
                             _amountMaxFilter != null ||

@@ -8,7 +8,49 @@ import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 
+class ClientsApiException implements Exception {
+  const ClientsApiException({
+    required this.statusCode,
+    required this.message,
+    required this.responseData,
+  });
+
+  final int statusCode;
+  final String message;
+  final Map<String, dynamic>? responseData;
+
+  factory ClientsApiException.fromResponse(http.Response response) {
+    Map<String, dynamic>? data;
+    if (response.body.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) {
+          data = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+    final error = data?['error']?.toString().trim() ?? '';
+    final fallbackMessage = data?['message']?.toString().trim() ?? '';
+    final message = error.isNotEmpty
+        ? error
+        : fallbackMessage.isNotEmpty
+            ? fallbackMessage
+            : response.reasonPhrase ?? 'Request failed';
+    return ClientsApiException(
+      statusCode: response.statusCode,
+      message: message,
+      responseData: data,
+    );
+  }
+
+  @override
+  String toString() => message;
+}
+
 class ClientsApi {
+  ClientsApi({http.Client? client}) : _client = client;
+
+  final http.Client? _client;
   final String _base = '${ApiConstants.baseUrl}/clients';
 
   Map<String, String> _headers() => {
@@ -34,16 +76,7 @@ class ClientsApi {
       'status=${r.statusCode} body=${r.body}',
       name: 'ClientsApi',
     );
-    String msg;
-    try {
-      final j = jsonDecode(r.body);
-      msg = j is Map && j['message'] is String
-          ? j['message']
-          : r.reasonPhrase ?? 'Request failed';
-    } catch (_) {
-      msg = r.reasonPhrase ?? 'Request failed';
-    }
-    throw Exception(msg);
+    throw ClientsApiException.fromResponse(r);
   }
 
   // GET /clients?groupId=...&active=true|false
@@ -183,6 +216,7 @@ class ClientsApi {
           'label': location.label!.trim(),
         'isEnabled': location.isEnabled,
       }),
+      client: _client,
     );
     return _decode<ClientServiceLocation>(r, (json) {
       if (json is! Map) throw Exception('Unexpected service location payload');
@@ -199,6 +233,17 @@ class ClientsApi {
       });
     });
   }
+
+  Future<void> clearServiceLocation(String clientId) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/${Uri.encodeComponent(clientId)}/service-location'),
+      headers: _headers(),
+      body: jsonEncode(const <String, dynamic>{'clear': true}),
+      client: _client,
+    );
+    _decode<void>(r, (_) {});
+  }
+
   // PATCH /clients/:id/active  { isActive: true|false }
   Future<GroupClient> setActive(String id, bool isActive) async {
     final r = await AuthenticatedHttpClient.patch(

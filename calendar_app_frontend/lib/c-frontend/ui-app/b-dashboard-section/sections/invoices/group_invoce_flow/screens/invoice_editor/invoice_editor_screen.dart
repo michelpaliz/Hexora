@@ -5,13 +5,12 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_controller.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_app_bar.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_form.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_dates_step.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_form/invoice_content_section.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/client_search_select.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
-import 'package:hexora/c-frontend/ui-app/shared/widgets/wizard_steps_header.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -57,7 +56,6 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
   String? _lastSavedInvoiceStatus;
   bool _lastReportedUnsaved = false;
   int _lastDataRevision = 0;
-  final bool _headerCompact = false;
   late final TabController _tabController;
 
   @override
@@ -106,10 +104,6 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
       _lastReportedUnsaved = _c.draftDirty;
       widget.onUnsavedStateChanged?.call(_c.draftDirty);
     }
-  }
-
-  void _handleClose() {
-    _closeNow();
   }
 
   void _closeNow() {

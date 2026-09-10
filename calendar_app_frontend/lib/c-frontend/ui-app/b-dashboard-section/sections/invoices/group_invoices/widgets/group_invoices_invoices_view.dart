@@ -17,6 +17,8 @@ enum InvoiceSortBy { date, number }
 
 enum InvoiceSortDir { asc, desc }
 
+enum _InvoiceHeaderAction { toggleUnlinked, resolveLinks }
+
 class InvoiceDateFilterState {
   const InvoiceDateFilterState({
     required this.fromDate,
@@ -414,7 +416,6 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   bool _unlinkedLoading = false;
   String? _unlinkedError;
   List<Invoice>? _unlinkedInvoices;
-  bool _paymentSuggestionsVisible = false;
   bool _paymentSuggestionsLoading = false;
   bool _downloadingFiltered = false;
   String? _paymentSuggestionsError;
@@ -443,11 +444,6 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
         (oldWidget.sortState != widget.sortState ||
             oldWidget.groupId != widget.groupId)) {
       _loadUnlinkedInvoices();
-    }
-    if (_paymentSuggestionsVisible &&
-        (oldWidget.groupId != widget.groupId ||
-            oldWidget.sortState != widget.sortState)) {
-      _loadPaymentSuggestions();
     }
   }
 
@@ -518,7 +514,6 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
 
   void _refreshFilteredData() {
     _loadSummaryTotals();
-    if (_paymentSuggestionsVisible) _loadPaymentSuggestions();
   }
 
   (String?, String?) _invoiceSortParams() {
@@ -561,7 +556,6 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       _unlinkedOnly = next;
       if (!next) {
         _unlinkedError = null;
-        _paymentSuggestionsVisible = false;
         _paymentSuggestionsError = null;
       }
     });
@@ -600,21 +594,212 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     }
   }
 
-  void _togglePaymentSuggestions() {
-    final next = !_paymentSuggestionsVisible;
-    setState(() {
-      _paymentSuggestionsVisible = next;
-      if (next) _unlinkedOnly = true;
-      if (!next) _paymentSuggestionsError = null;
-    });
-    if (next) {
-      if (_unlinkedInvoices == null) _loadUnlinkedInvoices();
-      _loadPaymentSuggestions();
-    }
+  Future<void> _openPaymentSuggestionsDialog() async {
+    await Future.wait([
+      _loadUnlinkedInvoices(),
+      _loadPaymentSuggestions(),
+    ]);
+    if (!mounted) return;
+
+    final invoices = (_unlinkedInvoices ?? const <Invoice>[]).where((invoice) {
+      final date = _invoiceDate(invoice);
+      if (_fromDate != null &&
+          (date == null || date.isBefore(_startOfDay(_fromDate!)))) {
+        return false;
+      }
+      if (_toDate != null &&
+          (date == null || date.isAfter(_endOfDay(_toDate!)))) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final cs = Theme.of(dialogContext).colorScheme;
+        final t = AppTypography.of(dialogContext);
+        final isSpanish =
+            Localizations.localeOf(dialogContext).languageCode == 'es';
+        final size = MediaQuery.sizeOf(dialogContext);
+
+        return Dialog(
+          insetPadding: const EdgeInsets.all(24),
+          child: SizedBox(
+            width: size.width.clamp(0, 820).toDouble(),
+            height: (size.height - 48).clamp(320, 680).toDouble(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 12, 12),
+                  child: Row(
+                    children: [
+                      Icon(Icons.auto_fix_high_rounded, color: cs.primary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isSpanish ? 'Resolver vínculos' : 'Resolve links',
+                              style: t.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isSpanish
+                                  ? 'Revisa los pagos sugeridos para ${invoices.length} facturas no vinculadas.'
+                                  : 'Review suggested payments for ${invoices.length} unlinked invoices.',
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: isSpanish ? 'Cerrar' : 'Close',
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                if ((_paymentSuggestionsError ?? '').trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      _paymentSuggestionsError!.trim(),
+                      style: t.bodySmall.copyWith(color: cs.error),
+                    ),
+                  )
+                else if (invoices.isEmpty)
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        isSpanish
+                            ? 'No hay facturas sin vincular en este periodo.'
+                            : 'There are no unlinked invoices in this period.',
+                        style: t.bodyMedium.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: invoices.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (_, index) {
+                        final invoice = invoices[index];
+                        final client = _resolveInvoiceClient(
+                          invoice,
+                          widget.clients,
+                          AppLocalizations.of(dialogContext)!,
+                        );
+                        return Container(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: cs.outlineVariant.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () {
+                                  Navigator.of(dialogContext).pop();
+                                  widget.onTap(invoice);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 2,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              invoice.displayNumber(
+                                                draftLabel: AppLocalizations.of(
+                                                  dialogContext,
+                                                )!
+                                                    .statusDraft,
+                                              ),
+                                              style: t.bodyMedium.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            Text(
+                                              client.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: t.bodySmall.copyWith(
+                                                color: cs.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.open_in_new_rounded,
+                                        size: 17,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              _PaymentSuggestionStrip(
+                                suggestion:
+                                    _paymentSuggestionsByInvoiceId[invoice.id],
+                                loading: false,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   DateTime? _invoiceDate(Invoice inv) =>
       inv.issueDate ?? inv.registeredAt ?? inv.occurrenceDate;
+
+  int _compareInvoiceFallback(Invoice a, Invoice b) {
+    final aDate = a.issueDate ?? a.registeredAt;
+    final bDate = b.issueDate ?? b.registeredAt;
+    if (aDate != null && bDate != null) {
+      final dateComparison = aDate.compareTo(bDate);
+      if (dateComparison != 0) return dateComparison;
+    } else if (aDate != null) {
+      return -1;
+    } else if (bDate != null) {
+      return 1;
+    }
+    return a.id.compareTo(b.id);
+  }
 
   bool _sameCalendarMonth(DateTime a, DateTime b) {
     final left = a.toLocal();
@@ -798,7 +983,10 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
                   }
                 }
                 final rows = <({String label, String value})>[
-                  (label: 'Factura', value: invoice.invoiceNumber),
+                  (
+                    label: 'Factura',
+                    value: invoice.displayNumber(draftLabel: l.statusDraft),
+                  ),
                   (label: 'Serie recurrente', value: seriesId),
                   if (series != null)
                     (label: 'Regla', value: _seriesLabel(series)),
@@ -972,6 +1160,26 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     _refreshFilteredData();
   }
 
+  Future<void> _pickCustomDateRange() async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      initialDateRange: _fromDate == null || _toDate == null
+          ? null
+          : DateTimeRange(start: _fromDate!, end: _toDate!),
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked == null) return;
+    setState(() {
+      _fromDate = picked.start;
+      _toDate = picked.end;
+      _quickRange = DateQuickRange.custom;
+    });
+    _notifyDateFilterChanged();
+    _refreshFilteredData();
+  }
+
   Map<String, dynamic> _summaryFromInvoices(List<Invoice> invoices) {
     num subtotal = 0;
     num taxTotal = 0;
@@ -1018,7 +1226,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
         if (compare != 0) {
           return _clientNameSortDir == InvoiceSortDir.asc ? compare : -compare;
         }
-        return a.invoiceNumber.compareTo(b.invoiceNumber);
+        return _compareInvoiceFallback(a, b);
       });
     }
     final summaryTotals =
@@ -1170,17 +1378,20 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
                 );
               }
 
+              final draftsToIssue = visible
+                  .where((invoice) => invoice.isDraft)
+                  .toList(growable: false);
               final canIssueAll =
-                  widget.onIssueAll != null && visible.isNotEmpty;
+                  widget.onIssueAll != null && draftsToIssue.isNotEmpty;
               final issueAllButton = canIssueAll
                   ? Tooltip(
                       message: isSpanish
-                          ? 'Emitir todos los borradores (${visible.length})'
-                          : 'Issue all drafts (${visible.length})',
+                          ? 'Emitir todos los borradores (${draftsToIssue.length})'
+                          : 'Issue all drafts (${draftsToIssue.length})',
                       child: FilledButton.tonalIcon(
                         onPressed: widget.issueAllLoading == true
                             ? null
-                            : () => widget.onIssueAll!(visible),
+                            : () => widget.onIssueAll!(draftsToIssue),
                         style: FilledButton.styleFrom(
                           backgroundColor: issueAllBackground,
                           foregroundColor: issueAllForeground,
@@ -1214,25 +1425,28 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
                     )
                   : null;
 
-              Widget iconToggleButton({
-                required bool active,
-                required bool loading,
+              Widget compactSortButton({
                 required IconData icon,
-                required String tooltip,
+                required String label,
+                required bool active,
+                required bool ascending,
                 required VoidCallback onTap,
               }) {
+                final foreground =
+                    active ? cs.onPrimaryContainer : cs.onSurfaceVariant;
                 return Tooltip(
-                  message: tooltip,
+                  message:
+                      '$label · ${isSpanish ? (ascending ? 'ascendente' : 'descendente') : (ascending ? 'ascending' : 'descending')}',
                   child: InkWell(
-                    onTap: onTap,
+                    onTap: widget.sortLoading ? null : onTap,
                     borderRadius: BorderRadius.circular(999),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 160),
-                      padding: const EdgeInsets.all(7),
+                      width: 30,
+                      height: 30,
                       decoration: BoxDecoration(
-                        color: active
-                            ? cs.primaryContainer
-                            : cs.surface.withValues(alpha: 0.4),
+                        color:
+                            active ? cs.primaryContainer : Colors.transparent,
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
                           color: active
@@ -1240,23 +1454,23 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
                               : cs.outlineVariant.withValues(alpha: 0.2),
                         ),
                       ),
-                      child: loading
-                          ? SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color:
-                                    active ? cs.onPrimaryContainer : cs.primary,
-                              ),
-                            )
-                          : Icon(
-                              icon,
-                              size: 14,
-                              color: active
-                                  ? cs.onPrimaryContainer
-                                  : cs.onSurfaceVariant,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(icon, size: 15, color: foreground),
+                          Positioned(
+                            right: 2,
+                            bottom: 2,
+                            child: Icon(
+                              ascending
+                                  ? Icons.arrow_upward_rounded
+                                  : Icons.arrow_downward_rounded,
+                              size: 9,
+                              color: foreground,
                             ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -1264,24 +1478,6 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
 
               final labelActions = <Widget>[
                 if (issueAllButton != null) issueAllButton,
-                if (widget.showSummaryTotals)
-                  iconToggleButton(
-                    active: _unlinkedOnly,
-                    loading: _unlinkedLoading,
-                    icon: Icons.link_off_rounded,
-                    tooltip: isSpanish
-                        ? 'Facturas no vinculadas'
-                        : 'Unlinked invoices',
-                    onTap: _toggleUnlinkedOnly,
-                  ),
-                if (widget.showSummaryTotals)
-                  iconToggleButton(
-                    active: _paymentSuggestionsVisible,
-                    loading: _paymentSuggestionsLoading,
-                    icon: Icons.auto_fix_high_rounded,
-                    tooltip: isSpanish ? 'Resolver vínculos' : 'Resolve links',
-                    onTap: _togglePaymentSuggestions,
-                  ),
                 sortButton(
                   value: InvoiceSortBy.date,
                   label: l.date,
@@ -1294,6 +1490,109 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
                 ),
                 if (widget.allowClientNameSort) clientNameSortButton(),
               ];
+
+              if (widget.showSummaryTotals) {
+                final sortActions = <Widget>[
+                  compactSortButton(
+                    icon: Icons.calendar_month_outlined,
+                    label: l.date,
+                    active: !_clientNameSortEnabled &&
+                        currentSort.by == InvoiceSortBy.date,
+                    ascending: currentSort.dir == InvoiceSortDir.asc,
+                    onTap: () {
+                      if (_clientNameSortEnabled) {
+                        setState(() => _clientNameSortEnabled = false);
+                      }
+                      widget.onSortBySelected(InvoiceSortBy.date);
+                    },
+                  ),
+                  compactSortButton(
+                    icon: Icons.format_list_numbered_rounded,
+                    label: l.invoiceSortByNumberLabel,
+                    active: !_clientNameSortEnabled &&
+                        currentSort.by == InvoiceSortBy.number,
+                    ascending: currentSort.dir == InvoiceSortDir.asc,
+                    onTap: () {
+                      if (_clientNameSortEnabled) {
+                        setState(() => _clientNameSortEnabled = false);
+                      }
+                      widget.onSortBySelected(InvoiceSortBy.number);
+                    },
+                  ),
+                  if (widget.allowClientNameSort)
+                    compactSortButton(
+                      icon: Icons.sort_by_alpha_rounded,
+                      label: isSpanish ? 'Cliente' : 'Client',
+                      active: _clientNameSortEnabled,
+                      ascending: _clientNameSortDir == InvoiceSortDir.asc,
+                      onTap: () {
+                        setState(() {
+                          if (_clientNameSortEnabled) {
+                            _clientNameSortDir =
+                                _clientNameSortDir == InvoiceSortDir.asc
+                                    ? InvoiceSortDir.desc
+                                    : InvoiceSortDir.asc;
+                          } else {
+                            _clientNameSortEnabled = true;
+                            _clientNameSortDir = InvoiceSortDir.asc;
+                          }
+                        });
+                      },
+                    ),
+                ];
+
+                return _InvoiceSummaryTotalsBar(
+                  count: visible.length,
+                  summary: summaryTotals,
+                  loading: _unlinkedOnly ? _unlinkedLoading : _summaryLoading,
+                  error: _unlinkedOnly ? _unlinkedError : _summaryError,
+                  fromDate: _fromDate,
+                  toDate: _toDate,
+                  quickRange: _quickRange,
+                  sortActions: sortActions,
+                  unlinkedOnly: _unlinkedOnly,
+                  paymentSuggestionsLoading: _paymentSuggestionsLoading,
+                  onDateRangeSelected: (value) {
+                    if (value == DateQuickRange.month) {
+                      _setRangeDays(30);
+                    } else if (value == DateQuickRange.quarter) {
+                      _setRangeMonths(3);
+                    } else if (value == DateQuickRange.custom) {
+                      _pickCustomDateRange();
+                    } else {
+                      setState(() {
+                        _fromDate = null;
+                        _toDate = null;
+                        _quickRange = DateQuickRange.none;
+                      });
+                      _notifyDateFilterChanged();
+                      _refreshFilteredData();
+                    }
+                  },
+                  onHeaderAction: (action) {
+                    switch (action) {
+                      case _InvoiceHeaderAction.toggleUnlinked:
+                        _toggleUnlinkedOnly();
+                      case _InvoiceHeaderAction.resolveLinks:
+                        _openPaymentSuggestionsDialog();
+                    }
+                  },
+                  downloadingFiltered: _downloadingFiltered,
+                  onDownloadFiltered: widget.onDownloadFiltered == null
+                      ? null
+                      : () async {
+                          if (_downloadingFiltered) return;
+                          setState(() => _downloadingFiltered = true);
+                          try {
+                            await widget.onDownloadFiltered!(visible);
+                          } finally {
+                            if (mounted) {
+                              setState(() => _downloadingFiltered = false);
+                            }
+                          }
+                        },
+                );
+              }
 
               return DateRangeFilterCard(
                 quickRange: _quickRange,
@@ -1330,46 +1629,15 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
               );
             },
           ),
-          if (widget.showSummaryTotals) ...[
+          if (widget.showSummaryTotals && _unlinkedOnly) ...[
             const SizedBox(height: 6),
-            if (_unlinkedOnly)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: _UnlinkedInvoicesNotice(
-                  loading: _unlinkedLoading,
-                  error: _unlinkedError,
-                  onRetry: _loadUnlinkedInvoices,
-                ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _UnlinkedInvoicesNotice(
+                loading: _unlinkedLoading,
+                error: _unlinkedError,
+                onRetry: _loadUnlinkedInvoices,
               ),
-            if (_paymentSuggestionsVisible &&
-                (_paymentSuggestionsError ?? '').trim().isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: _PaymentSuggestionsErrorNotice(
-                  error: _paymentSuggestionsError!,
-                  loading: _paymentSuggestionsLoading,
-                  onRetry: _loadPaymentSuggestions,
-                ),
-              ),
-            _InvoiceSummaryTotalsBar(
-              count: visible.length,
-              summary: summaryTotals,
-              loading: _unlinkedOnly ? _unlinkedLoading : _summaryLoading,
-              error: _unlinkedOnly ? _unlinkedError : _summaryError,
-              downloadingFiltered: _downloadingFiltered,
-              onDownloadFiltered: widget.onDownloadFiltered == null
-                  ? null
-                  : () async {
-                      if (_downloadingFiltered) return;
-                      setState(() => _downloadingFiltered = true);
-                      try {
-                        await widget.onDownloadFiltered!(visible);
-                      } finally {
-                        if (mounted) {
-                          setState(() => _downloadingFiltered = false);
-                        }
-                      }
-                    },
             ),
           ],
           const SizedBox(height: 6),
@@ -1425,6 +1693,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
                             _hasUnknownDraftClient(inv, client, l);
                         final hasMonthWarning = _hasInvoiceMonthWarning(inv);
                         return Padding(
+                          key: ValueKey(inv.id),
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1465,12 +1734,6 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
                                     ? null
                                     : () => widget.onIssue!(inv),
                               ),
-                              if (_paymentSuggestionsVisible)
-                                _PaymentSuggestionStrip(
-                                  suggestion:
-                                      _paymentSuggestionsByInvoiceId[inv.id],
-                                  loading: _paymentSuggestionsLoading,
-                                ),
                             ],
                           ),
                         );
@@ -1512,6 +1775,14 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     required this.summary,
     required this.loading,
     required this.error,
+    required this.fromDate,
+    required this.toDate,
+    required this.quickRange,
+    required this.sortActions,
+    required this.unlinkedOnly,
+    required this.paymentSuggestionsLoading,
+    required this.onDateRangeSelected,
+    required this.onHeaderAction,
     this.onDownloadFiltered,
     this.downloadingFiltered = false,
   });
@@ -1520,6 +1791,14 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
   final Map<String, dynamic>? summary;
   final bool loading;
   final String? error;
+  final DateTime? fromDate;
+  final DateTime? toDate;
+  final DateQuickRange quickRange;
+  final List<Widget> sortActions;
+  final bool unlinkedOnly;
+  final bool paymentSuggestionsLoading;
+  final ValueChanged<DateQuickRange> onDateRangeSelected;
+  final ValueChanged<_InvoiceHeaderAction> onHeaderAction;
   final VoidCallback? onDownloadFiltered;
   final bool downloadingFiltered;
 
@@ -1546,6 +1825,10 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     final totalChipColor = Theme.of(context).brightness == Brightness.light
         ? const Color(0xFFB45309)
         : cs.secondary;
+    final dateFormatter = DateFormat.yMMMd(isSpanish ? 'es_ES' : 'en_US');
+    final rangeLabel = fromDate == null && toDate == null
+        ? null
+        : '${fromDate == null ? '...' : dateFormatter.format(fromDate!)} – ${toDate == null ? '...' : dateFormatter.format(toDate!)}';
 
     Widget valueChip(String label, num value, Color color) {
       return Container(
@@ -1587,6 +1870,68 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+          const SizedBox(width: 6),
+          ...sortActions.expand(
+            (action) => [action, const SizedBox(width: 4)],
+          ),
+          Container(
+            width: 1,
+            height: 18,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            color: cs.outlineVariant.withValues(alpha: 0.55),
+          ),
+          PopupMenuButton<DateQuickRange>(
+            tooltip: rangeLabel ??
+                (isSpanish ? 'Filtrar por fecha' : 'Filter by date'),
+            initialValue: quickRange == DateQuickRange.none ? null : quickRange,
+            onSelected: onDateRangeSelected,
+            itemBuilder: (_) => [
+              CheckedPopupMenuItem(
+                value: DateQuickRange.month,
+                checked: quickRange == DateQuickRange.month,
+                child: Text(isSpanish ? 'Últimos 30 días' : 'Last 30 days'),
+              ),
+              CheckedPopupMenuItem(
+                value: DateQuickRange.quarter,
+                checked: quickRange == DateQuickRange.quarter,
+                child: Text(isSpanish ? 'Últimos 3 meses' : 'Last 3 months'),
+              ),
+              CheckedPopupMenuItem(
+                value: DateQuickRange.custom,
+                checked: quickRange == DateQuickRange.custom,
+                child: Text(isSpanish ? 'Personalizado…' : 'Custom…'),
+              ),
+              if (rangeLabel != null) const PopupMenuDivider(),
+              if (rangeLabel != null)
+                PopupMenuItem(
+                  value: DateQuickRange.none,
+                  child: Text(isSpanish ? 'Borrar filtro' : 'Clear filter'),
+                ),
+            ],
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: rangeLabel == null
+                    ? Colors.transparent
+                    : cs.primaryContainer,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: rangeLabel == null
+                      ? cs.outlineVariant.withValues(alpha: 0.2)
+                      : cs.primaryContainer,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.date_range_outlined,
+                size: 15,
+                color: rangeLabel == null
+                    ? cs.onSurfaceVariant
+                    : cs.onPrimaryContainer,
+              ),
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: LayoutBuilder(
@@ -1617,19 +1962,36 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
                           valueChip('Total', total, totalChipColor),
                           if (mismatchCount > 0) ...[
                             const SizedBox(width: 8),
-                            Text(
-                              isSpanish
-                                  ? '$mismatchCount desajustes'
-                                  : '$mismatchCount mismatches',
-                              style: t.bodySmall.copyWith(
-                                color: cs.error,
-                                fontWeight: FontWeight.w800,
+                            Tooltip(
+                              message: isSpanish
+                                  ? '$mismatchCount ${mismatchCount == 1 ? 'desajuste' : 'desajustes'}'
+                                  : '$mismatchCount ${mismatchCount == 1 ? 'mismatch' : 'mismatches'}',
+                              child: Semantics(
+                                label: isSpanish
+                                    ? '$mismatchCount ${mismatchCount == 1 ? 'desajuste' : 'desajustes'}'
+                                    : '$mismatchCount ${mismatchCount == 1 ? 'mismatch' : 'mismatches'}',
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: cs.error.withValues(alpha: 0.07),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: cs.error.withValues(alpha: 0.32),
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 17,
+                                    color: cs.error,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ],
-                        if (!loading &&
-                            (error ?? '').trim().isNotEmpty) ...[
+                        if (!loading && (error ?? '').trim().isNotEmpty) ...[
                           const SizedBox(width: 8),
                           Tooltip(
                             message: error!,
@@ -1640,52 +2002,106 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
                             ),
                           ),
                         ],
-                        if (onDownloadFiltered != null) ...[
-                          const SizedBox(width: 8),
-                          Tooltip(
-                            message: isSpanish
-                                ? 'Descargar facturas filtradas'
-                                : 'Download filtered invoices',
-                            child: OutlinedButton.icon(
-                              onPressed: downloadingFiltered
-                                  ? null
-                                  : onDownloadFiltered,
-                              style: OutlinedButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                minimumSize: const Size(0, 38),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                                foregroundColor: cs.primary,
-                                backgroundColor:
-                                    cs.primary.withValues(alpha: 0.04),
-                                side: BorderSide(
-                                  color: cs.primary.withValues(alpha: 0.35),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton<_InvoiceHeaderAction>(
+                          tooltip: isSpanish ? 'Más acciones' : 'More actions',
+                          enabled: !paymentSuggestionsLoading,
+                          onSelected: onHeaderAction,
+                          itemBuilder: (_) => [
+                            CheckedPopupMenuItem(
+                              value: _InvoiceHeaderAction.toggleUnlinked,
+                              checked: unlinkedOnly,
+                              child: Text(
+                                isSpanish
+                                    ? 'Facturas no vinculadas'
+                                    : 'Unlinked invoices',
                               ),
-                              icon: downloadingFiltered
-                                  ? const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(
-                                      Icons.download_rounded,
-                                      size: 16,
-                                    ),
-                              label: Text(
-                                isSpanish ? 'Descargar' : 'Download',
-                                style: t.bodySmall.copyWith(
-                                  fontWeight: FontWeight.w800,
+                            ),
+                            PopupMenuItem(
+                              value: _InvoiceHeaderAction.resolveLinks,
+                              child: ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(
+                                  Icons.auto_fix_high_rounded,
+                                  size: 18,
+                                ),
+                                title: Text(
+                                  isSpanish
+                                      ? 'Resolver vínculos…'
+                                      : 'Resolve links…',
                                 ),
                               ),
                             ),
+                          ],
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: unlinkedOnly
+                                  ? cs.tertiary.withValues(alpha: 0.10)
+                                  : Colors.transparent,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: (unlinkedOnly
+                                        ? cs.tertiary
+                                        : cs.outlineVariant)
+                                    .withValues(alpha: 0.35),
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: paymentSuggestionsLoading
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.more_horiz_rounded,
+                                    size: 18,
+                                    color: unlinkedOnly
+                                        ? cs.tertiary
+                                        : cs.onSurfaceVariant,
+                                  ),
+                          ),
+                        ),
+                        if (onDownloadFiltered != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: isSpanish
+                                ? 'Descargar facturas filtradas'
+                                : 'Download filtered invoices',
+                            onPressed:
+                                downloadingFiltered ? null : onDownloadFiltered,
+                            style: IconButton.styleFrom(
+                              fixedSize: const Size(38, 38),
+                              minimumSize: const Size(38, 38),
+                              padding: EdgeInsets.zero,
+                              foregroundColor: cs.primary,
+                              backgroundColor:
+                                  cs.primary.withValues(alpha: 0.04),
+                              disabledBackgroundColor: cs
+                                  .surfaceContainerHighest
+                                  .withValues(alpha: 0.22),
+                              side: BorderSide(
+                                color: cs.primary.withValues(alpha: 0.35),
+                              ),
+                              shape: const CircleBorder(),
+                            ),
+                            icon: downloadingFiltered
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.download_rounded,
+                                    size: 17,
+                                  ),
                           ),
                         ],
                       ],
@@ -1763,52 +2179,6 @@ class _UnlinkedInvoicesNotice extends StatelessWidget {
               onPressed: loading ? null : onRetry,
               child: Text(isSpanish ? 'Reintentar' : 'Retry'),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentSuggestionsErrorNotice extends StatelessWidget {
-  const _PaymentSuggestionsErrorNotice({
-    required this.error,
-    required this.loading,
-    required this.onRetry,
-  });
-
-  final String error;
-  final bool loading;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: cs.error.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.error.withValues(alpha: 0.22)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline_rounded, size: 16, color: cs.error),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              error.trim(),
-              style: t.bodySmall.copyWith(
-                color: cs.error,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: loading ? null : onRetry,
-            child: Text(isSpanish ? 'Reintentar' : 'Retry'),
-          ),
         ],
       ),
     );

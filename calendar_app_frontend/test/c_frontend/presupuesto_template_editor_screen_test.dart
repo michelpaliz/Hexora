@@ -40,23 +40,42 @@ void main() {
       expect(find.text('Seleccionada'), findsOne);
       expect(find.textContaining('Imagenes'), findsNothing);
 
-      await tester.tap(find.text('2. Datos'));
+      await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('FRECUENCIA_MENSUAL'), findsWidgets);
-      expect(find.textContaining('PRECIO_VISITA'), findsWidgets);
-      expect(find.textContaining('TOTAL_MENSUAL'), findsWidgets);
-      expect(find.textContaining('DURACION_CONTRATO'), findsWidgets);
-      expect(find.textContaining('PREAVISO'), findsWidgets);
-      expect(find.text('Nombre del cliente [CLIENTE]'), findsOne);
-      expect(find.text('Total mensual [TOTAL_MENSUAL]'), findsOne);
-      expect(find.textContaining('PRECIO_HORA'), findsNothing);
-      expect(find.textContaining('PRECIO_PISCINA_PRIVADA'), findsNothing);
-      expect(find.textContaining('ZONAS_COMUNES'), findsNothing);
-      expect(find.textContaining('PRODUCTOS_INCLUIDOS'), findsNothing);
-      expect(find.textContaining('DIAS_TEMPORADA_ALTA'), findsNothing);
-      expect(find.textContaining('FRECUENCIA_TEMPORADA_BAJA'), findsNothing);
-      expect(find.textContaining('IMPORTE_MENSUAL'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('variable_FRECUENCIA_MENSUAL')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('variable_PRECIO_VISITA')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('variable_TOTAL_MENSUAL')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('variable_DURACION_CONTRATO')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('variable_PREAVISO')),
+        findsOneWidget,
+      );
+      expect(find.text('Nombre del cliente'), findsOne);
+      expect(find.text('Total mensual'), findsWidgets);
+      for (final key in const <String>[
+        'PRECIO_HORA',
+        'PRECIO_PISCINA_PRIVADA',
+        'ZONAS_COMUNES',
+        'PRODUCTOS_INCLUIDOS',
+        'DIAS_TEMPORADA_ALTA',
+        'FRECUENCIA_TEMPORADA_BAJA',
+        'IMPORTE_MENSUAL',
+      ]) {
+        expect(find.byKey(ValueKey('variable_$key')), findsNothing);
+      }
       expect(
         tester
             .widget<TextField>(
@@ -65,19 +84,15 @@ void main() {
             .enabled,
         isTrue,
       );
-      final dateField = tester.widget<TextField>(
-        find.byKey(const ValueKey('variable_FECHA')),
-      );
-      expect(dateField.readOnly, isTrue);
-      expect(dateField.enabled, isFalse);
-      expect(dateField.controller!.text, '17/08/2026');
+      expect(find.byKey(const ValueKey('variable_FECHA')), findsNothing);
+      expect(find.text('Datos automáticos'), findsOneWidget);
+      expect(find.text('17/08/2026'), findsOneWidget);
       expect(
         tester
-            .widget<TextField>(
+            .widget<Text>(
               find.byKey(const ValueKey('variable_TOTAL_MENSUAL')),
             )
-            .controller!
-            .text,
+            .data,
         '1.920 €',
       );
       expect(
@@ -125,20 +140,16 @@ void main() {
         '500 €',
       );
       await tester.pump();
-      final totalField = tester.widget<TextField>(
+      final totalField = tester.widget<Text>(
         find.byKey(const ValueKey('variable_TOTAL_MENSUAL')),
       );
-      expect(totalField.enabled, isFalse);
-      expect(totalField.controller!.text, '4.000 €');
+      expect(totalField.data, '4.000 €');
 
       tester
-          .widget<ChoiceChip>(
-            find.ancestor(
-              of: find.text('3. Secciones'),
-              matching: find.byType(ChoiceChip),
-            ),
+          .widget<InkWell>(
+            find.byKey(const ValueKey('editor_step_Secciones')),
           )
-          .onSelected!(true);
+          .onTap!();
       await tester.pumpAndSettle();
 
       expect(find.text('Tabla'), findsOne);
@@ -299,13 +310,19 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Usar plantilla').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('2. Datos'));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('FRECUENCIA_LIMPIEZA_GARAJE'), findsNothing);
-    expect(find.textContaining('PRECIO_LIMPIEZA_GARAJE'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('variable_FRECUENCIA_LIMPIEZA_GARAJE')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('variable_PRECIO_LIMPIEZA_GARAJE')),
+      findsNothing,
+    );
 
-    await tester.tap(find.text('3. Secciones'));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
     await tester.pumpAndSettle();
     final garageTitle = find.text('Limpieza anual del garaje subterráneo');
     expect(garageTitle, findsOne);
@@ -317,17 +334,20 @@ void main() {
     await tester.pumpAndSettle();
 
     tester
-        .widget<ChoiceChip>(
-          find.ancestor(
-            of: find.text('2. Datos'),
-            matching: find.byType(ChoiceChip),
-          ),
+        .widget<InkWell>(
+          find.byKey(const ValueKey('editor_step_Datos')),
         )
-        .onSelected!(true);
+        .onTap!();
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('FRECUENCIA_LIMPIEZA_GARAJE'), findsWidgets);
-    expect(find.textContaining('PRECIO_LIMPIEZA_GARAJE'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('variable_FRECUENCIA_LIMPIEZA_GARAJE')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('variable_PRECIO_LIMPIEZA_GARAJE')),
+      findsOneWidget,
+    );
     expect(
       tester
           .widget<TextField>(
@@ -372,7 +392,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Usar plantilla').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('2. Datos'));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -387,7 +407,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('3. Secciones'));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
@@ -433,9 +453,45 @@ void main() {
     await tester.tap(find.text('Usar plantilla').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('4. Imagenes'), findsOne);
+    expect(find.byKey(const ValueKey('editor_step_Imagenes')), findsOne);
     expect(find.text('0/6 imagenes'), findsOne);
     expect(api.defaultDocumentCreates, 0);
+  });
+
+  testWidgets('saved library image can be attached to a budget slot',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 2200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final api = _FakePresupuestosApi();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+          api: api,
+          groupId: 'group-1',
+          createDocumentDraft: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Usar plantilla').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usar de la biblioteca').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose from image library'), findsOneWidget);
+    await tester.tap(find.text('Piscina principal'));
+    await tester.pumpAndSettle();
+
+    expect(api.attachedTargetId, 'draft-1');
+    expect(api.attachedImageId, 'library-image-1');
+    expect(api.attachedSlot, 'photo_1');
+    expect(find.text('1/6 imagenes'), findsOneWidget);
   });
 
   testWidgets('switching types drops stale keys and preserves CLIENTE',
@@ -461,12 +517,21 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Usar plantilla'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('2. Datos'));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('FRECUENCIA_MENSUAL'), findsNothing);
-    expect(find.textContaining('PRECIO_VISITA'), findsNothing);
-    expect(find.textContaining('PRECIO_HORA'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('variable_FRECUENCIA_MENSUAL')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('variable_PRECIO_VISITA')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('variable_PRECIO_HORA')),
+      findsOneWidget,
+    );
     expect(
       tester
           .widget<TextField>(find.byKey(const ValueKey('variable_CLIENTE')))
@@ -477,7 +542,7 @@ void main() {
   });
 
   testWidgets(
-      'existing document uses fresh variableFields and patches only them',
+      'existing document renders every returned variable and patches edits',
       (tester) async {
     tester.view.physicalSize = const Size(1600, 3000);
     tester.view.devicePixelRatio = 1;
@@ -496,25 +561,117 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('PRECIO_HORA'), findsNothing);
-    expect(find.textContaining('PRECIO_PISCINA_PRIVADA'), findsNothing);
-    expect(find.textContaining('PRECIO_VISITA'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('variable_PRECIO_HORA')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('variable_PRECIO_PISCINA_PRIVADA')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('variable_PRECIO_VISITA')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('variable_PRODUCTOS_INCLUIDOS')),
+      findsOneWidget,
+    );
     await tester.enterText(
       find.byKey(const ValueKey('variable_PRECIO_VISITA')),
       '500 €',
     );
-    await tester.tap(find.text('2. Secciones'));
+    await tester.enterText(
+      find.byKey(const ValueKey('variable_ZONAS_COMUNES')),
+      'portal, piscina y jardines',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('variable_PRODUCTOS_INCLUIDOS')),
+      'con productos incluidos',
+    );
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Guardar borrador'));
     await tester.pumpAndSettle();
 
-    expect(api.updatedVariables, <String, dynamic>{'PRECIO_VISITA': '500 €'});
+    expect(api.updatedVariables, <String, dynamic>{
+      'PRECIO_VISITA': '500 €',
+      'ZONAS_COMUNES': 'portal, piscina y jardines',
+      'PRODUCTOS_INCLUIDOS': 'con productos incluidos',
+    });
+    expect(api.templateVariableLoads, 2);
+    expect(api.updatedVariables, isNot(contains('MES')));
     expect(
       (api.savedContent!['variableFields'] as List)
           .whereType<Map>()
           .map((field) => field['key'])
           .contains('PRECIO_HORA'),
       isFalse,
+    );
+  });
+
+  testWidgets('unused manual monthly total remains editable', (tester) async {
+    tester.view.physicalSize = const Size(1600, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+          api: _UnusedMonthlyTotalApi(),
+          groupId: 'group-1',
+          presupuestoId: 'budget-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final finder = find.byKey(const ValueKey('variable_TOTAL_MENSUAL'));
+    expect(tester.widget<TextField>(finder).enabled, isTrue);
+    expect(find.text('Total mensual'), findsOneWidget);
+    for (final key in const <String>[
+      'IMPORTE_MENSUAL',
+      'FRECUENCIA_MENSUAL',
+      'PRECIO_VISITA',
+    ]) {
+      expect(find.byKey(ValueKey('variable_$key')), findsNothing);
+    }
+
+    await tester.enterText(finder, '1.920 €');
+    await tester.pump();
+
+    expect(tester.widget<TextField>(finder).controller!.text, '1.920 €');
+  });
+
+  testWidgets('preview warns when the backend reports unresolved variables',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+          api: _UnresolvedDocumentApi(),
+          groupId: 'group-1',
+          presupuestoId: 'budget-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Previsualizar'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Variables sin completar'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Todavía quedan variables sin valor: [ZONAS_COMUNES], [PRODUCTOS_INCLUIDOS]',
+      ),
+      findsOneWidget,
     );
   });
 
@@ -539,7 +696,7 @@ void main() {
 
     await tester.tap(find.text('Usar plantilla').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('2. Datos'));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('variable_PRECIO_VISITA')),
@@ -558,7 +715,7 @@ void main() {
       ),
       findsAtLeastNWidgets(12),
     );
-    await tester.tap(find.text('3. Secciones'));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
     await tester.pumpAndSettle();
 
     expect(
@@ -585,6 +742,9 @@ class _FakePresupuestosApi extends PresupuestosApi {
   int defaultDocumentCreates = 0;
   String? lastDefaultKey;
   Map<String, dynamic>? lastDocumentContent;
+  String? attachedTargetId;
+  String? attachedImageId;
+  String? attachedSlot;
 
   @override
   Future<Map<String, dynamic>> listDefaultTemplates() async {
@@ -770,11 +930,56 @@ class _FakePresupuestosApi extends PresupuestosApi {
     lastDocumentContent = Map<String, dynamic>.from(content);
     return <String, dynamic>{'presupuestoId': 'draft-1'};
   }
+
+  @override
+  Future<Map<String, dynamic>> getTemplateVariables(
+    String presupuestoId,
+  ) async {
+    return <String, dynamic>{
+      'variables': lastDocumentContent?['variables'] ?? <String, dynamic>{},
+      'variableFields':
+          lastDocumentContent?['variableFields'] ?? <Map<String, dynamic>>[],
+      'unresolvedKeys': <String>[],
+    };
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listImageLibrary(String groupId) async {
+    return <Map<String, dynamic>>[
+      <String, dynamic>{
+        '_id': 'library-image-1',
+        'name': 'Piscina principal',
+        'readUrl': 'https://example.test/piscina.jpg',
+      },
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>> attachImageLibraryAsset({
+    required String targetId,
+    required String imageId,
+    required String slot,
+    String? label,
+    bool enabled = true,
+  }) async {
+    attachedTargetId = targetId;
+    attachedImageId = imageId;
+    attachedSlot = slot;
+    return <String, dynamic>{
+      'image': <String, dynamic>{
+        'slot': slot,
+        'readUrl': 'https://example.test/piscina.jpg',
+        'label': label,
+        'enabled': enabled,
+      },
+    };
+  }
 }
 
 class _ExistingDocumentApi extends PresupuestosApi {
   Map<String, dynamic>? updatedVariables;
   Map<String, dynamic>? savedContent;
+  int templateVariableLoads = 0;
 
   @override
   Future<Map<String, dynamic>> getTemplateContent(String presupuestoId) async {
@@ -803,11 +1008,19 @@ class _ExistingDocumentApi extends PresupuestosApi {
   Future<Map<String, dynamic>> getTemplateVariables(
     String presupuestoId,
   ) async {
+    templateVariableLoads++;
     return <String, dynamic>{
       'variables': <String, dynamic>{
         'CLIENTE': 'Comunidad Reabierta',
         'PRECIO_VISITA': '480 €',
         'PRECIO_HORA': '25 €',
+        'FECHA': '',
+        'DIA': '',
+        'MES': '',
+        'ANO': '',
+        'AÑO': '',
+        'ZONAS_COMUNES': '',
+        'PRODUCTOS_INCLUIDOS': '',
       },
       'variableFields': <Map<String, dynamic>>[
         <String, dynamic>{
@@ -815,12 +1028,15 @@ class _ExistingDocumentApi extends PresupuestosApi {
           'label': 'CLIENTE',
           'value': 'Comunidad Reabierta',
         },
-        ..._fields(<String>[
-          'FECHA',
-          'MES',
-          'ANO',
-          'DURACION_CONTRATO',
-        ]),
+        for (final key in const <String>['FECHA', 'DIA', 'MES', 'ANO', 'AÑO'])
+          <String, dynamic>{
+            'key': key,
+            'label': key,
+            'value': '',
+            'isAutomatic': true,
+            'readOnly': true,
+          },
+        ..._fields(<String>['DURACION_CONTRATO', 'ZONAS_COMUNES']),
         <String, dynamic>{
           'key': 'FRECUENCIA_MENSUAL',
           'label': 'FRECUENCIA_MENSUAL',
@@ -866,6 +1082,68 @@ class _ExistingDocumentApi extends PresupuestosApi {
   }) async {
     updatedVariables = Map<String, dynamic>.from(variables);
     return <String, dynamic>{'presupuestoId': presupuestoId};
+  }
+}
+
+class _UnusedMonthlyTotalApi extends _ExistingDocumentApi {
+  @override
+  Future<Map<String, dynamic>> getTemplateVariables(
+    String presupuestoId,
+  ) async {
+    return <String, dynamic>{
+      'variables': <String, dynamic>{
+        'CLIENTE': 'Comunidad Las Alondras',
+        'TOTAL_MENSUAL': '',
+        'IMPORTE_MENSUAL': '',
+        'FRECUENCIA_MENSUAL': '',
+        'PRECIO_VISITA': '',
+      },
+      'variableFields': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'key': 'CLIENTE',
+          'label': 'CLIENTE',
+          'value': 'Comunidad Las Alondras',
+        },
+        <String, dynamic>{
+          'key': 'TOTAL_MENSUAL',
+          'label': 'TOTAL_MENSUAL',
+          'value': '',
+          'isUsedInTemplate': false,
+        },
+        <String, dynamic>{
+          'key': 'IMPORTE_MENSUAL',
+          'label': 'IMPORTE_MENSUAL',
+          'value': '',
+          'isAutomatic': true,
+        },
+        for (final key in const <String>[
+          'FRECUENCIA_MENSUAL',
+          'PRECIO_VISITA',
+        ])
+          <String, dynamic>{
+            'key': key,
+            'label': key,
+            'value': '',
+            'isUsedInTemplate': false,
+          },
+      ],
+    };
+  }
+}
+
+class _UnresolvedDocumentApi extends _ExistingDocumentApi {
+  @override
+  Future<Map<String, dynamic>> getTemplateVariables(
+    String presupuestoId,
+  ) async {
+    final payload = await super.getTemplateVariables(presupuestoId);
+    return <String, dynamic>{
+      ...payload,
+      'unresolvedKeys': <String>[
+        'ZONAS_COMUNES',
+        'PRODUCTOS_INCLUIDOS',
+      ],
+    };
   }
 }
 

@@ -9,6 +9,7 @@ import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
+import 'package:hexora/a-models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/blobUploader/blobServer.dart';
@@ -42,16 +43,37 @@ part 'compose/widgets/invoice_picker_sheet.dart';
 part 'compose/widgets/inline_invoice_wizard.dart';
 part 'compose/widgets/invoice_selection_preview.dart';
 
+Future<List<Receipt>> sendEmailAndRefreshReceipts({
+  required Future<void> Function() sendEmail,
+  required Iterable<String> receiptIds,
+  required Future<Receipt> Function(String receiptId) loadReceipt,
+}) async {
+  await sendEmail();
+  final refreshed = <Receipt>[];
+  for (final id in receiptIds.map((value) => value.trim()).toSet()) {
+    if (id.isEmpty) continue;
+    try {
+      refreshed.add(await loadReceipt(id));
+    } catch (_) {
+      // SMTP already succeeded. A follow-up refresh is best-effort and must not
+      // turn the successful email into a failed send in the UI.
+    }
+  }
+  return refreshed;
+}
+
 class MailComposeScreen extends StatefulWidget {
   const MailComposeScreen({
     super.key,
     this.embedded = false,
     this.onSent,
+    this.onReceiptsSent,
     this.onClose,
   });
 
   final bool embedded;
   final VoidCallback? onSent;
+  final ValueChanged<List<Receipt>>? onReceiptsSent;
   final VoidCallback? onClose;
 
   @override
@@ -421,8 +443,26 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         applyDefaultFooter: true,
         templateId: _selectedComposeTemplateId,
       );
-      await mailDomain.sendMessage(request);
+      final refreshedReceipts = await sendEmailAndRefreshReceipts(
+        sendEmail: () async {
+          await mailDomain.sendMessage(request);
+        },
+        receiptIds: receiptIds,
+        loadReceipt: _receiptsApi.getById,
+      );
       if (!mounted) return;
+      if (refreshedReceipts.isNotEmpty) {
+        setState(() {
+          for (final refreshed in refreshedReceipts) {
+            for (final receipts in _pickerReceiptsByClient.values) {
+              final index =
+                  receipts.indexWhere((item) => item.id == refreshed.id);
+              if (index >= 0) receipts[index] = refreshed;
+            }
+          }
+        });
+        widget.onReceiptsSent?.call(refreshedReceipts);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.mailComposeSentToast)),
       );
@@ -1029,6 +1069,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _presupuestosApi.listByGroup(
         groupId: groupId,
         clientId: clientId,
+        presupuestoKind: PresupuestoKind.structured,
       ),
       _presupuestosApi.listDocumentsByGroup(groupId),
     ]);

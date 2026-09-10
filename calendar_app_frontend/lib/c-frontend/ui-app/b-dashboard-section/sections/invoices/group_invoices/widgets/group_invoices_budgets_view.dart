@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice_block.dart';
+import 'package:hexora/a-models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_form/invoice_content_section.dart';
@@ -15,6 +16,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
     as pdf_launcher;
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/budget_sort_query.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_advance_final_flow.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_document_workspace.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/json_import_service.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/client_search_select.dart';
@@ -131,6 +133,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       TextEditingController();
   final TextEditingController _budgetDiscountPercentCtrl =
       TextEditingController();
+  final TextEditingController _budgetAdvancePercentCtrl =
+      TextEditingController(text: '70');
   _ClientSource _clientSource = _ClientSource.existing;
   final List<LineDraft> _budgetLines = <LineDraft>[LineDraft(position: 1)];
   final List<InvoiceBlockDraft> _budgetBlocks = <InvoiceBlockDraft>[
@@ -188,6 +192,25 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     final parsed = num.tryParse(text.replaceAll(',', '.'));
     if (parsed == null || parsed.isNaN || parsed.isInfinite) return null;
     return parsed;
+  }
+
+  num? get _budgetAdvancePercent =>
+      _parseBudgetDiscountInput(_budgetAdvancePercentCtrl.text);
+
+  bool get _isBudgetAdvancePercentValid {
+    final value = _budgetAdvancePercent;
+    return value != null && value >= 1 && value <= 100;
+  }
+
+  String get _budgetAdvancePercentError => _isSpanishLocale
+      ? 'El anticipo debe estar entre 1% y 100%.'
+      : 'The advance must be between 1% and 100%.';
+
+  void _setBudgetAdvancePercentText(String _) {
+    setState(() {
+      _markDraftDirty();
+      _error = null;
+    });
   }
 
   num get _budgetRawSubtotal {
@@ -403,9 +426,10 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       final all = (await _presupuestosApi.listByGroup(
         groupId: widget.groupId.trim(),
         clientId: clientId.trim(),
+        presupuestoKind: PresupuestoKind.structured,
         limit: 500,
       ))
-          .where((item) => item['hasDocumentContent'] != true)
+          .where((item) => !presupuestoHasDocumentContent(item))
           .toList(growable: false);
       final now = DateTime.now();
       DateTime? _budgetDate(Map<String, dynamic> b) {
@@ -497,6 +521,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     _useBudgetDiscountPercent = false;
     _budgetDiscountAmountCtrl.clear();
     _budgetDiscountPercentCtrl.clear();
+    _budgetAdvancePercentCtrl.text = '70';
     _selectedClientId = null;
     _clientNameCtrl.clear();
     _clientAddressCtrl.clear();
@@ -719,6 +744,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     _budgetCurrencyCtrl.dispose();
     _budgetDiscountAmountCtrl.dispose();
     _budgetDiscountPercentCtrl.dispose();
+    _budgetAdvancePercentCtrl.dispose();
     for (final line in _budgetLines) {
       line.dispose();
     }
@@ -1087,6 +1113,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   bool _isDraftBudget(Map<String, dynamic> item) =>
       _budgetStatus(item).contains('draft');
 
+  bool _isIssuedBudget(Map<String, dynamic> item) =>
+      _budgetStatus(item) == 'issued';
+
   int _budgetVersion(Map<String, dynamic> item) {
     final raw = item['currentVersion'] ??
         item['version'] ??
@@ -1345,6 +1374,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       final qp = budgetSortToQuery(_effectiveBudgetSortState);
       final list = await _presupuestosApi.listByGroup(
         groupId: widget.groupId,
+        presupuestoKind: PresupuestoKind.structured,
         sortBy: qp.sortBy,
         sortDir: qp.sortDir,
         limit: 500,
@@ -1352,7 +1382,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       if (!mounted) return;
       setState(() {
         _budgets = list
-            .where((item) => item['hasDocumentContent'] != true)
+            .where((item) => !presupuestoHasDocumentContent(item))
             .toList(growable: false);
         final selected = (_selectedBudgetId ?? '').trim();
         final preferred = (widget.initialSelectedBudgetId ?? '').trim();
@@ -2120,18 +2150,46 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     final cs = Theme.of(context).colorScheme;
     final drafts = _budgets.where(_isDraftBudget).toList(growable: false);
     final issuedBudgets =
-        _budgets.where((item) => !_isDraftBudget(item)).toList(growable: false);
-    final activeList = _budgetsTabIndex == 0 ? drafts : issuedBudgets;
+        _budgets.where(_isIssuedBudget).toList(growable: false);
+    final activeList = switch (_budgetsTabIndex) {
+      1 => drafts,
+      2 => issuedBudgets,
+      _ => _budgets,
+    };
     final sortState = _effectiveBudgetSortState;
-    final sortByDate = sortState.by == BudgetSortBy.date;
-    final sortByNumber = sortState.by == BudgetSortBy.number;
-    final isAsc = sortState.dir == BudgetSortDir.asc;
     final selected = activeList.cast<Map<String, dynamic>?>().firstWhere(
           (e) =>
               _budgetId(e ?? const {}).trim() ==
               (_selectedBudgetId ?? '').trim(),
           orElse: () => activeList.isNotEmpty ? activeList.first : null,
         );
+
+    Widget statusTab(int index, String label) {
+      final selected = _budgetsTabIndex == index;
+      return Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => setState(() => _budgetsTabIndex = index),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              color: selected ? cs.primaryContainer : Colors.transparent,
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: t.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     Widget budgetListCard(Map<String, dynamic> item) {
       final isLight = Theme.of(context).brightness == Brightness.light;
@@ -2146,6 +2204,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         symbol: '€',
       ).format(_budgetTotal(item));
       final isDraft = _isDraftBudget(item);
+      final isIssued = _isIssuedBudget(item);
       final isIssuing = _issuingBudgetIds.contains(id);
       final missingClientFields = _missingClientBillingFieldsForBudget(item);
       final canIssueBudget = isDraft && missingClientFields.isEmpty;
@@ -2155,6 +2214,21 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           : missingClientFields.isNotEmpty
               ? 'Completa datos del cliente antes de emitir: ${missingClientFields.join(', ')}'
               : 'Emitir';
+
+      Widget budgetBadge(String label, Color color) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              label,
+              style: t.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          );
 
       Widget busySpinner(Color color) => SizedBox(
             width: 14,
@@ -2185,18 +2259,18 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                 onEnter: (_) => setHoverState(() => hovered = true),
                 onExit: (_) => setHoverState(() => hovered = false),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(9),
                   onTap: onPressed,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 110),
                     curve: Curves.easeOut,
-                    width: 26,
-                    height: 26,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       color: enabled
                           ? color.withValues(alpha: hovered ? 0.16 : 0.07)
                           : cs.surfaceContainerHighest.withValues(alpha: 0.24),
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius: BorderRadius.circular(9),
                       border: Border.all(
                         color: enabled && hovered
                             ? color.withValues(alpha: 0.30)
@@ -2209,7 +2283,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                       child: busyIcon ??
                           Icon(
                             icon,
-                            size: 14,
+                            size: 15,
                             color: enabled
                                 ? color.withValues(alpha: hovered ? 1.0 : 0.75)
                                 : cs.onSurfaceVariant.withValues(alpha: 0.42),
@@ -2231,10 +2305,10 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
             color: selectedRow
-                ? cs.primaryContainer.withValues(alpha: 0.28)
+                ? cs.primaryContainer.withValues(alpha: 0.12)
                 : isLight
                     ? Colors.white
                     : cs.surfaceContainerHighest.withValues(alpha: 0.13),
@@ -2248,18 +2322,28 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                 ? [
                     BoxShadow(
                       color: (selectedRow ? cs.primary : Colors.black)
-                          .withValues(alpha: selectedRow ? 0.10 : 0.035),
-                      blurRadius: selectedRow ? 16 : 10,
-                      offset: const Offset(0, 6),
+                          .withValues(alpha: selectedRow ? 0.07 : 0.028),
+                      blurRadius: selectedRow ? 12 : 8,
+                      offset: const Offset(0, 4),
                     ),
                   ]
                 : null,
           ),
           child: Row(
             children: [
-              Container(
-                width: 34,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                width: 3,
                 height: 34,
+                decoration: BoxDecoration(
+                  color: selectedRow ? cs.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   gradient: LinearGradient(
@@ -2292,7 +2376,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                       style:
                           t.bodyMedium?.copyWith(fontWeight: FontWeight.w900),
                     ),
-                    const SizedBox(height: 1),
+                    const SizedBox(height: 2),
                     Text(
                       '${_budgetNumber(item)} · $dateLabel',
                       maxLines: 1,
@@ -2305,74 +2389,115 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                decoration: BoxDecoration(
-                  color: cs.surface.withValues(alpha: 0.34),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.22),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 132,
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 5,
+                  runSpacing: 4,
                   children: [
-                    budgetActionButton(
-                      tooltip: issueTooltip,
-                      icon: Icons.publish_outlined,
-                      onPressed: (canIssueBudget && !isIssuing)
-                          ? () => _issueBudgetFromList(item)
-                          : null,
-                      color: cs.tertiary,
-                      busyIcon: isIssuing ? busySpinner(cs.tertiary) : null,
+                    budgetBadge(
+                      _isSpanishLocale ? 'Partidas' : 'Itemized',
+                      cs.primary,
                     ),
-                    const SizedBox(width: 6),
-                    budgetActionButton(
-                      tooltip: l.download,
-                      icon: Icons.download_rounded,
-                      onPressed: () => _downloadBudgetPdf(item),
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 6),
-                    budgetActionButton(
-                      tooltip: _isSpanishLocale
-                          ? 'Editar presupuesto'
-                          : 'Edit presupuesto',
-                      onPressed: widget.onEditDraftBudget == null
-                          ? null
-                          : () => widget.onEditDraftBudget!.call(id),
-                      icon: Icons.edit_outlined,
-                      color: cs.primary,
-                    ),
-                    if (isDraft) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 1,
-                        height: 14,
-                        color: cs.outlineVariant.withValues(alpha: 0.4),
-                      ),
-                      const SizedBox(width: 6),
-                      budgetActionButton(
-                        tooltip: l.delete,
-                        onPressed: (!isDeleting && !isIssuing)
-                            ? () => _deleteDraftBudget(item)
-                            : null,
-                        icon: Icons.delete_outline_rounded,
-                        color: cs.error,
-                        busyIcon: isDeleting ? busySpinner(cs.error) : null,
-                      ),
-                    ],
-                    const SizedBox(width: 10),
-                    Text(
-                      totalLabel,
-                      style: t.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
+                    budgetBadge(
+                      isDraft
+                          ? (_isSpanishLocale ? 'Borrador' : 'Draft')
+                          : isIssued
+                              ? (_isSpanishLocale ? 'Emitido' : 'Issued')
+                              : (_isSpanishLocale ? 'Anulado' : 'Void'),
+                      isDraft
+                          ? cs.tertiary
+                          : isIssued
+                              ? Colors.green.shade700
+                              : cs.error,
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 88,
+                child: Text(
+                  totalLabel,
+                  maxLines: 1,
+                  textAlign: TextAlign.right,
+                  style: t.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 164,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: cs.surface.withValues(alpha: 0.34),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.22),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isDraft) ...[
+                          budgetActionButton(
+                            tooltip: issueTooltip,
+                            icon: Icons.publish_outlined,
+                            onPressed: (canIssueBudget && !isIssuing)
+                                ? () => _issueBudgetFromList(item)
+                                : null,
+                            color: cs.tertiary,
+                            busyIcon:
+                                isIssuing ? busySpinner(cs.tertiary) : null,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        budgetActionButton(
+                          tooltip: l.download,
+                          icon: Icons.download_rounded,
+                          onPressed: () => _downloadBudgetPdf(item),
+                          color: cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 6),
+                        budgetActionButton(
+                          tooltip: _isSpanishLocale
+                              ? 'Editar presupuesto'
+                              : 'Edit budget',
+                          onPressed: widget.onEditDraftBudget == null
+                              ? null
+                              : () => widget.onEditDraftBudget!.call(id),
+                          icon: Icons.edit_outlined,
+                          color: cs.primary,
+                        ),
+                        if (isDraft) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 1,
+                            height: 16,
+                            color: cs.outlineVariant.withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(width: 6),
+                          budgetActionButton(
+                            tooltip: l.delete,
+                            onPressed: (!isDeleting && !isIssuing)
+                                ? () => _deleteDraftBudget(item)
+                                : null,
+                            icon: Icons.delete_outline_rounded,
+                            color: cs.error,
+                            busyIcon: isDeleting ? busySpinner(cs.error) : null,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -2542,68 +2667,17 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                               ),
                               child: Row(
                                 children: [
-                                  Expanded(
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(999),
-                                      onTap: () =>
-                                          setState(() => _budgetsTabIndex = 0),
-                                      child: AnimatedContainer(
-                                        duration:
-                                            const Duration(milliseconds: 160),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 6),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                          color: _budgetsTabIndex == 0
-                                              ? cs.primaryContainer
-                                              : Colors.transparent,
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            l.groupInvoicesTabDrafts(
-                                                drafts.length),
-                                            style: t.bodySmall?.copyWith(
-                                              fontWeight: FontWeight.w800,
-                                              color: _budgetsTabIndex == 0
-                                                  ? cs.onPrimaryContainer
-                                                  : cs.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                  statusTab(
+                                    0,
+                                    '${_isSpanishLocale ? 'Todos' : 'All'} (${_budgets.length})',
                                   ),
-                                  Expanded(
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(999),
-                                      onTap: () =>
-                                          setState(() => _budgetsTabIndex = 1),
-                                      child: AnimatedContainer(
-                                        duration:
-                                            const Duration(milliseconds: 160),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 6),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                          color: _budgetsTabIndex == 1
-                                              ? cs.primaryContainer
-                                              : Colors.transparent,
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            'Presupuestos (${issuedBudgets.length})',
-                                            style: t.bodySmall?.copyWith(
-                                              fontWeight: FontWeight.w800,
-                                              color: _budgetsTabIndex == 1
-                                                  ? cs.onPrimaryContainer
-                                                  : cs.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                  statusTab(
+                                    1,
+                                    '${_isSpanishLocale ? 'Borradores' : 'Drafts'} (${drafts.length})',
+                                  ),
+                                  statusTab(
+                                    2,
+                                    '${_isSpanishLocale ? 'Emitidos' : 'Issued'} (${issuedBudgets.length})',
                                   ),
                                 ],
                               ),
@@ -2641,87 +2715,100 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.sort_rounded,
-                              size: 13,
-                              color:
-                                  cs.onSurfaceVariant.withValues(alpha: 0.5)),
-                          const SizedBox(width: 5),
-                          Text(
-                            _isSpanishLocale ? 'Ordenar:' : 'Sort:',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color:
-                                  cs.onSurfaceVariant.withValues(alpha: 0.55),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Segmented sort control
-                          Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(9),
-                              border: Border.all(
-                                color:
-                                    cs.outlineVariant.withValues(alpha: 0.25),
+                      if (!_loadingBudgets &&
+                          (_budgetsError ?? '').trim().isEmpty &&
+                          activeList.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 57,
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: _BudgetSortMenuButton(
+                                    state: sortState,
+                                    enabled: !_loadingBudgets,
+                                    isSpanishLocale: _isSpanishLocale,
+                                    onChanged: (by) async {
+                                      final next = nextBudgetSortState(
+                                        _effectiveBudgetSortState,
+                                        by,
+                                      );
+                                      if (next.by ==
+                                              _effectiveBudgetSortState.by &&
+                                          next.dir ==
+                                              _effectiveBudgetSortState.dir) {
+                                        return;
+                                      }
+                                      setState(() => _budgetSortState = next);
+                                      await _loadBudgets();
+                                    },
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _BudgetSortButton(
-                                  label: l.date,
-                                  icon: Icons.calendar_today_outlined,
-                                  active: sortByDate,
-                                  ascending: isAsc,
-                                  enabled: !_loadingBudgets,
-                                  onTap: () async {
-                                    final next = nextBudgetSortState(
-                                      _effectiveBudgetSortState,
-                                      BudgetSortBy.date,
-                                    );
-                                    if (next.by ==
-                                            _effectiveBudgetSortState.by &&
-                                        next.dir ==
-                                            _effectiveBudgetSortState.dir) {
-                                      return;
-                                    }
-                                    setState(() => _budgetSortState = next);
-                                    await _loadBudgets();
-                                  },
+                              Expanded(
+                                child: Text(
+                                  _isSpanishLocale
+                                      ? 'CLIENTE · PRESUPUESTO'
+                                      : 'CLIENT · BUDGET',
+                                  style: t.labelSmall?.copyWith(
+                                    color: cs.onSurfaceVariant
+                                        .withValues(alpha: 0.65),
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.35,
+                                  ),
                                 ),
-                                const SizedBox(width: 2),
-                                _BudgetSortButton(
-                                  label: _isSpanishLocale ? 'Número' : 'Number',
-                                  icon: Icons.tag_rounded,
-                                  active: sortByNumber,
-                                  ascending: isAsc,
-                                  enabled: !_loadingBudgets,
-                                  onTap: () async {
-                                    final next = nextBudgetSortState(
-                                      _effectiveBudgetSortState,
-                                      BudgetSortBy.number,
-                                    );
-                                    if (next.by ==
-                                            _effectiveBudgetSortState.by &&
-                                        next.dir ==
-                                            _effectiveBudgetSortState.dir) {
-                                      return;
-                                    }
-                                    setState(() => _budgetSortState = next);
-                                    await _loadBudgets();
-                                  },
+                              ),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 132,
+                                child: Text(
+                                  _isSpanishLocale
+                                      ? 'TIPO · ESTADO'
+                                      : 'TYPE · STATUS',
+                                  textAlign: TextAlign.right,
+                                  style: t.labelSmall?.copyWith(
+                                    color: cs.onSurfaceVariant
+                                        .withValues(alpha: 0.65),
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.35,
+                                  ),
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 88,
+                                child: Text(
+                                  _isSpanishLocale ? 'TOTAL' : 'TOTAL',
+                                  textAlign: TextAlign.right,
+                                  style: t.labelSmall?.copyWith(
+                                    color: cs.onSurfaceVariant
+                                        .withValues(alpha: 0.65),
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.35,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 164,
+                                child: Text(
+                                  _isSpanishLocale ? 'ACCIONES' : 'ACTIONS',
+                                  textAlign: TextAlign.right,
+                                  style: t.labelSmall?.copyWith(
+                                    color: cs.onSurfaceVariant
+                                        .withValues(alpha: 0.65),
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.35,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
+                        ),
+                        const SizedBox(height: 6),
+                      ],
                       Expanded(
                         child: _loadingBudgets
                             ? const Center(child: CircularProgressIndicator())
@@ -2736,7 +2823,17 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                 : activeList.isEmpty
                                     ? Center(
                                         child: Text(
-                                          l.noInvoicesYet,
+                                          switch (_budgetsTabIndex) {
+                                            1 => _isSpanishLocale
+                                                ? 'No hay borradores.'
+                                                : 'There are no drafts.',
+                                            2 => _isSpanishLocale
+                                                ? 'No hay presupuestos emitidos.'
+                                                : 'There are no issued budgets.',
+                                            _ => _isSpanishLocale
+                                                ? 'No hay presupuestos por partidas.'
+                                                : 'There are no itemized budgets.',
+                                          },
                                           style: t.bodyMedium?.copyWith(
                                             color: cs.onSurfaceVariant,
                                           ),
@@ -4635,67 +4732,95 @@ class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
   }
 }
 
-class _BudgetSortButton extends StatelessWidget {
-  const _BudgetSortButton({
-    required this.label,
-    required this.icon,
-    required this.active,
-    required this.ascending,
+class _BudgetSortMenuButton extends StatelessWidget {
+  const _BudgetSortMenuButton({
+    required this.state,
     required this.enabled,
-    required this.onTap,
+    required this.isSpanishLocale,
+    required this.onChanged,
   });
 
-  final String label;
-  final IconData icon;
-  final bool active;
-  final bool ascending;
+  final BudgetSortState state;
   final bool enabled;
-  final VoidCallback onTap;
+  final bool isSpanishLocale;
+  final Future<void> Function(BudgetSortBy by) onChanged;
+
+  String _label(BudgetSortBy by) => switch (by) {
+        BudgetSortBy.date => isSpanishLocale ? 'Fecha' : 'Date',
+        BudgetSortBy.number => isSpanishLocale ? 'Número' : 'Number',
+      };
+
+  IconData _icon(BudgetSortBy by) => switch (by) {
+        BudgetSortBy.date => Icons.calendar_today_outlined,
+        BudgetSortBy.number => Icons.tag_rounded,
+      };
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final ascending = state.dir == BudgetSortDir.asc;
     final dirIcon =
         ascending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(7),
-      onTap: enabled ? onTap : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(7),
-          color: active
-              ? cs.secondary.withValues(alpha: 0.15)
-              : Colors.transparent,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 12,
-              color: active
-                  ? cs.secondary
-                  : cs.onSurfaceVariant.withValues(alpha: 0.55),
+    return PopupMenuButton<BudgetSortBy>(
+      tooltip: isSpanishLocale ? 'Ordenar por' : 'Sort by',
+      enabled: enabled,
+      position: PopupMenuPosition.under,
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        for (final by in BudgetSortBy.values)
+          PopupMenuItem(
+            value: by,
+            child: Row(
+              children: [
+                Icon(
+                  _icon(by),
+                  size: 16,
+                  color: state.by == by ? cs.secondary : cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _label(by),
+                    style: TextStyle(
+                      fontWeight:
+                          state.by == by ? FontWeight.w700 : FontWeight.w500,
+                      color: state.by == by ? cs.secondary : null,
+                    ),
+                  ),
+                ),
+                if (state.by == by)
+                  Icon(dirIcon, size: 15, color: cs.secondary),
+              ],
             ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                color: active
-                    ? cs.secondary
-                    : cs.onSurfaceVariant.withValues(alpha: 0.7),
+          ),
+      ],
+      child: Container(
+        width: 34,
+        height: 34,
+        margin: const EdgeInsets.only(right: 4),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(9),
+          border:
+              Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Center(child: Icon(_icon(state.by), size: 16, color: cs.secondary)),
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                padding: const EdgeInsets.all(1.5),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(dirIcon, size: 10, color: cs.secondary),
               ),
             ),
-            if (active) ...[
-              const SizedBox(width: 4),
-              Icon(dirIcon,
-                  size: 11, color: cs.secondary.withValues(alpha: 0.8)),
-            ],
           ],
         ),
       ),

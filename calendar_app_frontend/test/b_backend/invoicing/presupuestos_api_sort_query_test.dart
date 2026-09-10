@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hexora/a-models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 
 void main() {
@@ -32,6 +33,24 @@ void main() {
       expect(uri.path, '/api/presupuestos/group/g1');
       expect(uri.queryParameters.containsKey('sortBy'), isFalse);
       expect(uri.queryParameters.containsKey('sortDir'), isFalse);
+    });
+
+    test('includes explicit presupuesto kind', () {
+      final uri = api.buildListByGroupUri(
+        'g1',
+        presupuestoKind: PresupuestoKind.structured,
+      );
+      expect(uri.queryParameters['presupuestoKind'], 'structured');
+    });
+
+    test('combines presupuesto kind and status', () {
+      final uri = api.buildListByGroupUri(
+        'g1',
+        presupuestoKind: PresupuestoKind.document,
+        status: 'draft',
+      );
+      expect(uri.queryParameters['presupuestoKind'], 'document');
+      expect(uri.queryParameters['status'], 'draft');
     });
   });
 }

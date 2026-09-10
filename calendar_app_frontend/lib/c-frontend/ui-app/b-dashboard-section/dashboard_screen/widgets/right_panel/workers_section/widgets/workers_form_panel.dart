@@ -16,6 +16,7 @@ class WorkersFormPanel extends StatelessWidget {
   final void Function(bool created, Worker savedWorker) onSaved;
   final TabController tabController;
   final bool enableAddHoursTab;
+  final VoidCallback? onTimeEntryChanged;
 
   const WorkersFormPanel({
     super.key,
@@ -27,6 +28,7 @@ class WorkersFormPanel extends StatelessWidget {
     required this.onSaved,
     required this.tabController,
     this.enableAddHoursTab = false,
+    this.onTimeEntryChanged,
   });
 
   @override
@@ -128,6 +130,7 @@ class WorkersFormPanel extends StatelessWidget {
                                 : [selectedWorker!],
                             initialSelectedIds: {selectedWorker!.id},
                             embedded: true,
+                            onCreated: onTimeEntryChanged,
                           ),
                 ],
               ),

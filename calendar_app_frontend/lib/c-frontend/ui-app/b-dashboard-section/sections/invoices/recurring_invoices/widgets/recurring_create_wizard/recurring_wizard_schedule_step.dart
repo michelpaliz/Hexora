@@ -31,6 +31,7 @@ class RecurringWizardScheduleStep extends StatelessWidget {
   final ValueChanged<String> onInvoiceDateModeChanged;
   final ValueChanged<String> onInvoiceDateClampPolicyChanged;
   final String? errorText;
+  final bool showInvoiceDatePolicy;
 
   const RecurringWizardScheduleStep({
     super.key,
@@ -61,6 +62,7 @@ class RecurringWizardScheduleStep extends StatelessWidget {
     required this.onInvoiceDateModeChanged,
     required this.onInvoiceDateClampPolicyChanged,
     this.errorText,
+    this.showInvoiceDatePolicy = true,
   });
 
   @override
@@ -83,6 +85,7 @@ class RecurringWizardScheduleStep extends StatelessWidget {
         invoiceDateDayCtrl: invoiceDateDayCtrl,
         invoiceDateOffsetDaysCtrl: invoiceDateOffsetDaysCtrl,
         invoiceDateClampPolicy: invoiceDateClampPolicy,
+        showInvoiceDatePolicy: showInvoiceDatePolicy,
         timezoneLabel: timezoneLabel,
         exceptions: exceptions,
         onFreqChanged: onFreqChanged,

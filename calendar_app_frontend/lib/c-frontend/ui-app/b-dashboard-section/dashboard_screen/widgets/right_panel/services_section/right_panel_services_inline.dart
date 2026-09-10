@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/service/service.dart';
@@ -130,8 +130,17 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) =>
-          AddClientSheet(groupId: widget.group.id, api: _clientsApi),
+      builder: (sheetContext) => AddClientSheet(
+        groupId: widget.group.id,
+        api: _clientsApi,
+        existingClients: _clients,
+        onOpenExisting: (client) {
+          Navigator.of(sheetContext).pop();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _openEditClientSheet(client);
+          });
+        },
+      ),
     );
     if (created != null && mounted) {
       setState(() => _clients.insert(0, created));
@@ -176,6 +185,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
         groupId: widget.group.id,
         api: _clientsApi,
         client: c,
+        existingClients: _clients,
       ),
     );
 
@@ -528,8 +538,10 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                 groupId: widget.group.id,
                 api: _clientsApi,
                 client: _editingClient,
+                existingClients: _clients,
                 closeOnSave: false,
                 onSaved: _handleClientSaved,
+                onOpenExisting: _startEditClient,
               );
             } else if (showServiceEditor) {
               content = AddServiceSheet(

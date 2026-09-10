@@ -7,6 +7,7 @@ String buildAzureMapsDocument({
   required String clientId,
   required String accessToken,
   required List<AzureMapPin> pins,
+  required String? selectedPinId,
   required AzureMapSelection? selection,
   required AzureMapUserLocation? userLocation,
 }) {
@@ -15,6 +16,7 @@ String buildAzureMapsDocument({
     'clientId': clientId,
     'accessToken': accessToken,
     'pins': pins.map((pin) => pin.toJson()).toList(growable: false),
+    'selectedPinId': selectedPinId,
     'selection': selection?.toJson(),
     'userLocation': userLocation?.toJson(),
   }).replaceAll('</', r'<\/');
@@ -30,6 +32,8 @@ String buildAzureMapsDocument({
     html,body,#map{width:100%;height:100%;margin:0;overflow:hidden;background:#eef2f7;font-family:Arial,sans-serif}
     .pin{width:28px;height:28px;border-radius:50% 50% 50% 0;background:#35649a;border:3px solid white;box-shadow:0 3px 10px rgba(15,23,42,.3);transform:rotate(-45deg)}
     .pin:after{content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:white;top:7px;left:7px}
+    .pin-selected{width:34px;height:34px;background:#ef7b45;border-width:4px;box-shadow:0 0 0 6px rgba(239,123,69,.24),0 5px 16px rgba(15,23,42,.42)}
+    .pin-selected:after{width:10px;height:10px;top:8px;left:8px}
     .selected-pin{width:32px;height:32px;border-radius:50% 50% 50% 0;background:#ef7b45;border:3px solid white;box-shadow:0 4px 14px rgba(15,23,42,.38);transform:rotate(-45deg);cursor:grab}
     .selected-pin:after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:white;top:8px;left:8px}
     .user-location{position:relative;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#1677ff;border:3px solid white;box-shadow:0 3px 12px rgba(15,23,42,.48)}
@@ -43,8 +47,14 @@ String buildAzureMapsDocument({
   <div id="map"><div class="loading">Cargando mapa...</div></div>
   <script>
     const config = $config;
-    let currentToken = config.accessToken;
+    function normalizeToken(value) {
+      return String(value || '').trim().replace(/^Bearer\\s+/i, '');
+    }
+
+    const mapClientId = String(config.clientId || '').trim();
+    let currentToken = normalizeToken(config.accessToken);
     let pins = config.pins || [];
+    let selectedPinId = config.selectedPinId || null;
     let selection = config.selection || null;
     let userLocation = config.userLocation || null;
     let map;
@@ -110,10 +120,14 @@ String buildAzureMapsDocument({
       if (!map || !map.markers) return;
       pinMarkers.forEach(function(marker){ map.markers.remove(marker); });
       pinMarkers = [];
-      pins.forEach(function(pin){
+      const orderedPins = pins.slice().sort(function(a,b){
+        return (a.id === selectedPinId ? 1 : 0) - (b.id === selectedPinId ? 1 : 0);
+      });
+      orderedPins.forEach(function(pin){
+        const isSelected = pin.id === selectedPinId;
         const marker = new atlas.HtmlMarker({
           position:[pin.longitude,pin.latitude],
-          htmlContent:'<div class="pin"></div>',
+          htmlContent:'<div class="pin' + (isSelected ? ' pin-selected' : '') + '"></div>',
           anchor:'bottom'
         });
         map.markers.add(marker);
@@ -143,6 +157,9 @@ String buildAzureMapsDocument({
     }
 
     try {
+      if (!mapClientId || !currentToken) {
+        throw new Error('Faltan las credenciales de Azure Maps.');
+      }
       const center = selection
         ? [selection.longitude,selection.latitude]
         : userLocation
@@ -155,9 +172,21 @@ String buildAzureMapsDocument({
         view:'Auto',
         style:'road',
         authOptions:{
-          authType:'anonymous',
-          clientId:config.clientId,
-          getToken:function(resolve){ resolve(currentToken); }
+          authType:atlas.AuthenticationType.anonymous,
+          clientId:mapClientId,
+          getToken:function(resolve,reject){
+            if (currentToken) resolve(currentToken);
+            else reject(new Error('No hay un token disponible para Azure Maps.'));
+          }
+        },
+        transformRequest:function(url){
+          if (!url || !url.startsWith('https://atlas.microsoft.com/')) {
+            return {url:url};
+          }
+          return {
+            url:url,
+            headers:{'x-ms-client-id':mapClientId}
+          };
         }
       });
       map.events.add('ready', function(){
@@ -169,8 +198,8 @@ String buildAzureMapsDocument({
         map.layers.add(new atlas.layer.LineLayer(circleSource, null, {
           strokeColor:'#2f659d',strokeWidth:2
         }));
-        renderPins();
         renderUserLocation();
+        renderPins();
         renderSelection();
         map.events.add('click', function(event){
           if (!selection || !event.position) return;
@@ -200,8 +229,9 @@ String buildAzureMapsDocument({
         try { data = JSON.parse(data); } catch (_) { return; }
       }
       if (!data || data.instanceId !== config.instanceId) return;
-      if (data.action === 'token') currentToken = data.accessToken;
+      if (data.action === 'token') currentToken = normalizeToken(data.accessToken);
       if (data.action === 'pins') { pins = data.pins || []; renderPins(); }
+      if (data.action === 'selected-pin') { selectedPinId = data.selectedPinId || null; renderPins(); }
       if (data.action === 'selection') { selection = data.selection || null; renderSelection(); }
       if (data.action === 'user-location') { userLocation = data.userLocation || null; renderUserLocation(); }
       if (data.action === 'camera') setCamera(data.latitude,data.longitude,data.zoom);

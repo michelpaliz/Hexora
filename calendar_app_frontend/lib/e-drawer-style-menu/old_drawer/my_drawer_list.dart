@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -138,8 +138,8 @@ Future<void> _handleLogout(BuildContext context) async {
   try {
     final shouldLogout = await showLogOutDialog(context);
     if (shouldLogout) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.logOut();
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.logOut();
       Navigator.of(context)
           .pushNamedAndRemoveUntil(AppRoutes.loginRoute, (_) => false);
     }

@@ -7,6 +7,7 @@ import 'package:hexora/a-models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/invoicing/recurring_invoices_api.dart';
+import 'package:hexora/b-backend/receipts/recurring_receipts_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_time_utils.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
@@ -48,6 +49,9 @@ class RecurringCreateWizard extends StatefulWidget {
 
 class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
   static const int _draftVersion = 1;
+
+  bool get _isReceiptFlow =>
+      widget.api is RecurringReceiptsApi || widget.draftScope == 'receipt';
 
   int _step = 0;
   String? _clientId;
@@ -711,15 +715,14 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
     final billDay = int.tryParse(_billDayCtrl.text.trim());
     final weekDay = int.tryParse(_weekDayCtrl.text.trim());
     final count = int.tryParse(_countCtrl.text.trim());
-    final tzName = _timezoneCtrl.text.trim();
-    final utcDate = utcDateString(_startDate, _startTime, tzName);
-    final utcTime = utcTimeString(_startDate, _startTime, tzName);
+    final startDate = dateOnlyString(_startDate);
+    final localTime = formatTimeOfDay(_startTime);
     final rule = <String, dynamic>{
       'freq': canonicalFrequencyForApi(_freq),
       'frequency': canonicalFrequencyForApi(_freq),
       'interval': interval,
-      'startDate': utcDate,
-      'timeOfDay': utcTime,
+      'startDate': startDate,
+      'timeOfDay': localTime,
       'timezone': _timezoneCtrl.text.trim().isEmpty
           ? 'Europe/Madrid'
           : _timezoneCtrl.text.trim(),
@@ -739,9 +742,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
       rule['count'] = count;
     }
     if (_exceptions.isNotEmpty) {
-      rule['exceptions'] = _exceptions
-          .map((d) => utcDateString(d, _startTime, _timezoneCtrl.text))
-          .toList();
+      rule['exceptions'] = _exceptions.map(dateOnlyString).toList();
     }
     return rule;
   }
@@ -758,6 +759,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
   }
 
   String? _validateIssuePolicy(AppLocalizations l) {
+    if (_isReceiptFlow) return null;
     if (_invoiceDateMode == 'fixed_day') {
       final day = int.tryParse(_invoiceDateDayCtrl.text.trim());
       if (day == null || day < 1 || day > 31) {
@@ -855,11 +857,11 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
         if (rule['endDate'] != null) 'endDate': rule['endDate'],
         if (rule['count'] != null) 'count': rule['count'],
         if (rule['exceptions'] != null) 'exceptions': rule['exceptions'],
-        'invoiceDateMode': _invoiceDateMode,
-        'invoiceDateClampPolicy': _invoiceDateClampPolicy,
-        if (_invoiceDateMode == 'fixed_day')
+        if (!_isReceiptFlow) 'invoiceDateMode': _invoiceDateMode,
+        if (!_isReceiptFlow) 'invoiceDateClampPolicy': _invoiceDateClampPolicy,
+        if (!_isReceiptFlow && _invoiceDateMode == 'fixed_day')
           'invoiceDateDay': int.tryParse(_invoiceDateDayCtrl.text.trim()),
-        if (_invoiceDateMode == 'offset_days')
+        if (!_isReceiptFlow && _invoiceDateMode == 'offset_days')
           'invoiceDateOffsetDays':
               int.tryParse(_invoiceDateOffsetDaysCtrl.text.trim()),
       };
@@ -941,18 +943,17 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
       );
       return;
     }
-    final tz = _timezoneCtrl.text.trim();
-    final utcStartDate = utcDateString(_startDate, _startTime, tz);
-    final utcTimeOfDay = utcTimeString(_startDate, _startTime, tz);
+    final startDate = dateOnlyString(_startDate);
+    final localTimeOfDay = formatTimeOfDay(_startTime);
     final payload = {
       'groupId': widget.group.id,
       'clientId': _clientId,
       'name': name,
       'frequency': canonicalFrequencyForApi(_freq),
       'interval': int.tryParse(_intervalCtrl.text.trim()) ?? 1,
-      'startDate': utcStartDate,
+      'startDate': startDate,
       if (_endType == 'date' && _endDate != null)
-        'endDate': utcDateString(_endDate!, _startTime, tz),
+        'endDate': dateOnlyString(_endDate!),
       if (_endType == 'count' && int.tryParse(_countCtrl.text.trim()) != null)
         'count': int.tryParse(_countCtrl.text.trim()),
       if ((canonicalFrequencyForApi(_freq) == recurringFreqMonthly ||
@@ -961,7 +962,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
         'billDay': int.tryParse(_billDayCtrl.text.trim()),
       if (canonicalFrequencyForApi(_freq) == recurringFreqWeekly)
         'billDay': int.tryParse(_weekDayCtrl.text.trim()),
-      'timeOfDay': utcTimeOfDay,
+      'timeOfDay': localTimeOfDay,
       'timezone': _timezoneCtrl.text.trim().isEmpty
           ? 'Europe/Madrid'
           : _timezoneCtrl.text.trim(),
@@ -969,15 +970,13 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
       if (_currencyCtrl.text.trim().isNotEmpty)
         'currency': _currencyCtrl.text.trim(),
       if (_exceptions.isNotEmpty)
-        'exceptions': _exceptions
-            .map((d) => utcDateString(d, _startTime, _timezoneCtrl.text))
-            .toList(),
+        'exceptions': _exceptions.map(dateOnlyString).toList(),
       'status': 'active',
-      'invoiceDateMode': _invoiceDateMode,
-      'invoiceDateClampPolicy': _invoiceDateClampPolicy,
-      if (_invoiceDateMode == 'fixed_day')
+      if (!_isReceiptFlow) 'invoiceDateMode': _invoiceDateMode,
+      if (!_isReceiptFlow) 'invoiceDateClampPolicy': _invoiceDateClampPolicy,
+      if (!_isReceiptFlow && _invoiceDateMode == 'fixed_day')
         'invoiceDateDay': int.tryParse(_invoiceDateDayCtrl.text.trim()),
-      if (_invoiceDateMode == 'offset_days')
+      if (!_isReceiptFlow && _invoiceDateMode == 'offset_days')
         'invoiceDateOffsetDays':
             int.tryParse(_invoiceDateOffsetDaysCtrl.text.trim()),
       'rule': _buildRule(),
@@ -1114,6 +1113,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
             invoiceDateDayCtrl: _invoiceDateDayCtrl,
             invoiceDateOffsetDaysCtrl: _invoiceDateOffsetDaysCtrl,
             invoiceDateClampPolicy: _invoiceDateClampPolicy,
+            showInvoiceDatePolicy: !_isReceiptFlow,
             timezoneLabel: _timezoneLabel(),
             exceptions: _exceptions,
             onFreqChanged: (v) =>
@@ -1190,6 +1190,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
                 previewRows: _previewRows,
                 onLoadPreview: _loadPreview,
                 issueDatePolicySummary: _issuePolicySummary(l),
+                showInvoiceDatePolicy: !_isReceiptFlow,
                 partialSubtotal: _rawSubtotal,
                 discountAmount: _effectiveDiscount,
                 taxableBase: _subtotal,

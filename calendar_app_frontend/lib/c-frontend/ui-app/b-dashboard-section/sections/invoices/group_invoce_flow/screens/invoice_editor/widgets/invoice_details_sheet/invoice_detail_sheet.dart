@@ -22,6 +22,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_email_widgets.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_payment_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
@@ -137,8 +138,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     final history = _invoiceHistory.isNotEmpty
         ? _invoiceHistory
         : invoice.updateHistory.map((entry) => entry.toJson()).toList();
-    final deliveryData = invoiceDeliveryViewData(invoice.deliveryStatus);
-    final deliveryColor = invoiceDeliveryColor(cs, deliveryData.visual);
     final deliveryStatus = normalizeDeliveryStatus(invoice.deliveryStatus);
     final canChangeDelivery =
         (invoice.status ?? '').toLowerCase().contains('issue');
@@ -205,7 +204,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                                       ),
                             ),
                             Text(
-                              invoice.invoiceNumber,
+                              invoice.displayNumber(draftLabel: l.statusDraft),
                               style:
                                   AppTypography.of(context).bodySmall.copyWith(
                                         color: cs.onSurfaceVariant,
@@ -345,8 +344,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             const SizedBox(height: 12),
             _DeliverySection(
               invoice: invoice,
-              deliveryData: deliveryData,
-              deliveryColor: deliveryColor,
               deliveryStatus: deliveryStatus,
               sentAtLabel: sentAtLabel,
               channelLabel: channelLabel,
@@ -435,7 +432,8 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: InvoiceDetailHeader(
                   clientName: widget.client.name,
-                  invoiceNumber: invoice.invoiceNumber,
+                  invoiceNumber:
+                      invoice.displayNumber(draftLabel: l.statusDraft),
                   hasRecurrence: hasRecurrence,
                   recurrenceLabel: recurrenceLabel,
                   occurrenceLabel: occurrenceLabel,
@@ -839,8 +837,6 @@ class _DetailRow extends StatelessWidget {
 
 class _DeliverySection extends StatelessWidget {
   final Invoice invoice;
-  final InvoiceDeliveryViewData deliveryData;
-  final Color deliveryColor;
   final String deliveryStatus;
   final String sentAtLabel;
   final String channelLabel;
@@ -851,8 +847,6 @@ class _DeliverySection extends StatelessWidget {
 
   const _DeliverySection({
     required this.invoice,
-    required this.deliveryData,
-    required this.deliveryColor,
     required this.deliveryStatus,
     required this.sentAtLabel,
     required this.channelLabel,
@@ -889,23 +883,12 @@ class _DeliverySection extends StatelessWidget {
                       ),
                 ),
                 const Spacer(),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: deliveryColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                        color: deliveryColor.withValues(alpha: 0.45)),
-                  ),
-                  child: Text(
-                    deliveryData.labelEs,
-                    style: AppTypography.of(context).bodySmall.copyWith(
-                          color: deliveryColor,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11,
-                        ),
-                  ),
+                DeliveryStatusBadge(
+                  status: invoice.deliveryStatus,
+                  channel: invoice.deliveryChannel,
+                  sentAt: invoice.sentAt,
+                  deliveryError: invoice.deliveryError,
+                  feminine: true,
                 ),
               ],
             ),

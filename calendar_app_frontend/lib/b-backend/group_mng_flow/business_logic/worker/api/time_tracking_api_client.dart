@@ -94,11 +94,24 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
     final res = await _client.get(uri, headers: _headers(token, json: false));
 
     if (res.statusCode == 200) {
-      final raw = jsonDecode(res.body) as List;
-      return raw.cast<Map<String, dynamic>>().map(Worker.fromJson).toList();
+      final decoded = jsonDecode(res.body);
+      final raw = decoded is List
+          ? decoded
+          : decoded is Map && decoded['workers'] is List
+              ? decoded['workers'] as List
+              : decoded is Map && decoded['data'] is List
+                  ? decoded['data'] as List
+                  : const <dynamic>[];
+      return raw
+          .whereType<Map>()
+          .map((item) => Worker.fromJson(Map<String, dynamic>.from(item)))
+          .toList(growable: false);
     }
     if (res.statusCode == 404) return const <Worker>[];
-    throw Exception('Failed to list workers: ${res.statusCode} ${res.body}');
+    throw BackendApiException.fromResponse(
+      res,
+      fallbackMessage: 'Failed to list workers',
+    );
   }
 
   @override
@@ -935,15 +948,7 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
     }
     final decoded =
         res.body.trim().isEmpty ? const <dynamic>[] : jsonDecode(res.body);
-    final raw = decoded is List
-        ? decoded
-        : decoded is Map && decoded['locations'] is List
-            ? decoded['locations'] as List
-            : decoded is Map && decoded['items'] is List
-                ? decoded['items'] as List
-                : decoded is Map && decoded['data'] is List
-                    ? decoded['data'] as List
-                    : const <dynamic>[];
+    final raw = _locationItems(decoded);
     return raw
         .whereType<Map>()
         .map((item) => ClientServiceLocation.fromJson(
@@ -952,6 +957,25 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
         .where((item) =>
             item.clientId.isNotEmpty && item.isEnabled && item.radiusMeters > 0)
         .toList(growable: false);
+  }
+
+  List<dynamic> _locationItems(dynamic payload) {
+    if (payload is List) return payload;
+    if (payload is! Map) return const <dynamic>[];
+    for (final key in const <String>[
+      'locations',
+      'clients',
+      'items',
+      'data',
+    ]) {
+      final value = payload[key];
+      if (value is List) return value;
+      if (value is Map) {
+        final nested = _locationItems(value);
+        if (nested.isNotEmpty) return nested;
+      }
+    }
+    return const <dynamic>[];
   }
 
   @override

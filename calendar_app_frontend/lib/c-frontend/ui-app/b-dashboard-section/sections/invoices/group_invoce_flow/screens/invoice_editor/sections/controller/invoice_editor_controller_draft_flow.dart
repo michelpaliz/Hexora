@@ -103,7 +103,7 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
               .toList(growable: false);
       final invoice = Invoice(
         id: '',
-        invoiceNumber: invoiceNumber,
+        invoiceNumber: '',
         groupId: group.id,
         clientId: _clientId!,
         pdfUrl: pdfUrl.text.trim().isEmpty ? null : pdfUrl.text.trim(),

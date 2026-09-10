@@ -14,6 +14,7 @@ import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart'
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/emails/email_api.dart';
+import 'package:hexora/b-backend/errorClases/error_classes/error_classes.dart';
 import 'package:hexora/b-backend/mail/domain/mail_domain.dart';
 import 'package:hexora/b-backend/mail/models/mail_requests.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/controller/group_dashboard_state.dart';
@@ -84,8 +85,15 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   String? _lastRoute;
   final ScrollController _threadScroll = ScrollController();
   final FocusNode _threadListFocus = FocusNode();
+  FocusNode? _replyFocusNode;
+  TextEditingController? _replySubjectController;
   final TextEditingController _replyCtrl = TextEditingController();
+  MailMessage? _replyTarget;
   TextEditingController? _threadSearchCtrl;
+
+  FocusNode get _replyFocus => _replyFocusNode ??= FocusNode();
+  TextEditingController get _replySubjectCtrl =>
+      _replySubjectController ??= TextEditingController();
 
   bool _leftCollapsed = false;
   bool _showCompose = false;
@@ -165,6 +173,8 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     _threadScroll.removeListener(_onThreadScroll);
     _threadScroll.dispose();
     _threadListFocus.dispose();
+    _replyFocusNode?.dispose();
+    _replySubjectController?.dispose();
     _replyCtrl.dispose();
     _threadSearchCtrl?.dispose();
     _threadDebounce?.cancel();
@@ -245,12 +255,15 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       _showTemplateManager = false;
       _showCompose = false;
       _selectedThreadKey = threadKey;
+      _replyTarget = null;
       _client = null;
       _clientError = null;
       _invoices = const [];
       _invoiceError = null;
       _selectedInvoiceId = null;
     });
+    _replySubjectCtrl.clear();
+    _replyCtrl.clear();
     _syncRoute();
     final domain = context.read<MailDomain>();
     await domain.loadThreadDetail(threadKey);
@@ -459,27 +472,76 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     }
   }
 
-  Future<void> _sendReply(List<MailMessage> messages) async {
+  void _startReply(MailMessage message) {
+    if (_sendingReply) return;
+    if (_replyTarget?.id != message.id) {
+      final originalSubject = message.subject.trim();
+      _replySubjectCtrl.text = originalSubject.isEmpty ||
+              RegExp(r'^re\s*:', caseSensitive: false).hasMatch(originalSubject)
+          ? originalSubject
+          : 'Re: $originalSubject';
+      _replyCtrl.clear();
+    }
+    setState(() => _replyTarget = message);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _replyFocus.requestFocus();
+    });
+  }
+
+  void _closeReplyComposer() {
+    if (_sendingReply) return;
+    _replySubjectCtrl.clear();
+    _replyCtrl.clear();
+    setState(() => _replyTarget = null);
+  }
+
+  String _replyHtmlFromPlainText(String text) {
+    const escape = HtmlEscape(HtmlEscapeMode.element);
+    return text
+        .trim()
+        .split(RegExp(r'\n{2,}'))
+        .map((paragraph) =>
+            '<p>${escape.convert(paragraph).replaceAll('\n', '<br>')}</p>')
+        .join();
+  }
+
+  Future<void> _sendReply(MailMessage target) async {
     if (_sendingReply) return;
     final l = AppLocalizations.of(context)!;
     final body = _replyCtrl.text.trim();
-    if (body.isEmpty) return;
-    final target = _latestMessage(messages);
-    if (target == null) return;
+    final groupId = _currentGroupId()?.trim() ?? '';
+    final request = MailReplyRequest(
+      groupId: groupId,
+      subject: _replySubjectCtrl.text.trim(),
+      textBody: body,
+      htmlBody: body.isEmpty ? null : _replyHtmlFromPlainText(body),
+      applyDefaultFooter: true,
+    );
+    if (!request.hasContent) return;
+    if (groupId.isEmpty) {
+      _toast(l.mailConsoleReplyFailed);
+      return;
+    }
+
+    final threadKey = _selectedThreadKey;
+    final domain = context.read<MailDomain>();
     setState(() => _sendingReply = true);
     try {
-      await context.read<MailDomain>().reply(
-            target.id,
-            MailReplyRequest(textBody: body),
-          );
+      await domain.reply(target.id, request);
+      if (!mounted) return;
+      _replySubjectCtrl.clear();
       _replyCtrl.clear();
-      if (_selectedThreadKey != null) {
-        await context.read<MailDomain>().loadThreadDetail(_selectedThreadKey!);
-      }
-      _loadThreads(refresh: true);
+      setState(() => _replyTarget = null);
       _toast(l.mailConsoleReplySent);
-    } catch (e) {
-      _toast(l.mailConsoleActionFailed(e.toString()));
+      if (threadKey != null && _selectedThreadKey == threadKey) {
+        await domain.loadThreadDetail(threadKey);
+      }
+    } on HttpFailure catch (e) {
+      if (mounted) {
+        _toast(e.message.trim().isEmpty ? l.mailConsoleReplyFailed : e.message);
+      }
+    } catch (_) {
+      if (mounted) _toast(l.mailConsoleReplyFailed);
     } finally {
       if (mounted) setState(() => _sendingReply = false);
     }

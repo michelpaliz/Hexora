@@ -25,7 +25,6 @@ class _InvoiceEditorView extends StatelessWidget {
         final hasSavedDraft = state._c.savedInvoice != null;
         final step1Complete =
             hasClient && datesComplete && hasLines && !invalidDates;
-        final canSaveDraft = !state._c.saving;
         final canPreview = step1Complete && hasSavedDraft;
         final canCompleteDraft = !state._c.saving &&
             step1Complete &&
@@ -80,34 +79,6 @@ class _InvoiceEditorView extends StatelessWidget {
                 ),
           body: LayoutBuilder(
             builder: (context, constraints) {
-              const headerLeft = SizedBox.shrink();
-
-              final saved = state._c.savedInvoice;
-              final savedStatus = (saved?.status ?? '').toLowerCase();
-              final isSavedDraft = saved != null &&
-                  (savedStatus.isEmpty || savedStatus.contains('draft'));
-              final draft = isSavedDraft ? saved : null;
-              final editingDraftId = state._c.editingDraftId;
-              final pendingDrafts = state._c.pendingDrafts
-                  .where((inv) =>
-                      (inv.status ?? '').toLowerCase().contains('draft') ||
-                      (inv.status ?? '').trim().isEmpty)
-                  .where((inv) => draft == null || inv.id != draft.id)
-                  .where((inv) =>
-                      editingDraftId == null || inv.id != editingDraftId)
-                  .toList();
-              final draftBannerInline = draft == null
-                  ? null
-                  : _DraftBanner(
-                      draft: draft,
-                      previewing: state._c.previewedPdf,
-                      deleting: state._c.deletingDraft,
-                      onPreview: () => state._c.previewPdf(context),
-                      onDelete: () => state._c.deleteDraft(context),
-                      showActions: false,
-                      compact: true,
-                    );
-
               final selectedClientName = state._c.clientId == null
                   ? l.invoiceSelectClientLabel
                   : state.widget.clients
@@ -137,24 +108,7 @@ class _InvoiceEditorView extends StatelessWidget {
               final headerBar = _InvoiceEditorHeaderSection(
                 state: state,
                 l: l,
-                t: t,
-                cs: cs,
-                headerLeft: headerLeft,
-                stepsHeader: const SizedBox.shrink(),
-                stepChipsRow: const SizedBox.shrink(),
-                draftBanner: null,
-                pendingDrafts: pendingDrafts,
-                hasBlockingDrafts: false,
                 selectedClientName: selectedClientName,
-                currency: currency,
-                invoiceDate: invoiceDate,
-                dueDate: dueDate,
-                canSaveDraft: canSaveDraft,
-                canPreview: canPreview,
-                canIssue: canCompleteDraft,
-                reinforceIssue: reinforceDraft,
-                previewReason: previewReason,
-                issueReason: draftCompletionReason,
               );
 
               final linesSection = InvoiceContentSection(
@@ -801,13 +755,6 @@ class _InvoiceEditorView extends StatelessWidget {
                 ],
               );
 
-              final tabs = [
-                l.invoiceCustomerTitle,
-                l.invoiceDatesTitle,
-                l.invoiceLinesTitle,
-                l.invoiceStepPreviewShort,
-              ];
-
               return Form(
                 key: state._c.formKey,
                 child: Padding(
@@ -815,139 +762,47 @@ class _InvoiceEditorView extends StatelessWidget {
                   child: Column(
                     children: [
                       headerBar,
-                      const SizedBox(height: 2),
-                      AnimatedBuilder(
-                        animation: state._tabController,
-                        builder: (context, _) {
-                          final current = state._tabController.index;
-                          final steps = List<Step>.generate(
-                            tabs.length,
-                            (index) => Step(
-                              title: Text(tabs[index]),
-                              content: const SizedBox.shrink(),
-                              state: current > index
-                                  ? StepState.complete
-                                  : StepState.indexed,
-                              isActive: current >= index,
-                            ),
-                          );
-                          return Row(
-                            children: [
-                              if (state.widget.embedded) ...[
-                                OutlinedButton.icon(
-                                  onPressed: state._handleClose,
-                                  icon: const Icon(
-                                    Icons.arrow_back_rounded,
-                                    size: 18,
-                                  ),
-                                  label: Text(l.budgetBackCta),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                              ],
-                              Expanded(
-                                child: WizardStepsHeader(
-                                  steps: steps,
-                                  currentStep: current,
-                                  isWide:
-                                      MediaQuery.of(context).size.width >= 900,
-                                  onStepTapped: (i) {
-                                    state._c.setCurrentStepIndex(i);
-                                    state._tabController.animateTo(i);
-                                  },
-                                ),
-                              ),
-                              if (draftBannerInline != null) ...[
-                                const SizedBox(width: 8),
-                                SizedBox(
-                                  width: 200,
-                                  child: draftBannerInline,
-                                ),
-                              ],
-                              const SizedBox(width: 8),
-                              _InvoiceDraftStatusChip(
-                                controller: state._c,
-                                t: t,
-                                cs: cs,
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: cs.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: cs.outlineVariant
-                                        .withValues(alpha: 0.4),
-                                  ),
-                                ),
-                                child: Text(
-                                  selectedClientName,
-                                  style: t.bodySmall.copyWith(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 6),
                       Expanded(
                         child: TabBarView(
                           controller: state._tabController,
                           children: [
                             _buildInvoiceClientStep(context, state, l, t, cs),
                             SingleChildScrollView(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  InvoiceHeaderFields(
-                                    clients: state.widget.clients,
-                                    clientId: state._c.clientId,
-                                    onClientChanged: state._c.setClientId,
+                              padding:
+                                  const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 960),
+                                  child: InvoiceDatesStep(
                                     currencyController: state._c.currency,
                                     invoiceDate: state._c.invoiceDate,
                                     dueDate: state._c.dueDate,
+                                    notesController: state._c.notes,
                                     onPickInvoiceDate: () => state._c.pickDate(
-                                        context, state._c.invoiceDate),
-                                    onPickDueDate: () => state._c
-                                        .pickDate(context, state._c.dueDate),
+                                      context,
+                                      state._c.invoiceDate,
+                                    ),
+                                    onPickDueDate: () => state._c.pickDate(
+                                      context,
+                                      state._c.dueDate,
+                                      firstAllowedDate:
+                                          state._c.invoiceDate.value,
+                                    ),
                                     onCurrencyChanged: (_) =>
                                         state._c.notifyUi(),
-                                    showDates: true,
-                                    showClient: false,
-                                    showCurrency: true,
+                                    onNotesChanged: (_) => state._c.notifyUi(),
+                                    onBack: () {
+                                      state._c.setCurrentStepIndex(0);
+                                      state._tabController.animateTo(0);
+                                    },
+                                    onContinue: () {
+                                      state._c.setCurrentStepIndex(2);
+                                      state._tabController.animateTo(2);
+                                    },
                                   ),
-                                  const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: state._c.notes,
-                                    minLines: 3,
-                                    maxLines: 5,
-                                    onChanged: (_) => state._c.notifyUi(),
-                                    decoration: InputDecoration(
-                                      labelText: Localizations.localeOf(context)
-                                                  .languageCode ==
-                                              'es'
-                                          ? 'Notas'
-                                          : 'Notes',
-                                      prefixIcon:
-                                          const Icon(Icons.notes_rounded),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                             gatedLinesSection,
@@ -1246,7 +1101,9 @@ class _InvoiceEditorView extends StatelessWidget {
                         onPreview: (inv) async {
                           final bytes =
                               await state._c.fetchHistoricalPdf(inv.id);
-                          final fileName = 'invoice-${inv.invoiceNumber}.pdf';
+                          final fileName = inv.isDraft
+                              ? 'invoice-draft-${inv.id}.pdf'
+                              : 'invoice-${inv.invoiceNumber}.pdf';
                           await pdf_launcher.launchPdfPreview(bytes,
                               fileName: fileName);
                         },

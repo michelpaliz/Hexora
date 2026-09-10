@@ -4,6 +4,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_document_actions_view.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_image_library_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_template_editor_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/nav_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
@@ -29,7 +30,7 @@ class PresupuestosModuleScreen extends StatefulWidget {
 class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   final _clientsApi = ClientsApi();
   List<GroupClient> _clients = const [];
-  String _menu = 'budgets_document_new';
+  String _menu = 'budgets_document_all';
   int _documentRefreshRevision = 0;
   bool _documentMenuExpanded = true;
   bool _sideMenuCollapsed = false;
@@ -84,7 +85,7 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   @override
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
-    final title = _isEs ? 'Presupuestos' : 'Budgets';
+    final title = _isEs ? 'Propuestas' : 'Proposals';
     final body = FolderPanel(
       title: title,
       showTab: !isNarrow,
@@ -148,6 +149,15 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
 
   Widget _content() {
     switch (_menu) {
+      case 'budgets_document_all':
+        return PresupuestoDocumentActionsView(
+          key: ValueKey(
+            'budget-document-all-${widget.group.id}-$_documentRefreshRevision',
+          ),
+          groupId: widget.group.id,
+          clients: _clients,
+          mode: PresupuestoDocumentActionMode.all,
+        );
       case 'budgets_document_new':
         return PresupuestoTemplateEditorScreen(
           key: ValueKey('budget-document-new-${widget.group.id}'),
@@ -191,6 +201,11 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
           groupId: widget.group.id,
           clients: _clients,
           mode: PresupuestoDocumentActionMode.preview,
+        );
+      case 'budget_image_library':
+        return PresupuestoImageLibraryView(
+          key: ValueKey('budget-image-library-${widget.group.id}'),
+          groupId: widget.group.id,
         );
       case 'budget_templates':
       default:
@@ -563,7 +578,7 @@ String _documentMenuLabel(BuildContext context) {
       .languageCode
       .toLowerCase()
       .startsWith('es');
-  return isEs ? 'Documento de presupuesto' : 'Budget document';
+  return isEs ? 'Propuestas' : 'Proposals';
 }
 
 String _budgetMenuTitle(BuildContext context) {
@@ -571,7 +586,7 @@ String _budgetMenuTitle(BuildContext context) {
       .languageCode
       .toLowerCase()
       .startsWith('es');
-  return isEs ? 'Presupuestos' : 'Budgets';
+  return isEs ? 'Propuestas' : 'Proposals';
 }
 
 String _budgetMenuSubtitle(BuildContext context) {
@@ -579,7 +594,7 @@ String _budgetMenuSubtitle(BuildContext context) {
       .languageCode
       .toLowerCase()
       .startsWith('es');
-  return isEs ? 'Menu de documentos' : 'Document menu';
+  return isEs ? 'Documentos de propuesta' : 'Proposal documents';
 }
 
 String _collapseMenuLabel(BuildContext context) {
@@ -611,7 +626,7 @@ String _documentActionsMenuLabel(BuildContext context) {
       .languageCode
       .toLowerCase()
       .startsWith('es');
-  return isEs ? 'Documentos' : 'Documents';
+  return isEs ? 'Propuestas' : 'Proposals';
 }
 
 String _localizedLabel(
@@ -683,8 +698,8 @@ const _templateMenuItems = <_PresupuestosMenuEntry>[
   _PresupuestosMenuEntry(
     'budgets_document_new',
     Icons.add_rounded,
-    'Nuevo presupuesto',
-    'New budget',
+    'Nueva propuesta',
+    'New proposal',
     mobileLabelEs: 'Crear',
     mobileLabelEn: 'Create',
     primaryAction: true,
@@ -695,9 +710,23 @@ const _templateMenuItems = <_PresupuestosMenuEntry>[
     'Plantillas',
     'Templates',
   ),
+  _PresupuestosMenuEntry(
+    'budget_image_library',
+    Icons.photo_library_outlined,
+    'Biblioteca de imágenes',
+    'Image library',
+    mobileLabelEs: 'Imágenes',
+    mobileLabelEn: 'Images',
+  ),
 ];
 
 const _documentActionMenuItems = <_PresupuestosMenuEntry>[
+  _PresupuestosMenuEntry(
+    'budgets_document_all',
+    Icons.view_list_outlined,
+    'Todos',
+    'All',
+  ),
   _PresupuestosMenuEntry(
     'budgets_document_drafts',
     Icons.drafts_outlined,

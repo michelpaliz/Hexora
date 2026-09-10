@@ -176,6 +176,14 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
             s._deleteReceipt(r);
           },
           onImportJson: () => s._openReceiptJsonImportDialog(r),
+          onMarkSent: () {
+            Navigator.of(context).maybePop();
+            s._markReceiptSent(r);
+          },
+          onMarkUnsent: () {
+            Navigator.of(context).maybePop();
+            s._markReceiptUnsent(r);
+          },
           onLoadInlinePdf: () => s._loadReceiptInlinePdfBytes(r),
         ),
       ),
@@ -234,9 +242,16 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     });
     try {
       final groupId = widget.state.widget.group.id;
-      final list = await _presupuestosApi.listByGroup(groupId: groupId);
+      final list = await _presupuestosApi.listByGroup(
+        groupId: groupId,
+        presupuestoKind: PresupuestoKind.structured,
+      );
       if (!mounted) return;
-      setState(() => _budgets = list);
+      setState(() {
+        _budgets = list
+            .where((item) => !presupuestoHasDocumentContent(item))
+            .toList(growable: false);
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _budgetsError = e.toString());
@@ -284,10 +299,11 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     all.sort((a, b) {
       final da = a.issueDate ?? a.registeredAt ?? a.occurrenceDate;
       final db = b.issueDate ?? b.registeredAt ?? b.occurrenceDate;
-      if (da == null && db == null) return 0;
+      if (da == null && db == null) return a.id.compareTo(b.id);
       if (da == null) return 1;
       if (db == null) return -1;
-      return db.compareTo(da);
+      final dateComparison = db.compareTo(da);
+      return dateComparison != 0 ? dateComparison : a.id.compareTo(b.id);
     });
 
     // Build flat list: String = month header, Invoice = row
@@ -316,9 +332,9 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
           return _MonthSectionHeader(label: item, first: i == 0);
         }
         final inv = item as Invoice;
-        final invDraft = (inv.status ?? '').toLowerCase().contains('draft') ||
-            (inv.status ?? '').trim().isEmpty;
+        final invDraft = inv.isDraft;
         return Padding(
+          key: ValueKey(inv.id),
           padding: const EdgeInsets.only(bottom: 6),
           child: InvoiceListItem(
             invoice: inv,
@@ -357,6 +373,10 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
           onDownload: () => s._downloadReceiptPdf(r),
           onIssue: isDraft ? () => s._issueReceipt(r) : null,
           onDelete: isDraft ? () => s._deleteReceipt(r) : null,
+          onMarkSent:
+              receiptCanMarkSent(r) ? () => s._markReceiptSent(r) : null,
+          onMarkUnsent:
+              receiptCanMarkUnsent(r) ? () => s._markReceiptUnsent(r) : null,
         );
       },
     );
@@ -1005,6 +1025,7 @@ class _ClientMobileInvoicesScreenState
           }
           final inv = item as Invoice;
           return Padding(
+            key: ValueKey(inv.id),
             padding: const EdgeInsets.only(bottom: 6),
             child: InvoiceListItem(
               invoice: inv,

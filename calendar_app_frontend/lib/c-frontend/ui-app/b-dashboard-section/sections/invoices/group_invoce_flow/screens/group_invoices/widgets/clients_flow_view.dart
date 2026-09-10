@@ -231,9 +231,10 @@ class ClientsFlowView extends StatelessWidget {
                                                 leading: const Icon(
                                                     Icons.drafts_outlined),
                                                 title: Text(
-                                                    inv.invoiceNumber.isNotEmpty
-                                                        ? inv.invoiceNumber
-                                                        : l.invoicesListTitle),
+                                                  inv.displayNumber(
+                                                    draftLabel: l.statusDraft,
+                                                  ),
+                                                ),
                                                 subtitle: Text(
                                                     '${selectedClient!.name} • ${inv.status ?? 'draft'}'),
                                                 trailing: Wrap(

@@ -42,6 +42,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
   final Map<String, dynamic> originalSeries;
   final String clientName;
   final bool startReadOnly;
+  final bool showInvoiceDatePolicy;
 
   const RecurringDetailRuleTab({
     super.key,
@@ -80,6 +81,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
     required this.originalSeries,
     required this.clientName,
     this.startReadOnly = false,
+    this.showInvoiceDatePolicy = true,
   });
 
   @override
@@ -390,13 +392,14 @@ class RecurringDetailRuleTab extends StatelessWidget {
               before: originalTimezone,
               now: timezoneLabel,
             ),
-            compareRow(
-              label: isEs
-                  ? 'Fecha de emision de factura'
-                  : 'Invoice issue date policy',
-              before: originalIssueDatePolicySummary,
-              now: issueDatePolicySummary,
-            ),
+            if (showInvoiceDatePolicy)
+              compareRow(
+                label: isEs
+                    ? 'Fecha de emision de factura'
+                    : 'Invoice issue date policy',
+                before: originalIssueDatePolicySummary,
+                now: issueDatePolicySummary,
+              ),
             compareRow(
               label: l.recurringInvoicesExceptionsLabel,
               before: originalExceptionsLabel,
@@ -438,6 +441,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
       invoiceDateDayCtrl: invoiceDateDayCtrl,
       invoiceDateOffsetDaysCtrl: invoiceDateOffsetDaysCtrl,
       invoiceDateClampPolicy: invoiceDateClampPolicy,
+      showInvoiceDatePolicy: showInvoiceDatePolicy,
       timezoneLabel: timezoneLabel,
       exceptions: exceptions,
       onFreqChanged: onFreqChanged,

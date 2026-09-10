@@ -5,6 +5,7 @@ import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
 import 'package:hexora/a-models/receipt/receipt_line.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -20,6 +21,8 @@ class ReceiptDetailCard extends StatefulWidget {
   final VoidCallback onIssue;
   final VoidCallback onDeleteDraft;
   final VoidCallback onImportJson;
+  final VoidCallback? onMarkSent;
+  final VoidCallback? onMarkUnsent;
   final Future<Uint8List?> Function() onLoadInlinePdf;
   final bool previewInteractive;
 
@@ -34,6 +37,8 @@ class ReceiptDetailCard extends StatefulWidget {
     required this.onIssue,
     required this.onDeleteDraft,
     required this.onImportJson,
+    this.onMarkSent,
+    this.onMarkUnsent,
     required this.onLoadInlinePdf,
     this.previewInteractive = true,
   });
@@ -90,6 +95,9 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
 
     final status = (widget.receipt.status ?? 'draft').toLowerCase();
     final isDraft = status.contains('draft') || status.isEmpty;
+    final isIssued = status == 'issued';
+    final deliveryStatus =
+        normalizedDeliveryStatus(widget.receipt.deliveryStatus);
 
     final totalsTotal = widget.receipt.total ??
         widget.receipt.lines.fold<num>(
@@ -231,6 +239,40 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                   ),
                 ],
               ),
+
+            if (isIssued) ...[
+              const SizedBox(height: 16),
+              _SheetSection(
+                icon: Icons.send_outlined,
+                title: 'Estado de envío',
+                child: _ReceiptDeliveryDetails(receipt: widget.receipt),
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: deliveryStatus == 'sent'
+                    ? OutlinedButton.icon(
+                        onPressed: widget.onMarkUnsent == null
+                            ? null
+                            : () {
+                                Navigator.of(context).pop();
+                                widget.onMarkUnsent!();
+                              },
+                        icon: const Icon(Icons.mark_email_unread_outlined),
+                        label: const Text('Marcar como no enviado'),
+                      )
+                    : FilledButton.tonalIcon(
+                        onPressed: widget.onMarkSent == null
+                            ? null
+                            : () {
+                                Navigator.of(context).pop();
+                                widget.onMarkSent!();
+                              },
+                        icon: const Icon(Icons.mark_email_read_outlined),
+                        label: const Text('Marcar como enviado'),
+                      ),
+              ),
+            ],
 
             // ── Notes ──────────────────────────────────────────────────────
             if ((widget.receipt.notes ?? '').trim().isNotEmpty) ...[
@@ -544,6 +586,13 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                                   issued: issued,
                                   label: statusLabel,
                                 ),
+                                if (issued)
+                                  DeliveryStatusBadge(
+                                    status: widget.receipt.deliveryStatus,
+                                    channel: widget.receipt.deliveryChannel,
+                                    sentAt: widget.receipt.sentAt,
+                                    deliveryError: widget.receipt.deliveryError,
+                                  ),
                               ],
                             ),
                           ],
@@ -587,6 +636,73 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
 }
 
 // ── Footer icon button ─────────────────────────────────────────────────────────
+
+class _ReceiptDeliveryDetails extends StatelessWidget {
+  const _ReceiptDeliveryDetails({required this.receipt});
+
+  final Receipt receipt;
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).toString();
+    final sentAtLabel = receipt.sentAt == null
+        ? '-'
+        : DateFormat.yMMMd(locale).add_Hm().format(receipt.sentAt!.toLocal());
+    final sender = (receipt.sentBy ?? '').trim();
+    final error = (receipt.deliveryError ?? '').trim();
+    final normalized = normalizedDeliveryStatus(receipt.deliveryStatus);
+
+    Widget row(String label, String value, {Color? valueColor}) => Padding(
+          padding: const EdgeInsets.only(bottom: 7),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 110,
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  value,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: valueColor,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DeliveryStatusBadge(
+          status: receipt.deliveryStatus,
+          channel: receipt.deliveryChannel,
+          sentAt: receipt.sentAt,
+          deliveryError: receipt.deliveryError,
+        ),
+        const SizedBox(height: 12),
+        row('Estado', deliveryStatusLabel(receipt.deliveryStatus)),
+        row('Canal', deliveryChannelLabel(receipt.deliveryChannel)),
+        row('Fecha de envío', sentAtLabel),
+        if (sender.isNotEmpty) row('Enviado por', sender),
+        if (normalized == 'failed' && error.isNotEmpty)
+          row(
+            'Error',
+            error,
+            valueColor: Theme.of(context).colorScheme.error,
+          ),
+      ],
+    );
+  }
+}
 
 class _FooterIconBtn extends StatelessWidget {
   final IconData icon;

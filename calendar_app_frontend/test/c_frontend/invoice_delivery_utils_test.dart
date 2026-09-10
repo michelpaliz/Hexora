@@ -15,10 +15,10 @@ void main() {
       expect(data.labelEs, 'Enviada');
     });
 
-    test('failed maps to Fallo envio', () {
+    test('failed maps to Error de envío', () {
       final data = invoiceDeliveryViewData('failed');
       expect(data.status, 'failed');
-      expect(data.labelEs, 'Fallo envio');
+      expect(data.labelEs, 'Error de envío');
     });
   });
 }

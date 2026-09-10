@@ -136,11 +136,20 @@ class Worker {
   }
 
   factory Worker.fromJson(Map<String, dynamic> json) {
+    String? identifier(dynamic value) {
+      if (value is Map) {
+        final nested = Map<String, dynamic>.from(value);
+        value = nested[r'$oid'] ?? nested['_id'] ?? nested['id'];
+      }
+      final result = value?.toString().trim() ?? '';
+      return result.isEmpty ? null : result;
+    }
+
     return Worker(
-      id: json['id'] as String? ?? json['_id'] as String? ?? '',
-      groupId: json['groupId'] as String? ?? '',
-      userId: json['userId'] as String?,
-      displayName: json['displayName'] as String?,
+      id: identifier(json['id'] ?? json['_id']) ?? '',
+      groupId: identifier(json['groupId']) ?? '',
+      userId: identifier(json['userId']),
+      displayName: json['displayName']?.toString(),
       status: _statusFromJson(json['status'] as String?),
       defaultHourlyRate: (json['defaultHourlyRate'] as num?)?.toDouble(),
       advanceAmount: (json['advanceAmount'] as num?)?.toDouble(),

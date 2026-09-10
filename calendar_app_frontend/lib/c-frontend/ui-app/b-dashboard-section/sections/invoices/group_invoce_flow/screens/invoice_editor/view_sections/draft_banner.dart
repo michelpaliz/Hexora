@@ -24,9 +24,7 @@ class _DraftBanner extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final number = draft.invoiceNumber.trim().isEmpty
-        ? l.statusDraft
-        : '${l.statusDraft} • ${draft.invoiceNumber}';
+    final number = draft.displayNumber(draftLabel: l.statusDraft);
 
     return Container(
       padding: compact

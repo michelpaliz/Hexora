@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
+import 'package:hexora/a-models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
@@ -174,6 +175,7 @@ class _PresupuestoInvoiceConversionViewState
     try {
       final items = await _presupuestosApi.listByGroup(
         groupId: widget.groupId,
+        presupuestoKind: PresupuestoKind.structured,
         sortDir: 'desc',
       );
       if (!mounted || requestId != _listRequestId) return;

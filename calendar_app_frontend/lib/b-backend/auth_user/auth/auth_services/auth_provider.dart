@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/api/i_auth_api_client.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/email_verification_state.dart';
 import 'package:hexora/b-backend/auth_user/auth/models/verification_result.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/model/token_obj.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
@@ -21,6 +23,8 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
 
   User? _user;
   String? _authToken;
+  String? _pendingVerificationEmail;
+  bool _requiresEmailVerification = false;
 
   AuthProvider({
     required IUserRepository userRepository,
@@ -33,6 +37,9 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
   // Getter-only per AuthRepository
   @override
   User? get currentUser => _user;
+
+  String? get pendingVerificationEmail => _pendingVerificationEmail;
+  bool get requiresEmailVerification => _requiresEmailVerification;
 
   // Internal, centralized state writer
   void _setCurrentUser(User? user) {
@@ -86,52 +93,78 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
   // LOGIN
   @override
   Future<User?> logIn({required String email, required String password}) async {
-    final data = await _authApi.login(email: email, password: password);
+    await _clearVerificationState();
+    final normalizedEmail = email.trim().toLowerCase();
+    final data = await _authApi.login(
+      email: normalizedEmail,
+      password: password,
+    );
 
     final status = data['_status'] as int? ?? 200;
-    if (status == 403) {
-      final msg = data['message']?.toString() ?? 'Email not verified.';
-      throw EmailNotVerifiedAuthException(msg);
+    final message = _loginMessage(data);
+    final emailNotVerified =
+        status == 403 && _containsEmailNotVerifiedMessage(data);
+
+    if (emailNotVerified) {
+      _pendingVerificationEmail = normalizedEmail;
+      _requiresEmailVerification = true;
+      _logLoginDiagnostic(status, message, 'emailVerificationRequired');
+      throw EmailNotVerifiedAuthException(message);
     } else if (status == 401) {
+      _logLoginDiagnostic(status, message, 'invalidCredentials');
       throw WrongPasswordAuthException();
     } else if (status == 404) {
+      _logLoginDiagnostic(status, message, 'userNotFound');
       throw UserNotFoundAuthException();
     } else if (status != 200) {
-      final msg = data['message']?.toString() ?? 'Login failed';
-      throw Exception(msg);
+      _logLoginDiagnostic(status, message, 'genericLoginError');
+      throw LoginRequestFailedAuthException(
+        message.isNotEmpty ? message : 'Login failed',
+        statusCode: status,
+      );
     }
 
-    final String? accessToken =
-        (data['accessToken'] ?? data['access_token']) as String?;
-    final String? refreshToken =
-        (data['refreshToken'] ?? data['refresh_token']) as String?;
-    final String? userId = (data['userId'] ?? data['id']) as String?;
+    await _clearVerificationState();
 
-    if (accessToken == null || refreshToken == null || userId == null) {
-      throw FormatException('Missing required fields in login response');
+    final accessToken =
+        (data['accessToken'] ?? data['access_token'])?.toString().trim();
+    final refreshToken =
+        (data['refreshToken'] ?? data['refresh_token'])?.toString().trim();
+    final userId = (data['userId'] ?? data['id'])?.toString().trim();
+
+    if (accessToken == null ||
+        accessToken.isEmpty ||
+        refreshToken == null ||
+        refreshToken.isEmpty ||
+        userId == null ||
+        userId.isEmpty) {
+      _logLoginDiagnostic(status, message, 'invalidLoginResponse');
+      throw const FormatException('Missing required fields in login response');
     }
 
+    // Remove the previous session before publishing the newly issued pair.
+    await _tokens.clear();
+    await _tokens.save(AuthTokens(access: accessToken, refresh: refreshToken));
     _authToken = accessToken;
 
-    // save via injected store
-    await _tokens.save(AuthTokens(access: accessToken, refresh: refreshToken));
-
-    final user = await _userRepo.getUserById(userId);
-    if (user.emailVerified == false) {
+    try {
+      final user = await _userRepo.getUserById(userId);
+      _setCurrentUser(user);
+      _logLoginDiagnostic(status, message, 'authenticated');
+      return _user;
+    } catch (_) {
+      _authToken = null;
       await _tokens.clear();
       _setCurrentUser(null);
-      throw EmailNotVerifiedAuthException(
-          data['message']?.toString() ?? 'Email not verified.');
+      rethrow;
     }
-
-    _setCurrentUser(user);
-    return _user;
   }
 
   @override
   Future<void> logOut() async {
     _authToken = null;
     await _tokens.clear();
+    await _clearVerificationState();
     _setCurrentUser(null);
   }
 
@@ -144,6 +177,7 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
   // STARTUP
   @override
   Future<void> initialize() async {
+    await _clearVerificationState();
     _authToken = await _tokens.readAccess();
 
     if (_authToken == null) {
@@ -163,6 +197,36 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
 
     // notifyListeners() already called inside _setCurrentUser when it runs
     if (status != 200 && status != 401) notifyListeners();
+  }
+
+  String _loginMessage(Map<String, dynamic> data) {
+    for (final key in const ['message', 'error']) {
+      final value = data[key]?.toString().trim();
+      if (value != null && value.isNotEmpty && value != 'true') return value;
+    }
+    return '';
+  }
+
+  bool _containsEmailNotVerifiedMessage(Map<String, dynamic> data) {
+    return const ['error', 'message'].any((key) {
+      final value = data[key]?.toString().toLowerCase() ?? '';
+      return value.contains('email not verified');
+    });
+  }
+
+  Future<void> _clearVerificationState() async {
+    _pendingVerificationEmail = null;
+    _requiresEmailVerification = false;
+    await EmailVerificationState.clearPersisted();
+  }
+
+  void _logLoginDiagnostic(int status, String message, String uiState) {
+    if (!kDebugMode) return;
+    final safeMessage = message.isEmpty ? '(empty)' : message;
+    debugPrint(
+      '[Auth][login] status=$status backendMessage=$safeMessage '
+      'uiState=$uiState',
+    );
   }
 
   @override

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_api.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_formatters.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -31,19 +29,12 @@ class InvoiceFormSheet extends StatefulWidget {
 
 class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _digits = TextEditingController(text: '001');
   final _pdfUrl = TextEditingController();
   final _notes = TextEditingController();
   String? _clientId;
   DateTime? _registeredAt;
-  String _status = 'draft';
   bool _saving = false;
-  bool _digitsTouched = false;
-  bool _settingDigits = false;
   final List<LineDraft> _lines = [];
-
-  String get _yearSuffix => DateFormat('yy').format(DateTime.now());
-  String get _invoiceNumber => '${_digits.text.padLeft(3, '0')}-$_yearSuffix';
 
   @override
   void initState() {
@@ -51,57 +42,17 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
     if (widget.clients.isNotEmpty) {
       _clientId = widget.selectedClientId ?? widget.clients.first.id;
     }
-    _digits.addListener(_handleDigitsChanged);
     _lines.add(LineDraft(position: 1));
-    _prefillNextInvoiceNumber();
   }
 
   @override
   void dispose() {
-    _digits.removeListener(_handleDigitsChanged);
-    _digits.dispose();
     _pdfUrl.dispose();
     _notes.dispose();
     for (final l in _lines) {
       l.dispose();
     }
     super.dispose();
-  }
-
-  void _handleDigitsChanged() {
-    if (_settingDigits) return;
-    _digitsTouched = true;
-  }
-
-  Future<void> _prefillNextInvoiceNumber() async {
-    if (_digitsTouched) return;
-    try {
-      final issued = await widget.api.listByGroup(
-        widget.groupId,
-        status: 'issued',
-      );
-      final drafts = await widget.api.listByGroup(
-        widget.groupId,
-        status: 'draft',
-      );
-      if (_digitsTouched || !mounted) return;
-      final raw = _digits.text.trim();
-      if (raw.isNotEmpty && raw != '001') return;
-      final suggestion = InvoiceEditorFormatters.nextInvoiceDigits(
-        invoiceNumbers: [
-          ...issued.map((inv) => inv.invoiceNumber),
-          ...drafts.map((inv) => inv.invoiceNumber),
-        ],
-        now: DateTime.now(),
-      );
-      if (raw == suggestion) return;
-      _settingDigits = true;
-      _digits.text = suggestion;
-      _settingDigits = false;
-      if (mounted) setState(() {});
-    } catch (_) {
-      // Best-effort: keep the default if lookup fails.
-    }
   }
 
   Future<void> _pickRegisteredAt() async {
@@ -142,13 +93,13 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
     try {
       final invoice = Invoice(
         id: '',
-        invoiceNumber: _invoiceNumber,
+        invoiceNumber: '',
         groupId: widget.groupId,
         clientId: _clientId!,
         pdfUrl: _pdfUrl.text.trim().isEmpty ? null : _pdfUrl.text.trim(),
         currency: 'EUR',
         registeredAt: _registeredAt,
-        status: _status,
+        status: 'draft',
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         lines: lineDrafts,
       );
@@ -165,8 +116,8 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
       final raw = e.toString().trim();
       final msg =
           raw.startsWith('Exception: ') ? raw.substring(11).trim() : raw;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg.isEmpty ? l.somethingWentWrong : msg)));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg.isEmpty ? l.somethingWentWrong : msg)));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -213,55 +164,11 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
                   ),
                   Chip(
                     label: Text(
-                      _invoiceNumber,
+                      l.statusDraft,
                       style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _status,
-                decoration: InputDecoration(
-                  labelText: l.invoiceStatusLabel,
-                  enabledBorder: inputBorder,
-                  focusedBorder: inputBorder.copyWith(
-                    borderSide: BorderSide(color: cs.primary, width: 1.5),
-                  ),
-                ),
-                items: [
-                  DropdownMenuItem(value: 'draft', child: Text(l.statusDraft)),
-                  DropdownMenuItem(
-                      value: 'issued', child: Text(l.statusIssued)),
-                ],
-                onChanged: (v) => setState(() => _status = v ?? 'draft'),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _digits,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(3),
-                ],
-                decoration: InputDecoration(
-                  labelText: l.invoiceNumberLabel,
-                  helperText: l.invoiceNumberHelper(_yearSuffix),
-                  suffixText: '-$_yearSuffix',
-                  enabledBorder: inputBorder,
-                  focusedBorder: inputBorder.copyWith(
-                    borderSide: BorderSide(color: cs.primary, width: 1.5),
-                  ),
-                ),
-                validator: (v) {
-                  final value = (v ?? '').padLeft(3, '0');
-                  if (value.length != 3) return l.invoiceNumberInvalid;
-                  if (!RegExp(r'^[0-9]{3}$').hasMatch(value)) {
-                    return l.invoiceNumberInvalid;
-                  }
-                  return null;
-                },
-                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(

@@ -7,12 +7,14 @@ import 'package:intl/intl.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
+import 'package:hexora/a-models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/invoicing/presupuestos_api.dart';
 import 'package:hexora/b-backend/receipts/receipts_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/presupuesto_document_workspace.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/client_search_select.dart';
 
 class TelegramClientDocumentSelection {
@@ -351,15 +353,19 @@ class _TelegramClientDocumentPickerDialogState
     final list = await _presupuestosApi.listByGroup(
       groupId: widget.groupId,
       clientId: clientId,
+      presupuestoKind: PresupuestoKind.structured,
     );
-    list.sort((a, b) {
+    final invoiceStyle = list
+        .where((item) => !presupuestoHasDocumentContent(item))
+        .toList(growable: false);
+    invoiceStyle.sort((a, b) {
       final aDate =
           _parseDate(a['createdAt'] ?? a['updatedAt']) ?? DateTime(1970);
       final bDate =
           _parseDate(b['createdAt'] ?? b['updatedAt']) ?? DateTime(1970);
       return bDate.compareTo(aDate);
     });
-    return list;
+    return invoiceStyle;
   }
 
   List<_TelegramClientDocumentEntry> _visibleEntriesFor({

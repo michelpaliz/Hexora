@@ -32,6 +32,7 @@ class GroupRepository implements IGroupRepository {
   final Map<String, List<Group>> _cacheByUserId = <String, List<Group>>{};
   final Map<String, StreamController<List<Group>>> _controllers =
       <String, StreamController<List<Group>>>{};
+  final Map<String, int> _refreshGenerationByUser = <String, int>{};
 
   StreamController<List<Group>> _getOrCreateController(String userId) {
     return _controllers.putIfAbsent(
@@ -97,14 +98,42 @@ class GroupRepository implements IGroupRepository {
   @override
   Future<void> refreshUserGroupsByIds(
     String userId,
-    List<String> groupIds,
-  ) async {
+    List<String> groupIds, {
+    String? userName,
+  }) async {
+    final generation = (_refreshGenerationByUser[userId] ?? 0) + 1;
+    _refreshGenerationByUser[userId] = generation;
     final token = await _token();
+
+    final normalizedUserName = (userName ?? '').trim();
+    if (normalizedUserName.isNotEmpty) {
+      try {
+        final groups = await _api
+            .getGroupsByUser(normalizedUserName, token)
+            .timeout(const Duration(seconds: 5));
+        if (groups.isEmpty && groupIds.isNotEmpty) {
+          throw StateError(
+            'Groups-by-user returned empty for non-empty group IDs.',
+          );
+        }
+        if (_refreshGenerationByUser[userId] == generation) {
+          _emitIfChanged(userId, groups);
+        }
+        return;
+      } catch (error) {
+        devtools.log(
+          'Fast group lookup failed; falling back to group IDs: $error',
+          name: 'GroupRepository',
+        );
+      }
+    }
 
     final uniqueIds = groupIds.toSet().toList();
     final results = await Future.wait(uniqueIds.map((id) async {
       try {
-        final g = await _api.getGroupById(id, token);
+        final g = await _api
+            .getGroupById(id, token)
+            .timeout(const Duration(seconds: 8));
         return g;
       } catch (_) {
         // If an id is 404 or fails, skip silently.
@@ -113,7 +142,12 @@ class GroupRepository implements IGroupRepository {
     }));
 
     final groups = results.whereType<Group>().toList();
-    _emitIfChanged(userId, groups);
+    if (uniqueIds.isNotEmpty && groups.isEmpty) {
+      throw StateError('None of the user groups could be loaded.');
+    }
+    if (_refreshGenerationByUser[userId] == generation) {
+      _emitIfChanged(userId, groups);
+    }
   }
 
   // ── CRUD + queries ─────────────────────────────────────────────────────────

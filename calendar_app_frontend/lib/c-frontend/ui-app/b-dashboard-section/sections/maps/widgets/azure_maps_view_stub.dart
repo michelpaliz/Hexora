@@ -8,6 +8,7 @@ class AzureMapsView extends StatelessWidget {
     required this.clientId,
     required this.accessToken,
     required this.pins,
+    required this.selectedPinId,
     required this.selection,
     required this.userLocation,
     required this.cameraTarget,
@@ -20,6 +21,7 @@ class AzureMapsView extends StatelessWidget {
   final String clientId;
   final String accessToken;
   final List<AzureMapPin> pins;
+  final String? selectedPinId;
   final AzureMapSelection? selection;
   final AzureMapUserLocation? userLocation;
   final AzureMapCameraTarget? cameraTarget;

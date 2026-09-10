@@ -62,6 +62,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
         lines: (payload['lines'] as List?)?.cast<Map<String, dynamic>>(),
         blocks: (payload['blocks'] as List?)?.cast<Map<String, dynamic>>(),
         totals: (payload['totals'] as Map?)?.cast<String, dynamic>(),
+        advancePercent: payload['advancePercent'] as num?,
       );
       _assertManualClientFieldsPersisted(payload, updated);
       _applyEditableBudgetPayload(updated, resetWizard: false);
@@ -85,6 +86,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
       lines: (payload['lines'] as List?)?.cast<Map<String, dynamic>>(),
       blocks: (payload['blocks'] as List?)?.cast<Map<String, dynamic>>(),
       totals: (payload['totals'] as Map?)?.cast<String, dynamic>(),
+      advancePercent: payload['advancePercent'] as num?,
     );
     _assertManualClientFieldsPersisted(payload, updated);
     _applyEditableBudgetPayload(updated, resetWizard: false);
@@ -165,6 +167,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
       setState(() => _error = l.budgetValidationGroupRequired);
       return;
     }
+    if (!_validateBudgetAdvancePercent(showSnack: true)) return;
     setState(() {
       _issuing = true;
       _error = null;
@@ -284,7 +287,18 @@ extension _GroupInvoicesBudgetsViewFlowSection
       });
       return false;
     }
+    if (_visibleStep == 1 && !_validateBudgetAdvancePercent()) {
+      return false;
+    }
     return true;
+  }
+
+  bool _validateBudgetAdvancePercent({bool showSnack = false}) {
+    if (_isBudgetAdvancePercentValid) return true;
+    final message = _budgetAdvancePercentError;
+    setState(() => _error = message);
+    if (showSnack) showErrorSnack(context, message);
+    return false;
   }
 
   Future<void> _saveDraftOnly() async {
@@ -305,6 +319,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
       showErrorSnack(context, msg);
       return;
     }
+    if (!_validateBudgetAdvancePercent(showSnack: true)) return;
     if (!_isDraftEditable && !_isIssuedEditable) return;
     if (_isIssuedEditable) {
       final reason = await _confirmIssuedChangeReason();

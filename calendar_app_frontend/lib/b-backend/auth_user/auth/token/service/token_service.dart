@@ -7,9 +7,15 @@ import 'package:hexora/b-backend/auth_user/auth/token/token_store/Itoken_store.d
 import 'package:hexora/b-backend/auth_user/auth/token/token_store/token_store.dart';
 
 class TokenService {
-  static final TokenStore _store = SecureTokenStore();
+  static TokenStore _store = SecureTokenStore();
   static final AuthApiClientImpl _authApi = AuthApiClientImpl();
   static Future<String?>? _refreshingToken;
+
+  /// Keeps static token consumers on the same store/cache as AuthProvider.
+  static void configureStore(TokenStore store) {
+    _store = store;
+    _refreshingToken = null;
+  }
 
   static Future<void> saveTokens({
     required String accessToken,

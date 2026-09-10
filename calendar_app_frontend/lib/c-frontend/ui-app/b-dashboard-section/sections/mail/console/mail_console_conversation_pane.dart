@@ -5,16 +5,28 @@ part of '../mail_console_screen.dart';
 class _ConversationPane extends StatelessWidget {
   const _ConversationPane({
     required this.thread,
+    required this.folder,
+    required this.replyTarget,
+    required this.onStartReply,
     required this.onReply,
+    required this.onCloseReply,
+    required this.replySubjectController,
     required this.replyController,
+    required this.replyFocus,
     required this.sendingReply,
     required this.onDownloadAttachment,
     this.hideSubjectBar = false,
   });
 
   final MailThreadDetail thread;
-  final Future<void> Function(List<MailMessage>) onReply;
+  final MailFolder folder;
+  final MailMessage? replyTarget;
+  final ValueChanged<MailMessage> onStartReply;
+  final Future<void> Function(MailMessage) onReply;
+  final VoidCallback onCloseReply;
+  final TextEditingController replySubjectController;
   final TextEditingController replyController;
+  final FocusNode replyFocus;
   final bool sendingReply;
   final ValueChanged<MailAttachment> onDownloadAttachment;
   final bool hideSubjectBar;
@@ -43,50 +55,62 @@ class _ConversationPane extends StatelessWidget {
     final subject =
         resolvedSubject.isEmpty ? l.mailDetailNoSubject : resolvedSubject;
     final participants = thread.participants.join(', ').trim();
-    final latestSender = messages.isEmpty ? '-' : messages.last.fromAddress;
+
+    String replyRecipientDisplay(MailMessage message) {
+      final isSent = message.folderEnum == MailFolder.sent ||
+          (message.folderEnum == null && folder == MailFolder.sent);
+      if (isSent) {
+        final recipients =
+            message.to.map((address) => address.display).toList();
+        return recipients.isEmpty ? '-' : recipients.join(', ');
+      }
+      final sender = message.fromAddress.trim();
+      return sender.isEmpty ? '-' : sender;
+    }
 
     return Column(
       children: [
         // ── Compact sticky subject bar ────────────────────────────
-        if (!hideSubjectBar) Container(
-          padding: const EdgeInsets.fromLTRB(12, 6, 10, 6),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            border: Border(
-              bottom: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.3),
+        if (!hideSubjectBar)
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 6, 10, 6),
+            decoration: BoxDecoration(
+              color: cs.surface,
+              border: Border(
+                bottom: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.3),
+                ),
               ),
             ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  subject,
-                  style: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: cs.onSurface,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    subject,
+                    style: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: cs.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              if (participants.isNotEmpty) ...[
-                const SizedBox(width: 10),
-                Text(
-                  participants,
-                  style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontSize: 11,
+                if (participants.isNotEmpty) ...[
+                  const SizedBox(width: 10),
+                  Text(
+                    participants,
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
         // ── Message list + sticky reply composer ─────────────────
         Expanded(
           child: Column(
@@ -97,16 +121,23 @@ class _ConversationPane extends StatelessWidget {
                   itemCount: messages.length,
                   itemBuilder: (context, index) => _MessageCard(
                     message: messages[index],
+                    onReply: () => onStartReply(messages[index]),
                     onDownloadAttachment: onDownloadAttachment,
                   ),
                 ),
               ),
-              _ReplyComposer(
-                replyController: replyController,
-                onReply: _asyncCallback(() => onReply(messages)),
-                sendingReply: sendingReply,
-                replyToLabel: l.mailConversationReplyTo(latestSender),
-              ),
+              if (replyTarget != null)
+                _ReplyComposer(
+                  subjectController: replySubjectController,
+                  replyController: replyController,
+                  replyFocus: replyFocus,
+                  onReply: _asyncCallback(() => onReply(replyTarget!)),
+                  onClose: onCloseReply,
+                  sendingReply: sendingReply,
+                  replyToLabel: l.mailConversationReplyTo(
+                    replyRecipientDisplay(replyTarget!),
+                  ),
+                ),
             ],
           ),
         ),
@@ -120,10 +151,12 @@ class _ConversationPane extends StatelessWidget {
 class _MessageCard extends StatefulWidget {
   const _MessageCard({
     required this.message,
+    required this.onReply,
     required this.onDownloadAttachment,
   });
 
   final MailMessage message;
+  final VoidCallback onReply;
   final ValueChanged<MailAttachment> onDownloadAttachment;
 
   @override
@@ -167,7 +200,8 @@ class _MessageCardState extends State<_MessageCard> {
     final mainHtml = htmlSplit?.main ?? rawBody;
     final legalHtml = htmlSplit?.legal ?? '';
 
-    final split = hasHtml ? const _BodySplit('', '', '', '') : _splitBody(rawBody);
+    final split =
+        hasHtml ? const _BodySplit('', '', '', '') : _splitBody(rawBody);
     final mainText = split.main;
     final quoted = split.quoted;
     final signature = split.signature;
@@ -425,6 +459,7 @@ class _MessageCardState extends State<_MessageCard> {
                 _ActionChipBtn(
                   icon: Icons.reply_rounded,
                   label: l.mailConversationReply,
+                  onTap: widget.onReply,
                 ),
                 const SizedBox(width: 6),
                 _ActionChipBtn(
@@ -607,8 +642,7 @@ class _LegalSection extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.gavel_rounded,
-                      size: 13, color: _amber),
+                  const Icon(Icons.gavel_rounded, size: 13, color: _amber),
                   const SizedBox(width: 5),
                   Text(
                     isOpen ? hideLabel : showLabel,
@@ -757,14 +791,20 @@ class _CollapsedSection extends StatelessWidget {
 
 class _ReplyComposer extends StatelessWidget {
   const _ReplyComposer({
+    required this.subjectController,
     required this.replyController,
+    required this.replyFocus,
     required this.onReply,
+    required this.onClose,
     required this.sendingReply,
     required this.replyToLabel,
   });
 
+  final TextEditingController subjectController;
   final TextEditingController replyController;
+  final FocusNode replyFocus;
   final VoidCallback onReply;
+  final VoidCallback onClose;
   final bool sendingReply;
   final String replyToLabel;
 
@@ -783,7 +823,9 @@ class _ReplyComposer extends StatelessWidget {
         actions: {
           ActivateIntent: CallbackAction<ActivateIntent>(
             onInvoke: (_) {
-              if (!sendingReply) onReply();
+              if (!sendingReply && replyController.text.trim().isNotEmpty) {
+                onReply();
+              }
               return null;
             },
           ),
@@ -793,57 +835,134 @@ class _ReplyComposer extends StatelessWidget {
           decoration: BoxDecoration(
             color: cs.surfaceContainerHighest.withValues(alpha: 0.25),
             border: Border(
-              top: BorderSide(
-                  color: cs.outlineVariant.withValues(alpha: 0.4)),
+              top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
             ),
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: replyController,
-                  maxLines: 2,
-                  style: t.bodySmall.copyWith(fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: replyToLabel,
-                    hintStyle: t.bodySmall.copyWith(
-                        fontSize: 12, color: cs.onSurfaceVariant),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 8),
-                    filled: true,
-                    fillColor: cs.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: cs.outlineVariant),
+              Row(
+                children: [
+                  Icon(
+                    Icons.reply_rounded,
+                    size: 15,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      replyToLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: cs.outlineVariant),
-                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip:
+                        MaterialLocalizations.of(context).closeButtonTooltip,
+                    onPressed: sendingReply ? null : onClose,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: subjectController,
+                enabled: !sendingReply,
+                maxLines: 1,
+                textInputAction: TextInputAction.next,
+                style: t.bodySmall.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+                decoration: InputDecoration(
+                  labelText:
+                      AppLocalizations.of(context)!.mailComposeSubjectLabel,
+                  hintText:
+                      AppLocalizations.of(context)!.mailComposeSubjectHint,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  filled: true,
+                  fillColor: cs.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: cs.outlineVariant),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: cs.outlineVariant),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  textStyle: t.bodySmall.copyWith(fontSize: 12),
-                  visualDensity: VisualDensity.compact,
+              const SizedBox(height: 8),
+              TextField(
+                controller: replyController,
+                focusNode: replyFocus,
+                readOnly: sendingReply,
+                minLines: 5,
+                maxLines: 9,
+                keyboardType: TextInputType.multiline,
+                style: t.bodySmall.copyWith(fontSize: 13, height: 1.4),
+                decoration: InputDecoration(
+                  hintText:
+                      AppLocalizations.of(context)!.mailConsoleReplyPlaceholder,
+                  hintStyle: t.bodySmall.copyWith(
+                    fontSize: 12,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  alignLabelWithHint: true,
+                  contentPadding: const EdgeInsets.all(12),
+                  filled: true,
+                  fillColor: cs.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: cs.outlineVariant),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: cs.outlineVariant),
+                  ),
                 ),
-                onPressed: sendingReply ? null : onReply,
-                icon: sendingReply
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_rounded, size: 16),
-                label: Text(
-                  sendingReply
-                      ? AppLocalizations.of(context)!.mailConsoleReplySending
-                      : AppLocalizations.of(context)!.mailConsoleReplySend,
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: replyController,
+                  builder: (context, value, _) => FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      textStyle: t.bodySmall.copyWith(fontSize: 12),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: sendingReply || value.text.trim().isEmpty
+                        ? null
+                        : onReply,
+                    icon: sendingReply
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send_rounded, size: 16),
+                    label: Text(
+                      sendingReply
+                          ? AppLocalizations.of(context)!
+                              .mailConsoleReplySending
+                          : AppLocalizations.of(context)!.mailConsoleReplySend,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -857,10 +976,15 @@ class _ReplyComposer extends StatelessWidget {
 // ── Action chip button ────────────────────────────────────────────────────────
 
 class _ActionChipBtn extends StatelessWidget {
-  const _ActionChipBtn({required this.icon, required this.label});
+  const _ActionChipBtn({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
 
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -868,7 +992,7 @@ class _ActionChipBtn extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return InkWell(
       borderRadius: BorderRadius.circular(20),
-      onTap: null,
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(

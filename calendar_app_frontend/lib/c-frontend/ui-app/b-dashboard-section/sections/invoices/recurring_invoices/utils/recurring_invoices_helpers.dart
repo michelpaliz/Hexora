@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/invoicing/recurring_invoices_api.dart';
+import 'package:hexora/b-backend/receipts/recurring_receipts_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/recurring_invoices/utils/recurrence_time_utils.dart';
@@ -68,9 +69,7 @@ String recurringIssueDatePolicySummary(
         ? 'Fecha ejecucion $sign$n dia(s)'
         : 'Issue date = execution date $sign$n day(s)';
   }
-  return isEs
-      ? 'Misma fecha de ejecucion'
-      : 'Issue date = execution day';
+  return isEs ? 'Misma fecha de ejecucion' : 'Issue date = execution day';
 }
 
 String seriesTotal(BuildContext context, Map<String, dynamic> series) {
@@ -117,13 +116,15 @@ Future<void> previewSeries(
   Map<String, dynamic> series,
   RecurringInvoicesApi api,
 ) async {
+  final isReceiptFlow = api is RecurringReceiptsApi;
   Map<String, dynamic>? rule;
   final rawRule = series['rule'];
   if (rawRule is Map) {
     rule = Map<String, dynamic>.from(rawRule);
   } else {
     rule = {
-      'frequency': canonicalFrequencyForApi(series['frequency']?.toString() ?? series['freq']?.toString()),
+      'frequency': canonicalFrequencyForApi(
+          series['frequency']?.toString() ?? series['freq']?.toString()),
       'interval': series['interval'],
       'startDate': series['startDate'],
       'endDate': series['endDate'],
@@ -165,6 +166,7 @@ Future<void> previewSeries(
       if (raw is num) return raw;
       return num.tryParse(raw.toString().trim().replaceAll(',', '.')) ?? 0;
     }
+
     final discountAmount = parseNum(series['discountAmount']);
     final discountPercent = parseNum(series['discountPercent']).clamp(0, 100);
     final rawLines = series['lines'] ?? series['templateLines'];
@@ -182,17 +184,21 @@ Future<void> previewSeries(
       if (rule['endDate'] != null) 'endDate': rule['endDate'],
       if (rule['count'] != null) 'count': rule['count'],
       if (rule['exceptions'] != null) 'exceptions': rule['exceptions'],
-      'invoiceDateMode': recurringInvoiceDateModeFrom(series),
-      'invoiceDateClampPolicy': recurringInvoiceDateClampPolicyFrom(series),
+      if (!isReceiptFlow)
+        'invoiceDateMode': recurringInvoiceDateModeFrom(series),
+      if (!isReceiptFlow)
+        'invoiceDateClampPolicy': recurringInvoiceDateClampPolicyFrom(series),
       'discountAmount': discountAmount,
       'discountPercent': discountPercent,
       if (rawLines is List) 'lines': rawLines,
       if (series['totals'] is Map) 'totals': series['totals'],
     };
     final day = recurringInvoiceDateDayFrom(series);
-    if (day != null) payload['invoiceDateDay'] = day;
+    if (!isReceiptFlow && day != null) payload['invoiceDateDay'] = day;
     final offset = recurringInvoiceDateOffsetDaysFrom(series);
-    if (offset != null) payload['invoiceDateOffsetDays'] = offset;
+    if (!isReceiptFlow && offset != null) {
+      payload['invoiceDateOffsetDays'] = offset;
+    }
 
     final result = await api.preview(payload);
     final rows = <String>[];
@@ -201,10 +207,10 @@ Future<void> previewSeries(
       for (final raw in rawItems) {
         if (raw is! Map) continue;
         final item = Map<String, dynamic>.from(raw);
-        final exec = (item['executionAt'] ?? item['execution_at'] ?? '-')
-            .toString();
-        final issue = (item['issueDate'] ?? item['issue_date'] ?? '-')
-            .toString();
+        final exec =
+            (item['executionAt'] ?? item['execution_at'] ?? '-').toString();
+        final issue =
+            (item['issueDate'] ?? item['issue_date'] ?? '-').toString();
         final err = (item['error'] ?? '').toString().trim();
         rows.add(
           err.isNotEmpty ? '- $exec -> $issue ($err)' : '- $exec -> $issue',
@@ -252,4 +258,3 @@ Future<void> previewSeries(
         .showSnackBar(SnackBar(content: Text(e.toString())));
   }
 }
-

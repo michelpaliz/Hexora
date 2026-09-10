@@ -99,6 +99,8 @@ class _GroupInvoicesContent extends StatelessWidget {
         onCreateReceipt: state._openCreateReceipt,
         onEditReceipt: state._openEditReceipt,
         onIssueReceipt: state._issueReceipt,
+        onMarkReceiptSent: state._markReceiptSent,
+        onMarkReceiptUnsent: state._markReceiptUnsent,
         onDeleteReceipt: state._deleteReceipt,
         onPreviewPdf: state._previewReceiptPdf,
         onDownloadPdf: state._downloadReceiptPdf,

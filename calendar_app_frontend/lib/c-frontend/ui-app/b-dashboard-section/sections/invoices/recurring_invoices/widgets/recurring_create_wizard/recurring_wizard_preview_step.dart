@@ -26,6 +26,7 @@ class RecurringWizardPreviewStep extends StatelessWidget {
   final num tax;
   final num total;
   final bool showTax;
+  final bool showInvoiceDatePolicy;
 
   const RecurringWizardPreviewStep({
     super.key,
@@ -49,6 +50,7 @@ class RecurringWizardPreviewStep extends StatelessWidget {
     required this.tax,
     required this.total,
     this.showTax = true,
+    this.showInvoiceDatePolicy = true,
   });
 
   @override
@@ -81,9 +83,8 @@ class RecurringWizardPreviewStep extends StatelessWidget {
                 ),
                 RecurringWizardSummaryRow(
                   label: l.recurringInvoicesStartLabel,
-                  value: DateFormat.yMMMd(l.localeName)
-                      .add_Hm()
-                      .format(startDate),
+                  value:
+                      DateFormat.yMMMd(l.localeName).add_Hm().format(startDate),
                 ),
                 RecurringWizardSummaryRow(
                   label: l.recurringInvoicesEndLabel,
@@ -96,7 +97,9 @@ class RecurringWizardPreviewStep extends StatelessWidget {
                               ? countCtrl.text.trim()
                               : l.recurringInvoicesEndNever,
                 ),
-                if (normalizeFrequencyFromApi(freq) == recurringFreqMonthly || normalizeFrequencyFromApi(freq) == recurringFreqBimensual || normalizeFrequencyFromApi(freq) == recurringFreqTrimestral)
+                if (normalizeFrequencyFromApi(freq) == recurringFreqMonthly ||
+                    normalizeFrequencyFromApi(freq) == recurringFreqBimensual ||
+                    normalizeFrequencyFromApi(freq) == recurringFreqTrimestral)
                   RecurringWizardSummaryRow(
                     label: l.recurringInvoicesBillDayLabel,
                     value: billDayCtrl.text.trim().isEmpty
@@ -114,10 +117,11 @@ class RecurringWizardPreviewStep extends StatelessWidget {
                   label: l.recurringInvoicesTimezoneLabel,
                   value: timezoneLabel,
                 ),
-                RecurringWizardSummaryRow(
-                  label: 'Politica fecha factura',
-                  value: issueDatePolicySummary,
-                ),
+                if (showInvoiceDatePolicy)
+                  RecurringWizardSummaryRow(
+                    label: 'Politica fecha factura',
+                    value: issueDatePolicySummary,
+                  ),
                 RecurringWizardSummaryRow(
                   label: l.recurringInvoicesExceptionsLabel,
                   value: exceptions.isEmpty
@@ -165,13 +169,14 @@ class RecurringWizardPreviewStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            'Ejemplos: "Ejecuta el 24 y factura el 28" / "Dia 31 con ajuste fin de mes".',
-            style: t.bodySmall.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          if (showInvoiceDatePolicy)
+            Text(
+              'Ejemplos: "Ejecuta el 24 y factura el 28" / "Dia 31 con ajuste fin de mes".',
+              style: t.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
+          if (showInvoiceDatePolicy) const SizedBox(height: 12),
           FilledButton.tonalIcon(
             onPressed: onLoadPreview,
             icon: loadingPreview
@@ -222,5 +227,3 @@ class RecurringWizardPreviewStep extends StatelessWidget {
     );
   }
 }
-
-

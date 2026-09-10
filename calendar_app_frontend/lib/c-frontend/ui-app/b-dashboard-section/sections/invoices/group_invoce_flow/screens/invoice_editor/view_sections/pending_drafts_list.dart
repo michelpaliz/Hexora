@@ -71,9 +71,7 @@ class _PendingDraftsList extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        inv.invoiceNumber.trim().isEmpty
-                            ? l.statusDraft
-                            : inv.invoiceNumber,
+                        inv.displayNumber(draftLabel: l.statusDraft),
                         style: t.bodySmall.copyWith(
                           fontWeight: FontWeight.w800,
                         ),

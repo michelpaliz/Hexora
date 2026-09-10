@@ -86,27 +86,42 @@ class MailSendRequest {
       if (includeInvoiceLinks != null)
         'includeInvoiceLinks': includeInvoiceLinks,
       if (applyDefaultFooter != null) 'applyDefaultFooter': applyDefaultFooter,
-      if (templateId != null && templateId!.isNotEmpty) 'templateId': templateId,
-      if (templateVars != null && templateVars!.isNotEmpty) 'templateVars': templateVars,
+      if (templateId != null && templateId!.isNotEmpty)
+        'templateId': templateId,
+      if (templateVars != null && templateVars!.isNotEmpty)
+        'templateVars': templateVars,
     };
   }
 }
 
 class MailReplyRequest {
+  final String groupId;
+  final String? subject;
   final String? textBody;
   final String? htmlBody;
+  final bool applyDefaultFooter;
   final List<MailOutgoingAttachment> attachments;
 
   const MailReplyRequest({
+    required this.groupId,
+    this.subject,
     this.textBody,
     this.htmlBody,
+    this.applyDefaultFooter = true,
     this.attachments = const [],
   });
 
+  bool get hasContent =>
+      (textBody ?? '').trim().isNotEmpty || (htmlBody ?? '').trim().isNotEmpty;
+
   Map<String, dynamic> toJson() {
     return {
+      if (subject != null && subject!.trim().isNotEmpty)
+        'subject': subject!.trim(),
       if (textBody != null) 'text': textBody,
       if (htmlBody != null) 'html': htmlBody,
+      'groupId': groupId,
+      'applyDefaultFooter': applyDefaultFooter,
       if (attachments.isNotEmpty)
         'attachments': attachments.map((e) => e.toJson()).toList(),
     };

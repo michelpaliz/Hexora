@@ -428,6 +428,14 @@ extension _GroupInvoicesBudgetsViewStepContentSection
     }
 
     if (_visibleStep == 1) {
+      final advancePercent = _budgetAdvancePercent;
+      final advancePercentIsValid = _isBudgetAdvancePercentValid;
+      final percentFormat = NumberFormat('0.##', l.localeName);
+      final paymentSplitHint = advancePercentIsValid
+          ? (_isSpanishLocale
+              ? 'Anticipo ${percentFormat.format(advancePercent)}% · Pago final ${percentFormat.format(100 - advancePercent!)}%'
+              : 'Advance ${percentFormat.format(advancePercent)}% · Final payment ${percentFormat.format(100 - advancePercent!)}%')
+          : null;
       // ── Step 1: Detalles (date, currency, notes) ─────────────────────────
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -449,8 +457,8 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                 Expanded(
                   child: Text(
                     _isSpanishLocale
-                        ? 'Ajusta la fecha de emisión, la moneda y añade notas internas opcionales.'
-                        : 'Set the issue date, currency, and add optional internal notes.',
+                        ? 'Ajusta la fecha de emisión, la moneda, el porcentaje del anticipo y las notas opcionales.'
+                        : 'Set the issue date, currency, advance percentage, and optional notes.',
                     style: TextStyle(
                       fontSize: 12,
                       color: cs.onSurface.withValues(alpha: 0.8),
@@ -560,6 +568,55 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 320),
+                    child: TextField(
+                      controller: _budgetAdvancePercentCtrl,
+                      enabled: _isDraftEditable,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9.,]'),
+                        ),
+                        LengthLimitingTextInputFormatter(6),
+                      ],
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onChanged: _setBudgetAdvancePercentText,
+                      decoration: InputDecoration(
+                        labelText: _isSpanishLocale
+                            ? 'Anticipo (%)'
+                            : 'Advance payment (%)',
+                        helperText: paymentSplitHint,
+                        errorText: advancePercentIsValid
+                            ? null
+                            : _budgetAdvancePercentError,
+                        prefixIcon: Icon(
+                          Icons.payments_outlined,
+                          size: 16,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                        prefixIconConstraints:
+                            const BoxConstraints(minWidth: 40),
+                        suffixText: '%',
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 11,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 // ── Notes ────────────────────────────────────────────────

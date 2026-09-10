@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/delivery_status_badge.dart';
 
 enum InvoiceDeliveryVisualState { neutral, success, error }
 
@@ -15,16 +16,7 @@ class InvoiceDeliveryViewData {
 }
 
 String normalizeDeliveryStatus(String? raw) {
-  final value = (raw ?? '').trim().toLowerCase();
-  switch (value) {
-    case 'sent':
-      return 'sent';
-    case 'failed':
-      return 'failed';
-    case 'not_sent':
-    default:
-      return 'not_sent';
-  }
+  return normalizedDeliveryStatus(raw);
 }
 
 InvoiceDeliveryViewData invoiceDeliveryViewData(String? raw) {
@@ -39,7 +31,7 @@ InvoiceDeliveryViewData invoiceDeliveryViewData(String? raw) {
     case 'failed':
       return const InvoiceDeliveryViewData(
         status: 'failed',
-        labelEs: 'Fallo envio',
+        labelEs: 'Error de envío',
         visual: InvoiceDeliveryVisualState.error,
       );
     case 'not_sent':
@@ -53,16 +45,7 @@ InvoiceDeliveryViewData invoiceDeliveryViewData(String? raw) {
 }
 
 String invoiceDeliveryChannelLabelEs(String? channel) {
-  switch ((channel ?? '').trim().toLowerCase()) {
-    case 'email':
-      return 'Email';
-    case 'whatsapp':
-      return 'WhatsApp';
-    case 'manual':
-      return 'Manual';
-    default:
-      return '-';
-  }
+  return deliveryChannelLabel(channel);
 }
 
 Color invoiceDeliveryColor(

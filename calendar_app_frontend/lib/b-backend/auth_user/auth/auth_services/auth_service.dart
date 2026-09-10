@@ -14,7 +14,7 @@ class AuthService with ChangeNotifier implements AuthRepository {
 
   // Not an @override anymore (interface is getter-only)
   set currentUser(User? user) {
-    if (user?.id != _user?.id) {
+    if (!identical(user, _user)) {
       _user = user;
       notifyListeners();
     }

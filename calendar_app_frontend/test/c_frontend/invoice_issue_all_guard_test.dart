@@ -29,6 +29,7 @@ void main() {
 
     final operation = Completer<void>();
     var calls = 0;
+    List<String> submittedIds = const [];
     const draft = Invoice(
       id: 'invoice-1',
       invoiceNumber: '',
@@ -57,7 +58,16 @@ void main() {
           body: InvoicesView(
             typography: _typography,
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-            drafts: const [draft],
+            drafts: const [
+              draft,
+              Invoice(
+                id: 'issued-in-draft-list',
+                invoiceNumber: '2026-1',
+                groupId: 'group-1',
+                clientId: 'client-1',
+                status: 'issued',
+              ),
+            ],
             invoices: const [],
             clients: [client],
             selectedInvoice: draft,
@@ -73,8 +83,9 @@ void main() {
               required onTap,
             }) =>
                 ListTile(title: Text(invoice.id), onTap: onTap),
-            onIssueAll: (_) async {
+            onIssueAll: (selected) async {
               calls++;
+              submittedIds = selected.map((invoice) => invoice.id).toList();
               await operation.future;
             },
           ),
@@ -106,6 +117,7 @@ void main() {
     await tester.pump();
 
     expect(calls, 1);
+    expect(submittedIds, ['invoice-1']);
 
     operation.complete();
     await tester.pumpAndSettle();

@@ -18,7 +18,6 @@ import 'package:hexora/b-backend/invoicing/invoice_lines_ocr_flow.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_ocr_models.dart';
 import 'package:hexora/b-backend/invoicing/invoice_lines_ocr_service.dart';
 import 'package:hexora/b-backend/shared/content_disposition.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_formatters.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/json_import_service.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/prompt_clipboard_helper.dart';
@@ -62,7 +61,6 @@ class InvoiceEditorController extends ChangeNotifier {
           .id;
       _clientId = existing;
     }
-    digits.addListener(_handleDigitsChanged);
     _refreshClientStats();
   }
 
@@ -74,7 +72,6 @@ class InvoiceEditorController extends ChangeNotifier {
 
   final currency = TextEditingController(text: 'EUR');
   final notes = TextEditingController();
-  final digits = TextEditingController(text: '001');
   final pdfUrl = TextEditingController();
   final discountAmountCtrl = TextEditingController();
   final discountPercentCtrl = TextEditingController();
@@ -101,8 +98,6 @@ class InvoiceEditorController extends ChangeNotifier {
   int _clientDraftCount = 0;
   List<Invoice> _clientPastInvoices = [];
   bool _loadingClientStats = false;
-  bool _invoiceNumberTouched = false;
-  bool _settingInvoiceNumber = false;
   bool _useDiscountPercent = false;
   String? _editingDraftId;
   bool _editingDraftMode = false;
@@ -203,15 +198,11 @@ class InvoiceEditorController extends ChangeNotifier {
   void removeOcrExtractedLine(int index) => _ocrFlow.removeExtractedLine(index);
   void addOcrExtractedLine() => _ocrFlow.addExtractedLine();
 
-  String get invoiceNumber => InvoiceEditorFormatters.invoiceNumber(
-        digitsText: digits.text,
-        now: DateTime.now(),
-      );
-
-  String get previewInvoiceNumber =>
-      _savedInvoice?.invoiceNumber ??
-      (editingIssued ? initialInvoice?.invoiceNumber : null) ??
-      invoiceNumber;
+  String get previewInvoiceNumber {
+    if (!editingIssued) return 'BORRADOR';
+    final invoice = _savedInvoice ?? initialInvoice;
+    return invoice?.displayNumber(draftLabel: 'BORRADOR') ?? 'BORRADOR';
+  }
 
   bool get hasLines => lines.isNotEmpty;
 
@@ -537,7 +528,7 @@ class InvoiceEditorController extends ChangeNotifier {
 
     return Invoice(
       id: _savedInvoice?.id ?? initialInvoice?.id ?? '',
-      invoiceNumber: previewInvoiceNumber,
+      invoiceNumber: editingIssued ? previewInvoiceNumber : '',
       groupId: group.id,
       clientId: _clientId ?? '',
       currency: currency.text.trim().isEmpty ? 'EUR' : currency.text.trim(),
@@ -630,8 +621,6 @@ class InvoiceEditorController extends ChangeNotifier {
     dueDate.dispose();
     currency.dispose();
     notes.dispose();
-    digits.removeListener(_handleDigitsChanged);
-    digits.dispose();
     pdfUrl.dispose();
     discountAmountCtrl.dispose();
     discountPercentCtrl.dispose();
@@ -652,11 +641,6 @@ class InvoiceEditorController extends ChangeNotifier {
   void notifyListeners() {
     if (_disposed) return;
     super.notifyListeners();
-  }
-
-  void _handleDigitsChanged() {
-    if (_settingInvoiceNumber) return;
-    _invoiceNumberTouched = true;
   }
 
   void _applyInitialInvoice(Invoice invoice) {
@@ -698,15 +682,6 @@ class InvoiceEditorController extends ChangeNotifier {
     );
     invoiceDate.value =
         invoice.issueDate ?? invoice.registeredAt ?? invoiceDate.value;
-
-    final number = invoice.invoiceNumber.trim();
-    final match = RegExp(r'^(\\d{1,})').firstMatch(number);
-    if (match != null) {
-      _settingInvoiceNumber = true;
-      digits.text = match.group(1)!.padLeft(3, '0');
-      _settingInvoiceNumber = false;
-      _invoiceNumberTouched = true;
-    }
 
     final hasUsableBlocks = invoice.blocks.any(_blockHasBillableContent);
     final hasUsableLines = invoice.lines.any(
@@ -960,13 +935,37 @@ class InvoiceEditorController extends ChangeNotifier {
 
   // --- actions ---
   Future<void> pickDate(
-      BuildContext context, ValueNotifier<DateTime?> target) async {
+    BuildContext context,
+    ValueNotifier<DateTime?> target, {
+    DateTime? firstAllowedDate,
+  }) async {
     final now = DateTime.now();
+    final defaultFirstDate = DateTime(now.year - 1);
+    final lastDate = DateTime(now.year + 2);
+    final normalizedAllowedDate = firstAllowedDate == null
+        ? null
+        : DateTime(
+            firstAllowedDate.year,
+            firstAllowedDate.month,
+            firstAllowedDate.day,
+          );
+    final requestedFirstDate = normalizedAllowedDate != null &&
+            normalizedAllowedDate.isAfter(defaultFirstDate)
+        ? normalizedAllowedDate
+        : defaultFirstDate;
+    final firstDate =
+        requestedFirstDate.isAfter(lastDate) ? lastDate : requestedFirstDate;
+    final candidate = target.value ?? normalizedAllowedDate ?? now;
+    final initialDate = candidate.isBefore(firstDate)
+        ? firstDate
+        : candidate.isAfter(lastDate)
+            ? lastDate
+            : candidate;
     final selected = await showDatePicker(
       context: context,
-      initialDate: target.value ?? now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 2),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
     );
     if (selected != null) {
       target.value = selected;
@@ -987,8 +986,6 @@ class InvoiceEditorController extends ChangeNotifier {
 
       _pendingDraftsCount = drafts.length;
       _pendingDrafts = drafts;
-      _maybeAutofillInvoiceDigits([...issued, ...drafts]);
-
       if (_clientId == null) {
         _issuedThisMonthCount = 0;
         _clientDraftCount = 0;
@@ -1034,20 +1031,5 @@ class InvoiceEditorController extends ChangeNotifier {
   Future<Uint8List> fetchHistoricalPdf(String invoiceId) async {
     final r = await _invoicesApi.previewPdf(invoiceId);
     return InvoiceEditorPdf.validatePdf(r);
-  }
-
-  void _maybeAutofillInvoiceDigits(List<Invoice> invoices) {
-    if (_invoiceNumberTouched || _savedInvoice != null) return;
-    final raw = digits.text.trim();
-    if (raw.isNotEmpty && raw != '001') return;
-
-    final suggestion = InvoiceEditorFormatters.nextInvoiceDigits(
-      invoiceNumbers: invoices.map((inv) => inv.invoiceNumber),
-      now: DateTime.now(),
-    );
-    if (raw == suggestion) return;
-    _settingInvoiceNumber = true;
-    digits.text = suggestion;
-    _settingInvoiceNumber = false;
   }
 }

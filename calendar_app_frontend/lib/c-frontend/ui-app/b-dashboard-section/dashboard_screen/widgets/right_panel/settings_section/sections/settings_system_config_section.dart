@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/common/section_header.dart';
@@ -151,7 +152,7 @@ class _SettingsSystemConfigSectionState
   }
 
   Future<void> _logout() async {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<AuthService>();
     try {
       await auth.logOut();
     } catch (_) {}
