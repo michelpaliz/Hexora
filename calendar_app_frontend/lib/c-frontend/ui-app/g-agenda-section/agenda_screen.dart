@@ -1,3 +1,5 @@
+import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/resolver/event_group_resolver.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/agenda/agenda_model.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
@@ -16,6 +18,8 @@ import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+import 'home_agenda_loader.dart';
 
 class AgendaScreen extends StatefulWidget {
   final String? groupId;
@@ -78,11 +82,11 @@ class _AgendaScreenState extends State<AgendaScreen> {
     try {
       setState(() => _loading = true);
       final agenda = context.read<UserAgendaDomain>();
-      final List<Event> events = await agenda.fetchAgendaUpcoming(
-        groupId: gid,
-        days: _daysRange,
-        limit: 300,
-      );
+      final List<Event> events = await HomeAgendaLoader(
+        agenda: agenda,
+        events: context.read<IEventRepository>(),
+        resolver: context.read<GroupEventResolver>(),
+      ).load(groupId: gid, days: _daysRange);
       if (!mounted) return;
       setState(() {
         _items = buildAgendaItems(events, Theme.of(context));

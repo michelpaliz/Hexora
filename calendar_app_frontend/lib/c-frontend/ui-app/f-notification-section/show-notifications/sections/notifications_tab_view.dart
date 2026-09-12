@@ -71,106 +71,146 @@ class NotificationsTabView extends StatelessWidget {
         final highPriorityCount =
             notifications.where((n) => n.priority == PriorityLevel.high).length;
 
+        final mobile = MediaQuery.sizeOf(context).width < 700;
+        final activity = <Widget>[
+          if (activeJobs.isNotEmpty) ...[
+            _SectionHeader(
+              title: _isSpanish(context) ? 'En progreso' : 'In progress',
+            ),
+            if (mobile)
+              for (final job in activeJobs)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: _ActiveJobCard(
+                    job: job,
+                    onTap: () => onOpenActiveJob(job),
+                  ),
+                )
+            else
+              SizedBox(
+                height: 240 * MediaQuery.textScalerOf(context).scale(1),
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: activeJobs.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    final job = activeJobs[index];
+                    return SizedBox(
+                      width: 300,
+                      child: _ActiveJobCard(
+                        job: job,
+                        onTap: () => onOpenActiveJob(job),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 6),
+          ],
+          if (attentionNotifications.isNotEmpty || loadingJobNotifications) ...[
+            _SectionHeader(
+              title: _isSpanish(context)
+                  ? 'Requieren atencion'
+                  : 'Needs attention',
+            ),
+            if (attentionNotifications.isEmpty && loadingJobNotifications)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              ...attentionNotifications.map(
+                (notification) => _JobNotificationCard(
+                  notification: notification,
+                  onTap: () => onOpenJobNotification(notification),
+                ),
+              ),
+            const SizedBox(height: 6),
+          ],
+          if (recentJobNotifications.isNotEmpty) ...[
+            _SectionHeader(
+              title: _isSpanish(context) ? 'Importaciones' : 'Imports',
+            ),
+            ...recentJobNotifications.map(
+              (notification) => _JobNotificationCard(
+                notification: notification,
+                onTap: () => onOpenJobNotification(notification),
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+        ];
+        final summary = _SummaryBar(
+          unreadCount: unreadCount,
+          importantCount: highPriorityCount,
+          runningJobsCount: activeJobs.length,
+        );
+        final tabContent = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TabBar(
+              isScrollable: true,
+              labelStyle: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              tabs: tabs.map((tab) => Tab(text: tab.label)).toList(),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: tabs
+                    .map(
+                      (tab) => _NotificationsList(
+                        notifications: tab.notifications,
+                        onDelete: (n) =>
+                            notificationViewModel.deleteNotification(n),
+                        onConfirm: onConfirm,
+                        onNegate: (n) =>
+                            notificationViewModel.handleNegation(n),
+                        onMarkRead: (n) =>
+                            notificationViewModel.markNotificationAsRead(n),
+                        onOpenEvent: (_, groupId) {
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.groupCalendar,
+                            arguments: groupId,
+                          );
+                        },
+                        onOpenDocument: onOpenDocument,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ],
+        );
         return DefaultTabController(
           length: tabs.length,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _SummaryBar(
-                unreadCount: unreadCount,
-                importantCount: highPriorityCount,
-                runningJobsCount: activeJobs.length,
-              ),
-              if (activeJobs.isNotEmpty) ...[
-                _SectionHeader(
-                  title: _isSpanish(context) ? 'En progreso' : 'In progress',
-                ),
-                SizedBox(
-                  height: 156,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: activeJobs.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, index) {
-                      final job = activeJobs[index];
-                      return SizedBox(
-                        width: 300,
-                        child: _ActiveJobCard(
-                          job: job,
-                          onTap: () => onOpenActiveJob(job),
+          child: mobile
+              ? NestedScrollView(
+                  headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                    SliverToBoxAdapter(child: summary),
+                    if (activity.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: ExpansionTile(
+                          key: const PageStorageKey(
+                              'notification-import-activity'),
+                          leading: const Icon(Icons.document_scanner_outlined),
+                          title: Text(_isSpanish(context)
+                              ? 'Importaciones (${activeJobs.length + jobNotifications.length})'
+                              : 'Imports (${activeJobs.length + jobNotifications.length})'),
+                          subtitle: attentionNotifications.isEmpty
+                              ? null
+                              : Text(_isSpanish(context)
+                                  ? '${attentionNotifications.length} requieren atención'
+                                  : '${attentionNotifications.length} need attention'),
+                          children: activity,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                  ],
+                  body: tabContent,
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [summary, ...activity, Expanded(child: tabContent)],
                 ),
-                const SizedBox(height: 6),
-              ],
-              if (attentionNotifications.isNotEmpty ||
-                  loadingJobNotifications) ...[
-                _SectionHeader(
-                  title: _isSpanish(context)
-                      ? 'Requieren atencion'
-                      : 'Needs attention',
-                ),
-                if (attentionNotifications.isEmpty && loadingJobNotifications)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else
-                  ...attentionNotifications.map(
-                    (notification) => _JobNotificationCard(
-                      notification: notification,
-                      onTap: () => onOpenJobNotification(notification),
-                    ),
-                  ),
-                const SizedBox(height: 6),
-              ],
-              if (recentJobNotifications.isNotEmpty) ...[
-                _SectionHeader(
-                  title: _isSpanish(context) ? 'Importaciones' : 'Imports',
-                ),
-                ...recentJobNotifications.map(
-                  (notification) => _JobNotificationCard(
-                    notification: notification,
-                    onTap: () => onOpenJobNotification(notification),
-                  ),
-                ),
-                const SizedBox(height: 6),
-              ],
-              TabBar(
-                isScrollable: true,
-                labelStyle: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                tabs: tabs.map((tab) => Tab(text: tab.label)).toList(),
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: tabs
-                      .map(
-                        (tab) => _NotificationsList(
-                          notifications: tab.notifications,
-                          onDelete: (n) =>
-                              notificationViewModel.deleteNotification(n),
-                          onConfirm: onConfirm,
-                          onNegate: (n) =>
-                              notificationViewModel.handleNegation(n),
-                          onMarkRead: (n) =>
-                              notificationViewModel.markNotificationAsRead(n),
-                          onOpenEvent: (_, groupId) {
-                            Navigator.of(context).pushNamed(
-                              AppRoutes.groupCalendar,
-                              arguments: groupId,
-                            );
-                          },
-                          onOpenDocument: onOpenDocument,
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-            ],
-          ),
         );
       },
     );
@@ -270,9 +310,9 @@ class _NotificationsListState extends State<_NotificationsList> {
     final timeGrouped = groupNotificationsByTime(widget.notifications, loc);
 
     return ListView(
-      children: timeGrouped.entries
-          .where((e) => e.value.isNotEmpty)
-          .expand((entry) {
+      padding: const EdgeInsets.only(bottom: 88),
+      children:
+          timeGrouped.entries.where((e) => e.value.isNotEmpty).expand((entry) {
         return <Widget>[
           _TimeGroupHeader(label: entry.key),
           ..._renderWithGrouping(entry.value, entry.key),
@@ -534,8 +574,7 @@ class _GroupedNotifCard extends StatelessWidget {
                   children: [
                     Text(
                       group.title,
-                      style:
-                          t.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                      style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -742,14 +781,14 @@ class _ActiveJobCard extends StatelessWidget {
                   style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
-              const Spacer(),
+              const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: onTap,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -835,15 +874,16 @@ class _JobNotificationCard extends StatelessWidget {
                 style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 6),
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
                 children: [
                   if (timestamp != null)
                     Text(
                       _formatJobTimestamp(timestamp, locale.toString()),
-                      style:
-                          t.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                      style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
-                  const Spacer(),
                   TextButton(
                     onPressed: onTap,
                     style: TextButton.styleFrom(
