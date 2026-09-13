@@ -42,7 +42,7 @@ class _ChangeUsernameDialogState extends State<_ChangeUsernameDialog> {
     final typography = AppTypography.of(context);
     final secondaryText = ThemeColors.textSecondary(context);
     final inputFill = ThemeColors.inputFillLighter(context);
-    final outlineColor = theme.colorScheme.outline.withOpacity(0.5);
+    final outlineColor = theme.colorScheme.outline.withValues(alpha: 0.5);
     final username = _controller.text.trim();
     final hasInput = username.isNotEmpty;
     final allowed = RegExp(r'^[a-zA-Z0-9_]+$');
@@ -56,7 +56,8 @@ class _ChangeUsernameDialogState extends State<_ChangeUsernameDialog> {
         );
 
     return AlertDialog(
-      backgroundColor: ThemeColors.cardBg(context),
+      backgroundColor: theme.colorScheme.surface,
+      surfaceTintColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -68,11 +69,11 @@ class _ChangeUsernameDialogState extends State<_ChangeUsernameDialog> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: theme.colorScheme.secondary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
             ),
             child: Icon(
               Icons.person_outline_rounded,
-              color: theme.colorScheme.secondary,
+              color: theme.colorScheme.primary,
             ),
           ),
           const SizedBox(width: 12),
@@ -108,9 +109,9 @@ class _ChangeUsernameDialogState extends State<_ChangeUsernameDialog> {
             border: border(outlineColor),
             enabledBorder: border(outlineColor),
             focusedBorder: border(theme.colorScheme.primary, 1.6),
-            errorBorder: border(theme.colorScheme.error.withOpacity(0.8)),
+            errorBorder: border(theme.colorScheme.error.withValues(alpha: 0.8)),
             focusedErrorBorder:
-                border(theme.colorScheme.error.withOpacity(0.8), 1.6),
+                border(theme.colorScheme.error.withValues(alpha: 0.8), 1.6),
           ),
         ),
       ),
@@ -126,10 +127,7 @@ class _ChangeUsernameDialogState extends State<_ChangeUsernameDialog> {
         ElevatedButton(
           style: ThemedButtons.button(context),
           onPressed: canSave ? () => Navigator.pop(context, username) : null,
-          child: Text(
-            l.save,
-            style: typography.buttonText,
-          ),
+          child: Text(l.save),
         ),
       ],
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/ui-app/i-settings-section/dialogs/logout_dialog.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
@@ -12,15 +13,13 @@ import 'package:hexora/c-frontend/ui-app/i-settings-section/widgets/language_she
 import 'package:hexora/c-frontend/ui-app/i-settings-section/widgets/preferences_section.dart';
 import 'package:hexora/c-frontend/ui-app/i-settings-section/widgets/section_card.dart';
 import 'package:hexora/d-local-stateManagement/local/LocaleProvider.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
-import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 class Settings extends StatefulWidget {
-  const Settings({Key? key}) : super(key: key);
+  const Settings({super.key});
 
   @override
   State<Settings> createState() => _SettingsState();
@@ -49,6 +48,7 @@ class _SettingsState extends State<Settings> {
     String newPassword,
     String confirmPassword,
   ) async {
+    final loc = AppLocalizations.of(context)!;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
@@ -68,7 +68,7 @@ class _SettingsState extends State<Settings> {
         return false;
       }
       if (next != confirm) {
-        _snack(AppLocalizations.of(context)!.passwordNotMatch);
+        _snack(loc.passwordNotMatch);
         return false;
       }
 
@@ -83,11 +83,11 @@ class _SettingsState extends State<Settings> {
     } on CurrentPasswordMismatchException {
       _snack('Current password is incorrect.');
     } on PasswordMismatchException {
-      _snack(AppLocalizations.of(context)!.passwordNotMatch);
+      _snack(loc.passwordNotMatch);
     } on ChangePasswordValidationException catch (e) {
       _snack(e.message);
     } on UserNotSignedInException {
-      _snack(AppLocalizations.of(context)!.userNotSignedIn);
+      _snack(loc.userNotSignedIn);
     } catch (_) {
       _snack('Failed to change password. Please try again.');
     }
@@ -110,54 +110,10 @@ class _SettingsState extends State<Settings> {
     }
   }
 
-  void _confirmLogout() {
-    final l = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final typography = AppTypography.of(context);
-    final cs = theme.colorScheme;
-    final titleStyle = typography.bodyMedium.copyWith(
-      fontWeight: FontWeight.w700,
-      color: cs.onSurface,
-    );
-    final contentStyle =
-        typography.bodySmall.copyWith(color: cs.onSurfaceVariant);
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(
-          l.logoutConfirmTitle,
-          style: titleStyle,
-        ),
-        content: Text(
-          l.logoutConfirmMessage,
-          style: contentStyle,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              l.cancel,
-              style: typography.buttonText.copyWith(color: cs.primary),
-            ),
-          ),
-          FilledButton.tonal(
-            style: FilledButton.styleFrom(
-              foregroundColor: cs.error, // keeps destructive feel
-            ),
-            onPressed: () async {
-              Navigator.pop(context);
-              await _logout();
-            },
-            child: Text(
-              l.logout,
-              style:
-                  typography.buttonText.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _confirmLogout() async {
+    final confirmed = await showLogoutDialog(context);
+    if (!mounted || confirmed != true) return;
+    await _logout();
   }
 
   Future<void> _logout() async {
@@ -175,18 +131,23 @@ class _SettingsState extends State<Settings> {
   void _openLanguageSheet() => showLanguageSheet(context);
 
   void _snack(String text) {
+    if (!mounted) return;
+    final cs = Theme.of(context).colorScheme;
     final bodyS = AppTypography.of(context).bodySmall;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(text, style: bodyS)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      backgroundColor: cs.inverseSurface,
+      content: Text(text, style: bodyS.copyWith(color: cs.onInverseSurface)),
+    ));
   }
 
   Future<void> _toggleAutoStatementImport(bool enabled) async {
+    final loc = AppLocalizations.of(context)!;
     if (_autoStatementImportLoading) return;
     setState(() => _autoStatementImportLoading = true);
     try {
       await context.read<AuthProvider>().setAutoStatementImportEnabled(enabled);
     } catch (_) {
-      _snack(AppLocalizations.of(context)!.autoStatementImportUpdateFailed);
+      _snack(loc.autoStatementImportUpdateFailed);
     } finally {
       if (mounted) {
         setState(() => _autoStatementImportLoading = false);
@@ -201,23 +162,22 @@ class _SettingsState extends State<Settings> {
     final loc = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final typography = AppTypography.of(context);
-    final bodyM = typography.bodyMedium;
-    final bodyS = typography.bodySmall;
-    final isDark = theme.brightness == Brightness.dark;
-    final bg = isDark ? AppDarkColors.background : AppColors.background;
     final cs = Theme.of(context).colorScheme;
 
     return Consumer2<ThemeModeProvider, AuthProvider>(
       builder: (_, themeModeProv, authProvider, __) => Scaffold(
         appBar: AppBar(
           backgroundColor: cs.surface,
-          iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
+          iconTheme: IconThemeData(color: cs.onSurface),
           title: Text(
             loc.settings,
-            style: typography.titleLarge.copyWith(fontWeight: FontWeight.w700),
+            style: typography.titleLarge.copyWith(
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+            ),
           ),
         ),
-        backgroundColor: bg,
+        backgroundColor: theme.scaffoldBackgroundColor,
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
@@ -237,11 +197,11 @@ class _SettingsState extends State<Settings> {
               child: AccountSection(
                 userName: userName,
                 onEditUsername: () async {
+                  final successMessage = loc.successChangingUsername;
                   final newName = await showChangeUsernameDialog(context);
                   if (newName == null) return;
                   final err = await _changeUsername(newName);
-                  _snack(err ??
-                      AppLocalizations.of(context)!.successChangingUsername);
+                  _snack(err ?? successMessage);
                 },
                 onChangePassword: () async {
                   final result = await showChangePasswordDialog(context);
@@ -340,11 +300,7 @@ class _ProfileHeroCard extends StatelessWidget {
             height: 50,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [cs.primary, cs.tertiary],
-              ),
+              color: cs.primary,
               boxShadow: [
                 BoxShadow(
                   color: cs.primary.withValues(alpha: 0.25),
@@ -381,7 +337,8 @@ class _ProfileHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: cs.primary.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(999),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'hexora_brand.dart';
 
 enum LogoSize { small, medium, large }
 
@@ -17,15 +18,6 @@ class LogoWidget {
         break;
     }
 
-    return SizedBox(
-      width: dimension,
-      height: dimension,
-      child: ClipOval(
-        child: Image.asset(
-          'assets/images/logo.png',
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
+    return HexoraBrandIcon(size: dimension);
   }
 }

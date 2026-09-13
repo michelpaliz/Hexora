@@ -81,8 +81,8 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: assets/images/logo.png
-  adaptive_icon_foreground: assets/images/logo.png   # Android 8.0+ foreground
+  image_path: assets/images/branding/logo_icon.png
+  adaptive_icon_foreground: assets/images/branding/logo_icon.png   # Android 8.0+ foreground
   adaptive_icon_background: "#0F172A"                # deep blue background
 
 flutter:
@@ -90,6 +90,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/images/login_bg.png
     - assets/images/login_image.png
     - assets/images/beach_image.png
     - assets/images/person_profile.png
@@ -109,6 +110,7 @@ flutter:
     - assets/images/months/november.png
     - assets/images/months/december.png
     - assets/images/logo.png
+    - assets/images/branding/
 
   fonts:
     - family: bagel

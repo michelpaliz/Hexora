@@ -2815,6 +2815,17 @@
   "mailConversationReply": "Responder",
   "mailConversationReplyAll": "Responder a todos",
   "mailConversationForward": "Reenviar",
+  "mailConversationSortNewestFirst": "Más recientes primero",
+  "mailConversationSortOldestFirst": "Más antiguos primero",
+  "mailConversationMessageCount": "{count, plural, one {# mensaje} other {# mensajes}}",
+  "@mailConversationMessageCount": {
+    "description": "Message count shown above a thread's conversation list.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "mailLegalNoticeShow": "Mostrar aviso legal",
   "mailLegalNoticeHide": "Ocultar aviso legal",
   "mailConsoleClientPanelTitle": "Cliente y facturas",

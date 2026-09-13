@@ -5,11 +5,13 @@ class EmptyHint extends StatelessWidget {
   final String title;
   final String message;
   final String tip;
+  final IconData icon;
   const EmptyHint({
     super.key,
     required this.title,
     required this.message,
     required this.tip,
+    this.icon = Icons.person_search_outlined,
   });
 
   @override
@@ -21,8 +23,7 @@ class EmptyHint extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_search_outlined,
-                size: 40, color: Theme.of(context).colorScheme.primary),
+            Icon(icon, size: 40, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 8),
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),

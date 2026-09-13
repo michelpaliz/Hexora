@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/c-frontend/ui-app/i-settings-section/dialogs/logout_dialog.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
@@ -47,6 +48,7 @@ class _SettingsSystemConfigSectionState
     String newPassword,
     String confirmPassword,
   ) async {
+    final loc = AppLocalizations.of(context)!;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
@@ -66,7 +68,7 @@ class _SettingsSystemConfigSectionState
         return false;
       }
       if (next != confirm) {
-        _snack(AppLocalizations.of(context)!.passwordNotMatch);
+        _snack(loc.passwordNotMatch);
         return false;
       }
 
@@ -81,13 +83,13 @@ class _SettingsSystemConfigSectionState
     } on CurrentPasswordMismatchException {
       _snack('Current password is incorrect.');
     } on PasswordMismatchException {
-      _snack(AppLocalizations.of(context)!.passwordNotMatch);
+      _snack(loc.passwordNotMatch);
     } on ChangePasswordValidationException catch (e) {
       _snack(e.message);
     } on ChangePasswordRequestFailedException catch (e) {
       _snack(e.message);
     } on UserNotSignedInException {
-      _snack(AppLocalizations.of(context)!.userNotSignedIn);
+      _snack(loc.userNotSignedIn);
     } catch (_) {
       _snack('Failed to change password. Please try again.');
     }
@@ -110,45 +112,10 @@ class _SettingsSystemConfigSectionState
     }
   }
 
-  void _confirmLogout() {
-    final l = AppLocalizations.of(context)!;
-    final typography = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final titleStyle = typography.bodyMedium.copyWith(
-      fontWeight: FontWeight.w700,
-      color: cs.onSurface,
-    );
-    final contentStyle =
-        typography.bodySmall.copyWith(color: cs.onSurfaceVariant);
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l.logoutConfirmTitle, style: titleStyle),
-        content: Text(l.logoutConfirmMessage, style: contentStyle),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              l.cancel,
-              style: typography.buttonText.copyWith(color: cs.primary),
-            ),
-          ),
-          FilledButton.tonal(
-            style: FilledButton.styleFrom(foregroundColor: cs.error),
-            onPressed: () async {
-              Navigator.pop(context);
-              await _logout();
-            },
-            child: Text(
-              l.logout,
-              style:
-                  typography.buttonText.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _confirmLogout() async {
+    final confirmed = await showLogoutDialog(context);
+    if (!mounted || confirmed != true) return;
+    await _logout();
   }
 
   Future<void> _logout() async {
@@ -166,18 +133,23 @@ class _SettingsSystemConfigSectionState
   void _openLanguageSheet() => showLanguageSheet(context);
 
   void _snack(String text) {
+    if (!mounted) return;
+    final cs = Theme.of(context).colorScheme;
     final bodyS = AppTypography.of(context).bodySmall;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(text, style: bodyS)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      backgroundColor: cs.inverseSurface,
+      content: Text(text, style: bodyS.copyWith(color: cs.onInverseSurface)),
+    ));
   }
 
   Future<void> _toggleAutoStatementImport(bool enabled) async {
+    final loc = AppLocalizations.of(context)!;
     if (_autoStatementImportLoading) return;
     setState(() => _autoStatementImportLoading = true);
     try {
       await context.read<AuthProvider>().setAutoStatementImportEnabled(enabled);
     } catch (_) {
-      _snack(AppLocalizations.of(context)!.autoStatementImportUpdateFailed);
+      _snack(loc.autoStatementImportUpdateFailed);
     } finally {
       if (mounted) {
         setState(() => _autoStatementImportLoading = false);

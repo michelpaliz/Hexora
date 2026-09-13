@@ -7,6 +7,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'tax/tax_reporting_view.dart';
 
 class GastosModuleScreen extends StatefulWidget {
   const GastosModuleScreen({
@@ -148,36 +149,31 @@ class _GastosModuleBody extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (isNarrow)
+              _GastosTopTabs(controller: tabs, isEs: isEs, isNarrow: true),
             Expanded(
-              child: isNarrow
-                  ? _GastosTab(
-                      isNarrow: true,
-                      group: group,
-                      selectedSection: 'supplier_invoices',
-                      onSectionSelected: onGastosSectionSelected,
-                    )
-                  : TabBarView(
-                      controller: tabs,
-                      children: [
-                        _GastosTab(
-                          isNarrow: false,
-                          group: group,
-                          selectedSection: gastosSection,
-                          onSectionSelected: onGastosSectionSelected,
-                          sideRailCollapsed: sideRailCollapsed,
-                          onToggleSideRailCollapsed: onToggleSideRailCollapsed,
-                        ),
-                        const _ImpuestosTab(isNarrow: false),
-                        _AnaliticaTab(
-                          isNarrow: false,
-                          group: group,
-                          vatApi: vatApi,
-                          sideRailCollapsed: sideRailCollapsed,
-                          onToggleSideRailCollapsed: onToggleSideRailCollapsed,
-                        ),
-                        const _ModelosTab(),
-                      ],
-                    ),
+              child: TabBarView(
+                controller: tabs,
+                children: [
+                  _GastosTab(
+                    isNarrow: isNarrow,
+                    group: group,
+                    selectedSection: gastosSection,
+                    onSectionSelected: onGastosSectionSelected,
+                    sideRailCollapsed: sideRailCollapsed,
+                    onToggleSideRailCollapsed: onToggleSideRailCollapsed,
+                  ),
+                  TaxReportingView(groupId: group.id),
+                  _AnaliticaTab(
+                    isNarrow: isNarrow,
+                    group: group,
+                    vatApi: vatApi,
+                    sideRailCollapsed: sideRailCollapsed,
+                    onToggleSideRailCollapsed: onToggleSideRailCollapsed,
+                  ),
+                  const _ModelosTab(),
+                ],
+              ),
             ),
           ],
         ),
@@ -211,7 +207,6 @@ class _GastosTopTabs extends StatelessWidget {
       ),
       _GastosTopTabData(
         label: isEs ? 'Impuestos' : 'Taxes',
-        countLabel: '22',
       ),
       _GastosTopTabData(
         label: isEs ? 'Analitica' : 'Analytics',
@@ -269,6 +264,8 @@ class _GastosTopTabs extends StatelessWidget {
         child: tabsBar,
       );
     }
+
+    if (isNarrow) return tabsBar;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -408,6 +405,10 @@ class _GastosTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
     if (isNarrow) {
       return Material(
         color: Colors.transparent,
@@ -422,6 +423,9 @@ class _GastosTab extends StatelessWidget {
     }
 
     final rail = _GastosSideRail(
+      title: isEs ? 'Gastos' : 'Expenses',
+      subtitle: isEs ? 'Menú de datos' : 'Data menu',
+      icon: Icons.payments_outlined,
       isNarrow: isNarrow,
       collapsed: sideRailCollapsed,
       onToggleCollapsed: onToggleSideRailCollapsed,
@@ -520,71 +524,6 @@ class _GastosTab extends StatelessWidget {
   }
 }
 
-class _ImpuestosTab extends StatelessWidget {
-  const _ImpuestosTab({required this.isNarrow});
-
-  final bool isNarrow;
-
-  @override
-  Widget build(BuildContext context) {
-    final rail = _GastosSideRail(
-      isNarrow: isNarrow,
-      sections: const [
-        _GastosRailSection(
-          title: 'Seguimiento fiscal',
-          items: [
-            _GastosRailEntry(
-              value: 'vat_supported',
-              icon: Icons.south_west_rounded,
-              label: 'IVA soportado',
-            ),
-            _GastosRailEntry(
-              value: 'vat_collected',
-              icon: Icons.north_east_rounded,
-              label: 'IVA repercutido',
-            ),
-            _GastosRailEntry(
-              value: 'irpf',
-              icon: Icons.percent_rounded,
-              label: 'IRPF',
-            ),
-            _GastosRailEntry(
-              value: 'eu_ops',
-              icon: Icons.public_rounded,
-              label: 'Operaciones intracomunitarias',
-            ),
-            _GastosRailEntry(
-              value: 'quarterly_summary',
-              icon: Icons.calendar_month_outlined,
-              label: 'Resumen trimestral',
-            ),
-          ],
-        ),
-      ],
-    );
-    const content = _TaxRecordsPlaceholder();
-
-    if (isNarrow) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          rail,
-          const SizedBox(height: 12),
-          const Expanded(child: content),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        SizedBox(width: 248, child: rail),
-        const SizedBox(width: 14),
-        const Expanded(child: content),
-      ],
-    );
-  }
-}
-
 class _AnaliticaTab extends StatelessWidget {
   const _AnaliticaTab({
     required this.isNarrow,
@@ -602,7 +541,14 @@ class _AnaliticaTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
     final rail = _GastosSideRail(
+      title: isEs ? 'Analítica' : 'Analytics',
+      subtitle: isEs ? 'Menú de datos' : 'Data menu',
+      icon: Icons.analytics_outlined,
       isNarrow: isNarrow,
       collapsed: sideRailCollapsed,
       onToggleCollapsed: onToggleSideRailCollapsed,
@@ -662,26 +608,6 @@ class _AnaliticaTab extends StatelessWidget {
   }
 }
 
-class _TaxRecordsPlaceholder extends StatelessWidget {
-  const _TaxRecordsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _PlaceholderGrid(
-      title: 'Registros fiscales',
-      subtitle:
-          'Datos operativos para revisar impuestos, facturas y apuntes contables.',
-      cards: [
-        ('IVA soportado', 'Facturas de proveedor y cuotas deducibles'),
-        ('IVA repercutido', 'Facturas emitidas y cuotas devengadas'),
-        ('IRPF', 'Retenciones y registros profesionales'),
-        ('Intracomunitarias', 'Operaciones UE y datos fiscales asociados'),
-        ('Resumen trimestral', 'Base de trabajo para cierres por trimestre'),
-      ],
-    );
-  }
-}
-
 class _ModelosTab extends StatelessWidget {
   const _ModelosTab();
 
@@ -703,6 +629,9 @@ class _ModelosTab extends StatelessWidget {
 
 class _GastosSideRail extends StatelessWidget {
   const _GastosSideRail({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
     required this.sections,
     this.isNarrow = false,
     this.collapsed = false,
@@ -711,6 +640,9 @@ class _GastosSideRail extends StatelessWidget {
     this.onSelected,
   });
 
+  final String title;
+  final String subtitle;
+  final IconData icon;
   final List<_GastosRailSection> sections;
   final bool isNarrow;
   final bool collapsed;
@@ -721,7 +653,10 @@ class _GastosSideRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
     final flattened = [
       for (final section in sections) ...section.items,
     ];
@@ -743,7 +678,7 @@ class _GastosSideRail extends StatelessWidget {
         child: Column(
           children: [
             Tooltip(
-              message: 'Mostrar menu',
+              message: isEs ? 'Expandir menú' : 'Expand menu',
               child: IconButton.filledTonal(
                 onPressed: onToggleCollapsed,
                 icon: const Icon(Icons.keyboard_double_arrow_right_rounded),
@@ -815,41 +750,80 @@ class _GastosSideRail extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Workflow',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.caption.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0,
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.38),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(icon, size: 18, color: cs.primary),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                    color: cs.onSurface,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                            ),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    Tooltip(
-                      message: 'Compactar menu',
-                      child: IconButton.filledTonal(
-                        onPressed: onToggleCollapsed,
-                        icon: const Icon(
-                          Icons.keyboard_double_arrow_left_rounded,
-                        ),
-                        iconSize: 17,
-                        style: IconButton.styleFrom(
-                          minimumSize: const Size(34, 30),
-                          fixedSize: const Size(34, 30),
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                      Tooltip(
+                        message: isEs ? 'Compactar menú' : 'Collapse menu',
+                        child: IconButton.filledTonal(
+                          onPressed: onToggleCollapsed,
+                          icon: const Icon(
+                            Icons.keyboard_double_arrow_left_rounded,
+                          ),
+                          iconSize: 17,
+                          style: IconButton.styleFrom(
+                            minimumSize: const Size(34, 30),
+                            fixedSize: const Size(34, 30),
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               Expanded(

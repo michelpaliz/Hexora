@@ -9,7 +9,7 @@ class _MailConsoleView extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 650) {
+        if (constraints.maxWidth < CollapsibleSidebar.responsiveBreakpoint) {
           return _buildMobile(context);
         }
         return _buildDesktop(context);
@@ -19,10 +19,66 @@ class _MailConsoleView extends StatelessWidget {
 
   // ── Mobile layout ──────────────────────────────────────────────────────────
 
+  Widget _buildMailSidebar(
+    BuildContext context, {
+    bool drawer = false,
+    VoidCallback? closeOverlay,
+  }) {
+    final l = AppLocalizations.of(context)!;
+
+    void invoke(VoidCallback action) {
+      closeOverlay?.call();
+      action();
+    }
+
+    return CollapsibleSidebar(
+      title: l.mailConsoleTitle,
+      headerIcon: Icons.mail_outline_rounded,
+      collapsed: state._leftCollapsed,
+      drawer: drawer,
+      expandTooltip: l.groupInvoicesNavExpand,
+      collapseTooltip: l.groupInvoicesNavCollapse,
+      onToggleCollapsed: () => state.update(
+        () => state._leftCollapsed = !state._leftCollapsed,
+      ),
+      primaryAction: CollapsibleSidebarItem(
+        key: const ValueKey('mail-compose-action'),
+        icon: Icons.edit_outlined,
+        label: l.mailComposeTitle,
+        onTap: () => invoke(state._openCompose),
+      ),
+      items: [
+        for (final folder in MailFolder.values)
+          CollapsibleSidebarItem(
+            key: ValueKey('mail-folder-${folder.name}'),
+            icon: _folderIcon(folder),
+            label: _folderLabel(folder, l),
+            selected: state._folder == folder,
+            onTap: () => invoke(() => state._selectFolder(folder)),
+          ),
+      ],
+      secondaryItems: [
+        CollapsibleSidebarItem(
+          key: const ValueKey('mail-footer-action'),
+          icon: Icons.description_outlined,
+          label: l.mailFooterCreateCta,
+          onTap: () => invoke(state._openFooterManager),
+        ),
+        CollapsibleSidebarItem(
+          key: const ValueKey('mail-templates-action'),
+          icon: Icons.view_list_outlined,
+          label: 'Templates',
+          onTap: () => invoke(
+            () => unawaited(state._openTemplateManager()),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMobile(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
     final domain = context.watch<MailDomain>();
     final threadsState = domain.threadsState;
     final threadState = state._selectedThreadKey == null
@@ -61,78 +117,18 @@ class _MailConsoleView extends StatelessWidget {
     void openFolderSheet() {
       showModalBottomSheet<void>(
         context: context,
+        isScrollControlled: true,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         builder: (ctx) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Text(
-                  l.mailConsoleFoldersTitle,
-                  style: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: cs.onSurfaceVariant,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              ...MailFolder.values.map((folder) => ListTile(
-                    leading: Icon(_folderIcon(folder),
-                        color: state._folder == folder
-                            ? cs.primary
-                            : cs.onSurfaceVariant),
-                    title: Text(
-                      _folderLabel(folder, l),
-                      style: t.bodySmall.copyWith(
-                        fontWeight: state._folder == folder
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color:
-                            state._folder == folder ? cs.primary : cs.onSurface,
-                      ),
-                    ),
-                    selected: state._folder == folder,
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      if (state._folder == folder) return;
-                      state.update(() {
-                        state._folder = folder;
-                        state._selectedThreadKey = null;
-                        state._showCompose = false;
-                        state._showFooterManager = false;
-                        state._showTemplateManager = false;
-                      });
-                      state._syncRoute();
-                      state._loadThreads(refresh: true);
-                    },
-                  )),
-              Divider(color: cs.outlineVariant.withValues(alpha: 0.4)),
-              ListTile(
-                leading: Icon(Icons.description_outlined,
-                    color: cs.onSurfaceVariant),
-                title: Text(l.mailFooterCreateCta,
-                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w500)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  state._openFooterManager();
-                },
-              ),
-              ListTile(
-                leading:
-                    Icon(Icons.view_list_outlined, color: cs.onSurfaceVariant),
-                title: Text('Templates',
-                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w500)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  state._openTemplateManager();
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+          child: SizedBox(
+            height: MediaQuery.sizeOf(ctx).height * 0.72,
+            child: _buildMailSidebar(
+              ctx,
+              drawer: true,
+              closeOverlay: () => Navigator.pop(ctx),
+            ),
           ),
         ),
       );
@@ -293,60 +289,13 @@ class _MailConsoleView extends StatelessWidget {
         drawer: isDetailView
             ? null
             : Drawer(
-                child: SafeArea(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                        child: Text(
-                          l.mailConsoleTitle,
-                          style: t.bodySmall.copyWith(
-                              fontWeight: FontWeight.w800, fontSize: 14),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              state._openCompose();
-                            },
-                            icon: const Icon(Icons.edit_outlined),
-                            label: Text(l.mailComposeTitle),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Column(
-                          children: MailFolder.values.map((folder) {
-                            return _FolderNavTile(
-                              label: _folderLabel(folder, l),
-                              icon: _folderIcon(folder),
-                              selected: state._folder == folder,
-                              compact: false,
-                              onTap: () {
-                                Navigator.pop(context);
-                                if (state._folder == folder) return;
-                                state.update(() {
-                                  state._folder = folder;
-                                  state._selectedThreadKey = null;
-                                  state._showCompose = false;
-                                  state._showFooterManager = false;
-                                  state._showTemplateManager = false;
-                                });
-                                state._syncRoute();
-                                state._loadThreads(refresh: true);
-                              },
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ],
+                child: Builder(
+                  builder: (drawerContext) => SafeArea(
+                    child: _buildMailSidebar(
+                      drawerContext,
+                      drawer: true,
+                      closeOverlay: () => Navigator.pop(drawerContext),
+                    ),
                   ),
                 ),
               ),
@@ -359,7 +308,6 @@ class _MailConsoleView extends StatelessWidget {
 
   Widget _buildDesktop(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final domain = context.watch<MailDomain>();
     final threadsState = domain.threadsState;
@@ -369,75 +317,7 @@ class _MailConsoleView extends StatelessWidget {
     final selectedThread = threadState?.thread;
 
     Widget leftColumn() {
-      const railWidth = 180.0;
-      const collapsed = false;
-      return SizedBox(
-        width: railWidth,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(4, 10, 8, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l.mailConsoleTitle,
-                style: t.bodySmall
-                    .copyWith(fontWeight: FontWeight.w800, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                onPressed: state._openCompose,
-                icon: const Icon(Icons.edit_outlined),
-                label: Text(l.mailComposeTitle),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l.mailConsoleFoldersTitle,
-                style: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...MailFolder.values.map(
-                (folder) => _FolderNavTile(
-                  label: _folderLabel(folder, l),
-                  icon: _folderIcon(folder),
-                  selected: state._folder == folder,
-                  compact: collapsed,
-                  onTap: () {
-                    if (state._folder == folder) return;
-                    state.update(() {
-                      state._folder = folder;
-                      state._selectedThreadKey = null;
-                      state._showCompose = false;
-                      state._showFooterManager = false;
-                      state._showTemplateManager = false;
-                    });
-                    state._syncRoute();
-                    state._loadThreads(refresh: true);
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
-              const SizedBox(height: 8),
-              _SideActionTile(
-                icon: Icons.description_outlined,
-                label: l.mailFooterCreateCta,
-                compact: collapsed,
-                onTap: state._openFooterManager,
-              ),
-              const SizedBox(height: 8),
-              _SideActionTile(
-                icon: Icons.view_list_outlined,
-                label: 'Templates',
-                compact: collapsed,
-                onTap: _asyncCallback(state._openTemplateManager),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildMailSidebar(context);
     }
 
     Widget threadList() {
@@ -654,6 +534,7 @@ class _MailConsoleView extends StatelessWidget {
     final content = Row(
       children: [
         leftColumn(),
+        const SizedBox(width: 10),
         Expanded(
           child: state._showFooterManager ||
                   state._showTemplateManager ||

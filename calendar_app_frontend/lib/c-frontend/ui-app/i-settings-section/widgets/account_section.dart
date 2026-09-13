@@ -40,8 +40,8 @@ class AccountSection extends StatelessWidget {
             color: cs.outlineVariant.withValues(alpha: 0.4)),
         NavTile(
           leading:
-              Icon(Icons.lock_outline_rounded, size: 18, color: cs.secondary),
-          iconBgColor: cs.secondary.withValues(alpha: 0.12),
+              Icon(Icons.lock_outline_rounded, size: 18, color: cs.primary),
+          iconBgColor: cs.primary.withValues(alpha: 0.12),
           title: l.changePassword,
           onTap: onChangePassword,
         ),

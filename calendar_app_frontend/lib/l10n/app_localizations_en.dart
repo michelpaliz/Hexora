@@ -5938,6 +5938,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailConversationForward => 'Forward';
 
   @override
+  String get mailConversationSortNewestFirst => 'Newest first';
+
+  @override
+  String get mailConversationSortOldestFirst => 'Oldest first';
+
+  @override
+  String mailConversationMessageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# messages',
+      one: '# message',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get mailLegalNoticeShow => 'Show legal notice';
 
   @override

@@ -29,8 +29,6 @@ class PreferencesSection extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    // Amber-ish for dark mode toggle
-    const darkModeColor = Color(0xFFF59E0B);
 
     return Column(
       children: [
@@ -38,9 +36,9 @@ class PreferencesSection extends StatelessWidget {
           leading: Icon(
             isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
             size: 18,
-            color: darkModeColor,
+            color: cs.primary,
           ),
-          iconBgColor: darkModeColor.withValues(alpha: 0.12),
+          iconBgColor: cs.primary.withValues(alpha: 0.12),
           title: l.darkMode,
           value: isDark,
           onChanged: (_) => onToggleDark(),
@@ -50,8 +48,8 @@ class PreferencesSection extends StatelessWidget {
             indent: 63,
             color: cs.outlineVariant.withValues(alpha: 0.4)),
         SwitchTile(
-          leading: Icon(Icons.sync_rounded, size: 18, color: cs.secondary),
-          iconBgColor: cs.secondary.withValues(alpha: 0.12),
+          leading: Icon(Icons.sync_rounded, size: 18, color: cs.primary),
+          iconBgColor: cs.primary.withValues(alpha: 0.12),
           title: l.autoStatementImportTitle,
           subtitle: l.autoStatementImportHelper,
           value: autoStatementImportEnabled,
@@ -63,8 +61,8 @@ class PreferencesSection extends StatelessWidget {
             indent: 63,
             color: cs.outlineVariant.withValues(alpha: 0.4)),
         NavTile(
-          leading: Icon(Icons.language_rounded, size: 18, color: cs.tertiary),
-          iconBgColor: cs.tertiary.withValues(alpha: 0.12),
+          leading: Icon(Icons.language_rounded, size: 18, color: cs.primary),
+          iconBgColor: cs.primary.withValues(alpha: 0.12),
           title: isSpanish ? 'Idioma' : 'Language',
           subtitle: languageName,
           onTap: onChangeLanguage,

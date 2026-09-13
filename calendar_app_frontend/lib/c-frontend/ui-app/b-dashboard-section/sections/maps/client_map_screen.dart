@@ -10,7 +10,7 @@ import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/api/i_time
 import 'package:hexora/b-backend/maps/maps_api.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/widgets/geofenced_visits_view.dart';
-import 'package:hexora/c-frontend/ui-app/shared/widgets/sidebar_item.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/collapsible_sidebar.dart';
 import 'package:provider/provider.dart';
 
 import 'widgets/azure_maps_view.dart';
@@ -62,9 +62,6 @@ class ClientMapScreen extends StatefulWidget {
 }
 
 class _ClientMapScreenState extends State<ClientMapScreen> {
-  static const double _expandedMenuWidth = 214;
-  static const double _collapsedMenuWidth = 64;
-
   late final MapsApi _mapsApi;
   late final ClientsApi _clientsApi;
   final _clientFilter = TextEditingController();
@@ -786,12 +783,11 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
   }
 
   Widget _buildMapHub(AzureMapsToken token) {
-    final cs = Theme.of(context).colorScheme;
     final navItems = _navItems;
     return LayoutBuilder(
       builder: (context, constraints) {
         final sectionContent = _buildSectionContent(token);
-        if (constraints.maxWidth < 760) {
+        if (constraints.maxWidth < CollapsibleSidebar.responsiveBreakpoint) {
           return Column(
             children: [
               SingleChildScrollView(
@@ -819,104 +815,24 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
         }
         return Row(
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              width:
-                  _sideMenuCollapsed ? _collapsedMenuWidth : _expandedMenuWidth,
-              decoration: BoxDecoration(
-                color: cs.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.65),
-                ),
+            CollapsibleSidebar(
+              title: _isSpanish ? 'Mapas y visitas' : 'Maps & visits',
+              headerIcon: Icons.map_outlined,
+              collapsed: _sideMenuCollapsed,
+              expandTooltip: _isSpanish ? 'Expandir menú' : 'Expand menu',
+              collapseTooltip: _isSpanish ? 'Contraer menú' : 'Collapse menu',
+              onToggleCollapsed: () => setState(
+                () => _sideMenuCollapsed = !_sideMenuCollapsed,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 9, 8, 8),
-                    child: Row(
-                      mainAxisAlignment: _sideMenuCollapsed
-                          ? MainAxisAlignment.center
-                          : MainAxisAlignment.start,
-                      children: [
-                        if (!_sideMenuCollapsed) ...[
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: cs.primaryContainer,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              Icons.map_outlined,
-                              size: 17,
-                              color: cs.onPrimaryContainer,
-                            ),
-                          ),
-                          const SizedBox(width: 9),
-                          Expanded(
-                            child: Text(
-                              _isSpanish ? 'Mapas y visitas' : 'Maps & visits',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                        ],
-                        IconButton.filledTonal(
-                          tooltip: _sideMenuCollapsed
-                              ? (_isSpanish ? 'Expandir menú' : 'Expand menu')
-                              : (_isSpanish
-                                  ? 'Contraer menú'
-                                  : 'Collapse menu'),
-                          onPressed: () => setState(
-                            () => _sideMenuCollapsed = !_sideMenuCollapsed,
-                          ),
-                          icon: Icon(
-                            _sideMenuCollapsed
-                                ? Icons.keyboard_double_arrow_right_rounded
-                                : Icons.keyboard_double_arrow_left_rounded,
-                          ),
-                          iconSize: 18,
-                          style: IconButton.styleFrom(
-                            minimumSize: const Size(40, 34),
-                            fixedSize: const Size(40, 34),
-                            padding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ),
-                      ],
-                    ),
+              items: [
+                for (final item in navItems)
+                  CollapsibleSidebarItem(
+                    icon: item.icon,
+                    label: item.label,
+                    selected: _section == item.section,
+                    onTap: () => _selectSection(item.section),
                   ),
-                  Divider(
-                    height: 1,
-                    color: cs.outlineVariant.withValues(alpha: 0.45),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-                      children: [
-                        for (final item in navItems)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: SidebarItem(
-                              icon: item.icon,
-                              label: item.label,
-                              isSelected: _section == item.section,
-                              collapsed: _sideMenuCollapsed,
-                              onTap: () => _selectSection(item.section),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
             const SizedBox(width: 10),
             Expanded(child: sectionContent),

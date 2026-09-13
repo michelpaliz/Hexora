@@ -6005,6 +6005,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailConversationForward => 'Reenviar';
 
   @override
+  String get mailConversationSortNewestFirst => 'Más recientes primero';
+
+  @override
+  String get mailConversationSortOldestFirst => 'Más antiguos primero';
+
+  @override
+  String mailConversationMessageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# mensajes',
+      one: '# mensaje',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get mailLegalNoticeShow => 'Mostrar aviso legal';
 
   @override

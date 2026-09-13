@@ -13,6 +13,8 @@ class DateRangeFilterCard extends StatelessWidget {
   final bool showLabel;
   final bool showCollapsedRange;
   final List<Widget>? labelActions;
+  final Widget? quickRangeControls;
+  final bool showClearAction;
   final VoidCallback onToggleExpanded;
   final VoidCallback onClear;
   final VoidCallback onPickFrom;
@@ -28,6 +30,8 @@ class DateRangeFilterCard extends StatelessWidget {
     this.showLabel = true,
     this.showCollapsedRange = true,
     this.labelActions,
+    this.quickRangeControls,
+    this.showClearAction = true,
     required this.onToggleExpanded,
     required this.onClear,
     required this.onPickFrom,
@@ -84,13 +88,16 @@ class DateRangeFilterCard extends StatelessWidget {
                     ],
                   ),
                 )
-              else
+              else if (quickRangeControls == null)
                 const Spacer(),
-              _QuickRangeSegmented(
-                selected: quickRange,
-                onSelected: onSelectQuickRange,
-              ),
-              if (hasFilter)
+              if (quickRangeControls != null)
+                Expanded(child: quickRangeControls!)
+              else
+                _QuickRangeSegmented(
+                  selected: quickRange,
+                  onSelected: onSelectQuickRange,
+                ),
+              if (hasFilter && showClearAction)
                 TextButton(
                   onPressed: onClear,
                   child: Text(

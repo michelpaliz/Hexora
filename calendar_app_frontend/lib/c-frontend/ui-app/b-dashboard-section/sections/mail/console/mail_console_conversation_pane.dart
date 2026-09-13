@@ -2,7 +2,7 @@ part of '../mail_console_screen.dart';
 
 // ── Conversation pane ────────────────────────────────────────────────────────
 
-class _ConversationPane extends StatelessWidget {
+class _ConversationPane extends StatefulWidget {
   const _ConversationPane({
     required this.thread,
     required this.folder,
@@ -32,17 +32,26 @@ class _ConversationPane extends StatelessWidget {
   final bool hideSubjectBar;
 
   @override
+  State<_ConversationPane> createState() => _ConversationPaneState();
+}
+
+class _ConversationPaneState extends State<_ConversationPane> {
+  // Newest-first matches how most users scan a thread; kept as pane state
+  // (not per-widget-instance) so the choice survives switching threads.
+  bool _newestFirst = true;
+
+  @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final messages = [...thread.messages]..sort((a, b) {
+    final messages = [...widget.thread.messages]..sort((a, b) {
         final aDate = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
         final bDate = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return aDate.compareTo(bDate);
+        return _newestFirst ? bDate.compareTo(aDate) : aDate.compareTo(bDate);
       });
 
-    String resolvedSubject = thread.subject.trim();
+    String resolvedSubject = widget.thread.subject.trim();
     if (resolvedSubject.isEmpty) {
       for (final message in messages.reversed) {
         final candidate = message.subject.trim();
@@ -54,11 +63,11 @@ class _ConversationPane extends StatelessWidget {
     }
     final subject =
         resolvedSubject.isEmpty ? l.mailDetailNoSubject : resolvedSubject;
-    final participants = thread.participants.join(', ').trim();
+    final participants = widget.thread.participants.join(', ').trim();
 
     String replyRecipientDisplay(MailMessage message) {
       final isSent = message.folderEnum == MailFolder.sent ||
-          (message.folderEnum == null && folder == MailFolder.sent);
+          (message.folderEnum == null && widget.folder == MailFolder.sent);
       if (isSent) {
         final recipients =
             message.to.map((address) => address.display).toList();
@@ -71,7 +80,7 @@ class _ConversationPane extends StatelessWidget {
     return Column(
       children: [
         // ── Compact sticky subject bar ────────────────────────────
-        if (!hideSubjectBar)
+        if (!widget.hideSubjectBar)
           Container(
             padding: const EdgeInsets.fromLTRB(12, 6, 10, 6),
             decoration: BoxDecoration(
@@ -115,33 +124,159 @@ class _ConversationPane extends StatelessWidget {
         Expanded(
           child: Column(
             children: [
+              _MessageListToolbar(
+                messageCount: messages.length,
+                newestFirst: _newestFirst,
+                onChanged: (value) {
+                  if (value == _newestFirst) return;
+                  setState(() => _newestFirst = value);
+                },
+              ),
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
+                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 4),
                   itemCount: messages.length,
                   itemBuilder: (context, index) => _MessageCard(
                     message: messages[index],
-                    onReply: () => onStartReply(messages[index]),
-                    onDownloadAttachment: onDownloadAttachment,
+                    onReply: () => widget.onStartReply(messages[index]),
+                    onDownloadAttachment: widget.onDownloadAttachment,
                   ),
                 ),
               ),
-              if (replyTarget != null)
+              if (widget.replyTarget != null)
                 _ReplyComposer(
-                  subjectController: replySubjectController,
-                  replyController: replyController,
-                  replyFocus: replyFocus,
-                  onReply: _asyncCallback(() => onReply(replyTarget!)),
-                  onClose: onCloseReply,
-                  sendingReply: sendingReply,
+                  subjectController: widget.replySubjectController,
+                  replyController: widget.replyController,
+                  replyFocus: widget.replyFocus,
+                  onReply:
+                      _asyncCallback(() => widget.onReply(widget.replyTarget!)),
+                  onClose: widget.onCloseReply,
+                  sendingReply: widget.sendingReply,
                   replyToLabel: l.mailConversationReplyTo(
-                    replyRecipientDisplay(replyTarget!),
+                    replyRecipientDisplay(widget.replyTarget!),
                   ),
                 ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Message list toolbar (count + sort order) ─────────────────────────────────
+
+class _MessageListToolbar extends StatelessWidget {
+  const _MessageListToolbar({
+    required this.messageCount,
+    required this.newestFirst,
+    required this.onChanged,
+  });
+
+  final int messageCount;
+  final bool newestFirst;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              l.mailConversationMessageCount(messageCount),
+              style: t.bodySmall.copyWith(
+                color: cs.onSurfaceVariant,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          _SortOrderToggle(newestFirst: newestFirst, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
+class _SortOrderToggle extends StatelessWidget {
+  const _SortOrderToggle({required this.newestFirst, required this.onChanged});
+
+  final bool newestFirst;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    Widget segment({
+      required bool value,
+      required IconData icon,
+      required String label,
+    }) {
+      final selected = newestFirst == value;
+      return InkWell(
+        onTap: selected ? null : () => onChanged(value),
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: selected ? cs.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 12,
+                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: t.bodySmall.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          segment(
+            value: true,
+            icon: Icons.arrow_downward_rounded,
+            label: l.mailConversationSortNewestFirst,
+          ),
+          segment(
+            value: false,
+            icon: Icons.arrow_upward_rounded,
+            label: l.mailConversationSortOldestFirst,
+          ),
+        ],
+      ),
     );
   }
 }

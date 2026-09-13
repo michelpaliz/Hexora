@@ -16,8 +16,10 @@ final ThemeData darkTheme = ThemeData(
     primary: AppDarkColors.primary,
     secondary: AppDarkColors.secondary,
     surface: AppDarkColors.surface,
-    onPrimary: AppDarkColors.textPrimary,
-    onSecondary: AppDarkColors.textPrimary,
+    onPrimary: AppDarkColors.background,
+    onSecondary: AppDarkColors.background,
+    error: AppDarkColors.error,
+    onError: AppDarkColors.background,
     onSurface: AppDarkColors.textPrimary,
   ),
   textTheme: AppTypography.materialTextTheme(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/button/button_styles.dart';
 
 /// Button variants you actually use.
@@ -14,6 +13,7 @@ class ThemedButtons {
     ButtonVariant variant = ButtonVariant.primary,
   }) {
     final t = Theme.of(context);
+    final cs = t.colorScheme;
 
     late final Color bg;
     late final Color bgPressed;
@@ -22,52 +22,56 @@ class ThemedButtons {
 
     switch (variant) {
       case ButtonVariant.danger:
-        final e = t.colorScheme.error;
+        final e = cs.error;
         bg = e;
-        bgPressed = e.withOpacity(0.8);
-        text = Colors.white;
+        bgPressed = e.withValues(alpha: 0.8);
+        text = cs.onError;
         border = e;
         break;
 
       case ButtonVariant.secondary:
-        final c = t.brightness == Brightness.dark
-            ? AppDarkColors.secondary
-            : AppColors.secondary;
+        final c = cs.secondary;
         bg = c;
-        bgPressed = t.brightness == Brightness.dark
-            ? c.withOpacity(0.85)
-            : AppColors.secondaryLight;
-        text = Colors.white;
-        border = t.brightness == Brightness.dark ? c : AppColors.secondaryDark;
+        bgPressed = c.withValues(alpha: 0.85);
+        text = cs.onSecondary;
+        border = c;
         break;
 
       case ButtonVariant.info:
-        final c = AppColors.secondary;
+        final c = cs.secondary;
         bg = c;
-        bgPressed = AppColors.secondaryLight;
-        text = Colors.white;
-        border = AppColors.secondaryDark;
+        bgPressed = c.withValues(alpha: 0.85);
+        text = cs.onSecondary;
+        border = c;
         break;
 
       case ButtonVariant.primary:
-      final c = t.brightness == Brightness.dark
-            ? AppDarkColors.primary
-            : AppColors.primary;
+        final c = cs.primary;
         bg = c;
-        bgPressed = t.brightness == Brightness.dark
-            ? c.withOpacity(0.85)
-            : AppColors.primaryLight;
-        text = Colors.white; // strong, reliable contrast
-        border = t.brightness == Brightness.dark
-            ? AppDarkColors.primary
-            : AppColors.primaryDark;
+        bgPressed = c.withValues(alpha: 0.85);
+        text = cs.onPrimary;
+        border = c;
     }
 
-    return ButtonStyles.saucyButtonStyle(
+    final style = ButtonStyles.saucyButtonStyle(
       defaultBackgroundColor: bg,
       pressedBackgroundColor: bgPressed,
       textColor: text,
       borderColor: border,
+    );
+    return style.copyWith(
+      foregroundColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.disabled)
+              ? cs.onSurface.withValues(alpha: 0.38)
+              : text),
+      backgroundColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.disabled)
+              ? cs.onSurface.withValues(alpha: 0.12)
+              : style.backgroundColor!.resolve(states)),
+      elevation: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.disabled)
+              ? 0
+              : style.elevation!.resolve(states)),
     );
   }
 }

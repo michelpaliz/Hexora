@@ -693,6 +693,8 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       );
       _batchErrorsExpanded = false;
     });
+    if (await _discardBatchIfAlreadyImported()) return;
+    if (!mounted) return;
     _cacheBatchJobSnapshot();
 
     if (mounted) {
@@ -780,6 +782,53 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     }
   }
 
+  void _clearConsumedBatchState() {
+    _batchSubmitting = false;
+    _resetBatchJobTracking(clearResult: true, clearCache: true);
+    _batchDocumentBytes.clear();
+    _batchDocumentNames.clear();
+    _batchSkippedDetails.clear();
+    _batchVerifyMessage = null;
+    _batchError = null;
+    _batchDetectedInvoices = 0;
+    _batchFileFilterIndex = 0;
+  }
+
+  Future<void> _removeCompletedBatchMapping(String backgroundJobId) async {
+    if (backgroundJobId.isEmpty) return;
+    try {
+      await OcrImportJobMappingStore.instance.remove(backgroundJobId);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Failed to clear completed batch mapping: $error');
+      }
+    }
+  }
+
+  Future<bool> _discardBatchIfAlreadyImported() async {
+    final selectableItems = _batchPreviewItems
+        .where((item) => item.canSelect)
+        .toList(growable: false);
+    if (selectableItems.isEmpty) return false;
+
+    await loadRecentUploads();
+    if (!mounted) return false;
+    final importedFileNames = recentUploads
+        .map((item) => (item['file'] ?? '').trim().toLowerCase())
+        .where((name) => name.isNotEmpty)
+        .toSet();
+    final allAlreadyImported = importedFileNames.isNotEmpty &&
+        selectableItems.every(
+          (item) => importedFileNames.contains(item.fileName.toLowerCase()),
+        );
+    if (!allAlreadyImported) return false;
+
+    final completedBackgroundJobId = (_batchBackgroundJobId ?? '').trim();
+    setState(_clearConsumedBatchState);
+    await _removeCompletedBatchMapping(completedBackgroundJobId);
+    return true;
+  }
+
   Future<void> _resumeCachedBatchJobIfNeeded() async {
     if (_hasTrackedBatchJob) {
       if (_hasRunningBatchJob) {
@@ -798,7 +847,10 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       statusPayload: _batchJobStatus,
       resultPayload: _batchJobResult,
     );
-    if (_isExpenseBatchJobTerminal(restoredStatus)) return;
+    if (_isExpenseBatchJobTerminal(restoredStatus)) {
+      await _discardBatchIfAlreadyImported();
+      return;
+    }
     _startBatchJobPolling();
   }
 
@@ -977,13 +1029,9 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       if (!mounted) return;
       final importedCount = _batchJobInt(response['importedCount']);
       final skippedCount = _batchJobInt(response['skippedCount']);
-      final duplicateCount = _batchJobInt(response['duplicateCount']);
-      setState(() {
-        _batchSubmitting = false;
-        _batchConfirmResult = response;
-        _batchVerifyMessage =
-            'Importacion confirmada. Importados: $importedCount Â· Omitidos: $skippedCount Â· Duplicados: $duplicateCount';
-      });
+      final completedBackgroundJobId = (_batchBackgroundJobId ?? '').trim();
+      setState(_clearConsumedBatchState);
+      await _removeCompletedBatchMapping(completedBackgroundJobId);
       await loadRecentUploads();
       if (!mounted) return;
       widget.onUploaded?.call();

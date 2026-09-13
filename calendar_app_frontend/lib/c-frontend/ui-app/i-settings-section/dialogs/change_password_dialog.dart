@@ -58,7 +58,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
     final typography = AppTypography.of(context);
     final secondaryText = ThemeColors.textSecondary(context);
     final inputFill = ThemeColors.inputFillLighter(context);
-    final outlineColor = theme.colorScheme.outline.withOpacity(0.5);
+    final outlineColor = theme.colorScheme.outline.withValues(alpha: 0.5);
     final confirmMismatch = _confirmController.text.isNotEmpty &&
         _newPassController.text.isNotEmpty &&
         _confirmController.text != _newPassController.text;
@@ -119,15 +119,17 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
           border: inputBorder(outlineColor),
           enabledBorder: inputBorder(outlineColor),
           focusedBorder: inputBorder(theme.colorScheme.primary, 1.6),
-          errorBorder: inputBorder(theme.colorScheme.error.withOpacity(0.8)),
+          errorBorder:
+              inputBorder(theme.colorScheme.error.withValues(alpha: 0.8)),
           focusedErrorBorder:
-              inputBorder(theme.colorScheme.error.withOpacity(0.8), 1.6),
+              inputBorder(theme.colorScheme.error.withValues(alpha: 0.8), 1.6),
         ),
       );
     }
 
     return AlertDialog(
-      backgroundColor: ThemeColors.cardBg(context),
+      backgroundColor: theme.colorScheme.surface,
+      surfaceTintColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -139,7 +141,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
             ),
             child: Icon(
               Icons.lock_reset_rounded,
@@ -220,10 +222,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                     ),
                   )
               : null,
-          child: Text(
-            l.save,
-            style: typography.buttonText,
-          ),
+          child: Text(l.save),
         ),
       ],
     );

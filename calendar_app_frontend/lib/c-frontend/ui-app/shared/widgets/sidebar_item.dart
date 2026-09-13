@@ -13,6 +13,7 @@ class SidebarItem extends StatefulWidget {
     required this.isSelected,
     required this.collapsed,
     required this.onTap,
+    this.textStyle,
   });
 
   final IconData icon;
@@ -20,6 +21,7 @@ class SidebarItem extends StatefulWidget {
   final bool isSelected;
   final bool collapsed;
   final VoidCallback onTap;
+  final TextStyle? textStyle;
 
   @override
   State<SidebarItem> createState() => _SidebarItemState();
@@ -85,10 +87,13 @@ class _SidebarItemState extends State<SidebarItem> {
                     opacity: widget.collapsed ? 0 : 1,
                     child: Text(
                       widget.label,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: fg,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      style: widget.textStyle?.copyWith(color: fg) ??
+                          Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: fg,
+                                fontSize: 12.3,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0,
+                              ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

@@ -23,6 +23,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/conso
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/widgets/mail_html_content.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/mail_compose_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/widgets/folder_section_card.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
@@ -31,7 +32,6 @@ import 'package:provider/provider.dart';
 
 part 'console/mail_console_conversation_pane.dart';
 part 'console/mail_console_empty_card.dart';
-part 'console/mail_console_left_rail.dart';
 part 'console/mail_console_thread_row.dart';
 part 'console/mail_console_thread_toolbar.dart';
 part 'console/mail_console_utils.dart';
@@ -236,6 +236,19 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     _threadSearchCtrl?.clear();
     _loadThreads(refresh: true);
     setState(() {});
+  }
+
+  void _selectFolder(MailFolder folder) {
+    if (_folder == folder) return;
+    setState(() {
+      _folder = folder;
+      _selectedThreadKey = null;
+      _showCompose = false;
+      _showFooterManager = false;
+      _showTemplateManager = false;
+    });
+    _syncRoute();
+    _loadThreads(refresh: true);
   }
 
   void _navigateThread(int delta) {

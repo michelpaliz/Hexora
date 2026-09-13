@@ -10691,6 +10691,24 @@ abstract class AppLocalizations {
   /// **'Forward'**
   String get mailConversationForward;
 
+  /// No description provided for @mailConversationSortNewestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest first'**
+  String get mailConversationSortNewestFirst;
+
+  /// No description provided for @mailConversationSortOldestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest first'**
+  String get mailConversationSortOldestFirst;
+
+  /// Message count shown above a thread's conversation list.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {# message} other {# messages}}'**
+  String mailConversationMessageCount(int count);
+
   /// No description provided for @mailLegalNoticeShow.
   ///
   /// In en, this message translates to:

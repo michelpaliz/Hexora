@@ -8,8 +8,7 @@ import 'package:hexora/c-frontend/ui-app/e-log-user-section/register/utils/passw
 import 'package:hexora/f-themes/app_colors/palette/app_colors/color_properties.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/text_field_widget.dart';
-import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/textfield_styles.dart'
-    show TextFieldStyles;
+import 'package:hexora/c-frontend/ui-app/e-log-user-section/shared_utilities/auth_shared_widgets.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -99,23 +98,31 @@ class _RegisterFormState extends State<RegisterForm> {
           // ðŸ‘‹ Welcome Section
           Text(
             l10n.welcomeTitle,
-            style: t.displayMedium.copyWith(color: cs.primary),
+            style: t.displayMedium.copyWith(
+              color: cs.onSurface,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             l10n.welcomeSubtitle,
-            style: t.bodyMedium.copyWith(color: cs.onSurface.withOpacity(0.7)),
+            style: t.bodyMedium
+                .copyWith(color: cs.onSurface.withValues(alpha: 0.7)),
           ),
           const SizedBox(height: 28),
 
           // Name
           TextFieldWidget(
             controller: controller.name,
+            autofillHints: const [AutofillHints.name],
+            textInputAction: TextInputAction.next,
             keyboardType: TextInputType.text,
-            decoration: TextFieldStyles.saucyInputDecoration(
+            decoration: authInputDecoration(
+              context,
               labelText: l10n.name,
               hintText: l10n.nameHint,
-              suffixIcon: Icons.person,
+              icon: Icons.person,
             ),
             validator: (val) =>
                 (val == null || val.trim().isEmpty) ? l10n.nameRequired : null,
@@ -125,11 +132,14 @@ class _RegisterFormState extends State<RegisterForm> {
           // Username
           TextFieldWidget(
             controller: controller.userName,
+            autofillHints: const [AutofillHints.newUsername],
+            textInputAction: TextInputAction.next,
             keyboardType: TextInputType.text,
-            decoration: TextFieldStyles.saucyInputDecoration(
+            decoration: authInputDecoration(
+              context,
               labelText: l10n.userName,
               hintText: l10n.userNameHint,
-              suffixIcon: Icons.alternate_email,
+              icon: Icons.alternate_email,
             ),
             validator: (val) => (val == null || val.trim().isEmpty)
                 ? l10n.userNameRequired
@@ -141,10 +151,13 @@ class _RegisterFormState extends State<RegisterForm> {
           TextFieldWidget(
             controller: controller.email,
             keyboardType: TextInputType.emailAddress,
-            decoration: TextFieldStyles.saucyInputDecoration(
+            autofillHints: const [AutofillHints.email],
+            textInputAction: TextInputAction.next,
+            decoration: authInputDecoration(
+              context,
               labelText: l10n.email,
               hintText: l10n.emailHint,
-              suffixIcon: Icons.email,
+              icon: Icons.email,
             ),
             validator: (val) {
               if (val == null || val.trim().isEmpty) return l10n.emailRequired;
@@ -158,11 +171,14 @@ class _RegisterFormState extends State<RegisterForm> {
           TextFieldWidget(
             controller: controller.password,
             keyboardType: TextInputType.visiblePassword,
+            autofillHints: const [AutofillHints.newPassword],
+            textInputAction: TextInputAction.done,
             obscureText: !_showPassword,
-            decoration: TextFieldStyles.saucyInputDecoration(
+            decoration: authInputDecoration(
+              context,
               labelText: l10n.password,
               hintText: l10n.passwordHint,
-              suffixIcon: Icons.lock,
+              icon: Icons.lock,
             ).copyWith(
               suffixIcon: IconButton(
                 onPressed: () => setState(() => _showPassword = !_showPassword),
@@ -190,7 +206,8 @@ class _RegisterFormState extends State<RegisterForm> {
                     child: LinearProgressIndicator(
                       value: _strength,
                       minHeight: 8,
-                      backgroundColor: cs.surfaceContainerHighest.withOpacity(0.4),
+                      backgroundColor:
+                          cs.surfaceContainerHighest.withValues(alpha: 0.4),
                       valueColor: AlwaysStoppedAnimation<Color>(
                         _strength >= 0.85
                             ? Colors.green
@@ -203,7 +220,7 @@ class _RegisterFormState extends State<RegisterForm> {
                 Text(
                   _strengthLabel,
                   style: t.bodySmall.copyWith(
-                    color: cs.onSurface.withOpacity(0.8),
+                    color: cs.onSurface.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -233,7 +250,7 @@ class _RegisterFormState extends State<RegisterForm> {
                           password: password,
                         );
 
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(l10n.registerCheckEmail),
@@ -244,27 +261,27 @@ class _RegisterFormState extends State<RegisterForm> {
                           arguments: {'email': email},
                         );
                       } on UsernameAlreadyUseAuthException {
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(l10n.userNameTaken)),
                         );
                       } on EmailAlreadyUseAuthException {
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(l10n.emailTaken)),
                         );
                       } on InvalidEmailAuthException {
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(l10n.invalidEmail)),
                         );
                       } on WeakPasswordException {
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(l10n.passwordLength)),
                         );
                       } catch (e) {
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -275,7 +292,7 @@ class _RegisterFormState extends State<RegisterForm> {
                       }
                     }
                   : null,
-              child: Text(l10n.register, style: t.buttonText), // ✅
+              child: Text(l10n.register), // ✅
             ),
           ),
 

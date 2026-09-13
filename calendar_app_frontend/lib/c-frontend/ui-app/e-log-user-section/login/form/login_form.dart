@@ -7,8 +7,7 @@ import 'package:hexora/b-backend/auth_user/exceptions/auth_exceptions.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/home_page.dart';
 import 'package:hexora/c-frontend/ui-app/e-log-user-section/register/ui/form/button_style_helper.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/text_field_widget.dart';
-import 'package:hexora/c-frontend/utils/view-item-styles/text_field/static/textfield_styles.dart'
-    show TextFieldStyles;
+import 'package:hexora/c-frontend/ui-app/e-log-user-section/shared_utilities/auth_shared_widgets.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -110,7 +109,7 @@ class _LoginFormState extends State<LoginForm> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.12),
+                    color: cs.primary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child:
@@ -129,7 +128,7 @@ class _LoginFormState extends State<LoginForm> {
             Text(
               l10n.verifyEmailInfo,
               style: t.bodyMedium.copyWith(
-                color: cs.onSurface.withOpacity(0.8),
+                color: cs.onSurface.withValues(alpha: 0.8),
               ),
             ),
             const SizedBox(height: 20),
@@ -172,12 +171,17 @@ class _LoginFormState extends State<LoginForm> {
           // 👋 Welcome
           Text(
             l10n.loginWelcomeTitle,
-            style: t.displayMedium.copyWith(color: cs.primary),
+            style: t.displayMedium.copyWith(
+              color: cs.onSurface,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             l10n.loginWelcomeSubtitle,
-            style: t.bodyMedium.copyWith(color: cs.onSurface.withOpacity(0.7)),
+            style: t.bodyMedium
+                .copyWith(color: cs.onSurface.withValues(alpha: 0.7)),
           ),
           const SizedBox(height: 28),
 
@@ -186,10 +190,13 @@ class _LoginFormState extends State<LoginForm> {
             key: const Key('login_email_field'),
             controller: _email,
             keyboardType: TextInputType.emailAddress,
-            decoration: TextFieldStyles.saucyInputDecoration(
+            autofillHints: const [AutofillHints.email],
+            textInputAction: TextInputAction.next,
+            decoration: authInputDecoration(
+              context,
               labelText: l10n.email,
               hintText: l10n.emailHint,
-              suffixIcon: Icons.email,
+              icon: Icons.email,
             ),
             validator: (val) {
               if (val == null || val.trim().isEmpty) return l10n.emailRequired;
@@ -204,11 +211,14 @@ class _LoginFormState extends State<LoginForm> {
             key: const Key('login_password_field'),
             controller: _password,
             keyboardType: TextInputType.visiblePassword,
+            autofillHints: const [AutofillHints.password],
+            textInputAction: TextInputAction.done,
             obscureText: !_showPassword,
-            decoration: TextFieldStyles.saucyInputDecoration(
+            decoration: authInputDecoration(
+              context,
               labelText: l10n.password,
               hintText: l10n.passwordHint,
-              suffixIcon: Icons.lock,
+              icon: Icons.lock,
             ).copyWith(
               suffixIcon: IconButton(
                 onPressed: () => setState(() => _showPassword = !_showPassword),
@@ -276,7 +286,7 @@ class _LoginFormState extends State<LoginForm> {
                       }
                     }
                   : null,
-              child: Text(l10n.login, style: t.buttonText),
+              child: Text(l10n.login),
             ),
           ),
 

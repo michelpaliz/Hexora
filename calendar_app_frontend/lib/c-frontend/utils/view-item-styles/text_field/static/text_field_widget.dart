@@ -9,6 +9,8 @@ class TextFieldWidget extends StatefulWidget {
   final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
   final String? hintText;
+  final Iterable<String>? autofillHints;
+  final TextInputAction? textInputAction;
 
   // 👇 new (optional)
   final ValueChanged<String>? onChanged;
@@ -21,12 +23,14 @@ class TextFieldWidget extends StatefulWidget {
     this.inputFormatters,
     this.validator,
     this.hintText,
+    this.autofillHints,
+    this.textInputAction,
     this.onChanged, // 👈 new
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
-  _TextFieldWidgetState createState() => _TextFieldWidgetState();
+  State<TextFieldWidget> createState() => _TextFieldWidgetState();
 }
 
 class _TextFieldWidgetState extends State<TextFieldWidget> {
@@ -38,16 +42,16 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
       // Keep provided labelText (for floating labels)
       hintText: widget.hintText ?? widget.decoration.hintText,
       // Make labels float like Material fields (placeholder clarity)
-      floatingLabelBehavior: widget.decoration.floatingLabelBehavior ??
-          FloatingLabelBehavior.auto,
+      floatingLabelBehavior:
+          widget.decoration.floatingLabelBehavior ?? FloatingLabelBehavior.auto,
       errorText: showError
           ? (widget.validator != null
               ? widget.validator!(widget.controller.text)
               : null)
           : null,
       isDense: true,
-      contentPadding:
-          widget.decoration.contentPadding ?? const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      contentPadding: widget.decoration.contentPadding ??
+          const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
     );
 
     return TextField(
@@ -58,6 +62,8 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
       keyboardType: widget.keyboardType,
       obscureText: widget.obscureText,
       inputFormatters: widget.inputFormatters,
+      autofillHints: widget.autofillHints,
+      textInputAction: widget.textInputAction,
       onChanged: (value) {
         widget.onChanged?.call(value); // 👈 let parents react (e.g., strength)
         setState(() {

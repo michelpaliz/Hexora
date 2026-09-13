@@ -560,11 +560,14 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 1080;
+        final inlineMenu = constraints.maxWidth >= 400;
+        final touchTargets = constraints.maxWidth < 600;
         final menu = _TelegramTopMenu(
+          touchTargets: touchTargets,
           account: domain.account!,
           selectedSection: _selectedSection,
           chatsCount: domain.chats.length,
-          hasActiveExport: domain.currentExport != null,
+          hasActiveExport: domain.currentExport?.isRunning ?? false,
           loadingAccount: domain.loadingAccount,
           onSectionSelected: _selectSection,
           onDisconnect: () => _showDisconnectConfirm(context, domain),
@@ -572,55 +575,43 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
 
         final contentCard = FolderPanel(
           title: _sectionTitle(_selectedSection),
-          contentTopPadding: 26,
+          contentTopPadding: inlineMenu ? (touchTargets ? 58 : 50) : 36,
           showTab: true,
+          actions: inlineMenu ? [menu] : null,
           child: ConstrainedBox(
             constraints: BoxConstraints(
               minHeight: stacked ? 0 : 640,
             ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              layoutBuilder: (currentChild, previousChildren) {
-                return Stack(
-                  alignment: Alignment.topLeft,
-                  children: <Widget>[
-                    ...previousChildren,
-                    if (currentChild != null) currentChild,
-                  ],
-                );
-              },
-              child: KeyedSubtree(
-                key: ValueKey(_selectedSection),
-                child: _buildSectionContent(domain),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!inlineMenu) ...[
+                  Align(alignment: Alignment.centerRight, child: menu),
+                  const SizedBox(height: 12),
+                ],
+                Expanded(
+                    child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  layoutBuilder: (currentChild, previousChildren) {
+                    return Stack(
+                      alignment: Alignment.topLeft,
+                      children: <Widget>[
+                        ...previousChildren,
+                        if (currentChild != null) currentChild,
+                      ],
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey(_selectedSection),
+                    child: _buildSectionContent(domain),
+                  ),
+                )),
+              ],
             ),
           ),
         );
 
-        if (stacked) {
-          return Column(
-            children: [
-              menu,
-              const SizedBox(height: 20),
-              contentCard,
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  menu,
-                  const SizedBox(height: 14),
-                  contentCard,
-                ],
-              ),
-            ),
-          ],
-        );
+        return contentCard;
       },
     );
   }
@@ -700,6 +691,7 @@ class _TelegramTopMenu extends StatelessWidget {
     required this.loadingAccount,
     required this.onSectionSelected,
     required this.onDisconnect,
+    this.touchTargets = false,
   });
 
   final TelegramAccount account;
@@ -709,148 +701,111 @@ class _TelegramTopMenu extends StatelessWidget {
   final bool loadingAccount;
   final ValueChanged<_TelegramConnectedSection> onSectionSelected;
   final VoidCallback onDisconnect;
+  final bool touchTargets;
 
   String get _initials {
     final name = account.fullName.trim();
     if (name.isEmpty) return '?';
     final parts = name.split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return name[0].toUpperCase();
-  }
-
-  String? get _subtitle {
-    if (account.username != null) return '@${account.username!}';
-    if (account.phoneNumber != null) return account.phoneNumber;
-    if (account.accountLabel != null) return account.accountLabel;
-    return null;
+    return parts.length >= 2
+        ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+        : name[0].toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final sub = _subtitle;
+    final size = touchTargets ? 44.0 : 36.0;
+    final identity = [
+      account.fullName,
+      if (account.username != null) '@${account.username}',
+    ].join(' · ');
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.onSurface.withValues(alpha: 0.035),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFF2AABEE),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                _initials,
-                style: const TextStyle(
+    Widget sectionButton(
+        _TelegramConnectedSection section, String tooltip, Widget icon) {
+      final selected = selectedSection == section;
+      return Semantics(
+        selected: selected,
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: () => onSectionSelected(section),
+          icon: icon,
+          iconSize: 18,
+          style: IconButton.styleFrom(
+            fixedSize: Size.square(size),
+            minimumSize: Size.square(size),
+            maximumSize: Size.square(size),
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            foregroundColor: selected ? cs.primary : cs.onSurfaceVariant,
+            backgroundColor: selected
+                ? cs.primary.withValues(alpha: .12)
+                : Colors.transparent,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+      );
+    }
+
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      sectionButton(
+        _TelegramConnectedSection.account,
+        '${l.telegramMenuAccount} · $identity',
+        CircleAvatar(
+          radius: 12,
+          backgroundColor: const Color(0xFF2AABEE),
+          child: Text(_initials,
+              style: const TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 220),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  account.fullName,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (sub != null)
-                  Text(
-                    sub,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.45),
-                          fontSize: 11,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _TelegramMenuItem(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    label: l.telegramMenuChats,
-                    selected:
-                        selectedSection == _TelegramConnectedSection.chats,
-                    badgeText: chatsCount > 0 ? '$chatsCount' : null,
-                    onTap: () =>
-                        onSectionSelected(_TelegramConnectedSection.chats),
-                  ),
-                  _TelegramMenuItem(
-                    icon: Icons.file_download_outlined,
-                    label: l.telegramMenuExports,
-                    selected:
-                        selectedSection == _TelegramConnectedSection.exports,
-                    badgeText: hasActiveExport ? '•' : null,
-                    badgeLive: hasActiveExport,
-                    onTap: () =>
-                        onSectionSelected(_TelegramConnectedSection.exports),
-                  ),
-                  _TelegramMenuItem(
-                    icon: Icons.person_outline_rounded,
-                    label: l.telegramMenuAccount,
-                    selected:
-                        selectedSection == _TelegramConnectedSection.account,
-                    onTap: () =>
-                        onSectionSelected(_TelegramConnectedSection.account),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Tooltip(
-            message: l.telegramMenuDisconnect,
-            child: IconButton(
-              onPressed: loadingAccount ? null : onDisconnect,
-              icon: loadingAccount
-                  ? SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: cs.error.withValues(alpha: 0.7),
-                      ),
-                    )
-                  : const Icon(Icons.link_off_rounded, size: 18),
-              color: cs.error.withValues(alpha: 0.75),
-              style: IconButton.styleFrom(
-                backgroundColor: cs.error.withValues(alpha: 0.08),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700)),
+        ),
       ),
-    );
+      const SizedBox(width: 4),
+      sectionButton(
+        _TelegramConnectedSection.chats,
+        '${l.telegramMenuChats} ($chatsCount)',
+        const Icon(Icons.chat_bubble_outline_rounded),
+      ),
+      const SizedBox(width: 4),
+      sectionButton(
+        _TelegramConnectedSection.exports,
+        l.telegramMenuExports,
+        Badge(
+          isLabelVisible: hasActiveExport,
+          backgroundColor: cs.primary,
+          child: const Icon(Icons.file_download_outlined),
+        ),
+      ),
+      Container(
+        height: 18,
+        width: 1,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        color: cs.outlineVariant,
+      ),
+      IconButton(
+        tooltip: l.telegramMenuDisconnect,
+        onPressed: loadingAccount ? null : onDisconnect,
+        icon: loadingAccount
+            ? SizedBox.square(
+                dimension: 14,
+                child: CircularProgressIndicator(
+                    strokeWidth: 1.5, color: cs.error))
+            : const Icon(Icons.link_off_rounded, size: 18),
+        style: IconButton.styleFrom(
+          fixedSize: Size.square(size),
+          minimumSize: Size.square(size),
+          maximumSize: Size.square(size),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: EdgeInsets.zero,
+          foregroundColor: cs.error.withValues(alpha: .75),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      ),
+    ]);
   }
 }
 
