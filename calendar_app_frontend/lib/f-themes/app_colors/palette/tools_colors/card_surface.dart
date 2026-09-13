@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/context_colors/define_themes/mobile_theme.dart';
+
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 
 class CardSurface {
   static Color bg(BuildContext context) {
+    if (MobileTheme.isActive(context)) {
+      return Theme.of(context).colorScheme.surfaceContainerLow;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? AppDarkColors.surface : AppColors.surface.withOpacity(0.98);
   }
 
   static Color border(BuildContext context) {
+    if (MobileTheme.isActive(context)) {
+      return Theme.of(context).colorScheme.outlineVariant;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark
         ? AppDarkColors.textSecondary.withOpacity(0.14)
@@ -15,6 +23,7 @@ class CardSurface {
   }
 
   static Color shadow(BuildContext context) {
+    if (MobileTheme.isActive(context)) return Colors.transparent;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark
         ? Colors.black.withOpacity(0.35)
@@ -22,16 +31,25 @@ class CardSurface {
   }
 
   static Color onBg(BuildContext context) {
+    if (MobileTheme.isActive(context)) {
+      return Theme.of(context).colorScheme.onSurface;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
   }
 
   static Color onBgSecondary(BuildContext context) {
+    if (MobileTheme.isActive(context)) {
+      return Theme.of(context).colorScheme.onSurfaceVariant;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? AppDarkColors.textSecondary : AppColors.textSecondary;
   }
 
   static Color softAccent(BuildContext context) {
+    if (MobileTheme.isActive(context)) {
+      return Theme.of(context).colorScheme.primaryContainer;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark
         ? AppDarkColors.primary.withOpacity(0.10)
@@ -72,12 +90,13 @@ class ThemedCard extends StatelessWidget {
 
     return Card(
       margin: margin,
-      elevation: elevation,
+      elevation: MobileTheme.isActive(context) ? 0 : elevation,
       shadowColor: sh,
       color: bg,
       clipBehavior: clip,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius:
+            BorderRadius.circular(MobileTheme.isActive(context) ? 16 : radius),
         side: BorderSide(color: br, width: 1),
       ),
       child: content,

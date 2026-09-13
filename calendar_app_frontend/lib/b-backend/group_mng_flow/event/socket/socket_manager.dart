@@ -13,6 +13,7 @@ class SocketManager {
   bool get isConnected => _socket?.connected == true;
 
   // ✅ NEW: keep latest token for reconnect attempts
+  Map<String, dynamic>? _presenceJoin;
   String? _authToken; // ✅ NEW
 
   // ✅ NEW: pending emits while disconnected (best-effort)
@@ -69,6 +70,11 @@ class SocketManager {
       print("✅ Socket connected");
 
       _rebindAllHandlers(); // attach any handlers registered "early"
+
+      if (_presenceJoin != null &&
+          !_pendingEmits.any((pending) => pending.event == 'user:join')) {
+        _socket!.emit('user:join', _presenceJoin);
+      }
 
       // ✅ NEW: flush any queued emits
       if (_pendingEmits.isNotEmpty) {
@@ -142,12 +148,13 @@ class SocketManager {
     required String groupId,
     required String? photoUrl,
   }) {
-    emit("user:join", {
+    _presenceJoin = {
       "userId": userId,
       "userName": userName,
       "groupId": groupId,
       "photoUrl": photoUrl,
-    });
+    };
+    emit('user:join', _presenceJoin);
     print("ðŸ“¡ Emitted user:join for $userName ($userId)");
   }
 
@@ -164,6 +171,7 @@ class SocketManager {
   void disconnect() {
     _socket?.disconnect();
     _socket = null;
+    _presenceJoin = null;
     _pendingEmits.clear(); // ✅ NEW
     _onReady.clear(); // ✅ NEW
   }

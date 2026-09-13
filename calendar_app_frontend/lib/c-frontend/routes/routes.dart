@@ -219,7 +219,13 @@ final Map<String, WidgetBuilder> routes = {
     if (group == null) return const SizedBox.shrink();
     return RecurringInvoicesScreen(group: group);
   },
-  AppRoutes.agenda: (_) => const AgendaScreen(),
+  AppRoutes.agenda: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments;
+    return AgendaScreen(
+      groupId: group is Group ? group.id : null,
+      groupName: group is Group ? group.name : null,
+    );
+  },
 
   // NEW: Profile details (read-only / pretty view)
   AppRoutes.profileDetails: (_) => const ProfileViewScreen(),

@@ -1,3 +1,5 @@
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/pending_events_bulk_action.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
     show KeyDownEvent, KeyEvent, LogicalKeyboardKey;
@@ -6,14 +8,12 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/shared/header_info.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_event_detail_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/widgets/group_undone_events_list_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/widgets/undone_events_segmented_tab_bar.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
-import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -66,7 +66,7 @@ class GroupUndoneEventsScreen extends StatelessWidget {
 
 // ── Mobile body (unchanged) ────────────────────────────────────────────────────
 
-class _GroupUndoneEventsScreenBody extends StatelessWidget {
+class _GroupUndoneEventsScreenBody extends StatefulWidget {
   const _GroupUndoneEventsScreenBody({
     required this.group,
     required this.role,
@@ -77,6 +77,29 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
   final GroupRole role;
   final bool embedded;
 
+  @override
+  State<_GroupUndoneEventsScreenBody> createState() =>
+      _GroupUndoneEventsScreenBodyState();
+}
+
+class _GroupUndoneEventsScreenBodyState
+    extends State<_GroupUndoneEventsScreenBody> {
+  Group get group => widget.group;
+  GroupRole get role => widget.role;
+  bool get embedded => widget.embedded;
+  String _query = '';
+
+  List<Event> _matching(List<Event> events, GroupUndoneEventsViewModel vm) {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return events;
+    return events
+        .where((event) =>
+            '${event.title} ${event.localization ?? ''} ${vm.ownerInfoOf(event.ownerId)?.displayName ?? ''}'
+                .toLowerCase()
+                .contains(query))
+        .toList();
+  }
+
   Widget _buildContent(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
 
@@ -85,22 +108,23 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
         return Column(
           children: [
             if (vm.isLoading) const LinearProgressIndicator(minHeight: 2),
-            InfoHeader(
-              title: loc.pendingEventsSectionTitle,
-              subtitle:
-                  '${loc.pendingEventsSectionSubtitle}\n${loc.completedEventsSectionSubtitle}',
-              stats: [
-                StatChip(
-                  label: loc.statusPending,
-                  count: vm.pendingEvents.length,
-                  icon: Icons.pending_actions_outlined,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: TextField(
+                onChanged: (value) => setState(() => _query = value),
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: loc.localeName.startsWith('es')
+                      ? 'Buscar eventos o personas'
+                      : 'Search events or people',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  isDense: true,
+                  filled: true,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none),
                 ),
-                StatChip(
-                  label: loc.completedEventsSectionTitle,
-                  count: vm.completedEvents.length,
-                  icon: Icons.task_alt_rounded,
-                ),
-              ],
+              ),
             ),
             if (role != GroupRole.member)
               Consumer<GroupUndoneEventsViewModel>(
@@ -135,15 +159,28 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
                   );
                 },
               ),
+            AnimatedBuilder(
+              animation: DefaultTabController.of(context),
+              builder: (context, _) =>
+                  DefaultTabController.of(context).index == 0 ||
+                          vm.isCompletingAll
+                      ? PendingEventsBulkAction(
+                          events: _matching(vm.pendingEvents, vm))
+                      : const SizedBox.shrink(),
+            ),
             Expanded(
               child: TabBarView(
                 children: [
                   RefreshIndicator(
                     onRefresh: vm.refresh,
                     child: GroupUndoneEventsListView(
-                      events: vm.pendingEvents,
+                      events: _matching(vm.pendingEvents, vm),
                       emptyIcon: Icons.checklist_rtl_rounded,
-                      emptyMessage: loc.pendingEventsEmpty,
+                      emptyMessage: _query.isEmpty
+                          ? loc.pendingEventsEmpty
+                          : (loc.localeName.startsWith('es')
+                              ? 'No hay eventos que coincidan con la búsqueda.'
+                              : 'No matching events.'),
                       errorMessage: vm.errorMessage ?? loc.pendingEventsError,
                       showError:
                           vm.errorMessage != null && vm.pendingEvents.isEmpty,
@@ -161,9 +198,13 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
                   RefreshIndicator(
                     onRefresh: vm.refresh,
                     child: GroupUndoneEventsListView(
-                      events: vm.completedEvents,
+                      events: _matching(vm.completedEvents, vm),
                       emptyIcon: Icons.task_alt_outlined,
-                      emptyMessage: loc.completedEventsEmpty,
+                      emptyMessage: _query.isEmpty
+                          ? loc.completedEventsEmpty
+                          : (loc.localeName.startsWith('es')
+                              ? 'No hay eventos que coincidan con la búsqueda.'
+                              : 'No matching events.'),
                       allowAction: false,
                       doneList: true,
                       viewModel: vm,
@@ -223,8 +264,7 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded),
                   tooltip: loc.refreshButton,
-                  onPressed:
-                      context.read<GroupUndoneEventsViewModel>().refresh,
+                  onPressed: context.read<GroupUndoneEventsViewModel>().refresh,
                 ),
               ],
             ),
@@ -236,22 +276,12 @@ class _GroupUndoneEventsScreenBody extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        backgroundColor: cs.surface,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              loc.pendingEventsSectionTitle,
-              style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-        iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(56),
-          child: UndoneEventsSegmentedTabBar(),
+      appBar: SectionAppBar(
+        title: loc.sectionEvents,
+        bottom: PreferredSize(
+          preferredSize:
+              Size.fromHeight(UndoneEventsSegmentedTabBar.height(context)),
+          child: const UndoneEventsSegmentedTabBar(),
         ),
         actions: [
           IconButton(
@@ -346,8 +376,7 @@ class _UndoneEventsDesktopLayoutState
         // Deselect if selected event filtered out
         if (_selectedEvent != null &&
             !events.any((e) => e.id == _selectedEvent!.id)) {
-          WidgetsBinding.instance
-              .addPostFrameCallback((_) => _select(null));
+          WidgetsBinding.instance.addPostFrameCallback((_) => _select(null));
         }
 
         return Column(
@@ -375,6 +404,8 @@ class _UndoneEventsDesktopLayoutState
               cs: cs,
               t: t,
             ),
+
+            if (!_showDone) PendingEventsBulkAction(events: events),
 
             // ── Body: 70/30 split ───────────────────────────────────────────
             Expanded(
@@ -617,7 +648,8 @@ class _DesktopWorkbenchHeader extends StatelessWidget {
                     ),
                     isDense: true,
                     filled: true,
-                    fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                    fillColor:
+                        cs.surfaceContainerHighest.withValues(alpha: 0.35),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 11,
@@ -795,7 +827,9 @@ class _DesktopWorkbenchEventList extends StatelessWidget {
                     children: [
                       Text(
                         isDoneList
-                            ? (isEs ? 'Eventos completados' : 'Completed events')
+                            ? (isEs
+                                ? 'Eventos completados'
+                                : 'Completed events')
                             : (isEs ? 'Eventos pendientes' : 'Pending events'),
                         style: TextStyle(
                           fontSize: 17,
@@ -818,7 +852,8 @@ class _DesktopWorkbenchEventList extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
                     borderRadius: BorderRadius.circular(999),
@@ -852,7 +887,8 @@ class _DesktopWorkbenchEventList extends StatelessWidget {
                           width: 60,
                           height: 60,
                           decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+                            color: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.55),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -933,7 +969,8 @@ class _DesktopWorkbenchEventRow extends StatefulWidget {
   final bool isEs;
 
   @override
-  State<_DesktopWorkbenchEventRow> createState() => _DesktopWorkbenchEventRowState();
+  State<_DesktopWorkbenchEventRow> createState() =>
+      _DesktopWorkbenchEventRowState();
 }
 
 class _DesktopWorkbenchEventRowState extends State<_DesktopWorkbenchEventRow> {
@@ -995,13 +1032,15 @@ class _DesktopWorkbenchEventRowState extends State<_DesktopWorkbenchEventRow> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: widget.isDone ? 0.08 : 0.12),
+                  color: accentColor.withValues(
+                      alpha: widget.isDone ? 0.08 : 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   widget.isDone ? Icons.task_alt_rounded : _desktopEventIcon(e),
                   size: 18,
-                  color: accentColor.withValues(alpha: widget.isDone ? 0.56 : 0.9),
+                  color:
+                      accentColor.withValues(alpha: widget.isDone ? 0.56 : 0.9),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1075,7 +1114,8 @@ class _DesktopWorkbenchEventRowState extends State<_DesktopWorkbenchEventRow> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                            color: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.35),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -1105,7 +1145,8 @@ class _DesktopWorkbenchEventRowState extends State<_DesktopWorkbenchEventRow> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                            color: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.45),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Row(
@@ -1113,10 +1154,12 @@ class _DesktopWorkbenchEventRowState extends State<_DesktopWorkbenchEventRow> {
                             children: [
                               CircleAvatar(
                                 radius: 9,
-                                backgroundColor: accentColor.withValues(alpha: 0.16),
+                                backgroundColor:
+                                    accentColor.withValues(alpha: 0.16),
                                 child: Text(
                                   widget.owner!.displayName.isNotEmpty
-                                      ? widget.owner!.displayName[0].toUpperCase()
+                                      ? widget.owner!.displayName[0]
+                                          .toUpperCase()
                                       : '?',
                                   style: TextStyle(
                                     fontSize: 9,
@@ -1134,7 +1177,8 @@ class _DesktopWorkbenchEventRowState extends State<_DesktopWorkbenchEventRow> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                                    color: cs.onSurfaceVariant
+                                        .withValues(alpha: 0.8),
                                   ),
                                 ),
                               ),
@@ -1151,8 +1195,8 @@ class _DesktopWorkbenchEventRowState extends State<_DesktopWorkbenchEventRow> {
                         onPressed: widget.onTap,
                         icon: const Icon(Icons.visibility_outlined, size: 18),
                         style: IconButton.styleFrom(
-                          backgroundColor:
-                              cs.surfaceContainerHighest.withValues(alpha: 0.24),
+                          backgroundColor: cs.surfaceContainerHighest
+                              .withValues(alpha: 0.24),
                           side: BorderSide(
                             color: cs.outlineVariant.withValues(alpha: 0.2),
                           ),
@@ -1169,7 +1213,8 @@ class _DesktopWorkbenchEventRowState extends State<_DesktopWorkbenchEventRow> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : FilledButton(
-                              onPressed: widget.canMarkDone ? widget.onMarkDone : null,
+                              onPressed:
+                                  widget.canMarkDone ? widget.onMarkDone : null,
                               style: FilledButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 backgroundColor: cs.secondary,
@@ -1315,8 +1360,8 @@ class _DesktopHeader extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: cs.onSurfaceVariant
-                                    .withValues(alpha: 0.6),
+                                color:
+                                    cs.onSurfaceVariant.withValues(alpha: 0.6),
                               ),
                             ),
                             const SizedBox(height: 3),
@@ -1326,8 +1371,8 @@ class _DesktopHeader extends StatelessWidget {
                                 value: donePct,
                                 minHeight: 4,
                                 backgroundColor: cs.surfaceContainerHighest,
-                                valueColor: AlwaysStoppedAnimation(
-                                    cs.secondary),
+                                valueColor:
+                                    AlwaysStoppedAnimation(cs.secondary),
                               ),
                             ),
                           ],
@@ -1361,10 +1406,9 @@ class _DesktopHeader extends StatelessWidget {
                 ),
                 isDense: true,
                 filled: true,
-                fillColor:
-                    cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 9),
+                fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide(
@@ -1477,8 +1521,7 @@ class _HeaderTabToggle extends StatelessWidget {
       onTap: selected ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
           color: selected
               ? cs.primaryContainer.withValues(alpha: 0.7)
@@ -1669,8 +1712,7 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          margin:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(11),
@@ -1679,8 +1721,7 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                     color: cs.primary.withValues(alpha: 0.28), width: 1)
                 : _hovered
                     ? Border.all(
-                        color:
-                            cs.outlineVariant.withValues(alpha: 0.3),
+                        color: cs.outlineVariant.withValues(alpha: 0.3),
                         width: 1)
                     : null,
           ),
@@ -1691,8 +1732,7 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                 // Left accent stripe
                 Container(
                   width: 3,
-                  margin:
-                      const EdgeInsets.symmetric(vertical: 7),
+                  margin: const EdgeInsets.symmetric(vertical: 7),
                   decoration: BoxDecoration(
                     color: (widget.isSelected || _hovered)
                         ? accentColor.withValues(
@@ -1733,15 +1773,12 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 e.title.isEmpty
-                                    ? (widget.isEs
-                                        ? 'Sin título'
-                                        : 'Untitled')
+                                    ? (widget.isEs ? 'Sin título' : 'Untitled')
                                     : e.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1749,22 +1786,19 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   color: widget.isDone
-                                      ? cs.onSurface
-                                          .withValues(alpha: 0.4)
+                                      ? cs.onSurface.withValues(alpha: 0.4)
                                       : cs.onSurface,
                                   decoration: widget.isDone
                                       ? TextDecoration.lineThrough
                                       : null,
-                                  decorationColor: cs.onSurface
-                                      .withValues(alpha: 0.35),
+                                  decorationColor:
+                                      cs.onSurface.withValues(alpha: 0.35),
                                   height: 1.2,
                                 ),
                               ),
-                              if ((e.description?.trim().isNotEmpty ??
-                                  false))
+                              if ((e.description?.trim().isNotEmpty ?? false))
                                 Padding(
-                                  padding: const EdgeInsets.only(
-                                      top: 2),
+                                  padding: const EdgeInsets.only(top: 2),
                                   child: Text(
                                     e.description!.trim(),
                                     maxLines: 1,
@@ -1800,22 +1834,18 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                             Icon(
                               Icons.calendar_today_outlined,
                               size: 11,
-                              color: cs.onSurfaceVariant
-                                  .withValues(alpha: 0.5),
+                              color: cs.onSurfaceVariant.withValues(alpha: 0.5),
                             ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                e.allDay
-                                    ? dateFmt
-                                    : dateFmt,
+                                e.allDay ? dateFmt : dateFmt,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: cs.onSurface
-                                      .withValues(alpha: 0.75),
+                                  color: cs.onSurface.withValues(alpha: 0.75),
                                   height: 1.2,
                                 ),
                               ),
@@ -1829,8 +1859,8 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                               Icon(
                                 Icons.schedule_outlined,
                                 size: 11,
-                                color: cs.onSurfaceVariant
-                                    .withValues(alpha: 0.4),
+                                color:
+                                    cs.onSurfaceVariant.withValues(alpha: 0.4),
                               ),
                               const SizedBox(width: 4),
                               Flexible(
@@ -1858,8 +1888,8 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                 SizedBox(
                   width: 140,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 8),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -1872,8 +1902,7 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                               decoration: BoxDecoration(
                                 color: cs.surfaceContainerHighest
                                     .withValues(alpha: 0.55),
-                                borderRadius:
-                                    BorderRadius.circular(999),
+                                borderRadius: BorderRadius.circular(999),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -1881,11 +1910,9 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                                   CircleAvatar(
                                     radius: 8,
                                     backgroundColor:
-                                        accentColor.withValues(
-                                            alpha: 0.15),
+                                        accentColor.withValues(alpha: 0.15),
                                     child: Text(
-                                      widget.owner!.displayName
-                                          .isNotEmpty
+                                      widget.owner!.displayName.isNotEmpty
                                           ? widget.owner!.displayName[0]
                                               .toUpperCase()
                                           : '?',
@@ -1924,8 +1951,8 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                               ? const SizedBox(
                                   width: 26,
                                   height: 26,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : Tooltip(
                                   message: widget.isEs
@@ -1934,13 +1961,13 @@ class _DesktopEventRowState extends State<_DesktopEventRow> {
                                   child: GestureDetector(
                                     onTap: widget.onMarkDone,
                                     child: AnimatedContainer(
-                                      duration: const Duration(
-                                          milliseconds: 130),
+                                      duration:
+                                          const Duration(milliseconds: 130),
                                       width: 28,
                                       height: 28,
                                       decoration: BoxDecoration(
-                                        color: cs.secondary
-                                            .withValues(alpha: 0.1),
+                                        color:
+                                            cs.secondary.withValues(alpha: 0.1),
                                         shape: BoxShape.circle,
                                         border: Border.all(
                                           color: cs.secondary
@@ -2053,8 +2080,7 @@ class _DesktopSidebar extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: cs.onSurfaceVariant
-                                .withValues(alpha: 0.6),
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                           ),
                         ),
                         Text(
@@ -2062,9 +2088,7 @@ class _DesktopSidebar extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: donePct >= 1.0
-                                ? cs.secondary
-                                : cs.primary,
+                            color: donePct >= 1.0 ? cs.secondary : cs.primary,
                           ),
                         ),
                       ],
@@ -2075,8 +2099,7 @@ class _DesktopSidebar extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: donePct,
                         minHeight: 6,
-                        backgroundColor:
-                            cs.surfaceContainerHighest,
+                        backgroundColor: cs.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation(
                           donePct >= 1.0 ? cs.secondary : cs.primary,
                         ),
@@ -2092,8 +2115,7 @@ class _DesktopSidebar extends StatelessWidget {
             // ── Employee filter ───────────────────────────────────────
             if (participants.isNotEmpty) ...[
               _SidebarSection(
-                title:
-                    isEs ? 'Filtrar empleado' : 'Filter by employee',
+                title: isEs ? 'Filtrar empleado' : 'Filter by employee',
                 icon: Icons.people_alt_outlined,
                 cs: cs,
                 t: t,
@@ -2113,9 +2135,7 @@ class _DesktopSidebar extends StatelessWidget {
                           selected: viewModel.filterUserId == p.id,
                           color: cs.primary,
                           onTap: () => viewModel.setFilterUser(
-                              viewModel.filterUserId == p.id
-                                  ? null
-                                  : p.id),
+                              viewModel.filterUserId == p.id ? null : p.id),
                           cs: cs,
                         )),
                   ],
@@ -2127,8 +2147,7 @@ class _DesktopSidebar extends StatelessWidget {
             // ── Próximo evento (next event card) ──────────────────────
             if (!showDone && viewModel.pendingEvents.isNotEmpty) ...[
               _SidebarSection(
-                title:
-                    isEs ? 'Próximo evento' : 'Next event',
+                title: isEs ? 'Próximo evento' : 'Next event',
                 icon: Icons.upcoming_rounded,
                 cs: cs,
                 t: t,
@@ -2153,8 +2172,7 @@ class _DesktopSidebar extends StatelessWidget {
                       viewModel: viewModel,
                       onClose: onCloseDetail,
                       allowMarkComplete:
-                          !showDone &&
-                          viewModel.canManageEvent(selectedEvent!),
+                          !showDone && viewModel.canManageEvent(selectedEvent!),
                       onMarkedDone: onMarkedDone,
                       isEs: isEs,
                       cs: cs,
@@ -2192,16 +2210,14 @@ class _SidebarSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.22)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section header
           Padding(
-            padding:
-                const EdgeInsets.fromLTRB(12, 10, 12, 8),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
             child: Row(
               children: [
                 Icon(icon,
@@ -2213,8 +2229,7 @@ class _SidebarSection extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color:
-                        cs.onSurfaceVariant.withValues(alpha: 0.55),
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.55),
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -2307,8 +2322,7 @@ class _EmployeePill extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 130),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
         decoration: BoxDecoration(
           color: selected
               ? color.withValues(alpha: 0.12)
@@ -2324,19 +2338,15 @@ class _EmployeePill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (selected) ...[
-              Icon(Icons.check_rounded,
-                  size: 11, color: color),
+              Icon(Icons.check_rounded, size: 11, color: color),
               const SizedBox(width: 4),
             ],
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected
-                    ? color
-                    : cs.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? color : cs.onSurfaceVariant,
               ),
             ),
           ],
@@ -2363,9 +2373,8 @@ class _NextEventCard extends StatelessWidget {
     final ml = MaterialLocalizations.of(context);
     final start = event.startDate.toLocal();
     final end = event.endDate.toLocal();
-    final timeStr =
-        ml.formatTimeOfDay(TimeOfDay.fromDateTime(start),
-            alwaysUse24HourFormat: true);
+    final timeStr = ml.formatTimeOfDay(TimeOfDay.fromDateTime(start),
+        alwaysUse24HourFormat: true);
     final durMin = end.difference(start).inMinutes;
     final durStr = durMin <= 0
         ? ''
@@ -2385,8 +2394,7 @@ class _NextEventCard extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(11),
-        border:
-            Border.all(color: cs.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2434,8 +2442,7 @@ class _NextEventCard extends StatelessWidget {
                     owner!.displayName,
                     style: TextStyle(
                       fontSize: 11,
-                      color:
-                          cs.onSurfaceVariant.withValues(alpha: 0.65),
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.65),
                     ),
                   ),
                 ],
@@ -2537,12 +2544,9 @@ class _SidebarEventDetail extends StatelessWidget {
 
           // Meta
           _DetailMeta(
-              icon: Icons.calendar_today_outlined,
-              text: dateStr,
-              cs: cs),
+              icon: Icons.calendar_today_outlined, text: dateStr, cs: cs),
           const SizedBox(height: 6),
-          _DetailMeta(
-              icon: Icons.schedule_outlined, text: timeStr, cs: cs),
+          _DetailMeta(icon: Icons.schedule_outlined, text: timeStr, cs: cs),
           if (owner != null) ...[
             const SizedBox(height: 6),
             _DetailMeta(
@@ -2556,8 +2560,7 @@ class _SidebarEventDetail extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color:
-                    cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(9),
               ),
               child: Text(
@@ -2577,8 +2580,7 @@ class _SidebarEventDetail extends StatelessWidget {
             SizedBox(
               height: 36,
               child: FilledButton.icon(
-                icon:
-                    const Icon(Icons.check_circle_outline, size: 15),
+                icon: const Icon(Icons.check_circle_outline, size: 15),
                 label: Text(
                   loc.pendingEventsMarkDone,
                   style: const TextStyle(
@@ -2629,8 +2631,7 @@ class _DetailMeta extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon,
-            size: 13, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+        Icon(icon, size: 13, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
         const SizedBox(width: 8),
         Expanded(
           child: Text(

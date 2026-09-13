@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/user_model/user.dart';
@@ -147,6 +148,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
     final isWorkVisit = (e.type.toLowerCase() == 'work_visit');
     final locale = Localizations.localeOf(context);
 
@@ -171,9 +173,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             : (_primaryServiceName ?? e.primaryServiceId!))
         : '';
     final ownerLabel = _ownerDisplayName ??
-        (_loadingOwner
-            ? '...'
-            : (e.ownerId.isNotEmpty ? e.ownerId : null));
+        (_loadingOwner ? '...' : (e.ownerId.isNotEmpty ? e.ownerId : null));
 
     final recText = e.recurrenceRule != null
         ? buildRecurrenceText(e.recurrenceRule, e.startDate, locale)
@@ -181,296 +181,335 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      body: Column(
-        children: [
-          // ── Compact top bar ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 8, 0),
-            child: Row(
-              children: [
-                Icon(Icons.event_note_rounded, size: 16, color: cs.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    l.eventDetailsTitle,
-                    style: typo.caption.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
-                    ),
-                  ),
-                ),
+      appBar: isMobile
+          ? SectionAppBar(
+              title: l.eventDetailsTitle,
+              actions: [
                 if (widget.onShare != null)
                   IconButton(
-                    icon: Icon(Icons.ios_share, size: 16, color: cs.primary),
-                    tooltip: l.shareButtonTooltip,
-                    onPressed: widget.onShare,
-                    visualDensity: VisualDensity.compact,
-                  ),
+                      onPressed: widget.onShare,
+                      icon: const Icon(Icons.ios_share),
+                      tooltip: l.shareButtonTooltip)
               ],
-            ),
-          ),
-
-          // ── Scrollable content ──
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
-              children: [
-                // ── Header: color dot + title ──
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      margin: const EdgeInsets.only(top: 5, right: 10),
-                      decoration: BoxDecoration(
-                        color: eventColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        e.title.isEmpty ? l.untitledEvent : e.title,
-                        style: typo.bodyLarge.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurface,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // ── Status + type badges ──
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _buildBadge(
-                      context,
-                      icon: Icons.label_important_outline,
-                      label: statusLabel,
-                      color: statusColor,
-                    ),
-                    if (isWorkVisit)
-                      _buildBadge(
-                        context,
-                        icon: Icons.build_outlined,
-                        label: l.workVisitBadge,
-                        color: cs.tertiary,
-                      ),
-                    if (e.allDay)
-                      _buildBadge(
-                        context,
-                        icon: Icons.wb_sunny_outlined,
-                        label: 'Todo el dia',
-                        color: Colors.orange,
-                      ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-                _divider(cs),
-                const SizedBox(height: 14),
-
-                // ── Details rows ──
-                _buildDetailRow(
-                  context,
-                  icon: Icons.schedule_rounded,
-                  label: l.eventWhenLabel,
-                  value: dateRange,
-                ),
-                if (ownerLabel != null)
-                  _buildDetailRow(
-                    context,
-                    icon: Icons.person_outline_rounded,
-                    label: l.createdByLabel,
-                    value: _ownerUsername != null
-                        ? '$ownerLabel  $_ownerUsername'
-                        : ownerLabel,
-                  ),
-                if (e.localization != null &&
-                    e.localization!.trim().isNotEmpty)
-                  _buildDetailRow(
-                    context,
-                    icon: Icons.location_on_outlined,
-                    label: l.eventLocationHint,
-                    value: e.localization!.trim(),
-                  ),
-                if (e.description != null &&
-                    e.description!.trim().isNotEmpty)
-                  _buildDetailRow(
-                    context,
-                    icon: Icons.description_outlined,
-                    label: l.eventDescriptionHint,
-                    value: e.description!.trim(),
-                  ),
-                if (e.note != null && e.note!.trim().isNotEmpty)
-                  _buildDetailRow(
-                    context,
-                    icon: Icons.sticky_note_2_outlined,
-                    label: l.eventNoteHint,
-                    value: e.note!.trim(),
-                  ),
-                if (recText.isNotEmpty)
-                  _buildDetailRow(
-                    context,
-                    icon: Icons.repeat_rounded,
-                    label: l.eventRecurrenceHint,
-                    value: recText,
-                  ),
-
-                // ── Work visit section ──
-                if (isWorkVisit &&
-                    (clientLabel.isNotEmpty ||
-                        primaryServiceLabel.isNotEmpty)) ...[
-                  const SizedBox(height: 8),
-                  _divider(cs),
-                  const SizedBox(height: 14),
-                  Row(
+            )
+          : null,
+      body: SafeArea(
+          top: !isMobile,
+          child: Column(
+            children: [
+              // ── Compact top bar ──
+              if (!isMobile)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 8, 0),
+                  child: Row(
                     children: [
-                      Icon(Icons.work_outline_rounded,
-                          size: 14, color: cs.tertiary),
-                      const SizedBox(width: 6),
-                      Text(
-                        l.workVisitSectionTitle,
-                        style: typo.caption.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: cs.tertiary,
+                      Icon(Icons.event_note_rounded,
+                          size: 16, color: cs.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l.eventDetailsTitle,
+                          style: typo.caption.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
+                          ),
                         ),
                       ),
+                      if (widget.onShare != null)
+                        IconButton(
+                          icon: Icon(Icons.ios_share,
+                              size: 16, color: cs.primary),
+                          tooltip: l.shareButtonTooltip,
+                          onPressed: widget.onShare,
+                          visualDensity: VisualDensity.compact,
+                        ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  if (clientLabel.isNotEmpty)
-                    _buildDetailRow(
-                      context,
-                      icon: Icons.person_pin_circle_outlined,
-                      label: l.clientLabel,
-                      value: clientLabel,
+                ),
+
+              // ── Scrollable content ──
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                      isMobile ? 20 : 14, 16, isMobile ? 20 : 14, 24),
+                  children: [
+                    // ── Header: color dot + title ──
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          margin: const EdgeInsets.only(top: 5, right: 10),
+                          decoration: BoxDecoration(
+                            color: eventColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            e.title.isEmpty ? l.untitledEvent : e.title,
+                            style: typo.bodyLarge.copyWith(
+                              fontSize: isMobile ? 22 : null,
+                              fontWeight: FontWeight.w800,
+                              color: cs.onSurface,
+                            ),
+                            maxLines: isMobile ? null : 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  if (primaryServiceLabel.isNotEmpty)
-                    _buildDetailRow(
-                      context,
-                      icon: Icons.home_repair_service_outlined,
-                      label: l.servicePrimaryLabel,
-                      value: primaryServiceLabel,
-                    ),
-                  if (e.visitServices.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      l.services,
-                      style: typo.caption.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 10),
+
+                    // ── Status + type badges ──
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
                       children: [
-                        for (final vs in e.visitServices)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: cs.secondaryContainer
-                                  .withValues(alpha: 0.4),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _loadingServices
-                                  ? '...'
-                                  : (_serviceNames[vs.serviceId] ??
-                                      vs.serviceId),
-                              style: typo.caption.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSecondaryContainer,
-                              ),
-                            ),
+                        _buildBadge(
+                          context,
+                          icon: Icons.label_important_outline,
+                          label: statusLabel,
+                          color: statusColor,
+                        ),
+                        if (isWorkVisit)
+                          _buildBadge(
+                            context,
+                            icon: Icons.build_outlined,
+                            label: l.workVisitBadge,
+                            color: cs.tertiary,
+                          ),
+                        if (e.allDay)
+                          _buildBadge(
+                            context,
+                            icon: Icons.wb_sunny_outlined,
+                            label: 'Todo el dia',
+                            color: Colors.orange,
                           ),
                       ],
                     ),
-                  ],
-                ],
 
-                // ── Actions ──
-                if (widget.onEdit != null ||
-                    widget.onDuplicate != null ||
-                    widget.onDelete != null) ...[
-                  const SizedBox(height: 20),
-                  _divider(cs),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      if (widget.onEdit != null)
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: widget.onEdit,
-                            icon: const Icon(Icons.edit_outlined, size: 15),
-                            label: Text(
-                              l.editAction,
-                              style: typo.caption.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
+                    const SizedBox(height: 16),
+                    _divider(cs),
+                    const SizedBox(height: 14),
+
+                    // ── Details rows ──
+                    _buildDetailRow(
+                      context,
+                      icon: Icons.schedule_rounded,
+                      label: l.eventWhenLabel,
+                      value: dateRange,
+                    ),
+                    if (ownerLabel != null)
+                      _buildDetailRow(
+                        context,
+                        icon: Icons.person_outline_rounded,
+                        label: l.createdByLabel,
+                        value: _ownerUsername != null
+                            ? '$ownerLabel  $_ownerUsername'
+                            : ownerLabel,
+                      ),
+                    if (e.localization != null &&
+                        e.localization!.trim().isNotEmpty)
+                      _buildDetailRow(
+                        context,
+                        icon: Icons.location_on_outlined,
+                        label: l.eventLocationHint,
+                        value: e.localization!.trim(),
+                      ),
+                    if (e.description != null &&
+                        e.description!.trim().isNotEmpty)
+                      _buildDetailRow(
+                        context,
+                        icon: Icons.description_outlined,
+                        label: l.eventDescriptionHint,
+                        value: e.description!.trim(),
+                      ),
+                    if (e.note != null && e.note!.trim().isNotEmpty)
+                      _buildDetailRow(
+                        context,
+                        icon: Icons.sticky_note_2_outlined,
+                        label: l.eventNoteHint,
+                        value: e.note!.trim(),
+                      ),
+                    if (recText.isNotEmpty)
+                      _buildDetailRow(
+                        context,
+                        icon: Icons.repeat_rounded,
+                        label: l.eventRecurrenceHint,
+                        value: recText,
+                      ),
+
+                    // ── Work visit section ──
+                    if (isWorkVisit &&
+                        (clientLabel.isNotEmpty ||
+                            primaryServiceLabel.isNotEmpty)) ...[
+                      const SizedBox(height: 8),
+                      _divider(cs),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Icon(Icons.work_outline_rounded,
+                              size: 14, color: cs.tertiary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                              child: Text(
+                            l.workVisitSectionTitle,
+                            style: typo.caption.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.tertiary,
                             ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: cs.primary,
-                              foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
+                          )),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      if (clientLabel.isNotEmpty)
+                        _buildDetailRow(
+                          context,
+                          icon: Icons.person_pin_circle_outlined,
+                          label: l.clientLabel,
+                          value: clientLabel,
+                        ),
+                      if (primaryServiceLabel.isNotEmpty)
+                        _buildDetailRow(
+                          context,
+                          icon: Icons.home_repair_service_outlined,
+                          label: l.servicePrimaryLabel,
+                          value: primaryServiceLabel,
+                        ),
+                      if (e.visitServices.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          l.services,
+                          style: typo.caption.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant,
                           ),
                         ),
-                      if (widget.onEdit != null &&
-                          widget.onDuplicate != null)
-                        const SizedBox(width: 10),
-                      if (widget.onDuplicate != null)
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: widget.onDuplicate,
-                            icon: Icon(Icons.copy_all_outlined,
-                                size: 15, color: cs.onSurface),
-                            label: Text(
-                              l.duplicateAction,
-                              style: typo.caption.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: cs.onSurface,
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (final vs in e.visitServices)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: cs.secondaryContainer
+                                      .withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  _loadingServices
+                                      ? '...'
+                                      : (_serviceNames[vs.serviceId] ??
+                                          vs.serviceId),
+                                  style: typo.caption.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: cs.onSecondaryContainer,
+                                  ),
+                                ),
                               ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                  color: cs.outlineVariant
-                                      .withValues(alpha: 0.5)),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
+                          ],
                         ),
-                      if (widget.onDelete != null &&
-                          (widget.onEdit != null ||
-                              widget.onDuplicate != null))
-                        const SizedBox(width: 10),
-                      if (widget.onDelete != null)
-                        _DeleteButton(onDelete: widget.onDelete!),
+                      ],
                     ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+
+                    // ── Actions ──
+                    if (widget.onEdit != null ||
+                        widget.onDuplicate != null ||
+                        widget.onDelete != null) ...[
+                      const SizedBox(height: 20),
+                      _divider(cs),
+                      const SizedBox(height: 14),
+                      if (isMobile)
+                        Wrap(spacing: 8, runSpacing: 8, children: [
+                          if (widget.onEdit != null)
+                            FilledButton.icon(
+                                onPressed: widget.onEdit,
+                                icon: const Icon(Icons.edit_outlined),
+                                label: Text(l.editAction)),
+                          if (widget.onDuplicate != null)
+                            OutlinedButton.icon(
+                                onPressed: widget.onDuplicate,
+                                icon: const Icon(Icons.copy_outlined),
+                                label: Text(locale.languageCode == 'es'
+                                    ? 'Duplicar'
+                                    : 'Duplicate')),
+                          if (widget.onDelete != null)
+                            _DeleteButton(onDelete: widget.onDelete!),
+                        ])
+                      else
+                        Row(
+                          children: [
+                            if (widget.onEdit != null)
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: widget.onEdit,
+                                  icon:
+                                      const Icon(Icons.edit_outlined, size: 15),
+                                  label: Text(
+                                    l.editAction,
+                                    style: typo.caption.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: cs.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (widget.onEdit != null &&
+                                widget.onDuplicate != null)
+                              const SizedBox(width: 10),
+                            if (widget.onDuplicate != null)
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: widget.onDuplicate,
+                                  icon: Icon(Icons.copy_all_outlined,
+                                      size: 15, color: cs.onSurface),
+                                  label: Text(
+                                    l.duplicateAction,
+                                    style: typo.caption.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: cs.onSurface,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                        color: cs.outlineVariant
+                                            .withValues(alpha: 0.5)),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (widget.onDelete != null &&
+                                (widget.onEdit != null ||
+                                    widget.onDuplicate != null))
+                              const SizedBox(width: 10),
+                            if (widget.onDelete != null)
+                              _DeleteButton(onDelete: widget.onDelete!),
+                          ],
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          )),
     );
   }
 
@@ -494,14 +533,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 5),
-          Text(
+          Flexible(
+              child: Text(
             label,
             style: typo.caption.copyWith(
-              fontSize: 11,
+              fontSize: MediaQuery.sizeOf(context).width < 700 ? 14 : 11,
               fontWeight: FontWeight.w700,
               color: color,
             ),
-          ),
+          )),
         ],
       ),
     );
@@ -517,11 +557,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final typo = AppTypography.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 15, color: cs.primary.withValues(alpha: 0.7)),
+          Icon(icon, size: 20, color: cs.primary.withValues(alpha: 0.7)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -537,9 +577,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: typo.bodySmall.copyWith(
-                    color: cs.onSurface,
-                  ),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: cs.onSurface,
+                      ),
                 ),
               ],
             ),
@@ -598,8 +638,7 @@ class _DeleteButton extends StatelessWidget {
             color: cs.errorContainer.withValues(alpha: 0.35),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.delete_outline_rounded,
-              size: 24, color: cs.error),
+          child: Icon(Icons.delete_outline_rounded, size: 24, color: cs.error),
         ),
         title: Text(
           isSpanish ? 'Eliminar evento' : 'Delete event',
@@ -612,20 +651,17 @@ class _DeleteButton extends StatelessWidget {
               : 'Are you sure you want to delete this event? This cannot be undone.',
           textAlign: TextAlign.center,
           style: TextStyle(
-              fontSize: 13,
-              color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+              fontSize: 13, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
         ),
         actionsAlignment: MainAxisAlignment.center,
-        actionsPadding:
-            const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+        actionsPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             style: OutlinedButton.styleFrom(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: Text(isSpanish ? 'Cancelar' : 'Cancel'),
           ),
@@ -637,8 +673,7 @@ class _DeleteButton extends StatelessWidget {
               foregroundColor: cs.onError,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: Text(isSpanish ? 'Eliminar' : 'Delete'),
           ),

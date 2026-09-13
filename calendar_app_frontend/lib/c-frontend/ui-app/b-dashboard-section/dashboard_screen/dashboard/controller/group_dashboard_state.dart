@@ -49,8 +49,27 @@ class MailBarActions {
 class GroupDashboardState extends ChangeNotifier {
   GroupDashboardState(this.context, this.group) {
     _gm = context.read<GroupDomain>();
+    _gm.addListener(_onGroupUpdated);
     _ud = context.read<UserDomain>();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadAll());
+  }
+
+  Group? _observedGroupUpdate;
+
+  void _onGroupUpdated() {
+    final updated = _gm.lastUpdatedGroup;
+    if (updated != null &&
+        updated.id == group.id &&
+        !identical(updated, _observedGroupUpdate)) {
+      _observedGroupUpdate = updated;
+      updateGroup(updated);
+    }
+  }
+
+  @override
+  void dispose() {
+    _gm.removeListener(_onGroupUpdated);
+    super.dispose();
   }
 
   // Dependencies
@@ -176,7 +195,8 @@ class GroupDashboardState extends ChangeNotifier {
     final topBarColor = backdrop;
     final onTopBar = theme.colorScheme.onSurface;
 
-    final ma = (!isWide && activeSection == Sections.emails) ? _mailBarActions : null;
+    final ma =
+        (!isWide && activeSection == Sections.emails) ? _mailBarActions : null;
 
     if (ma != null) {
       return AppBar(
@@ -297,7 +317,7 @@ class GroupDashboardState extends ChangeNotifier {
               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               onPressed: () => Navigator.of(context).maybePop(),
             ),
-      title: isWide
+      title: isWide || activeSection == Sections.calendar
           ? null
           : Text(
               group.name,
@@ -349,4 +369,3 @@ class GroupDashboardState extends ChangeNotifier {
           );
   }
 }
-

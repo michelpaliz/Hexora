@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
@@ -33,10 +34,6 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   bool _loadingClients = true, _loadingServices = true;
   String? _errClients, _errServices;
   bool _showInactiveClients = false;
-  GroupClient? _editingClient;
-  bool _creatingClient = false;
-  Service? _editingService;
-  bool _creatingService = false;
   String? _propertyKindFilter;
   bool _missingCurrentMonthInvoiceOnly = false;
 
@@ -89,53 +86,18 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   }
 
   // ---------- Create flows ----------
-  bool _useSidePanel(BuildContext context) =>
-      MediaQuery.of(context).size.width >= 1100;
-
-  void _startAddClient() {
-    setState(() {
-      _creatingClient = true;
-      _editingClient = null;
-    });
-  }
-
-  void _startEditClient(GroupClient client) {
-    setState(() {
-      _creatingClient = false;
-      _editingClient = client;
-    });
-  }
-
-  void _startAddService() {
-    setState(() {
-      _creatingService = true;
-      _editingService = null;
-    });
-  }
-
-  void _startEditService(Service service) {
-    setState(() {
-      _creatingService = false;
-      _editingService = service;
-    });
-  }
-
   Future<void> _openAddClientSheet() async {
-    final created = await showModalBottomSheet<GroupClient>(
+    final created = await showClientEditor(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) => AddClientSheet(
-        groupId: widget.group.id,
-        api: _clientsApi,
-        existingClients: _clients,
-        onOpenExisting: (client) {
-          Navigator.of(sheetContext).pop();
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _openEditClientSheet(client);
-          });
-        },
-      ),
+      groupId: widget.group.id,
+      api: _clientsApi,
+      existingClients: _clients,
+      onOpenExisting: (client) {
+        Navigator.of(context, rootNavigator: true).pop();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _openEditClientSheet(client);
+        });
+      },
     );
     if (created != null && mounted) {
       setState(() => _clients.insert(0, created));
@@ -150,12 +112,10 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   }
 
   Future<void> _openAddServiceSheet() async {
-    final created = await showModalBottomSheet<Service>(
+    final created = await showServiceEditor(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) =>
-          AddServiceSheet(groupId: widget.group.id, api: _servicesApi),
+      groupId: widget.group.id,
+      api: _servicesApi,
     );
     if (created != null && mounted) {
       setState(() => _services.insert(0, created));
@@ -171,16 +131,12 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
 
   // ---------- Edit flows ----------
   Future<void> _openEditClientSheet(GroupClient c) async {
-    final updated = await showModalBottomSheet<GroupClient>(
+    final updated = await showClientEditor(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => AddClientSheet(
-        groupId: widget.group.id, // harmless on edit
-        api: _clientsApi,
-        client: c,
-        existingClients: _clients,
-      ),
+      groupId: widget.group.id,
+      api: _clientsApi,
+      client: c,
+      existingClients: _clients,
     );
 
     if (updated != null && mounted) {
@@ -199,15 +155,11 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   }
 
   Future<void> _openEditServiceSheet(Service s) async {
-    final updated = await showModalBottomSheet<Service>(
+    final updated = await showServiceEditor(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => AddServiceSheet(
-        groupId: widget.group.id,
-        api: _servicesApi,
-        service: s,
-      ),
+      groupId: widget.group.id,
+      api: _servicesApi,
+      service: s,
     );
 
     if (updated != null && mounted) {
@@ -223,54 +175,6 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                 style: t.bodySmall)),
       );
     }
-  }
-
-  void _handleClientSaved(GroupClient saved) {
-    final idx = _clients.indexWhere((c) => c.id == saved.id);
-    final isEdit = idx != -1;
-    setState(() {
-      if (isEdit) {
-        _clients[idx] = saved;
-      } else {
-        _clients.insert(0, saved);
-      }
-      _creatingClient = false;
-      _editingClient = null;
-    });
-    final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text(
-              isEdit
-                  ? l.clientUpdatedWithName(saved.name)
-                  : l.clientCreatedWithName(saved.name),
-              style: t.bodySmall)),
-    );
-  }
-
-  void _handleServiceSaved(Service saved) {
-    final idx = _services.indexWhere((s) => s.id == saved.id);
-    final isEdit = idx != -1;
-    setState(() {
-      if (isEdit) {
-        _services[idx] = saved;
-      } else {
-        _services.insert(0, saved);
-      }
-      _creatingService = false;
-      _editingService = null;
-    });
-    final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text(
-              isEdit
-                  ? l.serviceUpdatedWithName(saved.name)
-                  : l.serviceCreatedWithName(saved.name),
-              style: t.bodySmall)),
-    );
   }
 
   Future<void> _confirmDeleteClient(GroupClient client) async {
@@ -397,40 +301,38 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
       tabs: [
         Tab(
-          height: 36,
+          height: 44,
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             const Icon(Icons.person_outline, size: 15),
             const SizedBox(width: 5),
-            Text(l.tabClients),
+            Flexible(
+                child: Text(l.tabClients, overflow: TextOverflow.ellipsis)),
           ]),
         ),
         Tab(
-          height: 36,
+          height: 44,
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             const Icon(Icons.design_services_outlined, size: 15),
             const SizedBox(width: 5),
-            Text(l.tabServices),
+            Flexible(
+                child: Text(l.tabServices, overflow: TextOverflow.ellipsis)),
           ]),
         ),
       ],
     );
 
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: Navigator.of(context).canPop(),
-        title: Text(
-          l.screenServicesClientsTitle,
-          style: t.titleLarge.copyWith(fontWeight: FontWeight.w600),
-        ),
-        iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
-        backgroundColor: cs.surface,
-        elevation: 0,
+      appBar: SectionAppBar(
+        title: l.screenServicesClientsTitle,
       ),
       body: Column(
         children: [
           Material(
             color: cs.surface,
-            child: tabBar,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: tabBar,
+            ),
           ),
           Expanded(
             child: TabBarView(
@@ -473,13 +375,19 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
           ),
         ],
       ),
-      floatingActionButton: AnimatedBuilder(
-        animation: _tab,
-        builder: (_, __) => FloatingActionButton.extended(
-          onPressed:
-              _tab.index == 0 ? _openAddClientSheet : _openAddServiceSheet,
-          icon: const Icon(Icons.add),
-          label: Text(_tab.index == 0 ? l.addClient : l.addService),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: AnimatedBuilder(
+          animation: _tab,
+          builder: (_, __) => FilledButton.icon(
+            style:
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            onPressed:
+                _tab.index == 0 ? _openAddClientSheet : _openAddServiceSheet,
+            icon: const Icon(Icons.add),
+            label: Text(_tab.index == 0 ? l.addClient : l.addService),
+          ),
         ),
       ),
     );
@@ -492,7 +400,6 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     final t = AppTypography.of(context);
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     if (isMobile) return _buildMobileLayout(context);
-    final useSidePanel = _useSidePanel(context);
 
     final Color primary = cs.primary;
     final Color selectedText = ThemeColors.contrastOn(primary);
@@ -511,15 +418,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       ..sort();
 
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: Navigator.of(context).canPop(),
-        title: Text(
-          l.screenServicesClientsTitle,
-          style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
-        ),
-        iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
-        backgroundColor: cs.surface,
-        elevation: 0,
+      appBar: SectionAppBar(
+        title: l.screenServicesClientsTitle,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
@@ -574,8 +474,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                   () => _missingCurrentMonthInvoiceOnly = value,
                 ),
                 showInlineCTA: true,
-                onAddTap: () =>
-                    useSidePanel ? _startAddClient() : _openAddClientSheet(),
+                onAddTap: _openAddClientSheet,
                 showInactive: _showInactiveClients,
                 onToggleInactive: (v) =>
                     setState(() => _showInactiveClients = v),
@@ -584,9 +483,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                 onPropertyKindChanged: (v) =>
                     setState(() => _propertyKindFilter = v),
                 onDelete: _confirmDeleteClient,
-                onEdit: (client) => useSidePanel
-                    ? _startEditClient(client)
-                    : _openEditClientSheet(client),
+                onEdit: _openEditClientSheet,
               ),
               ServicesTab(
                 items: _services,
@@ -595,94 +492,13 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                 onRefresh: _loadServices,
                 showInlineCTA: true,
                 onDelete: _confirmDeleteService,
-                onAddTap: () =>
-                    useSidePanel ? _startAddService() : _openAddServiceSheet(),
-                onEdit: (service) => useSidePanel
-                    ? _startEditService(service)
-                    : _openEditServiceSheet(service),
+                onAddTap: _openAddServiceSheet,
+                onEdit: _openEditServiceSheet,
               ),
             ],
           );
 
-          if (!useSidePanel) {
-            return left;
-          }
-
-          final right = AnimatedBuilder(
-            animation: _tab,
-            builder: (context, _) {
-              final isClients = _tab.index == 0;
-              final showClientEditor =
-                  isClients && (_creatingClient || _editingClient != null);
-              final showServiceEditor =
-                  !isClients && (_creatingService || _editingService != null);
-
-              if (showClientEditor) {
-                return AddClientSheet(
-                  key: ValueKey<String>(_editingClient == null
-                      ? 'client-new'
-                      : _editingClient!.id),
-                  groupId: widget.group.id,
-                  api: _clientsApi,
-                  client: _editingClient,
-                  existingClients: _clients,
-                  closeOnSave: false,
-                  onSaved: _handleClientSaved,
-                  onOpenExisting: _startEditClient,
-                );
-              }
-
-              if (showServiceEditor) {
-                return AddServiceSheet(
-                  key: ValueKey<String>(_editingService == null
-                      ? 'service-new'
-                      : _editingService!.id),
-                  groupId: widget.group.id,
-                  api: _servicesApi,
-                  service: _editingService,
-                  closeOnSave: false,
-                  onSaved: _handleServiceSaved,
-                );
-              }
-
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    isClients ? l.selectClientFirst : l.createServicesSubtitle,
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              );
-            },
-          );
-
-          final panelWidth =
-              constraints.maxWidth.clamp(360.0, 480.0).toDouble();
-
-          return Row(
-            children: [
-              Expanded(child: left),
-              Container(
-                width: panelWidth,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? Colors.white
-                      : cs.surface,
-                  border: Border(
-                    left: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.4),
-                    ),
-                  ),
-                ),
-                child: right,
-              ),
-            ],
-          );
+          return left;
         },
       ),
       bottomNavigationBar: SafeArea(
@@ -702,8 +518,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
               ),
             ),
             onPressed: () => _tab.index == 0
-                ? (useSidePanel ? _startAddClient() : _openAddClientSheet())
-                : (useSidePanel ? _startAddService() : _openAddServiceSheet()),
+                ? _openAddClientSheet()
+                : _openAddServiceSheet(),
           ),
         ),
       ),

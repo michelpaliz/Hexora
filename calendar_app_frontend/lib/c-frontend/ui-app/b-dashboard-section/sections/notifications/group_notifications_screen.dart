@@ -1,3 +1,7 @@
+import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/utils/notification_category_meta.dart';
+import 'widgets/mobile_notification.dart';
+import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/utils/event_args_helper.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
@@ -15,7 +19,6 @@ import 'package:hexora/c-frontend/utils/errors/premium_upgrade_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/utils/notification_grouping.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/widgets/notification_card.dart';
 import 'package:hexora/c-frontend/viewmodels/notification_vm/view_model/notification_view_model.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -33,6 +36,7 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
   late NotificationViewModel _viewModel;
   List<NotificationUser> _notifications = const [];
   bool _loading = true;
+  bool _processing = false;
   bool _initialized = false;
   String? _error;
 
@@ -52,7 +56,7 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
 
   Future<void> _load() async {
     setState(() {
-      _loading = true;
+      _loading = _notifications.isEmpty;
       _error = null;
     });
     try {
@@ -213,27 +217,95 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
     );
   }
 
+  Future<void> _showNotification(NotificationUser notification) async {
+    if (_processing) return;
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final event = EventArgsHelper(notification.args);
+    final documentArgs = _documentRouteArgs(notification);
+    final ocr = _isOcrReprocessNotification(notification) &&
+        (notification.args['jobId'] ?? '').toString().trim().isNotEmpty;
+    final calendar = isEventNotification(notification) ||
+        isConcurrentEventNotification(notification);
+    final openLabel = ocr
+        ? (es ? 'Ver resultados' : 'View results')
+        : documentArgs != null
+            ? (es ? 'Ver documento' : 'View document')
+            : calendar && event.eventId != null
+                ? (es ? 'Ver calendario' : 'View calendar')
+                : null;
+    final action = await Navigator.of(context).push<NotificationDetailAction>(
+      MaterialPageRoute(
+          builder: (_) => NotificationDetailPage(
+              notification: notification, openLabel: openLabel)),
+    );
+    if (!mounted || action == null) return;
+    setState(() => _processing = true);
+    try {
+      switch (action) {
+        case NotificationDetailAction.open:
+          if (!notification.isRead) await _handleMarkRead(notification);
+          if (!mounted) return;
+          if (ocr) {
+            _openOcrReprocessResults(notification);
+          } else if (documentArgs != null) {
+            _openDocument(notification);
+          } else if (calendar && event.eventId != null) {
+            _openEvent(event.eventId!, event.groupId ?? notification.groupId);
+          }
+          break;
+        case NotificationDetailAction.markRead:
+          await _handleMarkRead(notification);
+          break;
+        case NotificationDetailAction.confirm:
+          await _handleConfirm(notification);
+          break;
+        case NotificationDetailAction.decline:
+          try {
+            await _handleNegate(notification);
+          } catch (error) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content:
+                    Text('${AppLocalizations.of(context)!.error}: $error')));
+          }
+          break;
+        case NotificationDetailAction.delete:
+          await _handleDelete(notification);
+          break;
+      }
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final t = theme.textTheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final topBarColor =
-        isDark ? AppDarkColors.dashboardTopBar : AppColors.dashboardTopBar;
-    final onTopBar = isDark ? AppDarkColors.textPrimary : AppColors.white;
 
     Widget body;
     if (_loading) {
       body = const Center(child: CircularProgressIndicator());
     } else if (_error != null) {
       body = Center(
-        child: Text(
-          l.groupNotificationsError,
-          style: t.bodyLarge,
-          textAlign: TextAlign.center,
-        ),
-      );
+          child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l.groupNotificationsError,
+                      style: t.bodyLarge, textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                      onPressed: _load,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(
+                          Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Reintentar'
+                              : 'Retry')),
+                ],
+              )));
     } else if (_notifications.isEmpty) {
       body = Center(
         child: Text(
@@ -249,6 +321,7 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
         child: Column(
           children: [
             TabBar(
+              tabAlignment: TabAlignment.start,
               isScrollable: true,
               labelStyle: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               tabs: tabs.map((tab) => Tab(text: tab.label)).toList(),
@@ -260,7 +333,9 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
                       (tab) => RefreshIndicator(
                         onRefresh: _load,
                         child: _NotificationsList(
+                          key: PageStorageKey(tab.label),
                           notifications: tab.notifications,
+                          onTap: _showNotification,
                           onDelete: _handleDelete,
                           onConfirm: _handleConfirm,
                           onNegate: _handleNegate,
@@ -282,27 +357,22 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: topBarColor,
-        elevation: 0.5,
-        surfaceTintColor: Colors.transparent,
-        iconTheme: IconThemeData(color: onTopBar),
-        actionsIconTheme: IconThemeData(color: onTopBar),
-        title: Text(
-          l.groupNotificationsTitle(widget.group.name),
-          style: t.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
-                color: onTopBar,
-              ) ??
-              TextStyle(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
-                color: onTopBar,
-              ),
-        ),
+      appBar: SectionAppBar(
+        title: MediaQuery.sizeOf(context).width < 600
+            ? (Localizations.localeOf(context).languageCode == 'es'
+                ? 'Notificaciones'
+                : 'Notifications')
+            : l.groupNotificationsTitle(widget.group.name),
       ),
-      body: body,
+      body: SafeArea(
+          top: false,
+          child: Stack(children: [
+            AbsorbPointer(absorbing: _processing, child: body),
+            if (_processing)
+              const Align(
+                  alignment: Alignment.topCenter,
+                  child: LinearProgressIndicator()),
+          ])),
     );
   }
 
@@ -353,7 +423,9 @@ class _NotificationTab {
 
 class _NotificationsList extends StatelessWidget {
   const _NotificationsList({
+    super.key,
     required this.notifications,
+    required this.onTap,
     required this.onDelete,
     required this.onConfirm,
     required this.onNegate,
@@ -363,6 +435,7 @@ class _NotificationsList extends StatelessWidget {
   });
 
   final List<NotificationUser> notifications;
+  final ValueChanged<NotificationUser> onTap;
   final ValueChanged<NotificationUser> onDelete;
   final ValueChanged<NotificationUser> onConfirm;
   final ValueChanged<NotificationUser> onNegate;
@@ -388,7 +461,8 @@ class _NotificationsList extends StatelessWidget {
     final grouped = groupNotificationsByTime(notifications, loc);
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 8, bottom: 24),
       children: grouped.entries.expand((entry) {
         return [
           Padding(
@@ -399,15 +473,19 @@ class _NotificationsList extends StatelessWidget {
             ),
           ),
           ...entry.value.map(
-            (notification) => NotificationCard(
-              notification: notification,
-              onDelete: () => onDelete(notification),
-              onConfirm: () => onConfirm(notification),
-              onNegate: () => onNegate(notification),
-              onMarkRead: () => onMarkRead(notification),
-              onOpenEvent: onOpenEvent,
-              onOpenDocument: () => onOpenDocument(notification),
-            ),
+            (notification) => MediaQuery.sizeOf(context).width < 600
+                ? MobileNotificationTile(
+                    notification: notification,
+                    onTap: () => onTap(notification))
+                : NotificationCard(
+                    notification: notification,
+                    onDelete: () => onDelete(notification),
+                    onConfirm: () => onConfirm(notification),
+                    onNegate: () => onNegate(notification),
+                    onMarkRead: () => onMarkRead(notification),
+                    onOpenEvent: onOpenEvent,
+                    onOpenDocument: () => onOpenDocument(notification),
+                  ),
           ),
         ];
       }).toList(),

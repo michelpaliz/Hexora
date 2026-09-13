@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/mobile_document_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
@@ -314,6 +315,33 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
         issued ? Icons.task_alt_outlined : Icons.description_outlined;
 
     final lineCount = widget.receipt.lines.length;
+
+    if (MediaQuery.sizeOf(context).width < 650) {
+      return MobileDocumentCard(
+        title: widget.client.name,
+        amount: NumberFormat.currency(locale: l.localeName, symbol: '€')
+            .format(total),
+        metadata: '$number · $shortDateLabel',
+        isDraft: !issued,
+        statusLabel: issued ? l.statusIssued : l.statusDraft,
+        onTap: widget.onTap,
+        badges: [
+          DeliveryStatusBadge(
+            status: widget.receipt.deliveryStatus,
+            channel: widget.receipt.deliveryChannel,
+            sentAt: widget.receipt.sentAt,
+            deliveryError: widget.receipt.deliveryError,
+          ),
+        ],
+        trailing: IconButton(
+            icon: const Icon(Icons.more_vert),
+            tooltip: Localizations.localeOf(context).languageCode == 'es'
+                ? 'Acciones'
+                : 'Actions',
+            onPressed: () => _showMobileActions(context, l, cs, t, number,
+                dateLabel, totalLabel, issued, iconData, iconColor, iconBg)),
+      );
+    }
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,

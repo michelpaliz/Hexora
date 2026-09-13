@@ -41,8 +41,16 @@ class EventActionsSheet extends StatelessWidget {
             leading: const Icon(Icons.info_outline),
             title: Text(loc.viewDetails),
             onTap: () {
-              Navigator.pop(context);
-              final page = EventDetailScreen(event: event);
+              final navigator = Navigator.of(context);
+              final page = EventDetailScreen(
+                event: event,
+                fetchClientName:
+                    clientNames == null ? null : (id) async => clientNames![id],
+                fetchServiceName: serviceNames == null
+                    ? null
+                    : (id) async => serviceNames![id],
+              );
+              navigator.pop();
               if (isWide) {
                 showModalBottomSheet<void>(
                   context: context,
@@ -59,8 +67,7 @@ class EventActionsSheet extends StatelessWidget {
                   ),
                 );
               } else {
-                Navigator.push(
-                  context,
+                navigator.push(
                   MaterialPageRoute(builder: (_) => page),
                 );
               }

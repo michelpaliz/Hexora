@@ -73,6 +73,7 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 600;
     final inputStyle = t.bodySmall.copyWith(color: cs.onSurface);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
@@ -87,7 +88,8 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
         children: [
           ...widget.values.map(
             (email) => InputChip(
-              label: Text(email, style: inputStyle.copyWith(fontSize: 11)),
+              label: Text(email,
+                  style: inputStyle.copyWith(fontSize: compact ? 14 : 11)),
               visualDensity: VisualDensity.compact,
               padding: const EdgeInsets.symmetric(horizontal: 2),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -106,6 +108,10 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
                 controller: widget.controller,
                 focusNode: _focusNode,
                 enabled: widget.enabled,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                autocorrect: false,
+                enableSuggestions: false,
                 onChanged: (_) => _tryCommit(),
                 onEditingComplete: _commitAll,
                 decoration: InputDecoration(
@@ -114,11 +120,14 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
                   hintText: widget.values.isEmpty ? widget.hint : null,
                   hintStyle: t.bodySmall.copyWith(
                     color: cs.onSurfaceVariant,
-                    fontSize: 12,
+                    fontSize: compact ? 16 : 12,
                   ),
+                  filled: false,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                   border: InputBorder.none,
                 ),
-                style: inputStyle.copyWith(fontSize: 12),
+                style: inputStyle.copyWith(fontSize: compact ? 16 : 12),
               ),
             ),
           ),

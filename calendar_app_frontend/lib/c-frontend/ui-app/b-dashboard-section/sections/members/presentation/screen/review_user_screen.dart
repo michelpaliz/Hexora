@@ -10,7 +10,6 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/pr
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/screen/tabs/update_role_tab.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/widgets/add_user_bottom_sheet.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
-import 'package:hexora/c-frontend/utils/view-item-styles/button/button_styles.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -108,7 +107,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
             return Scaffold(
               appBar: AppBar(
                 title: Text(
-                  l.reviewUsersTitle,
+                  l.membersTitle,
                   style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
                 ),
                 // 🔻 Removed the AppBar "Done" text button
@@ -117,11 +116,11 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                     IconThemeData(color: ThemeColors.textPrimary(context)),
                 elevation: 0,
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(56),
+                  preferredSize: const Size.fromHeight(64),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                     child: Container(
-                      height: 40,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: trackBg,
                         borderRadius: BorderRadius.circular(12),
@@ -129,6 +128,8 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                             Border.all(color: cs.onSurface.withOpacity(0.06)),
                       ),
                       child: TabBar(
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.start,
                         tabs: [
                           Tab(text: l.tabUpdateRoles),
                           Tab(text: l.tabAddUsers),
@@ -215,9 +216,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
               ),
 
               // 🔹 Floating commit button (visible on both tabs)
-              floatingActionButtonLocation:
-                  FloatingActionButtonLocation.centerFloat,
-              floatingActionButton: _CommitChangesButton(
+              bottomNavigationBar: _CommitChangesButton(
                 label: l.done,
                 onPressed: () {
                   // Apply staged selections to the VM
@@ -257,31 +256,16 @@ class _CommitChangesButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    final style = ButtonStyles.saucyButtonStyle(
-      defaultBackgroundColor: cs.primary,
-      pressedBackgroundColor: cs.primary.withOpacity(.92),
-      textColor: Theme.of(context).brightness == Brightness.dark
-          ? Colors.black
-          : Colors.white,
-      borderColor: cs.outlineVariant.withOpacity(.4),
-      borderRadius: 14,
-      padding: 14,
-      fontSize: 16,
-      fontWeight: FontWeight.w800,
-      fontStyle: FontStyle.normal,
-    );
-
     return SafeArea(
-      minimum: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: SizedBox(
-        width: double.infinity,
-        child: ButtonStyles.buttonWithIcon(
-          iconData: Icons.cloud_upload_rounded,
-          label: label,
-          style: style,
-          onPressed: onPressed,
-          iconSize: 20,
-        ),
+      minimum: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            foregroundColor: cs.onPrimary,
+            backgroundColor: cs.primary),
+        icon: const Icon(Icons.check_rounded),
+        label: Text(label),
+        onPressed: onPressed,
       ),
     );
   }

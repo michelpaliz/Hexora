@@ -37,17 +37,26 @@ class _PulsingRingAvatarState extends State<PulsingRingAvatar>
       duration: const Duration(milliseconds: 1200),
     );
     _t = CurvedAnimation(parent: _ctl, curve: Curves.easeInOut);
+  }
 
-    if (widget.isOnline) _ctl.repeat(reverse: true);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimation();
   }
 
   @override
   void didUpdateWidget(covariant PulsingRingAvatar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isOnline && !_ctl.isAnimating) {
-      _ctl.repeat(reverse: true);
-    } else if (!widget.isOnline && _ctl.isAnimating) {
+    _syncAnimation();
+  }
+
+  void _syncAnimation() {
+    if (widget.isOnline && !MediaQuery.disableAnimationsOf(context)) {
+      if (!_ctl.isAnimating) _ctl.repeat(reverse: true);
+    } else {
       _ctl.stop();
+      _ctl.value = widget.isOnline ? 1 : 0;
     }
   }
 
@@ -71,7 +80,7 @@ class _PulsingRingAvatarState extends State<PulsingRingAvatar>
           final glow = widget.isOnline ? (6.0 + 6.0 * _t.value) : 0.0;
 
           final borderColor = widget.isOnline
-              ? widget.onlineColor.withOpacity(ringOpacity)
+              ? widget.onlineColor.withValues(alpha: ringOpacity)
               : widget.offlineBorderColor;
 
           return Container(
@@ -83,7 +92,7 @@ class _PulsingRingAvatarState extends State<PulsingRingAvatar>
               boxShadow: widget.isOnline
                   ? [
                       BoxShadow(
-                        color: widget.onlineColor.withOpacity(0.35),
+                        color: widget.onlineColor.withValues(alpha: 0.35),
                         blurRadius: glow,
                         spreadRadius: 1,
                       ),
@@ -91,7 +100,7 @@ class _PulsingRingAvatarState extends State<PulsingRingAvatar>
                   : null,
             ),
             child: Container(
-              padding: EdgeInsets.all(ringWidth), // ring thickness
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: borderColor, width: ringWidth),

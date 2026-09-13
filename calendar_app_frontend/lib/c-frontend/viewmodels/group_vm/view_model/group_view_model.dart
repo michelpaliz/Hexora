@@ -140,6 +140,7 @@ class GroupEditorViewModel extends ChangeNotifier {
   }
 
   Future<void> submit() async {
+    if (status == GroupEditorStatus.loading) return;
     if (_state.name.isEmpty || _state.description.isEmpty) {
       await ui.showError('Name and description are required');
       return;
@@ -230,7 +231,8 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
 
   bool get _canViewAll => role != GroupRole.member;
   bool _canManageEvent(Event event) =>
-      event.ownerId == currentUserId || event.recipients.contains(currentUserId);
+      event.ownerId == currentUserId ||
+      event.recipients.contains(currentUserId);
 
   List<Event> _pendingEvents = const [];
   List<Event> _completedEvents = const [];
@@ -246,6 +248,16 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
 
   List<Event> get pendingEvents => List.unmodifiable(_pendingEvents);
   List<Event> get completedEvents => List.unmodifiable(_completedEvents);
+  bool _isCompletingAll = false;
+  int _bulkFinished = 0;
+  int _bulkTotal = 0;
+  bool get isCompletingAll => _isCompletingAll;
+  bool get hasPendingWrites => _isCompletingAll || _processingIds.isNotEmpty;
+  int get bulkFinished => _bulkFinished;
+  int get bulkTotal => _bulkTotal;
+  List<Event> get completablePendingEvents => pendingEvents
+      .where((event) => canManageEvent(event) && !isProcessing(event.id))
+      .toList();
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get filterUserId => _filterUserId;
@@ -265,8 +277,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
 
   EventOwnerInfo? ownerInfoOf(String ownerId) => _ownerCache[ownerId];
 
-  bool isProcessing(String eventId) =>
-      _processingIds.contains(baseId(eventId));
+  bool isProcessing(String eventId) => _processingIds.contains(baseId(eventId));
 
   void _notify() {
     if (_isDisposed) return;
@@ -280,6 +291,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
+    if (_isLoading || hasPendingWrites) return;
     _isLoading = true;
     _errorMessage = null;
     _notify();
@@ -306,8 +318,43 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   }
 
   Future<void> markEventAsDone(String eventId) async {
+    if (_isCompletingAll || _isLoading) return;
+    await _completeEvent(eventId);
+  }
+
+  Future<({int completed, int failed})> markAllAsDone(
+      List<String> eventIds) async {
+    if (_isCompletingAll || _isLoading || _processingIds.isNotEmpty) {
+      return (completed: 0, failed: 0);
+    }
+    // Snapshot and deduplicate the confirmed selection; recheck permissions below.
+    final eligible = completablePendingEvents.map((e) => baseId(e.id)).toSet();
+    final targets = <String, String>{
+      for (final id in eventIds)
+        if (eligible.contains(baseId(id))) baseId(id): id,
+    }.values.toList();
+    _isCompletingAll = true;
+    _bulkFinished = 0;
+    _bulkTotal = targets.length;
+    _errorMessage = null;
+    _notify();
+    var completed = 0;
+    try {
+      for (final id in targets) {
+        if (await _completeEvent(id)) completed++;
+        _bulkFinished++;
+        _notify();
+      }
+      return (completed: completed, failed: targets.length - completed);
+    } finally {
+      _isCompletingAll = false;
+      _notify();
+    }
+  }
+
+  Future<bool> _completeEvent(String eventId) async {
     final key = baseId(eventId);
-    if (key.isEmpty || _processingIds.contains(key)) return;
+    if (key.isEmpty || _processingIds.contains(key)) return false;
 
     Event? target;
     for (final event in [..._pendingEvents, ..._completedEvents]) {
@@ -317,8 +364,8 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
       }
     }
 
-    if (target == null || !_canManageEvent(target)) {
-      return;
+    if (target == null || target.isDone == true || !_canManageEvent(target)) {
+      return false;
     }
 
     _processingIds.add(key);
@@ -333,8 +380,10 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
       ];
       await _ensureOwnersLoaded([updated]);
       _applyFilterAndSplit();
+      return true;
     } catch (error) {
       _errorMessage = error.toString();
+      return false;
     } finally {
       _processingIds.remove(key);
       _notify();
@@ -342,7 +391,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   }
 
   void setFilterUser(String? userId) {
-    if (!_canViewAll) return;
+    if (!_canViewAll || _isCompletingAll) return;
     _filterUserId = userId;
     _applyFilterAndSplit();
   }
@@ -356,15 +405,11 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
 
   void _applyFilterAndSplit() {
     final filtered = _allVisibleEvents.where(_matchesFilter).toList();
-    final pending = filtered
-        .where((event) => event.isDone != true)
-        .toList()
+    final pending = filtered.where((event) => event.isDone != true).toList()
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
-    final completed = filtered
-        .where((event) => event.isDone == true)
-        .toList()
-      ..sort((a, b) => (b.completedAt ?? b.endDate)
-          .compareTo(a.completedAt ?? a.endDate));
+    final completed = filtered.where((event) => event.isDone == true).toList()
+      ..sort((a, b) =>
+          (b.completedAt ?? b.endDate).compareTo(a.completedAt ?? a.endDate));
 
     _pendingEvents = pending;
     _completedEvents = completed;
@@ -424,7 +469,8 @@ class EventOwnerInfo {
   factory EventOwnerInfo.fromUser(User user) {
     final display = _resolveDisplayName(user);
     final username = _resolveUsername(user);
-    return EventOwnerInfo(id: user.id, displayName: display, username: username);
+    return EventOwnerInfo(
+        id: user.id, displayName: display, username: username);
   }
 
   factory EventOwnerInfo.fallback(String id) => EventOwnerInfo(

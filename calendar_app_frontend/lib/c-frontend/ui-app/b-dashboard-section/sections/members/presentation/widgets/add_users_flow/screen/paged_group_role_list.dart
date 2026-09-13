@@ -125,31 +125,36 @@ class _PagedGroupRoleListState extends State<PagedGroupRoleList> {
 
     // NOTE: return a Column (not a ListView) to play nice inside outer scroll views
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ===== Info header (shared) =====
           InfoHeader(
+            padding: const EdgeInsets.only(bottom: 8),
             title: l.tabUpdateRoles,
             subtitle: l.updateRolesHelperText,
             stats: [
-              RoleStatChip(
-                  role: GroupRole.owner,
-                  count: owners,
-                  icon: Icons.workspace_premium_rounded),
-              RoleStatChip(
-                  role: GroupRole.admin,
-                  count: admins,
-                  icon: Icons.admin_panel_settings_rounded),
-              RoleStatChip(
-                  role: GroupRole.coAdmin,
-                  count: coAdmins,
-                  icon: Icons.shield_rounded),
-              RoleStatChip(
-                  role: GroupRole.member,
-                  count: members,
-                  icon: Icons.person_rounded),
+              if (owners > 0)
+                RoleStatChip(
+                    role: GroupRole.owner,
+                    count: owners,
+                    icon: Icons.workspace_premium_rounded),
+              if (admins > 0)
+                RoleStatChip(
+                    role: GroupRole.admin,
+                    count: admins,
+                    icon: Icons.admin_panel_settings_rounded),
+              if (coAdmins > 0)
+                RoleStatChip(
+                    role: GroupRole.coAdmin,
+                    count: coAdmins,
+                    icon: Icons.shield_rounded),
+              if (members > 0)
+                RoleStatChip(
+                    role: GroupRole.member,
+                    count: members,
+                    icon: Icons.person_rounded),
             ],
           ),
           const SizedBox(height: 12),

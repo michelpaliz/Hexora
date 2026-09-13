@@ -46,22 +46,18 @@ class AgendaHeader extends StatelessWidget {
             children: [
               // Avatar
               ValueListenableBuilder<User?>(
-                valueListenable:
-                    context.read<UserDomain>().currentUserNotifier,
+                valueListenable: context.read<UserDomain>().currentUserNotifier,
                 builder: (context, user, _) {
                   if (user == null) {
                     return CircleAvatar(
                       radius: 22,
-                      backgroundColor:
-                          cs.surfaceContainerHighest,
+                      backgroundColor: cs.surfaceContainerHighest,
                       child: Icon(Icons.person,
                           color: cs.onSurfaceVariant, size: 22),
                     );
                   }
                   return UserAvatar(
-                      user: user,
-                      fetchReadSas: (_) async => null,
-                      radius: 22);
+                      user: user, fetchReadSas: (_) async => null, radius: 22);
                 },
               ),
               const SizedBox(width: 12),
@@ -94,15 +90,17 @@ class AgendaHeader extends StatelessWidget {
                       ),
                     Row(
                       children: [
-                        Text(
-                          loc.completedSummary(
-                              done, total, (donePct * 100).round()),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: cs.onSurface.withValues(alpha: 0.65),
+                        Expanded(
+                          child: Text(
+                            loc.completedSummary(
+                                done, total, (donePct * 100).round()),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurface.withValues(alpha: 0.65),
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                         if (total > 0) ...[
                           const SizedBox(width: 8),
@@ -111,9 +109,7 @@ class AgendaHeader extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
-                              color: done == total
-                                  ? cs.secondary
-                                  : cs.primary,
+                              color: done == total ? cs.secondary : cs.primary,
                             ),
                           ),
                         ],
@@ -126,8 +122,7 @@ class AgendaHeader extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: donePct,
                           minHeight: 4,
-                          backgroundColor:
-                              cs.surfaceContainerHighest,
+                          backgroundColor: cs.surfaceContainerHighest,
                           valueColor: AlwaysStoppedAnimation(
                             done == total ? cs.secondary : cs.primary,
                           ),
@@ -189,8 +184,7 @@ class AgendaHeader extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    final firstIndex =
-        MaterialLocalizations.of(context).firstDayOfWeekIndex;
+    final firstIndex = MaterialLocalizations.of(context).firstDayOfWeekIndex;
     final firstDow = (firstIndex == 0) ? 7 : firstIndex;
 
     final back = (today.weekday - firstDow + 7) % 7;
@@ -241,8 +235,7 @@ class _DayRangeToggle extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(9),
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
       ),
       padding: const EdgeInsets.all(2),
       child: Row(
@@ -285,8 +278,7 @@ class _Segment extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
           color: selected ? cs.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(7),
@@ -334,16 +326,13 @@ class _WeekStrip extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.25)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: List.generate(buckets.length, (i) {
           final b = buckets[i];
-          final dow = DateFormat.E(locale)
-              .format(b.date)
-              .toUpperCase()
-              .substring(0, 3);
+          final dow =
+              DateFormat.E(locale).format(b.date).toUpperCase().substring(0, 3);
           final dayNum = DateFormat.d(locale).format(b.date);
 
           final isToday = b.isToday;
@@ -362,8 +351,7 @@ class _WeekStrip extends StatelessWidget {
                   : cs.onSurface.withValues(alpha: 0.85);
           final dowColor = isToday
               ? cs.onPrimary.withValues(alpha: 0.8)
-              : cs.onSurface.withValues(
-                  alpha: isPast ? 0.3 : 0.55);
+              : cs.onSurface.withValues(alpha: isPast ? 0.3 : 0.55);
 
           return Expanded(
             child: Padding(
@@ -373,16 +361,15 @@ class _WeekStrip extends StatelessWidget {
                 children: [
                   // Day pill
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 7, horizontal: 4),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
                     decoration: BoxDecoration(
                       color: dayColor,
                       borderRadius: BorderRadius.circular(11),
                       border: isToday
                           ? null
                           : Border.all(
-                              color: cs.outlineVariant
-                                  .withValues(alpha: 0.3),
+                              color: cs.outlineVariant.withValues(alpha: 0.3),
                             ),
                       boxShadow: isToday
                           ? [
@@ -432,8 +419,8 @@ class _WeekStrip extends StatelessWidget {
                             : cs.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color: cs.primary.withValues(
-                              alpha: isPast ? 0.2 : 0.35),
+                          color:
+                              cs.primary.withValues(alpha: isPast ? 0.2 : 0.35),
                         ),
                       ),
                       child: Text(
@@ -441,8 +428,8 @@ class _WeekStrip extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: cs.primary
-                              .withValues(alpha: isPast ? 0.5 : 1.0),
+                          color:
+                              cs.primary.withValues(alpha: isPast ? 0.5 : 1.0),
                         ),
                       ),
                     )
@@ -451,8 +438,7 @@ class _WeekStrip extends StatelessWidget {
                       width: 4,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: cs.outlineVariant
-                            .withValues(alpha: 0.4),
+                        color: cs.outlineVariant.withValues(alpha: 0.4),
                         shape: BoxShape.circle,
                       ),
                     ),

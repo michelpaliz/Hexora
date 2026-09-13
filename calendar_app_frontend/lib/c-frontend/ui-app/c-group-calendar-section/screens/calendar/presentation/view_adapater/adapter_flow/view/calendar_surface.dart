@@ -580,7 +580,14 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                             monthFormat: 'MMMM yyyy',
                                             textAlign: TextAlign.left,
                                           ),
-                                          appointmentItemHeight: 60,
+                                          appointmentItemHeight:
+                                              MediaQuery.sizeOf(context).width <
+                                                      700
+                                                  ? 40 +
+                                                      MediaQuery.textScalerOf(
+                                                              context)
+                                                          .scale(120)
+                                                  : 60,
                                         ),
 
                                         appointmentBuilder:
@@ -613,6 +620,14 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                         //     fontSize, backgroundColor,
                                         //     monthHeaderHeight: monthHeaderHeight),
                                         monthViewSettings: buildMonthSettings(
+                                          agendaItemHeight:
+                                              MediaQuery.sizeOf(context).width <
+                                                      700
+                                                  ? 40 +
+                                                      MediaQuery.textScalerOf(
+                                                              context)
+                                                          .scale(120)
+                                                  : 48,
                                           showAgenda: widget.showMonthAgenda,
                                         ),
                                       ),

@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/mobile_document_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
@@ -121,78 +122,40 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   Widget _buildMobileCard(AppLocalizations l, AppTypography t, ColorScheme cs,
       String total, String date) {
     final inv = widget.invoice;
-    return Material(
-      color: cs.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: widget.onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.client.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style:
-                            t.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 6),
-                    Text(total,
-                        style: t.bodyLarge.copyWith(
-                            fontWeight: FontWeight.w800, color: cs.primary)),
-                    const SizedBox(height: 6),
-                    Text(
-                        [inv.invoiceNumber, date]
-                            .where((v) => v.isNotEmpty)
-                            .join(' · '),
-                        style:
-                            t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
-                    if (inv.isDraft) ...[
-                      const SizedBox(height: 6),
-                      Text(l.statusDraft,
-                          style:
-                              t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
-                    ],
-                  ],
-                ),
-              ),
-              if (widget.onEdit != null || widget.onDelete != null)
-                PopupMenuButton<String>(
-                  tooltip: l.edit,
-                  onSelected: (value) {
-                    if (value == 'edit') widget.onEdit?.call();
-                    if (value == 'delete') widget.onDelete?.call();
-                  },
-                  itemBuilder: (_) => [
-                    if (widget.onEdit != null)
-                      PopupMenuItem(value: 'edit', child: Text(l.edit)),
-                    if (widget.onDelete != null)
-                      PopupMenuItem(
-                          value: 'delete',
-                          child: Text(l.remove,
-                              style: TextStyle(color: cs.error))),
-                  ],
-                )
-              else
-                IconButton(
-                  onPressed: widget.onTap,
-                  tooltip: l.localeName.startsWith('es')
-                      ? 'Ver factura'
-                      : 'View invoice',
-                  icon: const Icon(Icons.chevron_right_rounded),
-                ),
-            ],
-          ),
+    return MobileDocumentCard(
+      title: widget.client.name,
+      amount: total,
+      metadata:
+          [inv.invoiceNumber, date].where((v) => v.isNotEmpty).join(' · '),
+      isDraft: inv.isDraft,
+      statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
+      onTap: widget.onTap,
+      badges: [
+        DeliveryStatusBadge(
+          status: inv.deliveryStatus,
+          channel: inv.deliveryChannel,
+          sentAt: inv.sentAt,
+          deliveryError: inv.deliveryError,
+          feminine: true,
         ),
-      ),
+      ],
+      trailing: widget.onEdit != null || widget.onDelete != null
+          ? PopupMenuButton<String>(
+              tooltip: l.edit,
+              onSelected: (value) {
+                if (value == 'edit') widget.onEdit?.call();
+                if (value == 'delete') widget.onDelete?.call();
+              },
+              itemBuilder: (_) => [
+                if (widget.onEdit != null)
+                  PopupMenuItem(value: 'edit', child: Text(l.edit)),
+                if (widget.onDelete != null)
+                  PopupMenuItem(
+                      value: 'delete',
+                      child: Text(l.remove, style: TextStyle(color: cs.error))),
+              ],
+            )
+          : null,
     );
   }
 

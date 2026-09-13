@@ -52,17 +52,22 @@ class GroupUndoneEventsListView extends StatelessWidget {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: events.length,
       itemBuilder: (context, index) {
         final event = events[index];
         final canManage = viewModel.canManageEvent(event);
         return Card(
-          elevation: doneList ? 0 : 1,
-          color: doneList
-              ? theme.colorScheme.surfaceContainerHigh
-              : theme.colorScheme.surface,
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.4))),
+          color: theme.colorScheme.surface,
           child: PendingEventTile(
             event: event,
             enableAction: allowAction && canManage,

@@ -32,8 +32,8 @@ class UpdateRolesTab extends StatelessWidget {
       return Center(child: Text(l.noUserRolesAvailable, style: t.bodyMedium));
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       child: PagedGroupRoleList(
         roles: rolesByUserId,
         membersById: membersById,

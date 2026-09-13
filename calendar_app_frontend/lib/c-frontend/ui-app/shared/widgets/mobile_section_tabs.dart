@@ -8,15 +8,37 @@ class MobileSectionTabs extends StatelessWidget {
     super.key,
     required this.controller,
     required this.labels,
+    this.scrollable = false,
   });
 
   final TabController controller;
   final List<String> labels;
+  final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    if (scrollable) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: TabBar(
+          controller: controller,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 18),
+          labelColor: cs.primary,
+          unselectedLabelColor: cs.onSurfaceVariant,
+          labelStyle: Theme.of(context)
+              .textTheme
+              .titleSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
+          indicatorSize: TabBarIndicatorSize.label,
+          tabs: labels.map((label) => Tab(text: label, height: 48)).toList(),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: LayoutBuilder(builder: (context, constraints) {

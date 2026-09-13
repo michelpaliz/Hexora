@@ -8,7 +8,7 @@ import '../../../../../../../viewmodels/group_vm/view_model/group_view_model.dar
 
 class SaveGroupButton extends StatelessWidget {
   final GroupEditorViewModel controller;
-  const SaveGroupButton({Key? key, required this.controller}) : super(key: key);
+  const SaveGroupButton({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -18,32 +18,26 @@ class SaveGroupButton extends StatelessWidget {
     final bg = cs.primary;
     final onBg = ThemeColors.contrastOn(bg);
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: ElevatedButton.icon(
-        onPressed: () async {
-          try {
-            await controller.submitGroupFromUI();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content: Text(AppLocalizations.of(context)!.groupSaved)),
-              );
-            }
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(e.toString())),
-              );
-            }
-          }
-        },
-        icon: Icon(Icons.group_add, color: onBg, size: 20),
-        label: Text(
-          AppLocalizations.of(context)!.save,
-          style: t.buttonText.copyWith(color: onBg),
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ElevatedButton.icon(
+          onPressed: controller.status == GroupEditorStatus.loading
+              ? null
+              : controller.submitGroupFromUI,
+          icon: controller.status == GroupEditorStatus.loading
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: onBg))
+              : Icon(Icons.save_outlined, color: onBg, size: 20),
+          label: Text(
+            AppLocalizations.of(context)!.save,
+            style: t.buttonText.copyWith(color: onBg),
+          ),
+          style: ThemedButtons.button(context, variant: ButtonVariant.primary),
         ),
-        style: ThemedButtons.button(context, variant: ButtonVariant.primary),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:hexora/f-themes/app_colors/themes/theme_provider/theme_provider.dart';
 // lib/c-frontend/b-calendar-section/screens/profile/profile_view_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -97,6 +98,53 @@ class ProfileViewScreen extends StatelessWidget {
                 onTapTeams: _goToGroups,
                 onTapCalendars: _goToCalendars,
                 onTapNotifications: _goToNotifications,
+              ),
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Consumer<ThemeModeProvider>(
+                    builder: (context, provider, _) =>
+                        DropdownButtonFormField<ThemeMode>(
+                      key: ValueKey(provider.mode),
+                      initialValue: provider.mode,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.palette_outlined),
+                        labelText: loc.localeName.startsWith('es')
+                            ? 'Tema de la app'
+                            : 'App theme',
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                            value: ThemeMode.system,
+                            child: Text(loc.localeName.startsWith('es')
+                                ? 'Usar tema del dispositivo'
+                                : 'Use device theme')),
+                        DropdownMenuItem(
+                            value: ThemeMode.light,
+                            child: Text(loc.localeName.startsWith('es')
+                                ? 'Claro'
+                                : 'Light')),
+                        DropdownMenuItem(
+                            value: ThemeMode.dark,
+                            child: Text(loc.localeName.startsWith('es')
+                                ? 'Oscuro'
+                                : 'Dark')),
+                      ],
+                      onChanged: provider.isLoaded
+                          ? (mode) {
+                              if (mode != null) provider.setMode(mode);
+                            }
+                          : null,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

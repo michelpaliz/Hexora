@@ -1,3 +1,4 @@
+import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 
@@ -37,31 +38,47 @@ class UserPresence {
 }
 
 class PresenceDomain extends ChangeNotifier {
+  bool _listening = false;
+  bool hasReceivedPresence = false;
+
+  // Presence belongs to the signed-in session, not a single calendar route.
+  void listenToSocket() {
+    if (_listening) return;
+    _listening = true;
+    SocketManager().on('presence:update', (data) {
+      if (data is List) updatePresenceList(data);
+    });
+  }
+
+  @override
+  void dispose() {
+    if (_listening) SocketManager().off('presence:update');
+    super.dispose();
+  }
+
   final Map<String, UserPresence> _onlineUsers = {}; // userId -> UserPresence
   final Map<String, User> _knownUsers = {}; // from DB
 
   /// Simpler update method with no role
   void updatePresenceList(List<dynamic> data) {
-    debugPrint("ðŸ“¥ updatePresenceList called with: ${data.length} users");
-    _onlineUsers.clear();
-
+    final next = <String, UserPresence>{};
     for (final user in data) {
-      final rawId = user['userId'];
-      final id = rawId.toString().trim(); // normalize
-
-      final presence = UserPresence(
+      if (user is! Map) continue;
+      final id = user['userId']?.toString().trim() ?? '';
+      if (id.isEmpty) continue;
+      final known = _knownUsers[id];
+      next[id] = UserPresence(
         userId: id,
-        userName: user['userName'],
-        photoUrl: user['photoUrl'],
+        userName: user['userName']?.toString() ?? known?.userName ?? 'Unknown',
+        photoUrl: user['photoUrl']?.toString() ?? known?.photoUrl ?? '',
         isOnline: true,
-        role: UserRole.member, // Temporarily default to member (role set later)
+        role: UserRole.member,
       );
-
-      _onlineUsers[id] = presence;
-      debugPrint("✅ Online user added: $id (${user['userName']})");
     }
-
-    debugPrint("ðŸ§  Final online user IDs: ${_onlineUsers.keys.toList()}");
+    _onlineUsers
+      ..clear()
+      ..addAll(next);
+    hasReceivedPresence = true;
     notifyListeners();
   }
 
@@ -89,7 +106,8 @@ class PresenceDomain extends ChangeNotifier {
           onlinePresence?.userName ?? knownUser?.userName ?? "Unknown";
       final photoUrl = onlinePresence?.photoUrl ?? knownUser?.photoUrl ?? "";
 
-      final rawRole = groupRoles[userName] ?? 'member';
+      final rawRole =
+          groupRoles[normalizedId] ?? groupRoles[userName] ?? 'member';
       final role = parseUserRole(rawRole);
 
       return UserPresence(

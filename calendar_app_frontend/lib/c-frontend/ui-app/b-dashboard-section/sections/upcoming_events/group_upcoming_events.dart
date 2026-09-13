@@ -81,6 +81,7 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
     final theme = Theme.of(context);
     final loc = AppLocalizations.of(context)!;
     final cs = theme.colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 700;
 
     final cardColor = widget.cardColor ??
         Color.alphaBlend(
@@ -99,9 +100,10 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
     );
 
     Widget styledCard(Widget child) => Card(
-          color: cardColor,
+          color: compact ? cs.surfaceContainerLow : cardColor,
+          margin: compact ? EdgeInsets.zero : null,
           surfaceTintColor: Colors.transparent,
-          elevation: 6,
+          elevation: compact ? 0 : 6,
           shadowColor: shadow,
           shape: cardShape,
           child: child,
@@ -124,7 +126,9 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                   const SizedBox(width: 12),
-                  Text(loc.loadingUpcoming, style: theme.textTheme.bodyMedium),
+                  Expanded(
+                      child: Text(loc.loadingUpcoming,
+                          style: theme.textTheme.bodyMedium)),
                 ],
               ),
             ),
@@ -162,10 +166,12 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              subtitle: Text(
-                loc.nothingScheduledSoon,
-                style: TextStyle(color: onSurfaceVar),
-              ),
+              subtitle: compact
+                  ? null
+                  : Text(
+                      loc.nothingScheduledSoon,
+                      style: TextStyle(color: onSurfaceVar),
+                    ),
               trailing: const SizedBox.shrink(),
             ),
           );
@@ -185,10 +191,12 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  subtitle: Text(
-                    loc.upcomingEventsSubtitle,
-                    style: TextStyle(color: onSurfaceVar),
-                  ),
+                  subtitle: compact
+                      ? null
+                      : Text(
+                          loc.upcomingEventsSubtitle,
+                          style: TextStyle(color: onSurfaceVar),
+                        ),
                   trailing: TextButton(
                     onPressed: () {
                       Navigator.pushNamed(
@@ -292,7 +300,8 @@ class _EventRow extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: selected ? cs.primary.withValues(alpha: 0.08) : Colors.transparent,
+        color:
+            selected ? cs.primary.withValues(alpha: 0.08) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: selected
             ? Border.all(color: cs.primary.withValues(alpha: 0.35))
@@ -318,7 +327,8 @@ class _EventRow extends StatelessWidget {
         onTap: onTap ??
             () {
               if (canManage) {
-                Navigator.pushNamed(context, AppRoutes.eventDetail, arguments: event);
+                Navigator.pushNamed(context, AppRoutes.eventDetail,
+                    arguments: event);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -342,7 +352,8 @@ class _UpcomingDetailPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final isEs = Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+    final isEs =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
 
     return Center(
       child: Padding(

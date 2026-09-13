@@ -4,20 +4,23 @@ import 'package:hexora/l10n/app_localizations.dart';
 
 class GroupOverviewCard extends StatelessWidget {
   final Group group;
+  final String? ownerName;
   final String createdFormatted;
 
   const GroupOverviewCard({
     super.key,
     required this.group,
     required this.createdFormatted,
+    this.ownerName,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l = AppLocalizations.of(context)!;
-    final description =
-        group.description.isEmpty ? l.groupSettingsNoDescription : group.description;
+    final description = group.description.isEmpty
+        ? l.groupSettingsNoDescription
+        : group.description;
 
     return Card(
       elevation: 0,
@@ -52,8 +55,11 @@ class GroupOverviewCard extends StatelessWidget {
             ),
             _InfoTile(
               icon: Icons.person_outline,
-              title: l.groupSettingsOwnerIdLabel,
-              value: group.ownerId,
+              title: l.localeName.startsWith('es') ? 'Propietario' : 'Owner',
+              value: ownerName ??
+                  (l.localeName.startsWith('es')
+                      ? 'Nombre no disponible'
+                      : 'Name unavailable'),
               selectable: true,
             ),
             _InfoTile(

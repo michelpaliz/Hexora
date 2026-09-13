@@ -173,7 +173,10 @@ class _DefaultCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Container(
                     padding:
@@ -193,19 +196,20 @@ class _DefaultCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Spacer(),
-                  if (isUnread)
-                    Container(
-                      width: 7,
-                      height: 7,
-                      margin: const EdgeInsets.only(right: 6),
-                      decoration: BoxDecoration(
-                        color: cs.primary,
-                        shape: BoxShape.circle,
+                  Text.rich(
+                    TextSpan(children: [
+                      if (isUnread)
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Icon(Icons.circle, size: 7, color: cs.primary),
+                          ),
+                        ),
+                      TextSpan(
+                        text: formatTimeDifference(notification.timestamp, context),
                       ),
-                    ),
-                  Text(
-                    formatTimeDifference(notification.timestamp, context),
+                    ]),
                     style: typo.caption.copyWith(
                       color: ThemeColors.textSecondary(context),
                     ),

@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/d-event-section/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/event/logic/actions/event_actions_manager.dart';
@@ -75,6 +76,60 @@ class ScheduleCardView extends StatelessWidget {
     final location = (event.localization ?? '').trim();
     final isDone = event.isDone;
 
+    if (MediaQuery.sizeOf(context).width < 700) {
+      final tt = Theme.of(context).textTheme;
+      return Card(
+        margin: const EdgeInsets.fromLTRB(4, 4, 8, 4),
+        elevation: 0,
+        color: cs.surfaceContainerLow,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: cs.outlineVariant)),
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => EventDetailScreen(event: event))),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                  child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(event.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurface, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  Text(timeLabel,
+                      style:
+                          tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                  if (durLabel.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(durLabel,
+                        style: tt.labelMedium?.copyWith(color: cs.primary)),
+                  ],
+                ],
+              )),
+              IconButton(
+                tooltip: _isSpanish(context)
+                    ? 'Acciones del evento'
+                    : 'Event actions',
+                icon: const Icon(Icons.more_vert),
+                onPressed: () => showEventActionsSheet(
+                    context: context,
+                    event: event,
+                    canEdit: canAdmin,
+                    actionManager: actionManager),
+              ),
+            ]),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: ClipRRect(
@@ -82,9 +137,8 @@ class ScheduleCardView extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: isWide
-                ? () => actionManager?.editEvent(event, context)
-                : null,
+            onTap:
+                isWide ? () => actionManager?.editEvent(event, context) : null,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: isDone
@@ -100,21 +154,20 @@ class ScheduleCardView extends StatelessWidget {
                   // ── Left stripe ───────────────────────────────────────
                   Container(
                     width: 4,
-                    color: isDone
-                        ? cardColor.withValues(alpha: 0.4)
-                        : cardColor,
+                    color:
+                        isDone ? cardColor.withValues(alpha: 0.4) : cardColor,
                   ),
 
                   // ── Icon box ──────────────────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     child: Container(
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: cardColor.withValues(
-                            alpha: isDone ? 0.07 : 0.14),
+                        color:
+                            cardColor.withValues(alpha: isDone ? 0.07 : 0.14),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: isDone
@@ -143,9 +196,8 @@ class ScheduleCardView extends StatelessWidget {
                               color: isDone
                                   ? cs.onSurface.withValues(alpha: 0.42)
                                   : cs.onSurface,
-                              decoration: isDone
-                                  ? TextDecoration.lineThrough
-                                  : null,
+                              decoration:
+                                  isDone ? TextDecoration.lineThrough : null,
                               decorationColor:
                                   cs.onSurface.withValues(alpha: 0.42),
                               height: 1.2,
@@ -160,8 +212,8 @@ class ScheduleCardView extends StatelessWidget {
                               Icon(
                                 Icons.schedule_outlined,
                                 size: 11,
-                                color: cs.onSurfaceVariant
-                                    .withValues(alpha: 0.6),
+                                color:
+                                    cs.onSurfaceVariant.withValues(alpha: 0.6),
                               ),
                               const SizedBox(width: 3),
                               Text(
@@ -214,8 +266,8 @@ class ScheduleCardView extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: cardColor.withValues(
-                              alpha: isDone ? 0.06 : 0.11),
+                          color:
+                              cardColor.withValues(alpha: isDone ? 0.06 : 0.11),
                           borderRadius: BorderRadius.circular(9),
                           border: Border.all(
                             color: cardColor.withValues(
@@ -262,8 +314,7 @@ class ScheduleCardView extends StatelessWidget {
                     IconButton(
                       icon: Icon(Icons.more_vert,
                           color: cardColor.withValues(alpha: 0.75), size: 17),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       constraints:
                           const BoxConstraints(minWidth: 36, minHeight: 36),
                       onPressed: () => showEventActionsSheet(

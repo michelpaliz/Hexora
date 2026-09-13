@@ -62,9 +62,7 @@ InputDecoration buildInputDecoration(
         : null,
     suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     filled: true,
-    fillColor: isLight
-        ? Colors.white
-        : (isFilled ? cs.primary.withValues(alpha: 0.06) : cs.surface),
+    fillColor: isLight ? Colors.white : cs.surfaceContainerHighest,
     enabledBorder: buildInputBorder(context),
     focusedBorder: buildInputBorder(
       context,

@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
@@ -10,7 +11,6 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class PresupuestosModuleScreen extends StatefulWidget {
   const PresupuestosModuleScreen({
@@ -129,16 +129,9 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
     );
 
     if (!widget.embedded && isNarrow) {
-      final cs = Theme.of(context).colorScheme;
-      final t = AppTypography.of(context);
       return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            title,
-            style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-          ),
-          backgroundColor: cs.surface,
-          surfaceTintColor: Colors.transparent,
+        appBar: SectionAppBar(
+          title: title,
         ),
         body: body,
       );

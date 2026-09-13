@@ -36,11 +36,40 @@ class _StatementsMobileAnalyticsViewState
   }
 
   void _openFilterSheet(BuildContext context) {
+    final controller = context.read<StatementsAnalyticsController>();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => _AnalyticsFilterSheet(
-        controller: ctx.read<StatementsAnalyticsController>(),
+      useSafeArea: true,
+      builder: (ctx) => ListenableBuilder(
+        listenable: controller,
+        builder: (_, __) => SingleChildScrollView(
+          child: _AnalyticsFilterSheet(controller: controller),
+        ),
+      ),
+    );
+  }
+
+  Widget _retryState(
+    BuildContext context,
+    String message,
+    VoidCallback onRetry,
+  ) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: Text(AppLocalizations.of(context)!.tryAgain),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -57,10 +86,7 @@ class _StatementsMobileAnalyticsViewState
       return const Center(child: CircularProgressIndicator());
     }
     if (c.batchesError != null) {
-      return Center(
-        child:
-            Text(c.batchesError!, style: t.bodySmall.copyWith(color: cs.error)),
-      );
+      return _retryState(context, c.batchesError!, c.loadBatches);
     }
     if (c.batches.isEmpty) {
       return Center(
@@ -155,13 +181,15 @@ class _StatementsMobileAnalyticsViewState
           children: [
             AnalyticsMetricCard(
               title: l.statementsSummaryIncome,
-              value: StatementsFormatters.formatCurrency(context, totals.income),
+              value:
+                  StatementsFormatters.formatCurrency(context, totals.income),
               subtitle: l.statementsEntryCount(totals.count.toString()),
               icon: Icons.south_west_rounded,
             ),
             AnalyticsMetricCard(
               title: l.statementsSummaryExpense,
-              value: StatementsFormatters.formatCurrency(context, totals.expense),
+              value:
+                  StatementsFormatters.formatCurrency(context, totals.expense),
               icon: Icons.north_east_rounded,
             ),
             AnalyticsMetricCard(
@@ -192,10 +220,10 @@ class _StatementsMobileAnalyticsViewState
                   label: l.statementsSummaryIncome,
                   value: totals.income,
                   color: const Color(0xFF2E7D32),
-                  legendValue:
-                      StatementsFormatters.formatCurrency(context, totals.income),
-                  tooltipValue:
-                      StatementsFormatters.formatCurrency(context, totals.income),
+                  legendValue: StatementsFormatters.formatCurrency(
+                      context, totals.income),
+                  tooltipValue: StatementsFormatters.formatCurrency(
+                      context, totals.income),
                 ),
                 AnalyticsDonutSlice(
                   label: l.statementsSummaryExpense,
@@ -418,8 +446,8 @@ class _StatementsMobileAnalyticsViewState
                     runSpacing: 10,
                     children: [
                       AnalyticsMetricCard(
-                        title:
-                            StatementsAnalyticsCopy.lastTransactionLabel(context),
+                        title: StatementsAnalyticsCopy.lastTransactionLabel(
+                            context),
                         value: status.lastDate == null
                             ? '-'
                             : StatementsFormatters.formatDate(
@@ -428,8 +456,7 @@ class _StatementsMobileAnalyticsViewState
                               ),
                       ),
                       AnalyticsMetricCard(
-                        title:
-                            StatementsAnalyticsCopy.daysSinceLabel(context),
+                        title: StatementsAnalyticsCopy.daysSinceLabel(context),
                         value: status.daysSince?.toString() ?? '-',
                       ),
                     ],
@@ -448,10 +475,7 @@ class _StatementsMobileAnalyticsViewState
           child: c.loadingSummary
               ? const Center(child: AnalyticsSkeleton())
               : c.summaryError != null
-                  ? Center(
-                      child: Text(c.summaryError!,
-                          style: t.bodySmall.copyWith(color: cs.error)),
-                    )
+                  ? _retryState(context, c.summaryError!, c.fetchSummary)
                   : CustomScrollView(
                       slivers: [
                         SliverToBoxAdapter(
@@ -499,26 +523,22 @@ class _StatementsMobileAnalyticsViewState
                         // ── Trend chart ──────────────────────────────────────
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                             child: _SectionCard(
                               title: l.statementsAnalyticsTrends,
                               child: DefaultTabController(
                                 length: 2,
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     TabBar(
                                       labelStyle: t.bodySmall,
                                       tabs: [
                                         Tab(
-                                          text: l
-                                              .statementsAnalyticsTotalsTab,
+                                          text: l.statementsAnalyticsTotalsTab,
                                         ),
                                         Tab(
-                                          text: l
-                                              .statementsAnalyticsAverageTab,
+                                          text: l.statementsAnalyticsAverageTab,
                                         ),
                                       ],
                                     ),
@@ -547,22 +567,19 @@ class _StatementsMobileAnalyticsViewState
                         // ── Top merchants ─────────────────────────────────────
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                             child: _SectionCard(
                               title: l.statementsAnalyticsTopMerchants,
                               child: DefaultTabController(
                                 length: 2,
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     TabBar(
                                       labelStyle: t.bodySmall,
                                       tabs: [
                                         Tab(
-                                          text: l
-                                              .statementsSummaryExpense,
+                                          text: l.statementsSummaryExpense,
                                         ),
                                         Tab(
                                           text: l.statementsSummaryIncome,
@@ -600,12 +617,10 @@ class _StatementsMobileAnalyticsViewState
                           ),
                         ),
                         // ── Summary totals ────────────────────────────────────
-                        if (c.selectedYear != null &&
-                            c.compareRows.isNotEmpty)
+                        if (c.selectedYear != null && c.compareRows.isNotEmpty)
                           SliverToBoxAdapter(
                             child: Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                               child: _SectionCard(
                                 title: l.statementsAnalyticsCompareTitle,
                                 child: _MobileComparisonSection(
@@ -668,8 +683,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -696,7 +710,9 @@ class _MobileComparisonSection extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
 
-    if (c.loadingCompare) return const Center(child: CircularProgressIndicator());
+    if (c.loadingCompare) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (c.compareError != null) {
       return Text(c.compareError!,
           style: t.bodySmall.copyWith(color: cs.error));
@@ -709,10 +725,10 @@ class _MobileComparisonSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: c.compareRows.map((row) {
         final monthLabel = row.month.toString().padLeft(2, '0');
-        final totals = c.periodMode ==
-                StatementsAnalyticsPeriodMode.settlementWindow
-            ? row.settlementTotals
-            : row.calendarTotals;
+        final totals =
+            c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow
+                ? row.settlementTotals
+                : row.calendarTotals;
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Container(
@@ -720,16 +736,15 @@ class _MobileComparisonSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.4)),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '${l.statementsAnalyticsMonth} $monthLabel',
-                  style:
-                      t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Row(
@@ -757,8 +772,8 @@ class _MobileComparisonSection extends StatelessWidget {
                 const SizedBox(height: 4),
                 _TotalRow(
                   label: l.statementsSummaryNet,
-                  value: StatementsFormatters.formatCurrency(
-                      context, totals.net),
+                  value:
+                      StatementsFormatters.formatCurrency(context, totals.net),
                   color: cs.onSurface,
                   t: t,
                   bold: true,
@@ -824,14 +839,12 @@ class _AnalyticsFilterSheet extends StatelessWidget {
 
     final batchName = c.selectedBatchId == 'all' || c.selectedBatchId == null
         ? l.statementsAnalyticsAllBatches
-        : (c.batches
-                    .firstWhere(
-                      (b) =>
-                          (b['batchId'] ?? b['_id'] ?? b['id'])?.toString() ==
-                          c.selectedBatchId,
-                      orElse: () => {},
-                    )[
-                    'originalName'] ??
+        : (c.batches.firstWhere(
+                  (b) =>
+                      (b['batchId'] ?? b['_id'] ?? b['id'])?.toString() ==
+                      c.selectedBatchId,
+                  orElse: () => {},
+                )['originalName'] ??
                 c.selectedBatchId)
             .toString();
 
@@ -859,8 +872,7 @@ class _AnalyticsFilterSheet extends StatelessWidget {
             // Batch
             Text(l.statementsAnalyticsBatch,
                 style: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurfaceVariant)),
+                    fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               initialValue: c.selectedBatchId,
@@ -894,8 +906,7 @@ class _AnalyticsFilterSheet extends StatelessWidget {
             // Top N
             Text(l.statementsAnalyticsTop,
                 style: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurfaceVariant)),
+                    fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
             const SizedBox(height: 6),
             DropdownButtonFormField<int>(
               initialValue: c.top,
@@ -917,11 +928,11 @@ class _AnalyticsFilterSheet extends StatelessWidget {
             // Period mode
             Text(l.statementsAnalyticsMode,
                 style: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurfaceVariant)),
+                    fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
             const SizedBox(height: 6),
             DropdownButtonFormField<StatementsAnalyticsPeriodMode>(
               initialValue: c.periodMode,
+              itemHeight: null,
               isExpanded: true,
               style: t.bodyMedium,
               decoration: const InputDecoration(

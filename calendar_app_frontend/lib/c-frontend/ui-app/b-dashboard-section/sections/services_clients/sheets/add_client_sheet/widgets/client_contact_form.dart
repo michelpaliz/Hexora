@@ -1,3 +1,4 @@
+import 'client_form_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
 import 'package:hexora/c-frontend/utils/validation/email_validator.dart';
@@ -33,6 +34,7 @@ class ClientContactForm extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
+    final fieldFontSize = MediaQuery.sizeOf(context).width < 600 ? 16.0 : 13.0;
 
     List<String> ensureCurrent(List<String> options, String current) {
       final v = current.trim();
@@ -53,7 +55,7 @@ class ClientContactForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.name,
-            style: typo.bodySmall.copyWith(fontSize: 13),
+            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
@@ -79,7 +81,7 @@ class ClientContactForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.phone,
-            style: typo.bodySmall.copyWith(fontSize: 13),
+            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
             keyboardType: TextInputType.phone,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
@@ -100,7 +102,7 @@ class ClientContactForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.email,
-            style: typo.bodySmall.copyWith(fontSize: 13),
+            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
             keyboardType: TextInputType.emailAddress,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
@@ -145,72 +147,75 @@ class ClientContactForm extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value:
-                    c.entityType.text.trim().isEmpty ? null : c.entityType.text.trim(),
-                hint: Text(
-                  '${l.select}...',
-                  style: typo.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant.withOpacity(0.65),
-                  ),
-                ),
-                style: typo.bodySmall.copyWith(fontSize: 12, color: cs.onSurface),
-                items: [
-                  ...entityOptions.map(
-                    (e) => DropdownMenuItem(value: e, child: Text(e)),
-                  ),
-                ],
-                onChanged: (v) {
-                  c.entityType.text = (v ?? '').trim();
-                  onClassificationChanged();
-                  onFieldChanged();
-                },
-                decoration: buildInputDecoration(
-                  context,
-                  label: l.clientEntityTypeLabel,
-                  helperText: l.clientEntityTypeHint,
-                  prefixIcon: const Icon(Icons.badge_outlined),
-                  isFilled: c.entityType.text.trim().isNotEmpty,
+        ClientFormFields(
+            first: DropdownButtonFormField<String>(
+              isExpanded: true,
+              value: c.entityType.text.trim().isEmpty
+                  ? null
+                  : c.entityType.text.trim(),
+              hint: Text(
+                '${l.select}...',
+                style: typo.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant.withOpacity(0.65),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: c.propertyKind.text.trim().isEmpty
-                    ? null
-                    : c.propertyKind.text.trim(),
-                hint: Text(
-                  '${l.select}...',
-                  style: typo.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant.withOpacity(0.65),
-                  ),
+              style: typo.bodySmall
+                  .copyWith(fontSize: fieldFontSize, color: cs.onSurface),
+              items: [
+                ...entityOptions.map(
+                  (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(e,
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ),
-                style: typo.bodySmall.copyWith(fontSize: 12, color: cs.onSurface),
-                items: [
-                  ...propertyOptions.map(
-                    (e) => DropdownMenuItem(value: e, child: Text(e)),
-                  ),
-                ],
-                onChanged: (v) {
-                  c.propertyKind.text = (v ?? '').trim();
-                  onClassificationChanged();
-                  onFieldChanged();
-                },
-                decoration: buildInputDecoration(
-                  context,
-                  label: l.clientPropertyKindLabel,
-                  helperText: l.clientPropertyKindHint,
-                  prefixIcon: const Icon(Icons.home_work_outlined),
-                  isFilled: c.propertyKind.text.trim().isNotEmpty,
-                ),
+              ],
+              onChanged: (v) {
+                c.entityType.text = (v ?? '').trim();
+                onClassificationChanged();
+                onFieldChanged();
+              },
+              decoration: buildInputDecoration(
+                context,
+                label: l.clientEntityTypeLabel,
+                helperText: l.clientEntityTypeHint,
+                prefixIcon: const Icon(Icons.badge_outlined),
+                isFilled: c.entityType.text.trim().isNotEmpty,
               ),
             ),
-          ],
-        ),
+            second: DropdownButtonFormField<String>(
+              isExpanded: true,
+              value: c.propertyKind.text.trim().isEmpty
+                  ? null
+                  : c.propertyKind.text.trim(),
+              hint: Text(
+                '${l.select}...',
+                style: typo.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant.withOpacity(0.65),
+                ),
+              ),
+              style: typo.bodySmall
+                  .copyWith(fontSize: fieldFontSize, color: cs.onSurface),
+              items: [
+                ...propertyOptions.map(
+                  (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(e,
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
+                ),
+              ],
+              onChanged: (v) {
+                c.propertyKind.text = (v ?? '').trim();
+                onClassificationChanged();
+                onFieldChanged();
+              },
+              decoration: buildInputDecoration(
+                context,
+                label: l.clientPropertyKindLabel,
+                helperText: l.clientPropertyKindHint,
+                prefixIcon: const Icon(Icons.home_work_outlined),
+                isFilled: c.propertyKind.text.trim().isNotEmpty,
+              ),
+            )),
       ],
     );
   }

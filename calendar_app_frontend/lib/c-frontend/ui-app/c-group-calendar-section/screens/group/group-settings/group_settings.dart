@@ -30,6 +30,9 @@ class _GroupSettingsState extends State<GroupSettings> {
   User? _currentUser;
   bool _loadingUser = true;
   bool _isRemoving = false;
+  final Map<String, String> _memberNames = {};
+  bool _loadingMembers = true;
+  bool _membersFailed = false;
 
   @override
   void initState() {
@@ -37,7 +40,43 @@ class _GroupSettingsState extends State<GroupSettings> {
     _groupDomain = context.read<GroupDomain>();
     _userDomain = context.read<UserDomain>();
     _loadCurrentUser();
+    _loadMemberNames();
   }
+
+  Future<void> _loadMemberNames() async {
+    setState(() {
+      _loadingMembers = true;
+      _membersFailed = false;
+    });
+    try {
+      final users = await _userDomain.getUsersForGroup(widget.group);
+      if (!mounted) return;
+      setState(() {
+        for (final user in users) {
+          final name = (user.displayName ?? '').trim();
+          _memberNames[user.id] = name.isNotEmpty
+              ? name
+              : user.name.trim().isNotEmpty
+                  ? user.name.trim()
+                  : user.userName;
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _membersFailed = true);
+    } finally {
+      if (mounted) setState(() => _loadingMembers = false);
+    }
+  }
+
+  String _memberName(String id) =>
+      _memberNames[id] ??
+      (_currentUser?.id == id
+          ? _currentUser!.name
+          : _loadingMembers
+              ? '…'
+              : (Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Nombre no disponible'
+                  : 'Name unavailable'));
 
   Future<void> _loadCurrentUser() async {
     final user = await _getCurrentUserSafe();
@@ -175,9 +214,19 @@ class _GroupSettingsState extends State<GroupSettings> {
           children: [
             GroupOwnerBanner(isOwner: isOwner),
             const SizedBox(height: 16),
-            GroupOverviewCard(group: group, createdFormatted: created),
+            GroupOverviewCard(
+                group: group,
+                createdFormatted: created,
+                ownerName: _memberName(group.ownerId)),
             const SizedBox(height: 16),
-            GroupRolesCard(group: group),
+            GroupRolesCard(group: group, memberNames: {
+              for (final id in group.userRoles.keys) id: _memberName(id),
+            }),
+            if (_membersFailed)
+              TextButton.icon(
+                  onPressed: _loadMemberNames,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(l.refresh)),
             const SizedBox(height: 16),
             GroupInvitationsCard(
               onViewInvitations: () {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/context_colors/define_themes/mobile_theme.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/contextual_fab.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/horizontal_drawer_nav/horizontal_drawer_nav.dart';
 
@@ -13,7 +14,7 @@ class MainScaffold extends StatelessWidget {
   /// If false, no AppBar is rendered (saves vertical space).
   final bool showAppBar;
 
-  /// Stop passing per-screen FABs when using the center-docked FAB.
+  /// The primary action is resolved from the current route.
   final FloatingActionButton? fab; // legacy, unused now
   final Color? appBarBackgroundColor;
   final IconThemeData? iconTheme;
@@ -42,15 +43,15 @@ class MainScaffold extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: bg,
-      extendBody:
-          false, // keep content clear of the BottomAppBar to avoid overlap
+      extendBody: false,
       appBar: showAppBar
           ? AppBar(
               backgroundColor: appBarBackgroundColor ?? bg,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               scrolledUnderElevation: 0,
-              toolbarHeight: 72,
+              toolbarHeight:
+                  MobileTheme.isActive(context) ? kToolbarHeight : 72,
               titleSpacing: 16,
               centerTitle: centerTitle ?? false,
               leading: leading,
@@ -63,22 +64,19 @@ class MainScaffold extends StatelessWidget {
           : null,
       body: Container(color: bg, child: body),
       bottomNavigationBar: showBottomNavAndFab
-          ? BottomAppBar(
-              shape: AutomaticNotchedShape(
-                const RoundedRectangleBorder(), // host
-                ContinuousRectangleBorder(
-                  borderRadius: BorderRadius.circular(22), // guest (FAB)
-                ),
+          ? DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(
+                border: Border(
+                    top: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                )),
               ),
-              notchMargin: 10,
-              elevation: 8,
-              color: bg.withValues(alpha: 0.96),
-              child: const HorizontalDrawerNav(centerGapWidth: 96),
+              child: const HorizontalDrawerNav(),
             )
           : null,
-      floatingActionButtonLocation: showBottomNavAndFab
-          ? FloatingActionButtonLocation.centerDocked
-          : null,
+      floatingActionButtonLocation:
+          showBottomNavAndFab ? FloatingActionButtonLocation.endFloat : null,
       floatingActionButton: showBottomNavAndFab ? const ContextualFab() : null,
     );
   }

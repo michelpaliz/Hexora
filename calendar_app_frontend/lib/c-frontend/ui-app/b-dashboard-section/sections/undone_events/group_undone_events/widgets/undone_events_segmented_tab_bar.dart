@@ -1,66 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
-import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
-import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 class UndoneEventsSegmentedTabBar extends StatelessWidget {
   const UndoneEventsSegmentedTabBar({super.key});
 
+  static double height(BuildContext context) =>
+      32 + MediaQuery.textScalerOf(context).scale(36);
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final loc = AppLocalizations.of(context)!;
-
-    return Consumer<GroupUndoneEventsViewModel>(
-      builder: (context, vm, _) {
-        final pendingLabel =
-            '${loc.statusPending} · ${vm.pendingEvents.length}';
-        final completedLabel =
-            '${loc.completedEventsSectionTitle} · ${vm.completedEvents.length}';
-
-        final trackBg = ThemeColors.cardBg(context);
-        final selectedText = ThemeColors.contrastOn(cs.primary);
-        final unselectedText =
-            ThemeColors.textPrimary(context).withOpacity(0.7);
-
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: trackBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.onSurface.withOpacity(0.06)),
-            ),
-            child: TabBar(
-              tabs: [
-                Tab(text: pendingLabel),
-                Tab(text: completedLabel),
-              ],
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              labelColor: selectedText,
-              unselectedLabelColor: unselectedText,
-              labelStyle: t.bodySmall.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: .2,
-              ),
-              unselectedLabelStyle: t.bodySmall.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: .2,
-              ),
-              indicator: BoxDecoration(
-                color: cs.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              splashBorderRadius: BorderRadius.circular(10),
-            ),
-          ),
+    final vm = context.watch<GroupUndoneEventsViewModel>();
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    Widget tab(String label, int count) => Tab(
+          height: height(context) - 20,
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text('$count', style: const TextStyle(fontSize: 12)),
+          ]),
         );
-      },
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(14)),
+        child: TabBar(
+          padding: const EdgeInsets.all(2),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+          tabs: [
+            tab(es ? 'Pendientes' : 'Pending', vm.pendingEvents.length),
+            tab(es ? 'Completados' : 'Completed', vm.completedEvents.length)
+          ],
+          dividerColor: Colors.transparent,
+          indicatorSize: TabBarIndicatorSize.tab,
+          indicatorPadding: EdgeInsets.zero,
+          labelColor: cs.onPrimary,
+          unselectedLabelColor: cs.onSurfaceVariant,
+          labelStyle:
+              const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          indicator: BoxDecoration(
+              color: cs.primary, borderRadius: BorderRadius.circular(12)),
+          splashBorderRadius: BorderRadius.circular(12),
+        ),
+      ),
     );
   }
 }

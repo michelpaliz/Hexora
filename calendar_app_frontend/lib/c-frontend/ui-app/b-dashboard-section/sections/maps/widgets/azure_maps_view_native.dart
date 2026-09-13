@@ -85,6 +85,9 @@ class _AzureMapsViewState extends State<AzureMapsView> {
           selection: widget.selection,
           userLocation: widget.userLocation,
         ),
+        // Give the local document an HTTPS origin so the Maps SDK can fetch
+        // styles and tiles. Android's default data URL has an opaque origin.
+        baseUrl: 'https://atlas.microsoft.com/',
       );
     _controller = controller;
   }

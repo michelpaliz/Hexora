@@ -89,6 +89,17 @@ class GroupDashboardBodyMember extends StatelessWidget {
                       .openSection(Sections.calendar),
                 ),
               ),
+              Card(
+                color: tileBg,
+                child: ListTile(
+                  leading: const Icon(Icons.view_agenda_outlined),
+                  title: Text(l.agenda, style: tileTitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context
+                      .read<GroupDashboardState>()
+                      .openSection(Sections.agenda),
+                ),
+              ),
               if (!group.hasCalendar) ...[
                 const SizedBox(height: 8),
                 Card(

@@ -69,8 +69,10 @@ class GroupIdentityRow extends StatelessWidget {
               SizedBox(height: dense ? 2 : 4),
               // Precedence: custom widgets > entries (text/icon) > plain texts
               if (metaInlineWidgets != null && metaInlineWidgets!.isNotEmpty)
-                Row(
-                    mainAxisSize: MainAxisSize.min,
+                Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: metaInlineWidgets!)
               else if (metaEntries != null && metaEntries!.isNotEmpty)
                 _MetaTokensLine(
@@ -98,9 +100,13 @@ class _MetaTextsLine extends StatelessWidget {
     final items = <Widget>[];
     for (var i = 0; i < metaTexts.length; i++) {
       items.add(MetaText(text: metaTexts[i]));
-      if (i != metaTexts.length - 1) items.add(const MetaSeparatorDot());
     }
-    return Row(mainAxisSize: MainAxisSize.min, children: items);
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: items,
+    );
   }
 }
 
@@ -119,8 +125,12 @@ class _MetaTokensLine extends StatelessWidget {
       } else if (e.icon != null) {
         items.add(Icon(e.icon!, size: 14, color: iconColor));
       }
-      if (i != entries.length - 1) items.add(const MetaSeparatorDot());
     }
-    return Row(mainAxisSize: MainAxisSize.min, children: items);
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: items,
+    );
   }
 }

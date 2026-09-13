@@ -1,3 +1,7 @@
+import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/b-backend/user/presence_domain.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_manager.dart';
+import 'widget/dashboard_presence_strip.dart';
 // lib/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/group_header_view.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
@@ -56,6 +60,7 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     _gm = context.read<GroupDomain>();
     _ud = context.read<UserDomain>();
     _captureDependencies();
+    _connectPresence();
     _loadMembers();
     _loadClientCount();
     _loadWorkerCount();
@@ -66,10 +71,32 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
   void didUpdateWidget(covariant GroupHeaderView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.group.id != widget.group.id) {
+      _connectPresence();
       _loadMembers();
       _loadClientCount();
       _loadWorkerCount();
       _loadPendingEventsCount();
+    }
+  }
+
+  Future<void> _connectPresence() async {
+    final groupId = widget.group.id;
+    try {
+      final token = await context.read<AuthService>().getToken();
+      if (!mounted || widget.group.id != groupId || token == null) return;
+      final user = _ud.user ?? await _ud.getUser();
+      if (!mounted || widget.group.id != groupId || user == null) return;
+      final socket = SocketManager();
+      context.read<PresenceDomain>().listenToSocket();
+      socket.connect(token);
+      socket.emitUserJoin(
+        userId: user.id,
+        userName: user.userName,
+        groupId: groupId,
+        photoUrl: user.photoUrl,
+      );
+    } catch (error) {
+      debugPrint('Unable to connect dashboard presence: $error');
     }
   }
 
@@ -266,6 +293,7 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     }
 
     return GroupHeaderCard(
+      presenceStrip: DashboardPresenceStrip(group: g),
       photoUrl: g.photoUrl,
       title: g.name,
       description: g.description,

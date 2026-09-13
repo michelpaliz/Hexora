@@ -1,5 +1,6 @@
 // lib/f-themes/shape/gradients/gradient_surface.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/context_colors/define_themes/mobile_theme.dart';
 
 /// Reusable rounded gradient “surface” with optional border, padding, and margin.
 /// Now defaults to **neutral greys** for an easy-on-the-eyes background.
@@ -61,6 +62,9 @@ class GradientSurface extends StatelessWidget {
         isDark ? cs.surface.withOpacity(0.32) : cs.surface.withOpacity(0.80);
 
     final resolvedColors = colors ??
+        (MobileTheme.isActive(context) && useNeutral
+            ? [cs.surfaceContainerLow, cs.surfaceContainerLow]
+            : null) ??
         (useNeutral
             ? <Color>[neutralStart, neutralEnd]
             : <Color>[

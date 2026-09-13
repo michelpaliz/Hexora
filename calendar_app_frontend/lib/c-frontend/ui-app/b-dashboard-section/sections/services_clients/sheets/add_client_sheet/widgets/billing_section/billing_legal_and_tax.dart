@@ -25,6 +25,7 @@ class BillingLegalAndTax extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final typo = AppTypography.of(context);
+    final fieldFontSize = MediaQuery.sizeOf(context).width < 600 ? 16.0 : 13.0;
 
     return Column(
       children: [
@@ -34,7 +35,7 @@ class BillingLegalAndTax extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingLegalName,
-            style: typo.bodySmall.copyWith(fontSize: 13),
+            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
@@ -47,16 +48,13 @@ class BillingLegalAndTax extends StatelessWidget {
             ),
             onChanged: (_) => onFieldChanged(),
             validator: (v) {
-              if (!requireBilling ||
-                  !c.isBillingRequired('billingLegalName')) {
+              if (!requireBilling || !c.isBillingRequired('billingLegalName')) {
                 return null;
               }
               if (!c.shouldShowError('billingLegalName', showValidation)) {
                 return null;
               }
-              return (v == null || v.trim().isEmpty)
-                  ? l.fieldIsRequired
-                  : null;
+              return (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null;
             },
           ),
         ),
@@ -67,7 +65,7 @@ class BillingLegalAndTax extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingTaxId,
-            style: typo.bodySmall.copyWith(fontSize: 13),
+            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
@@ -80,16 +78,13 @@ class BillingLegalAndTax extends StatelessWidget {
             ),
             onChanged: (_) => onFieldChanged(),
             validator: (v) {
-              if (!requireBilling ||
-                  !c.isBillingRequired('billingTaxId')) {
+              if (!requireBilling || !c.isBillingRequired('billingTaxId')) {
                 return null;
               }
               if (!c.shouldShowError('billingTaxId', showValidation)) {
                 return null;
               }
-              return (v == null || v.trim().isEmpty)
-                  ? l.fieldIsRequired
-                  : null;
+              return (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null;
             },
           ),
         ),

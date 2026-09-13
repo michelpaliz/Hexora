@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/insights_chat_fab.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -17,7 +18,8 @@ class BottomBar extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(color: state.backdrop),
       child: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(12, 6, 12, 22),
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Row(
           children: [
             Expanded(
@@ -28,10 +30,21 @@ class BottomBar extends StatelessWidget {
                       onPressed: compose,
                     )
                   : FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48)),
                       icon: const Icon(Icons.calendar_month_rounded),
                       label: Text(l.goToCalendar),
                       onPressed: () => state.openSection('calendar'),
                     ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: InsightsChatFab(
+                groupId: state.group.id,
+                heroTag: 'group-dashboard-insights-chat-fab',
+              ),
             ),
           ],
         ),

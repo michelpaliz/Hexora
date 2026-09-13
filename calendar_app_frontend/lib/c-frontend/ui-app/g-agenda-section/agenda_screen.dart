@@ -1,5 +1,4 @@
-import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
-import 'package:hexora/b-backend/group_mng_flow/event/resolver/event_group_resolver.dart';
+import 'package:hexora/e-drawer-style-menu/contextual_fab/contextual_fab.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/agenda/agenda_model.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
@@ -8,7 +7,6 @@ import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_agenda_domain.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
-import 'package:hexora/c-frontend/ui-app/g-agenda-section/sections/agenda_filters_section.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/sections/agenda_header_section.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/sections/agenda_list_section.dart';
 import 'package:hexora/c-frontend/ui-app/g-agenda-section/widgets/agenda_sliver.dart';
@@ -24,8 +22,16 @@ import 'home_agenda_loader.dart';
 class AgendaScreen extends StatefulWidget {
   final String? groupId;
   final bool showBottomNav;
+  final bool embedded;
+  final String? groupName;
 
-  const AgendaScreen({super.key, this.groupId, this.showBottomNav = true});
+  const AgendaScreen({
+    super.key,
+    this.groupId,
+    this.groupName,
+    this.showBottomNav = false,
+    this.embedded = false,
+  });
 
   @override
   State<AgendaScreen> createState() => _AgendaScreenState();
@@ -37,23 +43,21 @@ class _AgendaScreenState extends State<AgendaScreen> {
   List<AgendaItem> _items = [];
   int _daysRange = 14;
 
-  String _category = 'all';
-  String _type = 'all';
-
-  bool get _showCategories => _type == 'simple';
-
-  bool _isWorkToken(String v) {
-    final t = v.toLowerCase();
-    return t == 'work_service' || t == 'work_visit';
-  }
-
-  bool _isWorkEvent(AgendaItem it) => _isWorkToken(it.event.type);
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAgenda());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadAgenda();
+    });
   }
+
+  @override
+  void didUpdateWidget(covariant AgendaScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.groupId != widget.groupId) _loadAgenda();
+  }
+
+  int _loadGeneration = 0;
 
   String? _resolveGroupId() {
     final explicit = widget.groupId;
@@ -67,8 +71,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
   }
 
   Future<void> _loadAgenda() async {
-    final gid = _resolveGroupId();
     if (!mounted) return;
+    final generation = ++_loadGeneration;
+    final gid = _resolveGroupId();
 
     if (gid == null || gid.isEmpty) {
       setState(() {
@@ -84,17 +89,15 @@ class _AgendaScreenState extends State<AgendaScreen> {
       final agenda = context.read<UserAgendaDomain>();
       final List<Event> events = await HomeAgendaLoader(
         agenda: agenda,
-        events: context.read<IEventRepository>(),
-        resolver: context.read<GroupEventResolver>(),
       ).load(groupId: gid, days: _daysRange);
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _items = buildAgendaItems(events, Theme.of(context));
         _error = null;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -102,43 +105,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
-  List<AgendaItem> _applyAllFilters(List<AgendaItem> all) {
-    Iterable<AgendaItem> out = all;
-    final gid = _resolveGroupId();
-
-    if (gid != null && gid.isNotEmpty) {
-      out = out.where((it) => it.event.groupId == gid);
-    }
-
-    if (_type == 'simple') {
-      final token = _category.toLowerCase();
-      if (token != 'all') {
-        if (token.startsWith('cat:')) {
-          final id = token.substring(4);
-          out = out
-              .where((it) => (it.event.categoryId ?? '').toLowerCase() == id);
-        } else if (token.startsWith('sub:')) {
-          final id = token.substring(4);
-          out = out.where(
-              (it) => (it.event.subcategoryId ?? '').toLowerCase() == id);
-        } else {
-          out = const <AgendaItem>[];
-        }
-      }
-    }
-
-    if (_type == 'simple') {
-      out = out.where((it) => it.event.type.toLowerCase() == 'simple');
-    } else if (_isWorkToken(_type)) {
-      out = out.where(_isWorkEvent);
-    }
-
-    return out.toList();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final filtered = _applyAllFilters(_items);
+    final filtered = _items;
     final gid = _resolveGroupId();
     final loc = AppLocalizations.of(context)!;
     final isDesktop = MediaQuery.of(context).size.width >= 900;
@@ -207,24 +176,33 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   ),
                 ),
               ),
-            AgendaFiltersSection(
-              category: _category,
-              type: _type,
-              showCategories: _showCategories,
-              onCategoryChanged: (c) => setState(() => _category = c),
-              onTypeChanged: (t) => setState(() {
-                _type = t;
-                if (_type != 'simple') _category = 'all';
-              }),
-            ),
             AgendaListSection(filteredItems: filtered),
           ],
         ),
       );
     }
 
+    if (widget.embedded) return body;
+
+    if (!widget.showBottomNav) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.groupName == null
+              ? loc.agenda
+              : '${loc.agenda} · ${widget.groupName}'),
+          leading: const BackButton(),
+        ),
+        body: SafeArea(top: false, child: body),
+        floatingActionButton: const ContextualFab(),
+      );
+    }
+
     return MainScaffold(
-      showAppBar: false,
+      title: widget.groupName == null
+          ? loc.agenda
+          : '${loc.agenda} · ${widget.groupName}',
+      leading: const BackButton(),
+      showAppBar: true,
       showBottomNavAndFab: widget.showBottomNav,
       body: body,
     );
@@ -278,8 +256,7 @@ class _AgendaDesktopLayoutState extends State<_AgendaDesktopLayout> {
   List<_DayBucket> _buildBuckets() {
     final now = DateTime.now();
     final today = _normalize(now);
-    final firstIndex =
-        MaterialLocalizations.of(context).firstDayOfWeekIndex;
+    final firstIndex = MaterialLocalizations.of(context).firstDayOfWeekIndex;
     final firstDow = (firstIndex == 0) ? 7 : firstIndex;
     final back = (today.weekday - firstDow + 7) % 7;
     final start = today.subtract(Duration(days: back));
@@ -330,8 +307,7 @@ class _AgendaDesktopLayoutState extends State<_AgendaDesktopLayout> {
           onToggleDays: widget.onToggleDays,
           onRefresh: widget.onRefresh,
         ),
-        Divider(
-            height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
 
         // ── Three panels ──────────────────────────────────────────────────
         Expanded(
@@ -349,8 +325,7 @@ class _AgendaDesktopLayoutState extends State<_AgendaDesktopLayout> {
               ),
 
               VerticalDivider(
-                  width: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.3)),
+                  width: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
 
               // Middle: events for the selected day
               Expanded(
@@ -360,9 +335,7 @@ class _AgendaDesktopLayoutState extends State<_AgendaDesktopLayout> {
                   selectedItemId: _selectedItem?.event.id,
                   onEventTap: (item) => setState(() {
                     _selectedItem =
-                        _selectedItem?.event.id == item.event.id
-                            ? null
-                            : item;
+                        _selectedItem?.event.id == item.event.id ? null : item;
                   }),
                 ),
               ),
@@ -377,8 +350,7 @@ class _AgendaDesktopLayoutState extends State<_AgendaDesktopLayout> {
                         children: [
                           VerticalDivider(
                               width: 1,
-                              color: cs.outlineVariant
-                                  .withValues(alpha: 0.3)),
+                              color: cs.outlineVariant.withValues(alpha: 0.3)),
                           SizedBox(
                             width: 300,
                             child: _EventDetailPanel(
@@ -431,14 +403,13 @@ class _DesktopTopBar extends StatelessWidget {
         children: [
           // Avatar
           ValueListenableBuilder<User?>(
-            valueListenable:
-                context.read<UserDomain>().currentUserNotifier,
+            valueListenable: context.read<UserDomain>().currentUserNotifier,
             builder: (_, user, __) => user == null
                 ? CircleAvatar(
                     radius: 18,
                     backgroundColor: cs.surfaceContainerHighest,
-                    child:
-                        Icon(Icons.person, size: 18, color: cs.onSurfaceVariant),
+                    child: Icon(Icons.person,
+                        size: 18, color: cs.onSurfaceVariant),
                   )
                 : UserAvatar(
                     user: user,
@@ -502,16 +473,22 @@ class _DesktopTopBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
               borderRadius: BorderRadius.circular(9),
-              border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.4)),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
             ),
             padding: const EdgeInsets.all(2),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _Seg(label: '14d', active: !is30, cs: cs,
+                _Seg(
+                    label: '14d',
+                    active: !is30,
+                    cs: cs,
                     onTap: is30 ? onToggleDays : null),
-                _Seg(label: '30d', active: is30, cs: cs,
+                _Seg(
+                    label: '30d',
+                    active: is30,
+                    cs: cs,
                     onTap: !is30 ? onToggleDays : null),
               ],
             ),
@@ -609,8 +586,7 @@ class _VerticalDayStrip extends StatelessWidget {
                 .format(b.date)
                 .toUpperCase()
                 .substring(0, 3);
-            final dayNum =
-                DateFormat.d(locale).format(b.date);
+            final dayNum = DateFormat.d(locale).format(b.date);
             final hasEvents = b.count > 0;
 
             final bg = isSelected
@@ -636,14 +612,13 @@ class _VerticalDayStrip extends StatelessWidget {
                 onTap: () => onDaySelected(b.date),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 8, horizontal: 6),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                   decoration: BoxDecoration(
                     color: bg,
                     borderRadius: BorderRadius.circular(12),
                     border: b.isToday && !isSelected
-                        ? Border.all(
-                            color: cs.primary.withValues(alpha: 0.4))
+                        ? Border.all(color: cs.primary.withValues(alpha: 0.4))
                         : null,
                   ),
                   child: Row(
@@ -693,8 +668,8 @@ class _VerticalDayStrip extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                               color: isSelected
                                   ? cs.onPrimary
-                                  : cs.primary.withValues(
-                                      alpha: b.isPast ? 0.5 : 1.0),
+                                  : cs.primary
+                                      .withValues(alpha: b.isPast ? 0.5 : 1.0),
                             ),
                           ),
                         )
@@ -746,9 +721,8 @@ class _DayEventsPanel extends StatelessWidget {
     final locale = Localizations.localeOf(context).toString();
 
     final now = DateTime.now();
-    final isToday = date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day;
+    final isToday =
+        date.year == now.year && date.month == now.month && date.day == now.day;
     final isTomorrow = date.year == now.add(const Duration(days: 1)).year &&
         date.month == now.add(const Duration(days: 1)).month &&
         date.day == now.add(const Duration(days: 1)).day;
@@ -767,16 +741,16 @@ class _DayEventsPanel extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(
-                  color: cs.outlineVariant.withValues(alpha: 0.25)),
+              bottom:
+                  BorderSide(color: cs.outlineVariant.withValues(alpha: 0.25)),
             ),
           ),
           child: Row(
             children: [
               if (isToday)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: cs.primary,
                     borderRadius: BorderRadius.circular(999),
@@ -802,11 +776,10 @@ class _DayEventsPanel extends StatelessWidget {
               const Spacer(),
               if (events.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest
-                        .withValues(alpha: 0.6),
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -848,8 +821,7 @@ class _DayEventsPanel extends StatelessWidget {
                   itemCount: events.length,
                   itemBuilder: (_, i) {
                     final item = events[i];
-                    final isSelected =
-                        item.event.id == selectedItemId;
+                    final isSelected = item.event.id == selectedItemId;
                     return _SelectableEventTile(
                       item: item,
                       isSelected: isSelected,
@@ -945,9 +917,7 @@ class _EventDetailPanel extends StatelessWidget {
         ? (isEs ? 'Todo el día' : 'All day')
         : '${ml.formatTimeOfDay(TimeOfDay.fromDateTime(start), alwaysUse24HourFormat: true)} – ${ml.formatTimeOfDay(TimeOfDay.fromDateTime(end), alwaysUse24HourFormat: true)}';
 
-    final duration = e.allDay
-        ? null
-        : _fmtDuration(end.difference(start));
+    final duration = e.allDay ? null : _fmtDuration(end.difference(start));
 
     final dateStr = DateFormat.MMMMEEEEd(locale).format(start);
     final location = (e.localization ?? '').trim();
@@ -965,8 +935,8 @@ class _EventDetailPanel extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 12, 8, 10),
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(
-                  color: cs.outlineVariant.withValues(alpha: 0.25)),
+              bottom:
+                  BorderSide(color: cs.outlineVariant.withValues(alpha: 0.25)),
             ),
           ),
           child: Row(
@@ -974,8 +944,7 @@ class _EventDetailPanel extends StatelessWidget {
               Container(
                 width: 8,
                 height: 8,
-                decoration: BoxDecoration(
-                    color: color, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -1027,9 +996,8 @@ class _EventDetailPanel extends StatelessWidget {
                             color: isDone
                                 ? cs.onSurface.withValues(alpha: 0.45)
                                 : cs.onSurface,
-                            decoration: isDone
-                                ? TextDecoration.lineThrough
-                                : null,
+                            decoration:
+                                isDone ? TextDecoration.lineThrough : null,
                             decorationColor:
                                 cs.onSurface.withValues(alpha: 0.45),
                             fontSize: 16,
@@ -1046,8 +1014,8 @@ class _EventDetailPanel extends StatelessWidget {
                 if (isDone)
                   Container(
                     margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: cs.secondaryContainer,
                       borderRadius: BorderRadius.circular(999),
@@ -1080,9 +1048,8 @@ class _EventDetailPanel extends StatelessWidget {
                 _MetaRow(
                   icon: Icons.schedule_outlined,
                   color: color,
-                  label: duration != null
-                      ? '$timeRange  ·  $duration'
-                      : timeRange,
+                  label:
+                      duration != null ? '$timeRange  ·  $duration' : timeRange,
                 ),
                 if (location.isNotEmpty) ...[
                   const SizedBox(height: 6),
@@ -1104,13 +1071,12 @@ class _EventDetailPanel extends StatelessWidget {
                 // Type badge
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(999),
-                    border:
-                        Border.all(color: color.withValues(alpha: 0.3)),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1132,8 +1098,7 @@ class _EventDetailPanel extends StatelessWidget {
                 // Description
                 if (description.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Divider(
-                      color: cs.outlineVariant.withValues(alpha: 0.3)),
+                  Divider(color: cs.outlineVariant.withValues(alpha: 0.3)),
                   const SizedBox(height: 10),
                   Text(
                     description,

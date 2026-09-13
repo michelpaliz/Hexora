@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
@@ -8,7 +9,6 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/graphs/enu
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/graphs/sections/bar/insights_bar_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/graphs/sections/filter/insights_filter_section.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/graphs/sections/past_hint/insights_past_hint.dart';
-import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -25,6 +25,7 @@ class GroupInsightsScreen extends StatefulWidget {
 
 class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
   bool _loading = true;
+  int _loadRevision = 0;
   String? _error;
 
   RangePreset _preset = RangePreset.m3;
@@ -58,6 +59,8 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
       DateTime(d.year, d.month, d.day).add(const Duration(days: 1));
 
   Future<void> _load() async {
+    if (!mounted) return;
+    final revision = ++_loadRevision;
     setState(() {
       _loading = true;
       _error = null;
@@ -105,6 +108,7 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
           s.id: (s.name?.trim().isNotEmpty == true ? s.name!.trim() : s.id),
       };
 
+      if (!mounted || revision != _loadRevision) return;
       setState(() {
         _events = onlyThisGroup;
         _clientNames = clientNames;
@@ -112,6 +116,7 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
         _loading = false;
       });
     } catch (e) {
+      if (!mounted || revision != _loadRevision) return;
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -160,7 +165,8 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
       final end = (e.endDate).toLocal();
 
       final s = start.isBefore(range.start) ? range.start : start;
-      final en = end.isAfter(range.end) ? range.end : end;
+      final rangeEnd = _endExclusive(range.end);
+      final en = end.isAfter(rangeEnd) ? rangeEnd : end;
       if (!en.isAfter(s)) continue;
 
       final minutes = en.difference(s).inMinutes;
@@ -182,6 +188,7 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
       initialDateRange: _resolveRange(DateTime.now()),
       helpText: l.dateRangeCustom,
     );
+    if (!mounted) return;
     if (picked != null) {
       setState(() {
         _preset = RangePreset.custom;
@@ -201,7 +208,6 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
 
     final range = _resolveRange(DateTime.now());
     final minutesById = _aggregateMinutes(_dimension, range);
@@ -210,16 +216,11 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
     final rangeText = '${df.format(range.start)} – ${df.format(range.end)}';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          l.insightsTitle,
-          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
-        ),
-        backgroundColor: cs.surface,
-        iconTheme: IconThemeData(color: cs.onSurface),
+      appBar: SectionAppBar(
+        title: l.insightsTitle,
         actions: [
           IconButton(
-            onPressed: _load,
+            onPressed: _loading ? null : _load,
             icon: const Icon(Icons.refresh_rounded),
             tooltip: l.refresh,
           ),
@@ -229,56 +230,82 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(
-                  child: Text(
-                    _error!,
-                    style: typo.bodySmall.copyWith(color: cs.error),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.cloud_off_outlined, color: cs.error, size: 32),
+                      const SizedBox(height: 12),
+                      Text(
+                          l.localeName.startsWith('es')
+                              ? 'No se pudo cargar el informe.'
+                              : 'Unable to load the report.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyLarge),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                          onPressed: _load,
+                          icon: const Icon(Icons.refresh),
+                          label: Text(l.refresh)),
+                    ]),
                   ),
                 )
               : LayoutBuilder(
                   builder: (context, constraints) {
                     final isMobile = constraints.maxWidth < 700;
                     final hPad = isMobile ? 12.0 : 16.0;
-                    return ListView(
-                      padding: EdgeInsets.fromLTRB(hPad, 10, hPad, 24),
-                      children: [
-                        // BIG TABS (Clients / Services)
-                        DimensionTabs(
-                          value: _dimension,
-                          onChanged: (d) => setState(() => _dimension = d),
-                        ),
-                        SizedBox(height: isMobile ? 10 : 12),
+                    return SafeArea(
+                        top: false,
+                        child: RefreshIndicator(
+                            onRefresh: _load,
+                            child: ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.fromLTRB(hPad, 10, hPad, 24),
+                              children: [
+                                Text(l.insightsSubtitle,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.copyWith(color: cs.onSurfaceVariant)),
+                                const SizedBox(height: 16),
+                                // BIG TABS (Clients / Services)
+                                DimensionTabs(
+                                  value: _dimension,
+                                  onChanged: (d) =>
+                                      setState(() => _dimension = d),
+                                ),
+                                SizedBox(height: isMobile ? 10 : 12),
 
-                        // PERIOD CARD (chips + date)
-                        InsightsFiltersSection(
-                          preset: _preset,
-                          onPresetChanged: (p) {
-                            setState(() => _preset = p);
-                            _load();
-                          },
-                          onPickCustom: () => _pickCustomRange(context),
-                          rangeText: rangeText,
-                        ),
+                                // PERIOD CARD (chips + date)
+                                InsightsFiltersSection(
+                                  preset: _preset,
+                                  onPresetChanged: (p) {
+                                    setState(() => _preset = p);
+                                    _load();
+                                  },
+                                  onPickCustom: () => _pickCustomRange(context),
+                                  rangeText: rangeText,
+                                ),
 
-                        SizedBox(height: isMobile ? 12 : 16),
+                                SizedBox(height: isMobile ? 12 : 16),
 
-                        // BARS
-                        InsightsBarsCard(
-                          title: _dimension == Dimension.clients
-                              ? l.timeByClient
-                              : l.timeByService,
-                          minutesByKey: minutesLabeled,
-                        ),
+                                // BARS
+                                InsightsBarsCard(
+                                  title: _dimension == Dimension.clients
+                                      ? l.timeByClient
+                                      : l.timeByService,
+                                  minutesByKey: minutesLabeled,
+                                ),
 
-                        const SizedBox(height: 24),
+                                const SizedBox(height: 24),
 
-                        if (_preset != RangePreset.custom &&
-                            _resolveRange(DateTime.now())
-                                .start
-                                .isBefore(DateTime.now()) &&
-                            _events.isEmpty)
-                          const InsightsPastDataHint(),
-                      ],
-                    );
+                                if (_preset != RangePreset.custom &&
+                                    _resolveRange(DateTime.now())
+                                        .start
+                                        .isBefore(DateTime.now()) &&
+                                    _events.isEmpty)
+                                  const InsightsPastDataHint(),
+                              ],
+                            )));
                   },
                 ),
     );

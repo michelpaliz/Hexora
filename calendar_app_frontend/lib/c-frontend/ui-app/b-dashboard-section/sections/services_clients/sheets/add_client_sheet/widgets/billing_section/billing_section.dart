@@ -43,9 +43,7 @@ class _BillingSectionState extends State<BillingSection> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.light
-            ? Colors.white
-            : null,
+        color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         boxShadow: Theme.of(context).brightness == Brightness.light
@@ -63,15 +61,16 @@ class _BillingSectionState extends State<BillingSection> {
         onExpansionChanged: (v) => setState(() => c.billingExpanded = v),
         tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
         leading: const Icon(Icons.receipt_long_outlined, size: 20),
-        title: Row(
+        title: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Expanded(
-              child: Text(
-                l.billingDetails,
-                style: typo.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
+            Text(
+              l.billingDetails,
+              style: typo.bodySmall.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
               ),
             ),
             _BillingStatusChip(

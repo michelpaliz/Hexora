@@ -44,6 +44,52 @@ class InsightsFiltersSection extends StatelessWidget {
       }
     }
 
+    if (MediaQuery.sizeOf(context).width < 700) {
+      return Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(l.localeName.startsWith('es') ? 'Periodo' : 'Period',
+                style: tt.titleSmall),
+            DropdownButton<RangePreset>(
+              value: preset,
+              itemHeight: null,
+              isExpanded: true,
+              style: tt.bodyLarge?.copyWith(color: cs.onSurface),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              items: [
+                for (final value in RangePreset.values)
+                  DropdownMenuItem(
+                      value: value, child: Text(labelForPreset(value)))
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                if (value == RangePreset.custom) {
+                  onPickCustom();
+                } else {
+                  onPresetChanged(value);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onPickCustom,
+              icon: const Icon(Icons.edit_calendar_outlined),
+              label: Text(rangeText, textAlign: TextAlign.center),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 48),
+                padding: const EdgeInsets.all(12),
+                textStyle: tt.bodyMedium,
+              ),
+            ),
+          ]),
+        ),
+      );
+    }
+
     final periodLabel = l.localeName.startsWith('es') ? 'Periodo' : 'Period';
     final quickPresets = <RangePreset>[
       RangePreset.d7,
@@ -239,8 +285,8 @@ class InsightsFiltersSection extends StatelessWidget {
                     children: [
                       Text(
                         periodLabel,
-                        style:
-                            tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                        style: tt.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -265,7 +311,8 @@ class InsightsFiltersSection extends StatelessWidget {
                                 vertical: -4,
                               ),
                               padding: const WidgetStatePropertyAll(
-                                EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 6),
                               ),
                               textStyle: WidgetStatePropertyAll(
                                 tt.bodySmall?.copyWith(

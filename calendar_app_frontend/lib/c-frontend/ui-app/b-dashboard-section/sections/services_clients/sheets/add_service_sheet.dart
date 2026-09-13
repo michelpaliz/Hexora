@@ -5,12 +5,31 @@ import 'package:hexora/b-backend/group_mng_flow/business_logic/service/service_a
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
+Future<Service?> showServiceEditor({
+  required BuildContext context,
+  required String groupId,
+  required ServiceApi api,
+  Service? service,
+}) {
+  return Navigator.of(context, rootNavigator: true).push<Service>(
+    MaterialPageRoute(
+      builder: (_) => AddServiceSheet(
+        groupId: groupId,
+        api: api,
+        service: service,
+        fullScreen: true,
+      ),
+    ),
+  );
+}
+
 class AddServiceSheet extends StatefulWidget {
   final String groupId; // used on create
   final ServiceApi api;
   final Service? service; // null = create, non-null = edit
   final ValueChanged<Service>? onSaved;
   final bool closeOnSave;
+  final bool fullScreen;
 
   const AddServiceSheet({
     super.key,
@@ -19,6 +38,7 @@ class AddServiceSheet extends StatefulWidget {
     this.service,
     this.onSaved,
     this.closeOnSave = true,
+    this.fullScreen = false,
   });
 
   @override
@@ -77,6 +97,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final l = AppLocalizations.of(context)!;
     final typo = AppTypography.of(context);
     setState(() => _showValidation = true);
@@ -172,9 +193,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
             ? Icon(Icons.check_circle_rounded, color: cs.secondary)
             : null,
         filled: true,
-        fillColor: isLight
-            ? Colors.white
-            : (isFilled ? cs.primary.withValues(alpha: 0.06) : cs.surface),
+        fillColor: isLight ? Colors.white : cs.surfaceContainerHighest,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
@@ -195,49 +214,72 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
       );
     }
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, pad),
+    final saveButton = SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+        icon: _saving
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.save_outlined),
+        label: Text(
+          _saving ? l.saving : (_isEdit ? l.saveChanges : l.saveService),
+          style: typo.bodySmall.copyWith(
+            color: cs.onPrimary,
+            fontWeight: FontWeight.w700,
+            letterSpacing: .2,
+          ),
+        ),
+        onPressed: _saving ? null : _save,
+      ),
+    );
+    final form = SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: EdgeInsets.fromLTRB(16, 16, 16, widget.fullScreen ? 16 : pad),
       child: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _isEdit
-                        ? Icons.edit_note_rounded
-                        : Icons.design_services_outlined,
-                    color: cs.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _isEdit ? l.editService : l.createService,
-                    style: typo.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: .2,
+            if (!widget.fullScreen) ...[
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    child: Icon(
+                      _isEdit
+                          ? Icons.edit_note_rounded
+                          : Icons.design_services_outlined,
+                      color: cs.primary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.4)),
-            const SizedBox(height: 14),
-
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _isEdit ? l.editService : l.createService,
+                      style: typo.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: .2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Divider(
+                  height: 1, color: cs.outlineVariant.withValues(alpha: 0.4)),
+              const SizedBox(height: 14),
+            ],
             // Name
             Focus(
               onFocusChange: (hasFocus) {
@@ -355,28 +397,39 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
 
             const SizedBox(height: 12),
 
-            // Save button
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                icon: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: Text(
-                  _saving
-                      ? l.saving
-                      : (_isEdit ? l.saveChanges : l.saveService),
-                  style: typo.bodySmall.copyWith(
-                    color: cs.onPrimary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: .2,
-                  ),
+            if (!widget.fullScreen) saveButton,
+          ],
+        ),
+      ),
+    );
+    if (!widget.fullScreen) return form;
+    return Scaffold(
+      appBar: AppBar(title: Text(_isEdit ? l.editService : l.createService)),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 840),
+                  child: form,
                 ),
-                onPressed: _saving ? null : _save,
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: cs.surface,
+                border: Border(top: BorderSide(color: cs.outlineVariant)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Center(
+                heightFactor: 1,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 808),
+                  child: saveButton,
+                ),
               ),
             ),
           ],

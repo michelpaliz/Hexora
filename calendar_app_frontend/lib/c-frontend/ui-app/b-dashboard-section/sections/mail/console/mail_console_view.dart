@@ -36,6 +36,11 @@ class _MailConsoleView extends StatelessWidget {
         state._showTemplateManager;
 
     void mobileBack() {
+      if (state._sendingReply) return;
+      if (state._replyTarget != null) {
+        state._closeReplyComposer();
+        return;
+      }
       state.update(() {
         state._selectedThreadKey = null;
         state._showCompose = false;
@@ -55,7 +60,7 @@ class _MailConsoleView extends StatelessWidget {
             (selectedThread?.messages.firstOrNull?.subject ?? '').trim();
         return msgSubject.isEmpty ? l.mailDetailNoSubject : msgSubject;
       }
-      return '${l.mailConsoleTitle} · ${_folderLabel(state._folder, l)}';
+      return l.mailConsoleTitle;
     }
 
     void openFolderSheet() {
@@ -141,6 +146,7 @@ class _MailConsoleView extends StatelessWidget {
     Widget mobileBody() {
       if (state._showCompose) {
         return MailComposeScreen(
+          groupId: state._currentGroupId(),
           embedded: true,
           onClose: mobileBack,
           onSent: mobileBack,
@@ -260,23 +266,16 @@ class _MailConsoleView extends StatelessWidget {
         if (!didPop) mobileBack();
       },
       child: Scaffold(
-        appBar: AppBar(
-          centerTitle: false,
-          leading: isDetailView
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                  onPressed: mobileBack,
-                )
-              : null,
-          title: Text(
-            appBarTitle(),
-            style:
-                t.bodySmall.copyWith(fontWeight: FontWeight.w700, fontSize: 16),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        appBar: SectionAppBar(
+          title: appBarTitle(),
+          onBack: isDetailView ? mobileBack : null,
           actions: [
             if (!isDetailView) ...[
+              IconButton(
+                icon: const Icon(Icons.folder_outlined),
+                tooltip: l.mailConsoleFoldersTitle,
+                onPressed: openFolderSheet,
+              ),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
                 tooltip: l.refreshAction,
@@ -592,6 +591,7 @@ class _MailConsoleView extends StatelessWidget {
     Widget rightPaneContent() {
       return state._showCompose
           ? MailComposeScreen(
+              groupId: state._currentGroupId(),
               embedded: true,
               onClose: () => state.update(() => state._showCompose = false),
               onSent: () => state.update(() => state._showCompose = false),
@@ -717,7 +717,7 @@ class _MobileThreadList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
+    final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     final threads = threadsState.folder == state._folder
         ? threadsState.threads
@@ -768,8 +768,11 @@ class _MobileThreadList extends StatelessWidget {
       final itemCount = threads.length + (threadsState.loadingMore ? 1 : 0);
 
       return ListView.separated(
+        key: PageStorageKey(state._folder),
         controller: state._threadScroll,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        physics: const AlwaysScrollableScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         itemCount: itemCount,
         separatorBuilder: (_, __) => Divider(
           height: 1,
@@ -789,99 +792,67 @@ class _MobileThreadList extends StatelessWidget {
             );
           }
           final thread = threads[index];
-          return _ThreadRow(
+          return _MobileThreadRow(
             thread: thread,
-            selected: false,
             onTap: _asyncCallback(
-              () => state._selectThread(thread.threadKey),
+              () async {
+                FocusScope.of(context).unfocus();
+                await state._selectThread(thread.threadKey);
+              },
             ),
           );
         },
       );
     }
 
-    return Column(
-      children: [
-        // ── Compact search bar ────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.35),
+    return SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(_folderLabel(state._folder, l),
+                      style: t.titleLarge?.copyWith(
+                          color: cs.onSurface, fontWeight: FontWeight.w700))),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: TextField(
+                controller: state._threadSearchController,
+                style: t.bodyLarge?.copyWith(color: cs.onSurface),
+                decoration: InputDecoration(
+                  hintText: l.mailConsoleSearchPlaceholder,
+                  hintStyle: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: state._threadSearchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: l.mailSearchClear,
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: state._clearThreadSearch),
+                ),
+                textInputAction: TextInputAction.search,
+                onChanged: state._onThreadSearchChanged,
+                onSubmitted: (value) {
+                  FocusScope.of(context).unfocus();
+                  state._onThreadSearchChanged(value);
+                },
               ),
             ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                TextField(
-                  controller: state._threadSearchController,
-                  textAlign: state._threadSearchController.text.isEmpty
-                      ? TextAlign.center
-                      : TextAlign.start,
-                  decoration: InputDecoration(
-                    hintText: l.mailConsoleSearchPlaceholder,
-                    hintStyle: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-                      fontSize: 13,
-                    ),
-                    suffixIcon: threadsState.loading && isSearchActive
-                        ? Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: cs.primary,
-                              ),
-                            ),
-                          )
-                        : (state._threadSearchController.text.trim().isEmpty
-                            ? null
-                            : IconButton(
-                                icon: Icon(Icons.close_rounded,
-                                    size: 16, color: cs.onSurfaceVariant),
-                                onPressed: state._clearThreadSearch,
-                                padding: EdgeInsets.zero,
-                              )),
-                    filled: false,
-                    isDense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 40, vertical: 9),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                  ),
-                  style: t.bodySmall.copyWith(fontSize: 13),
-                  textInputAction: TextInputAction.search,
-                  onChanged: state._onThreadSearchChanged,
-                  onSubmitted: state._onThreadSearchChanged,
-                ),
-                if (state._threadSearchController.text.isEmpty)
-                  Positioned(
-                    left: 14,
-                    child: Icon(
-                      Icons.search_rounded,
-                      size: 17,
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        if (isSearchActive)
-          _ActiveSearchChip(
-            query: activeQuery,
-            onClear: state._clearThreadSearch,
-          ),
-        Expanded(child: threadListContent()),
-      ],
-    );
+            if (threadsState.loading && threads.isNotEmpty)
+              const LinearProgressIndicator(minHeight: 2),
+            if (isSearchActive)
+              _ActiveSearchChip(
+                query: activeQuery,
+                onClear: state._clearThreadSearch,
+              ),
+            Expanded(
+                child: RefreshIndicator(
+                    onRefresh: state._refreshAll, child: threadListContent())),
+          ],
+        ));
   }
 }
 

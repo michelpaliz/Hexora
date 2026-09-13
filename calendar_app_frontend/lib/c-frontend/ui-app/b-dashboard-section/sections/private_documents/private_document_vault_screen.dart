@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/private_document/private_document.dart';
@@ -103,7 +104,8 @@ class _PrivateDocumentVaultScreenState
       groupId: widget.group.id,
     );
     if (created != null && mounted) {
-      showSuccessSnack(context, _isEs ? 'Documento subido' : 'Document uploaded');
+      showSuccessSnack(
+          context, _isEs ? 'Documento subido' : 'Document uploaded');
       _load();
     }
   }
@@ -167,16 +169,9 @@ class _PrivateDocumentVaultScreenState
     );
 
     if (!widget.embedded && isNarrow) {
-      final cs = Theme.of(context).colorScheme;
-      final t = AppTypography.of(context);
       return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            title,
-            style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-          ),
-          backgroundColor: cs.surface,
-          surfaceTintColor: Colors.transparent,
+        appBar: SectionAppBar(
+          title: title,
         ),
         body: body,
       );
@@ -530,20 +525,23 @@ class _DocumentListTile extends StatelessWidget {
                       children: [
                         _Chip(
                           label: isEs
-                              ? PrivateDocumentCategory.labelEs(document.category)
-                              : PrivateDocumentCategory.labelEn(document.category),
+                              ? PrivateDocumentCategory.labelEs(
+                                  document.category)
+                              : PrivateDocumentCategory.labelEn(
+                                  document.category),
                           color: cs.primary,
                         ),
                         _Chip(
                           label: isEs
-                              ? PrivateDocumentReviewStatus.labelEs(document.status)
-                              : PrivateDocumentReviewStatus.labelEn(document.status),
+                              ? PrivateDocumentReviewStatus.labelEs(
+                                  document.status)
+                              : PrivateDocumentReviewStatus.labelEn(
+                                  document.status),
                           color: _statusColor(document.status, cs),
                         ),
                         if (expiryLabel != null)
                           _Chip(
-                            label:
-                                '${isEs ? "Vence" : "Expires"} $expiryLabel',
+                            label: '${isEs ? "Vence" : "Expires"} $expiryLabel',
                             color: document.isExpired
                                 ? cs.error
                                 : document.isExpiringSoon

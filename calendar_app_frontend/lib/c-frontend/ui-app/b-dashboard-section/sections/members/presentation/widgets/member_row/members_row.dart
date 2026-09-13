@@ -97,52 +97,22 @@ class MemberRow extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Line 1: Name + Role chip
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    titleText,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: typo.bodyMedium.copyWith(
-                                      fontWeight: isOwner
-                                          ? FontWeight.w800
-                                          : FontWeight.w600,
-                                      color: onCard,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                ),
-                                if (showRoleChip) ...[
-                                  const SizedBox(width: 8),
-                                  MemberRoleChip(
-                                    role: displayRole,
-                                    hideForAdminLike:
-                                        false, // show for owners too
-                                  ),
-                                ],
-                              ],
-                            ),
-
-                            // Line 2: @username + (optional) status
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                if (user.userName.isNotEmpty)
-                                  Flexible(
-                                    child: UsernameTag(username: user.userName),
-                                  ),
-                                if (!isOwner && user.userName.isNotEmpty)
-                                  const SizedBox(width: 10),
-                                if (!isOwner)
-                                  Flexible(
-                                    child: MemberStatusRow(
-                                      statusToken: ref.statusToken,
-                                    ),
-                                  ),
-                              ],
-                            ),
+                            Text(titleText,
+                                style: typo.bodyMedium.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: onCard)),
+                            if (user.userName.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              UsernameTag(username: user.userName),
+                            ],
+                            const SizedBox(height: 8),
+                            Wrap(spacing: 10, runSpacing: 6, children: [
+                              if (showRoleChip)
+                                MemberRoleChip(
+                                    role: displayRole, hideForAdminLike: false),
+                              if (!isOwner)
+                                MemberStatusRow(statusToken: ref.statusToken),
+                            ]),
                           ],
                         ),
                       ),

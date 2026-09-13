@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -703,7 +704,9 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: Text(_isSpanish ? 'Mapa' : 'Map')),
+      appBar: SectionAppBar(
+        title: _isSpanish ? 'Mapa' : 'Map',
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -805,8 +808,21 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                         child: ChoiceChip(
                           selected: _section == item.section,
                           showCheckmark: false,
-                          avatar: Icon(item.icon, size: 17),
-                          label: Text(item.mobileLabel),
+                          backgroundColor: cs.surfaceContainerLow,
+                          selectedColor: cs.primaryContainer,
+                          avatar: Icon(item.icon,
+                              size: 18,
+                              color: _section == item.section
+                                  ? cs.onPrimaryContainer
+                                  : cs.onSurfaceVariant),
+                          label: Text(item.mobileLabel,
+                              style: TextStyle(
+                                color: _section == item.section
+                                    ? cs.onPrimaryContainer
+                                    : cs.onSurface,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              )),
                           onSelected: (_) => _selectSection(item.section),
                         ),
                       ),

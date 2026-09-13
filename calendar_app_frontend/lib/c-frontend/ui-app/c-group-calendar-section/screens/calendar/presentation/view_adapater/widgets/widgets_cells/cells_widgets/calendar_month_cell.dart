@@ -122,6 +122,57 @@ Widget buildMonthCell({
 
   return LayoutBuilder(
     builder: (context, constraints) {
+      if (MediaQuery.sizeOf(context).width < 700) {
+        final weather = weatherSummary;
+        final showWeather = weather != null &&
+            constraints.maxHeight >=
+                MediaQuery.textScalerOf(context).scale(18) + 26;
+        return Tooltip(
+          message: [
+            if (weather != null) localizeWeatherSummary(l, weather.summary),
+            if (weather != null) weatherTemperatureLabel(weather),
+            if (eventsForDay.isNotEmpty)
+              '${eventsForDay.length} ${l.sectionEvents}',
+          ].join(' · '),
+          child: Container(
+            margin: const EdgeInsets.all(2),
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: isSelected || isToday
+                      ? scheme.primary
+                      : scheme.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child:
+                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text('${date.day}',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: isSelected ? selectedFg : baseFg,
+                      fontWeight: FontWeight.w700)),
+              if (showWeather)
+                Flexible(
+                    child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                            '${weather.emoji} ${weatherTemperatureLabel(weather)}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(color: scheme.onSurfaceVariant)))),
+              if (eventsForDay.isNotEmpty)
+                Container(
+                    margin: const EdgeInsets.only(top: 2),
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                        color: scheme.primary, shape: BoxShape.circle)),
+            ]),
+          ),
+        );
+      }
+
       final isCompact = constraints.maxHeight < 56;
       final isDenseHeight = constraints.maxHeight < 44;
       final showDots = eventsForDay.isNotEmpty && constraints.maxHeight >= 34;

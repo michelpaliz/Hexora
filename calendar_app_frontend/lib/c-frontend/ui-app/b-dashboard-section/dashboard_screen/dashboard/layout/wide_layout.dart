@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/g-agenda-section/agenda_screen.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -66,6 +67,10 @@ class WideLayout extends StatelessWidget {
     final showEnableBankingInline =
         kIsWeb && state.activeSection == 'enableBanking';
     final showTelegramInline = state.activeSection == 'telegram';
+
+    if (state.activeSection == Sections.agenda) {
+      return AgendaScreen(groupId: state.group.id, embedded: true);
+    }
 
     if (showEmailsInline) {
       return const MailConsoleScreen(embedded: true);
@@ -250,6 +255,12 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
         .length;
 
     final sectionItems = [
+      (
+        icon: Icons.view_agenda_outlined,
+        label: l.agenda,
+        section: Sections.agenda,
+        adminOnly: false,
+      ),
       (
         icon: Icons.calendar_month_rounded,
         label: l.calendar,

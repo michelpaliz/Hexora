@@ -107,9 +107,7 @@ class CalendarScreenCoordinator {
     if (token != null) {
       final socket = SocketManager();
       socket.connect(token);
-      socket.on('presence:update', (data) {
-        _presenceManager.updatePresenceList(data);
-      });
+      _presenceManager.listenToSocket();
     } else {
       devtools.log("⚠️ No auth token — sockets not connected.");
     }
@@ -265,7 +263,6 @@ class CalendarScreenCoordinator {
 
   void dispose() {
     _isDisposed = true;
-    SocketManager().off('presence:update');
     _weatherService.dispose();
     calendarUI?.dispose();
   }

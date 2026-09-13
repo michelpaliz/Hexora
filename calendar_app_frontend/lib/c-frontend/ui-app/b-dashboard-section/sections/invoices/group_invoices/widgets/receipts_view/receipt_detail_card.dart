@@ -26,8 +26,11 @@ class ReceiptDetailCard extends StatefulWidget {
   final Future<Uint8List?> Function() onLoadInlinePdf;
   final bool previewInteractive;
 
+  final bool fullPage;
+
   const ReceiptDetailCard({
     super.key,
+    this.fullPage = false,
     required this.receipt,
     required this.client,
     required this.billingProfile,
@@ -55,7 +58,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
   @override
   void initState() {
     super.initState();
-    _loadInlinePreview();
+    if (!widget.fullPage) _loadInlinePreview();
   }
 
   @override
@@ -88,6 +91,22 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
   }
 
   void _openDetailsSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: .82,
+        minChildSize: .4,
+        maxChildSize: .96,
+        builder: (_, scrollCtrl) =>
+            _buildDetailsContent(scrollCtrl: scrollCtrl),
+      ),
+    );
+  }
+
+  Widget _buildDetailsContent({ScrollController? scrollCtrl}) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
@@ -106,201 +125,194 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
         );
     final totalsSubtotal = widget.receipt.subtotal ?? totalsTotal;
 
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: cs.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.82,
-        minChildSize: 0.4,
-        maxChildSize: 0.96,
-        builder: (_, scrollCtrl) => ListView(
-          controller: scrollCtrl,
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
-          children: [
-            // ── Sheet title ────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.receipt_long_outlined,
-                      size: 18,
-                      color: cs.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isEs ? 'Detalles del recibo' : 'Receipt details',
-                          style: t.bodyLarge.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: cs.onSurface,
-                          ),
-                        ),
-                        Text(
-                          widget.receipt.receiptNumber?.trim().isNotEmpty ==
-                                  true
-                              ? widget.receipt.receiptNumber!.trim()
-                              : l.receiptDraftNumberPlaceholder,
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+    return ListView(
+      controller: scrollCtrl,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
+      children: [
+        if (widget.fullPage)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: OutlinedButton.icon(
+              onPressed: widget.onDownloadPdf,
+              icon: const Icon(Icons.download_outlined),
+              label: Text('${l.download} PDF'),
             ),
-
-            // ── Actions ────────────────────────────────────────────────────
-            if (isDraft)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onEdit();
-                    },
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: Text(l.edit),
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onIssue();
-                    },
-                    icon: const Icon(Icons.check_circle_outline, size: 18),
-                    label: Text(l.receiptIssueCta),
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onImportJson();
-                    },
-                    icon: const Icon(Icons.data_object_outlined, size: 18),
-                    label: const Text('Import JSON'),
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onDeleteDraft();
-                    },
-                    icon: Icon(Icons.delete_outline, size: 18, color: cs.error),
-                    label: Text(l.delete, style: TextStyle(color: cs.error)),
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      side: BorderSide(color: cs.error.withValues(alpha: 0.4)),
-                    ),
-                  ),
-                ],
-              )
-            else
-              Row(
-                children: [
-                  FilledButton.tonalIcon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onDownloadPdf();
-                    },
-                    icon: const Icon(Icons.download_outlined, size: 18),
-                    label: Text(l.download),
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                ],
+          ),
+        // ── Sheet title ────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.receipt_long_outlined,
+                  size: 18,
+                  color: cs.primary,
+                ),
               ),
-
-            if (isIssued) ...[
-              const SizedBox(height: 16),
-              _SheetSection(
-                icon: Icons.send_outlined,
-                title: 'Estado de envío',
-                child: _ReceiptDeliveryDetails(receipt: widget.receipt),
-              ),
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: deliveryStatus == 'sent'
-                    ? OutlinedButton.icon(
-                        onPressed: widget.onMarkUnsent == null
-                            ? null
-                            : () {
-                                Navigator.of(context).pop();
-                                widget.onMarkUnsent!();
-                              },
-                        icon: const Icon(Icons.mark_email_unread_outlined),
-                        label: const Text('Marcar como no enviado'),
-                      )
-                    : FilledButton.tonalIcon(
-                        onPressed: widget.onMarkSent == null
-                            ? null
-                            : () {
-                                Navigator.of(context).pop();
-                                widget.onMarkSent!();
-                              },
-                        icon: const Icon(Icons.mark_email_read_outlined),
-                        label: const Text('Marcar como enviado'),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isEs ? 'Detalles del recibo' : 'Receipt details',
+                      style: t.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: cs.onSurface,
                       ),
-              ),
-            ],
-
-            // ── Notes ──────────────────────────────────────────────────────
-            if ((widget.receipt.notes ?? '').trim().isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _SheetSection(
-                icon: Icons.notes_outlined,
-                title: l.invoiceNotesLabel,
-                child: Text(
-                  widget.receipt.notes!.trim(),
-                  style: t.bodyMedium.copyWith(color: cs.onSurface),
+                    ),
+                    Text(
+                      widget.receipt.receiptNumber?.trim().isNotEmpty == true
+                          ? widget.receipt.receiptNumber!.trim()
+                          : l.receiptDraftNumberPlaceholder,
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-
-            // ── Lines ──────────────────────────────────────────────────────
-            const SizedBox(height: 16),
-            _SheetSection(
-              icon: Icons.format_list_numbered_outlined,
-              title: l.receiptLinesTitle,
-              child: _LinesTable(lines: widget.receipt.lines),
-            ),
-
-            // ── Totals ─────────────────────────────────────────────────────
-            const SizedBox(height: 16),
-            _Totals(subtotal: totalsSubtotal, total: totalsTotal),
-          ],
+          ),
         ),
-      ),
+
+        // ── Actions ────────────────────────────────────────────────────
+        if (isDraft)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  if (!widget.fullPage) Navigator.of(context).pop();
+                  widget.onEdit();
+                },
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: Text(l.edit),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  if (!widget.fullPage) Navigator.of(context).pop();
+                  widget.onIssue();
+                },
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: Text(l.receiptIssueCta),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  if (!widget.fullPage) Navigator.of(context).pop();
+                  widget.onImportJson();
+                },
+                icon: const Icon(Icons.data_object_outlined, size: 18),
+                label: const Text('Import JSON'),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  if (!widget.fullPage) Navigator.of(context).pop();
+                  widget.onDeleteDraft();
+                },
+                icon: Icon(Icons.delete_outline, size: 18, color: cs.error),
+                label: Text(l.delete, style: TextStyle(color: cs.error)),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  side: BorderSide(color: cs.error.withValues(alpha: 0.4)),
+                ),
+              ),
+            ],
+          )
+        else if (!widget.fullPage)
+          Row(
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () {
+                  if (!widget.fullPage) Navigator.of(context).pop();
+                  widget.onDownloadPdf();
+                },
+                icon: const Icon(Icons.download_outlined, size: 18),
+                label: Text(l.download),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
+
+        if (isIssued) ...[
+          const SizedBox(height: 16),
+          _SheetSection(
+            icon: Icons.send_outlined,
+            title: 'Estado de envío',
+            child: _ReceiptDeliveryDetails(receipt: widget.receipt),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: deliveryStatus == 'sent'
+                ? OutlinedButton.icon(
+                    onPressed: widget.onMarkUnsent == null
+                        ? null
+                        : () {
+                            if (!widget.fullPage) Navigator.of(context).pop();
+                            widget.onMarkUnsent!();
+                          },
+                    icon: const Icon(Icons.mark_email_unread_outlined),
+                    label: const Text('Marcar como no enviado'),
+                  )
+                : FilledButton.tonalIcon(
+                    onPressed: widget.onMarkSent == null
+                        ? null
+                        : () {
+                            if (!widget.fullPage) Navigator.of(context).pop();
+                            widget.onMarkSent!();
+                          },
+                    icon: const Icon(Icons.mark_email_read_outlined),
+                    label: const Text('Marcar como enviado'),
+                  ),
+          ),
+        ],
+
+        // ── Notes ──────────────────────────────────────────────────────
+        if ((widget.receipt.notes ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _SheetSection(
+            icon: Icons.notes_outlined,
+            title: l.invoiceNotesLabel,
+            child: Text(
+              widget.receipt.notes!.trim(),
+              style: t.bodyMedium.copyWith(color: cs.onSurface),
+            ),
+          ),
+        ],
+
+        // ── Lines ──────────────────────────────────────────────────────
+        const SizedBox(height: 16),
+        _SheetSection(
+          icon: Icons.format_list_numbered_outlined,
+          title: l.receiptLinesTitle,
+          child: _LinesTable(lines: widget.receipt.lines),
+        ),
+
+        // ── Totals ─────────────────────────────────────────────────────
+        const SizedBox(height: 16),
+        _Totals(subtotal: totalsSubtotal, total: totalsTotal),
+      ],
     );
   }
 
@@ -470,6 +482,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.fullPage) return _buildDetailsContent();
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
@@ -763,13 +776,14 @@ class _SheetSection extends StatelessWidget {
               children: [
                 Icon(icon, size: 14, color: cs.onSurfaceVariant),
                 const SizedBox(width: 8),
-                Text(
+                Expanded(
+                    child: Text(
                   title,
                   style: AppTypography.of(context).bodySmall.copyWith(
                         fontWeight: FontWeight.w700,
                         color: cs.onSurfaceVariant,
                       ),
-                ),
+                )),
               ],
             ),
           ),
@@ -889,6 +903,24 @@ class _LinesTable extends StatelessWidget {
       );
     }
 
+    if (MediaQuery.sizeOf(context).width < 760) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (final line in lines)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(line.description.trim().isEmpty ? '—' : line.description),
+              const SizedBox(height: 4),
+              Text(
+                  '${line.quantityWithUnit()} × ${line.unitPrice.toStringAsFixed(2)}'),
+              Text(
+                  '${l.receiptLineTotalLabel}: ${(line.total ?? line.quantity * line.unitPrice).toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+            ]),
+          ),
+      ]);
+    }
     return Column(
       children: [
         Container(

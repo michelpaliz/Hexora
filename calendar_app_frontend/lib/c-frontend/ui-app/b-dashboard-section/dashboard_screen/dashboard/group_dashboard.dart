@@ -33,10 +33,12 @@ class GroupDashboard extends StatelessWidget {
           ),
           bottomNavigationBar:
               state.showBottomBar ? BottomBar(state: state) : null,
-          floatingActionButton: InsightsChatFab(
-            groupId: group.id,
-            heroTag: 'group-dashboard-insights-chat-fab',
-          ),
+          floatingActionButton: state.showBottomBar
+              ? null
+              : InsightsChatFab(
+                  groupId: group.id,
+                  heroTag: 'group-dashboard-insights-chat-fab',
+                ),
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },

@@ -1,3 +1,5 @@
+import 'mobile/workers_mobile_view.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
@@ -346,6 +348,47 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
         (_activeTotals?['totalsByCurrency'] as List?) ?? const [];
     final isMultiCurrency = currency == null || totalsByCurrency.length > 1;
     final entriesCount = (_activeTotals?['entriesCount'] as num?)?.toInt() ?? 0;
+
+    if (MediaQuery.sizeOf(context).width < 760) {
+      final costs = !isMultiCurrency && totalPay != null
+          ? '${_toMoney(totalPay)} $currency'
+          : totalsByCurrency
+              .map((item) =>
+                  '${_toMoney((item['totalPay'] as num?)?.toDouble() ?? 0)} ${item['currency'] ?? ''}')
+              .join(' · ');
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OutlinedButton.icon(
+            onPressed: _activeTotalsLoading ? null : _pickYearMonth,
+            icon: const Icon(Icons.calendar_today_outlined),
+            label: Text(_currentPeriodModeLabel(context),
+                textAlign: TextAlign.center),
+          ),
+          if (_activeTotalsLoading)
+            const LinearProgressIndicator()
+          else if (_activeTotalsError != null)
+            TextButton.icon(
+              onPressed: _reloadActiveWorkersTotals,
+              icon: Icon(Icons.refresh_rounded, color: cs.error),
+              label: Text(isEs ? 'Reintentar cargar resumen' : 'Retry summary',
+                  style: TextStyle(color: cs.error)),
+            )
+          else ...[
+            const SizedBox(height: 8),
+            Text('${isEs ? 'Coste' : 'Cost'}: ${costs.isEmpty ? '—' : costs}',
+                style: t.bodyLarge.copyWith(
+                    color: cs.onSurface, fontWeight: FontWeight.w700)),
+            if (entriesCount > 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                  '${totalHours.toStringAsFixed(1)} h · $activeWorkers ${isEs ? 'trabajadores activos' : 'active workers'}',
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
+            ],
+          ],
+        ],
+      );
+    }
 
     // ── Divider helper ───────────────────────────────────────────────────
     Widget divider() => Container(
@@ -699,8 +742,41 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
+
+    if (MediaQuery.sizeOf(context).width < 760) {
+      final ready = !_loading &&
+          !_pluginDisabled &&
+          _error == null &&
+          _workers.isNotEmpty;
+      final body = ready
+          ? WorkersMobileView(
+              workers: _workers,
+              summary: _buildActiveTotalsCard(context),
+              onRefresh: _load,
+              onAddWorker: _toggling ? null : _addWorker,
+              onRegisterHours: _toggling ? null : _addSharedHours,
+              onAddHours: _addSharedHoursFor,
+              onEdit: (worker) async {
+                final updated =
+                    await _openEditWorkerDialog(context, widget.group, worker);
+                if (!mounted || updated == null) return;
+                _replaceWorkerLocally(updated);
+                await _reloadActiveWorkersTotals();
+              },
+              onOverview: (worker) => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => WorkerMonthlyOverviewScreen(
+                        group: widget.group, worker: worker)),
+              ),
+            )
+          : _buildBodyContent(context);
+      if (widget.embedded) return body;
+      return Scaffold(
+        appBar: SectionAppBar(title: l.timeTrackingTitle),
+        body: body,
+      );
+    }
 
     if (widget.embedded) {
       return Stack(
@@ -716,11 +792,8 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l.timeTrackingTitle,
-            style: t.titleLarge.copyWith(fontWeight: FontWeight.w800)),
-        backgroundColor: cs.surface,
-        iconTheme: IconThemeData(color: cs.inverseSurface),
+      appBar: SectionAppBar(
+        title: l.timeTrackingTitle,
       ),
       body: _buildBodyContent(context),
       floatingActionButton: _buildFabsWidget(context),

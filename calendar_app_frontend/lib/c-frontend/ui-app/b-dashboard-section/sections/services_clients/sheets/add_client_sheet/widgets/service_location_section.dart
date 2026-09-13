@@ -1,3 +1,4 @@
+import 'client_form_fields.dart';
 import 'package:flutter/material.dart';
 
 import '../add_client_controller.dart';
@@ -95,37 +96,28 @@ class ServiceLocationSection extends StatelessWidget {
             },
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: controller.serviceLocationLabel,
-                  onChanged: (_) => onChanged(),
-                  decoration: InputDecoration(
-                    labelText: isSpanish ? 'Etiqueta' : 'Label',
-                    hintText: isSpanish ? 'Entrada principal' : 'Main entrance',
-                    prefixIcon: const Icon(Icons.label_outline_rounded),
-                  ),
+          ClientFormFields(
+              first: TextFormField(
+                controller: controller.serviceLocationLabel,
+                onChanged: (_) => onChanged(),
+                decoration: InputDecoration(
+                  labelText: isSpanish ? 'Etiqueta' : 'Label',
+                  hintText: isSpanish ? 'Entrada principal' : 'Main entrance',
+                  prefixIcon: const Icon(Icons.label_outline_rounded),
                 ),
               ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 150,
-                child: TextFormField(
-                  controller: controller.serviceRadius,
-                  onChanged: (_) => onChanged(),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: isSpanish ? 'Radio' : 'Radius',
-                    suffixText: 'm',
-                    prefixIcon: const Icon(Icons.radar_rounded),
-                  ),
+              second: TextFormField(
+                controller: controller.serviceRadius,
+                onChanged: (_) => onChanged(),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
-              ),
-            ],
-          ),
+                decoration: InputDecoration(
+                  labelText: isSpanish ? 'Radio' : 'Radius',
+                  suffixText: 'm',
+                  prefixIcon: const Icon(Icons.radar_rounded),
+                ),
+              )),
           const SizedBox(height: 8),
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,

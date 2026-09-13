@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/context_colors/define_themes/mobile_theme.dart';
+
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -33,6 +35,7 @@ class StatementsMobileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final mobile = MobileTheme.isActive(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
@@ -51,8 +54,11 @@ class StatementsMobileCard extends StatelessWidget {
         : StatementsShared.entryText(entry, ['amount']);
     final amountValue = StatementsFormatters.parseAmount(amount) ?? 0;
     final isNegative = amountValue < 0;
-    final amountColor =
-        isNegative ? const Color(0xFFC62828) : const Color(0xFF1565C0);
+    final amountColor = mobile
+        ? (isNegative ? cs.error : cs.primary)
+        : isNegative
+            ? const Color(0xFFC62828)
+            : const Color(0xFF1565C0);
 
     List<String> toStringList(dynamic raw) {
       if (raw is List) {
@@ -106,20 +112,31 @@ class StatementsMobileCard extends StatelessWidget {
             ? StatementsFormatters.formatDate(context, date)
             : StatementsFormatters.formatDate(context, valueDate));
 
-    final rowAccent = isNegative ? cs.tertiary : cs.primary;
-    final amountBg = isNegative
-        ? const Color(0xFFC62828).withValues(alpha: isDark ? 0.18 : 0.08)
-        : const Color(0xFF1565C0).withValues(alpha: isDark ? 0.18 : 0.08);
-    final amountBorder = isNegative
-        ? const Color(0xFFC62828).withValues(alpha: isDark ? 0.22 : 0.14)
-        : const Color(0xFF1565C0).withValues(alpha: isDark ? 0.22 : 0.14);
+    final rowAccent = mobile
+        ? amountColor
+        : isNegative
+            ? cs.tertiary
+            : cs.primary;
+    final amountBg = mobile
+        ? (isNegative ? cs.errorContainer : cs.primaryContainer)
+        : isNegative
+            ? const Color(0xFFC62828).withValues(alpha: isDark ? 0.18 : 0.08)
+            : const Color(0xFF1565C0).withValues(alpha: isDark ? 0.18 : 0.08);
+    final amountBorder = mobile
+        ? amountColor.withValues(alpha: 0.18)
+        : isNegative
+            ? const Color(0xFFC62828).withValues(alpha: isDark ? 0.22 : 0.14)
+            : const Color(0xFF1565C0).withValues(alpha: isDark ? 0.22 : 0.14);
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      margin: EdgeInsets.symmetric(
+          horizontal: mobile ? 16 : 12, vertical: mobile ? 6 : 5),
       elevation: 0,
-      color: isDark
-          ? cs.surface
-          : cs.surfaceContainerLowest.withValues(alpha: 0.9),
+      color: mobile
+          ? cs.surfaceContainerLow
+          : isDark
+              ? cs.surface
+              : cs.surfaceContainerLowest.withValues(alpha: 0.9),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
@@ -128,139 +145,164 @@ class StatementsMobileCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 3,
-                height: 46,
-                margin: const EdgeInsets.only(right: 10),
-                decoration: BoxDecoration(
-                  color: rowAccent.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(6),
+          padding: const EdgeInsets.all(12),
+          child: LayoutBuilder(builder: (context, constraints) {
+            final details = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  desc.isEmpty ? l.statementsNoDescription : desc,
+                  maxLines: mobile ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
-                      desc.isEmpty ? l.statementsNoDescription : desc,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
+                      dateDisplay,
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontSize: mobile ? 14 : 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          dateDisplay,
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (hasNoProcede)
-                          _Badge(
-                            label: 'No procede',
-                            bg: cs.tertiaryContainer,
-                            fg: cs.onTertiaryContainer,
-                          )
-                        else if (docNumber.isNotEmpty)
-                          _Badge(
-                            label: docNumber,
-                            bg: cs.primaryContainer,
-                            fg: cs.onPrimaryContainer,
-                          )
-                        else if (isUnlinked)
-                          _Badge(
-                            label: l.statementsUnlinked,
-                            bg: cs.surfaceContainerHighest,
-                            fg: cs.onSurfaceVariant,
-                          ),
-                      ],
-                    ),
+                    if (hasNoProcede)
+                      _Badge(
+                        label: 'No procede',
+                        bg: cs.tertiaryContainer,
+                        fg: cs.onTertiaryContainer,
+                      )
+                    else if (docNumber.isNotEmpty)
+                      _Badge(
+                        label: docNumber,
+                        bg: cs.primaryContainer,
+                        fg: cs.onPrimaryContainer,
+                      )
+                    else if (isUnlinked)
+                      _Badge(
+                        label: l.statementsUnlinked,
+                        bg: cs.surfaceContainerHighest,
+                        fg: cs.onSurfaceVariant,
+                      ),
                   ],
                 ),
+              ],
+            );
+            final amountBadge = Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: amountBg,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: amountBorder),
               ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: amountBg,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: amountBorder),
+              child: Text(
+                StatementsFormatters.formatCurrency(context, amount),
+                style: t.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: amountColor,
+                  fontSize: 14,
+                ),
+              ),
+            );
+            final actions = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Tooltip(
+                  message: hasNotes ? 'Editar nota' : 'Añadir nota',
+                  child: IconButton(
+                    onPressed: entryId.isEmpty || savingNotes
+                        ? null
+                        : () => StatementEntryNotesDialog.show(
+                              context,
+                              controller,
+                              entry,
+                            ),
+                    icon: Icon(
+                      savingNotes
+                          ? Icons.hourglass_top_rounded
+                          : hasNotes
+                              ? Icons.sticky_note_2
+                              : Icons.sticky_note_2_outlined,
+                      size: 17,
                     ),
-                    child: Text(
-                      StatementsFormatters.formatCurrency(context, amount),
-                      style: t.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: amountColor,
-                        fontSize: 14,
-                      ),
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(
+                      minWidth: mobile ? 48 : 28,
+                      minHeight: mobile ? 48 : 28,
+                    ),
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: hasNotes
+                          ? cs.primary
+                          : cs.onSurfaceVariant.withValues(alpha: 0.65),
+                      backgroundColor: hasNotes
+                          ? cs.primary.withValues(alpha: 0.10)
+                          : Colors.transparent,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.55),
+                ),
+              ],
+            );
+            if (mobile) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  details,
+                  const SizedBox(height: 8),
                   Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Tooltip(
-                        message: hasNotes ? 'Editar nota' : 'Añadir nota',
-                        child: IconButton(
-                          onPressed: entryId.isEmpty || savingNotes
-                              ? null
-                              : () => StatementEntryNotesDialog.show(
-                                    context,
-                                    controller,
-                                    entry,
-                                  ),
-                          icon: Icon(
-                            savingNotes
-                                ? Icons.hourglass_top_rounded
-                                : hasNotes
-                                    ? Icons.sticky_note_2
-                                    : Icons.sticky_note_2_outlined,
-                            size: 17,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 28,
-                            minHeight: 28,
-                          ),
-                          style: IconButton.styleFrom(
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            foregroundColor: hasNotes
-                                ? cs.primary
-                                : cs.onSurfaceVariant.withValues(alpha: 0.65),
-                            backgroundColor: hasNotes
-                                ? cs.primary.withValues(alpha: 0.10)
-                                : Colors.transparent,
-                          ),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: amountBadge,
                         ),
                       ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: 18,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.55),
-                      ),
+                      const SizedBox(width: 8),
+                      actions,
                     ],
                   ),
                 ],
-              ),
-            ],
-          ),
+              );
+            }
+            final amountAndActions = Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                amountBadge,
+                const SizedBox(height: 10),
+                actions,
+              ],
+            );
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 3,
+                  height: 46,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    color: rowAccent.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                Expanded(child: details),
+                const SizedBox(width: 8),
+                amountAndActions,
+              ],
+            );
+          }),
         ),
       ),
     );
@@ -292,11 +334,11 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        maxLines: 1,
+        maxLines: MobileTheme.isActive(context) ? 2 : 1,
         overflow: TextOverflow.ellipsis,
         style: t.bodySmall.copyWith(
           color: fg,
-          fontSize: 10,
+          fontSize: MobileTheme.isActive(context) ? 14 : 10,
           fontWeight: FontWeight.w600,
         ),
       ),

@@ -109,6 +109,142 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
     }
   }
 
+  Widget _buildMobile(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final es = l.localeName.startsWith('es');
+    void open(String section) =>
+        context.read<GroupDashboardState>().openSection(section);
+
+    Widget heading(String text) => Padding(
+          padding: const EdgeInsets.only(top: 24, bottom: 10),
+          child: Text(text,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  )),
+        );
+    Widget destination(IconData icon, String title, String section) => ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          leading: Icon(icon, color: cs.primary, size: 22),
+          title: Text(title,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  )),
+          trailing:
+              Icon(Icons.chevron_right, size: 20, color: cs.onSurfaceVariant),
+          onTap: () => open(section),
+        );
+    Widget group(List<Widget> items) => Card(
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          color: cs.surfaceContainerLow,
+          clipBehavior: Clip.antiAlias,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Column(children: [
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0)
+                Divider(
+                    height: 1,
+                    indent: 54,
+                    color: cs.outlineVariant.withValues(alpha: 0.4)),
+              items[i],
+            ],
+          ]),
+        );
+
+    return RefreshIndicator(
+      onRefresh: widget.onRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          GroupHeaderView(group: _group),
+          heading(es ? 'Accesos rápidos' : 'Quick access'),
+          group([
+            destination(Icons.design_services_outlined, l.servicesClientsTitle,
+                Sections.services),
+            destination(Icons.map_outlined,
+                es ? 'Mapa y visitas' : 'Map and visits', Sections.maps),
+          ]),
+          heading(l.sectionEvents),
+          group([
+            destination(Icons.view_agenda_outlined, l.agenda, Sections.agenda),
+          ]),
+          const SizedBox(height: 12),
+          if (!_group.hasCalendar)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child:
+                  Text(l.noCalendarWarning, style: TextStyle(color: cs.error)),
+            ),
+          GroupUndoneEventsSection(
+            group: _group,
+            user: widget.user,
+            role: widget.role,
+            onSeeAll: () => open(Sections.undone),
+          ),
+          const SizedBox(height: 12),
+          GroupUpcomingEventsCard(
+            limit: 3,
+            groupId: _group.id,
+            role: widget.role,
+            currentUserId: widget.user.id,
+          ),
+          const SizedBox(height: 12),
+          group([
+            destination(
+                Icons.insights_outlined, l.insightsTitle, Sections.insights),
+          ]),
+          heading(es ? 'Finanzas y comunicación' : 'Finance and communication'),
+          group([
+            destination(Icons.receipt_long_outlined, l.invoicesNavLabel,
+                Sections.invoices),
+            destination(Icons.account_balance_outlined, l.statementsNavTitle,
+                Sections.enableBanking),
+            destination(Icons.payments_outlined, es ? 'Gastos' : 'Expenses',
+                Sections.expenses),
+            destination(Icons.mail_outline_rounded, l.mailConsoleTitle,
+                Sections.emails),
+          ]),
+          heading(es ? 'Equipo' : 'Team'),
+          group([
+            destination(Icons.group_outlined, l.membersTitle, Sections.members),
+            destination(Icons.access_time_rounded, l.timeTrackingTitle,
+                Sections.workers),
+          ]),
+          const SizedBox(height: 20),
+          Card(
+            margin: EdgeInsets.zero,
+            elevation: 0,
+            color: cs.surfaceContainerLow,
+            child: ExpansionTile(
+              key: const PageStorageKey('group-details'),
+              title: Text(es ? 'Información del grupo' : 'Group information'),
+              leading: const Icon(Icons.info_outline),
+              childrenPadding: const EdgeInsets.all(12),
+              children: [
+                ProfileRoleCard(
+                  user: widget.user,
+                  role: widget.role,
+                  fetchReadSas: widget.fetchReadSas,
+                  onTap: () => open(Sections.profile),
+                ),
+                const SizedBox(height: 12),
+                GroupBusinessHoursCard(
+                  group: _group,
+                  description: l.businessHoursAdminSubtitle,
+                  onTap: () => _editBusinessHours(context),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -124,6 +260,10 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
     final tileBg = ThemeColors.listTileBg(context);
 
     final membersShown = widget.counts?.accepted ?? _group.userIds.length;
+
+    if (MediaQuery.sizeOf(context).width < 700) {
+      return _buildMobile(context);
+    }
 
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
@@ -169,6 +309,17 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                   .openSection(Sections.calendar),
             ),
           ),
+          Card(
+            color: tileBg,
+            child: ListTile(
+              leading: const Icon(Icons.view_agenda_outlined),
+              title: Text(l.agenda, style: tileTitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context
+                  .read<GroupDashboardState>()
+                  .openSection(Sections.agenda),
+            ),
+          ),
           if (!_group.hasCalendar) ...[
             const SizedBox(height: 8),
             Card(
@@ -203,6 +354,18 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                 context.read<GroupDashboardState>().openSection('undone'),
           ),
 
+          const SizedBox(height: 8),
+          Card(
+            color: tileBg,
+            child: ListTile(
+              leading: const Icon(Icons.insights_outlined),
+              title: Text(l.insightsTitle, style: tileTitle),
+              subtitle: Text(l.insightsSubtitle, style: tileSub),
+              onTap: () =>
+                  context.read<GroupDashboardState>().openSection('insights'),
+            ),
+          ),
+
           const SizedBox(height: 20),
           SectionHeader(title: l.sectionManage, textStyle: sectionTitle),
           Card(
@@ -227,6 +390,26 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
               subtitle: Text(l.servicesClientsSubtitle, style: tileSub),
               onTap: () =>
                   context.read<GroupDashboardState>().openSection('services'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            color: tileBg,
+            child: ListTile(
+              leading: const Icon(Icons.map_outlined),
+              title: Text(
+                l.localeName.startsWith('es') ? 'Mapa' : 'Map',
+                style: tileTitle,
+              ),
+              subtitle: Text(
+                l.localeName.startsWith('es')
+                    ? 'Consulta ubicaciones de clientes y visitas'
+                    : 'View client locations and visits',
+                style: tileSub,
+              ),
+              onTap: () => context
+                  .read<GroupDashboardState>()
+                  .openSection(Sections.maps),
             ),
           ),
           const SizedBox(height: 8),
@@ -286,19 +469,6 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
               ),
               onTap: () =>
                   context.read<GroupDashboardState>().openSection('emails'),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-          SectionHeader(title: l.sectionInsights, textStyle: sectionTitle),
-          Card(
-            color: tileBg,
-            child: ListTile(
-              leading: const Icon(Icons.insights_outlined),
-              title: Text(l.insightsTitle, style: tileTitle),
-              subtitle: Text(l.insightsSubtitle, style: tileSub),
-              onTap: () =>
-                  context.read<GroupDashboardState>().openSection('insights'),
             ),
           ),
 

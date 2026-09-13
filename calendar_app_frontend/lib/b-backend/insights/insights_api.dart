@@ -233,7 +233,7 @@ class InsightsApi {
     debugPrint(
       '[InsightsApi][$tag] $method $uri '
       'baseUrl=${ApiConstants.baseUrl} '
-      'origin=${Uri.base.origin} '
+      'origin=${kIsWeb ? Uri.base.origin : 'native'} '
       'crossOrigin=$isCrossOrigin '
       'tokenPresent=$tokenPresent',
     );
@@ -1106,6 +1106,29 @@ class InsightsApi {
         statusCode: 400,
         message: 'Invalid streaming endpoint.',
       );
+    }
+
+    // Native clients use the JSON endpoint, even when the UI selects streaming.
+    // Keep the event interface so replies, actions and timeouts reach callers.
+    if (!kIsWeb) {
+      final result = await chat(
+        endpoint: endpoint == InsightsChatEndpoint.chatAutoStream
+            ? InsightsChatEndpoint.chatAuto
+            : InsightsChatEndpoint.chat,
+        message: message,
+        groupId: groupId,
+        days: days,
+        temperature: temperature,
+        maxTokens: maxTokens,
+        timeoutMs: timeoutMs,
+        extra: extra,
+      );
+      yield InsightsChatStreamEvent(
+        delta: result.text,
+        timeout: result.timeout,
+        raw: result.raw,
+      );
+      return;
     }
 
     final payload = _buildChatPayload(

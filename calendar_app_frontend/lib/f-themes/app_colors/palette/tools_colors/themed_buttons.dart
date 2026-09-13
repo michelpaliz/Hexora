@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/context_colors/define_themes/mobile_theme.dart';
+
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/button/button_styles.dart';
 
@@ -14,6 +16,26 @@ class ThemedButtons {
     ButtonVariant variant = ButtonVariant.primary,
   }) {
     final t = Theme.of(context);
+    if (MobileTheme.isActive(context)) {
+      final cs = t.colorScheme;
+      final danger = variant == ButtonVariant.danger;
+      final primary = variant == ButtonVariant.primary;
+      return ElevatedButton.styleFrom(
+        backgroundColor: danger
+            ? cs.error
+            : primary
+                ? cs.primary
+                : cs.primaryContainer,
+        foregroundColor: danger
+            ? cs.onError
+            : primary
+                ? cs.onPrimary
+                : cs.onPrimaryContainer,
+        minimumSize: const Size(48, 48),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      );
+    }
 
     late final Color bg;
     late final Color bgPressed;
@@ -50,7 +72,7 @@ class ThemedButtons {
         break;
 
       case ButtonVariant.primary:
-      final c = t.brightness == Brightness.dark
+        final c = t.brightness == Brightness.dark
             ? AppDarkColors.primary
             : AppColors.primary;
         bg = c;

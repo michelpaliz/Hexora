@@ -1,7 +1,10 @@
+import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
@@ -30,9 +33,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 part 'console/mail_console_conversation_pane.dart';
+part 'console/mail_console_mobile_conversation.dart';
 part 'console/mail_console_empty_card.dart';
 part 'console/mail_console_left_rail.dart';
 part 'console/mail_console_thread_row.dart';
+part 'console/mail_console_mobile_thread_row.dart';
 part 'console/mail_console_thread_toolbar.dart';
 part 'console/mail_console_utils.dart';
 part 'console/mail_console_view.dart';
@@ -89,6 +94,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   TextEditingController? _replySubjectController;
   final TextEditingController _replyCtrl = TextEditingController();
   MailMessage? _replyTarget;
+  String? _replyDraftMessageId;
   TextEditingController? _threadSearchCtrl;
 
   FocusNode get _replyFocus => _replyFocusNode ??= FocusNode();
@@ -111,6 +117,13 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
 
   bool _sendingReply = false;
   bool _downloadingAttachment = false;
+  int _threadSelectionRevision = 0;
+
+  bool _isCurrentThreadRequest(int revision, String? threadKey) =>
+      mounted &&
+      revision == _threadSelectionRevision &&
+      threadKey == _selectedThreadKey;
+
   Timer? _threadDebounce;
   Timer? _threadSearchDebounce;
 
@@ -156,6 +169,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     _threadScroll.addListener(_onThreadScroll);
     _threadSearchCtrl ??= TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final domain = context.read<MailDomain>();
       final currentQuery = (domain.threadsState.query ?? '').trim();
       if (currentQuery.isNotEmpty) {
@@ -250,14 +264,19 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   }
 
   Future<void> _selectThread(String threadKey) async {
+    if (!mounted) return;
+    final revision = ++_threadSelectionRevision;
     setState(() {
       _showFooterManager = false;
       _showTemplateManager = false;
       _showCompose = false;
       _selectedThreadKey = threadKey;
       _replyTarget = null;
+      _replyDraftMessageId = null;
       _client = null;
       _clientError = null;
+      _loadingClient = false;
+      _loadingInvoices = false;
       _invoices = const [];
       _invoiceError = null;
       _selectedInvoiceId = null;
@@ -265,9 +284,10 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     _replySubjectCtrl.clear();
     _replyCtrl.clear();
     _syncRoute();
+    if (!_isCurrentThreadRequest(revision, threadKey)) return;
     final domain = context.read<MailDomain>();
     await domain.loadThreadDetail(threadKey);
-    if (!mounted) return;
+    if (!_isCurrentThreadRequest(revision, threadKey)) return;
     final detail = domain.threadState(threadKey).thread;
     if (detail != null) {
       _autoMarkLatestRead(detail);
@@ -288,6 +308,9 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   }
 
   Future<void> _loadClientAndInvoices(MailThreadDetail detail) async {
+    if (!mounted) return;
+    final revision = _threadSelectionRevision;
+    final threadKey = _selectedThreadKey;
     final email = _pickCustomerEmail(detail.messages);
     if (email == null || email.isEmpty) {
       setState(() {
@@ -300,6 +323,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       return;
     }
     await _lookupClient(email);
+    if (!_isCurrentThreadRequest(revision, threadKey)) return;
     final clientId = _client?.id;
     if (clientId != null && clientId.isNotEmpty) {
       await _loadInvoices(clientId);
@@ -330,6 +354,9 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   }
 
   Future<void> _lookupClient(String email) async {
+    if (!mounted) return;
+    final revision = _threadSelectionRevision;
+    final threadKey = _selectedThreadKey;
     setState(() {
       _loadingClient = true;
       _clientError = null;
@@ -342,6 +369,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       }
       final uri = _clientsListUri(groupId);
       final r = await AuthenticatedHttpClient.get(uri, client: _http());
+      if (!_isCurrentThreadRequest(revision, threadKey)) return;
       if (r.statusCode < 200 || r.statusCode >= 300) {
         throw Exception(r.body.isNotEmpty ? r.body : r.reasonPhrase);
       }
@@ -367,13 +395,19 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       }
       setState(() => _client = match);
     } catch (e) {
+      if (!_isCurrentThreadRequest(revision, threadKey)) return;
       setState(() => _clientError = e.toString());
     } finally {
-      if (mounted) setState(() => _loadingClient = false);
+      if (_isCurrentThreadRequest(revision, threadKey)) {
+        setState(() => _loadingClient = false);
+      }
     }
   }
 
   Future<void> _loadInvoices(String clientId) async {
+    if (!mounted) return;
+    final revision = _threadSelectionRevision;
+    final threadKey = _selectedThreadKey;
     setState(() {
       _loadingInvoices = true;
       _invoiceError = null;
@@ -381,6 +415,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     try {
       final uri = _invoicesUri(clientId);
       final r = await AuthenticatedHttpClient.get(uri, client: _http());
+      if (!_isCurrentThreadRequest(revision, threadKey)) return;
       if (r.statusCode < 200 || r.statusCode >= 300) {
         throw Exception(r.body.isNotEmpty ? r.body : r.reasonPhrase);
       }
@@ -402,9 +437,12 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
         _selectedInvoiceId = nextSelected;
       });
     } catch (e) {
+      if (!_isCurrentThreadRequest(revision, threadKey)) return;
       setState(() => _invoiceError = e.toString());
     } finally {
-      if (mounted) setState(() => _loadingInvoices = false);
+      if (_isCurrentThreadRequest(revision, threadKey)) {
+        setState(() => _loadingInvoices = false);
+      }
     }
   }
 
@@ -474,7 +512,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
 
   void _startReply(MailMessage message) {
     if (_sendingReply) return;
-    if (_replyTarget?.id != message.id) {
+    if (_replyDraftMessageId != message.id) {
       final originalSubject = message.subject.trim();
       _replySubjectCtrl.text = originalSubject.isEmpty ||
               RegExp(r'^re\s*:', caseSensitive: false).hasMatch(originalSubject)
@@ -482,6 +520,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
           : 'Re: $originalSubject';
       _replyCtrl.clear();
     }
+    _replyDraftMessageId = message.id;
     setState(() => _replyTarget = message);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _replyFocus.requestFocus();
@@ -490,8 +529,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
 
   void _closeReplyComposer() {
     if (_sendingReply) return;
-    _replySubjectCtrl.clear();
-    _replyCtrl.clear();
+    _replyFocus.unfocus();
     setState(() => _replyTarget = null);
   }
 
@@ -531,6 +569,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       if (!mounted) return;
       _replySubjectCtrl.clear();
       _replyCtrl.clear();
+      _replyDraftMessageId = null;
       setState(() => _replyTarget = null);
       _toast(l.mailConsoleReplySent);
       if (threadKey != null && _selectedThreadKey == threadKey) {
@@ -1052,7 +1091,9 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   }
 
   void _syncRoute() {
-    if (widget.embedded) return;
+    // Native selection is local state. Replacing this route disposes the
+    // console while its thread/client requests are still in flight.
+    if (!mounted || widget.embedded || !kIsWeb) return;
     final thread = _selectedThreadKey;
     final query = <String, String>{
       'folder': _folder.wireName,
@@ -1073,7 +1114,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     try {
       return context.read<GroupDashboardState>().group.id;
     } catch (_) {
-      return null;
+      return context.read<GroupDomain?>()?.currentGroup?.id;
     }
   }
 
