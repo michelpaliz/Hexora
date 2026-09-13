@@ -35,11 +35,12 @@ class SaveButton extends StatelessWidget {
           style: typo.bodySmall.copyWith(
             color: cs.onPrimary,
             fontWeight: FontWeight.w700,
-            fontSize: 12,
+            fontSize: MediaQuery.sizeOf(context).width < 600 ? 16 : 12,
           ),
         ),
         onPressed: onPressed,
         style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 48),
           padding: const EdgeInsets.symmetric(vertical: 10),
           visualDensity: VisualDensity.compact,
         ),

@@ -3,9 +3,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_event_detail_sheet.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/undone_events/group_undone_events_widgets.dart';
 import 'package:hexora/c-frontend/utils/roles/group_role/group_role.dart';
 import 'package:hexora/c-frontend/viewmodels/group_vm/view_model/group_view_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -17,14 +15,12 @@ class GroupUndoneEventsSection extends StatelessWidget {
     required this.group,
     required this.user,
     required this.role,
-    this.limit = 3,
     this.onSeeAll,
   });
 
   final Group group;
   final User user;
   final GroupRole role;
-  final int limit;
   final VoidCallback? onSeeAll;
 
   @override
@@ -50,7 +46,6 @@ class GroupUndoneEventsSection extends StatelessWidget {
         group: group,
         user: user,
         role: role,
-        limit: limit,
         onSeeAll: onSeeAll,
       ),
     );
@@ -62,134 +57,73 @@ class _GroupUndoneEventsSectionBody extends StatelessWidget {
     required this.group,
     required this.user,
     required this.role,
-    required this.limit,
     this.onSeeAll,
   });
 
   final Group group;
   final User user;
   final GroupRole role;
-  final int limit;
   final VoidCallback? onSeeAll;
 
-  void _openFullList(BuildContext context) {
-    if (onSeeAll != null) {
+  Future<void> _openFullList(BuildContext context) async {
+    if (onSeeAll != null && MediaQuery.sizeOf(context).width >= 900) {
       onSeeAll!();
-    } else {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => GroupUndoneEventsScreen(
-            group: group,
-            user: user,
-            role: role,
-          ),
-        ),
-      );
+      return;
     }
+    final vm = context.read<GroupUndoneEventsViewModel>();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            GroupUndoneEventsScreen(group: group, user: user, role: role),
+      ),
+    );
+    if (context.mounted) await vm.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final color = theme.colorScheme.onSurfaceVariant;
+    final cs = Theme.of(context).colorScheme;
     final vm = context.watch<GroupUndoneEventsViewModel>();
-    final cs = theme.colorScheme;
-
-    // ✅ same background as ProfileRoleCard & GroupUpcomingEventsCard
-    final cardColor = cs.surface;
-
-    final cardShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
-      side: BorderSide(color: cs.outlineVariant.withOpacity(0.35)),
-    );
-    final shadow = Colors.black.withOpacity(
-      theme.brightness == Brightness.dark ? 0.3 : 0.12,
-    );
-
-    Widget styledCard(Widget child) => Card(
-          color: cardColor,
-          surfaceTintColor: Colors.transparent,
-          elevation: 6,
-          shadowColor: shadow,
-          shape: cardShape,
-          child: child,
-        );
-
-    final hasItems = vm.pendingEvents.isNotEmpty;
-    final visibleItems = vm.pendingEvents.take(limit).toList();
-
-    return styledCard(
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.pending_actions_outlined),
-            title: Text(
-              loc.pendingEventsSectionTitle,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: cs.primary, // ðŸ”µ blue title (already good)
-                fontWeight: FontWeight.w800,
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: cs.surfaceContainerLow,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Icon(Icons.pending_actions_outlined, color: cs.primary),
+        title: Text(loc.pendingEventsSectionTitle),
+        subtitle: vm.errorMessage == null ? null : Text(loc.pendingEventsError),
+        onTap: () => _openFullList(context),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (vm.isLoading)
+              const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+            else if (vm.errorMessage != null)
+              IconButton(
+                  onPressed: vm.refresh,
+                  tooltip: loc.tryAgain,
+                  icon: const Icon(Icons.refresh_rounded))
+            else
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(12)),
+                child: Text('${vm.pendingEvents.length}',
+                    style: TextStyle(
+                        color: cs.onPrimaryContainer,
+                        fontWeight: FontWeight.w700)),
               ),
-            ),
-            subtitle: Text(
-              loc.pendingEventsSectionSubtitle,
-              style: theme.textTheme.bodySmall?.copyWith(color: color),
-            ),
-            onTap: () => _openFullList(context),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded),
-                  tooltip: loc.refreshButton,
-                  onPressed: vm.isLoading ? null : vm.refresh,
-                ),
-                const Icon(Icons.chevron_right),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          if (vm.isLoading && !hasItems)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else if (vm.errorMessage != null && !hasItems)
-            UndoneEventsPlaceholder(
-              icon: Icons.warning_amber_outlined,
-              message: vm.errorMessage ?? loc.pendingEventsError,
-              actionLabel: loc.tryAgain,
-              onAction: vm.refresh,
-            )
-          else if (!hasItems)
-            UndoneEventsPlaceholder(
-              icon: Icons.check_circle_outline,
-              message: loc.pendingEventsEmpty,
-            )
-          else ...[
-            if (vm.isLoading) const LinearProgressIndicator(minHeight: 2),
-            ...visibleItems
-                .map(
-                  (event) => PendingEventTile(
-                    event: event,
-                    viewModel: vm,
-                    owner: vm.ownerInfoOf(event.ownerId),
-                    onTap: () => showEventDetailSheet(
-                      context: context,
-                      event: event,
-                      viewModel: vm,
-                      allowMarkComplete: vm.canManageEvent(event),
-                    ),
-                  ),
-                )
-                .toList(),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right),
           ],
-        ],
+        ),
       ),
     );
   }

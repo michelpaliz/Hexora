@@ -48,38 +48,6 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
 
   // ── helpers ─────────────────────────────────────────────────────────────────
 
-  String _monthLabel(DateTime date, bool isSpanish) {
-    const es = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
-    ];
-    const en = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${(isSpanish ? es : en)[date.month - 1]} ${date.year}';
-  }
-
   GroupClient _clientFor(String? clientId, AppLocalizations l) {
     final s = widget.state;
     return s._clients.firstWhere(
@@ -115,20 +83,12 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
   void _openInvoiceDetail(Invoice inv) {
     final l = AppLocalizations.of(context)!;
     final s = widget.state;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.92,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (ctx, scrollController) => InvoiceDetailSheet(
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DocumentDetailPage(
+        title:
+            '${l.localeName.startsWith('es') ? 'Factura' : 'Invoice'} ${inv.invoiceNumber}',
+        child: InvoiceDetailSheet(
+          fullPage: true,
           key: ValueKey(inv.id),
           invoice: inv,
           client: _clientForInvoice(inv, l),
@@ -137,26 +97,17 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
           onInvoiceChanged: s._refreshInvoiceListsOnly,
         ),
       ),
-    );
+    ));
   }
 
   void _openReceiptDetail(Receipt r) {
     final l = AppLocalizations.of(context)!;
     final s = widget.state;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.92,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (ctx, scrollController) => ReceiptDetailCard(
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DocumentDetailPage(
+        title: '${l.receiptsTitle} ${r.receiptNumber ?? ''}',
+        child: ReceiptDetailCard(
+          fullPage: true,
           key: ValueKey(r.id),
           receipt: r,
           client: _clientFor(r.clientId, l),
@@ -187,7 +138,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
           onLoadInlinePdf: () => s._loadReceiptInlinePdfBytes(r),
         ),
       ),
-    );
+    ));
   }
 
   // ── budget helpers ───────────────────────────────────────────────────────
@@ -260,33 +211,153 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     }
   }
 
-  Future<void> _issueBudget(Map<String, dynamic> b) async {
-    try {
-      await _presupuestosApi.issue(_budgetId(b));
-      await _loadBudgets();
-    } catch (_) {}
-  }
+  Future<void> _openBudgetDetail(Map<String, dynamic> budget) async {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    var busy = false;
+    var detailFuture = _presupuestosApi.getById(_budgetId(budget));
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (pageContext) =>
+          StatefulBuilder(builder: (context, setPageState) {
+        return FutureBuilder<Map<String, dynamic>>(
+            future: detailFuture,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return DocumentDetailPage(
+                  title: isEs ? 'Presupuesto' : 'Quote',
+                  child: Center(
+                      child: snapshot.hasError
+                          ? TextButton.icon(
+                              onPressed: () => setPageState(() {
+                                detailFuture =
+                                    _presupuestosApi.getById(_budgetId(budget));
+                              }),
+                              icon: const Icon(Icons.refresh),
+                              label: Text(isEs
+                                  ? 'Reintentar cargar presupuesto'
+                                  : 'Retry loading quote'),
+                            )
+                          : const CircularProgressIndicator()),
+                );
+              }
+              final document = snapshot.data!;
+              Future<void> run(Future<void> Function() action,
+                  {bool close = true}) async {
+                if (busy) return;
+                setPageState(() => busy = true);
+                try {
+                  await action();
+                  if (!context.mounted) return;
+                  if (close) Navigator.of(context).pop();
+                } catch (_) {
+                  if (context.mounted) {
+                    showErrorSnack(
+                        context,
+                        isEs
+                            ? 'No se pudo completar la acción. Inténtalo de nuevo.'
+                            : 'Could not complete the action. Try again.');
+                  }
+                } finally {
+                  if (context.mounted) setPageState(() => busy = false);
+                }
+              }
 
-  Future<void> _deleteBudget(Map<String, dynamic> b) async {
-    try {
-      await _presupuestosApi.remove(_budgetId(b));
-      await _loadBudgets();
-    } catch (_) {}
-  }
-
-  Future<void> _convertBudgetToInvoice(Map<String, dynamic> b) async {
-    try {
-      await _presupuestosApi.convertToInvoice(_budgetId(b));
-      await _loadBudgets();
-      await widget.state._refreshInvoiceListsOnly();
-    } catch (_) {}
+              final lines = document['lines'] is List
+                  ? document['lines'] as List
+                  : const [];
+              return DocumentDetailPage(
+                title:
+                    '${isEs ? 'Presupuesto' : 'Quote'} ${_budgetNumber(document)}',
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Text(_budgetClientName(document),
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 8),
+                    Text(_budgetDate(document)),
+                    const SizedBox(height: 8),
+                    Text(_budgetIsDraft(document)
+                        ? (isEs ? 'Borrador' : 'Draft')
+                        : (isEs ? 'Emitido' : 'Issued')),
+                    const SizedBox(height: 16),
+                    Text(
+                        '${document['currency'] ?? 'EUR'} ${_budgetTotal(document)?.toStringAsFixed(2) ?? '—'}',
+                        style: Theme.of(context).textTheme.headlineSmall),
+                    if ((document['notes'] ?? '').toString().trim().isNotEmpty)
+                      Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Text(document['notes'].toString())),
+                    for (final line in lines.whereType<Map>())
+                      ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                              (line['description'] ?? line['name'] ?? '')
+                                  .toString()),
+                          subtitle: Text(
+                              '${line['quantity'] ?? ''} × ${line['unitPrice'] ?? ''}')),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => run(() async {
+                                final response = await _presupuestosApi
+                                    .downloadPdf(_budgetId(document));
+                                await launchFileDownload(response.bodyBytes,
+                                    fileName:
+                                        'presupuesto-${_budgetNumber(document)}.pdf',
+                                    mimeType: 'application/pdf');
+                              }, close: false),
+                      icon: const Icon(Icons.download_outlined),
+                      label: Text(isEs ? 'Descargar PDF' : 'Download PDF'),
+                    ),
+                    if (_budgetIsDraft(document)) ...[
+                      FilledButton(
+                        onPressed: busy
+                            ? null
+                            : () => run(() async {
+                                  await _presupuestosApi
+                                      .issue(_budgetId(document));
+                                }),
+                        child:
+                            Text(isEs ? 'Emitir presupuesto' : 'Issue quote'),
+                      ),
+                      TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => run(() async {
+                                  await _presupuestosApi
+                                      .remove(_budgetId(document));
+                                }),
+                        child: Text(isEs ? 'Eliminar borrador' : 'Delete draft',
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error)),
+                      ),
+                    ] else
+                      FilledButton(
+                        onPressed: busy
+                            ? null
+                            : () => run(() async {
+                                  await _presupuestosApi
+                                      .convertToInvoice(_budgetId(document));
+                                  await widget.state._refreshInvoiceListsOnly();
+                                }),
+                        child: Text(isEs
+                            ? 'Convertir a factura'
+                            : 'Convert to invoice'),
+                      ),
+                    if (busy) const LinearProgressIndicator(),
+                  ],
+                ),
+              );
+            });
+      }),
+    ));
+    if (mounted) await _loadBudgets();
   }
 
   // ── tab builders ────────────────────────────────────────────────────────────
 
   Widget _buildFacturasTab(AppLocalizations l) {
     final s = widget.state;
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final all = [...s._drafts, ...s._invoices];
     if (all.isEmpty) {
       return _EmptyTab(
@@ -295,50 +366,18 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
       );
     }
 
-    // Sort newest-first
-    all.sort((a, b) {
-      final da = a.issueDate ?? a.registeredAt ?? a.occurrenceDate;
-      final db = b.issueDate ?? b.registeredAt ?? b.occurrenceDate;
-      if (da == null && db == null) return a.id.compareTo(b.id);
-      if (da == null) return 1;
-      if (db == null) return -1;
-      final dateComparison = db.compareTo(da);
-      return dateComparison != 0 ? dateComparison : a.id.compareTo(b.id);
-    });
-
-    // Build flat list: String = month header, Invoice = row
-    final items = <Object>[];
-    String? lastKey;
-    for (final inv in all) {
-      final date = inv.issueDate ?? inv.registeredAt ?? inv.occurrenceDate;
-      final key = date == null
-          ? '__none__'
-          : '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      if (key != lastKey) {
-        items.add(date == null
-            ? (isSpanish ? 'Sin fecha' : 'No date')
-            : _monthLabel(date.toLocal(), isSpanish));
-        lastKey = key;
-      }
-      items.add(inv);
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-      itemCount: items.length,
-      itemBuilder: (_, i) {
-        final item = items[i];
-        if (item is String) {
-          return _MonthSectionHeader(label: item, first: i == 0);
-        }
-        final inv = item as Invoice;
+    return MobileDocumentList<Invoice>(
+      items: all,
+      dateOf: (inv) => inv.issueDate ?? inv.registeredAt ?? inv.occurrenceDate,
+      itemBuilder: (_, inv) {
         final invDraft = inv.isDraft;
         return Padding(
           key: ValueKey(inv.id),
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: EdgeInsets.zero,
           child: InvoiceListItem(
+            mobile: true,
             invoice: inv,
-            client: _clientFor(inv.clientId, l),
+            client: _clientForInvoice(inv, l),
             onTap: () => _openInvoiceDetail(inv),
             onDelete: invDraft ? () => s._deleteInvoice(inv) : null,
             onEdit: invDraft ? () => s._openEditDraft(inv) : null,
@@ -357,19 +396,17 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
         label: l.receiptsTitle,
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      itemCount: all.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 6),
-      itemBuilder: (_, i) {
-        final r = all[i];
+    return MobileDocumentList<Receipt>(
+      items: all,
+      dateOf: (receipt) => receipt.registeredAt ?? receipt.issueDate,
+      itemBuilder: (_, r) {
         final isDraft = (r.status ?? '').toLowerCase().contains('draft') ||
             (r.status ?? '').trim().isEmpty;
         return ReceiptListItem(
           receipt: r,
           client: _clientFor(r.clientId, l),
           onTap: () => _openReceiptDetail(r),
-          onPreview: () => s._previewReceiptPdf(r),
+          onPreview: () async => _openReceiptDetail(r),
           onDownload: () => s._downloadReceiptPdf(r),
           onIssue: isDraft ? () => s._issueReceipt(r) : null,
           onDelete: isDraft ? () => s._deleteReceipt(r) : null,
@@ -441,12 +478,9 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      itemCount: clients.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 6),
-      itemBuilder: (_, i) {
-        final c = clients[i];
+    return MobileClientSearchList(
+      clients: clients,
+      itemBuilder: (_, c) {
         final issuedCount =
             s._invoices.where((inv) => inv.clientId == c.id).length;
         final draftCount =
@@ -464,6 +498,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () {
+              FocusScope.of(context).unfocus();
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => _ClientMobileInvoicesScreen(
@@ -554,7 +589,6 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
 
   Widget _buildPresupuestosTab(AppLocalizations l) {
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
 
     if (_loadingBudgets && _budgets.isEmpty) {
@@ -588,152 +622,32 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
 
     return RefreshIndicator(
       onRefresh: _loadBudgets,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        itemCount: _budgets.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 6),
-        itemBuilder: (_, i) {
-          final b = _budgets[i];
-          final isDraft = _budgetIsDraft(b);
+      child: MobileDocumentList<Map<String, dynamic>>(
+        items: _budgets,
+        dateOf: (b) => DateTime.tryParse((b['issueDate'] ??
+                b['registeredAt'] ??
+                b['createdAt'] ??
+                b['occurrenceDate'] ??
+                '')
+            .toString()),
+        itemBuilder: (_, b) {
           final number = _budgetNumber(b);
           final clientName = _budgetClientName(b);
           final dateLabel = _budgetDate(b);
           final total = _budgetTotal(b);
-          final totalLabel =
-              total == null ? '-' : 'EUR ${total.toStringAsFixed(2)}';
-
-          return Card(
-            margin: EdgeInsets.zero,
-            color: cs.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.35),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 13,
-                    backgroundColor: cs.secondaryContainer,
-                    child: Icon(
-                      Icons.request_quote_outlined,
-                      size: 14,
-                      color: cs.onSecondaryContainer,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                clientName.isEmpty ? '-' : clientName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: t.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              number,
-                              style: t.bodyMedium.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: isDraft
-                                    ? cs.tertiaryContainer
-                                    : cs.primaryContainer,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                isDraft
-                                    ? (isSpanish ? 'Borrador' : 'Draft')
-                                    : (isSpanish ? 'Emitido' : 'Issued'),
-                                style: t.bodySmall.copyWith(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDraft
-                                      ? cs.onTertiaryContainer
-                                      : cs.onPrimaryContainer,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          [
-                            if (dateLabel.isNotEmpty) dateLabel,
-                            totalLabel,
-                          ].join(' · '),
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  if (isDraft) ...[
-                    IconButton(
-                      onPressed: () => _issueBudget(b),
-                      tooltip: isSpanish ? 'Emitir' : 'Issue',
-                      visualDensity: VisualDensity.compact,
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      padding: const EdgeInsets.all(4),
-                      icon: const Icon(Icons.publish_outlined, size: 20),
-                      color: cs.tertiary.withValues(alpha: 0.8),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 20,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      color: cs.outlineVariant.withValues(alpha: 0.3),
-                    ),
-                    IconButton(
-                      onPressed: () => _deleteBudget(b),
-                      tooltip: isSpanish ? 'Eliminar' : 'Delete',
-                      visualDensity: VisualDensity.compact,
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      padding: const EdgeInsets.all(4),
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      color: cs.error.withValues(alpha: 0.8),
-                    ),
-                  ] else
-                    IconButton(
-                      onPressed: () => _convertBudgetToInvoice(b),
-                      tooltip: isSpanish
-                          ? 'Convertir a factura'
-                          : 'Convert to invoice',
-                      visualDensity: VisualDensity.compact,
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      padding: const EdgeInsets.all(4),
-                      icon: const Icon(Icons.receipt_long_outlined, size: 20),
-                      color: cs.primary.withValues(alpha: 0.8),
-                    ),
-                ],
-              ),
-            ),
+          final totalLabel = total == null
+              ? (isSpanish ? 'Importe no disponible' : 'Amount unavailable')
+              : NumberFormat.currency(locale: l.localeName, symbol: '€')
+                  .format(total);
+          return MobileDocumentCard(
+            title: clientName.isEmpty ? l.unknownClient : clientName,
+            amount: totalLabel,
+            metadata: [number, dateLabel]
+                .where((value) => value.isNotEmpty)
+                .join(' · '),
+            isDraft: _budgetIsDraft(b),
+            statusLabel: _budgetIsDraft(b) ? l.statusDraft : l.statusIssued,
+            onTap: () => _openBudgetDetail(b),
           );
         },
       ),
@@ -745,61 +659,17 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final s = widget.state;
 
-    final tabBar = TabBar(
+    final tabBar = MobileSectionTabs(
+      scrollable: true,
       controller: _tabController,
-      isScrollable: true,
-      tabAlignment: TabAlignment.center,
-      dividerColor: Colors.transparent,
-      splashFactory: NoSplash.splashFactory,
-      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
-      indicatorSize: TabBarIndicatorSize.tab,
-      indicator: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
-      labelColor: cs.onPrimaryContainer,
-      unselectedLabelColor: cs.onSurfaceVariant,
-      labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-      unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-      tabs: [
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.receipt_long_outlined, size: 15),
-            const SizedBox(width: 5),
-            Text(isSpanish ? 'Facturas' : 'Invoices'),
-          ]),
-        ),
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.description_outlined, size: 15),
-            const SizedBox(width: 5),
-            Text(isSpanish ? 'Recibos' : l.receiptsTitle),
-          ]),
-        ),
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.people_outline, size: 15),
-            const SizedBox(width: 5),
-            Text(isSpanish ? 'Clientes' : 'Clients'),
-          ]),
-        ),
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.request_quote_outlined, size: 15),
-            const SizedBox(width: 5),
-            Text(isSpanish ? 'Presupuestos' : 'Quotes'),
-          ]),
-        ),
+      labels: [
+        isSpanish ? 'Facturas' : 'Invoices',
+        isSpanish ? 'Recibos' : l.receiptsTitle,
+        isSpanish ? 'Clientes' : 'Clients',
+        isSpanish ? 'Presupuestos' : 'Quotes',
       ],
     );
 
@@ -830,40 +700,8 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── title row ──────────────────────────────────────────────────
-            SizedBox(
-              height: 44,
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 48,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                      tooltip:
-                          MaterialLocalizations.of(context).backButtonTooltip,
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        isSpanish ? 'Facturas' : 'Invoices',
-                        style:
-                            t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
-            ),
-            Expanded(child: body),
-          ],
-        ),
-      ),
+      appBar: SectionAppBar(title: isSpanish ? 'Facturas' : 'Invoices'),
+      body: SafeArea(child: body),
     );
   }
 }
@@ -945,20 +783,12 @@ class _ClientMobileInvoicesScreenState
 
   void _openInvoiceDetail(Invoice inv) {
     final s = widget.state;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.92,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (ctx, scrollController) => InvoiceDetailSheet(
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DocumentDetailPage(
+        title:
+            '${Localizations.localeOf(context).languageCode == 'es' ? 'Factura' : 'Invoice'} ${inv.invoiceNumber}',
+        child: InvoiceDetailSheet(
+          fullPage: true,
           key: ValueKey(inv.id),
           invoice: inv,
           client: widget.client,
@@ -967,7 +797,7 @@ class _ClientMobileInvoicesScreenState
           onInvoiceChanged: _refresh,
         ),
       ),
-    );
+    ));
   }
 
   GroupClient _clientFor(String? clientId) {
@@ -1028,6 +858,7 @@ class _ClientMobileInvoicesScreenState
             key: ValueKey(inv.id),
             padding: const EdgeInsets.only(bottom: 6),
             child: InvoiceListItem(
+              mobile: true,
               invoice: inv,
               client: _clientFor(inv.clientId),
               onTap: () => _openInvoiceDetail(inv),
@@ -1094,48 +925,8 @@ class _ClientMobileInvoicesScreenState
     );
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: cs.surface,
-        foregroundColor: cs.onSurface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: IconButton(
-            style: IconButton.styleFrom(
-              backgroundColor: cs.surfaceContainerHighest,
-              foregroundColor: cs.primary,
-            ),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
-        ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: cs.primaryContainer,
-              child: Text(
-                c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
-                style: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: cs.onPrimaryContainer,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                c.name,
-                style: t.bodyLarge.copyWith(fontWeight: FontWeight.w800),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+      appBar: SectionAppBar(
+        title: c.name,
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),

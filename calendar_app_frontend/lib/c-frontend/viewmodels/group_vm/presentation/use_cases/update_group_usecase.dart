@@ -25,7 +25,7 @@ class UpdateGroupUseCase {
       // keep ownerId, userIds, userRoles, createdTime, etc.
     );
 
-    await groupDomain.updateGroup(updated, userDomain);
-    await groupDomain.refreshGroupsForCurrentUser(userDomain);
+    final saved = await groupDomain.updateGroup(updated, userDomain);
+    if (!saved) throw StateError('Group update failed');
   }
 }

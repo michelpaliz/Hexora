@@ -1,3 +1,5 @@
+import 'package:provider/provider.dart';
+import 'package:hexora/b-backend/user/presence_domain.dart';
 // lib/.../calendar/widgets/presence_status_strip.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
@@ -20,7 +22,9 @@ class PresenceStatusStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final connectedUsers = controller.buildPresenceFor(group);
+    final connectedUsers = context
+        .watch<PresenceDomain>()
+        .getPresenceForGroup(group.userIds, group.userRoles);
     return UserStatusRow(
       userList: connectedUsers,
       selectedUserId: selectedUserId,

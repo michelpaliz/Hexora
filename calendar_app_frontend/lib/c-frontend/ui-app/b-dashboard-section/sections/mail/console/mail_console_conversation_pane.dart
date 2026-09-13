@@ -77,6 +77,10 @@ class _ConversationPaneState extends State<_ConversationPane> {
       return sender.isEmpty ? '-' : sender;
     }
 
+    if (MediaQuery.sizeOf(context).width < 650) {
+      return _MobileConversation(pane: widget, messages: messages);
+    }
+
     return Column(
       children: [
         // ── Compact sticky subject bar ────────────────────────────
@@ -285,6 +289,7 @@ class _SortOrderToggle extends StatelessWidget {
 
 class _MessageCard extends StatefulWidget {
   const _MessageCard({
+    super.key,
     required this.message,
     required this.onReply,
     required this.onDownloadAttachment,
@@ -373,57 +378,51 @@ class _MessageCardState extends State<_MessageCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  fromLabel,
-                                  style: t.bodySmall.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                    color: cs.onSurface,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (showFromAddressOnly) ...[
-                                  const SizedBox(height: 1),
-                                  Text(
-                                    fromAddressOnly,
-                                    style: t.bodySmall.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                      fontSize: 11,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              dateLabel,
+                      _MessageHeaderLayout(
+                        sender: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fromLabel,
                               style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: cs.onSurface,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (showFromAddressOnly) ...[
+                              const SizedBox(height: 1),
+                              Text(
+                                fromAddressOnly,
+                                style: t.bodySmall.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 11,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                        date: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            dateLabel,
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 5),
                       _MetaChipRow(
@@ -574,41 +573,42 @@ class _MessageCardState extends State<_MessageCard> {
                 ],
               ),
             ),
-          // ── Footer action buttons ────────────────────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
-              border: Border(
-                top: BorderSide(
-                  color: cs.outlineVariant.withValues(alpha: 0.25),
+          // Desktop quick actions; mobile uses the conversation action bar.
+          if (MediaQuery.sizeOf(context).width >= 650)
+            Container(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
+                border: Border(
+                  top: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.25),
+                  ),
+                ),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
                 ),
               ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
+              child: Row(
+                children: [
+                  _ActionChipBtn(
+                    icon: Icons.reply_rounded,
+                    label: l.mailConversationReply,
+                    onTap: widget.onReply,
+                  ),
+                  const SizedBox(width: 6),
+                  _ActionChipBtn(
+                    icon: Icons.reply_all_rounded,
+                    label: l.mailConversationReplyAll,
+                  ),
+                  const SizedBox(width: 6),
+                  _ActionChipBtn(
+                    icon: Icons.forward_rounded,
+                    label: l.mailConversationForward,
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                _ActionChipBtn(
-                  icon: Icons.reply_rounded,
-                  label: l.mailConversationReply,
-                  onTap: widget.onReply,
-                ),
-                const SizedBox(width: 6),
-                _ActionChipBtn(
-                  icon: Icons.reply_all_rounded,
-                  label: l.mailConversationReplyAll,
-                ),
-                const SizedBox(width: 6),
-                _ActionChipBtn(
-                  icon: Icons.forward_rounded,
-                  label: l.mailConversationForward,
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -773,20 +773,21 @@ class _LegalSection extends StatelessWidget {
             onTap: onToggle,
             borderRadius: BorderRadius.circular(6),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.gavel_rounded, size: 13, color: _amber),
                   const SizedBox(width: 5),
-                  Text(
+                  Flexible(
+                      child: Text(
                     isOpen ? hideLabel : showLabel,
                     style: t.bodySmall.copyWith(
-                      fontSize: 11,
+                      fontSize: 14,
                       color: _amber,
                       fontWeight: FontWeight.w600,
                     ),
-                  ),
+                  )),
                   const SizedBox(width: 3),
                   Icon(
                     isOpen ? Icons.expand_less : Icons.expand_more,
@@ -845,18 +846,18 @@ class _AttachmentRow extends StatelessWidget {
             child: Text(
               sizeLabel != null ? '$filename ($sizeLabel)' : filename,
               style: t.bodySmall.copyWith(fontSize: 12),
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           SizedBox(
-            width: 28,
-            height: 28,
+            width: 48,
+            height: 48,
             child: IconButton(
               padding: EdgeInsets.zero,
               tooltip: l.mailDetailDownloadTooltip,
               icon: Icon(Icons.download_outlined,
-                  size: 16, color: cs.onSurfaceVariant),
+                  size: 22, color: cs.onSurfaceVariant),
               onPressed: onDownload,
             ),
           ),
@@ -1012,7 +1013,7 @@ class _ReplyComposer extends StatelessWidget {
                 maxLines: 1,
                 textInputAction: TextInputAction.next,
                 style: t.bodySmall.copyWith(
-                  fontSize: 13,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
                 decoration: InputDecoration(
@@ -1045,12 +1046,12 @@ class _ReplyComposer extends StatelessWidget {
                 minLines: 5,
                 maxLines: 9,
                 keyboardType: TextInputType.multiline,
-                style: t.bodySmall.copyWith(fontSize: 13, height: 1.4),
+                style: t.bodySmall.copyWith(fontSize: 16, height: 1.4),
                 decoration: InputDecoration(
                   hintText:
                       AppLocalizations.of(context)!.mailConsoleReplyPlaceholder,
                   hintStyle: t.bodySmall.copyWith(
-                    fontSize: 12,
+                    fontSize: 14,
                     color: cs.onSurfaceVariant,
                   ),
                   alignLabelWithHint: true,
@@ -1078,7 +1079,7 @@ class _ReplyComposer extends StatelessWidget {
                         horizontal: 16,
                         vertical: 10,
                       ),
-                      textStyle: t.bodySmall.copyWith(fontSize: 12),
+                      textStyle: t.bodySmall.copyWith(fontSize: 14),
                       visualDensity: VisualDensity.compact,
                     ),
                     onPressed: sendingReply || value.text.trim().isEmpty
@@ -1180,6 +1181,7 @@ _BodySplit _splitBody(String body) {
 
   final legalPatterns = [
     RegExp(r'AVISO\s+LEGAL', caseSensitive: false),
+    RegExp(r'ADVERTENCIA\s+LEGAL', caseSensitive: false),
     RegExp(r'AVISO\s+DE\s+CONFIDENCIALIDAD', caseSensitive: false),
     RegExp(r'DISCLAIMER', caseSensitive: false),
     RegExp(r'LEGAL\s+NOTICE', caseSensitive: false),
@@ -1225,6 +1227,7 @@ _BodySplit _splitBody(String body) {
   final lowerHtml = html.toLowerCase();
   const patterns = [
     'aviso legal',
+    'advertencia legal',
     'aviso de confidencialidad',
     'disclaimer',
     'legal notice',

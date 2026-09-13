@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 // lib/c-frontend/ui-app/b-dashboard-section/settings/group_settings_screen.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -24,18 +25,14 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final screenWidth = MediaQuery.of(context).size.width;
     final isWide = screenWidth >= 1000;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(l.groupSettingsTitle, style: t.titleLarge),
-        centerTitle: false,
-        backgroundColor: cs.surface,
-        elevation: 0.5,
+      appBar: SectionAppBar(
+        title: l.groupSettingsTitle,
       ),
       body: SafeArea(
         child: isWide
@@ -201,6 +198,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       ),
     );
   }
+
   Widget _buildContent(BuildContext context) {
     // Show group header only for info section and only on non-web platforms
     final showGroupHeader = _selectedSection == 'info' && !kIsWeb;
@@ -307,7 +305,6 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       ],
     );
   }
-
 
   Widget _buildSectionContent(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -431,4 +428,3 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     );
   }
 }
-

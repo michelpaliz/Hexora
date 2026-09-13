@@ -1,21 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/horizontal_drawer_nav/components/avatar_icon.dart';
-import 'package:hexora/e-drawer-style-menu/contextual_fab/horizontal_drawer_nav/components/nav_pill_button.dart';
 import 'package:hexora/e-drawer-style-menu/contextual_fab/horizontal_drawer_nav/models/nav_item_data.dart';
-import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
 
 class HorizontalDrawerNav extends StatefulWidget {
-  const HorizontalDrawerNav({
-    super.key,
-    this.centerGapWidth = 80,
-  });
-
-  final double centerGapWidth;
+  const HorizontalDrawerNav({super.key});
 
   @override
   State<HorizontalDrawerNav> createState() => _HorizontalDrawerNavState();
@@ -31,11 +24,6 @@ class _HorizontalDrawerNavState extends State<HorizontalDrawerNav> {
       semanticLabel: 'Home',
     ),
     NavItemData(
-      icon: Iconsax.calendar_1,
-      route: AppRoutes.agenda,
-      semanticLabel: 'Agenda',
-    ),
-    NavItemData(
       icon: Iconsax.notification,
       route: AppRoutes.showNotifications,
       semanticLabel: 'Notifications',
@@ -49,10 +37,12 @@ class _HorizontalDrawerNavState extends State<HorizontalDrawerNav> {
   ];
 
   static const Map<String, int> _routeIndex = {
+    AppRoutes.homePage: 0,
     AppRoutes.showGroups: 0,
-    AppRoutes.agenda: 1,
-    AppRoutes.showNotifications: 2,
-    AppRoutes.profileDetails: 3,
+    AppRoutes.agenda: 0,
+    AppRoutes.groupDashboard: 0,
+    AppRoutes.showNotifications: 1,
+    AppRoutes.profileDetails: 2,
   };
 
   @override
@@ -66,7 +56,6 @@ class _HorizontalDrawerNavState extends State<HorizontalDrawerNav> {
 
   void _onItemTapped(int index) {
     if (_selectedIndex == index) return;
-    setState(() => _selectedIndex = index);
 
     final route = _items[index].route;
 
@@ -87,96 +76,44 @@ class _HorizontalDrawerNavState extends State<HorizontalDrawerNav> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
-    final inactiveColor =
-        isDark ? AppDarkColors.textSecondary : AppColors.textSecondary;
-
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
     final user = context.watch<UserDomain>().user;
-    final mid = (_items.length / 2).floor();
+    final labels = [l.home, l.notifications, l.profile];
 
-    // ✅ no manual bottom padding here; Scaffold/BottomAppBar handle system insets
-    return Stack(
-      children: [
-        Container(
-          height: 56, // fixed bar height
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: (isDark ? AppDarkColors.background : AppColors.background)
-                .withOpacity(0.96),
-            border: Border(
-              top: BorderSide(
-                color: Colors.black.withOpacity(isDark ? 0.25 : 0.15),
-                width: 1.0,
-              ),
-            ),
+    return NavigationBar(
+      height: 80,
+      elevation: 0,
+      backgroundColor: cs.surface,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: cs.secondaryContainer,
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: _onItemTapped,
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+            fontSize: 11,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.w700
+                : FontWeight.w500,
+            color: states.contains(WidgetState.selected)
+                ? cs.onSurface
+                : cs.onSurfaceVariant,
+          )),
+      destinations: [
+        for (var i = 0; i < _items.length; i++)
+          NavigationDestination(
+            label: labels[i],
+            tooltip: labels[i],
+            icon: _items[i].isProfile
+                ? AvatarIcon(
+                    photoUrl: user?.photoUrl,
+                    isSelected: _selectedIndex == i,
+                    activeColor: cs.onSecondaryContainer,
+                    inactiveColor: cs.onSurfaceVariant,
+                  )
+                : Icon(_items[i].icon, size: 24),
           ),
-          child: SizedBox(
-            height: 56,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                for (var i = 0; i < mid; i++)
-                  _buildButton(i, user, activeColor, inactiveColor),
-                SizedBox(width: widget.centerGapWidth),
-                for (var i = mid; i < _items.length; i++)
-                  _buildButton(i, user, activeColor, inactiveColor),
-              ],
-            ),
-          ),
-        ),
-        // Shadow only on top edge
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: IgnorePointer(
-            // just in case, so it doesn't eat taps
-            child: Container(
-              height: 4,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.1 : 0.05),
-                    blurRadius: 2.0,
-                    offset: const Offset(0, -1),
-                    spreadRadius: 0.5,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ],
-    );
-  }
-
-  Widget _buildButton(
-    int index,
-    User? user,
-    Color activeColor,
-    Color inactiveColor,
-  ) {
-    final isSelected = _selectedIndex == index;
-    final item = _items[index];
-
-    final Widget? avatarChild = item.isProfile
-        ? AvatarIcon(
-            photoUrl: user?.photoUrl,
-            isSelected: isSelected,
-            activeColor: activeColor,
-            inactiveColor: inactiveColor,
-          )
-        : null;
-
-    return NavPillButton(
-      icon: item.isProfile ? null : item.icon,
-      child: avatarChild,
-      isSelected: isSelected,
-      activeColor: activeColor,
-      inactiveColor: inactiveColor,
-      semanticLabel: item.semanticLabel,
-      onTap: () => _onItemTapped(index),
     );
   }
 }

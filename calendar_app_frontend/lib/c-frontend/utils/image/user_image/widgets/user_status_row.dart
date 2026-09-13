@@ -22,7 +22,7 @@ class UserStatusRow extends StatelessWidget {
 
     return SizedBox(
       // Extra height so 2-line labels don't overflow vertically on small screens.
-      height: 96,
+      height: 76 + MediaQuery.textScalerOf(context).scale(18),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -57,9 +57,11 @@ class UserStatusRow extends StatelessWidget {
                   SizedBox(
                     width: 80,
                     child: Text(
-                      'All',
+                      Localizations.localeOf(context).languageCode == 'es'
+                          ? 'Todos'
+                          : 'All',
                       textAlign: TextAlign.center,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context)
                           .textTheme
@@ -76,7 +78,9 @@ class UserStatusRow extends StatelessWidget {
           return UserItem(
             user: user,
             isSelected: selectedUserId == user.userId,
-            onTap: () => onUserSelected?.call(user.userId),
+            onTap: onUserSelected == null
+                ? null
+                : () => onUserSelected!(user.userId),
           );
         },
         separatorBuilder: (_, __) => const SizedBox(width: 10),

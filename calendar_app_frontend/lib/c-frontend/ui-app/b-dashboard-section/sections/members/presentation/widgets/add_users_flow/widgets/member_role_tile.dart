@@ -1,3 +1,4 @@
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/utils/image/user_image/avatar_utils.dart';
@@ -58,43 +59,52 @@ class MemberRoleTile extends StatelessWidget {
       final selected = await showModalBottomSheet<GroupRole>(
         context: context,
         useSafeArea: true,
+        isScrollControlled: true,
+        showDragHandle: true,
+        backgroundColor: cs.surface,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
         ),
         builder: (ctx) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Change role',
-                    style:
-                        typo.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ),
-              for (final r in assignableRoles)
-                ListTile(
-                  leading: Radio<GroupRole>(
-                    value: r,
-                    groupValue: effectiveRole,
-                    onChanged: (_) {
-                      Navigator.of(ctx).pop(r);
-                    },
-                  ),
-                  title: Text(roleLabelOf(context, r),
-                      style: typo.bodyMedium.copyWith(
-                          fontWeight:
-                              r == effectiveRole ? FontWeight.w700 : null)),
-                  onTap: () => Navigator.of(ctx).pop(r),
-                ),
-              const SizedBox(height: 10),
-            ],
-          );
+          return SingleChildScrollView(
+              child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            AppLocalizations.of(context)!.changeRole,
+                            style: typo.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: cs.onSurface),
+                          ),
+                        ),
+                      ),
+                      for (final r in assignableRoles)
+                        ListTile(
+                          leading: Radio<GroupRole>(
+                            value: r,
+                            groupValue: effectiveRole,
+                            onChanged: (_) {
+                              Navigator.of(ctx).pop(r);
+                            },
+                          ),
+                          title: Text(roleLabelOf(context, r),
+                              style: typo.bodyMedium.copyWith(
+                                  color: cs.onSurface,
+                                  fontWeight: r == effectiveRole
+                                      ? FontWeight.w700
+                                      : null)),
+                          onTap: () => Navigator.of(ctx).pop(r),
+                        ),
+                      const SizedBox(height: 10),
+                    ],
+                  )));
         },
       );
       if (selected != null && selected.wire != effectiveRole.wire) {
@@ -132,49 +142,10 @@ class MemberRoleTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name + role chip
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: typo.bodyLarge.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: cs.onSurface,
-                              height: 1.15,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: chipColor.withOpacity(.14),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: chipColor.withOpacity(.35),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            roleText,
-                            style: typo.bodySmall.copyWith(
-                              color: chipColor,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: .2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 6),
-
+                    Text(displayName,
+                        style: typo.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w700, color: cs.onSurface)),
+                    const SizedBox(height: 4),
                     // Username (or fallback)
                     if (username.isNotEmpty)
                       UsernameTag(username: username)
@@ -187,6 +158,18 @@ class MemberRoleTile extends StatelessWidget {
                           color: cs.onSurfaceVariant,
                         ),
                       ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: cs.secondaryContainer,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Text(roleText,
+                          style: typo.bodySmall.copyWith(
+                              color: cs.onSecondaryContainer,
+                              fontWeight: FontWeight.w600)),
+                    ),
                   ],
                 ),
               ),

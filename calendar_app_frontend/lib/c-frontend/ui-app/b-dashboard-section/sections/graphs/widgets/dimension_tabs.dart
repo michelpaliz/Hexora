@@ -6,7 +6,8 @@ import 'package:hexora/l10n/app_localizations.dart';
 class DimensionTabs extends StatelessWidget {
   final Dimension value;
   final ValueChanged<Dimension> onChanged;
-  const DimensionTabs({super.key, required this.value, required this.onChanged});
+  const DimensionTabs(
+      {super.key, required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -15,43 +16,74 @@ class DimensionTabs extends StatelessWidget {
     final typo = AppTypography.of(context);
     final isMobile = MediaQuery.sizeOf(context).width < 700;
 
+    if (isMobile) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final dimension in [Dimension.clients, Dimension.services])
+            ChoiceChip(
+              avatar: Icon(
+                  dimension == Dimension.clients
+                      ? Icons.people_alt_outlined
+                      : Icons.build_circle_outlined,
+                  size: 20,
+                  color: value == dimension
+                      ? cs.onSecondaryContainer
+                      : cs.onSurfaceVariant),
+              label: Text(dimension == Dimension.clients
+                  ? l.filterDimensionClients
+                  : l.filterDimensionServices),
+              labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: value == dimension
+                      ? cs.onSecondaryContainer
+                      : cs.onSurface),
+              selected: value == dimension,
+              showCheckmark: false,
+              materialTapTargetSize: MaterialTapTargetSize.padded,
+              onSelected: (_) => onChanged(dimension),
+            ),
+        ],
+      );
+    }
+
     return Material(
       color: Colors.transparent,
       child: Container(
-      height: isMobile ? 46 : 38,
-      padding: EdgeInsets.all(isMobile ? 4 : 3),
-      decoration: BoxDecoration(
-        color: isMobile
-            ? cs.surfaceContainerHighest.withValues(alpha: 0.28)
-            : cs.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(isMobile ? 18 : 12),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: isMobile ? 0.42 : 0.35),
+        height: isMobile ? 46 : 38,
+        padding: EdgeInsets.all(isMobile ? 4 : 3),
+        decoration: BoxDecoration(
+          color: isMobile
+              ? cs.surfaceContainerHighest.withValues(alpha: 0.28)
+              : cs.surfaceContainerHighest.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(isMobile ? 18 : 12),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: isMobile ? 0.42 : 0.35),
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          _DimTab(
-            icon: Icons.people_alt_outlined,
-            label: l.filterDimensionClients,
-            selected: value == Dimension.clients,
-            onTap: () => onChanged(Dimension.clients),
-            cs: cs,
-            typo: typo,
-            isMobile: isMobile,
-          ),
-          SizedBox(width: isMobile ? 6 : 3),
-          _DimTab(
-            icon: Icons.build_circle_outlined,
-            label: l.filterDimensionServices,
-            selected: value == Dimension.services,
-            onTap: () => onChanged(Dimension.services),
-            cs: cs,
-            typo: typo,
-            isMobile: isMobile,
-          ),
-        ],
-      ),
+        child: Row(
+          children: [
+            _DimTab(
+              icon: Icons.people_alt_outlined,
+              label: l.filterDimensionClients,
+              selected: value == Dimension.clients,
+              onTap: () => onChanged(Dimension.clients),
+              cs: cs,
+              typo: typo,
+              isMobile: isMobile,
+            ),
+            SizedBox(width: isMobile ? 6 : 3),
+            _DimTab(
+              icon: Icons.build_circle_outlined,
+              label: l.filterDimensionServices,
+              selected: value == Dimension.services,
+              onTap: () => onChanged(Dimension.services),
+              cs: cs,
+              typo: typo,
+              isMobile: isMobile,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -86,9 +118,7 @@ class _DimTab extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            color: selected
-                ? cs.primary
-                : Colors.transparent,
+            color: selected ? cs.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(isMobile ? 14 : 9),
             boxShadow: selected
                 ? [

@@ -24,6 +24,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 part 'recent_uploads/recent_uploads_editor_section.dart';
+part 'recent_uploads/recent_uploads_mobile_section.dart';
 part 'recent_uploads/recent_uploads_item_widgets.dart';
 part 'recent_uploads/recent_uploads_preview_section.dart';
 
@@ -753,6 +754,31 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (constraints.maxWidth < 760) {
+          if (_editingExpense != null) return _buildEditorOverlay(l, t, cs);
+          if (_mobilePanelIndex == 1) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => setState(() => _mobilePanelIndex = 0),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    label: Text(
+                        Localizations.localeOf(context).languageCode == 'es'
+                            ? 'Volver a gastos'
+                            : 'Back to expenses'),
+                  ),
+                ),
+                Expanded(
+                    child:
+                        _buildPreviewPanel(l, t, cs, widget.selectedExpense)),
+              ],
+            );
+          }
+          return _buildMobileExpenseList(l, t, cs, visibleUploads);
+        }
         final isWide = constraints.maxWidth >= 1100;
         final base = _editingExpense == null
             ? (isWide

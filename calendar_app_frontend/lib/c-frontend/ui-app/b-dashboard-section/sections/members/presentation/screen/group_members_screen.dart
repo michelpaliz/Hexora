@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/auth_user/auth/auth_services/auth_provider.dart';
@@ -6,7 +7,6 @@ import 'package:hexora/b-backend/group_mng_flow/invite/repository/invite_reposit
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/domain/models/members_vm.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/add_users_flow/screen/add_user_fab.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/member_list/members_section.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/members/presentation/widgets/shared/header_info.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -46,27 +46,22 @@ class GroupMembersScreen extends StatelessWidget {
           final Color trackBg = ThemeColors.cardBg(context);
 
           return Scaffold(
-            appBar: AppBar(
-              automaticallyImplyLeading: Navigator.of(context).canPop(),
-              title: Text(
-                l.membersTitle,
-                style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
-              ),
-              backgroundColor: cs.surface,
-              iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
-              elevation: 0,
+            appBar: SectionAppBar(
+              title: l.membersTitle,
               bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(56),
+                preferredSize: const Size.fromHeight(64),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: Container(
-                    height: 40,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: trackBg,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: cs.onSurface.withOpacity(0.06)),
                     ),
                     child: TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
                       tabs: [
                         Tab(text: labelAccepted),
                         Tab(text: labelPending),
@@ -102,29 +97,6 @@ class GroupMembersScreen extends StatelessWidget {
               child: Column(
                 children: [
                   if (vm.isLoading) const LinearProgressIndicator(minHeight: 2),
-
-                  // ðŸ”¹ Shared information header (sits above TabBarView)
-                  InfoHeader(
-                    title: l.membersTitle,
-                    subtitle: l.membersHelperText,
-                    stats: [
-                      StatChip(
-                          label: l.membersTitle,
-                          count: vm.totalAccepted,
-                          icon: Icons.groups_rounded),
-                      StatChip(
-                          label: l.statusPending,
-                          count: vm.totalPending,
-                          icon: Icons.hourglass_bottom_rounded),
-                      StatChip(
-                          label: l.statusNotAccepted,
-                          count: vm.totalNotAccepted,
-                          icon: Icons.block_rounded),
-                    ],
-                    // trailingAction: (optional) e.g., a filter/menu button
-                    // bottom: (optional) e.g., a search or filters row
-                  ),
-
                   Expanded(
                     child: TabBarView(
                       children: [

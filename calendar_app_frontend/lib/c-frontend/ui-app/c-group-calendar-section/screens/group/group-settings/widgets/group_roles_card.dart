@@ -6,8 +6,10 @@ import 'group_section_header.dart';
 
 class GroupRolesCard extends StatelessWidget {
   final Group group;
+  final Map<String, String> memberNames;
 
-  const GroupRolesCard({super.key, required this.group});
+  const GroupRolesCard(
+      {super.key, required this.group, this.memberNames = const {}});
 
   @override
   Widget build(BuildContext context) {
@@ -49,11 +51,19 @@ class GroupRolesCard extends StatelessWidget {
                           child: Icon(Icons.person_outline, size: 18),
                         ),
                         title: SelectableText(
-                          '${l.groupSettingsUserIdLabel} ${role.key}',
+                          memberNames[role.key] ??
+                              (l.localeName.startsWith('es')
+                                  ? 'Nombre no disponible'
+                                  : 'Name unavailable'),
                           style: theme.textTheme.bodyMedium,
                         ),
                         subtitle: Text(
-                          '${l.groupSettingsRoleLabel} ${role.value}',
+                          switch (role.value) {
+                            'owner' => l.roleOwner,
+                            'admin' => l.roleAdmin,
+                            'co-admin' => l.roleCoAdmin,
+                            _ => role.value,
+                          },
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

@@ -41,6 +41,50 @@ class _ServiceListItemState extends State<ServiceListItem> {
     final stripeColor =
         isActive ? cs.secondary : cs.onSurfaceVariant.withValues(alpha: 0.3);
 
+    if (MediaQuery.sizeOf(context).width < 700) {
+      return Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: cs.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: widget.onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ServiceAvatar(colorHex: widget.service.color),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.service.name,
+                        style: widget.nameStyle.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        )),
+                    const SizedBox(height: 6),
+                    Text(durationText,
+                        style: widget.metaStyle.copyWith(
+                          fontSize: 13,
+                          color: cs.onSurfaceVariant,
+                        )),
+                    const SizedBox(height: 10),
+                    _StatusChip(active: isActive),
+                  ],
+                )),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right, size: 20, color: cs.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),

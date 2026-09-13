@@ -10,6 +10,7 @@ class _MailComposeView extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
+    final compact = MediaQuery.sizeOf(context).width < 600;
     final isWideEmbedded =
         state.widget.embedded && MediaQuery.of(context).size.width >= 1200;
     final canSend = state._hasRecipientCandidate() &&
@@ -63,12 +64,53 @@ class _MailComposeView extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     );
 
+    final recipientInput = !state._useClientMode
+        ? _EmailChipsInput(
+            controller: state._toCtrl,
+            values: state._toList,
+            hint: l.mailComposeToHint,
+            enabled: !state._sending,
+            decoration: inputDecoration.copyWith(
+              filled: false,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+            ),
+            onChanged: (next) => state.update(() => state._toList
+              ..clear()
+              ..addAll(next)),
+          )
+        : _ClientSearchField(
+            clients: recipientClients,
+            selectedClientId: state._recipientClientId,
+            loading: state._loadingRecipientClients,
+            enabled: !state._sending && state._recipientClientError == null,
+            onChanged: (value) => state.update(
+              () => state._recipientClientId = value,
+            ),
+          );
+    final recipientMode = _RecipientModeToggle(
+      clientMode: state._useClientMode,
+      enabled: !state._sending,
+      emailLabel: 'Email',
+      clientLabel: 'Cliente',
+      recentLabel: state._isSpanishLocale ? 'Recientes' : 'Recent',
+      recentLoading: state._loadingRecentInvoices,
+      onChanged: (v) {
+        state.update(() => state._useClientMode = v);
+        if (v) state._loadRecipientClientsIfNeeded();
+      },
+      onRecentTap: state._openRecentIssuedInvoicesPicker,
+    );
+
     final content = SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (state.widget.embedded) ...[
+          if (state.widget.embedded && !compact) ...[
             const SizedBox(height: 2),
             Divider(color: cs.outlineVariant.withValues(alpha: 0.4)),
             const SizedBox(height: 16),
@@ -94,84 +136,62 @@ class _MailComposeView extends StatelessWidget {
                 // ── To row ──────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 8, 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // "Para" label
-                      SizedBox(
-                        width: 42,
-                        child: Text(
-                          l.mailComposeToLabel,
-                          style: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      // Input area
-                      Expanded(
-                        child: !state._useClientMode
-                            ? _EmailChipsInput(
-                                controller: state._toCtrl,
-                                values: state._toList,
-                                hint: l.mailComposeToHint,
-                                enabled: !state._sending,
-                                decoration: inputDecoration.copyWith(
-                                  filled: false,
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                                onChanged: (next) =>
-                                    state.update(() => state._toList
-                                      ..clear()
-                                      ..addAll(next)),
-                              )
-                            : _ClientSearchField(
-                                clients: recipientClients,
-                                selectedClientId: state._recipientClientId,
-                                loading: state._loadingRecipientClients,
-                                enabled: !state._sending,
-                                onChanged: (value) => state.update(
-                                  () => state._recipientClientId = value,
+                  child: compact
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                              Text(l.mailComposeToLabel,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(
+                                          color: cs.onSurface,
+                                          fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 10),
+                              recipientMode,
+                              const SizedBox(height: 12),
+                              recipientInput,
+                            ])
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // "Para" label
+                            SizedBox(
+                              width: 42,
+                              child: Text(
+                                l.mailComposeToLabel,
+                                style: t.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                  color: cs.onSurfaceVariant,
                                 ),
                               ),
-                      ),
-                      const SizedBox(width: 6),
-                      // Compact mode toggle
-                      _RecipientModeToggle(
-                        clientMode: state._useClientMode,
-                        enabled: !state._sending,
-                        emailLabel: 'Email',
-                        clientLabel: 'Cliente',
-                        recentLabel:
-                            state._isSpanishLocale ? 'Recientes' : 'Recent',
-                        recentLoading: state._loadingRecentInvoices,
-                        onChanged: (v) =>
-                            state.update(() => state._useClientMode = v),
-                        onRecentTap: state._openRecentIssuedInvoicesPicker,
-                      ),
-                    ],
-                  ),
+                            ),
+                            // Input area
+                            Expanded(child: recipientInput),
+                            const SizedBox(width: 6),
+                            // Compact mode toggle
+                            recipientMode,
+                          ],
+                        ),
                 ),
                 // Sub-hints for email / client mode
                 if (!state._useClientMode && state._toList.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(56, 0, 12, 6),
+                    padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 10),
                     child: Text(
                       l.mailComposeToHelper,
                       style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                        fontSize: 11,
+                        color: cs.onSurfaceVariant,
+                        fontSize: compact ? 13 : 11,
                       ),
                     ),
                   ),
                 if (state._useClientMode) ...[
                   if ((state._recipientClientError ?? '').isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(56, 0, 12, 6),
+                      padding:
+                          EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 10),
                       child: Row(children: [
                         Icon(Icons.error_outline, size: 13, color: cs.error),
                         const SizedBox(width: 4),
@@ -180,21 +200,35 @@ class _MailComposeView extends StatelessWidget {
                               style: t.bodySmall
                                   .copyWith(color: cs.error, fontSize: 11)),
                         ),
+                        TextButton(
+                          onPressed: state._loadingRecipientClients
+                              ? null
+                              : state._loadRecipientClientsIfNeeded,
+                          child: Text(
+                              state._isSpanishLocale ? 'Reintentar' : 'Retry'),
+                        ),
                       ]),
                     ),
                   if (!state._loadingRecipientClients &&
+                      state._recipientClientError == null &&
                       recipientClients.isEmpty)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(56, 0, 12, 6),
+                      padding:
+                          EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 10),
                       child: Text(
-                        l.noClientsYet,
+                        state._pickerClients.isEmpty
+                            ? l.noClientsYet
+                            : (state._isSpanishLocale
+                                ? 'No hay clientes con correo electrónico.'
+                                : 'No clients have an email address.'),
                         style: t.bodySmall
                             .copyWith(color: cs.onSurfaceVariant, fontSize: 11),
                       ),
                     ),
                   if (state._selectedRecipientClientEmail() != null)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(56, 0, 12, 6),
+                      padding:
+                          EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 10),
                       child: Row(children: [
                         Icon(
                           Icons.alternate_email_rounded,
@@ -269,7 +303,7 @@ class _MailComposeView extends StatelessWidget {
                   Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: Row(
+                    child: Wrap(
                       children: [
                         if (!state._showCc)
                           TextButton(
@@ -335,41 +369,47 @@ class _MailComposeView extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      SizedBox(
-                        width: 42,
-                        child: Text(
-                          l.mailComposeSubjectLabel,
-                          style: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                            color: cs.onSurfaceVariant,
+                      if (!compact)
+                        SizedBox(
+                          width: 42,
+                          child: Text(
+                            l.mailComposeSubjectLabel,
+                            style: t.bodySmall.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: compact ? 16 : 12,
+                              color: cs.onSurfaceVariant,
+                            ),
                           ),
                         ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 16,
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                        color: cs.outlineVariant.withValues(alpha: 0.5),
-                      ),
+                      if (!compact)
+                        Container(
+                          width: 1,
+                          height: 16,
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          color: cs.outlineVariant.withValues(alpha: 0.5),
+                        ),
                       Expanded(
                         child: TextField(
                           controller: state._subjectCtrl,
                           enabled: !state._sending,
                           maxLines: 1,
-                          style: t.bodySmall
-                              .copyWith(color: cs.onSurface, fontSize: 13),
+                          style: t.bodySmall.copyWith(
+                              color: cs.onSurface, fontSize: compact ? 16 : 13),
                           decoration: InputDecoration(
-                            hintText: l.mailComposeSubjectHint,
+                            labelText:
+                                compact ? l.mailComposeSubjectLabel : null,
+                            hintText: compact ? null : l.mailComposeSubjectHint,
                             hintStyle: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-                              fontSize: 13,
+                              color: cs.onSurfaceVariant,
+                              fontSize: compact ? 16 : 13,
                             ),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
                             isDense: true,
-                            contentPadding: EdgeInsets.zero,
+                            contentPadding: compact
+                                ? const EdgeInsets.symmetric(vertical: 8)
+                                : EdgeInsets.zero,
                           ),
                           onChanged: (_) => state.update(() {}),
                         ),
@@ -518,12 +558,12 @@ class _MailComposeView extends StatelessWidget {
                 bool active = false,
               }) {
                 return SizedBox(
-                  width: 26,
-                  height: 26,
+                  width: compact ? 48 : 26,
+                  height: compact ? 48 : 26,
                   child: IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    iconSize: 16,
+                    iconSize: compact ? 22 : 16,
                     onPressed: onPressed,
                     icon: Icon(icon),
                     color: active ? cs.primary : cs.onSurface,
@@ -547,18 +587,19 @@ class _MailComposeView extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Text(
-                      l.mailComposeBodyLabel,
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11,
-                        color: cs.onSurfaceVariant,
+                    if (!compact)
+                      Text(
+                        l.mailComposeBodyLabel,
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
+                    if (!compact) const Spacer(),
                     AnimatedOpacity(
                       duration: const Duration(milliseconds: 150),
-                      opacity: showTools ? 1 : 0.45,
+                      opacity: compact || showTools ? 1 : 0.45,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -620,13 +661,14 @@ class _MailComposeView extends StatelessWidget {
                             onPressed: state._promptLink,
                           ),
                           const SizedBox(width: 2),
-                          Text(
-                            l.mailComposeFormat,
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                              fontSize: 10,
+                          if (!compact)
+                            Text(
+                              l.mailComposeFormat,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 10,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -667,7 +709,7 @@ class _MailComposeView extends StatelessWidget {
                 child: DefaultTextStyle(
                   style: t.bodySmall.copyWith(
                     color: cs.onSurface,
-                    fontSize: 12,
+                    fontSize: compact ? 16 : 12,
                     height: 1.45,
                   ),
                   child: Builder(
@@ -686,7 +728,7 @@ class _MailComposeView extends StatelessWidget {
                             placeHolder: quill.DefaultTextBlockStyle(
                               t.bodySmall.copyWith(
                                 color: cs.onSurfaceVariant,
-                                fontSize: 12,
+                                fontSize: compact ? 16 : 12,
                               ),
                               const quill.HorizontalSpacing(0, 0),
                               quill.VerticalSpacing.zero,
@@ -720,23 +762,36 @@ class _MailComposeView extends StatelessWidget {
               onToggle: () => state.update(
                 () => state._attachmentsExpanded = !state._attachmentsExpanded,
               ),
-              trailing: TextButton.icon(
-                onPressed: state._sending || state._uploadingAttachment
-                    ? null
-                    : state._showAttachmentActions,
-                style: TextButton.styleFrom(
-                  foregroundColor: cs.onSurfaceVariant,
-                  textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-                ),
-                icon: state._uploadingAttachment
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.attach_file, size: 18),
-                label: Text(l.mailComposeAddAttachment),
-              ),
+              trailing: compact
+                  ? IconButton.filledTonal(
+                      tooltip: l.mailComposeAddAttachment,
+                      onPressed: state._sending || state._uploadingAttachment
+                          ? null
+                          : state._showAttachmentActions,
+                      icon: state._uploadingAttachment
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.attach_file_rounded),
+                    )
+                  : TextButton.icon(
+                      onPressed: state._sending || state._uploadingAttachment
+                          ? null
+                          : state._showAttachmentActions,
+                      style: TextButton.styleFrom(
+                        foregroundColor: cs.onSurfaceVariant,
+                        textStyle:
+                            t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      icon: state._uploadingAttachment
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.attach_file, size: 18),
+                      label: Text(l.mailComposeAddAttachment),
+                    ),
               child: state._attachments.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.only(bottom: 6),
@@ -1165,6 +1220,23 @@ class _MailComposeView extends StatelessWidget {
       ),
     );
 
+    if (compact) {
+      final mobileBody = Column(children: [
+        Expanded(child: content),
+        _ComposeBottomBar(
+            sending: state._sending,
+            enabled: canSend,
+            onSend: state._send,
+            label: state._sending ? l.mailComposeSending : sendLabel,
+            disabledHint: disabledSendHint),
+      ]);
+      if (state.widget.embedded) return mobileBody;
+      return Scaffold(
+        appBar: AppBar(title: Text(l.mailComposeTitle)),
+        body: SafeArea(top: false, bottom: false, child: mobileBody),
+      );
+    }
+
     if (state.widget.embedded) {
       if (isWideEmbedded) {
         return FolderSectionCard(
@@ -1472,6 +1544,30 @@ class _RecipientModeToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final mode in [false, true])
+          ChoiceChip(
+            selected: clientMode == mode,
+            showCheckmark: false,
+            avatar: Icon(mode ? Icons.person_outline : Icons.alternate_email,
+                size: 18),
+            label: Text(mode ? clientLabel : emailLabel,
+                style: TextStyle(
+                    color: clientMode == mode
+                        ? cs.onPrimaryContainer
+                        : cs.onSurface,
+                    fontSize: 14)),
+            selectedColor: cs.primaryContainer,
+            onSelected: enabled ? (_) => onChanged(mode) : null,
+          ),
+        TextButton.icon(
+            onPressed: enabled && !recentLoading ? onRecentTap : null,
+            icon: const Icon(Icons.history_rounded, size: 18),
+            label: Text(recentLabel)),
+      ]);
+    }
 
     Widget tab({
       required bool value,

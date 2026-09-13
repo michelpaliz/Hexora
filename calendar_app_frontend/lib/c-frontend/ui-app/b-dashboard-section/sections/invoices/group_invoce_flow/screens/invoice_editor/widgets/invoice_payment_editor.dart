@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
@@ -30,6 +31,34 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
   late DateTime? _paidAt;
   late final TextEditingController _amountCtrl;
   bool _saving = false;
+  bool _editingMobile = false;
+  (String, String?, DateTime?, String)? _beforeEdit;
+
+  void _startMobileEdit() {
+    setState(() {
+      _beforeEdit = (_status, _method, _paidAt, _amountCtrl.text);
+      _editingMobile = true;
+      _error = null;
+      _success = null;
+    });
+  }
+
+  void _cancelMobileEdit() {
+    final previous = _beforeEdit;
+    setState(() {
+      if (previous != null) {
+        _status = previous.$1;
+        _method = previous.$2;
+        _paidAt = previous.$3;
+        _amountCtrl.text = previous.$4;
+      }
+      _editingMobile = false;
+      _error = null;
+      _success = null;
+    });
+    _notifyChanged();
+  }
+
   String? _error;
   String? _success;
 
@@ -171,8 +200,14 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
           .localeName
           .toLowerCase()
           .startsWith('es');
-      setState(() => _success =
-          isEs ? 'Estado de pago guardado.' : 'Payment status saved.');
+      final message =
+          isEs ? 'Estado de pago actualizado.' : 'Payment status updated.';
+      if (MediaQuery.sizeOf(context).width < 760 && widget.showSaveButton) {
+        setState(() => _editingMobile = false);
+        showSuccessSnack(context, message);
+      } else {
+        setState(() => _success = message);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
@@ -189,6 +224,37 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
     final dateLabel = _paidAt == null
         ? (isEs ? 'Fecha de pago' : 'Payment date')
         : DateFormat.yMMMd(l.localeName).format(_paidAt!);
+
+    final mobile = MediaQuery.sizeOf(context).width < 760;
+    String statusLabel(String status) => switch (status) {
+          'paid' => isEs ? 'Pagada' : 'Paid',
+          'partial' => isEs ? 'Pago parcial' : 'Partial payment',
+          _ => isEs ? 'Pendiente' : 'Unpaid',
+        };
+    if (mobile && widget.showSaveButton && !_editingMobile) {
+      return Card(
+        elevation: 0,
+        child: ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          title: Text(isEs ? 'Estado de pago' : 'Payment status',
+              style: Theme.of(context).textTheme.titleSmall),
+          subtitle: Text(
+              [
+                statusLabel(_status),
+                if (_status == 'partial' && _amountCtrl.text.isNotEmpty)
+                  '${_amountCtrl.text} ${widget.invoice.currency ?? 'EUR'}',
+              ].join(' · '),
+              style: TextStyle(color: cs.onSurfaceVariant)),
+          trailing: IconButton(
+            tooltip: isEs ? 'Editar pago' : 'Edit payment',
+            onPressed: _startMobileEdit,
+            icon: const Icon(Icons.edit_outlined, size: 20),
+          ),
+          onTap: _startMobileEdit,
+        ),
+      );
+    }
 
     return Card(
       elevation: 0,
@@ -216,34 +282,60 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
               ],
             ),
             const SizedBox(height: 12),
-            SegmentedButton<String>(
-              selected: {_status},
-              onSelectionChanged: _saving
-                  ? null
-                  : (value) => setState(() {
-                        _status = value.first;
-                        _error = null;
-                        _success = null;
+            if (mobile)
+              DropdownButtonFormField<String>(
+                initialValue: _status,
+                isExpanded: true,
+                itemHeight: null,
+                decoration: InputDecoration(
+                  labelText: isEs ? 'Estado' : 'Status',
+                ),
+                items: [
+                  for (final value in ['unpaid', 'paid', 'partial'])
+                    DropdownMenuItem(
+                        value: value, child: Text(statusLabel(value))),
+                ],
+                onChanged: _saving
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _status = value;
+                          _error = null;
+                          _success = null;
+                        });
                         _notifyChanged();
-                      }),
-              segments: [
-                ButtonSegment(
-                  value: 'unpaid',
-                  label: Text(isEs ? 'Pendiente' : 'Unpaid'),
-                  icon: const Icon(Icons.schedule_outlined, size: 16),
-                ),
-                ButtonSegment(
-                  value: 'paid',
-                  label: Text(isEs ? 'Pagada' : 'Paid'),
-                  icon: const Icon(Icons.check_circle_outline, size: 16),
-                ),
-                ButtonSegment(
-                  value: 'partial',
-                  label: Text(isEs ? 'Pago parcial' : 'Partial'),
-                  icon: const Icon(Icons.pie_chart_outline, size: 16),
-                ),
-              ],
-            ),
+                      },
+              )
+            else
+              SegmentedButton<String>(
+                selected: {_status},
+                onSelectionChanged: _saving
+                    ? null
+                    : (value) => setState(() {
+                          _status = value.first;
+                          _error = null;
+                          _success = null;
+                          _notifyChanged();
+                        }),
+                segments: [
+                  ButtonSegment(
+                    value: 'unpaid',
+                    label: Text(isEs ? 'Pendiente' : 'Unpaid'),
+                    icon: const Icon(Icons.schedule_outlined, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: 'paid',
+                    label: Text(isEs ? 'Pagada' : 'Paid'),
+                    icon: const Icon(Icons.check_circle_outline, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: 'partial',
+                    label: Text(isEs ? 'Pago parcial' : 'Partial'),
+                    icon: const Icon(Icons.pie_chart_outline, size: 16),
+                  ),
+                ],
+              ),
             if (_status == 'partial') ...[
               const SizedBox(height: 12),
               TextField(
@@ -280,8 +372,10 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
                     label: Text(dateLabel),
                   ),
                   SizedBox(
-                    width: 220,
+                    width: mobile ? double.infinity : 220,
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      itemHeight: null,
                       initialValue: _method,
                       decoration: InputDecoration(
                         labelText: isEs ? 'Metodo' : 'Method',
@@ -321,19 +415,28 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
             ],
             if (widget.showSaveButton) ...[
               const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.icon(
-                  onPressed: _saving ? null : _save,
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save_outlined, size: 16),
-                  label: Text(isEs ? 'Guardar pago' : 'Save payment'),
-                ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  if (mobile)
+                    TextButton(
+                      onPressed: _saving ? null : _cancelMobileEdit,
+                      child: Text(l.cancel),
+                    ),
+                  FilledButton.icon(
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined, size: 16),
+                    label: Text(isEs ? 'Guardar cambios' : 'Save changes'),
+                  ),
+                ],
               ),
             ],
           ],

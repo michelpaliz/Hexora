@@ -41,7 +41,6 @@ ViewHeaderStyle buildViewHeaderStyle(
       ),
     );
 
-
 double responsiveMonthHeaderHeight(BuildContext context) {
   final size = MediaQuery.of(context).size;
   final shortest = size.shortestSide;
@@ -74,10 +73,11 @@ ScheduleViewSettings buildScheduleSettings(
       ),
     );
 
-MonthViewSettings buildMonthSettings({bool showAgenda = true}) =>
+MonthViewSettings buildMonthSettings(
+        {bool showAgenda = true, double agendaItemHeight = 48}) =>
     MonthViewSettings(
       showAgenda: showAgenda,
-      agendaItemHeight: 48,
+      agendaItemHeight: agendaItemHeight,
       dayFormat: 'EEE',
       appointmentDisplayMode: MonthAppointmentDisplayMode.none,
       appointmentDisplayCount: 4,

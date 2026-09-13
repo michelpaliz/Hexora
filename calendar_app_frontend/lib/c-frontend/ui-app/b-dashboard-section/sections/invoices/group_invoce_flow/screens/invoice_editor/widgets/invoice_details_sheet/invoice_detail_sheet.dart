@@ -45,8 +45,11 @@ class InvoiceDetailSheet extends StatefulWidget {
   final ValueChanged<String>? onOpenRecurringSeries;
   final VoidCallback? onInvoiceChanged;
 
+  final bool fullPage;
+
   const InvoiceDetailSheet({
     super.key,
+    this.fullPage = false,
     required this.invoice,
     required this.client,
     required this.billingProfile,
@@ -67,7 +70,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     _loadInvoiceDetail();
     _lines = widget.invoice.lines;
     _fetchLines();
-    _loadInlinePdfPreview();
+    if (!widget.fullPage) _loadInlinePdfPreview();
     _loadInvoiceHistory();
   }
 
@@ -108,6 +111,22 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
   // ── Details dialog ──────────────────────────────────────────────────────────
 
   void _openDetailsDialog(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: .82,
+        minChildSize: .4,
+        maxChildSize: .96,
+        builder: (_, scrollCtrl) =>
+            _buildDetailsContent(scrollCtrl: scrollCtrl),
+      ),
+    );
+  }
+
+  Widget _buildDetailsContent({ScrollController? scrollCtrl}) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final invoice = _invoice;
@@ -155,232 +174,220 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
     final isEs = l.localeName.toLowerCase().startsWith('es');
 
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: cs.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.82,
-        minChildSize: 0.4,
-        maxChildSize: 0.96,
-        builder: (_, scrollCtrl) => ListView(
-          controller: scrollCtrl,
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
-          children: [
-            // Sheet title
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return ListView(
+      controller: scrollCtrl,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
+      children: [
+        // Sheet title
+        Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: cs.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.receipt_long_rounded,
+                        size: 18, color: cs.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEs ? 'Detalles de factura' : 'Invoice details',
+                          style: AppTypography.of(context).bodyLarge.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: cs.onSurface,
+                              ),
                         ),
-                        child: Icon(Icons.receipt_long_rounded,
-                            size: 18, color: cs.primary),
+                        Text(
+                          invoice.displayNumber(draftLabel: l.statusDraft),
+                          style: AppTypography.of(context).bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Status badge
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _statusColor(cs, (invoice.status ?? ''))
+                          .withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: _statusColor(cs, (invoice.status ?? ''))
+                            .withValues(alpha: 0.3),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isEs ? 'Detalles de factura' : 'Invoice details',
-                              style:
-                                  AppTypography.of(context).bodyLarge.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                        color: cs.onSurface,
-                                      ),
-                            ),
-                            Text(
-                              invoice.displayNumber(draftLabel: l.statusDraft),
-                              style:
-                                  AppTypography.of(context).bodySmall.copyWith(
-                                        color: cs.onSurfaceVariant,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                            ),
-                          ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _statusIcon(invoice.status ?? ''),
+                          size: 11,
+                          color: _statusColor(cs, invoice.status ?? ''),
                         ),
-                      ),
-                      // Status badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _statusColor(cs, (invoice.status ?? ''))
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: _statusColor(cs, (invoice.status ?? ''))
-                                .withValues(alpha: 0.3),
-                          ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _resolveStatus(invoice.status ?? ''),
+                          style: AppTypography.of(context).bodySmall.copyWith(
+                                color: _statusColor(cs, invoice.status ?? ''),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                              ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _statusIcon(invoice.status ?? ''),
-                              size: 11,
-                              color: _statusColor(cs, invoice.status ?? ''),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _resolveStatus(invoice.status ?? ''),
-                              style: AppTypography.of(context)
-                                  .bodySmall
-                                  .copyWith(
-                                    color:
-                                        _statusColor(cs, invoice.status ?? ''),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-
-            // Final settlement
-            if (showFinalSettlement) ...[
-              _DetailSection(
-                icon: Icons.account_balance_outlined,
-                iconColor: cs.secondary,
-                title: isEs ? 'Liquidación final' : 'Final settlement',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if ((settlement.advanceInvoiceNumber ?? '')
-                        .trim()
-                        .isNotEmpty)
-                      _DetailRow(
-                        label: isEs ? 'Factura anticipo' : 'Advance invoice',
-                        value: settlement.advanceInvoiceNumber ?? '',
-                      ),
-                    if (settlement.deductedBase != null)
-                      _DetailRow(
-                        label: isEs ? 'Base deducida' : 'Deducted base',
-                        value: moneyFormat.format(settlement.deductedBase),
-                      ),
-                    if (settlement.deductedTax != null)
-                      _DetailRow(
-                        label: isEs ? 'IVA deducido' : 'Deducted tax',
-                        value: moneyFormat.format(settlement.deductedTax),
-                      ),
-                    if (settlement.deductedTotal != null)
-                      _DetailRow(
-                        label: isEs ? 'Total deducido' : 'Deducted total',
-                        value: moneyFormat.format(settlement.deductedTotal),
-                        bold: true,
-                      ),
-                    if (settlement.remainingTotal != null)
-                      _DetailRow(
-                        label: isEs ? 'Total restante' : 'Remaining total',
-                        value: moneyFormat.format(settlement.remainingTotal),
-                        bold: true,
-                        accent: cs.primary,
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
             ],
-
-            // Parties
-            InvoiceDetailParty(
-              issuer: issuer,
-              clientBilling: clientBilling,
-            ),
-
-            // Billing card
-            if (showBillingCard) ...[
-              const SizedBox(height: 12),
-              InvoiceDetailBillingCard(
-                title: l.invoiceBillingNameTitle,
-                canEdit:
-                    !(invoice.status ?? '').toLowerCase().contains('draft'),
-                saving: _savingBillingName,
-                onEdit: () => _editBillingDetails(invoice, clientBilling),
-                billingName: billingName,
-                billingEntity: billingEntity,
-                billingStreet: billingStreet,
-                billingCity: billingCity,
-                billingPostal: billingPostal,
-                billingProvince: billingProvince,
-                billingCountry: billingCountry,
-              ),
-            ],
-
-            // Dates
-            const SizedBox(height: 12),
-            InvoiceDetailDates(
-              invoice: invoice,
-              locale: l.localeName,
-              isEs: isEs,
-            ),
-
-            const SizedBox(height: 12),
-            InvoicePaymentEditor(
-              invoice: invoice,
-              onSave: _updateInvoicePayment,
-            ),
-
-            // Delivery status
-            const SizedBox(height: 12),
-            _DeliverySection(
-              invoice: invoice,
-              deliveryStatus: deliveryStatus,
-              sentAtLabel: sentAtLabel,
-              channelLabel: channelLabel,
-              canChangeDelivery: canChangeDelivery,
-              updatingDelivery: _updatingDelivery,
-              onMarkSent: _markInvoiceSent,
-              onMarkUnsent: _markInvoiceUnsent,
-            ),
-
-            // History
-            const SizedBox(height: 12),
-            InvoiceDetailHistoryCard(
-              title: l.invoiceChangeHistoryTitle,
-              history: history,
-              localeName: l.localeName,
-              currency: invoice.currency ?? 'EUR',
-              loading: _historyLoading,
-              error: _historyError,
-              onRetry: _loadInvoiceHistory,
-            ),
-
-            // Lines
-            const SizedBox(height: 12),
-            InvoiceDetailLines(
-              loading: _loading,
-              error: _error,
-              lines: _lines,
-              onRefresh: _fetchLines,
-              subtotal: _invoice.subtotal,
-              taxTotal: _invoice.taxTotal,
-              total: _invoice.total,
-              discountAmount: _invoice.discountAmount,
-              discountPercent: _invoice.discountPercent,
-            ),
-          ],
+          ),
         ),
-      ),
+
+        // Final settlement
+        if (showFinalSettlement) ...[
+          _DetailSection(
+            icon: Icons.account_balance_outlined,
+            iconColor: cs.secondary,
+            title: isEs ? 'Liquidación final' : 'Final settlement',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if ((settlement.advanceInvoiceNumber ?? '').trim().isNotEmpty)
+                  _DetailRow(
+                    label: isEs ? 'Factura anticipo' : 'Advance invoice',
+                    value: settlement.advanceInvoiceNumber ?? '',
+                  ),
+                if (settlement.deductedBase != null)
+                  _DetailRow(
+                    label: isEs ? 'Base deducida' : 'Deducted base',
+                    value: moneyFormat.format(settlement.deductedBase),
+                  ),
+                if (settlement.deductedTax != null)
+                  _DetailRow(
+                    label: isEs ? 'IVA deducido' : 'Deducted tax',
+                    value: moneyFormat.format(settlement.deductedTax),
+                  ),
+                if (settlement.deductedTotal != null)
+                  _DetailRow(
+                    label: isEs ? 'Total deducido' : 'Deducted total',
+                    value: moneyFormat.format(settlement.deductedTotal),
+                    bold: true,
+                  ),
+                if (settlement.remainingTotal != null)
+                  _DetailRow(
+                    label: isEs ? 'Total restante' : 'Remaining total',
+                    value: moneyFormat.format(settlement.remainingTotal),
+                    bold: true,
+                    accent: cs.primary,
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Parties
+        InvoiceDetailParty(
+          issuer: issuer,
+          clientBilling: clientBilling,
+        ),
+
+        // Billing card
+        if (showBillingCard) ...[
+          const SizedBox(height: 12),
+          InvoiceDetailBillingCard(
+            title: l.invoiceBillingNameTitle,
+            canEdit: !(invoice.status ?? '').toLowerCase().contains('draft'),
+            saving: _savingBillingName,
+            onEdit: () => _editBillingDetails(invoice, clientBilling),
+            billingName: billingName,
+            billingEntity: billingEntity,
+            billingStreet: billingStreet,
+            billingCity: billingCity,
+            billingPostal: billingPostal,
+            billingProvince: billingProvince,
+            billingCountry: billingCountry,
+          ),
+        ],
+
+        // Dates
+        const SizedBox(height: 12),
+        InvoiceDetailDates(
+          invoice: invoice,
+          locale: l.localeName,
+          isEs: isEs,
+        ),
+
+        const SizedBox(height: 12),
+        InvoicePaymentEditor(
+          invoice: invoice,
+          onSave: _updateInvoicePayment,
+        ),
+
+        // Delivery status
+        const SizedBox(height: 12),
+        _DeliverySection(
+          invoice: invoice,
+          deliveryStatus: deliveryStatus,
+          sentAtLabel: sentAtLabel,
+          channelLabel: channelLabel,
+          canChangeDelivery: canChangeDelivery,
+          updatingDelivery: _updatingDelivery,
+          onMarkSent: _markInvoiceSent,
+          onMarkUnsent: _markInvoiceUnsent,
+        ),
+
+        // History
+        const SizedBox(height: 12),
+        InvoiceDetailHistoryCard(
+          title: l.invoiceChangeHistoryTitle,
+          history: history,
+          localeName: l.localeName,
+          currency: invoice.currency ?? 'EUR',
+          loading: _historyLoading,
+          error: _historyError,
+          onRetry: _loadInvoiceHistory,
+        ),
+
+        // Lines
+        const SizedBox(height: 12),
+        InvoiceDetailLines(
+          loading: _loading,
+          error: _error,
+          lines: _lines,
+          onRefresh: _fetchLines,
+          subtotal: _invoice.subtotal,
+          taxTotal: _invoice.taxTotal,
+          total: _invoice.total,
+          discountAmount: _invoice.discountAmount,
+          discountPercent: _invoice.discountPercent,
+        ),
+        if (widget.fullPage) ...[
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _downloadingPdf ? null : _downloadPdf,
+              icon: const Icon(Icons.download_outlined, size: 20),
+              label: Text('${l.download} PDF'),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -388,6 +395,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
 
   @override
   Widget build(BuildContext context) {
+    if (widget.fullPage) return _buildDetailsContent();
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final invoice = _invoice;

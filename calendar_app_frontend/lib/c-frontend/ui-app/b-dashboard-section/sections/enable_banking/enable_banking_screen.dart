@@ -1,5 +1,7 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -289,106 +291,72 @@ class _EnableBankingViewState extends State<_EnableBankingView>
 
     // ── Mobile layout ─────────────────────────────────────────────────────────
     if (isMobile) {
-      final mobileMenu = _mobileTabs[_mobileTabController.index];
-      final body =
-          _buildContentArea(context, l, forMenu: mobileMenu, isMobile: true);
-
       final cs = Theme.of(context).colorScheme;
       final t = AppTypography.of(context);
-      final tabBar = TabBar(
-        controller: _mobileTabController,
-        dividerColor: Colors.transparent,
-        splashFactory: NoSplash.splashFactory,
-        overlayColor:
-            WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(
-          color: cs.primaryContainer,
-          borderRadius: BorderRadius.circular(999),
+      final tabBar = PreferredSize(
+        preferredSize: const Size.fromHeight(56),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: ThemeColors.cardBg(context),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
+            ),
+            child: TabBar(
+              controller: _mobileTabController,
+              tabs: [
+                Tab(text: isSpanish ? 'Movimientos' : l.statementsAllDataTitle),
+                Tab(
+                    text:
+                        isSpanish ? 'Analíticas' : l.statementsAnalyticsTitle),
+              ],
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              labelColor: ThemeColors.contrastOn(cs.primary),
+              unselectedLabelColor:
+                  ThemeColors.textPrimary(context).withValues(alpha: 0.7),
+              labelStyle: t.bodySmall.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: .2,
+              ),
+              unselectedLabelStyle: t.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+                letterSpacing: .2,
+              ),
+              indicator: BoxDecoration(
+                color: cs.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              splashBorderRadius: BorderRadius.circular(10),
+            ),
+          ),
         ),
-        indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
-        labelColor: cs.onPrimaryContainer,
-        unselectedLabelColor: cs.onSurfaceVariant,
-        labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-        unselectedLabelStyle:
-            t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-        tabs: [
-          Tab(
-            height: 36,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.table_chart_outlined, size: 15),
-                const SizedBox(width: 6),
-                Text(isSpanish ? 'Movimientos' : l.statementsAllDataTitle),
-              ],
-            ),
-          ),
-          Tab(
-            height: 36,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.analytics_outlined, size: 15),
-                const SizedBox(width: 6),
-                Text(isSpanish ? 'Analíticas' : l.statementsAnalyticsTitle),
-              ],
-            ),
-          ),
+      );
+      final body = TabBarView(
+        controller: _mobileTabController,
+        children: [
+          for (final menu in _mobileTabs)
+            _buildContentArea(context, l, forMenu: menu, isMobile: true),
         ],
       );
 
       if (widget.embedded) {
         return Column(
           children: [
-            Material(
-              color: Theme.of(context).colorScheme.surface,
-              child: tabBar,
-            ),
+            Material(color: cs.surface, child: tabBar),
             Expanded(child: body),
           ],
         );
       }
 
       return Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              SizedBox(
-                height: 44,
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 48,
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                        tooltip:
-                            MaterialLocalizations.of(context).backButtonTooltip,
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      ),
-                    ),
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          'Bank',
-                          style: t.bodyLarge.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 48),
-                  ],
-                ),
-              ),
-              Material(
-                color: Theme.of(context).colorScheme.surface,
-                child: tabBar,
-              ),
-              Expanded(child: body),
-            ],
-          ),
+        appBar: SectionAppBar(
+          title: isSpanish ? 'Bancos' : 'Bank',
+          bottom: tabBar,
         ),
+        body: body,
       );
     }
 
@@ -417,12 +385,10 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     if (widget.embedded) return desktopContent;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          group == null
-              ? _menuTitle(l, _selectedMenu)
-              : '${_menuTitle(l, _selectedMenu)} - ${group.name}',
-        ),
+      appBar: SectionAppBar(
+        title: group == null
+            ? _menuTitle(l, _selectedMenu)
+            : '${_menuTitle(l, _selectedMenu)} - ${group.name}',
         actions: [
           IconButton(
             tooltip: 'Refresh status',

@@ -29,6 +29,12 @@ class AppointmentBuilderBridge {
     final event = appt;
     final cardColor = ColorManager().getColor(event.eventColorIndex);
 
+    if (selectedView == sf.CalendarView.month &&
+        MediaQuery.sizeOf(context).width < 700) {
+      return builder.buildScheduleAppointment(
+          details, textColor, context, event, userRole, cardColor);
+    }
+
     switch (selectedView) {
       case sf.CalendarView.schedule:
         return builder.buildScheduleAppointment(

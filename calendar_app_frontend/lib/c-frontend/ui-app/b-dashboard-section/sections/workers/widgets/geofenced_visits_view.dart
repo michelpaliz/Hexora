@@ -472,8 +472,9 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Column(
-      children: [
+    return LayoutBuilder(builder: (context, constraints) {
+      final compact = constraints.maxWidth < 760;
+      final children = <Widget>[
         if (widget.showTrackingCard)
           if (!_workersLoaded)
             const Padding(
@@ -512,14 +513,25 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
               ),
             ),
         if (widget.showVisits)
-          Expanded(child: _buildVisitWorkspace(cs))
-        else
+          if (compact)
+            _buildVisitWorkspace(cs, compact: true)
+          else
+            Expanded(child: _buildVisitWorkspace(cs))
+        else if (!compact)
           const Spacer(),
-      ],
-    );
+      ];
+      if (compact) {
+        return SingleChildScrollView(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children),
+        );
+      }
+      return Column(children: children);
+    });
   }
 
-  Widget _buildVisitWorkspace(ColorScheme cs) {
+  Widget _buildVisitWorkspace(ColorScheme cs, {bool compact = false}) {
     final visits = _visibleVisits;
     final activeCount = visits.where(workerVisitIsActive).length;
     final completedVisits = visits.where(workerVisitIsCompleted).toList();
@@ -547,7 +559,8 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
     return ColoredBox(
       color: cs.surfaceContainerLowest.withValues(alpha: 0.45),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+        padding:
+            EdgeInsets.fromLTRB(compact ? 0 : 18, 16, compact ? 0 : 18, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -607,7 +620,9 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
             ),
             const SizedBox(height: 14),
             SizedBox(
-              height: 76,
+              height: 76 *
+                  (MediaQuery.textScalerOf(context).scale(14) / 14)
+                      .clamp(1.0, double.infinity),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final metrics = <Widget>[
@@ -644,7 +659,9 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
                       itemCount: metrics.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (_, index) => SizedBox(
-                        width: 160,
+                        width: 160 *
+                            (MediaQuery.textScalerOf(context).scale(14) / 14)
+                                .clamp(1.0, double.infinity),
                         child: metrics[index],
                       ),
                     );
@@ -663,7 +680,10 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
             const SizedBox(height: 12),
             _buildFilterToolbar(cs),
             const SizedBox(height: 12),
-            Expanded(child: _buildVisits(cs)),
+            if (compact)
+              _buildVisits(cs, compact: true)
+            else
+              Expanded(child: _buildVisits(cs)),
           ],
         ),
       ),
@@ -792,7 +812,7 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
     return '${hours}h ${remainder.toString().padLeft(2, '0')}m';
   }
 
-  Widget _buildVisits(ColorScheme cs) {
+  Widget _buildVisits(ColorScheme cs, {bool compact = false}) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_workerProfileRequired) {
       return _VisitsMessageState(
@@ -910,6 +930,8 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
           );
         }
         return ListView.separated(
+          shrinkWrap: compact,
+          physics: compact ? const NeverScrollableScrollPhysics() : null,
           padding: const EdgeInsets.only(bottom: 16),
           itemCount: visits.length,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -1578,146 +1600,165 @@ class _TrackingStatusCard extends StatelessWidget {
         : activeHere
             ? const Color(0xFFE09B25)
             : cs.primary;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-      padding: const EdgeInsets.all(16),
+    final statusIcon = Container(
+      width: 46,
+      height: 46,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: color.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.13),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              runningHere
-                  ? Icons.location_on_rounded
-                  : Icons.location_searching_rounded,
-              color: color,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  runningHere
-                      ? (isSpanish ? 'Seguimiento activo' : 'Tracking active')
-                      : activeHere
-                          ? (isSpanish
-                              ? 'Seguimiento en pausa'
-                              : 'Tracking paused')
-                          : (isSpanish
-                              ? 'Seguimiento de visitas'
-                              : 'Visit tracking'),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 7),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      '${isSpanish ? 'Responsable' : 'Lead'}: $responsibleName',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    TextButton.icon(
-                      onPressed: tracking.isBusy ? null : onEditTeam,
-                      icon: const Icon(Icons.groups_2_outlined, size: 17),
-                      label: Text(
-                        companionNames.isEmpty
-                            ? (isSpanish
-                                ? 'A\u00f1adir acompa\u00f1antes'
-                                : 'Add companions')
-                            : '${isSpanish ? 'Editar equipo' : 'Edit team'} · ${companionNames.length + 1}',
-                      ),
-                    ),
-                  ],
-                ),
-                if (companionNames.isNotEmpty)
-                  Text(
-                    '${isSpanish ? 'Acompa\u00f1antes' : 'Companions'}: ${companionNames.join(', ')}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                  ),
-                const SizedBox(height: 3),
-                Text(
-                  runningHere
-                      ? (isSpanish
-                          ? '${tracking.clientLocationCount} ubicaciones activas · solo se guardan llegadas y salidas'
-                          : '${tracking.clientLocationCount} active locations · only arrivals and departures are stored')
-                      : activeHere
-                          ? (isSpanish
-                              ? 'Reanuda la ubicación en segundo plano para continuar.'
-                              : 'Resume background location to continue.')
-                          : (isSpanish
-                              ? 'Inícialo antes de comenzar la ruta de trabajo.'
-                              : 'Start it before beginning the work route.'),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                ),
-                if ((tracking.error ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    tracking.error!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.error,
-                        ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: tracking.isBusy
-                ? null
-                : runningHere
-                    ? onStop
-                    : activeHere
-                        ? onStart
-                        : tracking.isActive
-                            ? null
-                            : onStart,
-            style: FilledButton.styleFrom(backgroundColor: color),
-            icon: tracking.isBusy
-                ? const SizedBox.square(
-                    dimension: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(runningHere
-                    ? Icons.stop_rounded
-                    : Icons.play_arrow_rounded),
-            label: Text(
-              runningHere
-                  ? (isSpanish ? 'Detener' : 'Stop')
-                  : activeHere
-                      ? (isSpanish ? 'Reanudar' : 'Resume')
-                      : (isSpanish ? 'Iniciar' : 'Start'),
-            ),
-          ),
-        ],
+      child: Icon(
+        runningHere
+            ? Icons.location_on_rounded
+            : Icons.location_searching_rounded,
+        color: color,
       ),
     );
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          runningHere
+              ? (isSpanish ? 'Seguimiento activo' : 'Tracking active')
+              : activeHere
+                  ? (isSpanish ? 'Seguimiento en pausa' : 'Tracking paused')
+                  : (isSpanish ? 'Seguimiento de visitas' : 'Visit tracking'),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 7),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              '${isSpanish ? 'Responsable' : 'Lead'}: $responsibleName',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            TextButton.icon(
+              onPressed: tracking.isBusy ? null : onEditTeam,
+              icon: const Icon(Icons.groups_2_outlined, size: 17),
+              label: Text(
+                companionNames.isEmpty
+                    ? (isSpanish
+                        ? 'A\u00f1adir acompa\u00f1antes'
+                        : 'Add companions')
+                    : '${isSpanish ? 'Editar equipo' : 'Edit team'} · ${companionNames.length + 1}',
+              ),
+            ),
+          ],
+        ),
+        if (companionNames.isNotEmpty)
+          Text(
+            '${isSpanish ? 'Acompa\u00f1antes' : 'Companions'}: ${companionNames.join(', ')}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+          ),
+        const SizedBox(height: 3),
+        Text(
+          runningHere
+              ? (isSpanish
+                  ? '${tracking.clientLocationCount} ubicaciones activas · solo se guardan llegadas y salidas'
+                  : '${tracking.clientLocationCount} active locations · only arrivals and departures are stored')
+              : activeHere
+                  ? (isSpanish
+                      ? 'Reanuda la ubicación en segundo plano para continuar.'
+                      : 'Resume background location to continue.')
+                  : (isSpanish
+                      ? 'Inícialo antes de comenzar la ruta de trabajo.'
+                      : 'Start it before beginning the work route.'),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+        ),
+        if ((tracking.error ?? '').isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            tracking.error!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.error,
+                ),
+          ),
+        ],
+      ],
+    );
+    final action = FilledButton.icon(
+      onPressed: tracking.isBusy
+          ? null
+          : runningHere
+              ? onStop
+              : activeHere
+                  ? onStart
+                  : tracking.isActive
+                      ? null
+                      : onStart,
+      style: FilledButton.styleFrom(backgroundColor: color),
+      icon: tracking.isBusy
+          ? const SizedBox.square(
+              dimension: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : Icon(runningHere ? Icons.stop_rounded : Icons.play_arrow_rounded),
+      label: Text(
+        runningHere
+            ? (isSpanish ? 'Detener' : 'Stop')
+            : activeHere
+                ? (isSpanish ? 'Reanudar' : 'Resume')
+                : (isSpanish ? 'Iniciar' : 'Start'),
+      ),
+    );
+    return LayoutBuilder(builder: (context, constraints) {
+      final compact = constraints.maxWidth < 600;
+      return Container(
+        margin: EdgeInsets.fromLTRB(compact ? 0 : 16, 12, compact ? 0 : 16, 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: compact
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: [
+                    statusIcon,
+                    const SizedBox(width: 12),
+                    Expanded(
+                        child: Text(
+                            isSpanish ? 'Control de ruta' : 'Route tracking',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                    color: cs.onSurface,
+                                    fontWeight: FontWeight.w700))),
+                  ]),
+                  const SizedBox(height: 12),
+                  details,
+                  const SizedBox(height: 16),
+                  action,
+                ],
+              )
+            : Row(children: [
+                statusIcon,
+                const SizedBox(width: 14),
+                Expanded(child: details),
+                const SizedBox(width: 12),
+                action
+              ]),
+      );
+    });
   }
 }
 

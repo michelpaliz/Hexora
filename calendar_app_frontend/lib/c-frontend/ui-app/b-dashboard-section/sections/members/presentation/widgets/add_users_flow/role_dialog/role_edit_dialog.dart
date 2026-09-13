@@ -15,6 +15,7 @@ class RoleEditDialog extends StatefulWidget {
   final List<GroupRole> options;
 
   const RoleEditDialog({
+    super.key,
     required this.user,
     required this.userId,
     required this.current,
@@ -49,6 +50,8 @@ class _RoleEditDialogState extends State<RoleEditDialog> {
     if (!options.contains(widget.current)) options.add(widget.current);
 
     return AlertDialog(
+      scrollable: true,
+      backgroundColor: cs.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
         loc.updateRoleTitle,
@@ -69,7 +72,8 @@ class _RoleEditDialogState extends State<RoleEditDialog> {
               displayName,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+              style: typo.bodyMedium
+                  .copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
             ),
             subtitle: (user?.userName.isNotEmpty ?? false)
                 ? UsernameTag(username: user!.userName)
@@ -77,6 +81,8 @@ class _RoleEditDialogState extends State<RoleEditDialog> {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<GroupRole>(
+            isExpanded: true,
+            style: typo.bodyMedium.copyWith(color: cs.onSurface),
             initialValue: _selected,
             decoration: InputDecoration(
               labelText: loc.roleLabel,
@@ -86,7 +92,8 @@ class _RoleEditDialogState extends State<RoleEditDialog> {
             items: options.map((r) {
               return DropdownMenuItem<GroupRole>(
                 value: r,
-                child: Text(roleLabelOf(context, r)),
+                child: Text(roleLabelOf(context, r),
+                    overflow: TextOverflow.ellipsis),
               );
             }).toList(),
             onChanged: (v) => setState(() => _selected = v ?? _selected),
@@ -103,6 +110,7 @@ class _RoleEditDialogState extends State<RoleEditDialog> {
           icon: const Icon(Icons.save_outlined, size: 18),
           style: ButtonStyle(
             backgroundColor: WidgetStatePropertyAll(cs.primary),
+            foregroundColor: WidgetStatePropertyAll(cs.onPrimary),
           ),
           onPressed: () => Navigator.pop<GroupRole>(context, _selected),
           label: Text(loc.saveChanges),

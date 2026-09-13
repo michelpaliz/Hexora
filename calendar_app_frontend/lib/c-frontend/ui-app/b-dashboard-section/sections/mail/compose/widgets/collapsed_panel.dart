@@ -19,6 +19,7 @@ class _CollapsedPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 600;
     final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -28,28 +29,31 @@ class _CollapsedPanel extends StatelessWidget {
             Expanded(
               child: InkWell(
                 onTap: onToggle,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      expanded
-                          ? Icons.expand_more_rounded
-                          : Icons.chevron_right_rounded,
-                      size: 16,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        title,
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: compact ? 48 : 0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        expanded
+                            ? Icons.expand_more_rounded
+                            : Icons.chevron_right_rounded,
+                        size: 16,
+                        color: cs.onSurfaceVariant,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: t.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: compact ? 16 : 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

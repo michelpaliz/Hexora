@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/mobile_document_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
@@ -22,6 +23,7 @@ class InvoiceListItem extends StatefulWidget {
   final String? monthWarningLabel;
   final String? monthWarningTooltip;
   final bool selected;
+  final bool mobile;
 
   const InvoiceListItem({
     super.key,
@@ -39,6 +41,7 @@ class InvoiceListItem extends StatefulWidget {
     this.monthWarningLabel,
     this.monthWarningTooltip,
     this.selected = false,
+    this.mobile = false,
   });
 
   @override
@@ -91,7 +94,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   }
 
   Future<void> _maybeFetchMeta() async {
-    if (!mounted || _loadingMeta) return;
+    if (!mounted || _loadingMeta || widget.mobile) return;
     if (widget.invoice.id.trim().isEmpty) return;
     if (widget.invoice.lines.isNotEmpty) return;
     if (_lineCount != null) return;
@@ -116,6 +119,46 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
   }
 
+  Widget _buildMobileCard(AppLocalizations l, AppTypography t, ColorScheme cs,
+      String total, String date) {
+    final inv = widget.invoice;
+    return MobileDocumentCard(
+      title: widget.client.name,
+      amount: total,
+      metadata:
+          [inv.invoiceNumber, date].where((v) => v.isNotEmpty).join(' · '),
+      isDraft: inv.isDraft,
+      statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
+      onTap: widget.onTap,
+      badges: [
+        DeliveryStatusBadge(
+          status: inv.deliveryStatus,
+          channel: inv.deliveryChannel,
+          sentAt: inv.sentAt,
+          deliveryError: inv.deliveryError,
+          feminine: true,
+        ),
+      ],
+      trailing: widget.onEdit != null || widget.onDelete != null
+          ? PopupMenuButton<String>(
+              tooltip: l.edit,
+              onSelected: (value) {
+                if (value == 'edit') widget.onEdit?.call();
+                if (value == 'delete') widget.onDelete?.call();
+              },
+              itemBuilder: (_) => [
+                if (widget.onEdit != null)
+                  PopupMenuItem(value: 'edit', child: Text(l.edit)),
+                if (widget.onDelete != null)
+                  PopupMenuItem(
+                      value: 'delete',
+                      child: Text(l.remove, style: TextStyle(color: cs.error))),
+              ],
+            )
+          : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -138,6 +181,10 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final totalLabel = _total != null
         ? money.format(_total)
         : (backendTotalLabel.isNotEmpty ? backendTotalLabel : '');
+
+    if (widget.mobile) {
+      return _buildMobileCard(l, t, cs, totalLabel, dateLabel);
+    }
 
     final settlement = widget.invoice.finalSettlement;
     final settlementDeduction = (settlement?.deductedTotal ?? 0).toDouble();

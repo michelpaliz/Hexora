@@ -31,7 +31,7 @@ class _ComposeBottomBar extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: t.bodySmall.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 11,
+                  fontSize: 13,
                 ),
               ),
               const SizedBox(height: 5),
@@ -42,9 +42,10 @@ class _ComposeBottomBar extends StatelessWidget {
                 message: !enabled && !sending ? (disabledHint ?? '') : '',
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     textStyle: t.bodySmall.copyWith(
-                      fontSize: 13,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

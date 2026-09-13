@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/services_clients/client_classification_store.dart';
@@ -13,6 +14,29 @@ import 'widgets/client_contact_form.dart';
 import 'widgets/client_header.dart';
 import 'widgets/save_button.dart';
 import 'widgets/service_location_section.dart';
+
+/// Opens the client form as a page with persistent navigation and save controls.
+Future<GroupClient?> showClientEditor({
+  required BuildContext context,
+  required String groupId,
+  required ClientsApi api,
+  GroupClient? client,
+  List<GroupClient> existingClients = const [],
+  ValueChanged<GroupClient>? onOpenExisting,
+}) {
+  return Navigator.of(context, rootNavigator: true).push<GroupClient>(
+    MaterialPageRoute(
+      builder: (_) => AddClientSheet(
+        groupId: groupId,
+        api: api,
+        client: client,
+        existingClients: existingClients,
+        onOpenExisting: onOpenExisting,
+        fullScreen: true,
+      ),
+    ),
+  );
+}
 
 GroupClient? findClientByTrimmedName(
   Iterable<GroupClient> clients,
@@ -36,6 +60,7 @@ class AddClientSheet extends StatefulWidget {
   final ValueChanged<GroupClient>? onOpenExisting;
   final List<GroupClient> existingClients;
   final bool closeOnSave;
+  final bool fullScreen;
 
   const AddClientSheet({
     super.key,
@@ -46,6 +71,7 @@ class AddClientSheet extends StatefulWidget {
     this.onOpenExisting,
     this.existingClients = const [],
     this.closeOnSave = true,
+    this.fullScreen = false,
   });
 
   @override
@@ -265,16 +291,12 @@ class _AddClientSheetState extends State<AddClientSheet> {
       callback(existingClient);
       return;
     }
-    final updated = await showModalBottomSheet<GroupClient>(
+    final updated = await showClientEditor(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => AddClientSheet(
-        groupId: widget.groupId,
-        api: widget.api,
-        client: existingClient,
-        existingClients: widget.existingClients,
-      ),
+      groupId: widget.groupId,
+      api: widget.api,
+      client: existingClient,
+      existingClients: widget.existingClients,
     );
     if (updated != null) widget.onSaved?.call(updated);
   }
@@ -283,18 +305,21 @@ class _AddClientSheetState extends State<AddClientSheet> {
   Widget build(BuildContext context) {
     final pad = MediaQuery.of(context).viewInsets.bottom + 16;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12, 8, 12, pad),
+    final form = Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, widget.fullScreen ? 16 : pad),
       child: Form(
         key: c.formKey,
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ClientHeader(isEdit: c.isEdit),
-              const SizedBox(height: 8),
-              const BillingDivider(),
-              const SizedBox(height: 8),
+              if (!widget.fullScreen) ...[
+                ClientHeader(isEdit: c.isEdit),
+                const SizedBox(height: 8),
+                const BillingDivider(),
+                const SizedBox(height: 8),
+              ],
               ClientContactForm(
                 c: c,
                 entityTypeOptions: _entityTypeOptions,
@@ -327,13 +352,57 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 onChanged: (v) => setState(() => c.active = v),
               ),
               const SizedBox(height: 8),
-              SaveButton(
-                saving: c.saving,
-                isEdit: c.isEdit,
-                onPressed: c.saving ? null : _onSave,
-              ),
+              if (!widget.fullScreen)
+                SaveButton(
+                  saving: c.saving,
+                  isEdit: c.isEdit,
+                  onPressed: c.saving ? null : _onSave,
+                ),
             ],
           ),
+        ),
+      ),
+    );
+    if (!widget.fullScreen) return form;
+
+    final l = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(title: Text(c.isEdit ? l.editClient : l.createClient)),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 840),
+                  child: form,
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                    top: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                )),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Center(
+                heightFactor: 1,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 808),
+                  child: SaveButton(
+                    saving: c.saving,
+                    isEdit: c.isEdit,
+                    onPressed: c.saving ? null : _onSave,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

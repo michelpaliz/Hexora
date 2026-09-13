@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/context_colors/define_themes/mobile_theme.dart';
+
 import 'package:hexora/f-themes/app_colors/palette/app_colors/app_colors.dart';
 
 /// Semantic color helpers that respect ThemeMode and your palette.
@@ -20,6 +22,9 @@ class ThemeColors {
 
   /// In dark mode: normal text; in light: a white-ish choice suitable on primary.
   static Color textOnPrimaryPref(BuildContext context) {
+    if (MobileTheme.isActive(context)) {
+      return Theme.of(context).colorScheme.onPrimary;
+    }
     final theme = Theme.of(context);
     return theme.brightness == Brightness.dark
         ? theme.colorScheme.onSurface
@@ -30,11 +35,15 @@ class ThemeColors {
   static Color containerBg(BuildContext context) =>
       Theme.of(context).colorScheme.surface;
 
-  static Color cardBg(BuildContext context) =>
-      Theme.of(context).colorScheme.surface;
+  static Color cardBg(BuildContext context) => MobileTheme.isActive(context)
+      ? Theme.of(context).colorScheme.surfaceContainerLow
+      : Theme.of(context).colorScheme.surface;
 
   /// Slightly lighter fill for inputs placed on container backgrounds.
   static Color inputFillLighter(BuildContext context) {
+    if (MobileTheme.isActive(context)) {
+      return Theme.of(context).colorScheme.surfaceContainerLow;
+    }
     final base = containerBg(context);
     final isDark =
         ThemeData.estimateBrightnessForColor(base) == Brightness.dark;
@@ -48,26 +57,32 @@ class ThemeColors {
           : Colors.black26;
 
   /// ListTile backgrounds
-  static Color listTileBg(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
+  static Color listTileBg(BuildContext context) => MobileTheme.isActive(context)
+      ? Theme.of(context).colorScheme.surfaceContainerLow
+      : Theme.of(context).brightness == Brightness.dark
           ? Theme.of(context).colorScheme.surface
           : AppColors.white;
 
   /// Search bar pieces
   static Color searchBg(BuildContext context) {
+    if (MobileTheme.isActive(context)) {
+      return Theme.of(context).colorScheme.surfaceContainerLow;
+    }
     final theme = Theme.of(context);
     return theme.brightness == Brightness.dark
         ? theme.colorScheme.surface
         : theme.colorScheme.surface.withOpacity(0.9);
   }
 
-  static Color searchIcon(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
+  static Color searchIcon(BuildContext context) => MobileTheme.isActive(context)
+      ? Theme.of(context).colorScheme.onSurfaceVariant
+      : Theme.of(context).brightness == Brightness.dark
           ? AppDarkColors.secondary
           : AppColors.secondary;
 
-  static Color searchHint(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
+  static Color searchHint(BuildContext context) => MobileTheme.isActive(context)
+      ? Theme.of(context).colorScheme.onSurfaceVariant
+      : Theme.of(context).brightness == Brightness.dark
           ? AppDarkColors.textSecondary
           : AppColors.textSecondary;
 

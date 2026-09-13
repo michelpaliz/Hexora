@@ -204,6 +204,7 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _InsightsChatSheet(
         groupId: widget.groupId,
@@ -2304,6 +2305,7 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   final _servicesApi = ServiceApi();
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
+  final Map<String, ScrollController> _tableScrollControllers = {};
   String? _exportingMessageKey;
   String? _selectedAssistantMessageKey;
   String? _eventActionMessageKey;
@@ -8723,6 +8725,9 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     _runtime.setSheetOpen(false, notify: false);
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
+    for (final controller in _tableScrollControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -9176,6 +9181,66 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     final titleText = (title != null && title.isNotEmpty)
         ? title
         : (isEs ? 'Opciones' : 'Options');
+
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            Expanded(child: Text(titleText, style: t.bodySmall)),
+            if (hasBack)
+              TextButton.icon(
+                onPressed: _runtime.sending
+                    ? null
+                    : () => _sendMenuBack(menu!, message: message),
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: Text(isEs ? 'Volver' : 'Back'),
+              ),
+          ]),
+          for (final option in menuOptions)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton(
+                onPressed: _runtime.sending
+                    ? null
+                    : () => _sendMenuChoice(
+                          option.index,
+                          action: option.action,
+                          label: option.label,
+                          message: message,
+                        ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.all(12),
+                  alignment: Alignment.centerLeft,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                child: Row(children: [
+                  Text('${option.index}'),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(option.label)),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right_rounded, size: 18),
+                ]),
+              ),
+            ),
+          for (var index = 0; index < followUps.length; index++)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton(
+                onPressed: _runtime.sending
+                    ? null
+                    : () => _sendMenuChoice(index + 1, message: message),
+                style: OutlinedButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.all(12),
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                child: Text(followUps[index]),
+              ),
+            ),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -9639,6 +9704,10 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
     required ColorScheme cs,
     required AppTypography t,
   }) {
+    final tableScrollController = _tableScrollControllers.putIfAbsent(
+      _messageKey(message),
+      () => ScrollController(),
+    );
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -10123,10 +10192,12 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
           Stack(
             children: [
               Scrollbar(
+                controller: tableScrollController,
                 thumbVisibility: true,
                 notificationPredicate: (notification) =>
                     notification.metrics.axis == Axis.horizontal,
                 child: SingleChildScrollView(
+                  controller: tableScrollController,
                   scrollDirection: Axis.horizontal,
                   primary: false,
                   child: Container(
@@ -10593,13 +10664,12 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
               controller: _inputCtrl,
               enabled: !sending,
               minLines: 1,
-              maxLines: 4,
+              maxLines: MediaQuery.viewInsetsOf(context).bottom > 0 ? 2 : 4,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _submitTypedMessage(),
               decoration: InputDecoration(
-                hintText: isEs
-                    ? 'Escribe un mensaje o crea un evento con lenguaje natural'
-                    : 'Write a message or create an event with natural language',
+                hintText: isEs ? 'Escribe un mensaje…' : 'Write a message…',
+                hintMaxLines: 1,
                 filled: true,
                 fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.28),
                 border: OutlineInputBorder(
@@ -11923,314 +11993,9 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
       );
     }
 
-    final panel = Column(
+    final mobileConversationFooter = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Drag handle + header ─────────────────────────────────────
-        if (!widget.embedded)
-          Container(
-            padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? cs.surfaceContainerHighest.withValues(alpha: 0.5)
-                  : cs.surfaceContainerLow.withValues(alpha: 0.7),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            cs.primary.withValues(alpha: 0.2),
-                            cs.primary.withValues(alpha: 0.08),
-                          ],
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        color: cs.primary,
-                        size: 15,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        l.insightsChatTitle,
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: l.insightsChatClearTooltip,
-                      onPressed: sending ? null : _confirmClearChat,
-                      icon: Icon(
-                        Icons.delete_outline_rounded,
-                        size: 18,
-                        color: cs.onSurfaceVariant,
-                      ),
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-        // ── Toolbar chips ────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                buildContextInfoButton(),
-                const SizedBox(width: 6),
-                buildStartOverButton(),
-                const SizedBox(width: 6),
-                if (dateRangeLabel != null) ...[
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 190),
-                    child: buildDateRangeChip(),
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                PopupMenuButton<int>(
-                  tooltip: l.insightsChatDaysTooltip,
-                  onSelected: _runtime.setDays,
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 30, child: Text('30d')),
-                    PopupMenuItem(value: 60, child: Text('60d')),
-                    PopupMenuItem(value: 90, child: Text('90d')),
-                    PopupMenuItem(value: 120, child: Text('120d')),
-                    PopupMenuItem(value: 180, child: Text('180d')),
-                  ],
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: canvas,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.calendar_today_rounded,
-                            size: 11, color: cs.onSurfaceVariant),
-                        const SizedBox(width: 5),
-                        Text(
-                          '${l.insightsChatDaysPrefix}: ${days}d',
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurface,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                ChoiceChip(
-                  avatar: Icon(
-                    Icons.auto_fix_high_rounded,
-                    size: 13,
-                    color: mode == _InsightsResponseMode.auto
-                        ? cs.onPrimaryContainer
-                        : cs.onSurfaceVariant,
-                  ),
-                  label: Text(l.insightsChatModeAuto),
-                  selected: mode == _InsightsResponseMode.auto,
-                  selectedColor: cs.primaryContainer,
-                  backgroundColor: canvas,
-                  visualDensity: VisualDensity.compact,
-                  labelStyle: t.bodySmall.copyWith(
-                    fontSize: 11,
-                    color: mode == _InsightsResponseMode.auto
-                        ? cs.onPrimaryContainer
-                        : cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  side: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.6),
-                  ),
-                  onSelected: sending
-                      ? null
-                      : (_) => _runtime.setMode(_InsightsResponseMode.auto),
-                ),
-                const SizedBox(width: 6),
-                ChoiceChip(
-                  avatar: Icon(
-                    Icons.stream_rounded,
-                    size: 13,
-                    color: mode == _InsightsResponseMode.stream
-                        ? cs.onPrimaryContainer
-                        : cs.onSurfaceVariant,
-                  ),
-                  label: Text(l.insightsChatModeStream),
-                  selected: mode == _InsightsResponseMode.stream,
-                  selectedColor: cs.primaryContainer,
-                  backgroundColor: canvas,
-                  visualDensity: VisualDensity.compact,
-                  labelStyle: t.bodySmall.copyWith(
-                    fontSize: 11,
-                    color: mode == _InsightsResponseMode.stream
-                        ? cs.onPrimaryContainer
-                        : cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  side: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.6),
-                  ),
-                  onSelected: sending
-                      ? null
-                      : (_) => _runtime.setMode(_InsightsResponseMode.stream),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // ── Message list ─────────────────────────────────────────────
-        Expanded(
-          child: messages.isEmpty && !sending
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildStarterQuestionCard(
-                        context,
-                        cs: cs,
-                        t: t,
-                        isEs: isEs,
-                      ),
-                      if (showEmptyComposer)
-                        _buildChatComposer(
-                          context,
-                          cs: cs,
-                          t: t,
-                          isEs: isEs,
-                        ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  controller: _scrollCtrl,
-                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-                  itemCount: messages.length +
-                      (sending && mode == _InsightsResponseMode.auto ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (sending && index == messages.length) {
-                      return Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 13,
-                            vertical: 11,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? cs.surfaceContainerHighest
-                                : cs.surfaceContainerHigh,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(14),
-                              topRight: Radius.circular(14),
-                              bottomRight: Radius.circular(14),
-                              bottomLeft: Radius.circular(4),
-                            ),
-                            border: Border.all(
-                              color: cs.outlineVariant.withValues(alpha: 0.5),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: cs.primary,
-                                ),
-                              ),
-                              if (takingTooLong) ...[
-                                const SizedBox(width: 10),
-                                Text(
-                                  takingTooLongText,
-                                  style: t.bodySmall.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    final message = messages[index];
-                    return _ChatBubble(
-                      message: message,
-                      markdownBoldSpans: _markdownBoldSpans,
-                      isEs: isEs,
-                      sending: sending,
-                      buildMenuActions: _buildMenuActions,
-                      buildEventPreview: _buildEventPreviewBubble,
-                      buildStructuredTable: (context, message) =>
-                          _buildInsightsTableView(
-                        context,
-                        message: message,
-                        cs: Theme.of(context).colorScheme,
-                        t: AppTypography.of(context),
-                      ),
-                      isStructuredTableResponse: !message.isUser &&
-                          _messageHasStructuredTable(message),
-                      canExportToExcel: false,
-                      isExporting: false,
-                      onExportExcel: null,
-                      showInlineMenuActions: false,
-                    );
-                  },
-                ),
-        ),
-        if (latestIncomeAmountPromptMessage != null)
-          _buildIncomeAmountPromptInput(
-            context,
-            promptMessage: latestIncomeAmountPromptMessage,
-            cs: cs,
-            t: t,
-            isEs: isEs,
-          ),
         if (error != null) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
@@ -12309,14 +12074,322 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
             ),
           ),
         ],
-        if (showComposer && !showEmptyComposer)
+      ],
+    );
+
+    final panel = Column(
+      children: [
+        // ── Drag handle + header ─────────────────────────────────────
+        if (!widget.embedded)
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? cs.surfaceContainerHighest.withValues(alpha: 0.5)
+                  : cs.surfaceContainerLow.withValues(alpha: 0.7),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            cs.primary.withValues(alpha: 0.2),
+                            cs.primary.withValues(alpha: 0.08),
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: cs.primary,
+                        size: 15,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l.insightsChatTitle,
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip:
+                          MaterialLocalizations.of(context).closeButtonTooltip,
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                    IconButton(
+                      tooltip: l.insightsChatClearTooltip,
+                      onPressed: sending ? null : _confirmClearChat,
+                      icon: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                        color: cs.onSurfaceVariant,
+                      ),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+        // ── Toolbar chips ────────────────────────────────────────────
+        if (bottomInset == 0)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  buildContextInfoButton(),
+                  const SizedBox(width: 6),
+                  buildStartOverButton(),
+                  const SizedBox(width: 6),
+                  if (dateRangeLabel != null) ...[
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 190),
+                      child: buildDateRangeChip(),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  PopupMenuButton<int>(
+                    tooltip: l.insightsChatDaysTooltip,
+                    onSelected: _runtime.setDays,
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 30, child: Text('30d')),
+                      PopupMenuItem(value: 60, child: Text('60d')),
+                      PopupMenuItem(value: 90, child: Text('90d')),
+                      PopupMenuItem(value: 120, child: Text('120d')),
+                      PopupMenuItem(value: 180, child: Text('180d')),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: canvas,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.calendar_today_rounded,
+                              size: 11, color: cs.onSurfaceVariant),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${l.insightsChatDaysPrefix}: ${days}d',
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurface,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  ChoiceChip(
+                    avatar: Icon(
+                      Icons.auto_fix_high_rounded,
+                      size: 13,
+                      color: mode == _InsightsResponseMode.auto
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                    ),
+                    label: Text(l.insightsChatModeAuto),
+                    selected: mode == _InsightsResponseMode.auto,
+                    selectedColor: cs.primaryContainer,
+                    backgroundColor: canvas,
+                    visualDensity: VisualDensity.compact,
+                    labelStyle: t.bodySmall.copyWith(
+                      fontSize: 11,
+                      color: mode == _InsightsResponseMode.auto
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.6),
+                    ),
+                    onSelected: sending
+                        ? null
+                        : (_) => _runtime.setMode(_InsightsResponseMode.auto),
+                  ),
+                  const SizedBox(width: 6),
+                  ChoiceChip(
+                    avatar: Icon(
+                      Icons.stream_rounded,
+                      size: 13,
+                      color: mode == _InsightsResponseMode.stream
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                    ),
+                    label: Text(l.insightsChatModeStream),
+                    selected: mode == _InsightsResponseMode.stream,
+                    selectedColor: cs.primaryContainer,
+                    backgroundColor: canvas,
+                    visualDensity: VisualDensity.compact,
+                    labelStyle: t.bodySmall.copyWith(
+                      fontSize: 11,
+                      color: mode == _InsightsResponseMode.stream
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.6),
+                    ),
+                    onSelected: sending
+                        ? null
+                        : (_) => _runtime.setMode(_InsightsResponseMode.stream),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // ── Message list ─────────────────────────────────────────────
+        Expanded(
+          child: ListView.builder(
+            controller: _scrollCtrl,
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            itemCount: messages.length +
+                (sending && mode == _InsightsResponseMode.auto ? 1 : 0) +
+                1,
+            itemBuilder: (context, index) {
+              final contentCount = messages.length +
+                  (sending && mode == _InsightsResponseMode.auto ? 1 : 0);
+              if (index == contentCount) {
+                return Column(children: [
+                  if (messages.isEmpty && !sending)
+                    _buildStarterQuestionCard(context,
+                        cs: cs, t: t, isEs: isEs),
+                  mobileConversationFooter,
+                ]);
+              }
+              if (sending && index == messages.length) {
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? cs.surfaceContainerHighest
+                          : cs.surfaceContainerHigh,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(14),
+                        topRight: Radius.circular(14),
+                        bottomRight: Radius.circular(14),
+                        bottomLeft: Radius.circular(4),
+                      ),
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: cs.primary,
+                          ),
+                        ),
+                        if (takingTooLong) ...[
+                          const SizedBox(width: 10),
+                          Text(
+                            takingTooLongText,
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final message = messages[index];
+              return _ChatBubble(
+                message: message,
+                markdownBoldSpans: _markdownBoldSpans,
+                isEs: isEs,
+                sending: sending,
+                buildMenuActions: _buildMenuActions,
+                buildEventPreview: _buildEventPreviewBubble,
+                buildStructuredTable: (context, message) =>
+                    _buildInsightsTableView(
+                  context,
+                  message: message,
+                  cs: Theme.of(context).colorScheme,
+                  t: AppTypography.of(context),
+                ),
+                isStructuredTableResponse:
+                    !message.isUser && _messageHasStructuredTable(message),
+                canExportToExcel: false,
+                isExporting: false,
+                onExportExcel: null,
+                showInlineMenuActions: false,
+              );
+            },
+          ),
+        ),
+        if (latestIncomeAmountPromptMessage != null)
+          _buildIncomeAmountPromptInput(
+            context,
+            promptMessage: latestIncomeAmountPromptMessage,
+            cs: cs,
+            t: t,
+            isEs: isEs,
+          ),
+        if (showComposer)
           _buildChatComposer(
             context,
             cs: cs,
             t: t,
             isEs: isEs,
           ),
-        SizedBox(height: 10 + bottomInset),
+        const SizedBox(height: 4),
       ],
     );
 
@@ -12751,25 +12824,32 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
       );
     }
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.84,
-      decoration: BoxDecoration(
-        color: canvas,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: isDark ? 0.45 : 0.55),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.18),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        height: (MediaQuery.sizeOf(context).height -
+                MediaQuery.paddingOf(context).top -
+                bottomInset) *
+            0.96,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: canvas,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: isDark ? 0.45 : 0.55),
           ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: panel,
+          boxShadow: [
+            BoxShadow(
+              color: cs.shadow.withValues(alpha: 0.18),
+              blurRadius: 24,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: panel,
+        ),
       ),
     );
   }

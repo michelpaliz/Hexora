@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/context_colors/define_themes/mobile_theme.dart';
 import 'package:hexora/c-frontend/utils/view-item-styles/button/button_styles.dart';
 
 /// Button variants you actually use.
@@ -14,6 +15,25 @@ class ThemedButtons {
   }) {
     final t = Theme.of(context);
     final cs = t.colorScheme;
+    if (MobileTheme.isActive(context)) {
+      final danger = variant == ButtonVariant.danger;
+      final primary = variant == ButtonVariant.primary;
+      return ElevatedButton.styleFrom(
+        backgroundColor: danger
+            ? cs.error
+            : primary
+                ? cs.primary
+                : cs.primaryContainer,
+        foregroundColor: danger
+            ? cs.onError
+            : primary
+                ? cs.onPrimary
+                : cs.onPrimaryContainer,
+        minimumSize: const Size(48, 48),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      );
+    }
 
     late final Color bg;
     late final Color bgPressed;

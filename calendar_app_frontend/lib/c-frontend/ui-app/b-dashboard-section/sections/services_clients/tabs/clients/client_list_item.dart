@@ -51,7 +51,7 @@ class _ClientListItemState extends State<ClientListItem> {
     if (widget.client.missingCurrentMonthInvoice == true) {
       monthChip = _MonthStatusChip(
         label: l.clientMissingInvoiceThisMonth,
-        background: cs.errorContainer.withValues(alpha: 0.55),
+        background: cs.errorContainer,
         foreground: cs.onErrorContainer,
         icon: Icons.warning_amber_rounded,
       );
@@ -62,6 +62,67 @@ class _ClientListItemState extends State<ClientListItem> {
         background: cs.secondaryContainer.withValues(alpha: 0.55),
         foreground: cs.onSecondaryContainer,
         icon: Icons.check_circle_outline_rounded,
+      );
+    }
+
+    if (isMobile) {
+      final contact = (widget.client.email ?? '').trim().isNotEmpty
+          ? widget.client.email!
+          : widget.client.phone;
+      return Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: cs.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: widget.onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: cs.primaryContainer,
+                    foregroundColor: cs.onPrimaryContainer,
+                    child:
+                        Text(_initials, style: const TextStyle(fontSize: 13)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.client.name,
+                          style: widget.nameStyle.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          )),
+                      if (contact != null && contact.trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(contact,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: widget.metaStyle.copyWith(
+                                fontSize: 13, color: cs.onSurfaceVariant)),
+                      ],
+                    ],
+                  )),
+                  const SizedBox(width: 8),
+                  Icon(Icons.chevron_right,
+                      size: 20, color: cs.onSurfaceVariant),
+                ]),
+                const SizedBox(height: 12),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  _StatusChip(active: isActive),
+                  if (monthChip != null) monthChip,
+                ]),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -160,8 +221,7 @@ class _ClientListItemState extends State<ClientListItem> {
                           email: widget.client.email,
                           billing: widget.client.billing,
                           textStyle: widget.metaStyle.copyWith(fontSize: 11),
-                          iconColor:
-                              cs.onSurfaceVariant.withValues(alpha: 0.7),
+                          iconColor: cs.onSurfaceVariant.withValues(alpha: 0.7),
                         ),
                         if (monthlyMeta != null) ...[
                           const SizedBox(height: 3),
@@ -496,14 +556,15 @@ class _MonthStatusChip extends StatelessWidget {
         children: [
           Icon(icon, size: 11, color: foreground),
           const SizedBox(width: 4),
-          Text(
+          Flexible(
+              child: Text(
             label,
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               color: foreground,
             ),
-          ),
+          )),
         ],
       ),
     );

@@ -69,7 +69,7 @@ class DeliveryStatusBadge extends StatelessWidget {
     final color = switch (visual) {
       DeliveryStatusVisual.success => cs.primary,
       DeliveryStatusVisual.error => cs.error,
-      DeliveryStatusVisual.neutral => cs.onSurface.withValues(alpha: 0.55),
+      DeliveryStatusVisual.neutral => cs.onSurfaceVariant,
     };
     final icon = switch (normalized) {
       'sent' => Icons.mark_email_read_outlined,

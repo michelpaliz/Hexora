@@ -27,6 +27,7 @@ class MemberStatusRow extends StatelessWidget {
         };
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 6,
@@ -35,14 +36,14 @@ class MemberStatusRow extends StatelessWidget {
               BoxDecoration(color: statusColor(), shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Expanded(
+        Flexible(
           child: Text(
             statusText(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: typo.bodySmall.copyWith(
               color: onCardSecondary,
-              fontSize: 11,
+              fontSize: 12,
               height: 1.0,
             ),
           ),

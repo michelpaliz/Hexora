@@ -1,3 +1,4 @@
+import 'package:hexora/l10n/app_localizations.dart';
 // lib/c-frontend/.../widgets/add_user_fab.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
@@ -21,7 +22,7 @@ class AddUsersFab extends StatelessWidget {
 
     return FloatingActionButton.extended(
       icon: const Icon(Icons.person_add_alt_1),
-      label: const Text('Add users'),
+      label: Text(AppLocalizations.of(context)!.sectionManage),
       backgroundColor: cs.primary,
       foregroundColor: ThemeColors.contrastOn(cs.primary),
       onPressed: () async {

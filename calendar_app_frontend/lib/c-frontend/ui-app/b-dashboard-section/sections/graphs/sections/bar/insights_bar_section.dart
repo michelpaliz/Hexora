@@ -95,6 +95,35 @@ class InsightsBarsCard extends StatelessWidget {
         final accentColor = i < 3 ? rankColors[i] : cs.primary;
         final isTop = i == 0;
 
+        if (isMobile) {
+          final total = entries.fold<int>(0, (sum, item) => sum + item.value);
+          final share = total == 0 ? 0 : (minutes / total * 100).round();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(label,
+                      style: tt.bodyLarge?.copyWith(
+                          color: cs.onSurface, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Text('${fmt(minutes)} · $share%',
+                      style:
+                          tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: factor,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(4),
+                    color: cs.primary,
+                    backgroundColor: cs.surfaceContainerHighest,
+                    semanticsLabel: label,
+                    semanticsValue: fmt(minutes),
+                  ),
+                ]),
+          );
+        }
+
         return Padding(
           padding: EdgeInsets.only(bottom: isMobile ? 8 : 10),
           child: Row(
@@ -126,7 +155,8 @@ class InsightsBarsCard extends StatelessWidget {
                     Container(
                       height: barHeight,
                       decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                        color:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(barRadius),
                       ),
                     ),
@@ -269,6 +299,15 @@ class InsightsBarsCard extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (isMobile && top.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    l.localeName.startsWith('es')
+                        ? 'Los 10 principales · porcentaje del tiempo total'
+                        : 'Top 10 · share of total time',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 if (top.isEmpty)
                   emptyState()

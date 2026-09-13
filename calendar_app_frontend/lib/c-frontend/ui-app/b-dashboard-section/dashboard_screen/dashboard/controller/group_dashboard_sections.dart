@@ -1,4 +1,5 @@
 class Sections {
+  static const agenda = 'agenda';
   static const calendar = 'calendar';
   static const notifications = 'notifications';
   static const settings = 'settings';

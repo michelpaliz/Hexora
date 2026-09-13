@@ -67,6 +67,14 @@ dependencies:
   flutter_dropzone_platform_interface: 2.2.0
   webview_flutter: 4.8.0
 
+# 4.6.0+ unconditionally registers NMEA/GNSS listeners. On Android 16,
+# unregisterGnssNmeaCallback blocked the main thread during getCurrentPosition
+# cleanup and caused an input-dispatch ANR. 4.5.5 skips these listeners when
+# useMSLAltitude is false (the default used throughout Hexora).
+# Keep this pin until upstream makes optional GPS listener cleanup nonblocking.
+dependency_overrides:
+  geolocator_android: 4.5.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

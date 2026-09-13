@@ -11,6 +11,7 @@ class AppTypography extends ThemeExtension<AppTypography> {
   final TextStyle bodyLarge;
   final TextStyle bodyMedium;
   final TextStyle bodySmall;
+  // Button widgets supply foreground colors for their variant and state.
   final TextStyle buttonText;
   final TextStyle caption;
   final TextStyle accentHeading;
@@ -90,12 +91,8 @@ class AppTypography extends ThemeExtension<AppTypography> {
       bodySmall:
           _scale(body(fontSize: 12, color: AppColors.textSecondary), scale),
 
-      buttonText: _scale(
-          body(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.white),
-          scale),
+      buttonText:
+          _scale(body(fontSize: 16, fontWeight: FontWeight.w600), scale),
       caption: _scale(
           body(
               fontSize: 12,
@@ -149,12 +146,8 @@ class AppTypography extends ThemeExtension<AppTypography> {
           _scale(body(fontSize: 14, color: AppDarkColors.textSecondary), scale),
       bodySmall:
           _scale(body(fontSize: 12, color: AppDarkColors.textSecondary), scale),
-      buttonText: _scale(
-          body(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppDarkColors.textPrimary),
-          scale),
+      buttonText:
+          _scale(body(fontSize: 16, fontWeight: FontWeight.w600), scale),
       caption: _scale(
           body(
               fontSize: 12,

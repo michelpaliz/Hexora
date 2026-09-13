@@ -1,3 +1,4 @@
+import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -66,12 +67,16 @@ class MailComposeScreen extends StatefulWidget {
   const MailComposeScreen({
     super.key,
     this.embedded = false,
+    this.groupId,
+    this.clientsApi,
     this.onSent,
     this.onReceiptsSent,
     this.onClose,
   });
 
   final bool embedded;
+  final String? groupId;
+  final ClientsApi? clientsApi;
   final VoidCallback? onSent;
   final ValueChanged<List<Receipt>>? onReceiptsSent;
   final VoidCallback? onClose;
@@ -81,7 +86,7 @@ class MailComposeScreen extends StatefulWidget {
 }
 
 class _MailComposeScreenState extends State<MailComposeScreen> {
-  final _clientsApi = ClientsApi();
+  late final _clientsApi = widget.clientsApi ?? ClientsApi();
   final _invoicesApi = InvoicesApi();
   final _receiptsApi = ReceiptsApi();
   final _presupuestosApi = PresupuestosApi();
@@ -542,10 +547,13 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   }
 
   String? _currentGroupId() {
+    if (widget.groupId?.trim().isNotEmpty == true) {
+      return widget.groupId!.trim();
+    }
     try {
       return context.read<GroupDashboardState>().group.id;
     } catch (_) {
-      return null;
+      return context.read<GroupDomain?>()?.currentGroup?.id;
     }
   }
 
@@ -841,7 +849,12 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   Future<void> _loadRecipientClientsIfNeeded() async {
     if (_loadingRecipientClients || _pickerClients.isNotEmpty) return;
     final groupId = _currentGroupId();
-    if (groupId == null || groupId.isEmpty) return;
+    if (groupId == null || groupId.isEmpty) {
+      setState(() => _recipientClientError = _isSpanishLocale
+          ? 'Selecciona un grupo para buscar clientes.'
+          : 'Select a group to search for clients.');
+      return;
+    }
     setState(() {
       _loadingRecipientClients = true;
       _recipientClientError = null;
@@ -857,7 +870,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _recipientClientError = e.toString());
+      setState(() => _recipientClientError = _isSpanishLocale
+          ? 'No se pudieron cargar los clientes.'
+          : 'Could not load clients.');
     } finally {
       if (mounted) {
         setState(() => _loadingRecipientClients = false);

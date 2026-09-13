@@ -20,6 +20,7 @@ class GroupHeaderCard extends StatelessWidget {
     required this.localeName,
     required this.onTap,
     this.isLoading = false,
+    this.presenceStrip,
     this.clientCount,
     this.workerCount,
     this.editTooltip,
@@ -30,6 +31,7 @@ class GroupHeaderCard extends StatelessWidget {
     this.onWorkersTap,
   });
 
+  final Widget? presenceStrip;
   final String? photoUrl;
   final String title;
   final String description;
@@ -64,6 +66,71 @@ class GroupHeaderCard extends StatelessWidget {
       ),
       ThemeColors.cardBg(context),
     );
+
+    if (MediaQuery.sizeOf(context).width < 700) {
+      return Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: cs.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                AvatarUtils.groupAvatar(context, photoUrl, radius: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(title,
+                      style: t.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
+                ),
+                if (onTap != null)
+                  IconButton(
+                    tooltip: editTooltip ?? l.edit,
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    onPressed: onTap,
+                  ),
+              ]),
+              if (hasDescription) ...[
+                const SizedBox(height: 12),
+                Text(description,
+                    style: t.bodySmall
+                        .copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+              ],
+              if (presenceStrip != null) presenceStrip!,
+              const SizedBox(height: 12),
+              if (isLoading)
+                const LinearProgressIndicator()
+              else
+                Wrap(spacing: 8, runSpacing: 4, children: [
+                  TextButton.icon(
+                      onPressed: onMembersTap,
+                      icon: const Icon(Icons.group_outlined, size: 18),
+                      label: Text('$members ${l.membersTitle.toLowerCase()}')),
+                  if (pendingEventsCount != null)
+                    TextButton.icon(
+                        onPressed: onPendingEventsTap,
+                        icon: const Icon(Icons.pending_actions_outlined,
+                            size: 18),
+                        label: Text(
+                            '$pendingEventsCount ${l.statusPending.toLowerCase()}')),
+                  if (clientCount != null)
+                    TextButton(
+                        onPressed: onClientsTap,
+                        child:
+                            Text('$clientCount ${l.tabClients.toLowerCase()}')),
+                  if (workerCount != null)
+                    TextButton(
+                        onPressed: onWorkersTap,
+                        child: Text(
+                            '$workerCount ${l.localeName.startsWith('es') ? 'trabajadores' : 'workers'}')),
+                ]),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Semantics(
       container: true,
@@ -152,8 +219,6 @@ class GroupHeaderCard extends StatelessWidget {
                               const SizedBox(height: 8),
                               Text(
                                 description,
-                                maxLines: 4,
-                                overflow: TextOverflow.ellipsis,
                                 style: t.bodyLarge.copyWith(
                                   color: cs.onSurfaceVariant,
                                   height: 1.5,
@@ -185,8 +250,6 @@ class GroupHeaderCard extends StatelessWidget {
                               flex: 7,
                               child: Text(
                                 description,
-                                maxLines: 5,
-                                overflow: TextOverflow.ellipsis,
                                 style: t.bodyLarge.copyWith(
                                   color: cs.onSurfaceVariant,
                                   height: 1.55,
@@ -198,6 +261,7 @@ class GroupHeaderCard extends StatelessWidget {
                     },
                   ),
 
+                  if (presenceStrip != null) presenceStrip!,
                   const SizedBox(height: 16),
                   Divider(
                       height: 1,

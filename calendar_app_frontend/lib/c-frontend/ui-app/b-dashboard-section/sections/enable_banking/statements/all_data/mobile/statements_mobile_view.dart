@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/f-themes/app_colors/themes/context_colors/define_themes/mobile_theme.dart';
+
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +26,6 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
   _DateRange _dateRange = _DateRange.thisMonth;
   _AmountType _amountType = _AmountType.all;
   bool _didLoad = false;
-  bool _filtersExpanded = true;
 
   @override
   void initState() {
@@ -129,64 +130,131 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
     }
   }
 
-  Widget _buildFilterChips({
-    required AppTypography t,
-    required AppLocalizations l,
-    required bool isSpanish,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (final r in _DateRange.values)
+  Future<void> _showFilters() async {
+    final l = AppLocalizations.of(context)!;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    var date = _dateRange;
+    var amount = _amountType;
+    final result = await showModalBottomSheet<(_DateRange, _AmountType)>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, updateSheet) {
+          final cs = Theme.of(context).colorScheme;
+          Widget option(String label, bool selected, VoidCallback onTap) {
+            return ListTile(
+              title: Text(label,
+                  style: TextStyle(
+                    color: selected ? cs.onPrimaryContainer : cs.onSurface,
+                  )),
+              selected: selected,
+              selectedTileColor: cs.primaryContainer,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              trailing: Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+              ),
+              onTap: onTap,
+            );
+          }
+
+          return SizedBox(
+            height: MediaQuery.sizeOf(context).height * .8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ChoiceChip(
-                    label: Text(_dateLabel(r, isSpanish)),
-                    selected: _dateRange == r,
-                    onSelected: (_) => setState(() => _dateRange = r),
-                    visualDensity: VisualDensity.compact,
-                    labelStyle: t.bodySmall.copyWith(fontSize: 11),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    showCheckmark: false,
+                  padding: const EdgeInsets.fromLTRB(20, 0, 8, 8),
+                  child: Row(children: [
+                    Expanded(
+                        child: Text(isSpanish ? 'Filtros' : 'Filters',
+                            style: Theme.of(context).textTheme.titleLarge)),
+                    IconButton(
+                      tooltip:
+                          MaterialLocalizations.of(context).closeButtonTooltip,
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ]),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(isSpanish ? 'Periodo' : 'Period',
+                            style: Theme.of(context).textTheme.titleSmall),
+                      ),
+                      for (final value in _DateRange.values)
+                        option(_dateLabel(value, isSpanish), date == value,
+                            () => updateSheet(() => date = value)),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(
+                            isSpanish
+                                ? 'Tipo de movimiento'
+                                : 'Transaction type',
+                            style: Theme.of(context).textTheme.titleSmall),
+                      ),
+                      for (final value in _AmountType.values)
+                        option(
+                            _amountLabel(value, l, isSpanish),
+                            amount == value,
+                            () => updateSheet(() => amount = value)),
+                      const SizedBox(height: 16),
+                    ],
                   ),
                 ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (final type in _AmountType.values)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ChoiceChip(
-                    label: Text(_amountLabel(type, l, isSpanish)),
-                    selected: _amountType == type,
-                    onSelected: (_) => setState(() => _amountType = type),
-                    visualDensity: VisualDensity.compact,
-                    labelStyle: t.bodySmall.copyWith(fontSize: 11),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    showCheckmark: false,
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        FilledButton(
+                          onPressed: () =>
+                              Navigator.pop(context, (date, amount)),
+                          child: Text(
+                              isSpanish ? 'Aplicar filtros' : 'Apply filters'),
+                        ),
+                        TextButton(
+                          onPressed: () => updateSheet(() {
+                            date = _DateRange.all;
+                            amount = _AmountType.all;
+                          }),
+                          child: Text(isSpanish
+                              ? 'Restablecer filtros'
+                              : 'Reset filters'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-            ],
-          ),
-        ),
-      ],
+              ],
+            ),
+          );
+        },
+      ),
     );
+    if (!mounted || result == null) return;
+    setState(() {
+      _dateRange = result.$1;
+      _amountType = result.$2;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<StatementsController>();
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
@@ -194,105 +262,27 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
 
     return Column(
       children: [
-        // ── Filter bar ──────────────────────────────────────────────────────
-        Container(
-          color: cs.surface,
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? cs.surfaceContainerHighest.withValues(alpha: 0.16)
-                      : cs.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.28),
-                  ),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () =>
-                      setState(() => _filtersExpanded = !_filtersExpanded),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: cs.primary.withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.tune_rounded,
-                            size: 16,
-                            color: cs.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isSpanish ? 'Filtros' : 'Filters',
-                                style: t.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                children: [
-                                  _ActiveFilterChip(
-                                    label: _dateLabel(_dateRange, isSpanish),
-                                  ),
-                                  _ActiveFilterChip(
-                                    label:
-                                        _amountLabel(_amountType, l, isSpanish),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          _filtersExpanded
-                              ? Icons.expand_less_rounded
-                              : Icons.expand_more_rounded,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Material(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(12),
+            child: ListTile(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              leading: Icon(Icons.tune_rounded, color: cs.primary),
+              title: Text(
+                '${_dateLabel(_dateRange, isSpanish)} · ${_amountLabel(_amountType, l, isSpanish)}',
+                style: t.bodyMedium.copyWith(color: cs.onSurface),
               ),
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: _buildFilterChips(
-                    t: t,
-                    l: l,
-                    isSpanish: isSpanish,
-                  ),
-                ),
-                crossFadeState: _filtersExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 180),
-              ),
-            ],
+              subtitle: Text(isSpanish ? 'Cambiar filtros' : 'Change filters',
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
+              trailing:
+                  Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+              onTap: _showFilters,
+            ),
           ),
         ),
-        const Divider(height: 1),
         // ── Count + refresh ─────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 10, 4),
@@ -316,7 +306,7 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
                           : 'Tap a movement to view details',
                       style: t.bodySmall.copyWith(
                         color: cs.onSurfaceVariant,
-                        fontSize: 11,
+                        fontSize: MobileTheme.isActive(context) ? 14 : 11,
                       ),
                     ),
                   ],
@@ -337,8 +327,9 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
                   child: IconButton(
                     icon: const Icon(Icons.refresh_rounded, size: 18),
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 36, minHeight: 36),
+                    constraints: BoxConstraints(
+                        minWidth: MobileTheme.isActive(context) ? 48 : 36,
+                        minHeight: MobileTheme.isActive(context) ? 48 : 36),
                     tooltip: isSpanish ? 'Actualizar' : 'Refresh',
                     onPressed: s.loadAllEntries,
                   ),
@@ -372,7 +363,14 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(0, 2, 0, 24),
+                      padding: EdgeInsets.fromLTRB(
+                          0,
+                          2,
+                          0,
+                          24 +
+                              (MobileTheme.isActive(context)
+                                  ? MediaQuery.paddingOf(context).bottom
+                                  : 0)),
                       itemCount: filtered.length,
                       itemBuilder: (context, i) => StatementsMobileCard(
                         entry: filtered[i],
@@ -383,36 +381,6 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
                     ),
         ),
       ],
-    );
-  }
-}
-
-class _ActiveFilterChip extends StatelessWidget {
-  const _ActiveFilterChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: cs.secondaryContainer.withValues(alpha: 0.44),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: cs.secondary.withValues(alpha: 0.12),
-        ),
-      ),
-      child: Text(
-        label,
-        style: t.bodySmall.copyWith(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: cs.onSecondaryContainer,
-        ),
-      ),
     );
   }
 }

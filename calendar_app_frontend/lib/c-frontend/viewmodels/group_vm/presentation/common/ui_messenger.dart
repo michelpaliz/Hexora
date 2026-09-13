@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/c-frontend/utils/errors/premium_upgrade_dialog.dart';
@@ -17,24 +18,29 @@ class MaterialUiMessenger implements UiMessenger {
 
   @override
   void showSnack(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    if (!context.mounted) return;
+    final l = AppLocalizations.of(context)!;
+    switch (message) {
+      case 'Group updated!':
+        showSuccessSnack(context, l.groupEdited);
+      case 'Group created!':
+        showSuccessSnack(context, l.groupSaved);
+      default:
+        showInfoSnack(context, message);
+    }
   }
 
   @override
   Future<void> showError(String message) async {
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK')),
-        ],
-      ),
-    );
+    if (!context.mounted) return;
+    final l = AppLocalizations.of(context)!;
+    final localized = switch (message) {
+      'Name and description are required' => l.requiredTextFields,
+      'Failed to update group' => l.failedToEditGroup,
+      'Failed to create group' => l.failedToCreateGroup,
+      _ => message,
+    };
+    showErrorSnack(context, localized);
   }
 
   @override

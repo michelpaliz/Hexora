@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/mail_console_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/presupuestos_module_screen.dart';
@@ -18,14 +19,11 @@ class DashboardActions {
       return;
     }
 
-    if (section == Sections.emails) {
-      if (!state.canSeeAdmin) return;
-      state.activeSection = section;
-      state.notifyListeners();
-      return;
-    }
-
     switch (section) {
+      case Sections.agenda:
+        Navigator.pushNamed(context, AppRoutes.agenda, arguments: state.group);
+        break;
+
       case Sections.calendar:
         Navigator.pushNamed(
           context,
@@ -99,6 +97,9 @@ class DashboardActions {
         break;
       case Sections.emails:
         if (!state.canSeeAdmin) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const MailConsoleScreen()),
+        );
         break;
       case Sections.enableBanking:
         Navigator.pushNamed(

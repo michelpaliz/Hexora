@@ -33,6 +33,30 @@ tool shaped by the problems encountered in day-to-day operations.
 
 Targets: Android, iOS, Web, Windows, macOS, and Linux from a single codebase.
 
+## Install or update Hexora on an Android phone
+
+Enable USB debugging, connect the phone with a data cable, and accept its
+authorization prompt. From the project folder, run:
+
+```bash
+./scripts/install_android.sh
+```
+
+The script builds a release APK and installs it on the single connected phone
+using `adb install -r`, preserving existing app data. It does not select an
+emulator automatically. If several phones are connected, choose one with
+`./scripts/install_android.sh --device SERIAL` (see `adb devices`).
+
+Without a connected phone, the script saves `build/phone/Hexora-latest.apk`
+for manual transfer. Use `./scripts/install_android.sh --build-only` to always
+build without installing. Open the transferred APK on the phone to install it.
+
+Updates require the same application ID and signing key. The current release
+configuration uses the local development signing key; keep that key for future
+updates. Installation failures never trigger an automatic uninstall.
+
+Offline script checks: `python3 scripts/tests/test_install_android.py`.
+
 ---
 
 ## Project layout

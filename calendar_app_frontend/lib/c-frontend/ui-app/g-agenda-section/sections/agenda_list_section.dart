@@ -25,8 +25,9 @@ class AgendaListSection extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
               Text(
-                loc?.noUpcomingHint ??
-                    'Try another filter, category, or extend the range.',
+                Localizations.localeOf(context).languageCode == 'es'
+                    ? 'No hay trabajo programado en este período. Prueba a ampliar el rango.'
+                    : 'No work scheduled for this period. Try extending the range.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant),

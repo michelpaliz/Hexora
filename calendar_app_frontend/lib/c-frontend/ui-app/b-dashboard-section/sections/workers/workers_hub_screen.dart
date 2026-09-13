@@ -1,3 +1,4 @@
+import 'package:hexora/c-frontend/ui-app/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
@@ -42,26 +43,37 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
 
   _WorkersSection _section = _WorkersSection.workers;
   bool _sideMenuCollapsed = false;
+  final Set<_WorkersSection> _visitedMobileSections = {};
 
   Widget _buildSectionContent() {
+    _visitedMobileSections.add(_section);
+    final isMobile = MediaQuery.sizeOf(context).width < 760;
+    final sections = <Widget>[
+      GroupTimeTrackingScreen(
+        key: ValueKey('workers-${widget.group.id}'),
+        group: widget.group,
+        embedded: true,
+        onOpenHistorial: () =>
+            setState(() => _section = _WorkersSection.historial),
+      ),
+      WorkerTimeHistoryGraphView(
+        key: ValueKey('worker-graphs-${widget.group.id}'),
+        group: widget.group,
+      ),
+      WorkerCurrentMonthSummaryView(group: widget.group),
+      GeofencedVisitsView(group: widget.group),
+      TelegramWorkerHoursImportView(group: widget.group),
+      _RegisterHoursImportPanel(group: widget.group),
+    ];
     return IndexedStack(
       index: _section.index,
       children: [
-        GroupTimeTrackingScreen(
-          key: ValueKey('workers-${widget.group.id}'),
-          group: widget.group,
-          embedded: true,
-          onOpenHistorial: () =>
-              setState(() => _section = _WorkersSection.historial),
-        ),
-        WorkerTimeHistoryGraphView(
-          key: ValueKey('worker-graphs-${widget.group.id}'),
-          group: widget.group,
-        ),
-        WorkerCurrentMonthSummaryView(group: widget.group),
-        GeofencedVisitsView(group: widget.group),
-        TelegramWorkerHoursImportView(group: widget.group),
-        _RegisterHoursImportPanel(group: widget.group),
+        for (var i = 0; i < sections.length; i++)
+          if (!isMobile ||
+              _visitedMobileSections.contains(_WorkersSection.values[i]))
+            sections[i]
+          else
+            const SizedBox.shrink(),
       ],
     );
   }
@@ -160,7 +172,6 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final isEs = context.isSpanishLocale;
 
@@ -205,44 +216,45 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          l.timeTrackingTitle,
-          style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
-        ),
-        backgroundColor: cs.surface,
-        iconTheme: IconThemeData(color: cs.inverseSurface),
+      appBar: SectionAppBar(
+        title: l.timeTrackingTitle,
       ),
       body: isNarrow
           ? Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: cs.outlineVariant.withValues(alpha: 0.28),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: PopupMenuButton<_WorkersSection>(
+                    tooltip: isEs ? 'Cambiar sección' : 'Change section',
+                    initialValue: _section,
+                    onSelected: (value) => setState(() => _section = value),
+                    itemBuilder: (_) => [
+                      for (final item in navItems)
+                        PopupMenuItem(
+                          value: item.section,
+                          child: Text(item.label),
+                        ),
+                    ],
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                  ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (final item in navItems)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: _MobileWorkersNavChip(
-                              icon: item.icon,
-                              label: item.mobileLabel,
-                              selected: _section == item.section,
-                              onTap: () =>
-                                  setState(() => _section = item.section),
-                              textStyle: t.bodySmall,
-                            ),
-                          ),
-                      ],
+                      child: Row(children: [
+                        Expanded(
+                            child: Text(
+                          navItems
+                              .firstWhere((item) => item.section == _section)
+                              .label,
+                          style: TextStyle(
+                              color: cs.onPrimaryContainer,
+                              fontWeight: FontWeight.w700),
+                        )),
+                        Icon(Icons.expand_more_rounded,
+                            color: cs.onPrimaryContainer),
+                      ]),
                     ),
                   ),
                 ),
@@ -255,58 +267,6 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
 }
 
 // ─── Historial Tab ────────────────────────────────────────────────────────────
-
-class _MobileWorkersNavChip extends StatelessWidget {
-  const _MobileWorkersNavChip({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    required this.textStyle,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final TextStyle textStyle;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: selected
-          ? cs.primaryContainer.withValues(alpha: 0.95)
-          : cs.surfaceContainerHighest.withValues(alpha: 0.24),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: textStyle.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _WorkersHistorialContent extends StatefulWidget {
   final Group group;

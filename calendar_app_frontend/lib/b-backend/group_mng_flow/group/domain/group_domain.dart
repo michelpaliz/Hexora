@@ -27,6 +27,9 @@ class GroupDomain extends ChangeNotifier {
   Group? _currentGroup;
   Group? get currentGroup => _currentGroup;
 
+  Group? _lastUpdatedGroup;
+  Group? get lastUpdatedGroup => _lastUpdatedGroup;
+
   // ---- UI-facing state (no StreamControllers here) -------------------------
   final ValueNotifier<List<User>> usersInGroup = ValueNotifier<List<User>>([]);
   final ValueNotifier<Map<String, String>> userRoles =
@@ -218,6 +221,9 @@ class GroupDomain extends ChangeNotifier {
   Future<bool> updateGroup(Group updatedGroup, UserDomain userDomain) async {
     try {
       await groupRepository.updateGroup(updatedGroup);
+      _lastUpdatedGroup = updatedGroup;
+      if (_currentGroup?.id == updatedGroup.id) _currentGroup = updatedGroup;
+      notifyListeners();
       await refreshGroupsForCurrentUser(userDomain);
       return true;
     } catch (e) {
