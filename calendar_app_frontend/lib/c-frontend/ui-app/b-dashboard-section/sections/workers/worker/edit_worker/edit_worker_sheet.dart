@@ -3,6 +3,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/shared/currency_options.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/shared/worker_save_error_mapper.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -68,7 +69,9 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
       final updatedWorker = widget.worker.copyWith(
         displayName:
             _nameCtrl.text.trim().isEmpty ? null : _nameCtrl.text.trim(),
-        defaultHourlyRate: double.tryParse(_rateCtrl.text.replaceAll(',', '.')),
+        defaultHourlyRate: _rateCtrl.text.trim().isEmpty
+            ? null
+            : double.tryParse(_rateCtrl.text.replaceAll(',', '.')),
         currency: _currency,
         roleTag:
             _roleTagCtrl.text.trim().isEmpty ? null : _roleTagCtrl.text.trim(),
@@ -88,10 +91,15 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
         SnackBar(content: Text(l.workerUpdated)),
       );
       Navigator.of(context).pop(savedWorker);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      WorkerSaveErrorMapper.logDiagnostic(
+        action: 'update',
+        error: e,
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(content: Text(WorkerSaveErrorMapper.messageFor(l, e))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);

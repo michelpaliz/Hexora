@@ -90,8 +90,11 @@ class WeatherApiClient {
   WeatherApiClient({http.Client? httpClient})
       : _httpClient = httpClient ?? http.Client();
 
-  Future<WeatherForecastResponseDto> fetchDeniaForecast({int? days}) async {
-    final uri = _weatherUri(days: days);
+  Future<WeatherForecastResponseDto> fetchForecast({
+    required String location,
+    int? days,
+  }) async {
+    final uri = buildForecastUri(location: location, days: days);
 
     http.Response response;
     try {
@@ -130,12 +133,17 @@ class WeatherApiClient {
     return WeatherForecastResponseDto.fromJson(decoded);
   }
 
-  Uri _weatherUri({int? days}) {
+  Uri buildForecastUri({
+    required String location,
+    int? days,
+  }) {
     final normalizedBase = _normalizeBase(ApiConstants.baseUrl);
     final baseWithApi = normalizedBase.endsWith('/api')
         ? normalizedBase
         : '$normalizedBase/api';
-    final uri = Uri.parse('$baseWithApi/weather/denia');
+    final uri = Uri.parse(
+      '$baseWithApi/weather/${Uri.encodeComponent(location)}',
+    );
     if (days == null || days <= 0) return uri;
     return uri.replace(queryParameters: {'days': days.toString()});
   }

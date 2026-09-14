@@ -131,7 +131,13 @@ abstract class EditEventLogic<T extends StatefulWidget>
       rawRuleId: _event.rawRuleId,
     );
 
-    await eventDomain.updateEvent(context, updated);
+    final updateResult = await eventDomain.updateEvent(context, updated);
+
+    if (updateResult.reminderUnavailable && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.reminderUnavailable)),
+      );
+    }
 
     // Nudge calendar/UI
     if (eventDomain.onExternalEventUpdate != null) {

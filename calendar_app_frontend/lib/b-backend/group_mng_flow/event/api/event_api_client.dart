@@ -1,7 +1,6 @@
 import 'dart:convert';
-import 'dart:developer' as devtools show log;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
@@ -41,35 +40,26 @@ class EventApiClient implements IEventApiClient {
 
   @override
   Future<Event> createEvent(Event eventData, String token) async {
-    try {
-      final readyEvent = await _ensureRuleId(eventData, token);
-      final headers = _authHeaders(token);
-      final body = jsonEncode(readyEvent.toBackendJson());
+    final readyEvent = await _ensureRuleId(eventData, token);
+    final headers = _authHeaders(token);
+    final body = jsonEncode(readyEvent.toBackendJson());
+    final uri = Uri.parse(baseUrl);
 
-      debugPrint('ðŸŒ POST /events body: $body');
+    _debugEventApi(method: 'POST', uri: uri);
 
-      devtools.log("ðŸ“¤ Sending event to $baseUrl");
-      devtools.log("ðŸ§¾ Headers: $headers");
-      devtools.log("ðŸ“ Event body: $body");
+    final res = await AuthenticatedHttpClient.post(
+      uri,
+      headers: headers,
+      body: body,
+      client: _client,
+    );
+    _debugEventApi(method: 'POST', uri: uri, statusCode: res.statusCode);
 
-      final res = await AuthenticatedHttpClient.post(
-        Uri.parse(baseUrl),
-        headers: headers,
-        body: body,
-        client: _client,
-      );
-
-      if (res.statusCode == 201) {
-        return Event.fromJson(jsonDecode(res.body));
-      }
-
-      devtools.log("❌ Failed response: ${res.statusCode}");
-      devtools.log("❌ Response body: ${res.body}");
-      throw Exception('Failed to create event: ${res.body}');
-    } catch (error) {
-      devtools.log('[EXCEPTION] Create error: $error');
-      rethrow;
+    if (res.statusCode == 201) {
+      return Event.fromJson(jsonDecode(res.body));
     }
+
+    throw Exception('Failed to create event: ${res.body}');
   }
 
   @override
@@ -110,17 +100,16 @@ class EventApiClient implements IEventApiClient {
     final url = '$baseUrl/${baseId(eventId)}';
     final headers = _authHeaders(token);
 
-    debugPrint("ðŸ“¡ GET $url");
-    debugPrint("ðŸ” Headers: $headers");
+    final uri = Uri.parse(url);
+    _debugEventApi(method: 'GET', uri: uri);
 
     final res = await AuthenticatedHttpClient.get(
-      Uri.parse(url),
+      uri,
       headers: headers,
       client: _client,
     );
 
-    debugPrint("ðŸ“¥ Status Code: ${res.statusCode}");
-    debugPrint("ðŸ“¥ Response Body: ${res.body}");
+    _debugEventApi(method: 'GET', uri: uri, statusCode: res.statusCode);
 
     if (res.statusCode == 200) {
       return Event.fromJson(jsonDecode(res.body));
@@ -136,17 +125,17 @@ class EventApiClient implements IEventApiClient {
     final ready = await _ensureRuleId(ev, token);
     final headers = _authHeaders(token);
     final payload = jsonEncode(ready.toBackendJson());
+    final uri = Uri.parse('$baseUrl/${baseId(ready.id)}');
 
     final res = await AuthenticatedHttpClient.put(
-      Uri.parse('$baseUrl/${baseId(ready.id)}'),
+      uri,
       headers: headers,
       body: payload,
       client: _client,
     );
 
     if (res.statusCode != 200) {
-      debugPrint('ðŸ”´ Update failed: ${res.statusCode}');
-      debugPrint('ðŸ“¦ Payload sent: $payload');
+      _debugEventApi(method: 'PUT', uri: uri, statusCode: res.statusCode);
       throw Exception('Failed to update event: ${res.body}');
     }
 
@@ -157,26 +146,22 @@ class EventApiClient implements IEventApiClient {
   Future<void> deleteEvent(String eventId, String token) async {
     final id = baseId(eventId);
     final url = '$baseUrl/$id';
+    final uri = Uri.parse(url);
 
-    debugPrint('🌐 [API] DELETE → $url');
     final headers = _authHeaders(token);
-    debugPrint('ðŸ” [API] Headers: $headers');
+    _debugEventApi(method: 'DELETE', uri: uri);
 
     final res = await AuthenticatedHttpClient.delete(
-      Uri.parse(url),
+      uri,
       headers: headers,
       client: _client,
     );
 
-    debugPrint('ðŸ“¥ [API] Response Status: ${res.statusCode}');
-    debugPrint('ðŸ“¥ [API] Response Body: ${res.body}');
+    _debugEventApi(method: 'DELETE', uri: uri, statusCode: res.statusCode);
 
     if (res.statusCode != 200) {
-      debugPrint('❌ [API] Delete failed');
       throw Exception('Failed to delete event');
     }
-
-    debugPrint('✅ [API] Event deleted: $id');
   }
 
   @override
@@ -258,4 +243,48 @@ class EventApiClient implements IEventApiClient {
       ),
     );
   }
+}
+
+@visibleForTesting
+String? formatEventApiDiagnostic({
+  required String method,
+  required Uri uri,
+  int? statusCode,
+}) {
+  if (!kDebugMode) return null;
+
+  return <String>[
+    '[EventApiClient] $method ${_redactedEventPath(uri)}',
+    if (statusCode != null) 'status=$statusCode',
+  ].join(' ');
+}
+
+void _debugEventApi({
+  required String method,
+  required Uri uri,
+  int? statusCode,
+}) {
+  final diagnostic = formatEventApiDiagnostic(
+    method: method,
+    uri: uri,
+    statusCode: statusCode,
+  );
+  if (diagnostic != null) debugPrint(diagnostic);
+}
+
+String _redactedEventPath(Uri uri) {
+  final segments = uri.pathSegments;
+  final eventsIndex = segments.indexOf('events');
+  if (eventsIndex == -1 || eventsIndex == segments.length - 1) {
+    return '/events';
+  }
+
+  final action = segments[eventsIndex + 1];
+  if (action == 'tasks') return '/events/tasks';
+  if (action == 'group') return '/events/group/[redacted]';
+  if (segments.length > eventsIndex + 2 &&
+      segments[eventsIndex + 2] == 'done') {
+    return '/events/[redacted]/done';
+  }
+  return '/events/[redacted]';
 }

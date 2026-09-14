@@ -12,7 +12,7 @@ import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/b-backend/telegram/domain/telegram_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/controller/group_dashboard_state.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/shared/documents/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/telegram/components/telegram_client_document_picker_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/telegram/components/telegram_worker_document_picker_dialog.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';

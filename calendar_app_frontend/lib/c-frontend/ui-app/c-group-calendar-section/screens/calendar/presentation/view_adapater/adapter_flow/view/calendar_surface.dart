@@ -7,6 +7,7 @@ import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/cells_widgets/calendar_month_cell.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/cells_widgets/calendar_styles.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/view_adapater/widgets/widgets_cells/month_schedule_img/calendar_styles.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart' as sf;
 
 import '../adapter/calendar_state.dart';
@@ -407,12 +408,17 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
 
     _isDraggingEvent = true;
     try {
-      await widget.eventDomain.updateEvent(this.context, movedEvent);
+      final updateResult =
+          await widget.eventDomain.updateEvent(this.context, movedEvent);
       widget.state.jumpTo(newStart);
       if (!mounted) return;
       ScaffoldMessenger.of(this.context).showSnackBar(
-        const SnackBar(
-          content: Text('Evento movido correctamente.'),
+        SnackBar(
+          content: Text(
+            updateResult.reminderUnavailable
+                ? AppLocalizations.of(this.context)!.reminderUnavailable
+                : 'Evento movido correctamente.',
+          ),
           duration: Duration(seconds: 2),
         ),
       );

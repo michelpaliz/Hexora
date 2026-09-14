@@ -9,7 +9,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_editor/invoice_editor_form/invoice_content_section.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/client_search_select.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/pdf_inline_preview.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
+import 'package:hexora/shared/documents/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/c-frontend/ui-app/shared/widgets/wizard_steps_header.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';

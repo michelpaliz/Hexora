@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_permissions.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/calendar_section/widgets/calendar_inline_error_view.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/calendar_section/widgets/calendar_inline_footer_actions.dart';
@@ -8,7 +9,6 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/wi
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/presentation/coordinator/calendar_screen_coordinator.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_tabs.dart';
-import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/group_permissions_helper.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/presence_status_strip.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -115,7 +115,7 @@ class _CalendarInlinePanelState extends State<CalendarInlinePanel>
     final cs = Theme.of(context).colorScheme;
     final user = context.read<UserDomain>().user;
     final canAddEvents =
-        user != null && GroupPermissionHelper.canAddEvents(user, widget.group);
+        GroupPermissions.canAddEvents(widget.group, user?.id);
 
     if (!widget.group.hasCalendar) {
       return const CalendarNoGroupPlaceholder();

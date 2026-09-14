@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/user_model/user.dart';
+import 'package:hexora/app/session/session_connection_cleanup.dart';
 import 'package:hexora/b-backend/auth_user/api/i_auth_api_client.dart';
 import 'package:hexora/b-backend/auth_user/auth/models/verification_result.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/model/token_obj.dart';
@@ -130,6 +131,7 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
 
   @override
   Future<void> logOut() async {
+    resetSessionConnections();
     _authToken = null;
     await _tokens.clear();
     _setCurrentUser(null);

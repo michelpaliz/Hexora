@@ -1,8 +1,14 @@
 // socket_manager.dart
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+
+typedef SocketFactory = IO.Socket Function(
+  String url,
+  Map<String, dynamic> options,
+);
 
 class SocketManager {
   static final SocketManager _instance = SocketManager._internal();
@@ -10,6 +16,7 @@ class SocketManager {
   SocketManager._internal();
 
   IO.Socket? _socket; // ✅ no 'late'
+  SocketFactory _socketFactory = _createSocket;
   bool get isConnected => _socket?.connected == true;
 
   // ✅ NEW: keep latest token for reconnect attempts
@@ -41,7 +48,7 @@ class SocketManager {
     final socketUrl = ApiConstants.socketBaseUrl;
 
     // ✅ UPDATED: enable reconnection with sane defaults
-    _socket = IO.io(socketUrl, <String, dynamic>{
+    _socket = _socketFactory(socketUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
       'reconnection': true, // ✅ NEW
@@ -162,11 +169,34 @@ class SocketManager {
   }
 
   void disconnect() {
-    _socket?.disconnect();
+    final socket = _socket;
+    if (socket != null) {
+      for (final entry in _registeredHandlers.entries) {
+        socket.off(entry.key, entry.value);
+      }
+      socket.disconnect();
+    }
     _socket = null;
-    _pendingEmits.clear(); // ✅ NEW
-    _onReady.clear(); // ✅ NEW
+    _authToken = null;
+    _pendingEmits.clear();
+    _onReady.clear();
+    _registeredHandlers.clear();
   }
+
+  @visibleForTesting
+  void setSocketFactoryForTesting(SocketFactory? factory) {
+    disconnect();
+    _socketFactory = factory ?? _createSocket;
+  }
+
+  @visibleForTesting
+  SocketManagerState get stateForTesting => SocketManagerState(
+        hasSocket: _socket != null,
+        authToken: _authToken,
+        pendingEmitCount: _pendingEmits.length,
+        readinessWaiterCount: _onReady.length,
+        registeredHandlerCount: _registeredHandlers.length,
+      );
 
   // --- internal ---
   void _rebindAllHandlers() {
@@ -177,6 +207,27 @@ class SocketManager {
       _socket!.on(event, handler);
     });
   }
+}
+
+IO.Socket _createSocket(String url, Map<String, dynamic> options) {
+  return IO.io(url, options);
+}
+
+@visibleForTesting
+class SocketManagerState {
+  const SocketManagerState({
+    required this.hasSocket,
+    required this.authToken,
+    required this.pendingEmitCount,
+    required this.readinessWaiterCount,
+    required this.registeredHandlerCount,
+  });
+
+  final bool hasSocket;
+  final String? authToken;
+  final int pendingEmitCount;
+  final int readinessWaiterCount;
+  final int registeredHandlerCount;
 }
 
 // ✅ NEW: tiny holder for queued emits

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_permissions.dart';
 import 'package:hexora/a-models/invoice/billing_profile.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/a-models/receipt/receipt.dart';
@@ -22,8 +23,8 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/invoice_editor_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_details_sheet/invoice_detail_sheet.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
+import 'package:hexora/shared/documents/file_download_launcher.dart';
+import 'package:hexora/shared/documents/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_screen.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/prompt_clipboard_helper.dart';
@@ -65,22 +66,6 @@ part 'group_invoices/group_invoices_view.dart';
 part 'group_invoices/view/group_invoices_content.dart';
 part 'group_invoices/mobile/invoices_mobile_view.dart';
 
-class GroupInvoicesRouteArgs {
-  const GroupInvoicesRouteArgs({
-    required this.group,
-    this.initialMenu,
-    this.initialInvoiceId,
-    this.initialReceiptId,
-    this.initialBudgetId,
-  });
-
-  final Group group;
-  final String? initialMenu;
-  final String? initialInvoiceId;
-  final String? initialReceiptId;
-  final String? initialBudgetId;
-}
-
 class GroupInvoicesScreen extends StatefulWidget {
   final Group group;
   final bool embedded;
@@ -114,10 +99,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   bool canEditIssuedInvoices(BuildContext context) {
     final userId = context.read<UserDomain?>()?.user?.id;
     if (userId == null || userId.trim().isEmpty) return false;
-    final role = widget.group.ownerId == userId
-        ? 'owner'
-        : widget.group.userRoles[userId];
-    return role == 'owner' || role == 'admin' || role == 'co-admin';
+    return GroupPermissions.canManageInvoices(widget.group, userId);
   }
 
   List<Invoice> _invoices = [];

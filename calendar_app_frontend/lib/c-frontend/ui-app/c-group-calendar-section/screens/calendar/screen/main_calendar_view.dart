@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_permissions.dart';
 import 'package:hexora/a-models/weather/day_summary.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/domain/event_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
@@ -17,7 +18,6 @@ import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calend
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/calendar_topbar.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/screen/widgets/refresh_button.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/add_event_cta.dart';
-import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/group_permissions_helper.dart';
 import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/calendar/utils/presence_status_strip.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/utils/color_manager.dart';
 import 'package:hexora/c-frontend/ui-app/d-event-section/screens/actions/add_screen/screen/add_event_screen.dart';
@@ -357,9 +357,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         }
 
         final canAddEvents =
-            GroupPermissionHelper.canAddEvents(currentUser, currentGroup);
+            GroupPermissions.canAddEvents(currentGroup, currentUser.id);
         final canEditBusinessHours =
-            GroupPermissionHelper.canEditGroup(currentUser, currentGroup);
+            GroupPermissions.canEditGroup(currentGroup, currentUser.id);
         if (canAddEvents != _canAddEvents) {
           _canAddEvents = canAddEvents;
           WidgetsBinding.instance.addPostFrameCallback((_) => _emitActions());

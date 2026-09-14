@@ -9,7 +9,7 @@ import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/b-backend/shared/backend_api_exception.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
+import 'package:hexora/shared/documents/pdf_preview_launcher.dart'
     as pdf_launcher;
 
 class TelegramWorkerDocumentSelection {

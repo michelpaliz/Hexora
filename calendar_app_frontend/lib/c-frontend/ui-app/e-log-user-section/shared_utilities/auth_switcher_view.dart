@@ -13,8 +13,15 @@ enum AuthMode { register, login, forgot }
 
 class AuthSwitcherView extends StatefulWidget {
   final bool showRegister; // keep external control if you want
-  const AuthSwitcherView({Key? key, this.showRegister = true})
-      : super(key: key);
+  final String? termsUrl;
+  final String? privacyUrl;
+
+  const AuthSwitcherView({
+    super.key,
+    this.showRegister = true,
+    this.termsUrl,
+    this.privacyUrl,
+  });
 
   @override
   State<AuthSwitcherView> createState() => _AuthSwitcherViewState();
@@ -178,7 +185,10 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
                                 return Column(
                                   key: const ValueKey("register"),
                                   children: [
-                                    const RegisterForm(),
+                                    RegisterForm(
+                                      termsUrl: widget.termsUrl,
+                                      privacyUrl: widget.privacyUrl,
+                                    ),
                                     const SizedBox(height: 12),
                                     Text.rich(
                                       TextSpan(

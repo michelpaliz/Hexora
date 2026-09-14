@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_permissions.dart';
 import 'package:hexora/a-models/invoice/invoice.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/emails/email_api.dart';
@@ -205,9 +206,8 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final currentUserId = context.read<UserDomain?>()?.user?.id;
-    final role =
-        currentUserId == null ? null : widget.group.userRoles[currentUserId];
-    final canSend = role == 'owner' || role == 'co-admin';
+    final canSend =
+        GroupPermissions.canSendInvoiceEmails(widget.group, currentUserId);
     final invoice = widget.selectedInvoice;
 
     final bannerText = _statusLoading

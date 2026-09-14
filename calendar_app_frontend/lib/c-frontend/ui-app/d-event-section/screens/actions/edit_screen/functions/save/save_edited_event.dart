@@ -41,10 +41,16 @@ Future<void> saveEditedEvent({
 
   if (isStartHourUnique || !allowRepetitiveHours) {
     try {
-      await eventDomain.updateEvent(context, updatedData);
+      final updateResult = await eventDomain.updateEvent(context, updatedData);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.eventEdited)),
+        SnackBar(
+          content: Text(
+            updateResult.reminderUnavailable
+                ? AppLocalizations.of(context)!.reminderUnavailable
+                : AppLocalizations.of(context)!.eventEdited,
+          ),
+        ),
       );
 
       // ✅ Use repository (handles token) instead of service

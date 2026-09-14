@@ -7,15 +7,36 @@ import 'package:hexora/a-models/group_model/event/model/event.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/resolver/event_group_resolver.dart';
+import 'package:hexora/b-backend/group_mng_flow/event/string_utils.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_events.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_manager.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/event_notification_helper.dart';
 
+typedef ReminderSynchronizer = Future<void> Function(
+  BuildContext context,
+  Event event, {
+  bool showSchedulingStatus,
+});
+
+typedef ReminderCanceller = Future<void> Function(Event event);
+
+class EventMutationResult {
+  const EventMutationResult({
+    required this.event,
+    required this.reminderUnavailable,
+  });
+
+  final Event event;
+  final bool reminderUnavailable;
+}
+
 class EventDomain {
   final Group _group;
   final IEventRepository _repo;
   final GroupEventResolver _resolver; // ðŸ‘ˆ resolver with cache
+  final ReminderSynchronizer _syncReminder;
+  final ReminderCanceller _cancelReminder;
 
   String get groupId => _group.id;
 
@@ -47,9 +68,13 @@ class EventDomain {
     required IEventRepository repository,
     required GroupDomain groupDomain,
     required GroupEventResolver resolver,
+    ReminderSynchronizer? reminderSynchronizer,
+    ReminderCanceller? reminderCanceller,
   })  : _group = group,
         _repo = repository,
-        _resolver = resolver {
+        _resolver = resolver,
+        _syncReminder = reminderSynchronizer ?? syncReminderFor,
+        _cancelReminder = reminderCanceller ?? cancelReminderFor {
     _bootstrap(context, initialEvents);
     _setupSocketForwarding();
 
@@ -76,9 +101,7 @@ class EventDomain {
 
     final current = await _repo.getEventsByGroupId(_group.id);
     await Future.wait(current.map((e) async {
-      try {
-        await syncReminderFor(context, e);
-      } catch (_) {}
+      await _syncReminderSafely(context, e, operation: 'bootstrap');
     }));
 
     // first load → make sure cache is fresh
@@ -209,47 +232,128 @@ class EventDomain {
     }
   }
 
-  Future<Event> createEvent(BuildContext context, Event event) async {
+  Future<EventMutationResult> createEvent(
+    BuildContext context,
+    Event event,
+  ) async {
     final created = await _repo.createEvent(event);
-    try {
-      await syncReminderFor(context, created);
-    } catch (_) {}
+    final reminderUnavailable = !await _syncReminderSafely(
+      context,
+      created,
+      operation: 'create',
+      showSchedulingStatus: true,
+    );
 
     // 🔧 local mutation → bust cache + recompute
     _resolver.clearGroup(_group.id);
     _scheduleRecompute(notifyExternal: false);
 
-    return created;
+    return EventMutationResult(
+      event: created,
+      reminderUnavailable: reminderUnavailable,
+    );
   }
 
-  Future<Event> updateEvent(BuildContext context, Event event) async {
+  Future<EventMutationResult> updateEvent(
+    BuildContext context,
+    Event event,
+  ) async {
     final updated = await _repo.updateEvent(event);
-    try {
-      await syncReminderFor(context, updated);
-    } catch (_) {}
+    final reminderUnavailable = !await _syncReminderSafely(
+      context,
+      updated,
+      operation: 'update',
+      showSchedulingStatus: true,
+    );
 
     // 🔧 local mutation → bust cache + recompute
     _resolver.clearGroup(_group.id);
     _scheduleRecompute(notifyExternal: false);
 
-    return updated;
+    return EventMutationResult(
+      event: updated,
+      reminderUnavailable: reminderUnavailable,
+    );
   }
 
   Future<void> deleteEvent(String id) async {
+    final eventId = baseId(id);
+    var eventsToCancel = <Event>[];
+    try {
+      eventsToCancel = (await _repo.getEventsByGroupId(_group.id))
+          .where(
+            (e) =>
+                baseId(e.id) == eventId ||
+                baseId(e.rawRuleId ?? '') == eventId,
+          )
+          .toList();
+    } catch (error, stackTrace) {
+      devtools.log(
+        'local_reminder_failure operation=delete_lookup '
+        'eventId=$eventId groupId=$_group.id',
+        name: 'EventDomain',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
     await _repo.deleteEvent(id);
 
-    final base = await _repo.getEventsByGroupId(_group.id);
-    for (final e in base) {
-      if (e.id == id || e.rawRuleId == id) {
-        try {
-          await cancelReminderFor(e);
-        } catch (_) {}
+    for (final e in eventsToCancel) {
+      try {
+        await _cancelReminder(e);
+      } catch (error, stackTrace) {
+        _logReminderFailure(
+          operation: 'delete',
+          event: e,
+          error: error,
+          stackTrace: stackTrace,
+        );
       }
     }
 
     // 🔧 local mutation → bust cache + recompute
     _resolver.clearGroup(_group.id);
     _scheduleRecompute(notifyExternal: false);
+  }
+
+  Future<bool> _syncReminderSafely(
+    BuildContext context,
+    Event event, {
+    required String operation,
+    bool showSchedulingStatus = false,
+  }) async {
+    try {
+      await _syncReminder(
+        context,
+        event,
+        showSchedulingStatus: showSchedulingStatus,
+      );
+      return true;
+    } catch (error, stackTrace) {
+      _logReminderFailure(
+        operation: operation,
+        event: event,
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  void _logReminderFailure({
+    required String operation,
+    required Event event,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    devtools.log(
+      'local_reminder_failure operation=$operation '
+      'eventId=${event.id} groupId=${event.groupId}',
+      name: 'EventDomain',
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 
   Future<Event?> fetchEvent(String id, {String? fallbackId}) async {

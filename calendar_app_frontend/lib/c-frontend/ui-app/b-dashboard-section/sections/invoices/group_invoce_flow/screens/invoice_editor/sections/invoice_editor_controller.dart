@@ -24,8 +24,8 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/s
 import 'package:hexora/c-frontend/ui-app/shared/widgets/snack_helper.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
+import 'package:hexora/shared/documents/file_download_launcher.dart';
+import 'package:hexora/shared/documents/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';

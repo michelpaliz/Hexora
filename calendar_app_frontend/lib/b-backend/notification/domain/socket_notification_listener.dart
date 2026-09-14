@@ -1,14 +1,85 @@
+import 'package:flutter/foundation.dart';
 import 'package:hexora/a-models/downloads/download_job.dart';
 import 'package:hexora/a-models/notification_model/notification_user.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
 import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
+import 'package:hexora/c-frontend/ui-app/f-notification-section/event_notification_id_allocator.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
 import 'package:hexora/c-frontend/ui-app/shared/downloads/download_jobs_store.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
-late io.Socket notificationSocket;
+abstract interface class NotificationSocketClient {
+  bool get connected;
+
+  void connect();
+  void dispose();
+  void on(String event, Function handler);
+  void onConnect(Function handler);
+  void onDisconnect(Function handler);
+}
+
+class _SocketIoNotificationSocket implements NotificationSocketClient {
+  _SocketIoNotificationSocket(String url, Map<String, dynamic> options)
+      : _socket = io.io(url, options);
+
+  final io.Socket _socket;
+
+  @override
+  bool get connected => _socket.connected;
+
+  @override
+  void connect() {
+    _socket.connect();
+  }
+
+  @override
+  void dispose() {
+    _socket.dispose();
+  }
+
+  @override
+  void on(String event, Function handler) {
+    _socket.on(event, handler);
+  }
+
+  @override
+  void onConnect(Function handler) {
+    _socket.onConnect(handler);
+  }
+
+  @override
+  void onDisconnect(Function handler) {
+    _socket.onDisconnect(handler);
+  }
+}
+
+typedef NotificationSocketFactory = NotificationSocketClient Function(
+  String url,
+  Map<String, dynamic> options,
+);
+
+NotificationSocketClient? _notificationSocket;
+NotificationSocketFactory _socketFactory = _SocketIoNotificationSocket.new;
 String? _activeNotificationSocketUserId;
 NotificationDomain? _activeNotificationDomain;
+
+/// Closes the active notification socket and prevents any late events from
+/// being applied to the previous user's state.
+void resetNotificationSocket() {
+  final socket = _notificationSocket;
+  _notificationSocket = null;
+  _activeNotificationSocketUserId = null;
+  _activeNotificationDomain = null;
+  try {
+    socket?.dispose();
+  } catch (_) {}
+}
+
+@visibleForTesting
+void setNotificationSocketFactoryForTesting(NotificationSocketFactory? factory) {
+  resetNotificationSocket();
+  _socketFactory = factory ?? _SocketIoNotificationSocket.new;
+}
 
 void initializeNotificationSocket(
   String userId, {
@@ -17,36 +88,38 @@ void initializeNotificationSocket(
   final normalizedUserId = userId.trim();
   if (normalizedUserId.isEmpty) return;
 
-  _activeNotificationDomain = notificationDomain ?? _activeNotificationDomain;
+  final activeNotificationDomain =
+      notificationDomain ?? _activeNotificationDomain;
 
   if (_activeNotificationSocketUserId == normalizedUserId) {
     try {
-      if (notificationSocket.connected) {
+      if (_notificationSocket?.connected == true) {
+        _activeNotificationDomain = activeNotificationDomain;
         return;
       }
     } catch (_) {}
-  } else {
-    try {
-      notificationSocket.dispose();
-    } catch (_) {}
   }
+  resetNotificationSocket();
 
   final socketUrl = ApiConstants.socketBaseUrl;
   _activeNotificationSocketUserId = normalizedUserId;
+  _activeNotificationDomain = activeNotificationDomain;
 
-  notificationSocket = io.io(socketUrl, <String, dynamic>{
+  final socket = _socketFactory(socketUrl, <String, dynamic>{
     'transports': ['websocket'],
     'autoConnect': false,
     'query': {'userId': normalizedUserId},
   });
+  _notificationSocket = socket;
 
-  notificationSocket.connect();
+  socket.connect();
 
-  notificationSocket.onConnect((_) {
+  socket.onConnect((_) {
     print('Connected to notification socket');
   });
 
-  notificationSocket.on('notification:created', (data) async {
+  socket.on('notification:created', (data) async {
+    if (!_isActiveSocket(socket, normalizedUserId)) return;
     print('Notification received: $data');
     final payload = _asMap(data);
     if (payload == null) return;
@@ -56,7 +129,8 @@ void initializeNotificationSocket(
     await _activeNotificationDomain?.addInboundNotification(notification);
   });
 
-  notificationSocket.on('event:reminder', (data) {
+  socket.on('event:reminder', (data) async {
+    if (!_isActiveSocket(socket, normalizedUserId)) return;
     print('Reminder received: $data');
 
     final payload = _asMap(data);
@@ -66,7 +140,12 @@ void initializeNotificationSocket(
     )?.toLocal();
     if (parsedDate == null) return;
 
-    final notificationId = (payload['eventId']?.toString() ?? '').hashCode;
+    final eventId = payload['eventId']?.toString() ?? '';
+    if (eventId.isEmpty) return;
+    final notificationId = await eventNotificationIdAllocator.idFor(
+      eventId: eventId,
+      kind: EventNotificationKind.reminder,
+    );
     final title = payload['title']?.toString() ?? '';
     final body = 'Reminder: $title is starting soon.';
 
@@ -75,17 +154,23 @@ void initializeNotificationSocket(
       title: title,
       body: body,
       dateTime: parsedDate,
+      payload: eventId,
     );
   });
 
-  notificationSocket.on('event:started', (data) {
+  socket.on('event:started', (data) async {
+    if (!_isActiveSocket(socket, normalizedUserId)) return;
     print('Event started: $data');
 
     final payload = _asMap(data);
     if (payload == null) return;
     final now = DateTime.now();
-    final notificationId =
-        (payload['eventId']?.toString() ?? '').hashCode + 1000;
+    final eventId = payload['eventId']?.toString() ?? '';
+    if (eventId.isEmpty) return;
+    final notificationId = await eventNotificationIdAllocator.idFor(
+      eventId: eventId,
+      kind: EventNotificationKind.start,
+    );
     final title = payload['title']?.toString() ?? '';
     final body = '$title has just started.';
 
@@ -94,13 +179,18 @@ void initializeNotificationSocket(
       title: title,
       body: body,
       dateTime: now,
+      payload: eventId,
     );
   });
 
-  notificationSocket.on('download:ready', _handleDownloadEvent);
-  notificationSocket.on('download:failed', _handleDownloadEvent);
+  socket.on('download:ready', (data) {
+    if (_isActiveSocket(socket, normalizedUserId)) _handleDownloadEvent(data);
+  });
+  socket.on('download:failed', (data) {
+    if (_isActiveSocket(socket, normalizedUserId)) _handleDownloadEvent(data);
+  });
 
-  notificationSocket.onDisconnect((_) {
+  socket.onDisconnect((_) {
     print('Notification socket disconnected');
   });
 }
@@ -138,4 +228,9 @@ bool _isForActiveUser(NotificationUser notification) {
   final activeUserId = _activeNotificationSocketUserId?.trim() ?? '';
   if (activeUserId.isEmpty) return false;
   return notification.recipientId.trim() == activeUserId;
+}
+
+bool _isActiveSocket(NotificationSocketClient socket, String userId) {
+  return identical(_notificationSocket, socket) &&
+      _activeNotificationSocketUserId == userId;
 }

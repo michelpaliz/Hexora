@@ -24,6 +24,8 @@ String _statusToJson(WorkerStatus s) {
 /// Mirrors backend models/worker.js (after its toJSON transform).
 @immutable
 class Worker {
+  static const Object _unset = Object();
+
   final String id; // backend sets `id` (string) in toJSON
   final String groupId; // route param on create, but returned in payloads
   final String? userId; // can be null (external worker)
@@ -103,35 +105,51 @@ class Worker {
         notes: notes,
       );
 
+  /// Nullable fields use the model update convention documented in
+  /// `docs/nullable_update_convention.md`.
   Worker copyWith({
     String? id,
     String? groupId,
-    String? userId,
-    String? displayName,
+    Object? userId = _unset,
+    Object? displayName = _unset,
     WorkerStatus? status,
-    double? defaultHourlyRate,
-    double? advanceAmount,
-    String? currency,
-    String? externalId,
-    String? roleTag,
-    String? notes,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    Object? defaultHourlyRate = _unset,
+    Object? advanceAmount = _unset,
+    Object? currency = _unset,
+    Object? externalId = _unset,
+    Object? roleTag = _unset,
+    Object? notes = _unset,
+    Object? createdAt = _unset,
+    Object? updatedAt = _unset,
   }) {
     return Worker(
       id: id ?? this.id,
       groupId: groupId ?? this.groupId,
-      userId: userId ?? this.userId,
-      displayName: displayName ?? this.displayName,
+      userId: identical(userId, _unset) ? this.userId : userId as String?,
+      displayName: identical(displayName, _unset)
+          ? this.displayName
+          : displayName as String?,
       status: status ?? this.status,
-      defaultHourlyRate: defaultHourlyRate ?? this.defaultHourlyRate,
-      advanceAmount: advanceAmount ?? this.advanceAmount,
-      currency: currency ?? this.currency,
-      externalId: externalId ?? this.externalId,
-      roleTag: roleTag ?? this.roleTag,
-      notes: notes ?? this.notes,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      defaultHourlyRate: identical(defaultHourlyRate, _unset)
+          ? this.defaultHourlyRate
+          : defaultHourlyRate as double?,
+      advanceAmount: identical(advanceAmount, _unset)
+          ? this.advanceAmount
+          : advanceAmount as double?,
+      currency:
+          identical(currency, _unset) ? this.currency : currency as String?,
+      externalId: identical(externalId, _unset)
+          ? this.externalId
+          : externalId as String?,
+      roleTag:
+          identical(roleTag, _unset) ? this.roleTag : roleTag as String?,
+      notes: identical(notes, _unset) ? this.notes : notes as String?,
+      createdAt: identical(createdAt, _unset)
+          ? this.createdAt
+          : createdAt as DateTime?,
+      updatedAt: identical(updatedAt, _unset)
+          ? this.updatedAt
+          : updatedAt as DateTime?,
     );
   }
 
@@ -176,14 +194,14 @@ class Worker {
   /// For UPDATE/PATCH calls.
   Map<String, dynamic> toUpdateJson() {
     return {
-      if (displayName != null) 'displayName': displayName,
+      'displayName': displayName,
       'status': _statusToJson(status),
-      if (defaultHourlyRate != null) 'defaultHourlyRate': defaultHourlyRate,
+      'defaultHourlyRate': defaultHourlyRate,
       if (advanceAmount != null) 'advanceAmount': advanceAmount,
       if (currency != null) 'currency': currency,
       if (externalId != null) 'externalId': externalId,
-      if (roleTag != null) 'roleTag': roleTag,
-      if (notes != null) 'notes': notes,
+      'roleTag': roleTag,
+      'notes': notes,
     };
   }
 }

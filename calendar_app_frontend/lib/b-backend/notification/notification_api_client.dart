@@ -1,7 +1,6 @@
-// ignore_for_file: avoid_print
-
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/auth_user/exceptions/exception.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
@@ -102,12 +101,15 @@ class NotificationApiClient {
   Future<List<NotificationUser>> getNotificationsForUser(
       String username) async {
     final url = Uri.parse('$baseUrl/user/$username');
-    print('ðŸ“¡ GET: $url');
+    _debugNotificationApi(method: 'GET', uri: url);
 
     final response = await AuthenticatedHttpClient.get(url);
-
-    print('ðŸ“¬ Status: ${response.statusCode}');
-    print('ðŸ“¦ Body: ${response.body}');
+    _debugNotificationApi(
+      method: 'GET',
+      uri: url,
+      statusCode: response.statusCode,
+      responseBody: response.body,
+    );
 
     if (response.statusCode == 200) {
       final body = response.body;
@@ -117,12 +119,17 @@ class NotificationApiClient {
           jsonData.map((data) => NotificationUser.fromJson(data)).toList(),
           includeRecipient: true,
         );
-      } catch (e) {
-        print('❌ Failed to parse notifications JSON: $e');
+      } catch (error) {
+        _debugNotificationApi(
+          method: 'GET',
+          uri: url,
+          statusCode: response.statusCode,
+          responseBody: body,
+          error: error,
+        );
         throw Exception('Invalid response format');
       }
     } else if (response.statusCode == 404) {
-      print('ℹ️ No notifications found for user: $username');
       return []; // Don't throw — just return empty
     } else {
       throw Exception(
@@ -191,9 +198,15 @@ class NotificationApiClient {
   }
 
   Future<GetNotifResult> getNotificationById(String id) async {
-    final res = await AuthenticatedHttpClient.get(Uri.parse('$baseUrl/$id'));
-    print('ðŸ› status=${res.statusCode}');
-    print('ðŸ“¦ body=${res.body}');
+    final url = Uri.parse('$baseUrl/$id');
+    _debugNotificationApi(method: 'GET', uri: url);
+    final res = await AuthenticatedHttpClient.get(url);
+    _debugNotificationApi(
+      method: 'GET',
+      uri: url,
+      statusCode: res.statusCode,
+      responseBody: res.body,
+    );
 
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body);
@@ -284,6 +297,57 @@ String _notificationSemanticKey(
     notification.type.name,
     _canonicalJson(notification.args),
   ].join('|');
+}
+
+@visibleForTesting
+String? formatNotificationApiDiagnostic({
+  required String method,
+  required Uri uri,
+  int? statusCode,
+  String? responseBody,
+  Object? error,
+}) {
+  if (!kDebugMode) return null;
+
+  final details = <String>[
+    '[NotificationApi] $method ${_redactedNotificationPath(uri)}',
+    if (statusCode != null) 'status=$statusCode',
+    if (responseBody != null) 'responseBytes=${utf8.encode(responseBody).length}',
+    if (error != null) 'errorType=${error.runtimeType}',
+  ];
+  return details.join(' ');
+}
+
+void _debugNotificationApi({
+  required String method,
+  required Uri uri,
+  int? statusCode,
+  String? responseBody,
+  Object? error,
+}) {
+  final diagnostic = formatNotificationApiDiagnostic(
+    method: method,
+    uri: uri,
+    statusCode: statusCode,
+    responseBody: responseBody,
+    error: error,
+  );
+  if (diagnostic != null) debugPrint(diagnostic);
+}
+
+String _redactedNotificationPath(Uri uri) {
+  final segments = uri.pathSegments;
+  final notificationIndex = segments.indexOf('notifications');
+  if (notificationIndex == -1 || notificationIndex == segments.length - 1) {
+    return '/notifications';
+  }
+
+  final action = segments[notificationIndex + 1];
+  if (action == 'read-all') return '/notifications/read-all';
+  if (action == 'user' || action == 'group') {
+    return '/notifications/$action/[redacted]';
+  }
+  return '/notifications/[redacted]';
 }
 
 String _canonicalJson(dynamic value) {

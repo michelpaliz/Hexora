@@ -5,6 +5,7 @@ import 'package:hexora/a-models/group_model/calendar/calendar.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/a-models/group_model/group/group_business_hours.dart';
 import 'package:hexora/b-backend/config/api_constants.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/service/authenticated_http_client.dart';
 import 'package:hexora/b-backend/errorClases/error_classes/error_classes.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/api/i_group_api_client.dart';
 import 'package:hexora/b-backend/shared/backend_api_exception.dart';
@@ -26,10 +27,11 @@ class HttpGroupApiClient implements IGroupApiClient {
 
   @override
   Future<Group> createGroup(Group group, String token) async {
-    final res = await _client.post(
+    final res = await AuthenticatedHttpClient.post(
       Uri.parse(baseUrl),
       headers: authHeaders(token),
       body: jsonEncode(group.toJsonForCreation()),
+      client: _client,
     );
 
     if (res.statusCode == 201) {
@@ -43,9 +45,10 @@ class HttpGroupApiClient implements IGroupApiClient {
 
   @override
   Future<Group> getGroupById(String id, String token) async {
-    final res = await _client.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/$id'),
       headers: authHeaders(token),
+      client: _client,
     );
 
     devtools.log('📥 GET /groups/$id → ${res.statusCode}');
@@ -60,19 +63,21 @@ class HttpGroupApiClient implements IGroupApiClient {
 
   @override
   Future<bool> updateGroup(Group group, String token) async {
-    final res = await _client.put(
+    final res = await AuthenticatedHttpClient.put(
       Uri.parse('$baseUrl/${group.id}'),
       headers: authHeaders(token),
       body: jsonEncode(group.toJson()),
+      client: _client,
     );
     return res.statusCode == 200;
   }
 
   @override
   Future<void> deleteGroup(String id, String token) async {
-    final res = await _client.delete(
+    final res = await AuthenticatedHttpClient.delete(
       Uri.parse('$baseUrl/$id'),
       headers: authHeaders(token),
+      client: _client,
     );
     if (res.statusCode != 200) {
       throw HttpFailure(res.statusCode, res.body);
@@ -81,9 +86,10 @@ class HttpGroupApiClient implements IGroupApiClient {
 
   @override
   Future<void> leaveGroup(String userId, String groupId, String token) async {
-    final res = await _client.delete(
+    final res = await AuthenticatedHttpClient.delete(
       Uri.parse('$baseUrl/$groupId/users/$userId'),
       headers: authHeaders(token),
+      client: _client,
     );
     if (res.statusCode != 200) {
       throw HttpFailure(res.statusCode, res.body);
@@ -97,10 +103,11 @@ class HttpGroupApiClient implements IGroupApiClient {
     required String roleWire,
     required String token,
   }) async {
-    final res = await _client.patch(
+    final res = await AuthenticatedHttpClient.patch(
       Uri.parse('$baseUrl/$groupId/users/$userId/role'),
       headers: authHeaders(token),
       body: jsonEncode({'role': roleWire}),
+      client: _client,
     );
     if (res.statusCode != 200) {
       throw HttpFailure(res.statusCode, res.body);
@@ -114,7 +121,7 @@ class HttpGroupApiClient implements IGroupApiClient {
     required String roleWire,
     required String token,
   }) async {
-    final res = await _client.post(
+    final res = await AuthenticatedHttpClient.post(
       Uri.parse('${ApiConstants.baseUrl}/invitations'),
       headers: authHeaders(token),
       body: jsonEncode({
@@ -122,6 +129,7 @@ class HttpGroupApiClient implements IGroupApiClient {
         'userId': userId,
         'role': roleWire,
       }),
+      client: _client,
     );
 
     // Accept 200 or 201 as success
@@ -132,9 +140,10 @@ class HttpGroupApiClient implements IGroupApiClient {
 
   @override
   Future<List<Group>> getGroupsByUser(String userName, String token) async {
-    final res = await _client.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/user/$userName'),
       headers: authHeaders(token),
+      client: _client,
     );
     if (res.statusCode == 200) {
       final body = jsonDecode(res.body) as List<dynamic>;
@@ -150,7 +159,7 @@ class HttpGroupApiClient implements IGroupApiClient {
     required bool accepted,
     required String token,
   }) async {
-    final res = await _client.put(
+    final res = await AuthenticatedHttpClient.put(
       Uri.parse('$baseUrl/invite/response'),
       headers: authHeaders(token),
       body: jsonEncode({
@@ -158,6 +167,7 @@ class HttpGroupApiClient implements IGroupApiClient {
         'userId': userId,
         'accepted': accepted,
       }),
+      client: _client,
     );
     devtools.log('📤 PUT /invite/response → ${res.statusCode}');
     if (res.statusCode != 200) {
@@ -175,9 +185,10 @@ class HttpGroupApiClient implements IGroupApiClient {
     String? mode,
   }) async {
     final query = mode == null ? '' : '?mode=$mode';
-    final res = await _client.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/$groupId/members/count$query'),
       headers: authHeaders(token),
+      client: _client,
     );
 
     if (res.statusCode == 200) {
@@ -194,9 +205,10 @@ class HttpGroupApiClient implements IGroupApiClient {
     String groupId,
     String token,
   ) async {
-    final res = await _client.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/$groupId/members'),
       headers: authHeaders(token),
+      client: _client,
     );
 
     if (res.statusCode == 200) return jsonDecode(res.body);
@@ -213,10 +225,11 @@ class HttpGroupApiClient implements IGroupApiClient {
     List<String>? ids,
   }) async {
     final body = ids == null ? {} : {'ids': ids};
-    final res = await _client.post(
+    final res = await AuthenticatedHttpClient.post(
       Uri.parse('$baseUrl/$groupId/members/profiles'),
       headers: authHeaders(token),
       body: jsonEncode(body),
+      client: _client,
     );
 
     if (res.statusCode == 200) {
@@ -232,9 +245,10 @@ class HttpGroupApiClient implements IGroupApiClient {
   @override
   Future<Calendar> getCalendarById(String calendarId, String token) async {
     final url = '${ApiConstants.baseUrl}/calendars/$calendarId';
-    final res = await _client.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse(url),
       headers: authHeaders(token),
+      client: _client,
     );
 
     if (res.statusCode == 200) {
@@ -249,10 +263,11 @@ class HttpGroupApiClient implements IGroupApiClient {
     GroupBusinessHours hours,
     String token,
   ) async {
-    final res = await _client.patch(
+    final res = await AuthenticatedHttpClient.patch(
       Uri.parse('$baseUrl/$groupId/business-hours'),
       headers: authHeaders(token),
       body: jsonEncode(hours.toJson()),
+      client: _client,
     );
 
     if (res.statusCode == 200) {
@@ -269,9 +284,10 @@ class HttpGroupApiClient implements IGroupApiClient {
   @override
   Future<Map<String, dynamic>> getGroupPermissions(
       String groupId, String token) async {
-    final res = await _client.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/$groupId/permissions'),
       headers: authHeaders(token),
+      client: _client,
     );
     if (res.statusCode == 200) {
       return jsonDecode(res.body) as Map<String, dynamic>;
@@ -286,9 +302,10 @@ class HttpGroupApiClient implements IGroupApiClient {
     String userId,
     String token,
   ) async {
-    final res = await _client.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/$groupId/members/$userId/role-history'),
       headers: authHeaders(token),
+      client: _client,
     );
     if (res.statusCode == 200) {
       return jsonDecode(res.body) as Map<String, dynamic>;
@@ -301,9 +318,10 @@ class HttpGroupApiClient implements IGroupApiClient {
 
   @override
   Future<List<String>> getGroupRoles(String token) async {
-    final res = await _client.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/roles'),
       headers: authHeaders(token),
+      client: _client,
     );
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body);

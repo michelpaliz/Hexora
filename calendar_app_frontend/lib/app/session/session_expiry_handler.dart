@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/app/session/session_connection_cleanup.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 
@@ -10,13 +11,17 @@ class SessionExpiryHandler {
       GlobalKey<NavigatorState>();
   static bool _handling = false;
 
-  static Future<void> handle() async {
+  static Future<void> handle({
+    Future<void> Function()? clearTokens,
+    NavigatorState? navigator,
+  }) async {
     if (_handling) return;
     _handling = true;
     try {
-      await TokenService.clearTokens();
+      resetSessionConnections();
+      await (clearTokens ?? TokenService.clearTokens)();
 
-      final nav = navigatorKey.currentState;
+      final nav = navigator ?? navigatorKey.currentState;
       if (nav == null) return;
 
       nav.pushNamedAndRemoveUntil(

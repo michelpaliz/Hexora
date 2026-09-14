@@ -3,7 +3,7 @@ import 'package:hexora/b-backend/expenses/expenses_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/b-backend/statements/statements_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
+import 'package:hexora/shared/documents/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';

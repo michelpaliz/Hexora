@@ -16,8 +16,9 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/wi
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/notifications_section/right_panel_notifications_inline/widgets/notifications_list.dart';
 import 'package:hexora/c-frontend/ui-app/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/c-frontend/ui-app/shared/widgets/folder_panel.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/shared/documents/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/c-frontend/routes/group_invoices_route_args.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/c-frontend/utils/errors/premium_upgrade_dialog.dart';

@@ -1297,6 +1297,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get andSeparator => ' y ';
 
   @override
+  String get termsAndPrivacyUnavailable =>
+      'Los Términos y la Política de Privacidad no están disponibles actualmente.';
+
+  @override
   String get alreadyHaveAccount => '¿Ya tienes una cuenta?';
 
   @override
@@ -1393,6 +1397,73 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tasks => 'Tareas';
 
   @override
+  String get calendarTasksSubtitle =>
+      'Recordatorios rápidos sin pasar por el flujo de visitas.';
+
+  @override
+  String get calendarTasksLoadError => 'No se pudieron cargar las tareas.';
+
+  @override
+  String get calendarTasksUpdateError => 'No se pudo actualizar la tarea.';
+
+  @override
+  String get calendarTasksNew => 'Nueva tarea';
+
+  @override
+  String get calendarTasksTitleLabel => 'Título';
+
+  @override
+  String get calendarTasksNoteLabel => 'Nota';
+
+  @override
+  String get calendarTasksDue => 'Vence';
+
+  @override
+  String get calendarTasksReminder => 'Recordatorio';
+
+  @override
+  String get calendarTasksReminderAtDueTime => 'Ahora';
+
+  @override
+  String get calendarTasksReminder10Minutes => '10 min antes';
+
+  @override
+  String get calendarTasksReminder30Minutes => '30 min antes';
+
+  @override
+  String get calendarTasksReminder1Hour => '1 h antes';
+
+  @override
+  String get calendarTasksNotifyOwner => 'Notificar al propietario';
+
+  @override
+  String get calendarTasksAssignUsers => 'Asignar usuarios';
+
+  @override
+  String get calendarTasksCreate => 'Crear tarea';
+
+  @override
+  String get calendarTasksCreateError => 'No se pudo crear la tarea.';
+
+  @override
+  String get calendarTasksPendingPlural => 'Pendientes';
+
+  @override
+  String get calendarTasksDonePlural => 'Hechas';
+
+  @override
+  String get calendarTasksMine => 'Solo mías';
+
+  @override
+  String get calendarTasksEmpty => 'No hay tareas para este filtro.';
+
+  @override
+  String get calendarTasksDone => 'Hecha';
+
+  @override
+  String get calendarTasksPending => 'Pendiente';
+
+  @override
   String get deadlines => 'Plazos';
 
   @override
@@ -1432,6 +1503,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get notifyMeOffSubtitle => 'No se enviará ningún recordatorio';
+
+  @override
+  String get reminderScheduledInexact =>
+      'Recordatorio programado; puede llegar tarde porque las alarmas exactas no están disponibles.';
+
+  @override
+  String get reminderUnavailable =>
+      'El evento se guardó, pero no se pudo programar su recordatorio.';
 
   @override
   String get noInvitableUsers => 'No hay usuarios disponibles para invitar';
@@ -2349,6 +2428,18 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get workerCreated => '¡Trabajador creado con éxito!';
+
+  @override
+  String get workerSaveValidationError =>
+      'Revisa los datos del trabajador e inténtalo de nuevo.';
+
+  @override
+  String get workerSaveUnauthorizedError =>
+      'No tienes permiso para guardar este trabajador.';
+
+  @override
+  String get workerSaveUnexpectedError =>
+      'No se pudo guardar el trabajador. Inténtalo de nuevo.';
 
   @override
   String get createWorkerCta => 'Agregar trabajador';

@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:hexora/b-backend/auth_user/api/auth_api_client.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/model/token_obj.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/token_store/Itoken_store.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/token_store/token_store.dart';
 
 class TokenService {
-  static final TokenStore _store = SecureTokenStore();
+  static TokenStore _store = SecureTokenStore();
   static final AuthApiClientImpl _authApi = AuthApiClientImpl();
   static Future<String?>? _refreshingToken;
 
@@ -16,6 +17,12 @@ class TokenService {
     required String refreshToken,
   }) =>
       _store.save(AuthTokens(access: accessToken, refresh: refreshToken));
+
+  @visibleForTesting
+  static void setStoreForTesting(TokenStore? store) {
+    _store = store ?? SecureTokenStore();
+    _refreshingToken = null;
+  }
 
   static Future<String?> loadToken() async {
     final access = await _store.readAccess();

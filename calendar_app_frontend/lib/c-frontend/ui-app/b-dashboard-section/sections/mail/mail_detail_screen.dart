@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/mail/mail_attachment.dart';
 import 'package:hexora/b-backend/mail/domain/mail_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/widgets/mail_html_content.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/shared/documents/file_download_launcher.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';

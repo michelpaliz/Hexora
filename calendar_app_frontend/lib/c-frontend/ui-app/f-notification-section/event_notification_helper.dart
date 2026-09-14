@@ -1,14 +1,28 @@
 import 'package:hexora/a-models/group_model/event/model/event.dart';
+import 'package:hexora/c-frontend/ui-app/f-notification-section/event_notification_id_allocator.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-/// Generates a unique notification ID based on event ID
-int notifIdFor(Event e) => e.id.hashCode;
+Future<int> notifIdFor(
+  Event event, {
+  EventNotificationIdAllocator? allocator,
+}) {
+  return (allocator ?? eventNotificationIdAllocator).idFor(
+    eventId: event.id,
+    kind: EventNotificationKind.reminder,
+  );
+}
 
-Future<void> syncReminderFor(BuildContext context, Event e) async {
-  await flutterLocalNotificationsPlugin.cancel(notifIdFor(e));
+Future<void> syncReminderFor(
+  BuildContext context,
+  Event e, {
+  bool showSchedulingStatus = false,
+  EventNotificationIdAllocator? idAllocator,
+}) async {
+  final notificationId = await notifIdFor(e, allocator: idAllocator);
+  await flutterLocalNotificationsPlugin.cancel(notificationId);
 
   if (e.reminderTime == null) return;
 
@@ -29,16 +43,30 @@ Future<void> syncReminderFor(BuildContext context, Event e) async {
     formattedTime,
   );
 
-  await scheduleLocalNotification(
-    id: notifIdFor(e),
+  final scheduleMode = await scheduleLocalNotification(
+    id: notificationId,
     title: localizations.notificationEventReminderTitle,
     body: body,
     dateTime: trigger,
+    payload: e.id,
   );
+
+  if (showSchedulingStatus &&
+      scheduleMode == ReminderScheduleMode.inexact &&
+      context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(localizations.reminderScheduledInexact)),
+    );
+  }
 }
 
 
 /// Cancels notification for an event
-Future<void> cancelReminderFor(Event e) async {
-  await flutterLocalNotificationsPlugin.cancel(notifIdFor(e));
+Future<void> cancelReminderFor(
+  Event e, {
+  EventNotificationIdAllocator? idAllocator,
+}) async {
+  await flutterLocalNotificationsPlugin.cancel(
+    await notifIdFor(e, allocator: idAllocator),
+  );
 }

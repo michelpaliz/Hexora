@@ -2337,6 +2337,12 @@ abstract class AppLocalizations {
   /// **' and '**
   String get andSeparator;
 
+  /// No description provided for @termsAndPrivacyUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms and Privacy Policy are currently unavailable.'**
+  String get termsAndPrivacyUnavailable;
+
   /// No description provided for @alreadyHaveAccount.
   ///
   /// In en, this message translates to:
@@ -2505,6 +2511,29 @@ abstract class AppLocalizations {
   /// **'Tasks'**
   String get tasks;
 
+  String get calendarTasksSubtitle;
+  String get calendarTasksLoadError;
+  String get calendarTasksUpdateError;
+  String get calendarTasksNew;
+  String get calendarTasksTitleLabel;
+  String get calendarTasksNoteLabel;
+  String get calendarTasksDue;
+  String get calendarTasksReminder;
+  String get calendarTasksReminderAtDueTime;
+  String get calendarTasksReminder10Minutes;
+  String get calendarTasksReminder30Minutes;
+  String get calendarTasksReminder1Hour;
+  String get calendarTasksNotifyOwner;
+  String get calendarTasksAssignUsers;
+  String get calendarTasksCreate;
+  String get calendarTasksCreateError;
+  String get calendarTasksPendingPlural;
+  String get calendarTasksDonePlural;
+  String get calendarTasksMine;
+  String get calendarTasksEmpty;
+  String get calendarTasksDone;
+  String get calendarTasksPending;
+
   /// No description provided for @deadlines.
   ///
   /// In en, this message translates to:
@@ -2582,6 +2611,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No reminder will be sent'**
   String get notifyMeOffSubtitle;
+
+  /// No description provided for @reminderScheduledInexact.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder scheduled; it may arrive late because exact alarms are unavailable.'**
+  String get reminderScheduledInexact;
+
+  /// No description provided for @reminderUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The event was saved, but its reminder could not be scheduled.'**
+  String get reminderUnavailable;
 
   /// No description provided for @noInvitableUsers.
   ///
@@ -4137,6 +4178,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Worker created successfully!'**
   String get workerCreated;
+
+  /// No description provided for @workerSaveValidationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check the worker details and try again.'**
+  String get workerSaveValidationError;
+
+  /// No description provided for @workerSaveUnauthorizedError.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have permission to save this worker.'**
+  String get workerSaveUnauthorizedError;
+
+  /// No description provided for @workerSaveUnexpectedError.
+  ///
+  /// In en, this message translates to:
+  /// **'We could not save the worker. Please try again.'**
+  String get workerSaveUnexpectedError;
 
   /// No description provided for @createWorkerCta.
   ///

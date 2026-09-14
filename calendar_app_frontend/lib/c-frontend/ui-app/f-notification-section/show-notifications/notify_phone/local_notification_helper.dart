@@ -1,9 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:hexora/c-frontend/ui-app/f-notification-section/event_notification_tap_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
+
+enum ReminderScheduleMode { exact, inexact }
+
+ReminderScheduleMode androidReminderScheduleMode(
+  bool? canScheduleExactNotifications,
+) {
+  return canScheduleExactNotifications == true
+      ? ReminderScheduleMode.exact
+      : ReminderScheduleMode.inexact;
+}
+
+AndroidScheduleMode androidScheduleModeFor(ReminderScheduleMode scheduleMode) {
+  return scheduleMode == ReminderScheduleMode.exact
+      ? AndroidScheduleMode.exactAllowWhileIdle
+      : AndroidScheduleMode.inexactAllowWhileIdle;
+}
 
 Future<void> setupLocalNotifications() async {
   tz.initializeTimeZones();
@@ -14,20 +33,33 @@ Future<void> setupLocalNotifications() async {
   const settings = InitializationSettings(
     android: android,
     iOS: darwin,
-    macOS: darwin, 
+    macOS: darwin,
   );
 
-  await flutterLocalNotificationsPlugin.initialize(settings);
-
-  await _requestPermissions();
+  await flutterLocalNotificationsPlugin.initialize(
+    settings,
+    onDidReceiveNotificationResponse: (response) {
+      unawaited(routeEventNotificationTap(response.payload));
+    },
+  );
 }
 
-Future<void> _requestPermissions() async {
+Future<void> requestLocalNotificationPermissions() async {
   // Android (Android 13+ runtime notifications permission)
-  await flutterLocalNotificationsPlugin
+  final androidPlugin = flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.requestNotificationsPermission();
+          AndroidFlutterLocalNotificationsPlugin>();
+  await androidPlugin?.requestNotificationsPermission();
+
+  // Android 12+ requires special access for exact alarms. Scheduling remains
+  // available with an inexact alarm when access is not granted.
+  try {
+    if (await androidPlugin?.canScheduleExactNotifications() == false) {
+      await androidPlugin?.requestExactAlarmsPermission();
+    }
+  } catch (_) {
+    // Some Android versions do not expose exact-alarm special access.
+  }
 
   // iOS
   await flutterLocalNotificationsPlugin
@@ -42,27 +74,14 @@ Future<void> _requestPermissions() async {
       ?.requestPermissions(alert: true, badge: true, sound: true);
 }
 
-/// Optional: manual iOS permission trigger
-Future<void> requestIOSNotificationPermissionsManually() async {
-  final iosPlugin =
-      flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin>();
-
-  final granted = await iosPlugin?.requestPermissions(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-
-  print('📱 iOS notification permission granted: $granted');
-}
-
-Future<void> scheduleLocalNotification({
+Future<ReminderScheduleMode> scheduleLocalNotification({
   required int id,
   required String title,
   required String body,
   required DateTime dateTime,
+  String? payload,
 }) async {
+  final scheduleMode = await _resolveReminderScheduleMode();
   await flutterLocalNotificationsPlugin.zonedSchedule(
     id,
     title,
@@ -87,7 +106,24 @@ Future<void> scheduleLocalNotification({
         presentSound: true,
       ),
     ),
-    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    androidScheduleMode: androidScheduleModeFor(scheduleMode),
     matchDateTimeComponents: null,
+    payload: payload,
   );
+  return scheduleMode;
+}
+
+Future<ReminderScheduleMode> _resolveReminderScheduleMode() async {
+  final androidPlugin = flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+  if (androidPlugin == null) return ReminderScheduleMode.exact;
+
+  try {
+    return androidReminderScheduleMode(
+      await androidPlugin.canScheduleExactNotifications(),
+    );
+  } catch (_) {
+    return ReminderScheduleMode.inexact;
+  }
 }

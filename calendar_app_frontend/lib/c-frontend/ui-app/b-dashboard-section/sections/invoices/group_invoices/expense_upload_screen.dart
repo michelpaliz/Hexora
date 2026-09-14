@@ -16,7 +16,7 @@ import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/g
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_ops/provider_operations.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload_sections.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoices/expense_upload/form_sections/expense_settlement_fields.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/shared/documents/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/c-frontend/ui-app/shared/jobs/ocr_import_job_mapping_store.dart';
 import 'package:hexora/c-frontend/ui-app/shared/jobs/ocr_import_jobs_store.dart';
@@ -26,6 +26,9 @@ import 'package:provider/provider.dart';
 
 part 'expense_upload/screen_sections/expense_upload_import_actions_section.dart';
 part 'expense_upload/screen_sections/expense_upload_import_tabs_section.dart';
+part 'expense_upload/screen_sections/expense_upload_import_batch_review_part.dart';
+part 'expense_upload/screen_sections/expense_upload_import_onboarding_part.dart';
+part 'expense_upload/screen_sections/expense_upload_import_widgets_part.dart';
 
 class ExpenseUploadScreen extends StatefulWidget {
   const ExpenseUploadScreen({

@@ -7,6 +7,7 @@ import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/c-frontend/routes/appRoutes.dart';
 import 'package:hexora/c-frontend/routes/calendar/group_calendar_loader.dart';
+import 'package:hexora/c-frontend/routes/group_invoices_route_args.dart';
 import 'package:hexora/c-frontend/ui-app/a-home-section/home_page/home_page.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/group_dashboard.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/header/header_section.dart';
@@ -148,65 +149,29 @@ final Map<String, WidgetBuilder> routes = {
     return ServicesClientsScreen(group: group);
   },
   AppRoutes.groupIncome: (context) {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    Group? group;
-    String? initialMenu;
-    String? initialInvoiceId;
-    String? initialReceiptId;
-    String? initialBudgetId;
-    if (args is Group) {
-      group = args;
-    } else if (args is GroupInvoicesRouteArgs) {
-      group = args.group;
-      initialMenu = args.initialMenu;
-      initialInvoiceId = args.initialInvoiceId;
-      initialReceiptId = args.initialReceiptId;
-      initialBudgetId = args.initialBudgetId;
-    } else if (args is Map) {
-      group = args['group'] as Group?;
-      initialMenu = args['initialMenu']?.toString();
-      initialInvoiceId = args['initialInvoiceId']?.toString();
-      initialReceiptId = args['initialReceiptId']?.toString();
-      initialBudgetId = args['initialBudgetId']?.toString();
-    }
-    if (group == null) return const SizedBox.shrink();
+    final args = resolveGroupInvoicesRouteArgs(
+      ModalRoute.of(context)?.settings.arguments,
+    );
+    if (args == null) return const SizedBox.shrink();
     return GroupInvoicesScreen(
-      group: group,
-      initialMenu: initialMenu,
-      initialInvoiceId: initialInvoiceId,
-      initialReceiptId: initialReceiptId,
-      initialBudgetId: initialBudgetId,
+      group: args.group,
+      initialMenu: args.initialMenu,
+      initialInvoiceId: args.initialInvoiceId,
+      initialReceiptId: args.initialReceiptId,
+      initialBudgetId: args.initialBudgetId,
     );
   },
   AppRoutes.groupInvoices: (context) {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    Group? group;
-    String? initialMenu;
-    String? initialInvoiceId;
-    String? initialReceiptId;
-    String? initialBudgetId;
-    if (args is Group) {
-      group = args;
-    } else if (args is GroupInvoicesRouteArgs) {
-      group = args.group;
-      initialMenu = args.initialMenu;
-      initialInvoiceId = args.initialInvoiceId;
-      initialReceiptId = args.initialReceiptId;
-      initialBudgetId = args.initialBudgetId;
-    } else if (args is Map) {
-      group = args['group'] as Group?;
-      initialMenu = args['initialMenu']?.toString();
-      initialInvoiceId = args['initialInvoiceId']?.toString();
-      initialReceiptId = args['initialReceiptId']?.toString();
-      initialBudgetId = args['initialBudgetId']?.toString();
-    }
-    if (group == null) return const SizedBox.shrink();
+    final args = resolveGroupInvoicesRouteArgs(
+      ModalRoute.of(context)?.settings.arguments,
+    );
+    if (args == null) return const SizedBox.shrink();
     return GroupInvoicesScreen(
-      group: group,
-      initialMenu: initialMenu,
-      initialInvoiceId: initialInvoiceId,
-      initialReceiptId: initialReceiptId,
-      initialBudgetId: initialBudgetId,
+      group: args.group,
+      initialMenu: args.initialMenu,
+      initialInvoiceId: args.initialInvoiceId,
+      initialReceiptId: args.initialReceiptId,
+      initialBudgetId: args.initialBudgetId,
     );
   },
   AppRoutes.groupExpenses: (context) {

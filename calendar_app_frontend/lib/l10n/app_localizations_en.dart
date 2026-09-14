@@ -1287,6 +1287,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get andSeparator => ' and ';
 
   @override
+  String get termsAndPrivacyUnavailable =>
+      'Terms and Privacy Policy are currently unavailable.';
+
+  @override
   String get alreadyHaveAccount => 'Already have an account?';
 
   @override
@@ -1379,6 +1383,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tasks => 'Tasks';
 
   @override
+  String get calendarTasksSubtitle =>
+      'Quick reminders without the work-visit form.';
+
+  @override
+  String get calendarTasksLoadError => 'Could not load tasks.';
+
+  @override
+  String get calendarTasksUpdateError => 'Could not update task.';
+
+  @override
+  String get calendarTasksNew => 'New task';
+
+  @override
+  String get calendarTasksTitleLabel => 'Title';
+
+  @override
+  String get calendarTasksNoteLabel => 'Note';
+
+  @override
+  String get calendarTasksDue => 'Due';
+
+  @override
+  String get calendarTasksReminder => 'Reminder';
+
+  @override
+  String get calendarTasksReminderAtDueTime => 'At due time';
+
+  @override
+  String get calendarTasksReminder10Minutes => '10 min before';
+
+  @override
+  String get calendarTasksReminder30Minutes => '30 min before';
+
+  @override
+  String get calendarTasksReminder1Hour => '1 h before';
+
+  @override
+  String get calendarTasksNotifyOwner => 'Notify owner';
+
+  @override
+  String get calendarTasksAssignUsers => 'Assign users';
+
+  @override
+  String get calendarTasksCreate => 'Create task';
+
+  @override
+  String get calendarTasksCreateError => 'Could not create task.';
+
+  @override
+  String get calendarTasksPendingPlural => 'Pending';
+
+  @override
+  String get calendarTasksDonePlural => 'Done';
+
+  @override
+  String get calendarTasksMine => 'Mine';
+
+  @override
+  String get calendarTasksEmpty => 'No tasks found for this filter.';
+
+  @override
+  String get calendarTasksDone => 'Done';
+
+  @override
+  String get calendarTasksPending => 'Pending';
+
+  @override
   String get deadlines => 'Deadlines';
 
   @override
@@ -1418,6 +1489,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notifyMeOffSubtitle => 'No reminder will be sent';
+
+  @override
+  String get reminderScheduledInexact =>
+      'Reminder scheduled; it may arrive late because exact alarms are unavailable.';
+
+  @override
+  String get reminderUnavailable =>
+      'The event was saved, but its reminder could not be scheduled.';
 
   @override
   String get noInvitableUsers => 'No users available to invite';
@@ -2324,6 +2403,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workerCreated => 'Worker created successfully!';
+
+  @override
+  String get workerSaveValidationError =>
+      'Please check the worker details and try again.';
+
+  @override
+  String get workerSaveUnauthorizedError =>
+      'You do not have permission to save this worker.';
+
+  @override
+  String get workerSaveUnexpectedError =>
+      'We could not save the worker. Please try again.';
 
   @override
   String get createWorkerCta => 'Add Worker';

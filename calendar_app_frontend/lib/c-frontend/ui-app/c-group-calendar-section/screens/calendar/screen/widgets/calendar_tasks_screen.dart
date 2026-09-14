@@ -5,6 +5,7 @@ import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/group_mng_flow/event/repository/i_event_repository.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -27,7 +28,6 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
     'active',
   };
 
-  final DateFormat _dueDateFormat = DateFormat('EEE, d MMM · HH:mm', 'es');
   final Set<String> _updatingIds = <String>{};
   List<Event> _tasks = <Event>[];
   List<User> _groupUsers = <User>[];
@@ -37,12 +37,10 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
   bool _mineOnly = false;
   String _statusFilter = 'pending';
 
-  bool get _isSpanish => Localizations.localeOf(context).languageCode == 'es';
-
-  String get _titleText => _isSpanish ? 'Tareas' : 'Tasks';
-  String get _subtitleText => _isSpanish
-      ? 'Recordatorios rápidos sin pasar por el flujo de visitas.'
-      : 'Quick reminders without the work-visit form.';
+  String _formatDueDate(BuildContext context, DateTime dueAt) => DateFormat(
+        'EEE, d MMM · HH:mm',
+        Localizations.localeOf(context).toString(),
+      ).format(dueAt);
 
   @override
   void initState() {
@@ -89,9 +87,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _isSpanish
-                ? 'No se pudieron cargar las tareas.'
-                : 'Could not load tasks.',
+            AppLocalizations.of(context)!.calendarTasksLoadError,
           ),
         ),
       );
@@ -153,9 +149,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _isSpanish
-                ? 'No se pudo actualizar la tarea.'
-                : 'Could not update task.',
+            AppLocalizations.of(context)!.calendarTasksUpdateError,
           ),
         ),
       );
@@ -174,10 +168,10 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
     int reminderTime = 0;
     bool notifyOwner = true;
     final reminders = <int, String>{
-      0: _isSpanish ? 'Ahora' : 'At due time',
-      10: _isSpanish ? '10 min antes' : '10 min before',
-      30: _isSpanish ? '30 min antes' : '30 min before',
-      60: _isSpanish ? '1 h antes' : '1 h before',
+      0: AppLocalizations.of(context)!.calendarTasksReminderAtDueTime,
+      10: AppLocalizations.of(context)!.calendarTasksReminder10Minutes,
+      30: AppLocalizations.of(context)!.calendarTasksReminder30Minutes,
+      60: AppLocalizations.of(context)!.calendarTasksReminder1Hour,
     };
 
     final created = await showDialog<bool>(
@@ -185,6 +179,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
         final typo = AppTypography.of(dialogContext);
+        final l = AppLocalizations.of(dialogContext)!;
         return StatefulBuilder(
           builder: (context, setLocal) {
             Future<void> pickDateTime() async {
@@ -215,7 +210,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
 
             return AlertDialog(
               backgroundColor: cs.surface,
-              title: Text(_isSpanish ? 'Nueva tarea' : 'New task'),
+              title: Text(l.calendarTasksNew),
               content: SizedBox(
                 width: 520,
                 child: SingleChildScrollView(
@@ -228,7 +223,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                         autofocus: true,
                         onChanged: (_) => setLocal(() {}),
                         decoration: InputDecoration(
-                          labelText: _isSpanish ? 'Título' : 'Title',
+                          labelText: l.calendarTasksTitleLabel,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -236,7 +231,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                         controller: noteCtrl,
                         maxLines: 3,
                         decoration: InputDecoration(
-                          labelText: _isSpanish ? 'Nota' : 'Note',
+                          labelText: l.calendarTasksNoteLabel,
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -261,14 +256,14 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      _isSpanish ? 'Vence' : 'Due',
+                                      l.calendarTasksDue,
                                       style: typo.bodySmall.copyWith(
                                         color: cs.onSurfaceVariant,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      _dueDateFormat.format(dueAt),
+                                      _formatDueDate(dialogContext, dueAt),
                                       style: typo.bodyMedium.copyWith(
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -295,7 +290,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                         onChanged: (value) =>
                             setLocal(() => reminderTime = value ?? 0),
                         decoration: InputDecoration(
-                          labelText: _isSpanish ? 'Recordatorio' : 'Reminder',
+                          labelText: l.calendarTasksReminder,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -303,9 +298,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                         value: notifyOwner,
                         contentPadding: EdgeInsets.zero,
                         title: Text(
-                          _isSpanish
-                              ? 'Notificar al propietario'
-                              : 'Notify owner',
+                          l.calendarTasksNotifyOwner,
                         ),
                         onChanged: (value) =>
                             setLocal(() => notifyOwner = value),
@@ -313,7 +306,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                       if (_groupUsers.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(
-                          _isSpanish ? 'Asignar usuarios' : 'Assign users',
+                          l.calendarTasksAssignUsers,
                           style: typo.bodyMedium.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -355,7 +348,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                   onPressed: _creating
                       ? null
                       : () => Navigator.of(dialogContext).pop(false),
-                  child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
+                  child: Text(l.cancel),
                 ),
                 FilledButton.icon(
                   onPressed: canSubmit
@@ -380,9 +373,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  _isSpanish
-                                      ? 'No se pudo crear la tarea.'
-                                      : 'Could not create task.',
+                                  l.calendarTasksCreateError,
                                 ),
                               ),
                             );
@@ -400,7 +391,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.add_task_rounded),
-                  label: Text(_isSpanish ? 'Crear tarea' : 'Create task'),
+                  label: Text(l.calendarTasksCreate),
                 ),
               ],
             );
@@ -427,6 +418,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
+    final l = AppLocalizations.of(context)!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -445,7 +437,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _titleText,
+                      l.tasks,
                       style: typo.bodyLarge.copyWith(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -453,7 +445,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      _subtitleText,
+                      l.calendarTasksSubtitle,
                       style: typo.bodyMedium.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -463,11 +455,11 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        _buildFilterChip('pending', _isSpanish ? 'Pendientes' : 'Pending'),
-                        _buildFilterChip('done', _isSpanish ? 'Hechas' : 'Done'),
-                        _buildFilterChip('all', _isSpanish ? 'Todas' : 'All'),
+                        _buildFilterChip('pending', l.calendarTasksPendingPlural),
+                        _buildFilterChip('done', l.calendarTasksDonePlural),
+                        _buildFilterChip('all', l.all),
                         FilterChip(
-                          label: Text(_isSpanish ? 'Solo mías' : 'Mine'),
+                          label: Text(l.calendarTasksMine),
                           selected: _mineOnly,
                           onSelected: (value) async {
                             setState(() => _mineOnly = value);
@@ -483,7 +475,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
               FilledButton.icon(
                 onPressed: _creating ? null : _showCreateDialog,
                 icon: const Icon(Icons.add_rounded),
-                label: Text(_isSpanish ? 'Nueva tarea' : 'New task'),
+                label: Text(l.calendarTasksNew),
               ),
             ],
           ),
@@ -500,9 +492,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                 : _tasks.isEmpty
                     ? Center(
                         child: Text(
-                          _isSpanish
-                              ? 'No hay tareas para este filtro.'
-                              : 'No tasks found for this filter.',
+                          l.calendarTasksEmpty,
                           style: typo.bodyMedium.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
@@ -577,7 +567,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        _dueDateFormat.format(due),
+                                        _formatDueDate(context, due),
                                         style: typo.bodyMedium.copyWith(
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -596,8 +586,8 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                                         ),
                                         child: Text(
                                           task.isCompleted
-                                              ? (_isSpanish ? 'Hecha' : 'Done')
-                                              : (_isSpanish ? 'Pendiente' : 'Pending'),
+                                              ? l.calendarTasksDone
+                                              : l.calendarTasksPending,
                                           style: typo.bodySmall.copyWith(
                                             color: _statusColor(context, task),
                                             fontWeight: FontWeight.w700,

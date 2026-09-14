@@ -4,7 +4,7 @@ import 'package:hexora/a-models/group_model/group/group.dart';
 import 'package:hexora/b-backend/downloads/downloads_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/widgets/right_panel/notifications_section/right_panel_notifications_inline/widgets/download_details_panel.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/enable_banking/widgets/folder_section_card.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/shared/documents/file_download_launcher.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 
 class SettingsGeneratedFilesSection extends StatefulWidget {

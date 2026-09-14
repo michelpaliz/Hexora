@@ -168,7 +168,10 @@ class WeatherService {
     required int days,
   }) async {
     try {
-      final dto = await _apiClient.fetchDeniaForecast(days: days);
+      final dto = await _apiClient.fetchForecast(
+        location: cleaned,
+        days: days,
+      );
       final cityName = dto.location.isNotEmpty ? dto.location : cleaned;
 
       final snapshots = <DateTime, WeatherSnapshot>{};

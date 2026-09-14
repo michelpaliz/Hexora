@@ -111,7 +111,7 @@ class AvatarUtils {
   /// Returns network provider if available, else an asset provider.
   static ImageProvider<Object> profileImageProvider(
     String? imageUrl, {
-    String assetFallback = 'assets/images/default_user.png',
+    String assetFallback = 'assets/images/default_profile.png',
   }) {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return CachedNetworkImageProvider(imageUrl);

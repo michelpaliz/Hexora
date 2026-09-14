@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_permissions.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/client/client_api.dart';
 import 'package:hexora/b-backend/invoicing/recurring_invoices_api.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
@@ -202,12 +203,8 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
     final currentUserId = context.read<UserDomain?>()?.user?.id;
-    final role =
-        currentUserId == null ? null : widget.group.userRoles[currentUserId];
-    final canManage = role == null ||
-        role == 'owner' ||
-        role == 'admin' ||
-        role == 'co-admin';
+    final canManage =
+        GroupPermissions.canManageInvoices(widget.group, currentUserId);
     _emitActions(canManage);
 
     Widget body;

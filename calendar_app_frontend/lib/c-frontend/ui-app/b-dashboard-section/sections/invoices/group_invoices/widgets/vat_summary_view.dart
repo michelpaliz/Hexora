@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/b-backend/expenses/expenses_api.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/shared/documents/file_download_launcher.dart';
 import 'package:hexora/b-backend/vat/vat_summary_api.dart';
 
 import 'vat_summary/vat_summary_header.dart';

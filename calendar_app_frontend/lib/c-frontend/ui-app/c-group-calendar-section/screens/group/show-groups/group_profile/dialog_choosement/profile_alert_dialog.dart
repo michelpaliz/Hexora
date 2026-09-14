@@ -1,10 +1,10 @@
 // lib/.../dialog_content/profile_alert_dialog.dart (or your existing path)
 import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/group/group.dart';
+import 'package:hexora/a-models/group_model/group/group_permissions.dart';
 import 'package:hexora/a-models/user_model/user.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/b-backend/group_mng_flow/group/domain/group_domain.dart';
-import 'package:hexora/c-frontend/ui-app/c-group-calendar-section/screens/group/create_edit/invited-user/group_role_extension.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -23,8 +23,9 @@ void showProfileAlertDialog(
   bool? overridePermission,
 ]) {
   final user = currentUser ?? userDomain.user!;
-  final role = group.getRoleForUser(user);
-  final hasPermission = overridePermission ?? role != 'Member';
+  final role = GroupPermissions.roleFor(group, user.id).displayName;
+  final hasPermission =
+      overridePermission ?? GroupPermissions.canManageGroup(group, user.id);
   updateRole(role);
 
   final cs = Theme.of(context).colorScheme;

@@ -263,7 +263,16 @@ abstract class AddEventLogic<T extends StatefulWidget>
     try {
       devtools.log('ðŸ“¤ [addEvent] toBackendJson: ${newEvent.toBackendJson()}');
 
-      final created = await _eventDomain.createEvent(context, newEvent);
+      final createResult = await _eventDomain.createEvent(context, newEvent);
+      final created = createResult.event;
+
+      if (createResult.reminderUnavailable && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.reminderUnavailable),
+          ),
+        );
+      }
 
       await hydrateRecurrenceRuleIfNeeded(
         groupDomain: groupDomain!,

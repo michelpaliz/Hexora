@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/a-models/group_model/client/client.dart';
 import 'package:hexora/b-backend/invoicing/invoice_api.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/sections/invoice_editor_pdf.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/pdf_preview_launcher.dart'
+import 'package:hexora/shared/documents/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/c-frontend/ui-app/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
@@ -1542,4 +1542,3 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
         ),
       );
 }
-

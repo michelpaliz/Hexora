@@ -17,7 +17,7 @@ import 'package:hexora/b-backend/emails/email_api.dart';
 import 'package:hexora/b-backend/mail/domain/mail_domain.dart';
 import 'package:hexora/b-backend/mail/models/mail_requests.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/dashboard_screen/dashboard/controller/group_dashboard_state.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/invoices/group_invoce_flow/screens/invoice_editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/shared/documents/file_download_launcher.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/console/hexora_email_template.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/widgets/mail_html_content.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/mail/mail_compose_screen.dart';

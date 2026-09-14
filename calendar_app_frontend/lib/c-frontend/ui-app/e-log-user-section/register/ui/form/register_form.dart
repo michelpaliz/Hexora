@@ -16,7 +16,14 @@ import 'package:provider/provider.dart';
 import '../../register_controller.dart';
 
 class RegisterForm extends StatefulWidget {
-  const RegisterForm({super.key});
+  const RegisterForm({
+    super.key,
+    this.termsUrl,
+    this.privacyUrl,
+  });
+
+  final String? termsUrl;
+  final String? privacyUrl;
 
   @override
   State<RegisterForm> createState() => _RegisterFormState();
@@ -281,7 +288,12 @@ class _RegisterFormState extends State<RegisterForm> {
 
           // Legal text (helper)
           const SizedBox(height: 14),
-          Center(child: buildLegalText(context)),
+          Center(
+            child: LegalLinks(
+              termsUrl: widget.termsUrl,
+              privacyUrl: widget.privacyUrl,
+            ),
+          ),
         ],
       ),
     );

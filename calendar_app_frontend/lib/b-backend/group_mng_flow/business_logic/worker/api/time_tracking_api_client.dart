@@ -110,7 +110,10 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
       body: jsonEncode(worker.toCreateJson()),
     );
     if (res.statusCode != 201 && res.statusCode != 200) {
-      throw Exception('Failed to create worker: ${res.statusCode} ${res.body}');
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to create worker',
+      );
     }
     final map = jsonDecode(res.body) as Map<String, dynamic>;
     return Worker.fromJson(map);
@@ -402,7 +405,10 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
     );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to update worker: ${res.statusCode} ${res.body}');
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to update worker',
+      );
     }
 
     final map = jsonDecode(res.body) as Map<String, dynamic>;

@@ -1,4 +1,6 @@
 class BillingProfile {
+  static const Object _unset = Object();
+
   final String? id;
   final String groupId;
   final String legalName;
@@ -44,48 +46,67 @@ class BillingProfile {
   });
 
   BillingProfile copyWith({
-    String? id,
+    Object? id = _unset,
     String? groupId,
     String? legalName,
     String? taxId,
-    String? logoUrl,
-    String? addressStreet,
-    String? addressExtra,
-    String? addressCity,
-    String? addressProvince,
-    String? addressPostalCode,
-    String? addressCountry,
-    String? email,
-    String? website,
-    String? iban,
+    Object? logoUrl = _unset,
+    Object? addressStreet = _unset,
+    Object? addressExtra = _unset,
+    Object? addressCity = _unset,
+    Object? addressProvince = _unset,
+    Object? addressPostalCode = _unset,
+    Object? addressCountry = _unset,
+    Object? email = _unset,
+    Object? website = _unset,
+    Object? iban = _unset,
     String? currency,
     num? vatRate,
-    String? language,
-    bool? isComplete,
-    DateTime? updatedAt,
-    DateTime? createdAt,
+    Object? language = _unset,
+    Object? isComplete = _unset,
+    Object? updatedAt = _unset,
+    Object? createdAt = _unset,
   }) {
     return BillingProfile(
-      id: id ?? this.id,
+      id: identical(id, _unset) ? this.id : id as String?,
       groupId: groupId ?? this.groupId,
       legalName: legalName ?? this.legalName,
       taxId: taxId ?? this.taxId,
-      logoUrl: logoUrl ?? this.logoUrl,
-      addressStreet: addressStreet ?? this.addressStreet,
-      addressExtra: addressExtra ?? this.addressExtra,
-      addressCity: addressCity ?? this.addressCity,
-      addressProvince: addressProvince ?? this.addressProvince,
-      addressPostalCode: addressPostalCode ?? this.addressPostalCode,
-      addressCountry: addressCountry ?? this.addressCountry,
-      email: email ?? this.email,
-      website: website ?? this.website,
-      iban: iban ?? this.iban,
+      logoUrl: identical(logoUrl, _unset) ? this.logoUrl : logoUrl as String?,
+      addressStreet: identical(addressStreet, _unset)
+          ? this.addressStreet
+          : addressStreet as String?,
+      addressExtra: identical(addressExtra, _unset)
+          ? this.addressExtra
+          : addressExtra as String?,
+      addressCity: identical(addressCity, _unset)
+          ? this.addressCity
+          : addressCity as String?,
+      addressProvince: identical(addressProvince, _unset)
+          ? this.addressProvince
+          : addressProvince as String?,
+      addressPostalCode: identical(addressPostalCode, _unset)
+          ? this.addressPostalCode
+          : addressPostalCode as String?,
+      addressCountry: identical(addressCountry, _unset)
+          ? this.addressCountry
+          : addressCountry as String?,
+      email: identical(email, _unset) ? this.email : email as String?,
+      website: identical(website, _unset) ? this.website : website as String?,
+      iban: identical(iban, _unset) ? this.iban : iban as String?,
       currency: currency ?? this.currency,
       vatRate: vatRate ?? this.vatRate,
-      language: language ?? this.language,
-      isComplete: isComplete ?? this.isComplete,
-      updatedAt: updatedAt ?? this.updatedAt,
-      createdAt: createdAt ?? this.createdAt,
+      language:
+          identical(language, _unset) ? this.language : language as String?,
+      isComplete: identical(isComplete, _unset)
+          ? this.isComplete
+          : isComplete as bool?,
+      updatedAt: identical(updatedAt, _unset)
+          ? this.updatedAt
+          : updatedAt as DateTime?,
+      createdAt: identical(createdAt, _unset)
+          ? this.createdAt
+          : createdAt as DateTime?,
     );
   }
 

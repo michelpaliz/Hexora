@@ -1,6 +1,30 @@
+import 'package:flutter/foundation.dart';
 import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
 
-Future<void> initializeAppServices() async {
-  await setupLocalNotifications();
-  await requestIOSNotificationPermissionsManually(); // ✅ ADD THIS
+typedef AppServiceInitializer = Future<void> Function();
+
+Future<void> initializeAppServices({
+  AppServiceInitializer? initializeLocalNotifications,
+  AppServiceInitializer? requestNotificationPermissions,
+}) async {
+  await _initializeOptionalNotificationService(
+    'local notification initialization',
+    initializeLocalNotifications ?? setupLocalNotifications,
+  );
+  await _initializeOptionalNotificationService(
+    'local notification permissions',
+    requestNotificationPermissions ?? requestLocalNotificationPermissions,
+  );
+}
+
+Future<void> _initializeOptionalNotificationService(
+  String service,
+  AppServiceInitializer initialize,
+) async {
+  try {
+    await initialize();
+  } catch (error, stackTrace) {
+    // Notifications are optional; the rest of the app can still start.
+    debugPrint('Optional $service failed: $error\n$stackTrace');
+  }
 }

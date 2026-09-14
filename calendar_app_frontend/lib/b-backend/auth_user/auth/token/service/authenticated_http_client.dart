@@ -2,16 +2,38 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:hexora/b-backend/auth_user/api/auth_api_client.dart';
+import 'package:hexora/b-backend/auth_user/api/i_auth_api_client.dart';
 import 'package:hexora/b-backend/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/b-backend/auth_user/auth/token/token_store/Itoken_store.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class AuthenticatedHttpClient {
-  static final AuthApiClientImpl _authApi = AuthApiClientImpl();
+  static IAuthApiClient _authApi = AuthApiClientImpl();
   static Future<bool>? _refreshInFlight;
   static Future<void> Function()? _onSessionExpired;
 
+  @visibleForTesting
+  static void setSessionExpiredHandlerForTesting(
+    Future<void> Function()? handler,
+  ) {
+    _onSessionExpired = handler;
+  }
+
   static void setSessionExpiredHandler(Future<void> Function() handler) {
     _onSessionExpired = handler;
+  }
+
+  @visibleForTesting
+  static void setAuthApiClientForTesting(IAuthApiClient? authApi) {
+    _authApi = authApi ?? AuthApiClientImpl();
+    _refreshInFlight = null;
+  }
+
+  @visibleForTesting
+  static void setTokenStoreForTesting(TokenStore? store) {
+    TokenService.setStoreForTesting(store);
+    _refreshInFlight = null;
   }
 
   static Future<Map<String, String>> authorizedHeaders({
@@ -136,7 +158,11 @@ class AuthenticatedHttpClient {
         return response;
       }
 
-      final retryHeaders = await authorizedHeaders(extra: headers);
+      // A caller may have supplied the token that just received the 401.
+      // Let the refreshed access token replace it on the retry.
+      final retryHeaders = await authorizedHeaders(
+        extra: _withoutAuthorization(headers),
+      );
       response = await _dispatch(
         c,
         method: method,
@@ -162,6 +188,16 @@ class AuthenticatedHttpClient {
     try {
       await cb();
     } catch (_) {}
+  }
+
+  static Map<String, String>? _withoutAuthorization(
+    Map<String, String>? headers,
+  ) {
+    if (headers == null) return null;
+    return Map<String, String>.fromEntries(
+      headers.entries
+          .where((entry) => entry.key.toLowerCase() != 'authorization'),
+    );
   }
 
   static Future<http.Response> _dispatch(

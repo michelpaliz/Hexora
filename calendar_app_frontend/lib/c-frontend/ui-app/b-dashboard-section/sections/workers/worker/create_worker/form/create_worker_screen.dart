@@ -4,6 +4,7 @@ import 'package:hexora/a-models/group_model/worker/worker.dart';
 import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
 import 'package:hexora/b-backend/user/domain/user_domain.dart';
 import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/shared/currency_options.dart';
+import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/shared/worker_save_error_mapper.dart';
 import 'package:hexora/f-themes/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/f-themes/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -41,7 +42,18 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
     _userDomain = context.read<UserDomain>();
   }
 
+  @override
+  void dispose() {
+    _displayNameCtrl.dispose();
+    _userIdCtrl.dispose();
+    _roleCtrl.dispose();
+    _rateCtrl.dispose();
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
+    final l = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -77,14 +89,20 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.workerCreated)),
+        SnackBar(content: Text(l.workerCreated)),
       );
 
       Navigator.pop(context, true); // signal success
-    } catch (e) {
+    } catch (e, stackTrace) {
+      WorkerSaveErrorMapper.logDiagnostic(
+        action: 'create',
+        error: e,
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(WorkerSaveErrorMapper.messageFor(l, e))),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
