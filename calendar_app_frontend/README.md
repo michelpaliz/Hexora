@@ -41,26 +41,26 @@ The app follows a layered structure under `lib/`, with each layer prefixed
 `a-`, `b-`, `c-`, … to keep the dependency direction obvious at a glance
 (lower letters are lower-level).
 
-### `lib/a-models/`
+### `lib/models/`
 Plain Dart data models and DTOs — no Flutter, no backend calls.
 `group_model/`, `invoice/`, `receipt/`, `notification_model/`, `user_model/`,
 `mail/`, `jobs/`, `telegram/`, `downloads/`, `weather/`.
 
-### `lib/b-backend/`
+### `lib/data/`
 The API/service layer — one folder per domain, each talking to the backend
 over `http`/`dio` and (where relevant) sockets:
-`auth_user/`, `group_mng_flow/` (groups, events, recurrence, invites,
+`auth_user/`, `group_management/` (groups, events, recurrence, invites,
 categories, agenda), `invoicing/`, `receipts/`, `vat/`, `expenses/`,
 `statements/`, `enable_banking/`, `truelayer/`, `documents/` (private
 documents), `mail/`, `emails/`, `notification/`, `telegram/`, `providers/`,
-`insights/`, `blobUploader/`, `downloads/`, `user/`, `config/` (API
-constants/client), `shared/`, `errorClases/`.
+`insights/`, `blob_uploader/`, `downloads/`, `user/`, `config/` (API
+constants/client), `shared/`, `errors/`.
 
-### `lib/c-frontend/ui-app/`
+### `lib/presentation/features/`
 All screens and widgets, grouped by product area:
 
-* **a-home-section/** — landing/home page
-* **b-dashboard-section/** — the main group workspace: dashboard shell
+* **home/** — landing/home page
+* **dashboard/** — the main group workspace: dashboard shell
   (`dashboard_screen/`) plus feature sections under `sections/`:
   `invoices/` (invoice + presupuesto editors, VAT summary, clients/receipts
   views), `workers/` (time tracking, monthly overview), `enable_banking/`
@@ -69,23 +69,23 @@ All screens and widgets, grouped by product area:
   upload/detail dialogs), `services_clients/`, `members/`, `notifications/`,
   `business_hours/`, `group_settings/`, `undone_events/`,
   `upcoming_events/`, `graphs/`, `role_info/`
-* **c-group-calendar-section/** — calendar screens and view adapters
-* **d-event-section/** — create/edit event flows
-* **e-log-user-section/** — login, register, password reset/forgot,
+* **calendar/** — calendar screens and view adapters
+* **events/** — create/edit event flows
+* **auth/** — login, register, password reset/forgot,
   email verification, splash, app download prompt
-* **f-notification-section/** — notification center UI
-* **g-agenda-section/** — agenda/list view of events
-* **h-profile-section/** — user profile
-* **i-settings-section/** — app settings
+* **notifications/** — notification center UI
+* **agenda/** — agenda/list view of events
+* **profile/** — user profile
+* **settings/** — app settings
 * **shared/** — cross-cutting widgets (app bar, side panels, popups)
 
-### `lib/d-local-stateManagement/`
+### `lib/state/`
 App-wide state (locale, and other local providers) — `local/`, `docs/`.
 
-### `lib/e-drawer-style-menu/`
+### `lib/navigation/`
 App shell navigation: contextual FAB and drawer.
 
-### `lib/f-themes/`
+### `lib/theme/`
 Light/dark theming, color tokens, typography, shapes.
 
 ### `lib/l10n/`
@@ -95,7 +95,7 @@ Localization sources (`app_en.arb`, `app_es.arb`) and the generated
 files and regenerate.
 
 ### `lib/app/`
-App bootstrap/initialization (`bootstrapp/`, `init_main.dart`) and session
+App bootstrap/initialization (`bootstrap/`, `init_main.dart`) and session
 handling (`session/`, e.g. session-expiry redirects).
 
 ### `lib/main.dart`
@@ -141,7 +141,7 @@ flutter test
 ```
 
 API endpoints and other environment-specific values live in
-`lib/b-backend/config/`.
+`lib/data/config/`.
 
 ### Deployment
 
@@ -153,14 +153,14 @@ API endpoints and other environment-specific values live in
 ## Developer pointers
 
 * **Entry point:** `lib/main.dart`
-* **Routing:** `lib/c-frontend/routes/`
-* **Dashboard shell & nav:** `lib/c-frontend/ui-app/b-dashboard-section/dashboard_screen/`
-* **Calendar UI:** `lib/c-frontend/ui-app/c-group-calendar-section/`
-* **Events:** `lib/c-frontend/ui-app/d-event-section/`
-* **Invoicing:** `lib/c-frontend/ui-app/b-dashboard-section/sections/invoices/`
-* **Worker time tracking:** `lib/c-frontend/ui-app/b-dashboard-section/sections/workers/`
-* **API layer:** `lib/b-backend/`
-* **State management:** `lib/d-local-stateManagement/`
+* **Routing:** `lib/presentation/routes/`
+* **Dashboard shell & nav:** `lib/presentation/features/dashboard/dashboard_screen/`
+* **Calendar UI:** `lib/presentation/features/calendar/`
+* **Events:** `lib/presentation/features/events/`
+* **Invoicing:** `lib/presentation/features/dashboard/sections/invoices/`
+* **Worker time tracking:** `lib/presentation/features/dashboard/sections/workers/`
+* **API layer:** `lib/data/`
+* **State management:** `lib/state/`
 * **Localization:** `lib/l10n/` (edit `.arb`, then `flutter gen-l10n`)
-* **Theming:** `lib/f-themes/`
+* **Theming:** `lib/theme/`
 * **Tests:** `test/` (mirrors `lib/` layer names, e.g. `test/a_models/`, `test/b_backend/`, `test/c_frontend/`)

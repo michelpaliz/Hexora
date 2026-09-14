@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:hexora/c-frontend/ui-app/shared/downloads/session_download_registry.dart';
+import 'package:hexora/presentation/features/shared/downloads/session_download_registry.dart';
 
 import 'file_download_launcher_stub.dart'
     if (dart.library.html) 'file_download_launcher_web.dart';

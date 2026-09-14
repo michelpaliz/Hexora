@@ -57,11 +57,11 @@ Backend API (/api/telegram/...)
 
 | File | Purpose |
 |------|---------|
-| `lib/a-models/telegram/*` | Data classes (Account, Chat, Export) |
-| `lib/b-backend/telegram/api/telegram_api_client.dart` | HTTP client + endpoints |
-| `lib/b-backend/telegram/domain/telegram_domain.dart` | State management (ChangeNotifier) |
-| `lib/c-frontend/ui-app/b-dashboard-section/sections/telegram/*` | UI screens + components |
-| `lib/app/bootstrapp/feature_providers.dart` | Provider registration |
+| `lib/models/telegram/*` | Data classes (Account, Chat, Export) |
+| `lib/data/telegram/api/telegram_api_client.dart` | HTTP client + endpoints |
+| `lib/data/telegram/domain/telegram_domain.dart` | State management (ChangeNotifier) |
+| `lib/presentation/features/dashboard/sections/telegram/*` | UI screens + components |
+| `lib/app/bootstrap/feature_providers.dart` | Provider registration |
 | `**/dashboard/controller/group_dashboard_sections.dart` | Added "telegram" section |
 | `**/dashboard/layout/*.dart` | Added Telegram rendering |
 
@@ -300,7 +300,7 @@ print('Current export: ${domain.currentExport?.status}');
 ```
 
 ### **Monitor API calls:**
-Check `lib/b-backend/config/api_constants.dart` for base URL + token injection.
+Check `lib/data/config/api_constants.dart` for base URL + token injection.
 
 ---
 

@@ -1,5 +1,5 @@
-import 'package:hexora/b-backend/group_mng_flow/event/socket/socket_manager.dart';
-import 'package:hexora/b-backend/notification/domain/socket_notification_listener.dart';
+import 'package:hexora/data/group_management/event/socket/socket_manager.dart';
+import 'package:hexora/data/notification/domain/socket_notification_listener.dart';
 
 /// Releases all user-scoped realtime connections during logout or expiry.
 void resetSessionConnections() {

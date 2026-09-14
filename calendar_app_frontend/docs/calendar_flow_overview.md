@@ -21,13 +21,13 @@ At runtime `MainCalendarView` instantiates a `CalendarScreenCoordinator`, which 
 
 | File | Responsibility |
 | --- | --- |
-| `lib/c-frontend/.../calendar/screen/main_calendar_view.dart` | Entry point widget (Scaffold with tabs, presence strip, calendar body). |
-| `lib/c-frontend/.../calendar/presentation/coordinator/calendar_screen_coordinator.dart` | Orchestrates loading, sockets, and adapters. |
-| `lib/c-frontend/.../calendar/presentation/view_adapater/adapter_flow/adapter/calendar_view_adapter.dart` | UI bridge that wraps `CalendarSurface` and `CalendarState`. |
-| `lib/c-frontend/.../calendar/presentation/view_adapater/adapter_flow/adapter/calendar_state.dart` | Holds ValueNotifiers for events, view mode, weather, etc. |
-| `lib/c-frontend/.../calendar/presentation/view_adapater/adapter_flow/view/calendar_surface.dart` | Builds the Syncfusion `SfCalendar`, hooking month cells, schedule headers, weather overlay. |
-| `lib/c-frontend/.../calendar/presentation/view_adapater/widgets/widgets_cells/cells_widgets/calendar_month_cell.dart` | Custom month cell visuals (day number, event dots, weather emoji). |
-| `lib/c-frontend/.../calendar/screen/widgets/calendar_topbar.dart` | AppBar+TabBar with weather toggle button. |
+| `lib/presentation/.../calendar/screen/main_calendar_view.dart` | Entry point widget (Scaffold with tabs, presence strip, calendar body). |
+| `lib/presentation/.../calendar/presentation/coordinator/calendar_screen_coordinator.dart` | Orchestrates loading, sockets, and adapters. |
+| `lib/presentation/.../calendar/presentation/view_adapter/adapter_flow/adapter/calendar_view_adapter.dart` | UI bridge that wraps `CalendarSurface` and `CalendarState`. |
+| `lib/presentation/.../calendar/presentation/view_adapter/adapter_flow/adapter/calendar_state.dart` | Holds ValueNotifiers for events, view mode, weather, etc. |
+| `lib/presentation/.../calendar/presentation/view_adapter/adapter_flow/view/calendar_surface.dart` | Builds the Syncfusion `SfCalendar`, hooking month cells, schedule headers, weather overlay. |
+| `lib/presentation/.../calendar/presentation/view_adapter/widgets/widgets_cells/cells_widgets/calendar_month_cell.dart` | Custom month cell visuals (day number, event dots, weather emoji). |
+| `lib/presentation/.../calendar/screen/widgets/calendar_topbar.dart` | AppBar+TabBar with weather toggle button. |
 
 ## Data Flow
 

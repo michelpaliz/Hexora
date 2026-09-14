@@ -274,20 +274,20 @@ Disconnect:
 ```
 telegram_integration/
 │
-├── Models (lib/a-models/telegram/)
+├── Models (lib/models/telegram/)
 │   ├── telegram_account.dart              (Account + extensions)
 │   ├── telegram_connect_response.dart      (QR response)
 │   ├── telegram_chat.dart                  (Chat + Detail)
 │   ├── telegram_export.dart                (Export + Request + List)
 │   └── telegram.dart                       (Barrel export)
 │
-├── Backend API (lib/b-backend/telegram/)
+├── Backend API (lib/data/telegram/)
 │   ├── api/
 │   │   └── telegram_api_client.dart        (ITelegramApiClient + impl)
 │   └── domain/
 │       └── telegram_domain.dart            (ChangeNotifier state mgnt)
 │
-├── Frontend UI (lib/c-frontend/...)
+├── Frontend UI (lib/presentation/...)
 │   ├── sections/telegram/
 │   │   ├── telegram_section_screen.dart    (Main orchestrator)
 │   │   └── components/
@@ -303,7 +303,7 @@ telegram_integration/
 │           ├── wide_layout.dart            (Added: Telegram inline)
 │           └── narrow_layout.dart          (Added: Telegram wrapper)
 │
-├── Providers (lib/app/bootstrapp/)
+├── Providers (lib/app/bootstrap/)
 │   └── feature_providers.dart              (Added: TelegramApiClient, TelegramDomain)
 │
 └── Documentation

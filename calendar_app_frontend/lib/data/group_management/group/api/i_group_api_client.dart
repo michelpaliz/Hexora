@@ -1,0 +1,61 @@
+import 'package:hexora/models/calendar/calendar.dart';
+import 'package:hexora/models/group/group.dart';
+import 'package:hexora/models/group/group_business_hours.dart';
+import 'package:hexora/presentation/features/dashboard/sections/members/presentation/domain/models/members_count.dart';
+
+abstract class IGroupApiClient {
+  Future<Group> createGroup(Group group, String token);
+  Future<Group> getGroupById(String id, String token);
+  Future<bool> updateGroup(Group group, String token);
+  Future<void> deleteGroup(String id, String token);
+  Future<void> leaveGroup(String userId, String groupId, String token);
+  Future<List<Group>> getGroupsByUser(String userName, String token);
+  Future<void> respondToInvite({
+    required String groupId,
+    required String userId,
+    required bool accepted,
+    required String token,
+  });
+  Future<MembersCount> getMembersCount(String groupId, String token,
+      {String? mode});
+  Future<Map<String, dynamic>> getGroupMembersMeta(
+      String groupId, String token);
+  Future<List<Map<String, dynamic>>> getGroupMemberProfiles(
+    String groupId,
+    String token, {
+    List<String>? ids,
+  });
+  Future<Calendar> getCalendarById(String calendarId, String token);
+  Future<Group> setBusinessHours(
+    String groupId,
+    GroupBusinessHours hours,
+    String token,
+  );
+
+  /// Update a single member's role within a group.
+  Future<void> setUserRoleInGroup({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+    required String token,
+  });
+
+  /// Fetch supported group roles from backend (wire strings).
+  Future<List<String>> getGroupRoles(String token);
+
+  /// Send an invitation to join a group.
+  Future<void> sendInvitation({
+    required String groupId,
+    required String userId,
+    required String roleWire,
+    required String token,
+  });
+
+  /// Fetch role + permission definitions for a group.
+  Future<Map<String, dynamic>> getGroupPermissions(
+      String groupId, String token);
+
+  /// Fetch the full role-change history for a group member.
+  Future<Map<String, dynamic>> getMemberRoleHistory(
+      String groupId, String userId, String token);
+}

@@ -1,0 +1,151 @@
+import 'package:flutter/foundation.dart';
+import 'package:hexora/data/auth/auth/auth_services/auth_service.dart';
+import 'package:hexora/data/group_management/business_logic/worker/api/i_time_tracking_api_client.dart';
+import 'package:hexora/data/group_management/business_logic/worker/api/time_tracking_api_client.dart';
+import 'package:hexora/data/group_management/business_logic/worker/repository/time_tracking_repository.dart';
+import 'package:hexora/data/group_management/event/api/event_api_client.dart';
+import 'package:hexora/data/group_management/event/api/i_event_api_client.dart';
+import 'package:hexora/data/group_management/event/domain/event_domain.dart';
+import 'package:hexora/data/group_management/event/repository/event_repository.dart';
+import 'package:hexora/data/group_management/event/repository/i_event_repository.dart';
+import 'package:hexora/data/group_management/event/resolver/event_group_resolver.dart';
+import 'package:hexora/data/group_management/group/api/group_api_client.dart';
+import 'package:hexora/data/group_management/group/api/i_group_api_client.dart';
+import 'package:hexora/data/group_management/group/domain/group_domain.dart';
+import 'package:hexora/data/group_management/group/repository/group_repository.dart';
+import 'package:hexora/data/group_management/group/repository/i_group_repository.dart';
+import 'package:hexora/data/group_management/invite/api/invite_api_client.dart';
+import 'package:hexora/data/group_management/invite/domain/invite_domain.dart';
+import 'package:hexora/data/group_management/invite/repository/invite_repository.dart';
+import 'package:hexora/data/group_management/recurrence_rule/recurrence_rule_api_client.dart';
+import 'package:hexora/data/mail/api/i_mail_api_client.dart';
+import 'package:hexora/data/mail/api/mail_api_client.dart';
+import 'package:hexora/data/mail/domain/mail_domain.dart';
+import 'package:hexora/data/mail/repository/i_mail_repository.dart';
+import 'package:hexora/data/mail/repository/mail_repository.dart';
+import 'package:hexora/data/telegram/api/telegram_api_client.dart';
+import 'package:hexora/data/telegram/domain/telegram_domain.dart';
+import 'package:hexora/data/user/repository/i_user_repository.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
+
+final List<SingleChildWidget> featureProviders = [
+  // Recurrence rules
+  Provider<RecurrenceRuleApiClient>(create: (_) => RecurrenceRuleApiClient()),
+
+  // Events
+  Provider<IEventApiClient>(
+    create: (ctx) => EventApiClient(
+      ruleService: ctx.read<RecurrenceRuleApiClient>(),
+    ),
+  ),
+  Provider<IEventRepository>(
+    create: (ctx) => EventRepository(
+      apiClient: ctx.read<IEventApiClient>(),
+      tokenSupplier: () async {
+        final token = await ctx.read<AuthService>().getToken();
+        if (token == null) throw Exception('Not authenticated');
+        return token;
+      },
+    ),
+  ),
+
+  // Groups
+  Provider<IGroupApiClient>(create: (_) => HttpGroupApiClient()),
+  Provider<IGroupRepository>(
+    create: (ctx) => GroupRepository(
+      apiClient: ctx.read<IGroupApiClient>(),
+      tokenSupplier: () async {
+        final token = await ctx.read<AuthService>().getToken();
+        if (token == null) throw Exception('Not authenticated');
+        return token;
+      },
+    ),
+  ),
+  Provider<GroupEventResolver>(
+    create: (ctx) => GroupEventResolver(
+      ruleService: ctx.read<RecurrenceRuleApiClient>(),
+    ),
+  ),
+  ChangeNotifierProvider(
+    create: (ctx) => GroupDomain(
+      groupRepository: ctx.read<IGroupRepository>(),
+      userRepository: ctx.read<IUserRepository>(),
+      groupEventResolver: ctx.read<GroupEventResolver>(),
+      user: null,
+    ),
+  ),
+
+  // Mail
+  Provider<IMailApiClient>(
+    create: (ctx) => MailApiClient(client: ctx.read<http.Client>()),
+  ),
+  Provider<IMailRepository>(
+    create: (ctx) => MailRepository(
+      apiClient: ctx.read<IMailApiClient>(),
+      tokenSupplier: () async {
+        final token = await ctx.read<AuthService>().getToken();
+        if (token == null) throw Exception('Not authenticated');
+        return token;
+      },
+    ),
+  ),
+  ChangeNotifierProvider(
+    create: (ctx) => MailDomain(repository: ctx.read<IMailRepository>()),
+  ),
+
+  // Telegram
+  Provider<ITelegramApiClient>(
+    create: (ctx) => TelegramApiClient(client: ctx.read<http.Client>()),
+  ),
+  ChangeNotifierProvider(
+    create: (ctx) => TelegramDomain(apiClient: ctx.read<ITelegramApiClient>()),
+  ),
+
+  // Invitations
+  Provider<InvitationRepository>(
+    create: (_) => HttpInvitationRepository(InvitationApiClient()),
+  ),
+  ChangeNotifierProvider<InvitationDomain>(
+    create: (ctx) => InvitationDomain(
+      repository: ctx.read<InvitationRepository>(),
+      tokenSupplier: () => ctx.read<AuthService>().getToken(),
+    ),
+  ),
+
+  // Time tracking (your feature)
+  Provider<ITimeTrackingApiClient>(create: (_) => TimeTrackingApiClient()),
+  Provider<ITimeTrackingRepository>(
+    create: (ctx) => TimeTrackingRepository(ctx.read<ITimeTrackingApiClient>()),
+  ),
+
+  // EventDomain: depends on GroupDomain + IEventRepository
+  ProxyProvider3<GroupDomain, IEventRepository, GroupEventResolver,
+      EventDomain?>(
+    create: (_) => null,
+    update: (ctx, groupDomain, eventRepo, resolver, previous) {
+      final current = groupDomain.currentGroup;
+      if (current == null) return null;
+
+      // Reuse the existing instance if same group
+      if (previous != null && previous.groupId == current.id) {
+        return previous;
+      }
+
+      final edm = EventDomain(
+        const [],
+        context: ctx,
+        group: current,
+        repository: eventRepo,
+        groupDomain: groupDomain,
+        resolver: resolver, // ðŸ‘ˆ NEW
+      );
+
+      edm.onExternalEventUpdate = previous?.onExternalEventUpdate ??
+          () => debugPrint('⚠️ No calendar UI registered.');
+
+      return edm;
+    },
+  ),
+];

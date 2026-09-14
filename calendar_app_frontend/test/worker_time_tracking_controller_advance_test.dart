@@ -1,16 +1,16 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/a-models/group_model/group/group.dart';
-import 'package:hexora/a-models/group_model/worker/timeEntry.dart';
-import 'package:hexora/a-models/group_model/worker/worker.dart';
-import 'package:hexora/a-models/notification_model/notification_user.dart';
-import 'package:hexora/a-models/user_model/user.dart';
-import 'package:hexora/b-backend/group_mng_flow/business_logic/worker/repository/time_tracking_repository.dart';
-import 'package:hexora/b-backend/notification/domain/notification_domain.dart';
-import 'package:hexora/b-backend/user/domain/user_domain.dart';
-import 'package:hexora/b-backend/user/repository/i_user_repository.dart';
-import 'package:hexora/c-frontend/ui-app/b-dashboard-section/sections/workers/worker/entry_screen/tracking/controller/worker_time_tracking_controller.dart';
+import 'package:hexora/models/group/group.dart';
+import 'package:hexora/models/worker/time_entry.dart';
+import 'package:hexora/models/worker/worker.dart';
+import 'package:hexora/models/notification/notification_user.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/data/group_management/business_logic/worker/repository/time_tracking_repository.dart';
+import 'package:hexora/data/notification/domain/notification_domain.dart';
+import 'package:hexora/data/user/domain/user_domain.dart';
+import 'package:hexora/data/user/repository/i_user_repository.dart';
+import 'package:hexora/presentation/features/dashboard/sections/workers/worker/entry_screen/tracking/controller/worker_time_tracking_controller.dart';
 
 class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
   double? lastTotalsAdvance;

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/app/bootstrapp/app_bootstrap.dart';
+import 'package:hexora/app/bootstrap/app_bootstrap.dart';
 import 'package:hexora/app/session/session_expiry_handler.dart';
-import 'package:hexora/c-frontend/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/main.dart';
 
 void main() {
-  testWidgets('Hexora renders its bootstrapped shell',
+  testWidgets('Hexora renders its bootstraped shell',
       (WidgetTester tester) async {
     await tester.pumpWidget(
       const HexoraApp(shell: Text('Bootstrapped Hexora')),

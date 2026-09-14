@@ -6,7 +6,7 @@ The Telegram integration allows authenticated users to link their Telegram accou
 
 ## Architecture Layers
 
-### 1. **Models** (`lib/a-models/telegram/`)
+### 1. **Models** (`lib/models/telegram/`)
 Data classes using Freezed for immutability and JSON serialization:
 
 - **`TelegramAccount`** - Linked Telegram account with status and metadata
@@ -32,7 +32,7 @@ Data classes using Freezed for immutability and JSON serialization:
 - **`TelegramExportRequest`** - Export creation payload
   - Configuration: `chatId`, `dateFrom`, `dateTo`, `messageLimit`, `mediaOnly`, `documentsOnly`, `downloadFiles`, `exportFormat`
 
-### 2. **API Client** (`lib/b-backend/telegram/api/telegram_api_client.dart`)
+### 2. **API Client** (`lib/data/telegram/api/telegram_api_client.dart`)
 
 **`ITelegramApiClient` Interface:**
 ```dart
@@ -69,7 +69,7 @@ Future<void> cancelExport(String exportId);
 - `GET /api/telegram/exports/{exportId}/download` → Download URL
 - `POST /api/telegram/exports/{exportId}/cancel` → Cancel export
 
-### 3. **Domain (State Management)** (`lib/b-backend/telegram/domain/telegram_domain.dart`)
+### 3. **Domain (State Management)** (`lib/data/telegram/domain/telegram_domain.dart`)
 
 **`TelegramDomain` extends `ChangeNotifier`**
 
@@ -366,20 +366,20 @@ _pollTimer = Timer.periodic(Duration(seconds: 3), (_) {
 
 ```
 lib/
-├── a-models/telegram/
+├── models/telegram/
 │   ├── telegram.dart (exports)
 │   ├── telegram_account.dart
 │   ├── telegram_chat.dart
 │   ├── telegram_connect_response.dart
 │   └── telegram_export.dart
 │
-├── b-backend/telegram/
+├── data/telegram/
 │   ├── api/
 │   │   └── telegram_api_client.dart
 │   └── domain/
 │       └── telegram_domain.dart
 │
-├── c-frontend/ui-app/b-dashboard-section/
+├── presentation/features/dashboard/
 │   ├── sections/telegram/
 │   │   ├── telegram_section_screen.dart
 │   │   └── components/
@@ -394,7 +394,7 @@ lib/
 │           ├── wide_layout.dart (telegram support)
 │           └── narrow_layout.dart (telegram support)
 │
-└── app/bootstrapp/
+└── app/bootstrap/
     └── feature_providers.dart (telegram providers added)
 ```
 

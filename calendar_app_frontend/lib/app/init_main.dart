@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:hexora/c-frontend/ui-app/f-notification-section/show-notifications/notify_phone/local_notification_helper.dart';
+import 'package:hexora/presentation/features/notifications/show_notifications/notify_phone/local_notification_helper.dart';
 
 typedef AppServiceInitializer = Future<void> Function();
 
