@@ -1,0 +1,265 @@
+import 'dart:convert';
+import 'dart:developer' as devtools show log;
+
+import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/group_model/worker/geofenced_visit.dart';
+import 'package:hexora/models/group_model/client/client_invoice_stats.dart';
+import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/services/config/api_constants.dart';
+import 'package:http/http.dart' as http;
+
+class ClientsApiException implements Exception {
+  const ClientsApiException({
+    required this.statusCode,
+    required this.message,
+    required this.responseData,
+  });
+
+  final int statusCode;
+  final String message;
+  final Map<String, dynamic>? responseData;
+
+  factory ClientsApiException.fromResponse(http.Response response) {
+    Map<String, dynamic>? data;
+    if (response.body.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) {
+          data = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+    final error = data?['error']?.toString().trim() ?? '';
+    final fallbackMessage = data?['message']?.toString().trim() ?? '';
+    final message = error.isNotEmpty
+        ? error
+        : fallbackMessage.isNotEmpty
+            ? fallbackMessage
+            : response.reasonPhrase ?? 'Request failed';
+    return ClientsApiException(
+      statusCode: response.statusCode,
+      message: message,
+      responseData: data,
+    );
+  }
+
+  @override
+  String toString() => message;
+}
+
+class ClientsApi {
+  ClientsApi({http.Client? client}) : _client = client;
+
+  final http.Client? _client;
+  final String _base = '${ApiConstants.baseUrl}/clients';
+
+  Map<String, String> _headers() => {
+        'Content-Type': 'application/json; charset=UTF-8',
+      };
+
+  Uri _u([String path = '', Map<String, String?> q = const {}]) {
+    final filtered = Map.fromEntries(
+      q.entries.where((e) => e.value != null && e.value!.isNotEmpty),
+    );
+    return Uri.parse('$_base$path')
+        .replace(queryParameters: filtered.isEmpty ? null : filtered);
+  }
+
+  T _decode<T>(http.Response r, T Function(dynamic) map) {
+    if (r.statusCode >= 200 && r.statusCode < 300) {
+      final body = r.body.isEmpty ? null : jsonDecode(r.body);
+      return map(body);
+    }
+    // Emit body/status to aid debugging (e.g., address updates)
+    devtools.log(
+      'ClientsApi error ${r.request?.method} ${r.request?.url} '
+      'status=${r.statusCode} body=${r.body}',
+      name: 'ClientsApi',
+    );
+    throw ClientsApiException.fromResponse(r);
+  }
+
+  // GET /clients?groupId=...&active=true|false
+  Future<List<GroupClient>> list({
+    String? groupId,
+    String? search,
+    bool? active,
+    bool includeCurrentMonthInvoiceFlag = false,
+    bool? missingCurrentMonthInvoice,
+  }) async {
+    final r = await AuthenticatedHttpClient.get(
+        _u('', {
+          'groupId': groupId,
+          'q': search?.trim(),
+          if (active != null) 'active': active.toString(),
+          if (includeCurrentMonthInvoiceFlag)
+            'includeCurrentMonthInvoiceFlag': 'true',
+          if (missingCurrentMonthInvoice != null)
+            'missingCurrentMonthInvoice': missingCurrentMonthInvoice.toString(),
+        }),
+        headers: _headers());
+
+    return _decode<List<GroupClient>>(r, (j) {
+      if (j is! List) throw Exception('Unexpected clients payload');
+      return j.map<GroupClient>((e) => GroupClient.fromJson(e)).toList();
+    });
+  }
+
+  // POST /clients
+// POST /clients
+  Future<GroupClient> create(GroupClient client) async {
+    final body = <String, dynamic>{
+      'groupId': client.groupId,
+      'name': client.name.trim(),
+      if ((client.entityType ?? '').trim().isNotEmpty)
+        'entityType': client.entityType!.trim(),
+      if ((client.propertyKind ?? '').trim().isNotEmpty)
+        'propertyKind': client.propertyKind!.trim(),
+      'isActive': client.isActive,
+      'contact': {
+        if ((client.phone ?? '').trim().isNotEmpty)
+          'phone': client.phone!.trim(),
+        if ((client.email ?? '').trim().isNotEmpty)
+          'email': client.email!.trim(),
+      },
+      if (client.billing?.toPayload() != null)
+        'billing': client.billing!.toPayload(),
+      // if you use meta on FE:
+      // if (client.meta != null) 'meta': client.meta,
+    };
+
+    final r = await AuthenticatedHttpClient.post(
+      _u(),
+      headers: _headers(),
+      body: jsonEncode(body),
+    );
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
+  }
+
+  // GET /clients/:id
+  Future<GroupClient> getById(String id) async {
+    final r =
+        await AuthenticatedHttpClient.get(_u('/$id'), headers: _headers());
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
+  }
+
+  // GET /clients/:id/invoice-stats?months=12
+  Future<ClientInvoiceStats> getInvoiceStats(
+    String id, {
+    int months = 12,
+  }) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/$id/invoice-stats', {
+        'months': months.toString(),
+      }),
+      headers: _headers(),
+    );
+    return _decode<ClientInvoiceStats>(r, (j) {
+      if (j is! Map) throw Exception('Unexpected client invoice stats payload');
+      return ClientInvoiceStats.fromJson(j.cast<String, dynamic>());
+    });
+  }
+
+  // PATCH /clients/:id  (full update: send client.toJson())
+  Future<GroupClient> update(GroupClient client) async {
+    if (client.id.isEmpty) throw Exception('Client.id is required');
+    final patch = <String, dynamic>{
+      'name': client.name.trim(),
+      'entityType': (client.entityType ?? '').trim().isEmpty
+          ? null
+          : client.entityType!.trim(),
+      'propertyKind': (client.propertyKind ?? '').trim().isEmpty
+          ? null
+          : client.propertyKind!.trim(),
+      'isActive': client.isActive,
+      'contact': {
+        'phone':
+            (client.phone ?? '').trim().isEmpty ? null : client.phone!.trim(),
+        'email':
+            (client.email ?? '').trim().isEmpty ? null : client.email!.trim(),
+      },
+      if (client.billing?.toPayload(includeNulls: true) != null)
+        'billing': client.billing!.toPayload(includeNulls: true),
+      // if (client.meta != null) 'meta': client.meta,
+    };
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/${client.id}'),
+      headers: _headers(),
+      body: jsonEncode(patch),
+    );
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
+  }
+
+  // PATCH /clients/:id  (partial fields)
+  Future<GroupClient> updateFields(
+      String id, Map<String, dynamic> fields) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/$id'),
+      headers: _headers(),
+      body: jsonEncode(fields),
+    );
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
+  }
+
+  Future<ClientServiceLocation> updateServiceLocation(
+    String clientId,
+    ClientServiceLocation location,
+  ) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/${Uri.encodeComponent(clientId)}/service-location'),
+      headers: _headers(),
+      body: jsonEncode(<String, dynamic>{
+        'latitude': location.latitude,
+        'longitude': location.longitude,
+        'radiusMeters': location.radiusMeters,
+        if ((location.label ?? '').trim().isNotEmpty)
+          'label': location.label!.trim(),
+        'isEnabled': location.isEnabled,
+      }),
+      client: _client,
+    );
+    return _decode<ClientServiceLocation>(r, (json) {
+      if (json is! Map) throw Exception('Unexpected service location payload');
+      final map = Map<String, dynamic>.from(json);
+      final client = map['client'];
+      final clientMap = client is Map ? Map<String, dynamic>.from(client) : map;
+      final nested = clientMap['serviceLocation'] ?? map['serviceLocation'];
+      return ClientServiceLocation.fromJson(<String, dynamic>{
+        'clientId': clientId,
+        'clientName': clientMap['name'],
+        'serviceLocation': nested is Map
+            ? Map<String, dynamic>.from(nested)
+            : location.toJson(),
+      });
+    });
+  }
+
+  Future<void> clearServiceLocation(String clientId) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/${Uri.encodeComponent(clientId)}/service-location'),
+      headers: _headers(),
+      body: jsonEncode(const <String, dynamic>{'clear': true}),
+      client: _client,
+    );
+    _decode<void>(r, (_) {});
+  }
+
+  // PATCH /clients/:id/active  { isActive: true|false }
+  Future<GroupClient> setActive(String id, bool isActive) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/$id/active'),
+      headers: _headers(),
+      body: jsonEncode({'isActive': isActive}),
+    );
+    return _decode<GroupClient>(r, (j) => GroupClient.fromJson(j));
+  }
+
+  // DELETE /clients/:id
+  Future<bool> delete(String id) async {
+    final r =
+        await AuthenticatedHttpClient.delete(_u('/$id'), headers: _headers());
+    if (r.statusCode == 404) return false;
+    _decode<void>(r, (_) {});
+    return true;
+  }
+}

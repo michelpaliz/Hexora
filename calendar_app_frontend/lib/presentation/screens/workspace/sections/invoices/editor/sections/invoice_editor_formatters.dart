@@ -1,0 +1,27 @@
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
+
+class InvoiceEditorFormatters {
+  static num total(List<LineDraft> lines) {
+    return lines.fold<num>(0, (sum, line) {
+      final qty = line.quantity ?? 1;
+      final price = line.unitPrice ?? 0;
+      final taxRate = line.taxRate ?? 21;
+      final subtotal = qty * price;
+      final tax = subtotal * (taxRate / 100);
+      return sum + subtotal + tax;
+    });
+  }
+
+  static num totalBlocks(List<InvoiceBlockDraft> blocks) {
+    return blocks.fold<num>(0, (sum, block) {
+      if (!block.isBillableLine) return sum;
+      final qty = block.qty ?? 1;
+      final price = block.unitPrice ?? 0;
+      final taxRate = block.taxRate ?? 21;
+      final subtotal = qty * price;
+      final tax = subtotal * (taxRate / 100);
+      return sum + subtotal + tax;
+    });
+  }
+}

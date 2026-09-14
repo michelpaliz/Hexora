@@ -1,0 +1,1923 @@
+import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/group_model/worker/geofenced_visit.dart';
+import 'package:hexora/services/clients/client_api.dart';
+import 'package:hexora/services/time_tracking/api/i_time_tracking_api_client.dart';
+import 'package:hexora/services/maps/maps_api.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/geofenced_visits_view.dart';
+import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
+import 'package:provider/provider.dart';
+
+import 'widgets/azure_maps_view.dart';
+
+enum _MapSection {
+  live,
+  clientLocations,
+  todayVisits,
+  visitHistory,
+  myRoute,
+  myMap,
+  myVisits,
+  workday,
+  gpsStatus,
+}
+
+class _MapNavItem {
+  const _MapNavItem({
+    required this.section,
+    required this.icon,
+    required this.label,
+    required this.mobileLabel,
+  });
+
+  final _MapSection section;
+  final IconData icon;
+  final String label;
+  final String mobileLabel;
+}
+
+class ClientMapScreen extends StatefulWidget {
+  const ClientMapScreen({
+    super.key,
+    required this.group,
+    this.embedded = false,
+    this.canEdit = true,
+    this.mapsApi,
+    this.clientsApi,
+  });
+
+  final Group group;
+  final bool embedded;
+  final bool canEdit;
+  final MapsApi? mapsApi;
+  final ClientsApi? clientsApi;
+
+  @override
+  State<ClientMapScreen> createState() => _ClientMapScreenState();
+}
+
+class _ClientMapScreenState extends State<ClientMapScreen> {
+  late final MapsApi _mapsApi;
+  late final ClientsApi _clientsApi;
+  final _clientFilter = TextEditingController();
+  final _addressSearch = TextEditingController();
+  final _labelController = TextEditingController();
+
+  AzureMapsToken? _mapToken;
+  List<GroupClient> _clients = const <GroupClient>[];
+  List<ClientServiceLocation> _locations = const <ClientServiceLocation>[];
+  GroupClient? _selectedClient;
+  AzureMapSelection? _selection;
+  AzureMapUserLocation? _userLocation;
+  AzureMapCameraTarget? _cameraTarget;
+  String? _resolvedAddress;
+  String? _error;
+  String? _mapError;
+  bool _loading = true;
+  bool _mapReady = false;
+  bool _editing = false;
+  bool _saving = false;
+  bool _removingLocation = false;
+  bool _searching = false;
+  bool _locating = false;
+  bool _autoLocationRequested = false;
+  bool _enabled = true;
+  double _radius = 75;
+  int _cameraRequestId = 0;
+  int _mapGeneration = 0;
+  Timer? _tokenTimer;
+  Timer? _reverseGeocodeTimer;
+  Timer? _mapReadyTimer;
+  late _MapSection _section;
+  bool _sideMenuCollapsed = false;
+
+  bool get _isSpanish =>
+      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+
+  @override
+  void initState() {
+    super.initState();
+    _mapsApi = widget.mapsApi ?? MapsApi();
+    _clientsApi = widget.clientsApi ?? ClientsApi();
+    _section = widget.canEdit ? _MapSection.live : _MapSection.myMap;
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _tokenTimer?.cancel();
+    _reverseGeocodeTimer?.cancel();
+    _mapReadyTimer?.cancel();
+    _clientFilter.dispose();
+    _addressSearch.dispose();
+    _labelController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+      _mapError = null;
+      _mapReady = false;
+    });
+    try {
+      final userDomain = context.read<UserDomain>();
+      final timeTrackingApi = context.read<ITimeTrackingApiClient>();
+      final authToken = await userDomain.getAuthToken();
+      final clientsFuture = widget.canEdit
+          ? _clientsApi
+              .list(groupId: widget.group.id, active: true)
+              .catchError((_) => <GroupClient>[])
+          : Future<List<GroupClient>>.value(const <GroupClient>[]);
+      final results = await Future.wait<dynamic>(<Future<dynamic>>[
+        _mapsApi.getToken(forceRefresh: true),
+        clientsFuture,
+        timeTrackingApi.getClientLocations(widget.group.id, authToken),
+      ]);
+      if (!mounted) return;
+      final mapToken = results[0] as AzureMapsToken;
+      final clients = results[1] as List<GroupClient>;
+      final locations = results[2] as List<ClientServiceLocation>;
+      setState(() {
+        _mapToken = mapToken;
+        _clients = clients;
+        _locations = _mergeLocations(clients, locations);
+        _mapGeneration++;
+      });
+      _scheduleTokenRefresh(mapToken);
+      _startMapReadyTimeout();
+      if (!_autoLocationRequested) {
+        _autoLocationRequested = true;
+        unawaited(_loadUserLocation(showErrors: false));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = _messageFromError(error);
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _startMapReadyTimeout() {
+    _mapReadyTimer?.cancel();
+    _mapReadyTimer = Timer(const Duration(seconds: 15), () {
+      if (!mounted || _mapReady) return;
+      setState(() {
+        _mapError = _isSpanish
+            ? 'Azure Maps está tardando demasiado en responder. Comprueba la conexión e inténtalo de nuevo.'
+            : 'Azure Maps is taking too long to respond. Check the connection and try again.';
+      });
+    });
+  }
+
+  void _handleMapReady() {
+    _mapReadyTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _mapReady = true;
+      _mapError = null;
+    });
+  }
+
+  void _handleMapError(String message) {
+    if (_mapReady) {
+      _showMessage(
+        message.trim().isEmpty
+            ? (_isSpanish
+                ? 'No se pudo cargar una parte del mapa.'
+                : 'Part of the map could not be loaded.')
+            : message.trim(),
+      );
+      return;
+    }
+    _mapReadyTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _mapReady = false;
+      _mapError = message.trim().isEmpty
+          ? (_isSpanish
+              ? 'No se pudo cargar Azure Maps.'
+              : 'Azure Maps could not be loaded.')
+          : message.trim();
+    });
+  }
+
+  void _scheduleTokenRefresh(AzureMapsToken token) {
+    _tokenTimer?.cancel();
+    var delay = token.expiresAt.difference(DateTime.now().toUtc()) -
+        const Duration(minutes: 2);
+    if (delay < const Duration(seconds: 30)) {
+      delay = const Duration(seconds: 30);
+    }
+    _tokenTimer = Timer(delay, _refreshMapToken);
+  }
+
+  Future<void> _refreshMapToken() async {
+    try {
+      final token = await _mapsApi.getToken(forceRefresh: true);
+      if (!mounted) return;
+      setState(() => _mapToken = token);
+      _scheduleTokenRefresh(token);
+    } catch (_) {
+      if (!mounted) return;
+      _tokenTimer = Timer(const Duration(seconds: 30), _refreshMapToken);
+    }
+  }
+
+  List<AzureMapPin> get _pins => _locations
+      .map(
+        (location) => AzureMapPin(
+          id: location.clientId,
+          title: _clientName(location.clientId, location.clientName),
+          latitude: location.latitude,
+          longitude: location.longitude,
+          radiusMeters: location.radiusMeters,
+        ),
+      )
+      .toList(growable: false);
+
+  List<ClientServiceLocation> _mergeLocations(
+    List<GroupClient> clients,
+    List<ClientServiceLocation> endpointLocations,
+  ) {
+    final merged = <String, ClientServiceLocation>{};
+    for (final client in clients) {
+      final location = client.serviceLocation;
+      if (location == null || !location.isEnabled) continue;
+      merged[client.id] = ClientServiceLocation(
+        clientId: client.id,
+        clientName: client.name,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        radiusMeters: location.radiusMeters,
+        label: location.label,
+        isEnabled: location.isEnabled,
+      );
+    }
+    for (final location in endpointLocations) {
+      if (location.clientId.isEmpty) continue;
+      if (location.isEnabled) {
+        merged[location.clientId] = location;
+      } else {
+        merged.remove(location.clientId);
+      }
+    }
+    return merged.values.toList(growable: false);
+  }
+
+  List<GroupClient> get _filteredClients {
+    final query = _clientFilter.text.trim().toLowerCase();
+    if (query.isEmpty) return _clients;
+    return _clients
+        .where((client) => client.name.toLowerCase().contains(query))
+        .toList(growable: false);
+  }
+
+  ClientServiceLocation? _locationFor(String clientId) {
+    for (final location in _locations) {
+      if (location.clientId == clientId) return location;
+    }
+    for (final client in _clients) {
+      if (client.id == clientId && client.serviceLocation?.isEnabled == true) {
+        return client.serviceLocation;
+      }
+    }
+    return null;
+  }
+
+  String _clientName(String clientId, String? fallback) {
+    for (final client in _clients) {
+      if (client.id == clientId) return client.name;
+    }
+    return fallback?.trim().isNotEmpty == true ? fallback!.trim() : 'Cliente';
+  }
+
+  void _selectClient(String clientId) {
+    GroupClient? client;
+    for (final item in _clients) {
+      if (item.id == clientId) {
+        client = item;
+        break;
+      }
+    }
+    final location = _locationFor(clientId);
+    if (client == null || location == null) return;
+    setState(() {
+      _selectedClient = client;
+      _editing = false;
+      _selection = null;
+      _resolvedAddress = location.label;
+      _cameraTarget = AzureMapCameraTarget(
+        latitude: location.latitude,
+        longitude: location.longitude,
+        zoom: 17,
+        requestId: ++_cameraRequestId,
+      );
+    });
+  }
+
+  Future<void> _chooseClient() async {
+    if (!widget.canEdit || _clients.isEmpty) return;
+    final selected = await showDialog<GroupClient>(
+      context: context,
+      builder: (dialogContext) => _ClientPickerDialog(
+        clients: _clients,
+        configuredClientIds:
+            _locations.map((location) => location.clientId).toSet(),
+        isSpanish: _isSpanish,
+      ),
+    );
+    if (selected != null && mounted) await _beginEditing(selected);
+  }
+
+  Future<void> _beginEditing(GroupClient client) async {
+    final location = _locationFor(client.id) ?? client.serviceLocation;
+    setState(() {
+      _selectedClient = client;
+      _editing = true;
+      _enabled = location?.isEnabled ?? true;
+      _radius = (location?.radiusMeters ?? 75).clamp(25, 500).toDouble();
+      _labelController.text = location?.label ?? '';
+      _resolvedAddress = location?.label;
+      _selection = location == null
+          ? null
+          : AzureMapSelection(
+              latitude: location.latitude,
+              longitude: location.longitude,
+              radiusMeters: _radius,
+            );
+      if (location != null) {
+        _cameraTarget = AzureMapCameraTarget(
+          latitude: location.latitude,
+          longitude: location.longitude,
+          zoom: 17,
+          requestId: ++_cameraRequestId,
+        );
+      }
+    });
+    if (location == null) {
+      final address = _billingAddress(client);
+      if (address.isNotEmpty) {
+        _addressSearch.text = address;
+        await _searchAddress(autoSelectFirst: true);
+      }
+    }
+  }
+
+  String _billingAddress(GroupClient client) {
+    final billing = client.billing;
+    if (billing == null) return '';
+    return <String?>[
+      billing.addressStreet,
+      billing.addressExtra,
+      billing.addressPostalCode,
+      billing.addressCity,
+      billing.addressProvince,
+      billing.addressCountry,
+    ]
+        .where((part) => part?.trim().isNotEmpty == true)
+        .map((part) => part!.trim())
+        .join(', ');
+  }
+
+  void _onSelectionChanged(AzureMapSelection selection) {
+    if (!_editing) return;
+    setState(() {
+      _selection = AzureMapSelection(
+        latitude: selection.latitude,
+        longitude: selection.longitude,
+        radiusMeters: _radius,
+      );
+    });
+    _scheduleReverseGeocode(selection.latitude, selection.longitude);
+  }
+
+  void _scheduleReverseGeocode(double latitude, double longitude) {
+    _reverseGeocodeTimer?.cancel();
+    _reverseGeocodeTimer = Timer(const Duration(milliseconds: 550), () async {
+      final address = await _mapsApi.reverseGeocode(latitude, longitude);
+      if (!mounted ||
+          _selection?.latitude != latitude ||
+          _selection?.longitude != longitude) {
+        return;
+      }
+      setState(() => _resolvedAddress = address);
+    });
+  }
+
+  Future<void> _searchAddress({bool autoSelectFirst = false}) async {
+    final query = _addressSearch.text.trim();
+    if (!_editing || query.length < 3 || _searching) return;
+    setState(() => _searching = true);
+    try {
+      final results = await _mapsApi.searchAddress(query);
+      if (!mounted) return;
+      if (results.isEmpty) {
+        _showMessage(_isSpanish
+            ? 'No encontramos esa dirección.'
+            : 'No matching address was found.');
+        return;
+      }
+      AzureMapSearchResult? selected;
+      if (autoSelectFirst || results.length == 1) {
+        selected = results.first;
+      } else {
+        selected = await showDialog<AzureMapSearchResult>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(_isSpanish ? 'Elegir dirección' : 'Choose address'),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520, maxHeight: 420),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: results.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, index) => ListTile(
+                  leading: const Icon(Icons.location_on_outlined),
+                  title: Text(results[index].address),
+                  onTap: () => Navigator.pop(context, results[index]),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
+              ),
+            ],
+          ),
+        );
+      }
+      if (selected == null || !mounted) return;
+      setState(() {
+        _resolvedAddress = selected!.address;
+        _selection = AzureMapSelection(
+          latitude: selected.latitude,
+          longitude: selected.longitude,
+          radiusMeters: _radius,
+        );
+        _cameraTarget = AzureMapCameraTarget(
+          latitude: selected.latitude,
+          longitude: selected.longitude,
+          zoom: 17,
+          requestId: ++_cameraRequestId,
+        );
+      });
+    } catch (error) {
+      if (mounted) _showMessage(_messageFromError(error));
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  Future<void> _loadUserLocation({
+    required bool showErrors,
+    bool selectForClient = false,
+  }) async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw Exception(_isSpanish
+            ? 'Activa la ubicación del dispositivo.'
+            : 'Enable device location services.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw Exception(_isSpanish
+            ? 'No se ha concedido permiso de ubicación.'
+            : 'Location permission was not granted.');
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 20),
+        ),
+      );
+      if (!mounted) return;
+      final userLocation = AzureMapUserLocation(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        accuracyMeters: position.accuracy,
+      );
+      setState(() {
+        _userLocation = userLocation;
+        if (selectForClient && _editing) {
+          _selection = AzureMapSelection(
+            latitude: position.latitude,
+            longitude: position.longitude,
+            radiusMeters: _radius,
+          );
+        }
+        _cameraTarget = AzureMapCameraTarget(
+          latitude: position.latitude,
+          longitude: position.longitude,
+          zoom: 17,
+          requestId: ++_cameraRequestId,
+        );
+      });
+      if (selectForClient && _editing) {
+        _scheduleReverseGeocode(position.latitude, position.longitude);
+      }
+    } catch (error) {
+      if (mounted && showErrors) _showMessage(_messageFromError(error));
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  Future<void> _useCurrentLocation() => _loadUserLocation(
+        showErrors: true,
+        selectForClient: true,
+      );
+
+  Future<void> _saveLocation() async {
+    final client = _selectedClient;
+    final selection = _selection;
+    if (client == null || selection == null || _saving) {
+      if (selection == null) {
+        _showMessage(_isSpanish
+            ? 'Busca una dirección o coloca el pin en el mapa.'
+            : 'Search an address or place the pin on the map.');
+      }
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final saved = await _clientsApi.updateServiceLocation(
+        client.id,
+        ClientServiceLocation(
+          clientId: client.id,
+          clientName: client.name,
+          latitude: selection.latitude,
+          longitude: selection.longitude,
+          radiusMeters: _radius,
+          label: _labelController.text.trim().isEmpty
+              ? _resolvedAddress
+              : _labelController.text.trim(),
+          isEnabled: _enabled,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _locations = <ClientServiceLocation>[
+          ..._locations.where((item) => item.clientId != client.id),
+          if (saved.isEnabled) saved,
+        ];
+        _clients = _clients
+            .map((item) => item.id == client.id
+                ? item.copyWith(serviceLocation: saved)
+                : item)
+            .toList(growable: false);
+        _selectedClient = client.copyWith(serviceLocation: saved);
+        _editing = false;
+        _selection = null;
+        _resolvedAddress = saved.label;
+        _cameraTarget = AzureMapCameraTarget(
+          latitude: saved.latitude,
+          longitude: saved.longitude,
+          zoom: 17,
+          requestId: ++_cameraRequestId,
+        );
+      });
+      _showMessage(
+        _isSpanish ? 'Ubicación guardada correctamente.' : 'Location saved.',
+      );
+    } catch (error) {
+      if (mounted) _showMessage(_messageFromError(error));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _removeLocation(GroupClient client) async {
+    if (_removingLocation) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          _isSpanish ? 'Eliminar ubicación' : 'Remove location',
+        ),
+        content: Text(
+          _isSpanish
+              ? 'Se eliminarán el pin y el radio de llegada de ${client.name}. ¿Quieres continuar?'
+              : 'The map pin and arrival radius for ${client.name} will be removed. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: Text(_isSpanish ? 'Eliminar' : 'Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _removingLocation = true);
+    try {
+      await _clientsApi.clearServiceLocation(client.id);
+      if (!mounted) return;
+      setState(() {
+        _locations = _locations
+            .where((location) => location.clientId != client.id)
+            .toList(growable: false);
+        for (final item in _clients) {
+          if (item.id == client.id) item.serviceLocation = null;
+        }
+        _selectedClient = null;
+        _editing = false;
+        _selection = null;
+        _resolvedAddress = null;
+      });
+      _showMessage(
+        _isSpanish ? 'Ubicación eliminada.' : 'Location removed.',
+      );
+    } catch (error) {
+      if (mounted) _showMessage(_messageFromError(error));
+    } finally {
+      if (mounted) setState(() => _removingLocation = false);
+    }
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _editing = false;
+      _selection = null;
+      _resolvedAddress = _selectedClient == null
+          ? null
+          : _locationFor(_selectedClient!.id)?.label;
+    });
+  }
+
+  void _showMessage(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _messageFromError(Object error) => error
+      .toString()
+      .replaceFirst(RegExp(r'^(Exception|MapsApiException):\s*'), '');
+
+  @override
+  Widget build(BuildContext context) {
+    final token = _mapToken;
+    final content = _loading
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null
+            ? _ErrorState(message: _error!, onRetry: _load)
+            : token == null
+                ? _ErrorState(
+                    message: _isSpanish
+                        ? 'No hay credenciales disponibles para el mapa.'
+                        : 'Map credentials are unavailable.',
+                    onRetry: _load,
+                  )
+                : _buildMapHub(token);
+
+    if (widget.embedded) {
+      return Padding(
+        padding: const EdgeInsets.all(4),
+        child: content,
+      );
+    }
+    return Scaffold(
+      appBar: SectionAppBar(
+        title: _isSpanish ? 'Mapa' : 'Map',
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: content,
+        ),
+      ),
+    );
+  }
+
+  List<_MapNavItem> get _navItems => widget.canEdit
+      ? <_MapNavItem>[
+          _MapNavItem(
+            section: _MapSection.live,
+            icon: Icons.location_searching_rounded,
+            label: _isSpanish ? 'Mapa en directo' : 'Live map',
+            mobileLabel: _isSpanish ? 'En directo' : 'Live',
+          ),
+          _MapNavItem(
+            section: _MapSection.clientLocations,
+            icon: Icons.add_location_alt_outlined,
+            label: _isSpanish ? 'Ubicaciones de clientes' : 'Client locations',
+            mobileLabel: _isSpanish ? 'Ubicaciones' : 'Locations',
+          ),
+          _MapNavItem(
+            section: _MapSection.todayVisits,
+            icon: Icons.today_outlined,
+            label: _isSpanish ? 'Visitas de hoy' : "Today's visits",
+            mobileLabel: _isSpanish ? 'Hoy' : 'Today',
+          ),
+          _MapNavItem(
+            section: _MapSection.visitHistory,
+            icon: Icons.history_rounded,
+            label: _isSpanish ? 'Historial de visitas' : 'Visit history',
+            mobileLabel: _isSpanish ? 'Historial' : 'History',
+          ),
+        ]
+      : <_MapNavItem>[
+          _MapNavItem(
+            section: _MapSection.myRoute,
+            icon: Icons.route_outlined,
+            label: _isSpanish ? 'Mi ruta de hoy' : 'My route today',
+            mobileLabel: _isSpanish ? 'Mi ruta' : 'My route',
+          ),
+          _MapNavItem(
+            section: _MapSection.myMap,
+            icon: Icons.map_outlined,
+            label: _isSpanish ? 'Mapa' : 'Map',
+            mobileLabel: _isSpanish ? 'Mapa' : 'Map',
+          ),
+          _MapNavItem(
+            section: _MapSection.myVisits,
+            icon: Icons.place_outlined,
+            label: _isSpanish ? 'Mis visitas' : 'My visits',
+            mobileLabel: _isSpanish ? 'Visitas' : 'Visits',
+          ),
+          _MapNavItem(
+            section: _MapSection.workday,
+            icon: Icons.play_circle_outline_rounded,
+            label:
+                _isSpanish ? 'Iniciar/detener jornada' : 'Start/stop workday',
+            mobileLabel: _isSpanish ? 'Jornada' : 'Workday',
+          ),
+          _MapNavItem(
+            section: _MapSection.gpsStatus,
+            icon: Icons.gps_fixed_rounded,
+            label: _isSpanish ? 'Estado del GPS' : 'GPS status',
+            mobileLabel: 'GPS',
+          ),
+        ];
+
+  void _selectSection(_MapSection section) {
+    if (_section == section) return;
+    setState(() {
+      _section = section;
+      if (section != _MapSection.clientLocations) {
+        _editing = false;
+        _selection = null;
+      }
+    });
+  }
+
+  Widget _buildMapHub(AzureMapsToken token) {
+    final cs = Theme.of(context).colorScheme;
+    final navItems = _navItems;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sectionContent = _buildSectionContent(token);
+        if (constraints.maxWidth < CollapsibleSidebar.responsiveBreakpoint) {
+          return Column(
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+                child: Row(
+                  children: [
+                    for (final item in navItems)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 7),
+                        child: ChoiceChip(
+                          selected: _section == item.section,
+                          showCheckmark: false,
+                          backgroundColor: cs.surfaceContainerLow,
+                          selectedColor: cs.primaryContainer,
+                          avatar: Icon(item.icon,
+                              size: 18,
+                              color: _section == item.section
+                                  ? cs.onPrimaryContainer
+                                  : cs.onSurfaceVariant),
+                          label: Text(item.mobileLabel,
+                              style: TextStyle(
+                                color: _section == item.section
+                                    ? cs.onPrimaryContainer
+                                    : cs.onSurface,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              )),
+                          onSelected: (_) => _selectSection(item.section),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(child: sectionContent),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            CollapsibleSidebar(
+              title: _isSpanish ? 'Mapas y visitas' : 'Maps & visits',
+              headerIcon: Icons.map_outlined,
+              collapsed: _sideMenuCollapsed,
+              expandTooltip: _isSpanish ? 'Expandir menú' : 'Expand menu',
+              collapseTooltip: _isSpanish ? 'Contraer menú' : 'Collapse menu',
+              onToggleCollapsed: () => setState(
+                () => _sideMenuCollapsed = !_sideMenuCollapsed,
+              ),
+              items: [
+                for (final item in navItems)
+                  CollapsibleSidebarItem(
+                    icon: item.icon,
+                    label: item.label,
+                    selected: _section == item.section,
+                    onTap: () => _selectSection(item.section),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: sectionContent),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSectionContent(AzureMapsToken token) {
+    return switch (_section) {
+      _MapSection.live => _buildNoticeSection(
+          message: _isSpanish
+              ? 'Se muestran las ubicaciones configuradas de clientes y tu posición. Las posiciones en directo de trabajadores aún no están disponibles.'
+              : 'Configured client locations and your position are shown. Live worker positions are not available yet.',
+          child: _buildResponsiveBody(
+            token,
+            canManageLocations: false,
+            showSidePanel: true,
+          ),
+        ),
+      _MapSection.clientLocations => _buildResponsiveBody(
+          token,
+          canManageLocations: true,
+          showSidePanel: true,
+        ),
+      _MapSection.todayVisits => GeofencedVisitsView(
+          key: ValueKey('map-today-visits-${widget.group.id}'),
+          group: widget.group,
+          todayOnly: true,
+        ),
+      _MapSection.visitHistory => GeofencedVisitsView(
+          key: ValueKey('map-visit-history-${widget.group.id}'),
+          group: widget.group,
+          showTrackingCard: false,
+        ),
+      _MapSection.myRoute => _buildUnavailableSection(
+          icon: Icons.route_outlined,
+          title: _isSpanish ? 'Mi ruta de hoy' : 'My route today',
+          message: _isSpanish
+              ? 'La planificación diaria, el orden de visitas y la ruta optimizada necesitan los nuevos endpoints de rutas.'
+              : 'Daily assignments, visit order, and route optimization require the new route endpoints.',
+        ),
+      _MapSection.myMap => _buildResponsiveBody(
+          token,
+          canManageLocations: false,
+          showSidePanel: false,
+        ),
+      _MapSection.myVisits => GeofencedVisitsView(
+          key: ValueKey('map-my-visits-${widget.group.id}'),
+          group: widget.group,
+          todayOnly: true,
+          showTrackingCard: false,
+        ),
+      _MapSection.workday || _MapSection.gpsStatus => GeofencedVisitsView(
+          key: ValueKey('map-tracking-${widget.group.id}-${_section.name}'),
+          group: widget.group,
+          todayOnly: true,
+          showVisits: false,
+        ),
+    };
+  }
+
+  Widget _buildNoticeSection({
+    required String message,
+    required Widget child,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: cs.primaryContainer.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.16)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline_rounded, size: 17, color: cs.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: child),
+      ],
+    );
+  }
+
+  Widget _buildUnavailableSection({
+    required IconData icon,
+    required String title,
+    required String message,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: cs.outlineVariant),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 42, color: cs.primary),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActions({required bool canManageLocations}) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          IconButton.filledTonal(
+            tooltip: _isSpanish ? 'Mi ubicación' : 'My location',
+            onPressed:
+                _locating ? null : () => _loadUserLocation(showErrors: true),
+            icon: _locating
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    Icons.my_location_rounded,
+                    color: _userLocation == null ? null : cs.primary,
+                  ),
+          ),
+          const SizedBox(width: 8),
+          IconButton.filledTonal(
+            tooltip: _isSpanish ? 'Actualizar' : 'Refresh',
+            onPressed: _load,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          if (canManageLocations) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _chooseClient,
+                icon: const Icon(Icons.add_location_alt_outlined, size: 19),
+                label: Text(
+                  _isSpanish ? 'Ubicar cliente' : 'Set client location',
+                ),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResponsiveBody(
+    AzureMapsToken token, {
+    required bool canManageLocations,
+    required bool showSidePanel,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final map = _buildMap(token);
+        final panel = _buildSidePanel(canManageLocations: canManageLocations);
+        if (showSidePanel && constraints.maxWidth >= 900) {
+          return Row(
+            children: [
+              Expanded(child: map),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 360,
+                child: Column(
+                  children: [
+                    _buildActions(canManageLocations: canManageLocations),
+                    const SizedBox(height: 10),
+                    Expanded(child: panel),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+        if (!showSidePanel) {
+          return Column(
+            children: [
+              _buildActions(canManageLocations: false),
+              const SizedBox(height: 10),
+              Expanded(child: map),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            Expanded(flex: 5, child: map),
+            const SizedBox(height: 10),
+            _buildActions(canManageLocations: canManageLocations),
+            const SizedBox(height: 10),
+            Expanded(flex: 4, child: panel),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMap(AzureMapsToken token) {
+    final cs = Theme.of(context).colorScheme;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AzureMapsView(
+                key: ValueKey('azure-map-$_mapGeneration'),
+                clientId: token.clientId,
+                accessToken: token.accessToken,
+                pins: _pins,
+                selectedPinId: _editing ? null : _selectedClient?.id,
+                selection: _selection,
+                userLocation: _userLocation,
+                cameraTarget: _cameraTarget,
+                onSelectionChanged: _onSelectionChanged,
+                onPinTapped: _selectClient,
+                onReady: _handleMapReady,
+                onError: _handleMapError,
+              ),
+            ),
+            if (!_mapReady && _mapError == null)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: cs.surfaceContainerLow,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            if (_mapError != null)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: cs.surfaceContainerLow,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.map_outlined,
+                              size: 46,
+                              color: cs.error,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _mapError!,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 14),
+                            FilledButton.icon(
+                              onPressed: _load,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: Text(
+                                _isSpanish ? 'Reintentar' : 'Retry',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (_editing)
+              Positioned(
+                left: 12,
+                top: 12,
+                right: 86,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.surface.withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x22000000), blurRadius: 10),
+                      ],
+                    ),
+                    child: Text(
+                      _isSpanish
+                          ? 'Haz clic en el mapa o arrastra el pin.'
+                          : 'Click the map or drag the pin.',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
+            if (_userLocation != null && !_editing)
+              Positioned(
+                left: 12,
+                bottom: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.surface.withValues(alpha: 0.94),
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x22000000), blurRadius: 8),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF1677FF),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        _isSpanish ? 'Tu ubicación' : 'Your location',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidePanel({required bool canManageLocations}) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
+      ),
+      child: _editing
+          ? _buildEditor()
+          : _buildClientBrowser(canManageLocations: canManageLocations),
+    );
+  }
+
+  Widget _buildClientBrowser({required bool canManageLocations}) {
+    final cs = Theme.of(context).colorScheme;
+    final selected = _selectedClient;
+    final selectedLocation =
+        selected == null ? null : _locationFor(selected.id);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+          child: TextField(
+            controller: _clientFilter,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: _isSpanish ? 'Buscar cliente' : 'Search clients',
+              prefixIcon:
+                  Icon(Icons.search_rounded, color: cs.onSurfaceVariant),
+              suffixIcon: _clientFilter.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: () {
+                        _clientFilter.clear();
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                    ),
+              isDense: true,
+              filled: true,
+              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+              contentPadding: const EdgeInsets.symmetric(vertical: 13),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: cs.primary, width: 1.4),
+              ),
+            ),
+          ),
+        ),
+        if (selected != null && selectedLocation != null)
+          _SelectedClientCard(
+            client: selected,
+            location: selectedLocation,
+            isSpanish: _isSpanish,
+            canEdit: canManageLocations,
+            onEdit: () => _beginEditing(selected),
+            onRemove: () => _removeLocation(selected),
+            isRemoving: _removingLocation,
+          ),
+        Expanded(
+          child: _filteredClients.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.person_search_rounded,
+                        size: 34,
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _isSpanish ? 'No hay clientes.' : 'No clients found.',
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  itemCount: _filteredClients.length,
+                  itemBuilder: (_, index) {
+                    final client = _filteredClients[index];
+                    final location = _locationFor(client.id);
+                    return _ClientLocationTile(
+                      client: client,
+                      location: location,
+                      isSpanish: _isSpanish,
+                      selected: _selectedClient?.id == client.id,
+                      onTap: location == null
+                          ? canManageLocations
+                              ? () => _beginEditing(client)
+                              : null
+                          : () => _selectClient(client.id),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEditor() {
+    final cs = Theme.of(context).colorScheme;
+    final client = _selectedClient!;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_on_rounded, color: cs.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isSpanish ? 'Ubicar cliente' : 'Set client location',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    Text(
+                      client.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: _isSpanish ? 'Cancelar' : 'Cancel',
+                onPressed: _cancelEditing,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _addressSearch,
+            onSubmitted: (_) => _searchAddress(),
+            decoration: InputDecoration(
+              labelText: _isSpanish ? 'Buscar dirección' : 'Search address',
+              hintText: _isSpanish
+                  ? 'Calle, numero, ciudad...'
+                  : 'Street, number, city...',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: IconButton(
+                tooltip: _isSpanish ? 'Buscar' : 'Search',
+                onPressed: _searching ? null : _searchAddress,
+                icon: _searching
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.arrow_forward_rounded),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: _locating ? null : _useCurrentLocation,
+            icon: _locating
+                ? const SizedBox.square(
+                    dimension: 17,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.my_location_rounded, size: 18),
+            label: Text(
+              _isSpanish ? 'Usar mi ubicación actual' : 'Use my location',
+            ),
+          ),
+          if (_resolvedAddress?.isNotEmpty == true) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.place_outlined, size: 18, color: cs.primary),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(_resolvedAddress!)),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          TextField(
+            controller: _labelController,
+            decoration: InputDecoration(
+              labelText: _isSpanish ? 'Etiqueta opcional' : 'Optional label',
+              hintText: _isSpanish ? 'Entrada principal' : 'Main entrance',
+              prefixIcon: const Icon(Icons.label_outline_rounded),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _isSpanish ? 'Radio de la geocerca' : 'Geofence radius',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text('${_radius.round()} m'),
+            ],
+          ),
+          Slider(
+            value: _radius,
+            min: 25,
+            max: 500,
+            divisions: 95,
+            label: '${_radius.round()} m',
+            onChanged: (value) {
+              setState(() {
+                _radius = value;
+                final selection = _selection;
+                if (selection != null) {
+                  _selection = AzureMapSelection(
+                    latitude: selection.latitude,
+                    longitude: selection.longitude,
+                    radiusMeters: value,
+                  );
+                }
+              });
+            },
+          ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: _enabled,
+            onChanged: (value) => setState(() => _enabled = value),
+            title: Text(_isSpanish ? 'Geocerca activa' : 'Geofence enabled'),
+          ),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            title: Text(
+              _isSpanish ? 'Detalles avanzados' : 'Advanced details',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SelectableText(
+                  _selection == null
+                      ? (_isSpanish ? 'Sin coordenadas' : 'No coordinates')
+                      : '${_selection!.latitude.toStringAsFixed(6)}, '
+                          '${_selection!.longitude.toStringAsFixed(6)}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: _saving ? null : _saveLocation,
+            icon: _saving
+                ? const SizedBox.square(
+                    dimension: 17,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_rounded),
+            label: Text(_isSpanish ? 'Guardar ubicación' : 'Save location'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectedClientCard extends StatelessWidget {
+  const _SelectedClientCard({
+    required this.client,
+    required this.location,
+    required this.isSpanish,
+    required this.canEdit,
+    required this.onEdit,
+    required this.onRemove,
+    required this.isRemoving,
+  });
+
+  final GroupClient client;
+  final ClientServiceLocation location;
+  final bool isSpanish;
+  final bool canEdit;
+  final VoidCallback onEdit;
+  final VoidCallback onRemove;
+  final bool isRemoving;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  Icons.location_on_rounded,
+                  color: cs.onPrimary,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      client.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      location.label ??
+                          '${location.latitude.toStringAsFixed(5)}, '
+                              '${location.longitude.toStringAsFixed(5)}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: cs.outlineVariant),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.radar_rounded,
+                        size: 14, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 5),
+                    Text(
+                      isSpanish
+                          ? '${location.radiusMeters.round()} m radio'
+                          : '${location.radiusMeters.round()} m radius',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              if (canEdit) ...[
+                IconButton(
+                  tooltip: isSpanish ? 'Eliminar ubicación' : 'Remove location',
+                  onPressed: isRemoving ? null : onRemove,
+                  color: cs.error,
+                  visualDensity: VisualDensity.compact,
+                  icon: isRemoving
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.location_off_outlined, size: 19),
+                ),
+                TextButton.icon(
+                  onPressed: isRemoving ? null : onEdit,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  ),
+                  icon: const Icon(Icons.edit_location_alt_outlined, size: 17),
+                  label: Text(isSpanish ? 'Editar' : 'Edit'),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Color _clientAvatarHueColor(
+  BuildContext context,
+  String seed, {
+  required double saturation,
+  required double lightness,
+}) {
+  final trimmed = seed.trim();
+  final hash = trimmed.isEmpty
+      ? 0
+      : trimmed.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+  final hue = (hash * 47) % 360;
+  return HSLColor.fromAHSL(1, hue.toDouble(), saturation, lightness).toColor();
+}
+
+Color _clientAvatarBackground(BuildContext context, String seed) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return _clientAvatarHueColor(
+    context,
+    seed,
+    saturation: 0.5,
+    lightness: isDark ? 0.26 : 0.88,
+  );
+}
+
+Color _clientAvatarForeground(BuildContext context, String seed) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return _clientAvatarHueColor(
+    context,
+    seed,
+    saturation: 0.55,
+    lightness: isDark ? 0.8 : 0.32,
+  );
+}
+
+class _LocationBadge extends StatelessWidget {
+  const _LocationBadge({required this.hasLocation});
+
+  final bool hasLocation;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    const locatedColor = Color(0xFF16A34A);
+    final color = hasLocation ? locatedColor : cs.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: hasLocation
+            ? locatedColor.withValues(alpha: 0.12)
+            : cs.surfaceContainerHighest.withValues(alpha: 0.6),
+        shape: BoxShape.circle,
+        border: hasLocation ? null : Border.all(color: cs.outlineVariant),
+      ),
+      child: Icon(
+        hasLocation
+            ? Icons.location_on_rounded
+            : Icons.add_location_alt_outlined,
+        size: 16,
+        color: color,
+      ),
+    );
+  }
+}
+
+class _ClientLocationTile extends StatelessWidget {
+  const _ClientLocationTile({
+    required this.client,
+    required this.location,
+    required this.isSpanish,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final GroupClient client;
+  final ClientServiceLocation? location;
+  final bool isSpanish;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final hasLocation = location != null;
+    final name = client.name.trim();
+    final initial = name.isEmpty ? '?' : name[0].toUpperCase();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      child: Material(
+        color:
+            selected ? cs.primary.withValues(alpha: 0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 34,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: selected ? cs.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                CircleAvatar(
+                  radius: 19,
+                  backgroundColor: _clientAvatarBackground(context, name),
+                  child: Text(
+                    initial,
+                    style: TextStyle(
+                      color: _clientAvatarForeground(context, name),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        client.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        hasLocation
+                            ? (location!.label ??
+                                '${location!.latitude.toStringAsFixed(5)}, '
+                                    '${location!.longitude.toStringAsFixed(5)}')
+                            : (isSpanish ? 'Sin ubicación' : 'No location'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _LocationBadge(hasLocation: hasLocation),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClientPickerDialog extends StatefulWidget {
+  const _ClientPickerDialog({
+    required this.clients,
+    required this.configuredClientIds,
+    required this.isSpanish,
+  });
+
+  final List<GroupClient> clients;
+  final Set<String> configuredClientIds;
+  final bool isSpanish;
+
+  @override
+  State<_ClientPickerDialog> createState() => _ClientPickerDialogState();
+}
+
+class _ClientPickerDialogState extends State<_ClientPickerDialog> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = widget.clients
+        .where((client) => client.name.toLowerCase().contains(_query))
+        .toList(growable: false);
+    return AlertDialog(
+      title: Text(widget.isSpanish ? 'Seleccionar cliente' : 'Select client'),
+      content: SizedBox(
+        width: 480,
+        height: 480,
+        child: Column(
+          children: [
+            TextField(
+              autofocus: true,
+              onChanged: (value) =>
+                  setState(() => _query = value.trim().toLowerCase()),
+              decoration: InputDecoration(
+                hintText:
+                    widget.isSpanish ? 'Buscar cliente' : 'Search clients',
+                prefixIcon: const Icon(Icons.search_rounded),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: ListView.builder(
+                itemCount: visible.length,
+                itemBuilder: (_, index) {
+                  final client = visible[index];
+                  final configured =
+                      widget.configuredClientIds.contains(client.id);
+                  return ListTile(
+                    leading: Icon(configured
+                        ? Icons.location_on_rounded
+                        : Icons.add_location_alt_outlined),
+                    title: Text(client.name),
+                    subtitle: Text(
+                      configured
+                          ? (widget.isSpanish
+                              ? 'Ubicación configurada'
+                              : 'Location configured')
+                          : (widget.isSpanish
+                              ? 'Sin ubicación'
+                              : 'No location'),
+                    ),
+                    onTap: () => Navigator.pop(context, client),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(widget.isSpanish ? 'Cancelar' : 'Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.map_outlined,
+              size: 48,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

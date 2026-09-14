@@ -1,0 +1,115 @@
+import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/services/config/api_constants.dart';
+import 'package:hexora/services/shared/json_response_decoder.dart';
+import 'package:http/http.dart' as http;
+
+class TrueLayerApiException implements Exception {
+  final int statusCode;
+  final String message;
+  final Uri url;
+  final String method;
+  final String? responseBody;
+  final Map<String, String>? responseHeaders;
+
+  TrueLayerApiException({
+    required this.statusCode,
+    required this.message,
+    required this.url,
+    required this.method,
+    required this.responseBody,
+    required this.responseHeaders,
+  });
+
+  @override
+  String toString() {
+    final body = (responseBody == null || responseBody!.trim().isEmpty)
+        ? ''
+        : '\nbody: ${responseBody!.trim()}';
+    return 'TrueLayer API ($statusCode) $method $url: $message$body';
+  }
+}
+
+class TrueLayerApi {
+  // ApiConstants.baseUrl already includes a trailing `/api` in most envs.
+  // TrueLayer endpoints are rooted at `/api/truelayer/...`, so avoid `/api/api/...`.
+  final String _base = ApiConstants.baseUrl.endsWith('/api')
+      ? '${ApiConstants.baseUrl}/truelayer'
+      : '${ApiConstants.baseUrl}/api/truelayer';
+
+  Uri _u([String path = '', Map<String, String>? query]) =>
+      Uri.parse('$_base$path').replace(queryParameters: query);
+
+  Map<String, String> _headers() => {
+        'Content-Type': 'application/json; charset=UTF-8',
+      };
+
+  T _decode<T>(
+    http.Response r, {
+    required Uri url,
+    required String method,
+    required T Function(dynamic) map,
+  }) {
+    return decodeJsonResponse<T>(
+      r,
+      url: url,
+      method: method,
+      map: map,
+      createException: (context) => TrueLayerApiException(
+        statusCode: context.statusCode,
+        message: context.message,
+        url: context.url,
+        method: context.method,
+        responseBody: context.responseBody,
+        responseHeaders: context.responseHeaders,
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>> connect() async {
+    final uri = _u('/connect');
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) =>
+          (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
+    );
+  }
+
+  Future<Map<String, dynamic>> accounts() async {
+    final uri = _u('/accounts');
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) {
+        if (j is List) return <String, dynamic>{'accounts': j};
+        return (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{};
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> transactions({
+    required String accountId,
+    required String from,
+    required String to,
+  }) async {
+    final uri = _u('/transactions', {
+      'accountId': accountId,
+      'from': from,
+      'to': to,
+    });
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    return _decode<Map<String, dynamic>>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (j) {
+        if (j is List) return <String, dynamic>{'transactions': j};
+        return (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{};
+      },
+    );
+  }
+}

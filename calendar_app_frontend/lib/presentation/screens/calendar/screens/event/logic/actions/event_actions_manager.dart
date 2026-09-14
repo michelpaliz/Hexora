@@ -1,0 +1,126 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/notification_model/userInvitation_status.dart';
+import 'package:hexora/services/groups/event/domain/event_domain.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/notification/domain/notification_domain.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/screens/events/screens/actions/edit_screen/screen/edit_event_screen.dart';
+import 'package:provider/provider.dart';
+
+class EventActionManager {
+  final EventDomain eventDomain;
+  final GroupDomain groupDomain;
+  final UserDomain userDomain;
+  final NotificationDomain notificationDomain;
+  Map<String, UserInviteStatus>? invitedUsers;
+  ValueChanged<Event>? _inlineEditHandler;
+
+  EventActionManager(
+    this.groupDomain,
+    this.userDomain,
+    this.notificationDomain, {
+    required this.eventDomain,
+  });
+
+  void setInlineEditHandler(ValueChanged<Event>? handler) {
+    _inlineEditHandler = handler;
+  }
+
+  // Build the add event button
+  Widget buildAddEventButton(BuildContext context, Group group) {
+    return Expanded(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.blue,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          width: 50,
+          height: 50,
+          child: IconButton(
+            icon: const Icon(Icons.add, color: Colors.white, size: 25),
+            onPressed: () async {
+              final added = await Navigator.pushNamed(
+                context,
+                AppRoutes.addEvent,
+                arguments: group,
+              );
+
+              if (added != null) {
+                // ✅ Refresh group via repository (handles token)
+                final refreshedGroup =
+                    await groupDomain.groupRepository.getGroupById(group.id);
+
+                // Update domain state (and broadcast to listeners/streams)
+                await groupDomain.updateGroup(refreshedGroup, userDomain);
+
+                // ðŸ” Refresh calendar events
+                await eventDomain.manualRefresh(context);
+              }
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void editEvent(Event event, BuildContext context) {
+    if (kIsWeb && _inlineEditHandler != null) {
+      _inlineEditHandler!(event);
+      return;
+    }
+    final sharedeventDomain = eventDomain;
+    final isWide = MediaQuery.of(context).size.width >= 900;
+    final page = Provider<EventDomain>.value(
+      value: sharedeventDomain,
+      child: EditEventScreen(event: event),
+    );
+
+    if (isWide) {
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => FractionallySizedBox(
+          heightFactor: 0.92,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            child: page,
+          ),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+  }
+
+  /// Strip any `-timestamp` suffix you added client-side
+  String baseId(String id) => id.split('-').first;
+
+  Future<bool> removeEvent(Event ev, bool confirmed) async {
+    if (!confirmed) return false;
+
+    final mongoId = baseId(ev.id);
+    debugPrint('🗑️  [UI] removeEvent for ${ev.id}  →  $mongoId');
+
+    try {
+      await eventDomain.deleteEvent(mongoId);
+      debugPrint('✅  [UI] deleteEvent completed for $mongoId');
+      return true;
+    } catch (e, st) {
+      debugPrint('❌  [UI] deleteEvent threw: $e');
+      debugPrintStack(stackTrace: st);
+      return false;
+    }
+  }
+}

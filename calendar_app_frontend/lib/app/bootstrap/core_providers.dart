@@ -1,0 +1,81 @@
+import 'package:hexora/services/auth_user/api/auth_api_client.dart';
+import 'package:hexora/services/auth_user/api/i_auth_api_client.dart';
+import 'package:hexora/services/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/services/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/services/auth_user/auth/token/token_store/Itoken_store.dart';
+import 'package:hexora/services/auth_user/auth/token/token_store/token_store.dart';
+import 'package:hexora/services/notification/domain/notification_domain.dart';
+import 'package:hexora/services/user/api/i_user_api_client.dart';
+import 'package:hexora/services/user/api/user_api_client.dart';
+import 'package:hexora/services/user/domain/user_agenda_domain.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/services/user/presence_domain.dart';
+import 'package:hexora/services/user/repository/i_user_repository.dart';
+import 'package:hexora/services/user/repository/user_repository.dart';
+import 'package:hexora/state/locale_provider.dart';
+import 'package:hexora/theme/theme_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
+
+final List<SingleChildWidget> coreProviders = [
+  // NEW: shared HTTP client, disposed automatically
+  Provider<http.Client>(
+    create: (_) => http.Client(), // ✅ no args
+    dispose: (_, http.Client client) => client.close(), // ✅ close() exists
+  ),
+  // Global app state
+  ChangeNotifierProvider(create: (_) => NotificationDomain()),
+
+  // ðŸ” Token store (single source of truth)
+  Provider<TokenStore>(
+    create: (_) {
+      final store = SecureTokenStore();
+      TokenService.configureStore(store);
+      return store;
+    },
+  ),
+
+  // User stack (token from injected store, not static)
+  Provider<IUserApiClient>(create: (_) => UserApiClient()),
+  Provider<IUserRepository>(
+    create: (ctx) => UserRepository(
+      apiClient: ctx.read<IUserApiClient>(),
+      // Use TokenService so access-token expiry/refresh is consistent
+      // across every feature that pulls tokens via UserDomain.
+      tokenSupplier: () => TokenService.loadToken(),
+    ),
+  ),
+
+  // Auth stack
+  Provider<IAuthApiClient>(create: (_) => AuthApiClientImpl()),
+  ChangeNotifierProvider<AuthProvider>(
+    create: (ctx) => AuthProvider(
+      userRepository: ctx.read<IUserRepository>(),
+      authApi: ctx.read<IAuthApiClient>(),
+      tokens: ctx.read<TokenStore>(), // <-- inject here
+    ),
+  ),
+  ChangeNotifierProvider<AuthService>(
+    create: (ctx) => AuthService(ctx.read<AuthProvider>()),
+  ),
+
+  // UserDomain (depends on NotificationDomain + UserRepository)
+  ChangeNotifierProvider(
+    create: (ctx) => UserDomain(
+      userRepository: ctx.read<IUserRepository>(),
+      user: null,
+      notificationDomain: ctx.read<NotificationDomain>(),
+    ),
+  ),
+  // ðŸ‘‰ New: UserAgendaDomain (no dependencies on UserDomain)
+  Provider<UserAgendaDomain>(
+    create: (_) => UserAgendaDomain(),
+  ),
+
+  // Presence + theme + locale
+  ChangeNotifierProvider(create: (_) => PresenceDomain()),
+  ChangeNotifierProvider(create: (_) => ThemeModeProvider()),
+  ChangeNotifierProvider(create: (_) => LocaleProvider()),
+];

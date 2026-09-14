@@ -1,0 +1,1249 @@
+import 'package:flutter/material.dart';
+import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/services/invoicing/presupuestos_api.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/presupuesto_document_workspace.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/presupuesto_pdf_preview_dialog.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/presupuesto_template_editor_screen.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:intl/intl.dart';
+
+enum PresupuestoDocumentActionMode { all, drafts, issued, edit, preview }
+
+/// Screens at or above this width show the presupuesto editor as a centered
+/// dialog instead of a full-page route, so it doesn't navigate away from
+/// the dashboard it was opened from.
+const double _kPresupuestoEditorDialogBreakpoint = 900;
+
+class PresupuestoDocumentActionsView extends StatefulWidget {
+  const PresupuestoDocumentActionsView({
+    super.key,
+    required this.groupId,
+    required this.clients,
+    this.initialSelectedBudgetId,
+    this.mode = PresupuestoDocumentActionMode.drafts,
+    this.api,
+  });
+
+  final String groupId;
+  final List<GroupClient> clients;
+  final String? initialSelectedBudgetId;
+  final PresupuestoDocumentActionMode mode;
+  final PresupuestosApi? api;
+
+  @override
+  State<PresupuestoDocumentActionsView> createState() =>
+      _PresupuestoDocumentActionsViewState();
+}
+
+class _PresupuestoDocumentActionsViewState
+    extends State<PresupuestoDocumentActionsView> {
+  late final PresupuestosApi _api;
+  late final PresupuestoDocumentWorkspace _workspace;
+  final TextEditingController _search = TextEditingController();
+  bool _loading = true;
+  String? _fileBusyId;
+  String? _checkingVariablesId;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _api = widget.api ?? PresupuestosApi();
+    _workspace = PresupuestoDocumentWorkspace(api: _api);
+    _search.addListener(_onSearchChanged);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _search
+      ..removeListener(_onSearchChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() => setState(() {});
+
+  Future<void> _load() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+    try {
+      await _workspace.refresh(widget.groupId);
+    } on PresupuestosApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<Map<String, dynamic>> get _visibleDocuments {
+    final documents = switch (widget.mode) {
+      PresupuestoDocumentActionMode.all => _workspace.documents,
+      PresupuestoDocumentActionMode.drafts ||
+      PresupuestoDocumentActionMode.edit =>
+        _workspace.drafts,
+      PresupuestoDocumentActionMode.issued => _workspace.issued,
+      PresupuestoDocumentActionMode.preview => _workspace.documents,
+    };
+    final query = _search.text.trim().toLowerCase();
+    final filtered = query.isEmpty
+        ? documents.toList(growable: false)
+        : documents.where((document) {
+            final searchable = <String>[
+              presupuestoDocumentTitle(document),
+              presupuestoDocumentClientName(document),
+              _documentNumber(document),
+            ].join(' ').toLowerCase();
+            return searchable.contains(query);
+          }).toList(growable: false);
+    filtered.sort((a, b) {
+      final aDate = _documentDate(
+            a,
+            issued: presupuestoDocumentStatus(a) == 'issued',
+          ) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = _documentDate(
+            b,
+            issued: presupuestoDocumentStatus(b) == 'issued',
+          ) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
+    return filtered;
+  }
+
+  int get _sectionDocumentCount {
+    switch (widget.mode) {
+      case PresupuestoDocumentActionMode.all:
+        return _workspace.documents.length;
+      case PresupuestoDocumentActionMode.drafts:
+      case PresupuestoDocumentActionMode.edit:
+        return _workspace.drafts.length;
+      case PresupuestoDocumentActionMode.issued:
+        return _workspace.issued.length;
+      case PresupuestoDocumentActionMode.preview:
+        return _workspace.documents.length;
+    }
+  }
+
+  Future<void> _openEditor(Map<String, dynamic> document) async {
+    final id = presupuestoDocumentId(document);
+    if (id.isEmpty) return;
+    final editor = PresupuestoTemplateEditorScreen(
+      api: _api,
+      groupId: widget.groupId,
+      presupuestoId: id,
+      presupuestoNumber: _documentNumber(document),
+      initialBudget: document,
+      onDocumentSaved: _load,
+    );
+    final isWide = MediaQuery.of(context).size.width >=
+        _kPresupuestoEditorDialogBreakpoint;
+    if (isWide) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => Dialog(
+          clipBehavior: Clip.antiAlias,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1280, maxHeight: 860),
+            child: editor,
+          ),
+        ),
+      );
+    } else {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => editor),
+      );
+    }
+    if (mounted) await _load();
+  }
+
+  Future<void> _openPdf(
+    Map<String, dynamic> document, {
+    required bool preview,
+  }) async {
+    final id = presupuestoDocumentId(document);
+    if (id.isEmpty || _fileBusyId != null) return;
+    setState(() => _fileBusyId = id);
+    try {
+      final number = _documentNumber(document).replaceAll('/', '-');
+      final fileName = 'presupuesto-$number-documento.pdf';
+      final variables = await _api.getTemplateVariables(id);
+      if (!mounted ||
+          !await _confirmUnresolvedVariables(
+            _unresolvedKeys(variables),
+            action: preview ? 'previsualizar' : 'descargar',
+          )) {
+        return;
+      }
+      if (preview) {
+        final response = await _api.previewTemplatePdf(id);
+        final bytes = InvoiceEditorPdf.validatePdf(response);
+        if (!mounted) return;
+        await PresupuestoPdfPreviewDialog.show(
+          context,
+          bytes: bytes,
+          onDownload: () => launchFileDownload(
+            bytes,
+            fileName: fileName,
+            mimeType: 'application/pdf',
+          ),
+        );
+      } else {
+        final response = await _api.downloadTemplatePdf(id);
+        await launchFileDownload(
+          response.bodyBytes,
+          fileName: fileName,
+          mimeType: 'application/pdf',
+        );
+      }
+    } on PresupuestosApiException catch (e) {
+      if (mounted) showErrorSnack(context, _friendlyPdfError(e));
+    } catch (e) {
+      if (mounted) {
+        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _fileBusyId = null);
+    }
+  }
+
+  String _friendlyPdfError(PresupuestosApiException e) {
+    switch (e.statusCode) {
+      case 401:
+        return 'Tu sesion ha caducado. Vuelve a iniciar sesion e intentalo de nuevo.';
+      case 403:
+        return 'No tienes permiso para previsualizar este presupuesto.';
+      case 404:
+        return 'No se encontro el presupuesto solicitado.';
+      case 500:
+        return 'No se pudo generar el PDF en el servidor. Intentalo de nuevo en unos minutos.';
+      default:
+        return e.message;
+    }
+  }
+
+  List<String> _unresolvedKeys(Map<String, dynamic> payload) {
+    final raw = payload['unresolvedKeys'];
+    if (raw is! List) return const [];
+    return raw
+        .map((item) => item.toString().trim())
+        .where((key) => key.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<bool> _confirmUnresolvedVariables(
+    List<String> unresolved, {
+    required String action,
+  }) async {
+    if (unresolved.isEmpty) return true;
+    final keys = unresolved.map((key) => '[$key]').join(', ');
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Variables sin completar'),
+            content: Text(
+              'Todavía quedan variables sin valor: $keys. Si continúas, aparecerán entre corchetes en el PDF.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text('Continuar y $action'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _issue(Map<String, dynamic> document) async {
+    final validation = presupuestoDocumentIssueValidation(document);
+    if (validation != null) {
+      showErrorSnack(context, validation);
+      return;
+    }
+    final id = presupuestoDocumentId(document);
+    if (_workspace.isIssuing(id) || _checkingVariablesId == id) return;
+    setState(() => _checkingVariablesId = id);
+    List<String> unresolved;
+    try {
+      unresolved = _unresolvedKeys(await _api.getTemplateVariables(id));
+    } on PresupuestosApiException catch (e) {
+      if (mounted) showErrorSnack(context, e.message);
+      return;
+    } catch (e) {
+      if (mounted) {
+        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _checkingVariablesId = null);
+    }
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Emitir presupuesto'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '¿Emitir este presupuesto? Se asignará un número definitivo.',
+            ),
+            if (unresolved.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Text(
+                'Atención: siguen sin valor ${unresolved.map((key) => '[$key]').join(', ')}. Aparecerán entre corchetes en el PDF.',
+                style: TextStyle(
+                  color: Theme.of(dialogContext).colorScheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.publish_rounded),
+            label: const Text('Emitir'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {});
+    try {
+      final issued = await _workspace.issue(document);
+      await _load();
+      final id = presupuestoDocumentId(issued);
+      final refreshed = _workspace.documents
+          .where((item) => presupuestoDocumentId(item) == id)
+          .firstOrNull;
+      final number = _documentNumber(refreshed ?? issued);
+      if (mounted) {
+        showSuccessSnack(
+          context,
+          'Presupuesto $number emitido correctamente.',
+        );
+      }
+    } on PresupuestoDocumentValidationException catch (e) {
+      if (mounted) showErrorSnack(context, e.message);
+    } on PresupuestoDocumentIssueInProgressException catch (_) {
+      // The active request owns the UI state and result.
+    } on PresupuestosApiException catch (e) {
+      if (isAlreadyIssuedDocumentError(e)) await _load();
+      if (mounted) {
+        showErrorSnack(context, presupuestoDocumentIssueErrorMessage(e));
+      }
+    } catch (e) {
+      if (mounted) {
+        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _remove(Map<String, dynamic> document) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Eliminar borrador'),
+        content: Text(
+          '¿Eliminar el documento "${presupuestoDocumentTitle(document)}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await _workspace.remove(document);
+      if (mounted) {
+        setState(() {});
+        showSuccessSnack(context, 'Borrador eliminado.');
+      }
+    } on PresupuestosApiException catch (e) {
+      if (mounted) showErrorSnack(context, e.message);
+    } catch (e) {
+      if (mounted) {
+        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return _DocumentErrorState(message: _error!, onRetry: _load);
+    }
+    final documents = _visibleDocuments;
+    final theme = Theme.of(context);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 22, 24, 32),
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 760;
+            final heading = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    widget.mode == PresupuestoDocumentActionMode.issued
+                        ? Icons.verified_outlined
+                        : Icons.drafts_outlined,
+                    size: 22,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _title,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          _DocumentPill(
+                            label: '$_sectionDocumentCount',
+                            color: theme.colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+            final tools = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: compact ? constraints.maxWidth - 52 : 280,
+                  child: TextField(
+                    controller: _search,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar documentos',
+                      prefixIcon: const Icon(Icons.search_rounded, size: 19),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Limpiar busqueda',
+                              onPressed: _search.clear,
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                            ),
+                      isDense: true,
+                      filled: true,
+                      fillColor: theme.colorScheme.surfaceContainerLowest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.4),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.4),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Actualizar documentos',
+                  child: IconButton.filledTonal(
+                    style: IconButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: _load,
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
+                ),
+              ],
+            );
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  heading,
+                  const SizedBox(height: 14),
+                  tools,
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: heading),
+                const SizedBox(width: 20),
+                tools,
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 18),
+        if (documents.isEmpty)
+          _DocumentEmptyState(
+            mode: widget.mode,
+            searchQuery: _search.text.trim(),
+          )
+        else
+          for (final document in documents) ...[
+            _DocumentRow(
+              document: document,
+              clients: widget.clients,
+              mode: widget.mode,
+              fileBusy: _fileBusyId == presupuestoDocumentId(document),
+              fileActionsDisabled: _fileBusyId != null,
+              issuing: _workspace.isIssuing(
+                    presupuestoDocumentId(document),
+                  ) ||
+                  _checkingVariablesId == presupuestoDocumentId(document),
+              onOpen: presupuestoDocumentStatus(document) == 'draft'
+                  ? () => _openEditor(document)
+                  : () => _openPdf(document, preview: true),
+              onPreview: () => _openPdf(document, preview: true),
+              onDownload: () => _openPdf(document, preview: false),
+              onIssue: () => _issue(document),
+              onDelete: () => _remove(document),
+            ),
+            const SizedBox(height: 8),
+          ],
+      ],
+    );
+  }
+
+  String get _title {
+    switch (widget.mode) {
+      case PresupuestoDocumentActionMode.all:
+        return 'Propuestas';
+      case PresupuestoDocumentActionMode.drafts:
+        return 'Borradores';
+      case PresupuestoDocumentActionMode.issued:
+        return 'Emitidos';
+      case PresupuestoDocumentActionMode.edit:
+        return 'Editar documento';
+      case PresupuestoDocumentActionMode.preview:
+        return 'Previsualizar PDF';
+    }
+  }
+
+  String get _subtitle {
+    switch (widget.mode) {
+      case PresupuestoDocumentActionMode.all:
+        return 'Todas las propuestas, borradores y documentos emitidos.';
+      case PresupuestoDocumentActionMode.drafts:
+        return 'Documentos de presupuesto pendientes de emitir.';
+      case PresupuestoDocumentActionMode.issued:
+        return 'Documentos emitidos con numeracion definitiva.';
+      case PresupuestoDocumentActionMode.edit:
+        return 'Selecciona un borrador para continuar editando su contenido.';
+      case PresupuestoDocumentActionMode.preview:
+        return 'Abre el PDF generado para cualquier documento de presupuesto.';
+    }
+  }
+
+  String _documentNumber(Map<String, dynamic> document) {
+    final value =
+        (document['presupuestoNumber'] ?? document['budgetNumber'] ?? '')
+            .toString()
+            .trim();
+    return value.isEmpty ? presupuestoDocumentId(document) : value;
+  }
+}
+
+class _DocumentRow extends StatelessWidget {
+  const _DocumentRow({
+    required this.document,
+    required this.clients,
+    required this.mode,
+    required this.fileBusy,
+    required this.fileActionsDisabled,
+    required this.issuing,
+    required this.onOpen,
+    required this.onPreview,
+    required this.onDownload,
+    required this.onIssue,
+    required this.onDelete,
+  });
+
+  final Map<String, dynamic> document;
+  final List<GroupClient> clients;
+  final PresupuestoDocumentActionMode mode;
+  final bool fileBusy;
+  final bool fileActionsDisabled;
+  final bool issuing;
+  final VoidCallback onOpen;
+  final VoidCallback onPreview;
+  final VoidCallback onDownload;
+  final VoidCallback onIssue;
+  final VoidCallback onDelete;
+
+  bool get _isIssued => presupuestoDocumentStatus(document) == 'issued';
+  bool get _isDraft => presupuestoDocumentStatus(document) == 'draft';
+
+  static String _initials(String source) {
+    final trimmed = source.trim();
+    if (trimmed.isEmpty) return '#';
+    final words = trimmed.split(RegExp(r'\s+'));
+    final first = words.first.characters.first.toUpperCase();
+    if (words.length == 1) return first;
+    final second = words[1].characters.first.toUpperCase();
+    return '$first$second';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final date = _documentDate(document, issued: _isIssued);
+    final amount = presupuestoDocumentAmount(document);
+    final client = _clientName(document, clients);
+    final accent = _isIssued
+        ? Colors.green.shade700
+        : _isDraft
+            ? cs.primary
+            : cs.error;
+    final title = presupuestoDocumentTitle(document);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withValues(alpha: 0.045),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: cs.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.38),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpen,
+          hoverColor: accent.withValues(alpha: 0.035),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 920;
+
+                final avatar = Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    _initials(client.isNotEmpty ? client : title),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                );
+
+                final identity = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _DocumentPill(
+                          label: 'Documento',
+                          color: accent,
+                        ),
+                        if (_isIssued) ...[
+                          const SizedBox(width: 8),
+                          _DocumentPill(
+                            label: _documentNumber(document),
+                            color: cs.primary,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.person_outline_rounded,
+                          size: 14,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            client.isEmpty ? 'Sin cliente' : client,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: client.isEmpty
+                                  ? cs.error
+                                  : cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _DocumentMeta(
+                          icon: _isIssued
+                              ? Icons.event_available_outlined
+                              : Icons.update_rounded,
+                          label: date == null
+                              ? 'Sin fecha'
+                              : DateFormat('d MMM y', 'es').format(date),
+                        ),
+                        if (_isDraft) ...[
+                          const SizedBox(width: 12),
+                          _DocumentMeta(
+                            icon: Icons.image_outlined,
+                            label:
+                                '${presupuestoDocumentImageCount(document)} im\u00e1genes',
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                );
+
+                final statusAndAmount = Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (amount != null)
+                      Text(
+                        NumberFormat.currency(locale: 'es_ES', symbol: '€')
+                            .format(amount),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: accent,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    const SizedBox(height: 3),
+                    _DocumentPill(
+                      label: _isIssued
+                          ? 'Emitido'
+                          : _isDraft
+                              ? 'Borrador'
+                              : 'Anulado',
+                      color: accent,
+                    ),
+                  ],
+                );
+
+                final header = compact
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              avatar,
+                              const SizedBox(width: 14),
+                              Expanded(child: identity),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          statusAndAmount,
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          avatar,
+                          const SizedBox(width: 16),
+                          Expanded(child: identity),
+                          const SizedBox(width: 16),
+                          statusAndAmount,
+                          const SizedBox(width: 16),
+                          _actions(context),
+                        ],
+                      );
+
+                if (!compact) return header;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    header,
+                    const SizedBox(height: 16),
+                    Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.18),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            _DocumentMeta(
+                              icon: _isIssued
+                                  ? Icons.event_available_outlined
+                                  : Icons.update_rounded,
+                              label: date == null
+                                  ? 'Sin fecha'
+                                  : '${_isIssued ? 'Emitido' : 'Actualizado'} ${DateFormat('d MMM y', 'es').format(date)}',
+                            ),
+                            if (_isDraft)
+                              _DocumentMeta(
+                                icon: Icons.image_outlined,
+                                label:
+                                    '${presupuestoDocumentImageCount(document)} imágenes',
+                              ),
+                          ],
+                        ),
+                        _actions(context),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _actions(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: fileActionsDisabled ? null : onDownload,
+          icon: fileBusy
+              ? const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.download_rounded, size: 19),
+          label: Text(
+            'Descargar',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: cs.onPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        PopupMenuButton<String>(
+          tooltip: 'Más acciones',
+          offset: const Offset(0, 46),
+          elevation: 8,
+          color: cs.surfaceContainerLowest,
+          surfaceTintColor: Colors.transparent,
+          constraints: const BoxConstraints(minWidth: 220),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          onSelected: (value) {
+            switch (value) {
+              case 'open':
+                onOpen();
+              case 'preview':
+                onPreview();
+              case 'issue':
+                onIssue();
+              case 'delete':
+                onDelete();
+            }
+          },
+          itemBuilder: (context) => <PopupMenuEntry<String>>[
+            if (_isDraft)
+              PopupMenuItem<String>(
+                value: 'open',
+                child: _actionMenuItem(
+                  context,
+                  icon: Icons.edit_note_rounded,
+                  label: 'Editar documento',
+                ),
+              ),
+            PopupMenuItem<String>(
+              value: 'preview',
+              enabled: !fileActionsDisabled,
+              child: _actionMenuItem(
+                context,
+                icon: Icons.picture_as_pdf_outlined,
+                label: 'Vista previa del PDF',
+              ),
+            ),
+            if (_isDraft)
+              PopupMenuItem<String>(
+                value: 'issue',
+                enabled: !issuing,
+                child: _actionMenuItem(
+                  context,
+                  icon: Icons.publish_rounded,
+                  label: issuing ? 'Comprobando…' : 'Emitir presupuesto',
+                  color: cs.primary,
+                ),
+              ),
+            if (_isDraft) const PopupMenuDivider(),
+            if (_isDraft)
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: _actionMenuItem(
+                  context,
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Eliminar borrador',
+                  color: cs.error,
+                ),
+              ),
+          ],
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.42),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            child: Icon(
+              Icons.more_vert_rounded,
+              size: 20,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _actionMenuItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    Color? color,
+  }) {
+    final foreground = color ?? Theme.of(context).colorScheme.onSurfaceVariant;
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: foreground.withValues(alpha: 0.09),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: foreground),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      ],
+    );
+  }
+
+  String _documentNumber(Map<String, dynamic> source) {
+    final value = (source['presupuestoNumber'] ?? source['budgetNumber'] ?? '')
+        .toString()
+        .trim();
+    return value.isEmpty ? presupuestoDocumentId(source) : value;
+  }
+}
+
+class _DocumentMeta extends StatelessWidget {
+  const _DocumentMeta({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final color = cs.onSurfaceVariant;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DocumentPill extends StatelessWidget {
+  const _DocumentPill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+}
+
+class _DocumentEmptyState extends StatelessWidget {
+  const _DocumentEmptyState({
+    required this.mode,
+    required this.searchQuery,
+  });
+
+  final PresupuestoDocumentActionMode mode;
+  final String searchQuery;
+
+  @override
+  Widget build(BuildContext context) {
+    final issued = mode == PresupuestoDocumentActionMode.issued;
+    final all = mode == PresupuestoDocumentActionMode.all;
+    final searching = searchQuery.isNotEmpty;
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              searching
+                  ? Icons.search_off_rounded
+                  : issued
+                      ? Icons.verified_outlined
+                      : Icons.drafts_outlined,
+              size: 26,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            searching
+                ? 'No hay resultados para "$searchQuery"'
+                : issued
+                    ? 'No hay documentos emitidos.'
+                    : all
+                        ? 'No hay propuestas.'
+                        : 'No hay borradores.',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            searching
+                ? 'Prueba con otro nombre de cliente o documento.'
+                : issued
+                    ? 'Los presupuestos emitidos apareceran aqui.'
+                    : all
+                        ? 'Las propuestas aparecerán aquí.'
+                        : 'Crea una propuesta para verla listada aquí.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DocumentErrorState extends StatelessWidget {
+  const _DocumentErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Reintentar'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _clientName(
+  Map<String, dynamic> document,
+  List<GroupClient> clients,
+) {
+  final direct = presupuestoDocumentClientName(document);
+  if (direct.isNotEmpty) return direct;
+  final clientId = (document['clientId'] ?? '').toString().trim();
+  for (final client in clients) {
+    if (client.id == clientId) return client.name;
+  }
+  return '';
+}
+
+DateTime? _documentDate(
+  Map<String, dynamic> document, {
+  required bool issued,
+}) {
+  final raw = issued
+      ? document['issueDate'] ?? document['issuedAt']
+      : document['updatedAt'] ?? document['createdAt'];
+  return DateTime.tryParse(raw?.toString() ?? '')?.toLocal();
+}
