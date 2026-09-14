@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/services/invoicing/presupuestos_api.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/presupuesto_document_workspace.dart';
+import 'package:hexora/services/presupuestos/presupuestos_api.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
 
 void main() {
   final draft = <String, dynamic>{

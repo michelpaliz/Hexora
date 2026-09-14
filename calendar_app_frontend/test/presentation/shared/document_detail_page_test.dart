@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/models/group_model/client/client.dart';
 import 'package:hexora/models/receipt/receipt.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/receipts_view/receipt_detail_card.dart';
+import 'package:hexora/presentation/screens/workspace/sections/receipts/widgets/receipt_detail_card.dart';
 import 'package:hexora/presentation/shared/widgets/document_detail_page.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';

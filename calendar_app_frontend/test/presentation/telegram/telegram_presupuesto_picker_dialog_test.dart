@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/services/invoicing/presupuestos_api.dart';
+import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/components/telegram_issued_presupuesto_picker_dialog.dart';
 

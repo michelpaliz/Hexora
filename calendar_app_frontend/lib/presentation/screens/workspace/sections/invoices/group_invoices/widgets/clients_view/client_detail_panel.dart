@@ -11,7 +11,7 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'client_invoice_stats_card.dart';
 import 'client_contracts_tab.dart';
-import 'client_receipts_tab.dart';
+import '../../../../receipts/views/client_receipts_tab.dart';
 
 class ClientDetailPanel extends StatefulWidget {
   final String groupId;

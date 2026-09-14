@@ -16,7 +16,7 @@ import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/blob_storage/blobServer.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
-import 'package:hexora/services/invoicing/presupuestos_api.dart';
+import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/services/receipts/receipts_api.dart';
 import 'package:hexora/services/mail/domain/mail_domain.dart';
 import 'package:hexora/services/mail/models/mail_requests.dart';
@@ -25,7 +25,7 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/wi
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/presupuesto_document_workspace.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -43,6 +43,17 @@ part 'compose/widgets/compose_bottom_bar.dart';
 part 'compose/widgets/invoice_picker_sheet.dart';
 part 'compose/widgets/inline_invoice_wizard.dart';
 part 'compose/widgets/invoice_selection_preview.dart';
+
+part 'compose/sections/recipients_card.dart';
+part 'compose/sections/subject_card.dart';
+part 'compose/sections/message_toolbar.dart';
+part 'compose/sections/message_editor.dart';
+part 'compose/sections/attachments_card.dart';
+part 'compose/sections/invoice_options.dart';
+part 'compose/widgets/template_picker.dart';
+part 'compose/widgets/recipient_controls.dart';
+part 'compose/widgets/recent_invoices_dialog.dart';
+part 'compose/widgets/client_picker.dart';
 
 Future<List<Receipt>> sendEmailAndRefreshReceipts({
   required Future<void> Function() sendEmail,
@@ -115,6 +126,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   bool _includeInvoiceLinks = false;
   bool _applyDefaultFooter = true;
   bool _sending = false;
+  bool _confirmingSend = false;
   bool _uploadingAttachment = false;
   bool _showCc = false;
   bool _showBcc = false;
@@ -343,6 +355,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   }
 
   Future<void> _send() async {
+    if (_sending || _confirmingSend || _uploadingAttachment) return;
     final l = AppLocalizations.of(context)!;
     _flushRecipientInputs();
     _applySelectedClientEmailIfNeeded();
@@ -389,13 +402,39 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final hasDocumentIds = invoiceIds.isNotEmpty ||
         selectedPresupuestoIds.isNotEmpty ||
         receiptIds.isNotEmpty;
-    final hasManualPdfAttachment = _manualPdfAttachmentCount > 0;
-    if (_useClientMode && !hasDocumentIds && !hasManualPdfAttachment) {
-      final msg = l.localeName.toLowerCase().startsWith('es')
-          ? 'Adjunta al menos un PDF (factura, presupuesto, recibo o archivo) para enviar desde cliente.'
-          : 'Attach at least one PDF (invoice, budget, receipt, or file) before sending from client mode.';
-      _showError(msg);
-      return;
+    if (_useClientMode && !hasDocumentIds && _attachments.isEmpty) {
+      final isSpanish = l.localeName.toLowerCase().startsWith('es');
+      _confirmingSend = true;
+      bool? confirmed;
+      try {
+        confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            icon: const Icon(Icons.warning_amber_rounded),
+            title: Text(isSpanish
+                ? 'No hay documentos adjuntos'
+                : 'No documents attached'),
+            content: Text(isSpanish
+                ? 'No has adjuntado ningún documento. ¿Quieres enviar el correo solo con el texto?'
+                : 'You haven’t attached any documents. Do you want to send the email with text only?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(isSpanish ? 'Volver' : 'Go back'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(isSpanish
+                    ? 'Enviar sin adjuntos'
+                    : 'Send without attachments'),
+              ),
+            ],
+          ),
+        );
+      } finally {
+        _confirmingSend = false;
+      }
+      if (!mounted || confirmed != true) return;
     }
     final groupId = _currentGroupId();
     if (groupId == null || groupId.isEmpty) {

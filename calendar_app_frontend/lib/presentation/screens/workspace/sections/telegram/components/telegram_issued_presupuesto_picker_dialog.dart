@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
-import 'package:hexora/services/invoicing/presupuestos_api.dart';
+import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 
 class TelegramIssuedPresupuestoSelection {
   const TelegramIssuedPresupuestoSelection({

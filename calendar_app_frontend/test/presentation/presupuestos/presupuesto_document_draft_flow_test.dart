@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/services/invoicing/presupuestos_api.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/presupuesto_document_draft_flow.dart';
+import 'package:hexora/services/presupuestos/presupuestos_api.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_draft_flow.dart';
 
 void main() {
   const content = <String, dynamic>{

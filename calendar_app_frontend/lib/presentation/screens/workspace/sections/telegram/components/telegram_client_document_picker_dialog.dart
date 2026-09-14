@@ -10,11 +10,11 @@ import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
-import 'package:hexora/services/invoicing/presupuestos_api.dart';
+import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/services/receipts/receipts_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/presupuesto_document_workspace.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 
 class TelegramClientDocumentSelection {

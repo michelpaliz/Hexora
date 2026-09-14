@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/services/invoicing/presupuestos_api.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/presupuesto_template_editor_screen.dart';
+import 'package:hexora/services/presupuestos/presupuestos_api.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/templates/presupuesto_template_editor_screen.dart';
 
 void main() {
   testWidgets(

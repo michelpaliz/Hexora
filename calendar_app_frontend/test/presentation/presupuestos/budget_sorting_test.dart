@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/budget_sort_query.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/group_invoices_budgets_view.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/utils/budget_sort_query.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/views/presupuestos_view.dart';
 
 void main() {
   group('budget sort query mapping', () {

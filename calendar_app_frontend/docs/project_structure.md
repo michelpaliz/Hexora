@@ -20,6 +20,8 @@ lib/
 │   ├── time_tracking/
 │   ├── service_catalog/
 │   ├── invoicing/
+│   ├── presupuestos/
+│   ├── receipts/
 │   ├── mail/
 │   ├── tax/
 │   └── telegram/             # Other service domains live alongside these
@@ -73,7 +75,9 @@ docs/
 | Tax tables, filters, client invoice lists | `lib/presentation/screens/workspace/sections/expenses/tax/` |
 | Invoice screens | `lib/presentation/screens/workspace/sections/invoices/` |
 | Invoice editor and form widgets | `lib/presentation/screens/workspace/sections/invoices/editor/` |
-| Receipt editor | `lib/presentation/screens/workspace/sections/invoices/receipt_editor/` |
+| Presupuesto module and document workflows | `lib/presentation/screens/workspace/sections/presupuestos/` |
+| Presupuesto API | `lib/services/presupuestos/presupuestos_api.dart` |
+| Receipt editor | `lib/presentation/screens/workspace/sections/receipts/editor/` |
 | Expense upload and import | `lib/presentation/screens/workspace/sections/expenses/upload/` |
 | Expense supplier management | `lib/presentation/screens/workspace/sections/expenses/providers/` |
 | Telegram screens | `lib/presentation/screens/workspace/sections/telegram/` |
@@ -146,11 +150,25 @@ invoices/
 │   ├── view_sections/
 │   └── widgets/
 │       └── form/              # Form layout and content widgets
-├── receipt_editor/            # Receipt editor and wizard
 ├── recurring_invoices/
-├── recurring_receipts/
 ├── shared/
 └── widgets/
+
+presupuestos/
+├── presupuestos_module_screen.dart
+├── views/                    # Existing list/create flow and its part files
+├── documents/                # Drafts, document actions, workspace helpers
+├── templates/                # Template editing, variables, image library
+├── conversion/               # Advance/final invoice conversion
+├── utils/                    # Sorting helpers
+└── widgets/                  # Presupuesto-specific reusable UI
+
+receipts/
+├── editor/                   # Receipt editor and wizard
+├── recurring/                # Recurring receipt screen
+├── views/                    # Receipt list and client receipts tab
+├── widgets/                  # Detail cards, list items, delivery dialog
+└── utils/                    # Receipt delivery helpers
 
 expenses/
 ├── upload/                    # Expense upload screen and import UI
@@ -166,7 +184,19 @@ organization does not merge their controllers or change their entry points.
 Expense widgets can still be embedded in the invoice module, but their source
 now lives with the expenses feature.
 
+Presupuestos and receipts also have their own source folders. Their existing
+menus, navigation, callbacks, and shared invoice-editor integrations are
+unchanged. See the feature guides for entry points, dependencies, and tests:
+
+- [Presupuestos](../lib/presentation/screens/workspace/sections/presupuestos/README.md)
+- [Receipts](../lib/presentation/screens/workspace/sections/receipts/README.md)
+
 ## Test folders
+
+The largest expense-import, invoice-list, presupuesto-editor, and mail-compose
+views are split into state owners, UI sections, models, and widgets. See
+[large view boundaries](architecture/large_view_boundaries.md) for ownership,
+entry points, and the `part` / `part of` rules used by these features.
 
 `test/presentation/` groups UI tests by feature, including `invoices`,
 `presupuestos`, `receipts`, `expenses`, `banking`, `clients`, `auth`, `calendar`,
@@ -233,7 +263,7 @@ the source reorganization.
 
 The billing cleanup also shortens the old `group_invoce_flow/screens/invoice_editor`
 path to `invoices/editor`, moves `group_receipts_flow/screens/receipt_editor` to
-`invoices/receipt_editor`, and removes the repeated `widgets/invoice_editor`
+`receipts/editor`, and removes the repeated `widgets/invoice_editor`
 nesting. Expense-upload files formerly under `invoices/group_invoices` now live
 under `expenses/upload`, with supplier management in `expenses/providers`.
 These are source-location changes, not business-logic changes.

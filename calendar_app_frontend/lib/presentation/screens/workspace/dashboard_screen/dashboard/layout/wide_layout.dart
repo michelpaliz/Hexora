@@ -12,7 +12,7 @@ import 'package:hexora/presentation/screens/workspace/dashboard_screen/widgets/r
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/presupuestos_module_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';

@@ -27,6 +27,22 @@ import 'package:provider/provider.dart';
 part 'screen_sections/expense_upload_import_actions_section.dart';
 part 'screen_sections/expense_upload_import_tabs_section.dart';
 
+part 'imports/sections/prediction_edit_dialog.dart';
+part 'imports/sections/json_import_tab.dart';
+part 'imports/sections/json_import_steps.dart';
+part 'imports/sections/batch_import_tab.dart';
+part 'imports/models/import_models.dart';
+part 'imports/widgets/workflow_steps.dart';
+part 'imports/widgets/batch_controls.dart';
+part 'imports/widgets/batch_summary.dart';
+part 'imports/widgets/prediction_review.dart';
+part 'imports/widgets/preview_items.dart';
+part 'imports/widgets/batch_files.dart';
+part 'imports/widgets/batch_onboarding.dart';
+part 'imports/utils/preview_formatters.dart';
+part 'imports/widgets/json_import_controls.dart';
+part 'imports/widgets/batch_documents.dart';
+
 class ExpenseUploadScreen extends StatefulWidget {
   const ExpenseUploadScreen({
     super.key,

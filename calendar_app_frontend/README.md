@@ -77,7 +77,7 @@ The API/service layer — one folder per domain, each talking to the backend
 over `http`/`dio` and (where relevant) sockets:
 `auth_user/`, `groups/` (groups, events, recurrence, invites,
 categories, agenda), `clients/`, `time_tracking/`, `service_catalog/`,
-`invoicing/`, `receipts/`, `vat/`, `expenses/`,
+`invoicing/`, `presupuestos/`, `receipts/`, `vat/`, `expenses/`,
 `statements/`, `enable_banking/`, `truelayer/`, `documents/` (private
 documents), `mail/`, `emails/`, `notification/`, `telegram/`, `providers/`,
 `insights/`, `blob_storage/`, `downloads/`, `user/`, `config/` (API
@@ -90,8 +90,9 @@ All screens and widgets, grouped by product area:
 * **home/** — landing/home page
 * **workspace/** — the main group workspace: dashboard shell
   (`dashboard_screen/`) plus feature sections under `sections/`:
-  `invoices/` (invoice + presupuesto editors, VAT summary, clients/receipts
-  views), `workers/` (time tracking, monthly overview), `enable_banking/`
+  `invoices/` (invoice editor, VAT summary, client views), `presupuestos/`
+  (documents, templates, invoice conversion), `receipts/` (receipt views,
+  editor, recurring receipts), `workers/` (time tracking, monthly overview), `enable_banking/`
   (bank statements, invoice linking), `expenses/`, `mail/` (compose,
   inline invoice wizard), `telegram/`, `private_documents/` (vault,
   upload/detail dialogs), `services_clients/`, `members/`, `notifications/`,

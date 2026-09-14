@@ -1,7 +1,7 @@
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/presupuestos_module_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard_screen/screens/role_info_screen.dart';

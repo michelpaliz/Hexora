@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/presupuesto_advance_final_flow.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/conversion/presupuesto_advance_final_flow.dart';
 
 void main() {
   group('buildAdvanceInvoicePayload', () {
