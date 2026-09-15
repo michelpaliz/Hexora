@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:flutter/material.dart';
 
 abstract class EventDialogs {

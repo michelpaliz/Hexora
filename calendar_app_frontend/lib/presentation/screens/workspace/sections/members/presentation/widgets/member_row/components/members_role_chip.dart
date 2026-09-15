@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role_labels.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
 
 class MemberRoleChip extends StatelessWidget {
   final GroupRole role;

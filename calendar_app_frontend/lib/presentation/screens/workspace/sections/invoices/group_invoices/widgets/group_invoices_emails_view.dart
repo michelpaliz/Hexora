@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/emails/email_api.dart';

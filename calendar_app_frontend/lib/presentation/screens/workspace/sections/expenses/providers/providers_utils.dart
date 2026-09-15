@@ -1,4 +1,4 @@
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/money_format_utils.dart';
+import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 
 String formatMoneyValue(String raw) {
   final trimmed = raw.trim();

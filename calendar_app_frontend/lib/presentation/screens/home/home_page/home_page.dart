@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/domain/socket_notification_listener.dart';

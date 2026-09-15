@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 
 /// Keeps the query when switching invoice tabs or returning from client details.
 class MobileClientSearchList extends StatefulWidget {

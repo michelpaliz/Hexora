@@ -1,7 +1,7 @@
 import 'dart:developer' as devtools show log;
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
@@ -12,8 +12,8 @@ import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../../../../../../models/group_model/group/group.dart';
-import '../../../../../../../../../models/user_model/user.dart';
+import '../../../../../../../../../models/groups/group.dart';
+import '../../../../../../../../../models/user/user.dart';
 import '../../../../../../../../services/groups/domain/group_domain.dart';
 import '../../../../../../../../services/notification/domain/notification_domain.dart';
 import '../../../../../../../utils/app_utils.dart';

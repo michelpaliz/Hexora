@@ -1,9 +1,9 @@
 // lib/presentation/screens/workspace/sections/role_info/profile_role_card.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role_labels.dart';
-import 'package:hexora/presentation/utils/user_avatar.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 typedef SasFetcher = Future<String?> Function(String blobName);

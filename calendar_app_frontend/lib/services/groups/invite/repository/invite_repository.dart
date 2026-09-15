@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/invite/invite.dart';
+import 'package:hexora/models/groups/invitations/invite.dart';
 import 'package:hexora/services/groups/invite/api/invite_api_client.dart';
 
 sealed class RepoResult<T> {

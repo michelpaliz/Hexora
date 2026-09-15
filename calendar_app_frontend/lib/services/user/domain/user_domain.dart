@@ -2,8 +2,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user.dart';
 // App config
 import 'package:hexora/services/config/api_constants.dart';
 // Notifications

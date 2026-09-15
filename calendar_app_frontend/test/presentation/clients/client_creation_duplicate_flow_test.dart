@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

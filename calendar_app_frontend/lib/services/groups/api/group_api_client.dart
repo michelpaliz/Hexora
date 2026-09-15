@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
-import 'package:hexora/models/group_model/calendar/calendar.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/group/group_business_hours.dart';
+import 'package:hexora/models/calendar/calendar.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/groups/group_business_hours.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/errors/error_classes/error_classes.dart';
 import 'package:hexora/services/groups/api/i_group_api_client.dart';

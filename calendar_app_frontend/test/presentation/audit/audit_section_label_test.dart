@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/audit_section_label.dart';
+import 'package:hexora/presentation/shared/widgets/audit/audit_section_label.dart';
 
 void main() {
   testWidgets('renders the section label in uppercase', (tester) async {

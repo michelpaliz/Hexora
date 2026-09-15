@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/screens/workspace/sections/notifications/widgets/mobile_notification.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/audit_badge.dart';
+import 'package:hexora/presentation/shared/widgets/audit/audit_badge.dart';
 
 void main() {
   testWidgets('renders the audit status with its supplied color',

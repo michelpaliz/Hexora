@@ -7,7 +7,7 @@
 // Usage (in any dev screen):
 //   NotificationCardStories.all.map((s) => NotificationCard(notification: s, onDelete: () {}))
 
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 
 abstract final class NotificationCardStories {
   /// 1. Minimal / legacy notification — only titleKey + fallback, no args.

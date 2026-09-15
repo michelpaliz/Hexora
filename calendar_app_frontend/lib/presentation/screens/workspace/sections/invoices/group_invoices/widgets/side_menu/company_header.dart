@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 

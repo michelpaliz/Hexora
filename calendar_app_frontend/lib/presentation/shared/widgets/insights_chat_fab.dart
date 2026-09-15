@@ -3,9 +3,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/service/service.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/service_catalog/service.dart';
+import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
 import 'package:hexora/services/groups/event/domain/event_domain.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';

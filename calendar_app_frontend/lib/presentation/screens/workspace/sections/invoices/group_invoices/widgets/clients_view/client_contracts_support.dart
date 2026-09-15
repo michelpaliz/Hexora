@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/client/client_contract.dart';
+import 'package:hexora/models/clients/client_contract.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 

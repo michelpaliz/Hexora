@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/logout_dialog.dart';
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_provider.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/services/auth_user/exceptions/auth_exceptions.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/common/section_header.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/change_password_dialog.dart';

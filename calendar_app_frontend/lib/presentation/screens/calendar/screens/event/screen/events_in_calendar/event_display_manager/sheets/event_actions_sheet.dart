@@ -1,6 +1,6 @@
 // lib/presentation/c-group-calendar-section/screens/event/logic/actions/event_actions_sheet.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/calendar/screens/event/logic/actions/event_actions_manager.dart';
 import 'package:hexora/presentation/screens/events/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/l10n/app_localizations.dart';

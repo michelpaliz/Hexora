@@ -1,6 +1,6 @@
 // lib/presentation/dialog_content/profile/widgets/quick_actions_grid.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_profile/dialog_choosement/alert_dialog/widgets/group_hero_card.dart';

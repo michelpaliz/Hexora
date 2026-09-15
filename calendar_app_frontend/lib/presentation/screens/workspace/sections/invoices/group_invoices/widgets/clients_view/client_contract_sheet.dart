@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client_contract.dart';
+import 'package:hexora/models/clients/client_contract.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_contracts_support.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';

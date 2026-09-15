@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';

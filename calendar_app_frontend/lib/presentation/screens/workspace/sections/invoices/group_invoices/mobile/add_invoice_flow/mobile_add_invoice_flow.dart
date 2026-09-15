@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/invoice_editor_mobile_screen.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 

@@ -1,8 +1,8 @@
 // lib/presentation/home/widgets/app_bar_user_title.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
-import 'package:hexora/presentation/utils/user_avatar.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 
 class AppBarUserTitle extends StatelessWidget {
   final User user;

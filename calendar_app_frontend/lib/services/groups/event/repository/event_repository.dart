@@ -1,7 +1,7 @@
 // lib/services/core/event/repository/event_repository.dart
 import 'dart:async';
 
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/services/groups/event/api/i_event_api_client.dart';
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/groups/event/string_utils.dart';

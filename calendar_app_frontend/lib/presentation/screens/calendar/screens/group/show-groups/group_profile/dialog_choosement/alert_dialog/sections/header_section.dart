@@ -1,11 +1,11 @@
 // lib/.../dialog_content/widgets/header_section.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
-import 'package:hexora/presentation/utils/image/user_image/avatar_utils.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';

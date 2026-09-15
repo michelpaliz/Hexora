@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/category/event_category.dart';
+import 'package:hexora/models/calendar/events/event_category.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 

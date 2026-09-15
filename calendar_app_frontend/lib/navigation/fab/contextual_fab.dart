@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/navigation/fab/fab_action.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
 

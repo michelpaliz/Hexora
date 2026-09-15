@@ -68,14 +68,16 @@ feature locations, placement rules, and the previous-to-current path mapping.
 ### `lib/models/`
 
 Data models, DTOs, and serialization.
-`group_model/`, `invoice/`, `receipt/`, `notification_model/`, `user_model/`,
-`mail/`, `jobs/`, `telegram/`, `downloads/`, `weather/`.
+`groups/`, `clients/`, `workers/`, `time_tracking/`, `calendar/`, `user/`,
+`notifications/`, `documents/`, `service_catalog/`, `invoice/`, `presupuesto/`,
+`receipt/`, `mail/`, `jobs/`, `telegram/`, `downloads/`, `weather/`.
+See the [model ownership guide](lib/models/README.md).
 
 ### `lib/services/`
 
 The API/service layer — one folder per domain, each talking to the backend
 over `http`/`dio` and (where relevant) sockets:
-`auth_user/`, `groups/` (groups, events, recurrence, invites,
+`auth/`, `groups/` (groups, events, recurrence, invites,
 categories, agenda), `clients/`, `time_tracking/`, `service_catalog/`,
 `invoicing/`, `presupuestos/`, `receipts/`, `vat/`, `expenses/`,
 `statements/`, `enable_banking/`, `truelayer/`, `documents/` (private
@@ -89,7 +91,7 @@ All screens and widgets, grouped by product area:
 
 * **home/** — landing/home page
 * **workspace/** — the main group workspace: dashboard shell
-  (`dashboard_screen/`) plus feature sections under `sections/`:
+  (`dashboard/`) plus feature sections under `sections/`:
   `invoices/` (invoice editor, VAT summary, client views), `presupuestos/`
   (documents, templates, invoice conversion), `receipts/` (receipt views,
   editor, recurring receipts), `workers/` (time tracking, monthly overview), `enable_banking/`
@@ -197,7 +199,7 @@ API endpoints and other environment-specific values live in
 
 * **Entry point:** `lib/main.dart`
 * **Routing:** `lib/presentation/routes/`
-* **Dashboard shell & nav:** `lib/presentation/screens/workspace/dashboard_screen/`
+* **Dashboard shell & nav:** `lib/presentation/screens/workspace/dashboard/`
 * **Calendar UI:** `lib/presentation/screens/calendar/`
 * **Events:** `lib/presentation/screens/events/`
 * **Invoicing:** `lib/presentation/screens/workspace/sections/invoices/`

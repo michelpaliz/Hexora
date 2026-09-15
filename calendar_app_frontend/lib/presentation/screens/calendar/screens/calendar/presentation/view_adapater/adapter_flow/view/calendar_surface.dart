@@ -1,7 +1,7 @@
 // calendar_surface.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/weather/day_summary.dart';
 import 'package:hexora/services/groups/event/domain/event_domain.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/presentation/view_adapater/widgets/widgets_cells/cells_widgets/calendar_month_cell.dart';

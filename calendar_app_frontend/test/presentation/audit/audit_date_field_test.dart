@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/audit_date_field.dart';
+import 'package:hexora/presentation/shared/widgets/audit/audit_date_field.dart';
 
 void main() {
   testWidgets('shows its label and selected date', (tester) async {

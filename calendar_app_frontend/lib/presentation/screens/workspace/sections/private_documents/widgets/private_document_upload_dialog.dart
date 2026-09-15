@@ -1,6 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/private_document/private_document.dart';
+import 'package:hexora/models/documents/private_document.dart';
 import 'package:hexora/services/documents/private_documents_api.dart';
 import 'package:intl/intl.dart';
 

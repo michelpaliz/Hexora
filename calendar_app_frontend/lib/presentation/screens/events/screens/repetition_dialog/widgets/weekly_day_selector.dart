@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/recurrence/utils/custom_day_week.dart';
+import 'package:hexora/models/calendar/recurrence/utils/custom_day_week.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

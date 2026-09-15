@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/profile/edit/controller/profile_edit_controller.dart';
 import 'package:hexora/presentation/screens/profile/edit/controller/profile_update_contract.dart';
-import 'package:hexora/presentation/utils/user_avatar.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 import 'package:hexora/navigation/main_scaffold.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

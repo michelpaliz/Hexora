@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:hexora/models/group_model/invite/invite.dart';
+import 'package:hexora/models/groups/invitations/invite.dart';
 import 'package:http/http.dart' as http;
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';

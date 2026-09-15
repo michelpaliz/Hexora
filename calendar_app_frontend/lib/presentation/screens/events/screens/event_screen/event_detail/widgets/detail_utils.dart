@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:hexora/presentation/screens/events/screens/event_screen/helpers/recurrence_format.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 import 'package:intl/intl.dart';

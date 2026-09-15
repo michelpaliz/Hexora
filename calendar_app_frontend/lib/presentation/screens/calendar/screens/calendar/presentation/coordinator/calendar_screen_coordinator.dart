@@ -3,9 +3,9 @@ import 'dart:developer' as devtools show log;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/groups/event/domain/event_domain.dart';
 import 'package:hexora/services/groups/event/socket/socket_manager.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -21,7 +21,7 @@ import 'package:hexora/presentation/screens/calendar/screens/event/screen/events
 import 'package:hexora/presentation/screens/events/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 import 'package:hexora/presentation/utils/location/location_service.dart';
-import 'package:hexora/presentation/utils/weather/weather_service.dart';
+import 'package:hexora/services/weather/weather_service.dart';
 import 'package:provider/provider.dart';
 
 class CalendarScreenCoordinator {

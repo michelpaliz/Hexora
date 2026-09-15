@@ -1,5 +1,5 @@
 import 'package:hexora/models/downloads/download_job.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/notify_phone/local_notification_helper.dart';

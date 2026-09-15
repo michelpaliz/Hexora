@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/worker/worker.dart';
+import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/mobile/workers_mobile_view.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';

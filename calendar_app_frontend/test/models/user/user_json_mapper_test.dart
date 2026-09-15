@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 
 void main() {
   Map<String, dynamic> profile({Object? email = 'member@example.com'}) => {

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/logout_dialog.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/change_password_dialog.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/change_username_dialog.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/widgets/right_panel/settings_section/sections/settings_system_config_section.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_system_config_section.dart';
 import 'package:hexora/presentation/screens/settings/screens/settings.dart';
 import 'package:hexora/state/locale_provider.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';

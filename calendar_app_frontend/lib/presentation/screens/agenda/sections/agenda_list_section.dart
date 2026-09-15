@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/agenda/agenda_model.dart';
+import 'package:hexora/models/calendar/agenda_model.dart';
 import 'package:hexora/presentation/screens/agenda/widgets/agenda_sliver.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 

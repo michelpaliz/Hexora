@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/audit_format_utils.dart';
+import 'package:hexora/presentation/shared/utils/audit/audit_format_utils.dart';
 
 void main() {
   group('formatAuditQueryDate', () {

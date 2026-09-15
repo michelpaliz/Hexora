@@ -1,7 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/private_document/private_document.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/documents/private_document.dart';
 import 'package:hexora/services/documents/private_documents_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';

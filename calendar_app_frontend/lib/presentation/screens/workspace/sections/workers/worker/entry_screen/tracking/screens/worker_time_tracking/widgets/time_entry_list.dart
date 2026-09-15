@@ -1,7 +1,7 @@
 // lib/presentation/b-dashboard-section/sections/workers/worker/entry_screen/widgets/time_entry_list.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/worker/timeEntry.dart';
-import 'package:hexora/models/group_model/worker/worker.dart';
+import 'package:hexora/models/time_tracking/time_entry.dart';
+import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/widgets/time_entry_card.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

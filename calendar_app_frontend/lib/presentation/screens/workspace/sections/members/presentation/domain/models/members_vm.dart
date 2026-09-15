@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/invite/invite.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/groups/invitations/invite.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/groups/invite/repository/invite_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_count.dart';

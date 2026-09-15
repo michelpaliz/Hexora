@@ -1,4 +1,4 @@
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 
 /// Maps a raw `event:reminder` or `event:started` socket payload to a
 /// [NotificationUser] that can be rendered by [NotificationCard] with full

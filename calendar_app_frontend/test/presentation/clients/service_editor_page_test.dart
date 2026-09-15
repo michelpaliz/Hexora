@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/service/service.dart';
+import 'package:hexora/models/service_catalog/service.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_service_sheet.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

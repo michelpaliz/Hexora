@@ -1,9 +1,9 @@
 // lib/presentation/b-calendar-section/screens/agenda/widgets/agenda_header.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/agenda/agenda_model.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/calendar/agenda_model.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/utils/user_avatar.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';

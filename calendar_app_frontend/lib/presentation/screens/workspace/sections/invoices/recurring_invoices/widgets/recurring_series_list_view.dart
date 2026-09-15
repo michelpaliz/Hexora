@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/services/invoicing/recurring_invoices_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurrence_time_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurring_invoices_helpers.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_series_list_view/recurring_series_card.dart';

@@ -1,7 +1,7 @@
-// lib/models/group_model/event/event_group_resolver.dart
+// lib/models/calendar/events/event_group_resolver.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/recurrence/recurrence_rule_api_client.dart';
 import 'package:hexora/presentation/screens/events/screens/repetition_dialog/utils/show_recurrence.dart';
 

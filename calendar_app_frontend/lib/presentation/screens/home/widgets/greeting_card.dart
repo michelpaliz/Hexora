@@ -1,10 +1,10 @@
 // lib/presentation/home/widgets/greeting_card.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/models/weather/day_summary.dart';
 import 'package:hexora/presentation/utils/location/location_service.dart';
-import 'package:hexora/presentation/utils/weather/weather_greeting_card.dart';
-import 'package:hexora/presentation/utils/weather/weather_service.dart';
+import 'package:hexora/presentation/shared/widgets/weather/weather_greeting_card.dart';
+import 'package:hexora/services/weather/weather_service.dart';
 
 class GreetingCard extends StatefulWidget {
   final User user;

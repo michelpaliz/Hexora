@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 
 class RecurrenceRuleApiClient {

@@ -1,5 +1,5 @@
 // utils/members_derivation.dart
-import 'package:hexora/models/notification_model/userInvitation_status.dart';
+import 'package:hexora/models/notifications/user_invitation_status.dart';
 
 String norm(dynamic v) => v?.toString().toLowerCase().trim() ?? '';
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/group_roles_card.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/group_overview_card.dart';
 import 'package:hexora/l10n/app_localizations.dart';

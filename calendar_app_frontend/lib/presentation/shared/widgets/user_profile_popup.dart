@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_provider.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/blob_storage/blobServer.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';

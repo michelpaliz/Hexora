@@ -1,8 +1,8 @@
 import 'mobile/workers_mobile_view.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/worker/worker.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/user/presence_domain.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/header/widget/dashboard_presence_strip.dart';
-import 'package:hexora/presentation/utils/image/user_image/widgets/pulsing_ring_avatar.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/header/widgets/dashboard_presence_strip.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/pulsing_ring_avatar.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 void main() {

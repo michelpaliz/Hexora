@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/services/groups/agenda/agenda_api_client.dart';
 import 'package:hexora/services/groups/agenda/query_knobs/client_rollup.dart';
 import 'package:hexora/services/groups/agenda/query_knobs/work_summary.dart';

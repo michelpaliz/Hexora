@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/audit_presentation_utils.dart';
+import 'package:hexora/presentation/shared/utils/audit/audit_presentation_utils.dart';
 
 String _spanish(String spanish, String english) => spanish;
 String _english(String spanish, String english) => english;

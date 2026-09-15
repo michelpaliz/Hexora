@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
 import 'package:hexora/presentation/routes/routes.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/dashboard/controller/group_dasboard_actions.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/dashboard/controller/group_dashboard_sections.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/dashboard/controller/group_dashboard_state.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_actions.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

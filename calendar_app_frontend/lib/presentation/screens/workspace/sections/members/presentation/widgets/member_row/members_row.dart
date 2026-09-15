@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_ref.dart';
@@ -10,7 +10,7 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/member_row/components/members_role_chip.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/member_row/components/status_row.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/member_row/member_detail_sheet.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/presentation/utils/username/username_tag.dart';
 import 'package:hexora/theme/components/card_surface.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

@@ -1,8 +1,8 @@
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/service/service.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/service_catalog/service.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';

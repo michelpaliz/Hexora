@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:hexora/models/invoice/invoice_line.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_ocr_models.dart';

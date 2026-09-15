@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/services/emails/email_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';

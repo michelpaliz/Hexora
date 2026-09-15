@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/receipts/editor/widgets/receipt_line_draft.dart';
 import 'package:hexora/presentation/screens/workspace/sections/receipts/editor/widgets/receipt_lines_editor.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

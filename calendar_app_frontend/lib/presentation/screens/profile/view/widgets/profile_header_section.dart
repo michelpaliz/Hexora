@@ -1,7 +1,7 @@
 // lib/presentation/b-calendar-section/screens/profile/widgets/profile_header_section.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/presentation/utils/user_avatar.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 class ProfileHeaderSection extends StatelessWidget {

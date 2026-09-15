@@ -1,13 +1,13 @@
 // create_group_data.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/view_model/group_view_model.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/common/ui_messenger.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/create_group_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/update_group_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/invite_members_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/search_users_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/upload_group_photo_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
+import 'package:hexora/presentation/viewmodels/groups/ui_messenger.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/create_group_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/update_group_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/invite_members_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/search_users_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_photo_usecase.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/models/group_data_body.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/widgets/buttons/save_group_button.dart';

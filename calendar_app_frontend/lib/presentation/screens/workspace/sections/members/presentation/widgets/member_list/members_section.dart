@@ -1,6 +1,6 @@
 // lib/.../widgets/members_section.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_ref.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/member_list/member_list.dart';
 

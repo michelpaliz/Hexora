@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/presentation/screens/workspace/sections/receipts/widgets/receipt_detail_card.dart';

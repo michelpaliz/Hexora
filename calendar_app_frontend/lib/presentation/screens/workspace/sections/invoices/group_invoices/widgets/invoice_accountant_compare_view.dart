@@ -1,11 +1,11 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/audit_format_utils.dart';
+import 'package:hexora/presentation/shared/utils/audit/audit_format_utils.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class InvoiceAccountantCompareView extends StatefulWidget {

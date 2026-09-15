@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/money_format_utils.dart';
+import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 

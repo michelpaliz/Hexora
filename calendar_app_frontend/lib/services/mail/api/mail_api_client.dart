@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:hexora/models/mail/mail_message.dart';
 import 'package:hexora/models/mail/mail_page.dart';
 import 'package:hexora/models/mail/mail_thread.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/errors/error_classes/error_classes.dart';
 import 'package:hexora/services/mail/api/i_mail_api_client.dart';

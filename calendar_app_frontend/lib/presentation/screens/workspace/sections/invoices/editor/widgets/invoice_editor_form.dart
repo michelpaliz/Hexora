@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/section_card.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'form/form_widgets/client_monthly_stats.dart';

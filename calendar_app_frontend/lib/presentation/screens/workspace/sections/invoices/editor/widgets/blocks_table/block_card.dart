@@ -4,7 +4,7 @@ import 'package:hexora/models/invoice/invoice_block.dart';
 import 'package:hexora/models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/services/invoicing/models/manual_editor_capabilities.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/money_format_utils.dart';
+import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/mobile/mobile_client_search_list.dart';
 import 'package:hexora/presentation/shared/widgets/mobile_section_tabs.dart';
 import 'package:hexora/theme/themes/app_theme.dart';

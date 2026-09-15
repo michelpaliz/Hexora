@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/worker/geofenced_visit.dart';
-import 'package:hexora/models/group_model/client/client_invoice_stats.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/time_tracking/geofenced_visit.dart';
+import 'package:hexora/models/clients/client_invoice_stats.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 

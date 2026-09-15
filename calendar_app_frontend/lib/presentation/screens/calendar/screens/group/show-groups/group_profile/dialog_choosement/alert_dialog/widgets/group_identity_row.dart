@@ -1,7 +1,7 @@
 // lib/presentation/shared/widgets/group_identity_row.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/header/widget/group_header_primitives.dart';
-import 'package:hexora/presentation/utils/image/user_image/avatar_utils.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/header/widgets/group_header_primitives.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 
 /// Lightweight meta token that can be either text or icon.
 class MetaEntry {

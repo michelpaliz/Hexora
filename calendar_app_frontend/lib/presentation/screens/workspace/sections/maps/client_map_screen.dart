@@ -3,9 +3,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/worker/geofenced_visit.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/time_tracking/geofenced_visit.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/time_tracking/api/i_time_tracking_api_client.dart';
 import 'package:hexora/services/maps/maps_api.dart';

@@ -1,6 +1,6 @@
 // lib/presentation/b-calendar-section/screens/calendar/event_screen_logic/ui/events_in_calendar/event_display_manager/event_display_manager.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/calendar/screens/event/logic/actions/event_actions_manager.dart';
 import 'package:hexora/presentation/screens/calendar/screens/event/screen/events_in_calendar/event_display_manager/async_loaders/event_future_content.dart';
 import 'package:hexora/presentation/screens/calendar/screens/event/screen/events_in_calendar/event_display_manager/widgets/event_compact_view.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 
 /// Helper: returns the substring after the *last* known separator.

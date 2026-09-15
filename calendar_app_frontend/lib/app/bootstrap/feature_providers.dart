@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/time_tracking/api/i_time_tracking_api_client.dart';
 import 'package:hexora/services/time_tracking/api/time_tracking_api_client.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';

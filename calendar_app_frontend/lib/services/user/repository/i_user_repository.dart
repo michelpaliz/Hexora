@@ -1,7 +1,7 @@
-// lib/services/auth_user/user/repository/i_user_repository.dart
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
-import 'package:hexora/models/user_model/user.dart';
+// lib/services/auth/user/repository/i_user_repository.dart
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
+import 'package:hexora/models/user/user.dart';
 
 abstract class IUserRepository {
   // Blobs / Avatars

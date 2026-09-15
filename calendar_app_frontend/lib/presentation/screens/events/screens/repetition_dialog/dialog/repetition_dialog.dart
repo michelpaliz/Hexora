@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
-import 'package:hexora/models/group_model/recurrence/utils/custom_day_week.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/calendar/recurrence/utils/custom_day_week.dart';
 import 'package:hexora/presentation/screens/events/screens/repetition_dialog/utils/frequency_selector.dart';
 import 'package:hexora/presentation/screens/events/screens/repetition_dialog/utils/repetition_rule_helper.dart';
 import 'package:hexora/presentation/screens/events/screens/repetition_dialog/widgets/repeat_every_row.dart';

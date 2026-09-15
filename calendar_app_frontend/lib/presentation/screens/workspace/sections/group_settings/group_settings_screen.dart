@@ -2,10 +2,10 @@ import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 // lib/presentation/screens/workspace/settings/group_settings_screen.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/header/group_header_view.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/widgets/notification_card.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

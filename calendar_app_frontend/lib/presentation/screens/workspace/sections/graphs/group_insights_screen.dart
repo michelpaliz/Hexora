@@ -1,7 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';

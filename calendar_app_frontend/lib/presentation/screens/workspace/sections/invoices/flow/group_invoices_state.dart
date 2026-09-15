@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/flow/widgets/business_card.dart';

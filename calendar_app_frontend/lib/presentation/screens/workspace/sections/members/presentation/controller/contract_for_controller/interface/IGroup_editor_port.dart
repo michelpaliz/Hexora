@@ -1,6 +1,6 @@
 // lib/domain/ports/i_group_editor_port.dart
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
 
 abstract class IGroupEditorPort {
   // Queries

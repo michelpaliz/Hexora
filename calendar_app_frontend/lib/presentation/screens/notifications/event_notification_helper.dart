@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/notify_phone/local_notification_helper.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';

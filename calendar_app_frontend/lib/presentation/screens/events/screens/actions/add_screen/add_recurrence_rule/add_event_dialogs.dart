@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:hexora/presentation/screens/events/screens/repetition_dialog/dialog/repetition_dialog.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';

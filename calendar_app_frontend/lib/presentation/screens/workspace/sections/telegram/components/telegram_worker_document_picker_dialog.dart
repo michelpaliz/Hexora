@@ -5,7 +5,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import 'package:hexora/models/group_model/worker/worker.dart';
+import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';

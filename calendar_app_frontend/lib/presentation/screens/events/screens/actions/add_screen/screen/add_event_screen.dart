@@ -1,9 +1,9 @@
 // add_event_screen.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/groups/category/category_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';

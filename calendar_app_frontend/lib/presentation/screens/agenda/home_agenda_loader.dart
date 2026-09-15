@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 
 /// Loads scheduled work for the home Agenda.

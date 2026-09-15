@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/worker/geofenced_visit.dart';
+import 'package:hexora/models/time_tracking/geofenced_visit.dart';
 import 'package:hexora/services/time_tracking/api/time_tracking_api_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/groups/event/api/i_event_api_client.dart';
 import 'package:hexora/services/groups/event/string_utils.dart';

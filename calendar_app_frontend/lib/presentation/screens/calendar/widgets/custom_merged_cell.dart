@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:flutter/material.dart';
 
 class CustomMergedCell extends StatelessWidget {

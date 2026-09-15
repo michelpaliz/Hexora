@@ -388,8 +388,8 @@ lib/
 │   │       ├── telegram_export_widget.dart
 │   │       └── telegram_qr_widget.dart
 │   │
-│   └── dashboard_screen/dashboard/
-│       ├── controller/group_dashboard_sections.dart (telegram added)
+│   └── dashboard/
+│       ├── navigation/dashboard_sections.dart (telegram added)
 │       └── layout/
 │           ├── wide_layout.dart (telegram support)
 │           └── narrow_layout.dart (telegram support)

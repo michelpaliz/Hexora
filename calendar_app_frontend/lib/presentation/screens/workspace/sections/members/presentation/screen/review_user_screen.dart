@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
@@ -9,8 +9,8 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/screen/tabs/add_user_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/screen/tabs/update_role_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/add_users_flow/widgets/add_user_bottom_sheet.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/view_model/group_view_model.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
+import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 // ✅ Prefer the single source of truth for roles
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role_labels.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class SelectedUsersList extends StatelessWidget {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/view_model/group_view_model.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
 import 'package:provider/provider.dart';
 
 /// Completes the confirmed, visible selection using individual-event permissions.

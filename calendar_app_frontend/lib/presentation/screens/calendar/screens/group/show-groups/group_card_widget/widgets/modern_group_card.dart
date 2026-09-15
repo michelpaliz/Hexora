@@ -1,12 +1,12 @@
 // lib/presentation/c-group-calendar-section/screens/group/show-groups/group_card_widget/modern_group_card.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_card_widget/widgets/meta_pills.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../../../../utils/image/group_image/group_thumbnail.dart';
+import '../../../../../../../shared/widgets/avatars/group_thumbnail.dart';
 import 'title_meta.dart';
 
 class ModernGroupCard extends StatelessWidget {

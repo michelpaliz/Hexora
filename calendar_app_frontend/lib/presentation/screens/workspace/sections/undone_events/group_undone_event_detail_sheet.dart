@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/events/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/shared/header_info.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/view_model/group_view_model.dart';
+import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

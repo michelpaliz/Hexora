@@ -1,11 +1,11 @@
 import 'dart:developer' as devtools show log;
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
-import 'package:hexora/models/group_model/recurrence/utils/recurrence_rule_utils.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/calendar/recurrence/utils/recurrence_rule_utils.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
-import 'package:hexora/presentation/utils/loading/loading_dialog.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/loading_dialog.dart';
 
 bool validateTitle(
     BuildContext context, TextEditingController titleController) {

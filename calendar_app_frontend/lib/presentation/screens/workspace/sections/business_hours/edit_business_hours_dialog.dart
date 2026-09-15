@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group_business_hours.dart';
+import 'package:hexora/models/groups/group_business_hours.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 Future<GroupBusinessHours?> showBusinessHoursDialog(

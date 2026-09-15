@@ -1,13 +1,13 @@
 // feature_providers.dart (or a new file)
-import 'package:hexora/services/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/view_model/group_view_model.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/common/ui_messenger.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/create_group_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/invite_members_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/search_users_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/update_group_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/upload_group_photo_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
+import 'package:hexora/presentation/viewmodels/groups/ui_messenger.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/create_group_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/invite_members_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/search_users_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/update_group_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_photo_usecase.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
 import 'package:provider/provider.dart';

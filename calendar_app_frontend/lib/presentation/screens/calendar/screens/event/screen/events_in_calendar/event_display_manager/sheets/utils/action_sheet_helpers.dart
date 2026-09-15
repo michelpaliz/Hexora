@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/calendar/screens/event/logic/actions/event_actions_manager.dart';
 
 import '../event_actions_sheet.dart';

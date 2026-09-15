@@ -62,7 +62,7 @@ Backend API (/api/telegram/...)
 | `lib/services/telegram/domain/telegram_domain.dart` | State management (ChangeNotifier) |
 | `lib/presentation/screens/workspace/sections/telegram/*` | UI screens + components |
 | `lib/app/bootstrap/feature_providers.dart` | Provider registration |
-| `**/dashboard/controller/group_dashboard_sections.dart` | Added "telegram" section |
+| `**/dashboard/navigation/dashboard_sections.dart` | Added "telegram" section |
 | `**/dashboard/layout/*.dart` | Added Telegram rendering |
 
 ## State Management Details

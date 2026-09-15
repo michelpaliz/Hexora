@@ -296,9 +296,9 @@ telegram_integration/
 │   │       ├── telegram_chat_list.dart     (Chat list)
 │   │       └── telegram_export_widget.dart (Export form + progress)
 │   │
-│   └── dashboard_screen/dashboard/
-│       ├── controller/
-│       │   └── group_dashboard_sections.dart (Added: telegram constant)
+│   └── dashboard/
+│       ├── navigation/
+│       │   └── dashboard_sections.dart     (Added: telegram constant)
 │       └── layout/
 │           ├── wide_layout.dart            (Added: Telegram inline)
 │           └── narrow_layout.dart          (Added: Telegram wrapper)

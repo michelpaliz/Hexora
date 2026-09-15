@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/worker/geofenced_visit.dart';
-import 'package:hexora/models/group_model/worker/worker.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/time_tracking/geofenced_visit.dart';
+import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/api/i_time_tracking_api_client.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';

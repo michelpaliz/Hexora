@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/invoice/invoice_block.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/money_format_utils.dart';
+import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 
 class InvoiceChecklistItemDraft {
   final TextEditingController text;

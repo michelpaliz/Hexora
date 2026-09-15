@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
-import 'package:hexora/presentation/viewmodels/notification_vm/view_model/notification_view_model.dart';
+import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';

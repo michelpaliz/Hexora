@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:hexora/models/notification_model/notification_localization.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_localization.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_category_meta.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/event_args_helper.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_formatting.dart';

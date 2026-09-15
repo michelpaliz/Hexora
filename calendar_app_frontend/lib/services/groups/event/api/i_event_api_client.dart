@@ -1,4 +1,4 @@
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 
 abstract class IEventApiClient {
   Future<Event> createEvent(Event eventData, String token);

@@ -1,6 +1,6 @@
-import 'package:hexora/presentation/shared/widgets/mobile_document_card.dart';
+import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

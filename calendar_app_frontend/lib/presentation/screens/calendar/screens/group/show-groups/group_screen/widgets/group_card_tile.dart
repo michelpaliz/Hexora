@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_card_widget/widgets/build_group_card.dart';
-import 'package:hexora/presentation/utils/image/user_image/avatar_utils.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class GroupCardTile extends StatefulWidget {

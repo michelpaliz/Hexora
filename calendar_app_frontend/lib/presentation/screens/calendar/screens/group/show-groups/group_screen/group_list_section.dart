@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 // Domains
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_screen/widgets/group_card_tile.dart';

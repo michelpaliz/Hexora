@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 import '../../../models/telegram/telegram.dart';
-import '../../auth_user/auth/token/service/authenticated_http_client.dart';
+import '../../auth/token/authenticated_http_client.dart';
 import '../../config/api_constants.dart';
 import '../../errors/error_classes/error_classes.dart';
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/services/user/presence_domain.dart';
-import 'package:hexora/presentation/utils/image/user_image/widgets/user_status_row.dart';
-import 'package:hexora/presentation/utils/image/user_image/widgets/pulsing_ring_avatar.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/user_status_row.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/pulsing_ring_avatar.dart';
 import 'package:hexora/presentation/screens/calendar/screens/event/screen/events_in_calendar/event_display_manager/widgets/schedule_card_view.dart';
 import 'package:hexora/presentation/screens/events/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/theme/themes/app_theme.dart';

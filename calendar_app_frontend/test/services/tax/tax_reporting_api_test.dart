@@ -1,8 +1,8 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
-import 'package:hexora/services/auth_user/auth/token/service/token_service.dart';
-import 'package:hexora/services/auth_user/auth/token/token_store/token_store.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
+import 'package:hexora/services/auth/token/token_service.dart';
+import 'package:hexora/services/auth/token/token_store.dart';
 import 'package:hexora/services/tax/tax_reporting_api.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

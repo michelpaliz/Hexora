@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';

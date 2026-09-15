@@ -1,6 +1,6 @@
 // presentation/d-event-section/screens/actions/add_screen/screen/event_form_work_visit.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/add_screen/utils/form/reminder_options.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/shared/form/event_dialogs.dart';

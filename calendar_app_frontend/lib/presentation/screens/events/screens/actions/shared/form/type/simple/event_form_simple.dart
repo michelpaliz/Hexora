@@ -1,6 +1,6 @@
 // presentation/d-event-section/screens/actions/add_screen/screen/event_form_simple.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:hexora/services/groups/category/category_api_client.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/add_screen/screen/widgets/repetition_toggle_widget.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/add_screen/utils/dialog/user_expandable_card.dart';

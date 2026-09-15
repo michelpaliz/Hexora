@@ -1,6 +1,6 @@
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/user/api/i_user_api_client.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
 

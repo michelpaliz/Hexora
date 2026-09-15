@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:developer' as devtools show log;
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
 
 class NotificationDomain extends ChangeNotifier {

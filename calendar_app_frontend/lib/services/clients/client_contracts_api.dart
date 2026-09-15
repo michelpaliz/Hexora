@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
-import 'package:hexora/models/group_model/client/client_contract.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/models/clients/client_contract.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';

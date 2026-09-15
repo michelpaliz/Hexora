@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 import 'package:hexora/presentation/screens/agenda/home_agenda_loader.dart';
 

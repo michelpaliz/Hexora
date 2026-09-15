@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/downloads/download_job.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/jobs/background_job.dart';
 import 'package:hexora/models/jobs/job_notification.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/downloads/downloads_api.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
@@ -16,13 +16,13 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/shared/jobs/ocr_import_job_mapping_store.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
-import 'package:hexora/presentation/utils/errors/premium_upgrade_dialog.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
 import 'package:hexora/navigation/main_scaffold.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
-import '../../../viewmodels/notification_vm/view_model/notification_view_model.dart';
+import '../../../viewmodels/notifications/notification_view_model.dart';
 import 'sections/notifications_tab_view.dart';
 import 'sections/show_notifications_header.dart';
 import 'utils/notification_payload_helper.dart';

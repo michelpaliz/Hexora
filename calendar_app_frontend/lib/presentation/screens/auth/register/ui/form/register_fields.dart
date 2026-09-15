@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
-import 'package:hexora/services/auth_user/exceptions/auth_exceptions.dart';
+import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/events/utils/show_error_dialog.dart';

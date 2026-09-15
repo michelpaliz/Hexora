@@ -3,8 +3,8 @@ import 'dart:async';
 import 'dart:developer' as devtools show log;
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/groups/event/resolver/event_group_resolver.dart';
 import 'package:hexora/services/groups/event/socket/socket_events.dart';

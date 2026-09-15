@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/client/client_contract.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/clients/client_contract.dart';
 import 'package:hexora/services/clients/client_contracts_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_contract_sheet.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_contracts_support.dart';

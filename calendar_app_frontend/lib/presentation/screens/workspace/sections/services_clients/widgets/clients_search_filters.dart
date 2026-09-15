@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/search_filters_header.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 

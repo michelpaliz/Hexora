@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/services/auth_user/auth/models/verification_result.dart';
-import 'package:hexora/services/auth_user/exceptions/auth_exceptions.dart';
-import 'package:hexora/services/auth_user/repositories/auth_repository.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:hexora/services/auth/models/verification_result.dart';
+import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
+import 'package:hexora/services/auth/repositories/auth_repository.dart';
 import 'package:hexora/presentation/screens/auth/forgot_password.dart';
 import 'package:hexora/presentation/screens/auth/reset_password/reset_password_screen.dart';
 import 'package:hexora/l10n/app_localizations.dart';

@@ -2,11 +2,11 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/member_row/member_detail_sheet.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/add_users_flow/widgets/member_role_tile.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/screen/tabs/update_role_tab.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 

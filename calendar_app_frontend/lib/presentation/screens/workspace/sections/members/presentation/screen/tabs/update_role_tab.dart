@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/add_users_flow/screen/paged_group_role_list.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 

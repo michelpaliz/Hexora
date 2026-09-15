@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_event_detail_sheet.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events_widgets.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/view_model/group_view_model.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
+import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

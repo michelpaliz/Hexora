@@ -1,6 +1,6 @@
 import 'package:hexora/services/groups/event/socket/socket_manager.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 
 /// Enum for user roles
 enum UserRole { admin, coAdmin, member }

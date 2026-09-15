@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/view_model/group_view_model.dart';
+import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
 import 'package:provider/provider.dart';
 
 class UndoneEventsSegmentedTabBar extends StatelessWidget {

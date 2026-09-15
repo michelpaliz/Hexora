@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/services/auth_user/exceptions/auth_exceptions.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
 import 'package:hexora/presentation/screens/auth/register/ui/form/button_style_helper.dart';
 import 'package:hexora/presentation/screens/auth/register/utils/legal_text_helper.dart';

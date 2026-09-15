@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/presentation/utils/app_utils.dart';
-import 'package:hexora/presentation/utils/image/user_image/avatar_utils.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 
 class GroupUserCard extends StatelessWidget {
   final String userName;

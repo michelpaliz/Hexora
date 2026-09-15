@@ -1,7 +1,7 @@
 import 'package:hexora/presentation/screens/calendar/utils/selected_users/invitation_functions/invitation_message_helper.dart';
 import 'package:hexora/presentation/screens/calendar/utils/selected_users/invitation_functions/role_dropdown_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/notification_model/userInvitation_status.dart';
+import 'package:hexora/models/notifications/user_invitation_status.dart';
 
 class RoleChangeDialogContent extends StatelessWidget {
   final String userName;

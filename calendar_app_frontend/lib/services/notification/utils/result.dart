@@ -1,4 +1,4 @@
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 
 sealed class GetNotifResult {
   const GetNotifResult();

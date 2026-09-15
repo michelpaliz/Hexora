@@ -13,7 +13,7 @@ lib/
 │   └── session/
 ├── models/                   # Data models, DTOs, serialization
 ├── services/                 # API clients, repositories, domain coordinators
-│   ├── auth_user/
+│   ├── auth/
 │   ├── config/
 │   ├── groups/
 │   ├── clients/
@@ -30,7 +30,7 @@ lib/
 │   ├── screens/
 │   │   ├── home/
 │   │   ├── workspace/        # Group dashboard and business modules
-│   │   │   ├── dashboard_screen/
+│   │   │   ├── dashboard/
 │   │   │   └── sections/     # invoices, expenses, mail, telegram, workers, …
 │   │   ├── calendar/
 │   │   ├── events/
@@ -80,6 +80,11 @@ docs/
 | Receipt editor | `lib/presentation/screens/workspace/sections/receipts/editor/` |
 | Expense upload and import | `lib/presentation/screens/workspace/sections/expenses/upload/` |
 | Expense supplier management | `lib/presentation/screens/workspace/sections/expenses/providers/` |
+| Expense VAT audits and suspect expenses | `lib/presentation/screens/workspace/sections/expenses/audit/` |
+| Expense OCR reprocessing results | `lib/presentation/screens/workspace/sections/expenses/ocr/` |
+| Reusable audit widgets | `lib/presentation/shared/widgets/audit/` |
+| Audit labels and formatting | `lib/presentation/shared/utils/audit/` |
+| Money parsing and display formatting | `lib/presentation/shared/utils/formatting/money_format_utils.dart` |
 | Telegram screens | `lib/presentation/screens/workspace/sections/telegram/` |
 | Mail screens | `lib/presentation/screens/workspace/sections/mail/` |
 | Login and registration | `lib/presentation/screens/auth/` |
@@ -94,7 +99,72 @@ docs/
 | Horizontal navigation | `lib/navigation/horizontal_nav/` |
 | Dependency registration | `lib/app/bootstrap/` and `lib/app/init_main.dart` |
 
+## Authentication folders
+
+Authentication services live in `lib/services/auth/`, with `api/`,
+`repositories/`, `exceptions/`, `models/`, and a flat `token/` folder.
+The provider, service facade, and email-verification state sit at the auth root.
+`presentation/screens/auth/auth_gate.dart` owns the existing gate UI.
+
+This replaces the nested `auth_user/auth/auth_services/` and token subfolders.
+Startup providers, session handling, token keys, and authentication behavior are
+unchanged. See the [authentication guide](../lib/services/auth/README.md).
+
+## Model folders
+
+Models are grouped by domain rather than bundled under `group_model/`:
+
+- `groups/`: group configuration, roles, permissions, and invitations.
+- `clients/`: clients, contracts, and invoice statistics.
+- `workers/`: worker identity and status.
+- `time_tracking/`: time entries, visits, history, and import payloads.
+- `calendar/`: calendars and agenda items, with `events/` and `recurrence/`.
+- `user/`: user model, JSON mapping helpers, and equality helpers together.
+- `notifications/`: notification models, update metadata, and invitation status.
+- `documents/` and `service_catalog/`: document and catalog models.
+
+Existing billing, mail, Telegram, jobs, download, and weather model folders remain
+in place. Filenames use snake_case; class names and JSON contracts are unchanged.
+See the [model ownership guide](../lib/models/README.md).
+
+## Viewmodel folders
+
+`lib/presentation/viewmodels/` is grouped into `groups/`, `invitations/`,
+`notifications/`, and `user/`. Group use cases live in `groups/use_cases/`;
+editor state and UI messaging sit directly beside the group viewmodel.
+Redundant `presentation/`, `view_model/`, and filename-shaped directories have
+been removed. Existing classes and provider lifetimes are unchanged.
+
+See the [viewmodel guide](../lib/presentation/viewmodels/README.md) for ownership
+and the canonical group-update use case.
+
 ## Navigation and theme folders
+
+The group workspace shell lives in `presentation/screens/workspace/dashboard/`:
+
+```text
+dashboard/
+├── group_dashboard.dart      # Entry point and provider lifecycle
+├── state/                    # Dashboard state and action dispatch
+├── navigation/               # Section IDs, left navigation, bottom bar
+├── layout/                   # Wide/narrow layouts and content container
+├── overview/                 # Admin/member overview bodies
+├── access/                   # Role resolution and role information screen
+├── header/                   # Header views and supporting widgets
+├── panels/                   # Right-panel dispatcher and feature panels
+│   ├── calendar/
+│   ├── invoices/
+│   ├── members/
+│   ├── notifications/
+│   ├── settings/
+│   ├── workers/
+│   └── ...                   # Other feature panels and shared panel widgets
+└── widgets/                  # Small dashboard-only components
+```
+
+See the [dashboard guide](../lib/presentation/screens/workspace/dashboard/README.md)
+for ownership and verification commands. These shell components remain separate
+from the business modules under `workspace/sections/`.
 
 ```text
 lib/navigation/
@@ -126,13 +196,28 @@ Reusable controls live under `lib/presentation/shared/widgets/`:
 - `buttons/`: button styles and reusable action buttons.
 - `text_fields/`: static and editable text controls.
 - `feedback/`: snackbars and message helpers.
+- `audit/`: badges, date fields, info chips, and section labels shared by
+  invoice and expense audits.
+- `avatars/`: user avatars, presence rows, and group thumbnails.
+- `dialogs/`: loading and premium-upgrade dialogs.
+- `documents/`: document cards, detail pages, and conditional PDF previews.
+- `weather/`: weather greeting cards and forecast lists.
+
+Weather fetching and caching live in `lib/services/weather/`; translated weather
+labels remain in `presentation/shared/utils/weather/`. Role helpers live directly
+in `presentation/utils/roles/`, including the presence-to-group-role adapter.
+See the [shared widget guide](../lib/presentation/shared/widgets/README.md).
+
+Shared audit label/formatting helpers live in `presentation/shared/utils/audit/`.
+Generic money formatting lives in `presentation/shared/utils/formatting/`; these
+shared utilities do not depend on invoice screen code.
 
 These are source moves, not a consolidation of different implementations.
 Keep feature-specific widgets with their feature: for example, the merged
 calendar cell lives in `presentation/screens/calendar/widgets/` because it uses
 calendar events.
 
-Recurrence models and helpers live in `lib/models/group_model/recurrence/`,
+Recurrence models and helpers live in `lib/models/calendar/recurrence/`,
 with API access in `lib/services/groups/recurrence/`. The former mixed-case
 recurrence directories are no longer used.
 
@@ -171,6 +256,8 @@ receipts/
 └── utils/                    # Receipt delivery helpers
 
 expenses/
+├── audit/                     # Expense VAT audit and suspect-expense views
+├── ocr/                       # Expense OCR reprocessing results
 ├── upload/                    # Expense upload screen and import UI
 │   ├── form_sections/
 │   ├── operations/

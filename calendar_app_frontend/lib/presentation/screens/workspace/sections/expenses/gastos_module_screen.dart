@@ -1,6 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/vat/vat_summary_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';

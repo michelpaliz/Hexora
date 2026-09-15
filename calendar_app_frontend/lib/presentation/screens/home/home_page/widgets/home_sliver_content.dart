@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/models/weather/day_summary.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
 import 'package:hexora/presentation/screens/home/widgets/home_section_nav.dart';

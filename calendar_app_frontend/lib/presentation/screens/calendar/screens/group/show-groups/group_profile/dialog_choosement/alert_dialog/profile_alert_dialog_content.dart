@@ -1,6 +1,6 @@
 // lib/presentation/dialog_content/profile/profile_dialog_content.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import 'widgets/quick_actions_grid.dart';

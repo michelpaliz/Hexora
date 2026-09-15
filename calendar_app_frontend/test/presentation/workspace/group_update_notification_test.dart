@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/groups/repository/i_group_repository.dart';
 import 'package:hexora/services/groups/event/resolver/event_group_resolver.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/update_group_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/update_group_usecase.dart';
 
 class _Repo implements IGroupRepository {
   bool fail = false;

@@ -1,6 +1,6 @@
 // lib/presentation/d-event-section/screens/event_screen/helpers/id_resolvers.dart
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/service/service.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/service_catalog/service.dart';
 
 typedef IdResolver = String? Function(String id);
 

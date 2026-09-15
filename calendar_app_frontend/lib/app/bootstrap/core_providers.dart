@@ -1,10 +1,10 @@
-import 'package:hexora/services/auth_user/api/auth_api_client.dart';
-import 'package:hexora/services/auth_user/api/i_auth_api_client.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_provider.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/services/auth_user/auth/token/service/token_service.dart';
-import 'package:hexora/services/auth_user/auth/token/token_store/Itoken_store.dart';
-import 'package:hexora/services/auth_user/auth/token/token_store/token_store.dart';
+import 'package:hexora/services/auth/api/auth_api_client.dart';
+import 'package:hexora/services/auth/api/i_auth_api_client.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:hexora/services/auth/token/token_service.dart';
+import 'package:hexora/services/auth/token/i_token_store.dart';
+import 'package:hexora/services/auth/token/token_store.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/user/api/i_user_api_client.dart';
 import 'package:hexora/services/user/api/user_api_client.dart';

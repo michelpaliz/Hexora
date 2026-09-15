@@ -1,6 +1,6 @@
 // lib/presentation/dialog_content/profile/profile_dialog_content.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_profile/dialog_choosement/alert_dialog/widgets/quick_actions_grid.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 class ProfileDialogContent extends StatelessWidget {

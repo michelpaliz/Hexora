@@ -1,4 +1,4 @@
-import 'package:hexora/models/notification_model/userInvitation_status.dart';
+import 'package:hexora/models/notifications/user_invitation_status.dart';
 
 class InvitationMessageHelper {
   static String getInvitationMessage(UserInviteStatus? userInviteStatus) {

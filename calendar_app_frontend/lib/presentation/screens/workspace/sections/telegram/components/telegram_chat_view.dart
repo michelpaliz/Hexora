@@ -7,16 +7,16 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import 'package:hexora/models/telegram/telegram.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/telegram/domain/telegram_domain.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/dashboard/controller/group_dashboard_state.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/components/telegram_client_document_picker_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/components/telegram_issued_presupuesto_picker_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/components/telegram_worker_document_picker_dialog.dart';
-import 'package:hexora/presentation/shared/widgets/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 const _kTelegramBlue = Color(0xFF2AABEE);

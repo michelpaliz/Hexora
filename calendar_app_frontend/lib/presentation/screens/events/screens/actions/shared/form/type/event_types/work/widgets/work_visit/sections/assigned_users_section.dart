@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/add_screen/utils/dialog/user_expandable_card.dart';
 
 import 'section_card_builder.dart';

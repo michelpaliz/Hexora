@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
+import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';

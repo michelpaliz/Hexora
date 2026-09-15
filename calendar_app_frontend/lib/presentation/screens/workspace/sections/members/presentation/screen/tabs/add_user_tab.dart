@@ -3,7 +3,7 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/add_users_flow/widgets/selected_users_list.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/shared/header_info.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';

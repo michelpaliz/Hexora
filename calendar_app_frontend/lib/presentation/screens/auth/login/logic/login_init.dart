@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/services/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:hexora/services/auth/token/token_service.dart';
 import 'package:hexora/services/groups/event/socket/socket_manager.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';

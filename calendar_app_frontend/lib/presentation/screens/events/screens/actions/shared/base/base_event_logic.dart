@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 
 /// Lightweight view models used by the work-visit form (no backend changes needed).

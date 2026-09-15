@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/worker/worker.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/shared/currency_options.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

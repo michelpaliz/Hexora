@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
-import 'package:hexora/services/auth_user/auth/token/service/token_service.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
+import 'package:hexora/services/auth/token/token_service.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/insights/json_transport.dart';
 import 'package:hexora/services/insights/sse_transport_io.dart'

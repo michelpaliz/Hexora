@@ -1,8 +1,8 @@
 // lib/adapters/vm_group_editor_port.dart
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/view_model/group_view_model.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
 
 class VmGroupEditorPort implements IGroupEditorPort {
   final GroupEditorViewModel vm;

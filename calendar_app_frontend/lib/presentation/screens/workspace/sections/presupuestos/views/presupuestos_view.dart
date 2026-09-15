@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice_block.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
@@ -21,7 +21,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/j
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
-import 'package:hexora/presentation/shared/widgets/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/wizard_steps_header.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';

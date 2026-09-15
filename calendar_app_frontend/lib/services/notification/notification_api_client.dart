@@ -2,13 +2,13 @@
 
 import 'dart:convert';
 
-import 'package:hexora/services/auth_user/auth/token/service/authenticated_http_client.dart';
-import 'package:hexora/services/auth_user/exceptions/exception.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
+import 'package:hexora/services/auth/exceptions/exception.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/notification/utils/result.dart';
 import 'package:hexora/models/jobs/job_notification.dart';
 
-import '../../models/notification_model/notification_user.dart'; // Update this import based on your file structure
+import '../../models/notifications/notification_user.dart'; // Update this import based on your file structure
 
 class NotificationApiClient {
   final String baseUrl = '${ApiConstants.baseUrl}/notifications';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_models.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/money_format_utils.dart';
+import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 
 class ExpenseSettlementTypeScale {
   static const fieldLabel = 12.0;

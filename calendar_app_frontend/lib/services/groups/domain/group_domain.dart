@@ -4,17 +4,17 @@ import 'dart:developer' as devtools show log;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/group/group_business_hours.dart';
-import 'package:hexora/models/notification_model/userInvitation_status.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/groups/group_business_hours.dart';
+import 'package:hexora/models/notifications/user_invitation_status.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/event/resolver/event_group_resolver.dart';
 // Repos (interfaces)
 import 'package:hexora/services/groups/repository/i_group_repository.dart';
 // UserDomain is referenced for refresh flow
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
 
 class GroupDomain extends ChangeNotifier {
   // Dependencies

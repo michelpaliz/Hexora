@@ -4,7 +4,7 @@ import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
-import '../../../../../../../viewmodels/group_vm/view_model/group_view_model.dart';
+import '../../../../../../../viewmodels/groups/group_view_model.dart';
 
 class SaveGroupButton extends StatelessWidget {
   final GroupEditorViewModel controller;

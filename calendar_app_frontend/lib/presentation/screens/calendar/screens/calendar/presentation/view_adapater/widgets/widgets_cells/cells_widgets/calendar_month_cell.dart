@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/weather/day_summary.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
-import 'package:hexora/presentation/utils/weather/weather_summary_localizer.dart';
+import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';

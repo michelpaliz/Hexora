@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/services/tax/tax_reporting_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/all_data/statements_all_data_skeleton.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/money_format_utils.dart';
+import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/vat_summary/vat_summary_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/common/empty_hint.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';

@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/email_verification_state.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/services/auth_user/exceptions/auth_exceptions.dart';
+import 'package:hexora/services/auth/email_verification_state.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/presentation/screens/home/home_page/home_page.dart';
 import 'package:hexora/presentation/screens/auth/register/ui/form/button_style_helper.dart';
 import 'package:hexora/presentation/shared/widgets/text_fields/text_field_widget.dart';

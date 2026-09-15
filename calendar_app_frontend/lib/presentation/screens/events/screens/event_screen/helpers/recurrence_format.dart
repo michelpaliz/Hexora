@@ -1,7 +1,7 @@
 // lib/presentation/d-event-section/screens/event_detail/helpers/recurrence_format.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/recurrence/legacy_recurrence_rule.dart';
-import 'package:hexora/models/group_model/recurrence/utils/custom_day_week.dart';
+import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/calendar/recurrence/utils/custom_day_week.dart';
 
 String formatRecurrenceRule(
   LegacyRecurrenceRule? rule,

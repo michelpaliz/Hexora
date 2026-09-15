@@ -1,7 +1,7 @@
 // lib/presentation/d-event-section/screens/actions/shared/edit_event_logic.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/groups/event/domain/event_domain.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';

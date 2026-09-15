@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/client_billing.dart';
-import 'package:hexora/models/group_model/worker/geofenced_visit.dart';
+import 'package:hexora/models/time_tracking/geofenced_visit.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/presentation/utils/address/spain_postal_code_autofill.dart';
 import 'dart:developer' as devtools show log;

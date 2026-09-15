@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 // ðŸ”¹ Add these imports to use the global role label helper
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
-import 'package:hexora/presentation/utils/roles/group_role/group_role_labels.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 /// A reusable information-first header with:

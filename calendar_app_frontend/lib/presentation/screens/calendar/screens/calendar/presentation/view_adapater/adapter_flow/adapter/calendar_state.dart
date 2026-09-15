@@ -2,7 +2,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/weather/day_summary.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/presentation/view_adapater/adapter_flow/event_data_source/event_data_source.dart';
 

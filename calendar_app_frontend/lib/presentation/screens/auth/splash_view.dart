@@ -1,4 +1,4 @@
-import 'package:hexora/services/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

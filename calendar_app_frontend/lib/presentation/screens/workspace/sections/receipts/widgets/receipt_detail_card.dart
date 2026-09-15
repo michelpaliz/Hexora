@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/receipt/receipt_line.dart';
-import 'package:hexora/presentation/shared/widgets/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';

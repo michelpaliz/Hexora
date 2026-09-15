@@ -1,4 +1,4 @@
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:flutter/material.dart';
 
 class AddUserDialog extends StatefulWidget {

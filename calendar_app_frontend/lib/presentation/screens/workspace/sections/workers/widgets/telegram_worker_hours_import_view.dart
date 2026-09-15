@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/worker/working_time_excel_import.dart';
-import 'package:hexora/models/group_model/worker/worker.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/time_tracking/working_time_excel_import.dart';
+import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';

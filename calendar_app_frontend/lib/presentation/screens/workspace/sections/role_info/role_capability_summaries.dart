@@ -1,5 +1,5 @@
 // lib/presentation/shared/profile/role_capability_summaries.dart
-import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 /// Centralizes the short capability bullets shown on the ProfileRoleCard.

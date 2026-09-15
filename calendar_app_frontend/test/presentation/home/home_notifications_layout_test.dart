@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/models/jobs/job_notification.dart';
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/sections/notifications_tab_view.dart';
-import 'package:hexora/presentation/viewmodels/notification_vm/view_model/notification_view_model.dart';
+import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class _ViewModel implements NotificationViewModel {

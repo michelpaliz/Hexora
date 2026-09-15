@@ -1,15 +1,15 @@
 // routes.dart
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/worker/worker.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/workers/worker.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/appRoutes.dart';
 import 'package:hexora/presentation/routes/calendar/group_calendar_loader.dart';
 import 'package:hexora/presentation/screens/home/home_page/home_page.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/dashboard/group_dashboard.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard_screen/header/header_section.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/group_dashboard.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/header/header_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_callback_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/analytics/statements_analytics_screen.dart';
@@ -19,7 +19,7 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/notifications/group_notifications_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/services_clients_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/expense_ocr_reprocess_results_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/expenses/ocr/expense_ocr_reprocess_results_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/recurring_invoices_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/workers_hub_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/create_worker/form/create_worker_screen.dart';

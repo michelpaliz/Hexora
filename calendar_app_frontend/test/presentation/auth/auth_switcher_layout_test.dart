@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/services/auth_user/auth/auth_services/auth_service.dart';
-import 'package:hexora/services/auth_user/repositories/auth_repository.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:hexora/services/auth/repositories/auth_repository.dart';
 import 'package:hexora/presentation/screens/auth/forgot_password.dart';
 import 'package:hexora/presentation/screens/auth/login/form/login_form.dart';
 import 'package:hexora/presentation/screens/auth/register/ui/form/register_form.dart';

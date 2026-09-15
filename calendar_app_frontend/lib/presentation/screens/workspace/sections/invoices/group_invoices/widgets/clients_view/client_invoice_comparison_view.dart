@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
-import 'package:hexora/models/group_model/client/client_invoice_stats.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/clients/client_invoice_stats.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';

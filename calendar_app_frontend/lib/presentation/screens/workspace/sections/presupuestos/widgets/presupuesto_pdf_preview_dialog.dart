@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/shared/widgets/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 
 /// Full-screen in-app preview for a generated presupuesto PDF. Rendering is
 /// delegated to [PdfInlinePreview] (blob-backed iframe on web), so no bytes

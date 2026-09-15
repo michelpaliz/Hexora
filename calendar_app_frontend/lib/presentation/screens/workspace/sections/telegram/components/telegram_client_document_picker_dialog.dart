@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';

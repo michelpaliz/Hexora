@@ -1,4 +1,4 @@
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/screens/calendar/utils/selected_users/invitation_functions/dismiss_user_dialog.dart';
 import 'package:flutter/material.dart';
 

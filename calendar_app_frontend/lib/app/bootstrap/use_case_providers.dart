@@ -1,11 +1,11 @@
-import 'package:hexora/services/auth_user/auth/auth_services/auth_provider.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/create_group_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/invite_members_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/search_users_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/update_group_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group_vm/presentation/use_cases/upload_group_photo_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/create_group_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/invite_members_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/search_users_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/update_group_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_photo_usecase.dart';
 import 'package:hexora/services/groups/invite/repository/invite_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:http/http.dart' as http;

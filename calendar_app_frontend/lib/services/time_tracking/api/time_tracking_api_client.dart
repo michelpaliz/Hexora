@@ -3,12 +3,12 @@ import 'dart:typed_data';
 // Add near the top of the file
 import 'dart:ui' as ui;
 
-import 'package:hexora/models/group_model/worker/timeEntry.dart';
-import 'package:hexora/models/group_model/worker/geofenced_visit.dart';
-import 'package:hexora/models/group_model/worker/working_time_excel_import.dart';
-import 'package:hexora/models/group_model/worker/working_time_history.dart';
-import 'package:hexora/models/group_model/worker/working_time_import_instructions.dart';
-import 'package:hexora/models/group_model/worker/worker.dart';
+import 'package:hexora/models/time_tracking/time_entry.dart';
+import 'package:hexora/models/time_tracking/geofenced_visit.dart';
+import 'package:hexora/models/time_tracking/working_time_excel_import.dart';
+import 'package:hexora/models/time_tracking/working_time_history.dart';
+import 'package:hexora/models/time_tracking/working_time_import_instructions.dart';
+import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:http/http.dart' as http;

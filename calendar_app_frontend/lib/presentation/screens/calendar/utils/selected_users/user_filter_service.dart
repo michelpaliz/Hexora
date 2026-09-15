@@ -1,5 +1,5 @@
-import 'package:hexora/models/user_model/user.dart';
-import 'package:hexora/models/notification_model/userInvitation_status.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/models/notifications/user_invitation_status.dart';
 
 class UserFilterService {
   static Map<String, UserInviteStatus> filterUsers(

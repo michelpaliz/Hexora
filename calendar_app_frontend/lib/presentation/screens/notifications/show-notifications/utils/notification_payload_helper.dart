@@ -1,4 +1,4 @@
-import 'package:hexora/models/notification_model/notification_user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 
 bool isConcurrentEventNotification(NotificationUser notification) {
   return notification.titleKey == 'notification.event.concurrentCreated.title' ||

@@ -1,5 +1,5 @@
 // lib/presentation/b-calendar-section/screens/agenda/agenda_body.dart
-import 'package:hexora/models/group_model/agenda/agenda_model.dart';
+import 'package:hexora/models/calendar/agenda_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';

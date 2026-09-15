@@ -1,11 +1,11 @@
 import 'dart:io';
 
-import 'package:hexora/models/group_model/calendar/calendar.dart';
-import 'package:hexora/models/group_model/permissions/group_permissions_response.dart';
-import 'package:hexora/models/group_model/group/group.dart';
-import 'package:hexora/models/group_model/group/group_business_hours.dart';
-import 'package:hexora/models/group_model/group/role_meta.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/calendar/calendar.dart';
+import 'package:hexora/models/groups/permissions/group_permissions_response.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/groups/group_business_hours.dart';
+import 'package:hexora/models/groups/role_meta.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_count.dart';
 
 /// Supplies an access token (async-friendly)

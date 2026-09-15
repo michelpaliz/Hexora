@@ -1,7 +1,7 @@
 import 'dart:developer' as devtools show log;
 
 import 'package:flutter/foundation.dart';
-import 'package:hexora/models/group_model/invite/invite.dart' show Invitation;
+import 'package:hexora/models/groups/invitations/invite.dart' show Invitation;
 import 'package:hexora/services/groups/invite/repository/invite_repository.dart';
 
 /// Supplies an auth token when the domain needs one (e.g. from AuthService()).

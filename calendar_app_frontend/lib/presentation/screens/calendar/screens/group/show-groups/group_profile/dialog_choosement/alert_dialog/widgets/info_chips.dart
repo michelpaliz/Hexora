@@ -1,6 +1,6 @@
 // lib/.../dialog_content/widgets/info_chips.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/group/group.dart';
+import 'package:hexora/models/groups/group.dart';
 
 class InfoChips extends StatelessWidget {
   const InfoChips({super.key, required this.group});

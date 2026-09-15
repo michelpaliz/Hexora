@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/client/client.dart';
+import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/audit_format_utils.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/audit_presentation_utils.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/audit_badge.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/audit_date_field.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/audit_info_chip.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/audit_section_label.dart';
+import 'package:hexora/presentation/shared/utils/audit/audit_format_utils.dart';
+import 'package:hexora/presentation/shared/utils/audit/audit_presentation_utils.dart';
+import 'package:hexora/presentation/shared/widgets/audit/audit_badge.dart';
+import 'package:hexora/presentation/shared/widgets/audit/audit_date_field.dart';
+import 'package:hexora/presentation/shared/widgets/audit/audit_info_chip.dart';
+import 'package:hexora/presentation/shared/widgets/audit/audit_section_label.dart';
 import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 

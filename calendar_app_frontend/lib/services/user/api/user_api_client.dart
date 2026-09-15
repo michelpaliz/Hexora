@@ -2,8 +2,8 @@
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
 
-import 'package:hexora/models/notification_model/notification_user.dart';
-import 'package:hexora/models/user_model/user.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/user/api/i_user_api_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';

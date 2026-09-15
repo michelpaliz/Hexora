@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group_model/event/model/event.dart';
+import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart' as sf;
 
