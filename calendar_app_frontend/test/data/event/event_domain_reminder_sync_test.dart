@@ -149,12 +149,12 @@ Future<EventDomain> _buildDomain(
   List<Event> synced,
   List<Event> cancelled, {
   ReminderSynchronizer? reminderSynchronizer,
-) async {
+}) async {
   await tester.pumpWidget(
     const MaterialApp(home: SizedBox(key: _testContextKey)),
   );
   final domain = EventDomain(
-    initialEvents: const [],
+    const [],
     context: tester.element(find.byKey(_testContextKey)),
     group: _group,
     repository: repository,

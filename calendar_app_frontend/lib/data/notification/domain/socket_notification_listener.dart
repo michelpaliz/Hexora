@@ -8,14 +8,16 @@ import 'package:hexora/presentation/features/notifications/show_notifications/no
 import 'package:hexora/presentation/features/shared/downloads/download_jobs_store.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
+typedef NotificationSocketHandler = dynamic Function(dynamic data);
+
 abstract interface class NotificationSocketClient {
   bool get connected;
 
   void connect();
   void dispose();
-  void on(String event, Function handler);
-  void onConnect(Function handler);
-  void onDisconnect(Function handler);
+  void on(String event, NotificationSocketHandler handler);
+  void onConnect(NotificationSocketHandler handler);
+  void onDisconnect(NotificationSocketHandler handler);
 }
 
 class _SocketIoNotificationSocket implements NotificationSocketClient {
@@ -38,17 +40,17 @@ class _SocketIoNotificationSocket implements NotificationSocketClient {
   }
 
   @override
-  void on(String event, Function handler) {
+  void on(String event, NotificationSocketHandler handler) {
     _socket.on(event, handler);
   }
 
   @override
-  void onConnect(Function handler) {
+  void onConnect(NotificationSocketHandler handler) {
     _socket.onConnect(handler);
   }
 
   @override
-  void onDisconnect(Function handler) {
+  void onDisconnect(NotificationSocketHandler handler) {
     _socket.onDisconnect(handler);
   }
 }
@@ -76,7 +78,8 @@ void resetNotificationSocket() {
 }
 
 @visibleForTesting
-void setNotificationSocketFactoryForTesting(NotificationSocketFactory? factory) {
+void setNotificationSocketFactoryForTesting(
+    NotificationSocketFactory? factory) {
   resetNotificationSocket();
   _socketFactory = factory ?? _SocketIoNotificationSocket.new;
 }
@@ -203,7 +206,8 @@ Map<String, dynamic>? _asMap(dynamic value) {
 }
 
 NotificationUser? _extractNotification(Map<String, dynamic> payload) {
-  final raw = payload['notification'] is Map ? payload['notification'] : payload;
+  final raw =
+      payload['notification'] is Map ? payload['notification'] : payload;
   if (raw is! Map) return null;
   try {
     return NotificationUser.fromJson(Map<String, dynamic>.from(raw));

@@ -1,5 +1,6 @@
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hexora/models/event/model/event.dart';
 import 'package:hexora/presentation/features/notifications/event_notification_id_allocator.dart';
 import 'package:hexora/presentation/features/notifications/event_notification_helper.dart';
@@ -46,8 +47,7 @@ void main() {
     expect(restored, allocated);
   });
 
-  test('reuses an ID when a reminder replaces an event notification',
-      () async {
+  test('reuses an ID when a reminder replaces an event notification', () async {
     final allocator = EventNotificationIdAllocator();
     final original = await allocator.idFor(
       eventId: 'event-1',
@@ -71,20 +71,22 @@ void main() {
       endDate: DateTime(2030, 1, 1, 1),
     );
     final scheduled = await notifIdFor(event, allocator: allocator);
-    MethodCall? cancellation;
-    const channel = MethodChannel('dexterous.com/flutter/local_notifications');
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async {
-      cancellation = call;
-    });
-    addTearDown(() {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, null);
-    });
+    final notificationsPlatform = _FakeNotificationsPlatform();
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    FlutterLocalNotificationsPlatform.instance = notificationsPlatform;
 
     await cancelReminderFor(event, idAllocator: allocator);
 
-    expect(cancellation?.method, 'cancel');
-    expect(cancellation?.arguments, <String, int>{'id': scheduled});
+    expect(notificationsPlatform.cancelledId, scheduled);
   });
+}
+
+class _FakeNotificationsPlatform extends FlutterLocalNotificationsPlatform {
+  int? cancelledId;
+
+  @override
+  Future<void> cancel(int id) async {
+    cancelledId = id;
+  }
 }

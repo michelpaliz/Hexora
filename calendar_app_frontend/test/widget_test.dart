@@ -9,7 +9,12 @@ void main() {
   testWidgets('Hexora renders its bootstraped shell',
       (WidgetTester tester) async {
     await tester.pumpWidget(
-      const HexoraApp(shell: Text('Bootstrapped Hexora')),
+      const HexoraApp(
+        shell: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text('Bootstrapped Hexora'),
+        ),
+      ),
     );
 
     expect(find.byType(AppBootstrap), findsOneWidget);

@@ -5246,81 +5246,31 @@ class _BatchVerificationTabPanel extends StatelessWidget {
   }
 }
 
-String _formatBatchBytes(int bytes) {
-  if (bytes <= 0) return '0 KB';
-  if (bytes >= 1024 * 1024) {
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
-  }
-  return '${(bytes / 1024).toStringAsFixed(0)} KB';
-}
+String _formatBatchBytes(int bytes) => formatExpenseBatchBytes(bytes);
 
-String _expensePreviewMoney(dynamic value) {
-  if (value == null) return '';
-  if (value is num) return value.toStringAsFixed(value % 1 == 0 ? 0 : 2);
-  return _batchJobText(value);
-}
+String _expensePreviewMoney(dynamic value) => formatExpensePreviewMoney(value);
 
-double _expensePreviewNumber(dynamic value) {
-  if (value is num) return value.toDouble();
-  var text = _batchJobText(value).replaceAll(RegExp(r'[^0-9,\.\-]'), '');
-  if (text.contains(',') && text.contains('.')) {
-    text = text.replaceAll('.', '').replaceAll(',', '.');
-  } else if (text.contains(',')) {
-    text = text.replaceAll(',', '.');
-  }
-  return double.tryParse(text) ?? 0;
-}
+double _expensePreviewNumber(dynamic value) => parseExpensePreviewNumber(value);
 
-String _expensePreviewCurrency(double value, String currency) {
-  final trimmedCurrency = currency.trim().toUpperCase();
-  final symbol = trimmedCurrency == 'EUR'
-      ? 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬'
-      : trimmedCurrency == 'USD'
-          ? r'$'
-          : trimmedCurrency.isEmpty
-              ? ''
-              : trimmedCurrency;
-  final normalizedSymbol = trimmedCurrency == 'EUR' ? '€' : symbol;
-  return NumberFormat.currency(
-    locale: 'es_ES',
-    symbol: normalizedSymbol,
-    decimalDigits: 2,
-  ).format(value);
-}
+String _expensePreviewCurrency(double value, String currency) =>
+    formatExpensePreviewCurrency(value, currency);
 
-String _expensePreviewStatusLabel(_ExpenseBatchPreviewItem item) {
-  if (item.isDuplicate) return 'Duplicado';
-  if (item.isFailed) return 'Fallido';
-  if (item.needsReview) return item.reviewed ? 'Revisado' : 'Revisar';
-  if (item.status == 'ready') return 'Listo';
-  return item.status.isEmpty ? 'Pendiente' : item.status;
-}
+String _expensePreviewStatusLabel(_ExpenseBatchPreviewItem item) =>
+    expensePreviewStatusLabel(item);
 
 IconData _expensePreviewStatusIcon(_ExpenseBatchPreviewItem item) {
-  if (item.isDuplicate) return Icons.content_copy_outlined;
-  if (item.isFailed) return Icons.error_outline;
-  if (item.needsReview && !item.reviewed) return Icons.rate_review_outlined;
-  if (item.status == 'ready' || item.reviewed) {
-    return Icons.verified_outlined;
-  }
-  return Icons.hourglass_empty_rounded;
+  return expensePreviewStatusIcon(item);
 }
 
 Color _expensePreviewStatusColor(
   _ExpenseBatchPreviewItem item,
   ColorScheme cs,
 ) {
-  if (item.isDuplicate || item.isFailed) return cs.error;
-  if (item.needsReview && !item.reviewed) return Colors.amber.shade700;
-  if (item.status == 'ready' || item.reviewed) return Colors.green.shade600;
-  return cs.onSurfaceVariant;
+  return expensePreviewStatusColor(item, cs);
 }
 
 Color _expensePreviewConfidenceColor(double confidence, ColorScheme cs) {
-  if (confidence <= 0) return cs.onSurfaceVariant;
-  if (confidence >= 0.86) return Colors.green.shade600;
-  if (confidence >= 0.72) return Colors.amber.shade700;
-  return cs.error;
+  return expensePreviewConfidenceColor(confidence, cs);
 }
 
 class _SkippedFileRow extends StatelessWidget {
@@ -5401,39 +5351,7 @@ String _expenseImportHelpText(BuildContext context, String key) {
       .languageCode
       .toLowerCase()
       .startsWith('es');
-  final messages = <String, ({String es, String en})>{
-    'jsonWorkflow': (
-      es: 'Importa gastos desde un JSON: adjunta el JSON, la factura original y revisa los importes antes de guardar.',
-      en: 'Import expenses from JSON: attach the JSON, the original invoice and review totals before saving.',
-    ),
-    'promptAi': (
-      es: 'Genera una guia para que la IA devuelva el JSON con el formato esperado por Hexora.',
-      en: 'Generate guidance so AI returns JSON in the format Hexora expects.',
-    ),
-    'jsonPayload': (
-      es: 'Pega aqui el JSON del gasto. Si adjuntas un archivo JSON, se cargara automaticamente en este editor.',
-      en: 'Paste the expense JSON here. If you attach a JSON file, it will load into this editor automatically.',
-    ),
-    'advanced': (
-      es: 'Usa estas opciones solo si necesitas forzar proveedor, grupo, movimiento bancario o cliente concretos.',
-      en: 'Use these options only when you need to force a specific provider, group, bank entry or client.',
-    ),
-    'expenseType': (
-      es: 'Define como se tratara el gasto: estandar, anticipo o liquidacion contra un anticipo existente.',
-      en: 'Define how the expense is handled: standard, advance payment or settlement against an existing advance.',
-    ),
-    'discount': (
-      es: 'Aplica un descuento al documento completo. Puedes indicar importe o porcentaje; el otro valor se sincroniza.',
-      en: 'Apply a discount to the whole document. Enter either amount or percentage; the other value stays in sync.',
-    ),
-    'totals': (
-      es: 'Activa el resumen si quieres validar el total del documento contra los importes que aparecen en la factura.',
-      en: 'Enable the summary when you want to validate document totals against the amounts shown on the invoice.',
-    ),
-  };
-  final message = messages[key];
-  if (message == null) return '';
-  return isSpanish ? message.es : message.en;
+  return expenseImportHelpText(key, isSpanish: isSpanish);
 }
 
 class _JsonFileBadge extends StatelessWidget {

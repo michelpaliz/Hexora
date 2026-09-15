@@ -96,6 +96,7 @@ class _FakeAggregatedStatementsApi extends StatementsApi {
     String amountType = 'all',
     double? minAmount,
     double? maxAmount,
+    String? clientProviderQuery,
     String sort = 'date_desc',
   }) async {
     aggregatedCalls += 1;

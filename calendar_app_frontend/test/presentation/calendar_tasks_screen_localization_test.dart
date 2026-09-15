@@ -26,7 +26,8 @@ void main() {
     await _pumpScreen(tester, const Locale('en'), task);
 
     expect(find.text('Tasks'), findsOneWidget);
-    expect(find.text('Quick reminders without the work-visit form.'), findsOneWidget);
+    expect(find.text('Quick reminders without the work-visit form.'),
+        findsOneWidget);
     expect(find.text('Tue, 9 Jul · 14:05'), findsOneWidget);
     expect(find.text('Pending'), findsNWidgets(2));
   });
@@ -56,7 +57,7 @@ Future<void> _pumpScreen(
         Provider<IEventRepository>.value(
           value: _FakeEventRepository([task]),
         ),
-        Provider<UserDomain>.value(
+        ChangeNotifierProvider<UserDomain>.value(
           value: UserDomain(
             userRepository: _FakeUserRepository(),
             notificationDomain: NotificationDomain(),
@@ -105,7 +106,8 @@ class _FakeEventRepository implements IEventRepository {
     bool mine = false,
     DateTime? from,
     DateTime? to,
-  }) async => tasks;
+  }) async =>
+      tasks;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

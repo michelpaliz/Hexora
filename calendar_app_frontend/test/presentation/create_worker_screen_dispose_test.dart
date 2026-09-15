@@ -44,7 +44,7 @@ void main() {
           Provider<ITimeTrackingRepository>.value(
             value: _FakeTimeTrackingRepository(),
           ),
-          Provider<UserDomain>.value(value: userDomain),
+          ChangeNotifierProvider<UserDomain>.value(value: userDomain),
         ],
         child: MaterialApp(
           theme: AppTheme.light,
@@ -63,7 +63,9 @@ void main() {
     await tester.tap(find.byType(Switch));
     await tester.pump();
     controllers.add(
-      tester.widget<TextFormField>(find.byType(TextFormField).first).controller!,
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).first)
+          .controller!,
     );
 
     expect(controllers, hasLength(5));

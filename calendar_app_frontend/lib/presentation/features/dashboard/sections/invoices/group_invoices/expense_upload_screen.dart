@@ -11,6 +11,10 @@ import 'package:flutter/services.dart';
 import 'package:hexora/data/expenses/expenses_api.dart';
 import 'package:hexora/data/group_management/group/domain/group_domain.dart';
 import 'package:hexora/data/providers/providers_api.dart';
+import 'package:hexora/presentation/features/dashboard/sections/invoices/group_invoices/expense_upload/expense_batch_job_models.dart';
+import 'package:hexora/presentation/features/dashboard/sections/invoices/group_invoices/expense_upload/expense_batch_preview_formatters.dart';
+import 'package:hexora/presentation/features/dashboard/sections/invoices/group_invoices/expense_upload/expense_batch_preview_visuals.dart';
+import 'package:hexora/presentation/features/dashboard/sections/invoices/group_invoices/expense_upload/expense_import_help_text.dart';
 import 'package:hexora/presentation/features/dashboard/sections/invoices/group_invoices/expense_upload_ops/expense_operations.dart';
 import 'package:hexora/presentation/features/dashboard/sections/invoices/group_invoices/expense_upload_ops/form_helpers.dart';
 import 'package:hexora/presentation/features/dashboard/sections/invoices/group_invoices/expense_upload_ops/provider_operations.dart';
@@ -58,89 +62,8 @@ class ExpenseUploadScreen extends StatefulWidget {
   State<ExpenseUploadScreen> createState() => ExpenseUploadScreenState();
 }
 
-class _ExpenseBatchJobSnapshot {
-  final String jobId;
-  final String? backgroundJobId;
-  final Map<String, dynamic>? status;
-  final Map<String, dynamic>? result;
-
-  const _ExpenseBatchJobSnapshot({
-    required this.jobId,
-    this.backgroundJobId,
-    this.status,
-    this.result,
-  });
-}
-
-class _ExpenseBatchPreviewItem {
-  final String id;
-  final String tempId;
-  final String fileName;
-  String status;
-  Map<String, dynamic> prediction;
-  final Map<String, dynamic> confidence;
-  final List<String> warnings;
-  final Map<String, dynamic> duplicate;
-  final String? error;
-  bool selected;
-  bool reviewed = false;
-
-  _ExpenseBatchPreviewItem({
-    required this.id,
-    required this.tempId,
-    required this.fileName,
-    required this.status,
-    required this.prediction,
-    required this.confidence,
-    required this.warnings,
-    required this.duplicate,
-    this.error,
-    required this.selected,
-  });
-
-  bool get isDuplicate =>
-      status == 'duplicate' || duplicate['isDuplicate'] == true;
-  bool get isFailed => status == 'failed';
-  bool get canSelect => !isDuplicate && !isFailed;
-  bool get needsReview => status == 'needs_review';
-
-  factory _ExpenseBatchPreviewItem.fromMap(
-    Map<String, dynamic> raw,
-    int index,
-  ) {
-    final status = _batchJobText(raw['status']).toLowerCase();
-    final duplicate = raw['duplicate'] is Map
-        ? Map<String, dynamic>.from(raw['duplicate'] as Map)
-        : <String, dynamic>{};
-    final tempId = _batchJobText(raw['tempId']);
-    final fileName = _batchJobFirstText([
-      raw['fileName'],
-      raw['sourceDocument'] is Map
-          ? (raw['sourceDocument'] as Map)['fileName']
-          : null,
-      'Documento ${index + 1}',
-    ]);
-    final isDuplicate =
-        status == 'duplicate' || duplicate['isDuplicate'] == true;
-    final isFailed = status == 'failed';
-    return _ExpenseBatchPreviewItem(
-      id: tempId.isNotEmpty ? tempId : '${fileName}_$index',
-      tempId: tempId,
-      fileName: fileName,
-      status: status.isEmpty ? 'needs_review' : status,
-      prediction: raw['prediction'] is Map
-          ? Map<String, dynamic>.from(raw['prediction'] as Map)
-          : <String, dynamic>{},
-      confidence: raw['confidence'] is Map
-          ? Map<String, dynamic>.from(raw['confidence'] as Map)
-          : <String, dynamic>{},
-      warnings: _expenseBatchStringList(raw['warnings']),
-      duplicate: duplicate,
-      error: _batchJobFirstText([raw['error'], raw['message'], raw['reason']]),
-      selected: status == 'ready' && !isDuplicate && !isFailed,
-    );
-  }
-}
+typedef _ExpenseBatchJobSnapshot = ExpenseBatchJobSnapshot;
+typedef _ExpenseBatchPreviewItem = ExpenseBatchPreviewItem;
 
 enum _ExpenseDocumentTotalField {
   base,
@@ -148,38 +71,14 @@ enum _ExpenseDocumentTotalField {
   total,
 }
 
-String _batchJobText(dynamic value) => value?.toString().trim() ?? '';
+String _batchJobText(dynamic value) => expenseBatchJobText(value);
 
-String _batchJobFirstText(Iterable<dynamic> values) {
-  for (final value in values) {
-    final text = _batchJobText(value);
-    if (text.isNotEmpty) return text;
-  }
-  return '';
-}
+String _batchJobFirstText(Iterable<dynamic> values) =>
+    expenseBatchJobFirstText(values);
 
-int _batchJobInt(dynamic value) {
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  return int.tryParse(_batchJobText(value)) ?? 0;
-}
+int _batchJobInt(dynamic value) => expenseBatchJobInt(value);
 
-double _batchJobDouble(dynamic value) {
-  if (value is double) return value;
-  if (value is num) return value.toDouble();
-  return double.tryParse(_batchJobText(value)) ?? 0;
-}
-
-bool _isIncidentStatus(String status) {
-  return const {
-    'failed',
-    'needs_review',
-    'duplicate',
-    'duplicated',
-    'skipped',
-    'validation_error',
-  }.contains(status.trim().toLowerCase());
-}
+double _batchJobDouble(dynamic value) => expenseBatchJobDouble(value);
 
 bool _hasIncidentItems(
   Iterable<_ExpenseBatchPreviewItem> items, {
@@ -188,194 +87,37 @@ bool _hasIncidentItems(
   int failedCount = 0,
   int warningCount = 0,
 }) {
-  return items.any((item) => _isIncidentStatus(item.status)) ||
-      skippedCount > 0 ||
-      duplicateCount > 0 ||
-      failedCount > 0 ||
-      warningCount > 0;
-}
-
-List<String> _expenseBatchStringList(dynamic value) {
-  if (value is List) {
-    return value
-        .map((entry) => _batchJobText(entry))
-        .where((entry) => entry.isNotEmpty)
-        .toList(growable: false);
-  }
-  final text = _batchJobText(value);
-  return text.isEmpty ? <String>[] : <String>[text];
+  return hasExpenseBatchIncidentItems(
+    items,
+    skippedCount: skippedCount,
+    duplicateCount: duplicateCount,
+    failedCount: failedCount,
+    warningCount: warningCount,
+  );
 }
 
 List<_ExpenseBatchPreviewItem> _expenseBatchPreviewItemsFromPayload(
   Map<String, dynamic>? payload,
 ) {
-  final rawItems = payload?['items'];
-  if (rawItems is! List) return <_ExpenseBatchPreviewItem>[];
-  return [
-    for (var index = 0; index < rawItems.length; index++)
-      if (rawItems[index] is Map)
-        _ExpenseBatchPreviewItem.fromMap(
-          Map<String, dynamic>.from(rawItems[index] as Map),
-          index,
-        ),
-  ];
+  return expenseBatchPreviewItemsFromPayload(payload);
 }
 
-String _expenseBatchJobStatusFromPayload(Map<String, dynamic>? payload) {
-  final status = _batchJobText(payload?['status']).toLowerCase();
-  if (status.isEmpty) return 'idle';
-  return status;
-}
+String _expenseBatchJobStatusFromPayload(Map<String, dynamic>? payload) =>
+    expenseBatchJobStatusFromPayload(payload);
 
 bool _isExpenseBatchJobTerminal(String? status) =>
-    status == 'completed' ||
-    status == 'failed' ||
-    status == 'needs_review' ||
-    status == 'cancelled';
+    isExpenseBatchJobTerminal(status);
 
-String _expenseBatchJobMessageFromPayload(Map<String, dynamic>? payload) {
-  if (payload == null) return '';
-  return _batchJobFirstText([
-    payload['message'],
-    payload['detail'],
-    payload['currentStep'],
-    payload['status'],
-  ]);
-}
+String _expenseBatchJobUiMessage(Map<String, dynamic>? payload) =>
+    expenseBatchJobUiMessage(payload);
 
-String _expenseBatchJobUiMessage(Map<String, dynamic>? payload) {
-  final status = _expenseBatchJobStatusFromPayload(payload);
-  final backendMessage = _expenseBatchJobMessageFromPayload(payload);
-  final processedFiles = _batchJobInt(payload?['processedFiles']);
-  final totalFiles = _batchJobInt(payload?['totalFiles']);
-
-  switch (status) {
-    case 'queued':
-      return backendMessage.isNotEmpty
-          ? backendMessage
-          : 'Importacion en cola. Puedes salir de esta pantalla mientras se procesa el lote.';
-    case 'processing':
-      final prefix = (processedFiles > 0 && totalFiles > 0)
-          ? 'Procesando $processedFiles de $totalFiles archivos.'
-          : 'Procesando lote de gastos.';
-      if (backendMessage.isNotEmpty) {
-        return '$prefix $backendMessage';
-      }
-      return '$prefix Puedes salir de esta pantalla mientras se completa la importacion.';
-    case 'completed':
-      return backendMessage.isNotEmpty
-          ? backendMessage
-          : 'Importacion completada.';
-    case 'failed':
-      return backendMessage.isNotEmpty
-          ? backendMessage
-          : 'Importacion fallida.';
-    default:
-      return backendMessage.isNotEmpty
-          ? backendMessage
-          : 'Esperando importacion...';
-  }
-}
-
-List<String> _expenseBatchIssuesFromPayload(Map<String, dynamic>? payload) {
-  if (payload == null) return const <String>[];
-  final issues = <String>[];
-
-  void append(dynamic entry, {String? fallbackReason}) {
-    if (entry == null) return;
-    if (entry is String) {
-      final text = entry.trim();
-      if (text.isNotEmpty) issues.add(text);
-      return;
-    }
-    if (entry is Map) {
-      final map = Map<String, dynamic>.from(entry);
-      final fileName = _batchJobFirstText([
-        map['fileName'],
-        map['filename'],
-        map['name'],
-        map['documentName'],
-        map['document'],
-      ]);
-      final reason = _batchJobFirstText([
-        map['reason'],
-        map['message'],
-        map['error'],
-        map['detail'],
-        fallbackReason,
-      ]);
-      if (fileName.isNotEmpty && reason.isNotEmpty) {
-        issues.add('$fileName - $reason');
-      } else if (fileName.isNotEmpty) {
-        issues.add(fileName);
-      } else if (reason.isNotEmpty) {
-        issues.add(reason);
-      }
-    }
-  }
-
-  void appendList(dynamic raw, {String? fallbackReason}) {
-    if (raw is List) {
-      for (final entry in raw) {
-        append(entry, fallbackReason: fallbackReason);
-      }
-    }
-  }
-
-  appendList(payload['errors'], fallbackReason: 'Error');
-  appendList(payload['issues'], fallbackReason: 'Incidencia');
-  appendList(payload['warnings'], fallbackReason: 'Advertencia');
-  appendList(payload['failedFiles'], fallbackReason: 'No se pudo importar');
-  appendList(payload['skippedFiles'], fallbackReason: 'Se omitio del lote');
-  appendList(payload['files']);
-
-  return issues.toSet().toList();
-}
+List<String> _expenseBatchIssuesFromPayload(Map<String, dynamic>? payload) =>
+    expenseBatchIssuesFromPayload(payload);
 
 Map<String, String> _expenseBatchFileIssueMapFromPayload(
   Map<String, dynamic>? payload,
-) {
-  if (payload == null) return const <String, String>{};
-  final issuesByFile = <String, String>{};
-
-  void append(dynamic entry, {String? fallbackReason}) {
-    if (entry is! Map) return;
-    final map = Map<String, dynamic>.from(entry);
-    final fileName = _batchJobFirstText([
-      map['fileName'],
-      map['filename'],
-      map['name'],
-      map['documentName'],
-      map['document'],
-    ]);
-    if (fileName.isEmpty) return;
-    final reason = _batchJobFirstText([
-      map['reason'],
-      map['message'],
-      map['error'],
-      map['detail'],
-      fallbackReason,
-    ]);
-    issuesByFile[fileName.toLowerCase().trim()] =
-        reason.isEmpty ? 'Con incidencia' : reason;
-  }
-
-  void appendList(dynamic raw, {String? fallbackReason}) {
-    if (raw is List) {
-      for (final entry in raw) {
-        append(entry, fallbackReason: fallbackReason);
-      }
-    }
-  }
-
-  appendList(payload['failedFiles'], fallbackReason: 'No se pudo importar');
-  appendList(payload['skippedFiles'], fallbackReason: 'Se omitio del lote');
-  appendList(payload['errors'], fallbackReason: 'Error');
-  appendList(payload['issues'], fallbackReason: 'Incidencia');
-  appendList(payload['files']);
-
-  return issuesByFile;
-}
+) =>
+    expenseBatchFileIssueMapFromPayload(payload);
 
 abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     with

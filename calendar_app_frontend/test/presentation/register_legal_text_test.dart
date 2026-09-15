@@ -51,8 +51,8 @@ void main() {
     expect(children[3], isA<TextSpan>());
     expect((children[3] as TextSpan).recognizer, isA<TapGestureRecognizer>());
 
-    await tester.tap(find.text('Terms'));
-    await tester.tap(find.text('Privacy Policy'));
+    ((children[1] as TextSpan).recognizer as TapGestureRecognizer).onTap!();
+    ((children[3] as TextSpan).recognizer as TapGestureRecognizer).onTap!();
     await tester.pump();
     expect(openedTerms, Uri.parse('https://example.com/terms'));
     expect(openedPrivacy, Uri.parse('https://example.com/privacy'));

@@ -13,7 +13,7 @@ import 'package:hexora/data/user/repository/i_user_repository.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class _FakeNotificationSocket implements NotificationSocketClient {
-  final Map<String, Function> _handlers = {};
+  final Map<String, NotificationSocketHandler> _handlers = {};
   bool _connected = false;
   bool disposed = false;
 
@@ -35,13 +35,16 @@ class _FakeNotificationSocket implements NotificationSocketClient {
   }
 
   @override
-  void on(String event, Function handler) => _handlers[event] = handler;
+  void on(String event, NotificationSocketHandler handler) =>
+      _handlers[event] = handler;
 
   @override
-  void onConnect(Function handler) => _handlers['connect'] = handler;
+  void onConnect(NotificationSocketHandler handler) =>
+      _handlers['connect'] = handler;
 
   @override
-  void onDisconnect(Function handler) => _handlers['disconnect'] = handler;
+  void onDisconnect(NotificationSocketHandler handler) =>
+      _handlers['disconnect'] = handler;
 }
 
 class _FakeAuthApiClient implements IAuthApiClient {
@@ -109,6 +112,8 @@ AuthProvider _buildAuthProvider() {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   tearDown(() {
     setNotificationSocketFactoryForTesting(null);
     SocketManager().setSocketFactoryForTesting(null);

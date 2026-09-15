@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/app/init_main.dart';
@@ -37,6 +39,4 @@ void main() {
     expect(initializationCount, 1);
     expect(launchedApp, isA<HexoraApp>());
   });
-
 }
-import 'dart:async';

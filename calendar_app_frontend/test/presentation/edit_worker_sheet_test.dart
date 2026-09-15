@@ -79,7 +79,9 @@ void main() {
     }
     await tester.pump();
 
-    await tester.tap(find.byType(FilledButton));
+    await tester.tap(
+      find.byWidgetPredicate((widget) => widget is FilledButton),
+    );
     await tester.pumpAndSettle();
 
     expect(repo.updatedWorker, isNotNull);
@@ -87,7 +89,8 @@ void main() {
     expect(repo.updatedWorker!.defaultHourlyRate, isNull);
     expect(repo.updatedWorker!.roleTag, isNull);
     expect(repo.updatedWorker!.notes, isNull);
-    expect(repo.updatedWorker!.toUpdateJson(), containsPair('displayName', isNull));
+    expect(repo.updatedWorker!.toUpdateJson(),
+        containsPair('displayName', isNull));
     expect(
       repo.updatedWorker!.toUpdateJson(),
       containsPair('defaultHourlyRate', isNull),

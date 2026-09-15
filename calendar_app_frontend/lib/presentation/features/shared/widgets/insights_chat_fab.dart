@@ -19,6 +19,19 @@ import 'package:hexora/presentation/features/dashboard/sections/enable_banking/s
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/shared/documents/file_download_launcher.dart';
 import 'package:hexora/presentation/features/shared/downloads/download_jobs_store.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_action_classification.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_amount_formatter.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_event_assistant.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_event_request_classifier.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_event_schedule_formatters.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_event_status_formatter.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_export_actions.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_json_utils.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_message_presentation.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_menu_parser.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_models.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_response_metadata_parser.dart';
+import 'package:hexora/presentation/features/shared/widgets/insights_chat_table_accessors.dart';
 import 'package:hexora/theme/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -165,377 +178,22 @@ class InsightsChatPanel extends StatelessWidget {
   }
 }
 
-class _ChatMessage {
-  final bool isUser;
-  final String text;
-  final String? displayText;
-  final DateTime timestamp;
-  final String? conversationId;
-  final bool isTimeoutFallback;
-  final bool canRetry;
-  final bool canExport;
-  final String? retryMessage;
-  final String? sourceUserMessage;
-  final Map<String, dynamic>? exportAction;
-  final String? view;
-  final Map<String, dynamic>? table;
-  final List<String>? followUps;
-  final _InsightsMenu? menu;
-  final Map<String, dynamic>? eventAssistant;
+typedef _ChatMessage = InsightsChatMessage;
+typedef _InsightsMenuOption = InsightsMenuOption;
+typedef _InsightsMenu = InsightsMenu;
 
-  const _ChatMessage({
-    required this.isUser,
-    required this.text,
-    this.displayText,
-    required this.timestamp,
-    this.conversationId,
-    this.isTimeoutFallback = false,
-    this.canRetry = false,
-    this.canExport = false,
-    this.retryMessage,
-    this.sourceUserMessage,
-    this.exportAction,
-    this.view,
-    this.table,
-    this.followUps,
-    this.menu,
-    this.eventAssistant,
-  });
-
-  _ChatMessage copyWith({
-    bool? isUser,
-    String? text,
-    String? displayText,
-    DateTime? timestamp,
-    String? conversationId,
-    bool? isTimeoutFallback,
-    bool? canRetry,
-    bool? canExport,
-    String? retryMessage,
-    String? sourceUserMessage,
-    Map<String, dynamic>? exportAction,
-    String? view,
-    Map<String, dynamic>? table,
-    List<String>? followUps,
-    _InsightsMenu? menu,
-    Map<String, dynamic>? eventAssistant,
-  }) {
-    return _ChatMessage(
-      isUser: isUser ?? this.isUser,
-      text: text ?? this.text,
-      displayText: displayText ?? this.displayText,
-      timestamp: timestamp ?? this.timestamp,
-      conversationId: conversationId ?? this.conversationId,
-      isTimeoutFallback: isTimeoutFallback ?? this.isTimeoutFallback,
-      canRetry: canRetry ?? this.canRetry,
-      canExport: canExport ?? this.canExport,
-      retryMessage: retryMessage ?? this.retryMessage,
-      sourceUserMessage: sourceUserMessage ?? this.sourceUserMessage,
-      exportAction: exportAction ?? this.exportAction,
-      view: view ?? this.view,
-      table: table ?? this.table,
-      followUps: followUps ?? this.followUps,
-      menu: menu ?? this.menu,
-      eventAssistant: eventAssistant ?? this.eventAssistant,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'isUser': isUser,
-        'text': text,
-        'displayText': displayText,
-        'timestamp': timestamp.toIso8601String(),
-        'conversationId': conversationId,
-        'isTimeoutFallback': isTimeoutFallback,
-        'canRetry': canRetry,
-        'canExport': canExport,
-        'retryMessage': retryMessage,
-        'sourceUserMessage': sourceUserMessage,
-        'exportAction': exportAction,
-        'view': view,
-        'table': table,
-        'followUps': followUps,
-        'menu': menu?.toJson(),
-        'eventAssistant': eventAssistant,
-      };
-
-  static _ChatMessage? fromJson(dynamic json) {
-    if (json is! Map) return null;
-    final isUser = json['isUser'] == true;
-    final text = _safeString(json['text']);
-    final displayText = _safeString(json['displayText']).trim();
-    final rawTimestamp = _safeString(json['timestamp']);
-    final conversationId = _safeString(json['conversationId']).trim();
-    final timestamp = DateTime.tryParse(rawTimestamp);
-    final isTimeoutFallback = json['isTimeoutFallback'] == true;
-    final canRetry = json['canRetry'] == true;
-    final canExport = json['canExport'] == true;
-    final retryMessage = _safeString(json['retryMessage']).trim();
-    final sourceUserMessage = _safeString(json['sourceUserMessage']).trim();
-    final exportAction = _safeMap(json['exportAction']);
-    final view = _safeString(json['view']).trim();
-    final table = _safeMap(json['table']);
-    final followUps = _safeStringList(json['followUps']);
-    final menu = _InsightsMenu.fromDynamic(json['menu']);
-    final eventAssistant = _safeMap(json['eventAssistant']);
-    if (text.trim().isEmpty || timestamp == null) return null;
-    return _ChatMessage(
-      isUser: isUser,
-      text: text,
-      displayText: displayText.isEmpty ? null : displayText,
-      timestamp: timestamp,
-      conversationId: conversationId.isEmpty ? null : conversationId,
-      isTimeoutFallback: isTimeoutFallback,
-      canRetry: canRetry,
-      canExport: canExport,
-      retryMessage: retryMessage.isEmpty ? null : retryMessage,
-      sourceUserMessage: sourceUserMessage.isEmpty ? null : sourceUserMessage,
-      exportAction: exportAction,
-      view: view.isEmpty ? null : view,
-      table: table,
-      followUps: followUps,
-      menu: menu,
-      eventAssistant: eventAssistant,
-    );
-  }
-
-  static String _safeString(dynamic value) {
-    if (value is String) return value;
-    if (value is num || value is bool) return value.toString();
-    return '';
-  }
-
-  static Map<String, dynamic>? _safeMap(dynamic value) {
-    if (value is Map<String, dynamic>) return value;
-    if (value is Map) {
-      return value.map((key, value) => MapEntry(key.toString(), value));
-    }
-    return null;
-  }
-
-  static List<String>? _safeStringList(dynamic value) {
-    if (value is! List) return null;
-    final items = value
-        .map((item) => _safeString(item).trim())
-        .where((item) => item.isNotEmpty)
-        .toList(growable: false);
-    return items.isEmpty ? null : items;
-  }
-}
-
-class _InsightsMenuOption {
-  const _InsightsMenuOption({
-    required this.index,
-    required this.label,
-    this.action,
-  });
-
-  final int index;
-  final String label;
-  final String? action;
-
-  Map<String, dynamic> toJson() => {
-        'index': index,
-        'label': label,
-        'action': action,
-      };
-
-  static _InsightsMenuOption? fromDynamic(dynamic raw) {
-    if (raw is String) {
-      final label = raw.trim();
-      if (label.isEmpty) return null;
-      return _InsightsMenuOption(index: 0, label: label);
-    }
-    final map = _safeMap(raw);
-    if (map == null) return null;
-    final index = _readInt(map['index']) ??
-        _readInt(map['number']) ??
-        _readInt(map['key']) ??
-        _readInt(map['id']);
-    final label = (map['label']?.toString() ??
-            map['text']?.toString() ??
-            map['title']?.toString() ??
-            map['name']?.toString() ??
-            '')
-        .trim();
-    final action = (map['action']?.toString() ??
-            map['token']?.toString() ??
-            map['value']?.toString() ??
-            '')
-        .trim();
-    if (index == null || label.isEmpty) return null;
-    return _InsightsMenuOption(
-      index: index,
-      label: label,
-      action: action.isEmpty ? null : action,
-    );
-  }
-}
-
-class _InsightsMenu {
-  const _InsightsMenu({
-    required this.id,
-    required this.parentId,
-    required this.backAction,
-    required this.title,
-    required this.options,
-  });
-
-  final String? id;
-  final String? parentId;
-  final String? backAction;
-  final String? title;
-  final List<_InsightsMenuOption> options;
-
-  bool get hasOptions => options.isNotEmpty;
-  bool get hasBackAction => (backAction?.trim().isNotEmpty ?? false);
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'parentId': parentId,
-        'backAction': backAction,
-        'title': title,
-        'options': options.map((option) => option.toJson()).toList(),
-      };
-
-  static List<_InsightsMenuOption> _optionsFromDynamic(dynamic raw) {
-    if (raw is List) {
-      return raw
-          .map(_InsightsMenuOption.fromDynamic)
-          .whereType<_InsightsMenuOption>()
-          .toList(growable: false);
-    }
-
-    final map = _safeMap(raw);
-    if (map == null || map.isEmpty) return const <_InsightsMenuOption>[];
-
-    final sortable = <MapEntry<int, _InsightsMenuOption>>[];
-    map.forEach((key, value) {
-      final index = _readInt(key);
-      if (index == null) return;
-      if (value is String) {
-        final label = value.trim();
-        if (label.isEmpty) return;
-        sortable.add(
-          MapEntry(index, _InsightsMenuOption(index: index, label: label)),
-        );
-        return;
-      }
-      final item = _safeMap(value);
-      if (item == null) return;
-      final enriched = <String, dynamic>{'index': index, ...item};
-      final option = _InsightsMenuOption.fromDynamic(enriched);
-      if (option != null) {
-        sortable.add(MapEntry(index, option));
-      }
-    });
-
-    sortable.sort((a, b) => a.key.compareTo(b.key));
-    return sortable.map((entry) => entry.value).toList(growable: false);
-  }
-
-  static _InsightsMenu? fromDynamic(dynamic raw) {
-    final map = _safeMap(raw);
-    if (map == null || map.isEmpty) return null;
-    final metadata = _safeMap(map['metadata']) ?? const <String, dynamic>{};
-    final directOptions = _optionsFromDynamic(map['options']);
-    final optionMapOptions = _optionsFromDynamic(map['optionMap']);
-    final optionMapSnakeOptions = _optionsFromDynamic(map['option_map']);
-    final options = directOptions.isNotEmpty
-        ? directOptions
-        : optionMapOptions.isNotEmpty
-            ? optionMapOptions
-            : optionMapSnakeOptions;
-    final id = (map['id']?.toString() ??
-            map['menuId']?.toString() ??
-            map['menu_id']?.toString() ??
-            metadata['id']?.toString() ??
-            metadata['menuId']?.toString() ??
-            '')
-        .trim();
-    final parentId = (map['parentId']?.toString() ??
-            map['parent_id']?.toString() ??
-            metadata['parentId']?.toString() ??
-            metadata['parent_id']?.toString() ??
-            '')
-        .trim();
-    final backAction = (map['backAction']?.toString() ??
-            map['back_action']?.toString() ??
-            metadata['backAction']?.toString() ??
-            metadata['back_action']?.toString() ??
-            '')
-        .trim();
-    final title = (map['title']?.toString() ??
-            metadata['title']?.toString() ??
-            metadata['label']?.toString() ??
-            '')
-        .trim();
-    if (id.isEmpty &&
-        parentId.isEmpty &&
-        backAction.isEmpty &&
-        title.isEmpty &&
-        options.isEmpty) {
-      return null;
-    }
-    return _InsightsMenu(
-      id: id.isEmpty ? null : id,
-      parentId: parentId.isEmpty ? null : parentId,
-      backAction: backAction.isEmpty ? null : backAction,
-      title: title.isEmpty ? null : title,
-      options: options,
-    );
-  }
-}
-
-Map<String, dynamic>? _safeMap(dynamic value) {
-  if (value is Map<String, dynamic>) return value;
-  if (value is Map) {
-    return value.map((key, value) => MapEntry(key.toString(), value));
-  }
-  return null;
-}
+Map<String, dynamic>? _safeMap(dynamic value) => insightsChatSafeMap(value);
 
 Map<String, dynamic>? _extractExportActionMap(dynamic raw) {
-  final map = _safeMap(raw);
-  if (map == null || map.isEmpty) return null;
-  final directRaw = _safeMap(map['exportAction']);
-  if (directRaw != null) {
-    final direct = InsightsExcelExportAction.fromDynamic(directRaw);
-    if (direct == null) return _extractExportActionMap(map['data']);
-    return <String, dynamic>{
-      'type': direct.type,
-      'endpoint': direct.endpoint,
-      'method': direct.method,
-      'body': direct.body,
-      'filename': direct.filename,
-    };
-  }
-  return _extractExportActionMap(map['data']);
+  return extractInsightsExportActionMap(raw);
 }
 
 bool _extractCanExport(dynamic raw) {
-  final map = _safeMap(raw);
-  if (map == null || map.isEmpty) return false;
-  final rawFlag = map['canExport'];
-  if (rawFlag == true || rawFlag?.toString().toLowerCase() == 'true') {
-    return true;
-  }
-  return _extractCanExport(map['data']);
+  return extractInsightsCanExport(raw);
 }
 
 String? _extractResponseView(dynamic raw) {
-  final map = _safeMap(raw);
-  if (map == null || map.isEmpty) return null;
-  final direct = map['view']?.toString().trim();
-  if (direct != null && direct.isNotEmpty) return direct;
-  return _extractResponseView(map['data']);
-}
-
-int? _readInt(dynamic value) {
-  if (value == null) return null;
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  return int.tryParse(value.toString());
+  return extractInsightsResponseView(raw);
 }
 
 bool _isFiniteNum(dynamic value) {
@@ -552,78 +210,39 @@ bool _isExportPlaceholderText(String text) {
 }
 
 bool _looksLikeActionToken(String text) {
-  final trimmed = text.trim();
-  return trimmed.startsWith('__menu__:') ||
-      trimmed.startsWith('__back__:') ||
-      trimmed.startsWith('__anchored_') ||
-      trimmed.startsWith('__') && trimmed.contains(':');
+  return looksLikeInsightsActionToken(text);
 }
 
-const String _incomeInvoicesByAmountAction =
-    '__menu__:category_income:facturas_por_importe';
-const String _financeBreakdownAction = '__menu__::finance_follow_up:breakdown';
-
 bool _isIncomeInvoicesByAmountAction(String? text) {
-  return (text ?? '').trim() == _incomeInvoicesByAmountAction;
+  return isInsightsIncomeInvoicesByAmountAction(text);
 }
 
 bool _isFinanceBreakdownAction(String? text) {
-  return (text ?? '').trim() == _financeBreakdownAction;
+  return isInsightsFinanceBreakdownAction(text);
 }
 
 bool _messageIndicatesZeroFinanceMovements(String text) {
-  final normalized = text.trim().toLowerCase();
-  if (normalized.isEmpty) return false;
-  return normalized.contains('0 movimiento(s)') ||
-      normalized.contains('0 movimientos') ||
-      normalized.contains('0 movement(s)') ||
-      normalized.contains('0 movements');
+  return insightsMessageIndicatesZeroFinanceMovements(text);
 }
 
 bool _looksLikeExcelExportOption(String text) {
-  final normalized = text.trim().toLowerCase();
-  if (normalized.isEmpty) return false;
-  return normalized.contains('export') ||
-      normalized.contains('excel') ||
-      normalized.contains('descargar');
+  return looksLikeInsightsExcelExportOption(text);
 }
 
 bool _isExcelExportMenuOption(_InsightsMenuOption option) {
-  final action = option.action?.trim().toLowerCase() ?? '';
-  return action.contains(':export') ||
-      action.contains('export_excel') ||
-      _looksLikeExcelExportOption(option.label);
+  return isInsightsExcelExportMenuOption(option);
 }
 
 Map<String, dynamic>? _extractStructuredTableMap(dynamic raw) {
-  final map = _safeMap(raw);
-  if (map == null || map.isEmpty) return null;
-  if (map['columns'] is List && map['rows'] is List) return map;
-  final table = _safeMap(map['table']);
-  if (table != null) return table;
-  return _extractStructuredTableMap(map['data']);
+  return extractInsightsStructuredTable(raw);
 }
 
 List<String>? _extractFollowUps(dynamic raw) {
-  final map = _safeMap(raw);
-  if (map == null || map.isEmpty) return null;
-  final value = map['followUps'];
-  if (value is List) {
-    final items = value
-        .map((item) => item?.toString().trim() ?? '')
-        .where((item) => item.isNotEmpty)
-        .toList(growable: false);
-    if (items.isNotEmpty) return items;
-  }
-  return _extractFollowUps(map['data']);
+  return extractInsightsFollowUps(raw);
 }
 
 Map<String, dynamic>? _extractEventAssistantMap(dynamic raw) {
-  final map = _safeMap(raw);
-  if (map == null || map.isEmpty) return null;
-  final direct = _safeMap(map['eventAssistant']);
-  if (direct != null && direct.isNotEmpty) return direct;
-  return _extractEventAssistantMap(map['data']);
+  return extractInsightsEventAssistant(raw);
 }
 
 bool _messageHasEventAssistant(_ChatMessage message) {
@@ -631,56 +250,7 @@ bool _messageHasEventAssistant(_ChatMessage message) {
 }
 
 Map<String, dynamic> _cloneJsonMap(Map<String, dynamic> input) {
-  final cloned = jsonDecode(jsonEncode(input));
-  if (cloned is Map<String, dynamic>) return cloned;
-  if (cloned is Map) {
-    return cloned.map((key, value) => MapEntry(key.toString(), value));
-  }
-  return <String, dynamic>{};
-}
-
-_InsightsMenu? _extractMenu(dynamic raw) {
-  final map = _safeMap(raw);
-  if (map == null || map.isEmpty) return null;
-  final direct = _InsightsMenu.fromDynamic(map['menu']);
-  if (direct != null) return direct;
-  final inline = _InsightsMenu.fromDynamic(map);
-  if (inline != null) return inline;
-  return _extractMenu(map['data']);
-}
-
-_InsightsMenu? _fallbackMenuFromText(String text) {
-  final trimmed = text.trim();
-  if (trimmed.isEmpty) return null;
-  final lines = trimmed
-      .split('\n')
-      .map((line) => line.trim())
-      .where((line) => line.isNotEmpty)
-      .toList(growable: false);
-  if (lines.length < 2) return null;
-
-  final options = <_InsightsMenuOption>[];
-  for (final line in lines) {
-    final match = RegExp(r'^(\d+)[\)\.\-:]\s*(.+)$').firstMatch(line);
-    if (match == null) continue;
-    final index = int.tryParse(match.group(1) ?? '');
-    final label = (match.group(2) ?? '').trim();
-    if (index == null || label.isEmpty) continue;
-    options.add(_InsightsMenuOption(index: index, label: label));
-  }
-  if (options.isEmpty) return null;
-
-  final titleLines = lines
-      .where((line) => !RegExp(r'^\d+[\)\.\-:]\s*').hasMatch(line))
-      .toList(growable: false);
-
-  return _InsightsMenu(
-    id: null,
-    parentId: null,
-    backAction: null,
-    title: titleLines.isEmpty ? null : titleLines.first,
-    options: options,
-  );
+  return cloneInsightsJsonMap(input);
 }
 
 _InsightsMenu? _menuForResponse({
@@ -688,15 +258,11 @@ _InsightsMenu? _menuForResponse({
   required String text,
   Map<String, dynamic>? table,
 }) {
-  final directMenu = _extractMenu(raw);
-  if (directMenu != null) return directMenu;
-  if (table != null && table.isNotEmpty) return null;
-  return _fallbackMenuFromText(text);
+  return resolveInsightsMenuForResponse(raw: raw, text: text, table: table);
 }
 
 InsightsExcelExportAction? _getExportActionFromMessage(_ChatMessage message) {
-  if (message.canExport != true) return null;
-  return InsightsExcelExportAction.fromDynamic(message.exportAction);
+  return insightsExportActionForMessage(message);
 }
 
 bool _messageHasMenu(_ChatMessage message) =>
@@ -707,14 +273,7 @@ String _visibleTextForRawValue(
   required bool isUser,
   required bool isEs,
 }) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return '';
-  if (_looksLikeActionToken(trimmed)) {
-    return isUser
-        ? (isEs ? 'Opcion seleccionada' : 'Option selected')
-        : (isEs ? 'Procesando opcion...' : 'Processing option...');
-  }
-  return raw;
+  return visibleInsightsTextForRawValue(raw, isUser: isUser, isEs: isEs);
 }
 
 String _visibleMessageText(
@@ -722,15 +281,10 @@ String _visibleMessageText(
   required bool isEs,
   bool preserveStructuredAssistantText = false,
 }) {
-  if (!message.isUser && preserveStructuredAssistantText) {
-    return message.text.trim();
-  }
-  final display = message.displayText?.trim() ?? '';
-  if (display.isNotEmpty) return display;
-  return _visibleTextForRawValue(
-    message.text,
-    isUser: message.isUser,
+  return visibleInsightsMessageText(
+    message,
     isEs: isEs,
+    preserveStructuredAssistantText: preserveStructuredAssistantText,
   );
 }
 
@@ -2254,69 +1808,33 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   bool _hasPendingEventClarification(_ChatMessage? message) {
-    final assistant = _safeMap(message?.eventAssistant);
-    if (assistant == null) return false;
-    if (assistant['cancelled'] == true) return false;
-    return (assistant['status']?.toString().trim() ?? '') ==
-        'needs_clarification';
+    return insightsEventHasPendingClarification(message);
   }
 
   bool _looksLikeEventCreationRequest(String text) {
-    final normalized = text.trim().toLowerCase();
-    if (normalized.isEmpty) return false;
-    final hasEventWord = RegExp(
-      r'\b(event|meeting|appointment|reminder|maintenance|schedule|calendar|evento|reunion|reunión|cita|recordatorio|mantenimiento|agenda|calendario)\b',
-    ).hasMatch(normalized);
-    final hasCreateVerb = RegExp(
-      r'\b(create|schedule|add|book|plan|set up|remind|program|crear|crea|agendar|agenda|anade|añade|programa|recordar|reservar)\b',
-    ).hasMatch(normalized);
-    final hasTimeHint = RegExp(
-      r'\b(every|each|daily|weekly|monthly|yearly|weekday|weekdays|monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next|until|at\s+\d|first|last|cada|diario|semanal|mensual|anual|laborable|lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo|mañana|proximo|próximo|hasta|a las)\b',
-    ).hasMatch(normalized);
-    final hasDateLike = RegExp(r'\b\d{1,2}([/:.-]\d{1,2})?([/:.-]\d{2,4})?\b')
-        .hasMatch(normalized);
-    return hasEventWord || (hasCreateVerb && (hasTimeHint || hasDateLike));
+    return looksLikeInsightsEventCreationRequest(text);
   }
 
   Map<String, dynamic>? _eventAssistantForMessage(_ChatMessage message) =>
-      _safeMap(message.eventAssistant);
+      insightsEventAssistantForMessage(message);
 
   Map<String, dynamic>? _eventPreviewForMessage(_ChatMessage message) =>
-      _safeMap(_eventAssistantForMessage(message)?['preview']);
+      insightsEventPreviewForMessage(message);
 
   Map<String, dynamic>? _eventPayloadForMessage(_ChatMessage message) =>
-      _safeMap(_eventPreviewForMessage(message)?['eventPayload']);
+      insightsEventPayloadForMessage(message);
 
-  String _eventStatus(_ChatMessage message) =>
-      _eventAssistantForMessage(message)?['status']?.toString().trim() ?? '';
+  String _eventStatus(_ChatMessage message) => insightsEventStatus(message);
 
   bool _eventIsCancelled(_ChatMessage message) =>
-      _eventAssistantForMessage(message)?['cancelled'] == true;
+      insightsEventIsCancelled(message);
 
   bool _eventCanCreate(_ChatMessage message) {
-    final assistant = _eventAssistantForMessage(message);
-    if (assistant == null || assistant['cancelled'] == true) return false;
-    return assistant['canCreate'] == true;
+    return insightsEventCanCreate(message);
   }
 
   bool _eventShouldPromptForClientAndService(_ChatMessage message) {
-    final payload = _eventPayloadForMessage(message);
-    final preview = _eventPreviewForMessage(message);
-    if (payload == null || preview == null) return false;
-    final missing = _stringList(preview['missing'])
-        .map((item) => item.toLowerCase())
-        .toList(growable: false);
-    final clientId = payload['clientId']?.toString().trim() ?? '';
-    final primaryServiceId =
-        payload['primaryServiceId']?.toString().trim() ?? '';
-    final needsClient = clientId.isEmpty ||
-        missing
-            .any((item) => item.contains('client') || item.contains('cliente'));
-    final needsService = primaryServiceId.isEmpty ||
-        missing.any(
-          (item) => item.contains('service') || item.contains('servicio'),
-        );
-    return needsClient || needsService;
+    return insightsEventShouldPromptForClientAndService(message);
   }
 
   DateTime? _eventDate(dynamic value) {
@@ -2326,20 +1844,7 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   String _eventStatusLabel(String status, bool isEs) {
-    switch (status) {
-      case 'ready_to_create':
-        return isEs ? 'Listo para crear' : 'Ready to create';
-      case 'needs_clarification':
-        return isEs ? 'Necesita aclaracion' : 'Needs clarification';
-      case 'created':
-        return isEs ? 'Creado' : 'Created';
-      case 'error':
-        return isEs ? 'Error' : 'Error';
-      case 'not_event':
-        return isEs ? 'No es evento' : 'Not an event';
-      default:
-        return status.isEmpty ? (isEs ? 'Evento' : 'Event') : status;
-    }
+    return insightsEventStatusLabel(status, isEs);
   }
 
   Color _eventStatusColor(ColorScheme cs, String status) {
@@ -2385,91 +1890,15 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   String _eventDurationLabel(_ChatMessage message, bool isEs) {
-    final preview = _eventPreviewForMessage(message);
-    if (preview == null) return '-';
-    if (preview['allDay'] == true) return isEs ? 'Todo el dia' : 'All day';
-    final minutes = _readInt(preview['durationMinutes']);
-    if (minutes == null || minutes <= 0) return '-';
-    if (minutes % 60 == 0) {
-      final hours = minutes ~/ 60;
-      return isEs ? '$hours h' : '$hours h';
-    }
-    final hours = minutes ~/ 60;
-    final rem = minutes % 60;
-    if (hours <= 0) return isEs ? '$rem min' : '$rem min';
-    return '${hours}h ${rem}m';
+    return insightsEventDurationLabel(message, isEs);
   }
 
   String _eventRecurrenceSummary(_ChatMessage message, bool isEs) {
-    final rule = _safeMap(_eventPreviewForMessage(message)?['recurrence_rule']);
-    if (rule == null || rule.isEmpty) return '';
-    final type = rule['recurrenceType']?.toString().trim() ?? '';
-    final interval = _readInt(rule['repeatInterval']) ?? 1;
-    final days = ((rule['daysOfWeek'] as List?) ?? const [])
-        .map((item) => item?.toString().trim() ?? '')
-        .where((item) => item.isNotEmpty)
-        .toList(growable: false);
-    final dayOfMonth = _readInt(rule['dayOfMonth']);
-    final ordinalWeek = _readInt(rule['ordinalWeek']);
-    final ordinalWeekday = rule['ordinalWeekday']?.toString().trim() ?? '';
-    switch (type) {
-      case 'Daily':
-        return isEs
-            ? (interval == 1 ? 'Cada dia' : 'Cada $interval dias')
-            : (interval == 1 ? 'Every day' : 'Every $interval days');
-      case 'Weekly':
-        final dayText = days.join(', ');
-        return isEs
-            ? (interval == 1 ? 'Cada semana' : 'Cada $interval semanas') +
-                (dayText.isEmpty ? '' : ' · $dayText')
-            : (interval == 1 ? 'Every week' : 'Every $interval weeks') +
-                (dayText.isEmpty ? '' : ' · $dayText');
-      case 'Monthly':
-        if (ordinalWeek != null && ordinalWeekday.isNotEmpty) {
-          final ordinalText = _ordinalLabel(ordinalWeek, isEs);
-          return isEs
-              ? '$ordinalText $ordinalWeekday de cada mes'
-              : '$ordinalText $ordinalWeekday of the month';
-        }
-        if (dayOfMonth != null) {
-          return isEs
-              ? 'Cada mes el dia $dayOfMonth'
-              : 'Monthly on day $dayOfMonth';
-        }
-        return isEs ? 'Mensual' : 'Monthly';
-      case 'Yearly':
-        return isEs
-            ? (interval == 1 ? 'Cada ano' : 'Cada $interval anos')
-            : (interval == 1 ? 'Every year' : 'Every $interval years');
-      default:
-        return '';
-    }
-  }
-
-  String _ordinalLabel(int ordinal, bool isEs) {
-    const en = <int, String>{
-      1: 'First',
-      2: 'Second',
-      3: 'Third',
-      4: 'Fourth',
-      -1: 'Last',
-    };
-    const es = <int, String>{
-      1: 'Primer',
-      2: 'Segundo',
-      3: 'Tercer',
-      4: 'Cuarto',
-      -1: 'Ultimo',
-    };
-    return (isEs ? es : en)[ordinal] ?? ordinal.toString();
+    return insightsEventRecurrenceSummary(message, isEs);
   }
 
   List<String> _stringList(dynamic value) {
-    if (value is! List) return const <String>[];
-    return value
-        .map((item) => item?.toString().trim() ?? '')
-        .where((item) => item.isNotEmpty)
-        .toList(growable: false);
+    return insightsEventStringList(value);
   }
 
   Future<void> _cancelEventDraft(_ChatMessage message) async {
@@ -2812,17 +2241,7 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   String _formatEuroAmount(num? amount, String? currency) {
-    if (amount == null) return '';
-    final parts = amount.toStringAsFixed(2).split('.');
-    final whole = parts.first;
-    final buffer = StringBuffer();
-    for (var i = 0; i < whole.length; i++) {
-      final left = whole.length - i;
-      buffer.write(whole[i]);
-      if (left > 1 && left % 3 == 1) buffer.write('.');
-    }
-    final code = (currency ?? 'EUR').trim().isEmpty ? 'EUR' : currency!.trim();
-    return '${buffer.toString()},${parts.last} $code';
+    return formatInsightsEuroAmount(amount, currency);
   }
 
   Future<void> _ensureInvoiceDisplayCacheLoaded() async {
@@ -4663,9 +4082,7 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   bool _messageHasStructuredTable(_ChatMessage message) {
-    if (message.view != 'table') return false;
-    final rows = message.table?['rows'];
-    return rows is List && rows.isNotEmpty;
+    return insightsMessageHasStructuredTable(message);
   }
 
   Widget _buildMenuActions(
@@ -4812,25 +4229,15 @@ class _InsightsChatSheetState extends State<_InsightsChatSheet> {
   }
 
   List<Map<String, dynamic>> _tableColumnsFromMessage(_ChatMessage message) {
-    final columns = message.table?['columns'];
-    if (columns is! List) return const [];
-    return columns
-        .map((item) => _safeMap(item))
-        .whereType<Map<String, dynamic>>()
-        .toList(growable: false);
+    return insightsTableColumnsForMessage(message);
   }
 
   List<Map<String, dynamic>> _tableRowsFromMessage(_ChatMessage message) {
-    final rows = message.table?['rows'];
-    if (rows is! List) return const [];
-    return rows
-        .map((item) => _safeMap(item))
-        .whereType<Map<String, dynamic>>()
-        .toList(growable: false);
+    return insightsTableRowsForMessage(message);
   }
 
   Map<String, dynamic>? _tableSummaryFromMessage(_ChatMessage message) {
-    return _safeMap(message.table?['summary']);
+    return insightsTableSummaryForMessage(message);
   }
 
   Widget _buildInsightsTableView(
@@ -7893,16 +7300,7 @@ class _InsightsInvoiceLinkPickerDialogState
   }
 
   String _formatAmountNumber(num amount, String? currency) {
-    final parts = amount.toStringAsFixed(2).split('.');
-    final whole = parts.first;
-    final buffer = StringBuffer();
-    for (var i = 0; i < whole.length; i++) {
-      final left = whole.length - i;
-      buffer.write(whole[i]);
-      if (left > 1 && left % 3 == 1) buffer.write('.');
-    }
-    final code = (currency ?? 'EUR').trim().isEmpty ? 'EUR' : currency!.trim();
-    return '${buffer.toString()},${parts.last} $code';
+    return formatInsightsEuroAmount(amount, currency);
   }
 
   String _formatAmountValue(Map<String, dynamic> item) {

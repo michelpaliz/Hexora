@@ -3,7 +3,7 @@ import 'package:hexora/models/group/group.dart';
 import 'package:hexora/presentation/routes/group_invoices_route_args.dart';
 
 void main() {
-  final group = Group(
+  final testGroup = Group(
     id: 'group-1',
     name: 'Test group',
     ownerId: 'owner-1',
@@ -16,7 +16,7 @@ void main() {
   group('resolveGroupInvoicesRouteArgs', () {
     test('keeps typed route arguments', () {
       final arguments = GroupInvoicesRouteArgs(
-        group: group,
+        group: testGroup,
         initialMenu: 'invoices_issued',
         initialInvoiceId: 'invoice-1',
         initialReceiptId: 'receipt-1',
@@ -27,22 +27,22 @@ void main() {
     });
 
     test('wraps a group argument', () {
-      final resolved = resolveGroupInvoicesRouteArgs(group);
+      final resolved = resolveGroupInvoicesRouteArgs(testGroup);
 
-      expect(resolved?.group, same(group));
+      expect(resolved?.group, same(testGroup));
       expect(resolved?.initialMenu, isNull);
     });
 
     test('supports the legacy map argument shape', () {
       final resolved = resolveGroupInvoicesRouteArgs({
-        'group': group,
+        'group': testGroup,
         'initialMenu': 'receipts',
         'initialInvoiceId': 1,
         'initialReceiptId': 2,
         'initialBudgetId': 3,
       });
 
-      expect(resolved?.group, same(group));
+      expect(resolved?.group, same(testGroup));
       expect(resolved?.initialMenu, 'receipts');
       expect(resolved?.initialInvoiceId, '1');
       expect(resolved?.initialReceiptId, '2');
