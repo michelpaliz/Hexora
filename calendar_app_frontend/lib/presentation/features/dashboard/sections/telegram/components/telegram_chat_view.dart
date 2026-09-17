@@ -268,6 +268,39 @@ class _TelegramChatViewState extends State<TelegramChatView> {
     _composerFocusNode.requestFocus();
   }
 
+  Future<void> _handlePickImage() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: true,
+      type: FileType.image,
+    );
+    if (!mounted) return;
+    final file = result?.files.single;
+    if (file == null) return;
+
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.telegramCouldNotReadFile),
+        ),
+      );
+      return;
+    }
+
+    widget.domain.setAttachment(
+      widget.chat.id,
+      TelegramComposerAttachment(
+        fileName: file.name,
+        bytes: bytes,
+        fileSize: file.size,
+        mimeType: _inferMimeType(file),
+      ),
+      forumTopicId: widget.forumTopic?.forumTopicId,
+    );
+    _composerFocusNode.requestFocus();
+  }
+
   String? _currentGroupId() {
     try {
       final groupId = context.read<GroupDashboardState>().group.id.trim();
@@ -526,6 +559,7 @@ class _TelegramChatViewState extends State<TelegramChatView> {
                 attachment: attachment,
                 onSend: _handleSend,
                 onPickAttachment: _handlePickAttachment,
+                onPickImage: _handlePickImage,
                 onPickClientDocument: _handlePickClientDocument,
                 onPickWorkerDocument: _handlePickWorkerDocument,
                 onClearAttachment: _handleClearAttachment,
@@ -641,6 +675,13 @@ class _TelegramChatViewState extends State<TelegramChatView> {
 
   String _inferMimeType(PlatformFile file) {
     switch (file.extension?.toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
       case 'pdf':
         return 'application/pdf';
       case 'doc':
@@ -1143,6 +1184,7 @@ class TelegramChatComposer extends StatelessWidget {
     required this.attachment,
     required this.onSend,
     required this.onPickAttachment,
+    required this.onPickImage,
     required this.onPickClientDocument,
     required this.onPickWorkerDocument,
     required this.onClearAttachment,
@@ -1159,6 +1201,7 @@ class TelegramChatComposer extends StatelessWidget {
   final TelegramComposerAttachment? attachment;
   final VoidCallback onSend;
   final VoidCallback onPickAttachment;
+  final VoidCallback onPickImage;
   final VoidCallback onPickClientDocument;
   final VoidCallback onPickWorkerDocument;
   final VoidCallback onClearAttachment;
@@ -1274,26 +1317,32 @@ class TelegramChatComposer extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              // ── Attachment buttons ──────────────────────────
-              _AttachButton(
-                tooltip: l.chatComposerAttachFile,
-                icon: Icons.attach_file_rounded,
-                onPressed: attachEnabled ? onPickAttachment : null,
+              // ── Attachment menu ──────────────────────────────
+              _AttachMenuButton(
+                enabled: attachEnabled,
                 cs: cs,
-              ),
-              const SizedBox(width: 4),
-              _AttachButton(
-                tooltip: l.chatComposerAttachClientPdf,
-                icon: Icons.folder_shared_rounded,
-                onPressed: attachEnabled ? onPickClientDocument : null,
-                cs: cs,
-              ),
-              const SizedBox(width: 4),
-              _AttachButton(
-                tooltip: l.chatComposerAttachWorkerPdf,
-                icon: Icons.badge_rounded,
-                onPressed: attachEnabled ? onPickWorkerDocument : null,
-                cs: cs,
+                items: [
+                  _AttachMenuItem(
+                    label: l.chatComposerAttachImage,
+                    icon: Icons.image_outlined,
+                    onSelected: onPickImage,
+                  ),
+                  _AttachMenuItem(
+                    label: l.chatComposerAttachFile,
+                    icon: Icons.attach_file_rounded,
+                    onSelected: onPickAttachment,
+                  ),
+                  _AttachMenuItem(
+                    label: l.chatComposerAttachClientPdf,
+                    icon: Icons.folder_shared_rounded,
+                    onSelected: onPickClientDocument,
+                  ),
+                  _AttachMenuItem(
+                    label: l.chatComposerAttachWorkerPdf,
+                    icon: Icons.badge_rounded,
+                    onSelected: onPickWorkerDocument,
+                  ),
+                ],
               ),
               // ── Hint ───────────────────────────────────────
               const SizedBox(width: 10),
@@ -1360,50 +1409,214 @@ class TelegramChatComposer extends StatelessWidget {
   }
 }
 
-// ─── Compact attach icon button ───────────────────────────────────────────────
+// ─── Expandable attach menu ─────────────────────────────────────────────────
 
-class _AttachButton extends StatelessWidget {
-  const _AttachButton({
-    required this.tooltip,
+class _AttachMenuItem {
+  const _AttachMenuItem({
+    required this.label,
     required this.icon,
-    required this.onPressed,
-    required this.cs,
+    required this.onSelected,
   });
 
-  final String tooltip;
+  final String label;
   final IconData icon;
-  final VoidCallback? onPressed;
+  final VoidCallback onSelected;
+}
+
+class _AttachMenuButton extends StatefulWidget {
+  const _AttachMenuButton({
+    required this.enabled,
+    required this.cs,
+    required this.items,
+  });
+
+  final bool enabled;
   final ColorScheme cs;
+  final List<_AttachMenuItem> items;
+
+  @override
+  State<_AttachMenuButton> createState() => _AttachMenuButtonState();
+}
+
+class _AttachMenuButtonState extends State<_AttachMenuButton> {
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _overlay;
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    super.dispose();
+  }
+
+  void _removeOverlay() {
+    _overlay?.remove();
+    _overlay = null;
+    if (mounted) setState(() {});
+  }
+
+  void _toggleMenu() {
+    if (_overlay != null) {
+      _removeOverlay();
+      return;
+    }
+
+    final cs = widget.cs;
+    _overlay = OverlayEntry(
+      builder: (overlayContext) {
+        return Stack(
+          children: [
+            // Tap outside to dismiss.
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _removeOverlay,
+              ),
+            ),
+            CompositedTransformFollower(
+              link: _link,
+              targetAnchor: Alignment.topLeft,
+              followerAnchor: Alignment.bottomLeft,
+              offset: const Offset(0, -10),
+              child: TapRegion(
+                onTapOutside: (_) => _removeOverlay(),
+                child: _AttachMenuSurface(
+                  cs: cs,
+                  items: widget.items,
+                  onItemSelected: (item) {
+                    _removeOverlay();
+                    item.onSelected();
+                  },
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    Overlay.of(context).insert(_overlay!);
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: onPressed != null
-                ? _kTelegramBlue.withValues(alpha: 0.10)
-                : cs.onSurface.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: onPressed != null
-                  ? _kTelegramBlue.withValues(alpha: 0.16)
-                  : cs.outlineVariant.withValues(alpha: 0.18),
+    final cs = widget.cs;
+    final active = widget.enabled;
+    final isOpen = _overlay != null;
+
+    return CompositedTransformTarget(
+      link: _link,
+      child: Tooltip(
+        message: AppLocalizations.of(context)!.chatComposerAttachMenuTooltip,
+        child: InkWell(
+          onTap: active ? _toggleMenu : null,
+          borderRadius: BorderRadius.circular(12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: active
+                  ? _kTelegramBlue.withValues(alpha: isOpen ? 0.18 : 0.10)
+                  : cs.onSurface.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: active
+                    ? _kTelegramBlue.withValues(alpha: 0.2)
+                    : cs.outlineVariant.withValues(alpha: 0.18),
+              ),
+            ),
+            child: AnimatedRotation(
+              turns: isOpen ? 0.125 : 0,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              child: Icon(
+                Icons.add_rounded,
+                size: 22,
+                color: active ? _kTelegramBlue : cs.onSurface.withValues(alpha: 0.3),
+              ),
             ),
           ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: onPressed != null
-                ? _kTelegramBlue
-                : cs.onSurface.withValues(alpha: 0.3),
-          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AttachMenuSurface extends StatelessWidget {
+  const _AttachMenuSurface({
+    required this.cs,
+    required this.items,
+    required this.onItemSelected,
+  });
+
+  final ColorScheme cs;
+  final List<_AttachMenuItem> items;
+  final ValueChanged<_AttachMenuItem> onItemSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 216,
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.16),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final item in items)
+              InkWell(
+                onTap: () => onItemSelected(item),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: _kTelegramBlue.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Icon(
+                          item.icon,
+                          size: 16,
+                          color: _kTelegramBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          item.label,
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -1524,7 +1737,9 @@ class TelegramAttachmentComposerPreview extends StatelessWidget {
             child: Icon(
               attachment.isPdf
                   ? Icons.picture_as_pdf_outlined
-                  : Icons.insert_drive_file_outlined,
+                  : attachment.isImage
+                      ? Icons.image_outlined
+                      : Icons.insert_drive_file_outlined,
               size: 18,
               color: cs.onTertiaryContainer,
             ),

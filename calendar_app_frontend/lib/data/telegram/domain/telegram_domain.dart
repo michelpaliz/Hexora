@@ -19,6 +19,16 @@ class TelegramComposerAttachment {
   bool get isPdf =>
       fileName.toLowerCase().endsWith('.pdf') ||
       (mimeType ?? '').toLowerCase().contains('pdf');
+
+  bool get isImage {
+    final type = (mimeType ?? '').toLowerCase();
+    if (type.startsWith('image/')) return true;
+    final name = fileName.toLowerCase();
+    return name.endsWith('.jpg') ||
+        name.endsWith('.jpeg') ||
+        name.endsWith('.png') ||
+        name.endsWith('.webp');
+  }
 }
 
 class TelegramDomain extends ChangeNotifier {
@@ -896,16 +906,27 @@ class TelegramDomain extends ChangeNotifier {
               replyToMessageId: replyTarget?.messageId,
               forumTopicId: effectiveTopicId,
             )
-          : await _apiClient.sendChatDocument(
-              chatId: chatId,
-              accountId: account!.id,
-              fileBytes: attachment.bytes,
-              fileName: attachment.fileName,
-              caption: payloadText.isEmpty ? null : payloadText,
-              replyToMessageId: replyTarget?.messageId,
-              mimeType: attachment.mimeType,
-              forumTopicId: effectiveTopicId,
-            );
+          : attachment.isImage
+              ? await _apiClient.sendChatPhoto(
+                  chatId: chatId,
+                  accountId: account!.id,
+                  fileBytes: attachment.bytes,
+                  fileName: attachment.fileName,
+                  caption: payloadText.isEmpty ? null : payloadText,
+                  replyToMessageId: replyTarget?.messageId,
+                  mimeType: attachment.mimeType,
+                  forumTopicId: effectiveTopicId,
+                )
+              : await _apiClient.sendChatDocument(
+                  chatId: chatId,
+                  accountId: account!.id,
+                  fileBytes: attachment.bytes,
+                  fileName: attachment.fileName,
+                  caption: payloadText.isEmpty ? null : payloadText,
+                  replyToMessageId: replyTarget?.messageId,
+                  mimeType: attachment.mimeType,
+                  forumTopicId: effectiveTopicId,
+                );
 
       final hydrated = _hydrateSentMessage(
         sentMessage,

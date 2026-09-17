@@ -75,6 +75,19 @@ abstract class ITelegramApiClient {
     String? forumTopicId,
   });
 
+  /// Send an image to a Telegram chat as an inline photo (not a file
+  /// attachment) using multipart/form-data.
+  Future<TelegramChatMessage> sendChatPhoto({
+    required String chatId,
+    required String accountId,
+    required List<int> fileBytes,
+    required String fileName,
+    String? caption,
+    String? replyToMessageId,
+    String? mimeType,
+    String? forumTopicId,
+  });
+
   /// Create an export job
   Future<TelegramExport> createExport({
     required TelegramExportRequest request,
@@ -448,6 +461,58 @@ class TelegramApiClient implements ITelegramApiClient {
     final req = http.MultipartRequest(
       'POST',
       _u('/chats/$chatId/documents'),
+    );
+    req.headers['Authorization'] = auth;
+    req.fields['accountId'] = accountId;
+    final normalizedCaption = (caption ?? '').trim();
+    if (normalizedCaption.isNotEmpty) {
+      req.fields['caption'] = normalizedCaption;
+    }
+    final normalizedReplyId = (replyToMessageId ?? '').trim();
+    if (normalizedReplyId.isNotEmpty) {
+      req.fields['replyToMessageId'] = normalizedReplyId;
+    }
+    if (normalizedTopicId.isNotEmpty) {
+      req.fields['forumTopicId'] = normalizedTopicId;
+    }
+    req.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        fileBytes,
+        filename: fileName,
+        contentType: _parseMediaType(mimeType),
+      ),
+    );
+
+    final streamed = await _client.send(req);
+    final response = await http.Response.fromStream(streamed);
+    return _decodeMessageObject(response);
+  }
+
+  @override
+  Future<TelegramChatMessage> sendChatPhoto({
+    required String chatId,
+    required String accountId,
+    required List<int> fileBytes,
+    required String fileName,
+    String? caption,
+    String? replyToMessageId,
+    String? mimeType,
+    String? forumTopicId,
+  }) async {
+    final headers = await AuthenticatedHttpClient.authorizedHeaders(
+      includeJsonContentType: false,
+    );
+    final auth = headers['Authorization'] ?? '';
+    if (auth.trim().isEmpty) {
+      throw HttpFailure(401, 'Not authenticated');
+    }
+
+    final normalizedTopicId = (forumTopicId ?? '').trim();
+
+    final req = http.MultipartRequest(
+      'POST',
+      _u('/chats/$chatId/photos'),
     );
     req.headers['Authorization'] = auth;
     req.fields['accountId'] = accountId;

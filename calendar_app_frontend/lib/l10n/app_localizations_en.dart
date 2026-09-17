@@ -7394,7 +7394,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Attachment ready · use the text box as a caption';
 
   @override
+  String get chatComposerAttachMenuTooltip => 'Attach';
+
+  @override
   String get chatComposerAttachFile => 'Local file';
+
+  @override
+  String get chatComposerAttachImage => 'Photo';
 
   @override
   String get chatComposerAttachClientPdf => 'Client PDF';

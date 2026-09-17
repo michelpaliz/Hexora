@@ -7476,7 +7476,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'Adjunto listo · usa el texto como pie de foto';
 
   @override
+  String get chatComposerAttachMenuTooltip => 'Adjuntar';
+
+  @override
   String get chatComposerAttachFile => 'Archivo local';
+
+  @override
+  String get chatComposerAttachImage => 'Foto';
 
   @override
   String get chatComposerAttachClientPdf => 'PDF de cliente';

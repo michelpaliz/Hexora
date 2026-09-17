@@ -13204,11 +13204,23 @@ abstract class AppLocalizations {
   /// **'Attachment ready · use the text box as a caption'**
   String get chatComposerHintAttachment;
 
+  /// No description provided for @chatComposerAttachMenuTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach'**
+  String get chatComposerAttachMenuTooltip;
+
   /// No description provided for @chatComposerAttachFile.
   ///
   /// In en, this message translates to:
   /// **'Local file'**
   String get chatComposerAttachFile;
+
+  /// No description provided for @chatComposerAttachImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get chatComposerAttachImage;
 
   /// No description provided for @chatComposerAttachClientPdf.
   ///
