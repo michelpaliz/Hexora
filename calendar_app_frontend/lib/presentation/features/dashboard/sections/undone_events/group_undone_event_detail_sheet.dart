@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/event/model/event.dart';
 import 'package:hexora/presentation/features/events/screens/event_screen/event_detail/event_detail_screen.dart';
+import 'package:hexora/presentation/features/events/widgets/evidence_photo_thumbnail.dart';
 import 'package:hexora/presentation/features/dashboard/sections/members/presentation/widgets/shared/header_info.dart';
 import 'package:hexora/presentation/viewmodels/group/group_view_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -44,16 +45,26 @@ class _PendingEventDetailContent extends StatelessWidget {
     final ml = MaterialLocalizations.of(context);
     final theme = Theme.of(context);
 
-    final date = ml.formatMediumDate(event.startDate);
-    final start = ml.formatTimeOfDay(TimeOfDay.fromDateTime(event.startDate));
-    final end = ml.formatTimeOfDay(TimeOfDay.fromDateTime(event.endDate));
+    // Use the live event from the view model so photo uploads/completion
+    // state stay fresh without needing to re-open the sheet.
+    final liveEvent = vm.eventById(event.id) ?? event;
+
+    final date = ml.formatMediumDate(liveEvent.startDate);
+    final start =
+        ml.formatTimeOfDay(TimeOfDay.fromDateTime(liveEvent.startDate));
+    final end = ml.formatTimeOfDay(TimeOfDay.fromDateTime(liveEvent.endDate));
     final subtitle = '$date · $start – $end';
-    final isBusy = vm.isProcessing(event.id);
-    final description = (event.description?.trim().isNotEmpty ?? false)
-        ? event.description!.trim()
+    final isBusy = vm.isProcessing(liveEvent.id);
+    final isUploadingEvidence = vm.isUploadingEvidence(liveEvent.id);
+    final description = (liveEvent.description?.trim().isNotEmpty ?? false)
+        ? liveEvent.description!.trim()
         : '—';
-    final alreadyDone = event.isDone == true;
-    final owner = vm.ownerInfoOf(event.ownerId);
+    final alreadyDone = liveEvent.isDone == true;
+    final owner = vm.ownerInfoOf(liveEvent.ownerId);
+    final requirePhotos = liveEvent.completionRequirements.requirePhotos;
+    final minPhotos = liveEvent.completionRequirements.minPhotos;
+    final photoCount = liveEvent.completionPhotos.length;
+    final needsMorePhotos = liveEvent.needsMorePhotosToComplete;
 
     return SafeArea(
       child: Padding(
@@ -68,7 +79,9 @@ class _PendingEventDetailContent extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InfoHeader(
-              title: event.title.isEmpty ? loc.untitledEvent : event.title,
+              title: liveEvent.title.isEmpty
+                  ? loc.untitledEvent
+                  : liveEvent.title,
               subtitle: subtitle,
               padding: EdgeInsets.zero,
             ),
@@ -82,7 +95,7 @@ class _PendingEventDetailContent extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(owner?.displayName ?? event.ownerId,
+                  Text(owner?.displayName ?? liveEvent.ownerId,
                       style: theme.textTheme.bodyMedium),
                   if (owner?.username != null)
                     Text(
@@ -104,20 +117,48 @@ class _PendingEventDetailContent extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            if (allowMarkComplete)
+            if (allowMarkComplete) ...[
+              _CompletionEvidenceSection(
+                event: liveEvent,
+                isUploading: isUploadingEvidence,
+                onAddPhotos: () => vm.addEvidencePhotos(context, liveEvent.id),
+                fetchPhotoUrl: (blobName) =>
+                    vm.evidencePhotoUrl(liveEvent.id, blobName),
+              ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  icon: const Icon(Icons.check_circle),
-                  label: Text(loc.pendingEventsMarkDone),
-                  onPressed: isBusy || alreadyDone
+                  icon: Icon(
+                    needsMorePhotos ? Icons.lock_outline : Icons.check_circle,
+                  ),
+                  label: Text(
+                    requirePhotos && !alreadyDone
+                        ? '${loc.pendingEventsMarkDone} ($photoCount/$minPhotos)'
+                        : loc.pendingEventsMarkDone,
+                  ),
+                  onPressed: isBusy || alreadyDone || needsMorePhotos
                       ? null
                       : () async {
-                          await vm.markEventAsDone(event.id);
-                          if (context.mounted) Navigator.of(context).pop();
+                          final success =
+                              await vm.markEventAsDone(liveEvent.id);
+                          if (!context.mounted) return;
+                          if (success) {
+                            Navigator.of(context).pop();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  vm.errorMessage ??
+                                      'Failed to mark event as finished.',
+                                ),
+                              ),
+                            );
+                          }
                         },
                 ),
               ),
+            ],
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
@@ -128,7 +169,7 @@ class _PendingEventDetailContent extends StatelessWidget {
                   Navigator.of(context).pop();
                   Future.microtask(() {
                     Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => EventDetailScreen(event: event),
+                      builder: (_) => EventDetailScreen(event: liveEvent),
                     ));
                   });
                 },
@@ -136,6 +177,97 @@ class _PendingEventDetailContent extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Shows the manager's photo requirement (if any), lets the worker add
+/// photos regardless of that requirement, and renders uploaded thumbnails.
+class _CompletionEvidenceSection extends StatelessWidget {
+  const _CompletionEvidenceSection({
+    required this.event,
+    required this.isUploading,
+    required this.onAddPhotos,
+    required this.fetchPhotoUrl,
+  });
+
+  final Event event;
+  final bool isUploading;
+  final VoidCallback onAddPhotos;
+  final Future<String> Function(String blobName) fetchPhotoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final requirePhotos = event.completionRequirements.requirePhotos;
+    final minPhotos = event.completionRequirements.minPhotos;
+    final photos = event.completionPhotos;
+    final satisfied = !requirePhotos || photos.length >= minPhotos;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.photo_camera_outlined,
+                size: 18,
+                color: requirePhotos && !satisfied ? cs.error : cs.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  requirePhotos
+                      ? '${photos.length}/$minPhotos photo${minPhotos == 1 ? '' : 's'} required'
+                      : 'Photos (optional)',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: requirePhotos && !satisfied
+                        ? cs.error
+                        : cs.onSurface,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: isUploading ? null : onAddPhotos,
+                icon: isUploading
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_a_photo_outlined, size: 16),
+                label: Text(isUploading ? 'Uploading…' : 'Add photos'),
+              ),
+            ],
+          ),
+          if (photos.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 64,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: photos.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final photo = photos[index];
+                  return EvidencePhotoThumbnail(
+                    fetchUrl: () => fetchPhotoUrl(photo.blobName),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

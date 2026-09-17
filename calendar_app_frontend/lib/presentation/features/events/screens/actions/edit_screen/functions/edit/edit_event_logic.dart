@@ -66,6 +66,9 @@ abstract class EditEventLogic<T extends StatefulWidget>
     setClientId?.call(event.clientId);
     setPrimaryServiceId?.call(event.primaryServiceId);
 
+    // Preselect completion requirements from the event being edited
+    setCompletionRequirements(event.completionRequirements);
+
     if (mounted) {
       isLoading = false;
       setState(() {});
@@ -129,6 +132,11 @@ abstract class EditEventLogic<T extends StatefulWidget>
       visitServices:
           _event.visitServices, // keep as-is unless you also edit these in UI
       rawRuleId: _event.rawRuleId,
+
+      // Completion requirements come from the form; photos/completedBy stay server-owned
+      completionRequirements: completionRequirements,
+      completionPhotos: _event.completionPhotos,
+      completedByUserId: _event.completedByUserId,
     );
 
     final updateResult = await eventDomain.updateEvent(context, updated);

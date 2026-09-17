@@ -209,6 +209,51 @@ class EventRepository implements IEventRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> getEvidenceUploadSas(
+    String eventId, {
+    required String mimeType,
+  }) async {
+    final token = await _token();
+    return _api.getEvidenceUploadSas(eventId, mimeType: mimeType, token: token);
+  }
+
+  @override
+  Future<Event> addEvidencePhoto(
+    String eventId, {
+    required String blobName,
+    String? mimeType,
+  }) {
+    return _queue('__evidence:$eventId', () async {
+      final token = await _token();
+      final updated = await _api.addEvidencePhoto(
+        eventId,
+        blobName: blobName,
+        mimeType: mimeType,
+        token: token,
+      );
+      final cid = _gidOf(updated);
+      if (cid != null) {
+        _applyOrBuffer(cid, (list) {
+          for (var i = 0; i < list.length; i++) {
+            if (baseId(list[i].id) == baseId(updated.id)) {
+              list[i] = updated;
+              return;
+            }
+          }
+          list.add(updated);
+        });
+      }
+      return updated;
+    });
+  }
+
+  @override
+  Future<String> getEvidenceReadSas(String eventId, {required String blobName}) async {
+    final token = await _token();
+    return _api.getEvidenceReadSas(eventId, blobName: blobName, token: token);
+  }
+
+  @override
   Future<void> deleteEvent(String id) async {
     final token = await _token();
     await _api.deleteEvent(id, token);

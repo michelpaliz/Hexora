@@ -187,6 +187,69 @@ class EventApiClient implements IEventApiClient {
   }
 
   @override
+  Future<Map<String, dynamic>> getEvidenceUploadSas(
+    String eventId, {
+    required String mimeType,
+    required String token,
+  }) async {
+    final res = await AuthenticatedHttpClient.post(
+      Uri.parse('$baseUrl/${baseId(eventId)}/evidence/upload-sas'),
+      headers: _authHeaders(token),
+      body: jsonEncode({'mimeType': mimeType}),
+      client: _client,
+    );
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to create evidence upload SAS: ${res.body}');
+  }
+
+  @override
+  Future<Event> addEvidencePhoto(
+    String eventId, {
+    required String blobName,
+    String? mimeType,
+    required String token,
+  }) async {
+    final res = await AuthenticatedHttpClient.post(
+      Uri.parse('$baseUrl/${baseId(eventId)}/evidence/photos'),
+      headers: _authHeaders(token),
+      body: jsonEncode({
+        'blobName': blobName,
+        if (mimeType != null) 'mimeType': mimeType,
+      }),
+      client: _client,
+    );
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return Event.fromJson(jsonDecode(res.body));
+    }
+    throw Exception('Failed to register evidence photo: ${res.body}');
+  }
+
+  @override
+  Future<String> getEvidenceReadSas(
+    String eventId, {
+    required String blobName,
+    required String token,
+  }) async {
+    final uri = Uri.parse('$baseUrl/${baseId(eventId)}/evidence/read-sas')
+        .replace(queryParameters: {'blobName': blobName});
+    final res = await AuthenticatedHttpClient.get(
+      uri,
+      headers: _authHeaders(token),
+      client: _client,
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['url'] as String? ?? '';
+    }
+    throw Exception('Failed to create evidence read SAS: ${res.body}');
+  }
+
+  @override
   Future<List<Event>> getEventsByGroupId(String groupId, String token) async {
     final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/group/$groupId'),

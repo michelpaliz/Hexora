@@ -44,6 +44,16 @@ class Event {
   /// Whether the owner should receive notifications (default true).
   bool notifyOwner;
 
+  // -------- NEW: Completion evidence (photos) --------
+  /// Manager-configured; OFF by default. Only gates "mark as finished".
+  CompletionRequirements completionRequirements;
+
+  /// Server-managed; photos can always be uploaded regardless of the toggle above.
+  List<CompletionPhoto> completionPhotos;
+
+  /// Server-managed; who pressed "mark as finished".
+  String? completedByUserId;
+
   Event({
     required this.id,
     required this.startDate,
@@ -75,9 +85,15 @@ class Event {
     this.primaryServiceId,
     this.stopId,
     List<VisitService>? visitServices,
+    CompletionRequirements? completionRequirements,
+    List<CompletionPhoto>? completionPhotos,
+    this.completedByUserId,
   })  : recipients = recipients ?? [],
         updateHistory = updateHistory ?? [],
-        visitServices = visitServices ?? [];
+        visitServices = visitServices ?? [],
+        completionRequirements =
+            completionRequirements ?? CompletionRequirements.disabled(),
+        completionPhotos = completionPhotos ?? [];
 
   // -------- Convenience --------
   bool get ownerMuted => notifyOwner == false;
@@ -87,6 +103,11 @@ class Event {
       (status?.toLowerCase() == 'done');
 
   bool get isWorkVisit => (type.toLowerCase() == 'work_visit');
+
+  /// Whether "mark as finished" should stay locked pending more photo evidence.
+  bool get needsMorePhotosToComplete =>
+      completionRequirements.requirePhotos &&
+      completionPhotos.length < completionRequirements.minPhotos;
 
   /// Adds an update record.
   void addUpdate(String userId) {
@@ -125,6 +146,9 @@ class Event {
     String? primaryServiceId,
     String? stopId,
     List<VisitService>? visitServices,
+    CompletionRequirements? completionRequirements,
+    List<CompletionPhoto>? completionPhotos,
+    String? completedByUserId,
   }) {
     return Event(
       id: id ?? this.id,
@@ -161,6 +185,12 @@ class Event {
       visitServices: visitServices != null
           ? List<VisitService>.from(visitServices.map((v) => v.copyWith()))
           : List<VisitService>.from(this.visitServices),
+      completionRequirements:
+          completionRequirements ?? this.completionRequirements.copyWith(),
+      completionPhotos: completionPhotos != null
+          ? List<CompletionPhoto>.from(completionPhotos)
+          : List<CompletionPhoto>.from(this.completionPhotos),
+      completedByUserId: completedByUserId ?? this.completedByUserId,
     );
   }
 
@@ -198,6 +228,12 @@ class Event {
         'primaryServiceId': primaryServiceId,
         'stopId': stopId,
         'visitServices': visitServices.map((v) => v.toMap()).toList(),
+
+        // NEW (completion evidence)
+        'completionRequirements': completionRequirements.toMap(),
+        'completionPhotos':
+            completionPhotos.map((p) => p.toMap()).toList(),
+        'completedByUserId': completedByUserId,
       };
 
   /// Deserializes from an API map.
@@ -254,6 +290,24 @@ class Event {
             .toList() ??
         <VisitService>[];
 
+    // NEW: completion evidence
+    final CompletionRequirements completionRequirements =
+        map['completionRequirements'] is Map
+            ? CompletionRequirements.fromMap(
+                (map['completionRequirements'] as Map).cast<String, dynamic>(),
+              )
+            : CompletionRequirements.disabled();
+
+    final List<CompletionPhoto> completionPhotos =
+        (map['completionPhotos'] as List?)
+                ?.map((e) => CompletionPhoto.fromMap(
+                      (e as Map).cast<String, dynamic>(),
+                    ))
+                .toList() ??
+            <CompletionPhoto>[];
+
+    final String? completedByUserId = map['completedByUserId']?.toString();
+
     final start = parseApiDate(map['startDate'] as String);
     final end = parseApiDate(map['endDate'] as String);
     final completedRaw = map['completedAt'] != null
@@ -296,6 +350,11 @@ class Event {
       primaryServiceId: primaryServiceId,
       stopId: stopId,
       visitServices: visitServices,
+
+      // NEW
+      completionRequirements: completionRequirements,
+      completionPhotos: completionPhotos,
+      completedByUserId: completedByUserId,
     );
   }
 
@@ -384,6 +443,9 @@ class Event {
       // Legacy categories only meaningful for simple events; null them otherwise
       'categoryId': effectiveType == 'simple' ? categoryId : null,
       'subcategoryId': effectiveType == 'simple' ? subcategoryId : null,
+
+      // Completion requirements (manager-configured; server owns completionPhotos/completedByUserId)
+      'completionRequirements': completionRequirements.toMap(),
     };
 
     if (cleanStatus != null) {
@@ -541,4 +603,87 @@ class VisitService {
   @override
   String toString() =>
       'VisitService(serviceId: $serviceId, planned: $plannedMinutes, actual: $actualMinutes)';
+}
+
+/// NEW: manager-configured completion evidence requirement. OFF by default.
+class CompletionRequirements {
+  final bool requirePhotos;
+  final int minPhotos;
+
+  const CompletionRequirements({
+    required this.requirePhotos,
+    required this.minPhotos,
+  });
+
+  const CompletionRequirements.disabled()
+      : requirePhotos = false,
+        minPhotos = 1;
+
+  CompletionRequirements copyWith({
+    bool? requirePhotos,
+    int? minPhotos,
+  }) {
+    return CompletionRequirements(
+      requirePhotos: requirePhotos ?? this.requirePhotos,
+      minPhotos: minPhotos ?? this.minPhotos,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'requirePhotos': requirePhotos,
+        'minPhotos': minPhotos,
+      };
+
+  factory CompletionRequirements.fromMap(Map<String, dynamic> map) {
+    final rawMin = map['minPhotos'];
+    final parsedMin = rawMin is num ? rawMin.toInt() : int.tryParse('$rawMin');
+    return CompletionRequirements(
+      requirePhotos: map['requirePhotos'] as bool? ?? false,
+      minPhotos: (parsedMin ?? 1) < 1 ? 1 : (parsedMin ?? 1),
+    );
+  }
+
+  @override
+  String toString() =>
+      'CompletionRequirements(requirePhotos: $requirePhotos, minPhotos: $minPhotos)';
+}
+
+/// NEW: a single completion evidence photo uploaded by a worker.
+class CompletionPhoto {
+  final String? id;
+  final String blobName;
+  final String? mimeType;
+  final String uploadedByUserId;
+  final DateTime? uploadedAt;
+
+  const CompletionPhoto({
+    this.id,
+    required this.blobName,
+    this.mimeType,
+    required this.uploadedByUserId,
+    this.uploadedAt,
+  });
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'blobName': blobName,
+        'mimeType': mimeType,
+        'uploadedByUserId': uploadedByUserId,
+        'uploadedAt': uploadedAt?.toUtc().toIso8601String(),
+      };
+
+  factory CompletionPhoto.fromMap(Map<String, dynamic> map) {
+    final rawUploadedAt = map['uploadedAt'] as String?;
+    return CompletionPhoto(
+      id: (map['id'] ?? map['_id'])?.toString(),
+      blobName: map['blobName']?.toString() ?? '',
+      mimeType: map['mimeType'] as String?,
+      uploadedByUserId: map['uploadedByUserId']?.toString() ?? '',
+      uploadedAt: rawUploadedAt != null ? DateTime.tryParse(rawUploadedAt) : null,
+    );
+  }
+
+  @override
+  String toString() =>
+      'CompletionPhoto(blobName: $blobName, uploadedByUserId: $uploadedByUserId, uploadedAt: $uploadedAt)';
 }

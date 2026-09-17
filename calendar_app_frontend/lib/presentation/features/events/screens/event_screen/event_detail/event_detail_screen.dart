@@ -3,7 +3,9 @@ import 'package:hexora/models/event/model/event.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/data/group_management/business_logic/client/client_api.dart';
 import 'package:hexora/data/group_management/business_logic/service/service_api_client.dart';
+import 'package:hexora/data/group_management/event/repository/i_event_repository.dart';
 import 'package:hexora/data/user/domain/user_domain.dart';
+import 'package:hexora/presentation/features/events/widgets/evidence_photo_thumbnail.dart';
 import 'package:hexora/theme/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -45,6 +47,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   bool _loadingOwner = false;
   String? _ownerDisplayName;
   String? _ownerUsername;
+  String? _completedByDisplayName;
   final Map<String, String> _serviceNames = {};
   bool _loadingServices = false;
 
@@ -58,6 +61,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final e = widget.event;
 
     _loadOwnerName();
+    _loadCompletedByName();
 
     if ((e.clientId?.isNotEmpty ?? false)) {
       setState(() => _loadingClient = true);
@@ -117,6 +121,21 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         }
       }
       if (mounted) setState(() => _loadingServices = false);
+    }
+  }
+
+  Future<void> _loadCompletedByName() async {
+    final completedByUserId = widget.event.completedByUserId;
+    if (completedByUserId == null || completedByUserId.isEmpty) return;
+    try {
+      final userDomain = context.read<UserDomain>();
+      final user = await userDomain.getUserById(completedByUserId);
+      if (!mounted) return;
+      setState(() => _completedByDisplayName = _resolveDisplayName(user));
+    } catch (_) {
+      if (mounted) {
+        setState(() => _completedByDisplayName = completedByUserId);
+      }
     }
   }
 
@@ -393,6 +412,74 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ),
                           ),
                       ],
+                    ),
+                  ],
+                ],
+
+                // ── Completion evidence (read-only review) ──
+                if (e.completionRequirements.requirePhotos ||
+                    e.completionPhotos.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _divider(cs),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Icon(Icons.photo_camera_outlined,
+                          size: 14, color: cs.tertiary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Completion evidence',
+                        style: typo.caption.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: cs.tertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (e.completionRequirements.requirePhotos)
+                    _buildDetailRow(
+                      context,
+                      icon: Icons.rule_outlined,
+                      label: 'Photos required',
+                      value:
+                          '${e.completionPhotos.length}/${e.completionRequirements.minPhotos}',
+                    ),
+                  if (e.completedByUserId != null &&
+                      e.completedByUserId!.isNotEmpty)
+                    _buildDetailRow(
+                      context,
+                      icon: Icons.check_circle_outline,
+                      label: 'Completed by',
+                      value: _completedByDisplayName ?? e.completedByUserId!,
+                    ),
+                  if (e.completedAt != null)
+                    _buildDetailRow(
+                      context,
+                      icon: Icons.event_available_outlined,
+                      label: 'Completed at',
+                      value: MaterialLocalizations.of(context)
+                          .formatMediumDate(e.completedAt!),
+                    ),
+                  if (e.completionPhotos.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 72,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: e.completionPhotos.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final photo = e.completionPhotos[index];
+                          final eventRepo = context.read<IEventRepository>();
+                          return EvidencePhotoThumbnail(
+                            fetchUrl: () => eventRepo.getEvidenceReadSas(
+                              e.id,
+                              blobName: photo.blobName,
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ],

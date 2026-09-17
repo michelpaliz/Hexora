@@ -204,6 +204,21 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             colorValues: widget.logic.colorList,
           ),
 
+          // ── FINALIZACIÓN ─────────────────────────────────────────────────
+          _FormSectionLabel(isSpanish ? 'Finalización' : 'Completion'),
+          CompletionRequirementsSection(
+            title: isSpanish ? 'Requisitos de finalización' : 'Completion requirements',
+            cardBuilder: SectionCard.new,
+            requirePhotos: widget.logic.requirePhotos,
+            minPhotos: widget.logic.minPhotos,
+            onRequirePhotosChanged: (v) {
+              setState(() => widget.logic.setRequirePhotos(v));
+            },
+            onMinPhotosChanged: (v) {
+              setState(() => widget.logic.setMinPhotos(v));
+            },
+          ),
+
           // ── PARTICIPANTES ────────────────────────────────────────────────
           _FormSectionLabel(isSpanish ? 'Participantes' : 'Participants'),
           AssignedUsersSection(

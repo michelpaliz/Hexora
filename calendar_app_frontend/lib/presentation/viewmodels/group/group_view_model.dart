@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:hexora/models/event/model/event.dart';
 import 'package:hexora/models/group/group.dart';
 import 'package:hexora/models/user/user.dart';
@@ -241,6 +244,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   final Set<String> _processingIds = <String>{};
+  final Set<String> _evidenceUploadingIds = <String>{};
   bool _isDisposed = false;
   String? _filterUserId;
 
@@ -267,6 +271,24 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
 
   bool isProcessing(String eventId) =>
       _processingIds.contains(baseId(eventId));
+
+  bool isUploadingEvidence(String eventId) =>
+      _evidenceUploadingIds.contains(baseId(eventId));
+
+  Event? eventById(String eventId) {
+    final key = baseId(eventId);
+    for (final event in [..._pendingEvents, ..._completedEvents]) {
+      if (baseId(event.id) == key) return event;
+    }
+    return null;
+  }
+
+  void _mergeEvent(Event updated) {
+    _allVisibleEvents = [
+      ..._allVisibleEvents.where((e) => baseId(e.id) != baseId(updated.id)),
+      updated,
+    ];
+  }
 
   void _notify() {
     if (_isDisposed) return;
@@ -305,39 +327,123 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> markEventAsDone(String eventId) async {
+  /// Returns true if the event was successfully marked done. On false,
+  /// [errorMessage] carries the reason (e.g. missing required photo evidence)
+  /// so the caller can surface it instead of assuming success.
+  Future<bool> markEventAsDone(String eventId) async {
     final key = baseId(eventId);
-    if (key.isEmpty || _processingIds.contains(key)) return;
+    if (key.isEmpty || _processingIds.contains(key)) return false;
 
-    Event? target;
-    for (final event in [..._pendingEvents, ..._completedEvents]) {
-      if (baseId(event.id) == key) {
-        target = event;
-        break;
-      }
-    }
-
+    final target = eventById(eventId);
     if (target == null || !_canManageEvent(target)) {
-      return;
+      return false;
     }
 
     _processingIds.add(key);
+    _errorMessage = null;
     _notify();
 
     try {
       final updated =
           await _eventRepository.markEventAsDone(eventId, isDone: true);
-      _allVisibleEvents = [
-        ..._allVisibleEvents.where((e) => baseId(e.id) != baseId(updated.id)),
-        updated,
-      ];
+      _mergeEvent(updated);
       await _ensureOwnersLoaded([updated]);
       _applyFilterAndSplit();
+      return true;
     } catch (error) {
       _errorMessage = error.toString();
+      return false;
     } finally {
       _processingIds.remove(key);
       _notify();
+    }
+  }
+
+  /// Lets the worker attach photo evidence. Always allowed regardless of
+  /// whether the event requires it — the manager's toggle only gates
+  /// "mark as finished", not the ability to attach evidence.
+  Future<void> addEvidencePhotos(BuildContext context, String eventId) async {
+    final key = baseId(eventId);
+    if (key.isEmpty || _evidenceUploadingIds.contains(key)) return;
+
+    final target = eventById(eventId);
+    if (target == null || !_canManageEvent(target)) return;
+
+    List<XFile> picked;
+    try {
+      picked = await ImagePicker().pickMultiImage(imageQuality: 85);
+    } catch (_) {
+      picked = const <XFile>[];
+    }
+    if (picked.isEmpty) return;
+
+    _evidenceUploadingIds.add(key);
+    _errorMessage = null;
+    _notify();
+
+    try {
+      for (final xfile in picked) {
+        final mimeType = _mimeTypeForPath(xfile.path);
+        final sas = await _eventRepository.getEvidenceUploadSas(
+          eventId,
+          mimeType: mimeType,
+        );
+        final uploadUrl = sas['uploadUrl'] as String?;
+        final blobName = sas['blobName'] as String?;
+        if (uploadUrl == null || blobName == null) {
+          throw Exception('Evidence upload SAS response missing uploadUrl/blobName');
+        }
+
+        final bytes = await File(xfile.path).readAsBytes();
+        final putResp = await http.put(
+          Uri.parse(uploadUrl),
+          headers: {
+            'x-ms-blob-type': 'BlockBlob',
+            'Content-Type': mimeType,
+          },
+          body: bytes,
+        );
+        if (putResp.statusCode != 201 && putResp.statusCode != 200) {
+          throw Exception(
+              'Azure upload failed: ${putResp.statusCode} ${putResp.body}');
+        }
+
+        final updated = await _eventRepository.addEvidencePhoto(
+          eventId,
+          blobName: blobName,
+          mimeType: mimeType,
+        );
+        _mergeEvent(updated);
+        _applyFilterAndSplit();
+      }
+    } catch (error) {
+      _errorMessage = error.toString();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload photo: $error')),
+        );
+      }
+    } finally {
+      _evidenceUploadingIds.remove(key);
+      _notify();
+    }
+  }
+
+  Future<String> evidencePhotoUrl(String eventId, String blobName) {
+    return _eventRepository.getEvidenceReadSas(eventId, blobName: blobName);
+  }
+
+  String _mimeTypeForPath(String path) {
+    final ext = path.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'jpg':
+      case 'jpeg':
+      default:
+        return 'image/jpeg';
     }
   }
 

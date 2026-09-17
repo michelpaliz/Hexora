@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:hexora/models/event/model/event.dart' show CompletionRequirements;
 import 'package:hexora/models/recurrence_rule/recurrence_rule/legacy_recurrence_rule.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/features/events/utils/color_manager.dart';
@@ -65,6 +66,11 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
   // Categories (only for type='simple')
   String? _categoryId;
   String? _subcategoryId;
+
+  // ---------------- NEW: Completion requirements (manager-configured) ----------------
+  /// OFF by default — the manager decides when photographic evidence is needed.
+  bool _requirePhotos = false;
+  int _minPhotos = 1;
 
   // ---------------- NEW: Event type & work-visit fields ----------------
   /// 'simple' | 'work_visit' (default)
@@ -199,6 +205,9 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
     _clientId = null;
     _primaryServiceId = null;
 
+    _requirePhotos = false;
+    _minPhotos = 1;
+
     recomputeValidity();
   }
 
@@ -287,6 +296,35 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
 
   set subcategoryId(String? v) {
     _subcategoryId = v;
+    if (mounted) setState(() {});
+    recomputeValidity();
+  }
+
+  // ---------------- Completion requirements ----------------
+  bool get requirePhotos => _requirePhotos;
+  int get minPhotos => _minPhotos;
+
+  CompletionRequirements get completionRequirements => CompletionRequirements(
+        requirePhotos: _requirePhotos,
+        minPhotos: _minPhotos,
+      );
+
+  void setRequirePhotos(bool value) {
+    _requirePhotos = value;
+    if (!value) _minPhotos = 1;
+    if (mounted) setState(() {});
+    recomputeValidity();
+  }
+
+  void setMinPhotos(int value) {
+    _minPhotos = value < 1 ? 1 : value;
+    if (mounted) setState(() {});
+    recomputeValidity();
+  }
+
+  void setCompletionRequirements(CompletionRequirements value) {
+    _requirePhotos = value.requirePhotos;
+    _minPhotos = value.minPhotos < 1 ? 1 : value.minPhotos;
     if (mounted) setState(() {});
     recomputeValidity();
   }

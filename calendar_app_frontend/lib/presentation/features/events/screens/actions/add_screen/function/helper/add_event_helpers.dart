@@ -75,6 +75,7 @@ Event buildNewEvent({
   String? categoryId,
   String? subcategoryId,
   List<VisitService>? visitServices,
+  CompletionRequirements? completionRequirements,
 }) {
   return Event(
     id: id,
@@ -100,6 +101,7 @@ Event buildNewEvent({
     categoryId: categoryId,
     subcategoryId: subcategoryId,
     visitServices: visitServices ?? const [],
+    completionRequirements: completionRequirements,
   );
 }
 

@@ -258,6 +258,7 @@ abstract class AddEventLogic<T extends StatefulWidget>
       visitServices: vs,
       categoryId: isWorkVisit ? null : categoryId,
       subcategoryId: isWorkVisit ? null : subcategoryId,
+      completionRequirements: completionRequirements,
     );
 
     try {

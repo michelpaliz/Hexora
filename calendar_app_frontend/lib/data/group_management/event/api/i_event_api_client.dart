@@ -21,6 +21,25 @@ abstract class IEventApiClient {
     required String token,
   });
   Future<List<Event>> getEventsByGroupId(String groupId, String token);
+
+  // ---- Completion evidence (photos) ----
+  Future<Map<String, dynamic>> getEvidenceUploadSas(
+    String eventId, {
+    required String mimeType,
+    required String token,
+  });
+  Future<Event> addEvidencePhoto(
+    String eventId, {
+    required String blobName,
+    String? mimeType,
+    required String token,
+  });
+  Future<String> getEvidenceReadSas(
+    String eventId, {
+    required String blobName,
+    required String token,
+  });
+
   Future<List<Event>> getTasks({
     required String groupId,
     String? status,

@@ -22,6 +22,20 @@ abstract class IEventRepository {
   Future<Event> updateEvent(Event ev);
   Future<void> deleteEvent(String id);
   Future<Event> markEventAsDone(String id, {required bool isDone});
+
+  // Completion evidence (photos) — upload is always allowed regardless of
+  // whether the event requires it; only "mark as finished" enforces the minimum.
+  Future<Map<String, dynamic>> getEvidenceUploadSas(
+    String eventId, {
+    required String mimeType,
+  });
+  Future<Event> addEvidencePhoto(
+    String eventId, {
+    required String blobName,
+    String? mimeType,
+  });
+  Future<String> getEvidenceReadSas(String eventId, {required String blobName});
+
   Future<List<Event>> getEventsByGroupId(String groupId);
   Future<List<Event>> getTasks({
     required String groupId,
