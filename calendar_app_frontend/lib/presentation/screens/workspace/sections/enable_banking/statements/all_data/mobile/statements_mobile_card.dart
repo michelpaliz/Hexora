@@ -130,7 +130,7 @@ class StatementsMobileCard extends StatelessWidget {
 
     return Card(
       margin: EdgeInsets.symmetric(
-          horizontal: mobile ? 16 : 12, vertical: mobile ? 6 : 5),
+          horizontal: mobile ? 12 : 12, vertical: mobile ? 4 : 5),
       elevation: 0,
       color: mobile
           ? cs.surfaceContainerLow
@@ -138,38 +138,40 @@ class StatementsMobileCard extends StatelessWidget {
               ? cs.surface
               : cs.surfaceContainerLowest.withValues(alpha: 0.9),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding:
+              EdgeInsets.symmetric(horizontal: 12, vertical: mobile ? 8 : 12),
           child: LayoutBuilder(builder: (context, constraints) {
             final details = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   desc.isEmpty ? l.statementsNoDescription : desc,
-                  maxLines: mobile ? 2 : 1,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: t.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: cs.onSurface,
+                    fontSize: mobile ? 13.5 : null,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 3),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
+                  spacing: 6,
+                  runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       dateDisplay,
                       style: t.bodySmall.copyWith(
                         color: cs.onSurfaceVariant,
-                        fontSize: mobile ? 14 : 11,
+                        fontSize: mobile ? 11.5 : 11,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -196,7 +198,8 @@ class StatementsMobileCard extends StatelessWidget {
               ],
             );
             final amountBadge = Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: EdgeInsets.symmetric(
+                  horizontal: mobile ? 8 : 10, vertical: mobile ? 4 : 6),
               decoration: BoxDecoration(
                 color: amountBg,
                 borderRadius: BorderRadius.circular(999),
@@ -207,7 +210,7 @@ class StatementsMobileCard extends StatelessWidget {
                 style: t.bodyMedium.copyWith(
                   fontWeight: FontWeight.w800,
                   color: amountColor,
-                  fontSize: 14,
+                  fontSize: mobile ? 12.5 : 14,
                 ),
               ),
             );
@@ -230,12 +233,12 @@ class StatementsMobileCard extends StatelessWidget {
                           : hasNotes
                               ? Icons.sticky_note_2
                               : Icons.sticky_note_2_outlined,
-                      size: 17,
+                      size: mobile ? 15 : 17,
                     ),
                     padding: EdgeInsets.zero,
                     constraints: BoxConstraints(
-                      minWidth: mobile ? 48 : 28,
-                      minHeight: mobile ? 48 : 28,
+                      minWidth: mobile ? 32 : 28,
+                      minHeight: mobile ? 32 : 28,
                     ),
                     style: IconButton.styleFrom(
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -250,7 +253,7 @@ class StatementsMobileCard extends StatelessWidget {
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
-                  size: 18,
+                  size: mobile ? 16 : 18,
                   color: cs.onSurfaceVariant.withValues(alpha: 0.55),
                 ),
               ],
@@ -261,7 +264,7 @@ class StatementsMobileCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   details,
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 5),
                   Row(
                     children: [
                       Expanded(
@@ -324,7 +327,7 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
@@ -334,11 +337,11 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        maxLines: MobileTheme.isActive(context) ? 2 : 1,
+        maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: t.bodySmall.copyWith(
           color: fg,
-          fontSize: MobileTheme.isActive(context) ? 14 : 10,
+          fontSize: MobileTheme.isActive(context) ? 11.5 : 10,
           fontWeight: FontWeight.w600,
         ),
       ),

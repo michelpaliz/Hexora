@@ -8,14 +8,14 @@ class DialogButtonWidget extends StatefulWidget {
   final void Function(List<User>) onUsersSelected;
 
   const DialogButtonWidget({
-    Key? key,
+    super.key,
     required this.selectedUsers,
     required this.usersAvailable,
     required this.onUsersSelected,
-  }) : super(key: key);
+  });
 
   @override
-  _DialogButtonWidgetState createState() => _DialogButtonWidgetState();
+  State<DialogButtonWidget> createState() => _DialogButtonWidgetState();
 }
 
 class _DialogButtonWidgetState extends State<DialogButtonWidget> {

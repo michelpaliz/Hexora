@@ -13,14 +13,14 @@ class HexoraSnackBar extends StatefulWidget {
   final String? translatedActionLabel;
 
   const HexoraSnackBar({
-    Key? key,
+    super.key,
     required this.message,
     this.translatedMessage,
     this.duration = const Duration(seconds: 4),
     this.onActionPressed,
     this.actionLabel = 'OK',
     this.translatedActionLabel,
-  }) : super(key: key);
+  });
 
   static void show({
     required BuildContext context,
@@ -189,7 +189,7 @@ class _HexoraSnackBarState extends State<HexoraSnackBar>
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: cs.secondary.withOpacity(0.1),
+                              color: cs.secondary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Icon(

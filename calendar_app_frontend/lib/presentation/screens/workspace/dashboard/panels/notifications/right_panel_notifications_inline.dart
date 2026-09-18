@@ -18,7 +18,7 @@ import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
 import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';

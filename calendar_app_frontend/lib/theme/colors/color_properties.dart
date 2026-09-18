@@ -4,17 +4,17 @@ import 'package:hexora/theme/colors/app_colors.dart';
 
 class ColorProperties {
   // Primary / default button
-  static const Color BUTTON_DEFAULT_PROPERTY = AppColors.primary;
-  static const Color BUTTON_PRESSED_BACKGROUND = AppColors.primaryLight;
-  static const Color BUTTON_TEXT_COLOR = AppColors.white;
-  static const Color BUTTON_BORDER_COLOR = AppColors.primaryDark;
+  static const Color buttonDefaultProperty = AppColors.primary;
+  static const Color buttonPressedBackground = AppColors.primaryLight;
+  static const Color buttonTextColor = AppColors.white;
+  static const Color buttonBorderColor = AppColors.primaryDark;
 
   static ButtonStyle defaultButton() {
     return ButtonStyles.saucyButtonStyle(
-      defaultBackgroundColor: BUTTON_DEFAULT_PROPERTY,
-      pressedBackgroundColor: BUTTON_PRESSED_BACKGROUND,
-      textColor: BUTTON_TEXT_COLOR,
-      borderColor: BUTTON_BORDER_COLOR,
+      defaultBackgroundColor: buttonDefaultProperty,
+      pressedBackgroundColor: buttonPressedBackground,
+      textColor: buttonTextColor,
+      borderColor: buttonBorderColor,
     );
   }
 
@@ -23,7 +23,7 @@ class ColorProperties {
     final cs = Theme.of(context).colorScheme;
     return ButtonStyles.saucyButtonStyle(
       defaultBackgroundColor: cs.primary,
-      pressedBackgroundColor: cs.primary.withOpacity(0.9),
+      pressedBackgroundColor: cs.primary.withValues(alpha: 0.9),
       textColor: cs.onPrimary,
       borderColor: cs.primary,
     );
@@ -33,7 +33,7 @@ class ColorProperties {
   static ButtonStyle dangerButton() {
     return ButtonStyles.saucyButtonStyle(
       defaultBackgroundColor: AppDarkColors.error,
-      pressedBackgroundColor: AppDarkColors.error.withOpacity(0.85),
+      pressedBackgroundColor: AppDarkColors.error.withValues(alpha: 0.85),
       textColor: AppColors.white,
       borderColor: AppDarkColors.error,
     );

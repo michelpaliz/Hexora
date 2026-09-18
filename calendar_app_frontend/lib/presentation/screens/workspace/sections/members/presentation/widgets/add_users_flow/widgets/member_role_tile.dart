@@ -54,7 +54,7 @@ class MemberRoleTile extends StatelessWidget {
     final chipColor = effectiveRole.roleChipColor(cs);
     final roleText = roleLabelOf(context, effectiveRole);
 
-    Future<void> _pickRole() async {
+    Future<void> pickRole() async {
       if (!editable) return;
       final selected = await showModalBottomSheet<GroupRole>(
         context: context,
@@ -66,45 +66,46 @@ class MemberRoleTile extends StatelessWidget {
           borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
         ),
         builder: (ctx) {
-          return SingleChildScrollView(
-              child: SafeArea(
-                  top: false,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            AppLocalizations.of(context)!.changeRole,
-                            style: typo.bodyMedium.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: cs.onSurface),
+          return RadioGroup<GroupRole>(
+              groupValue: effectiveRole,
+              onChanged: (value) {
+                if (value != null) Navigator.of(ctx).pop(value);
+              },
+              child: SingleChildScrollView(
+                  child: SafeArea(
+                      top: false,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                AppLocalizations.of(context)!.changeRole,
+                                style: typo.bodyMedium.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: cs.onSurface),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      for (final r in assignableRoles)
-                        ListTile(
-                          leading: Radio<GroupRole>(
-                            value: r,
-                            groupValue: effectiveRole,
-                            onChanged: (_) {
-                              Navigator.of(ctx).pop(r);
-                            },
-                          ),
-                          title: Text(roleLabelOf(context, r),
-                              style: typo.bodyMedium.copyWith(
-                                  color: cs.onSurface,
-                                  fontWeight: r == effectiveRole
-                                      ? FontWeight.w700
-                                      : null)),
-                          onTap: () => Navigator.of(ctx).pop(r),
-                        ),
-                      const SizedBox(height: 10),
-                    ],
-                  )));
+                          for (final r in assignableRoles)
+                            ListTile(
+                              leading: Radio<GroupRole>(
+                                value: r,
+                              ),
+                              title: Text(roleLabelOf(context, r),
+                                  style: typo.bodyMedium.copyWith(
+                                      color: cs.onSurface,
+                                      fontWeight: r == effectiveRole
+                                          ? FontWeight.w700
+                                          : null)),
+                              onTap: () => Navigator.of(ctx).pop(r),
+                            ),
+                          const SizedBox(height: 10),
+                        ],
+                      ))));
         },
       );
       if (selected != null && selected.wire != effectiveRole.wire) {
@@ -116,7 +117,7 @@ class MemberRoleTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: editable ? _pickRole : null,
+        onTap: editable ? pickRole : null,
         onLongPress: onRemove,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -127,7 +128,7 @@ class MemberRoleTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: chipColor.withOpacity(.28),
+                    color: chipColor.withValues(alpha: .28),
                     width: 1.5,
                   ),
                 ),

@@ -6,7 +6,7 @@ class DismissUserDialog extends StatelessWidget {
   final Function() onCancel;
   final Function() onConfirm;
 
-  DismissUserDialog({
+  const DismissUserDialog({super.key,
     required this.userName,
     required this.isNewUser,
     required this.onCancel,
@@ -25,11 +25,11 @@ class DismissUserDialog extends StatelessWidget {
       actions: <Widget>[
         TextButton(
           onPressed: onCancel,
-          child: Text('Cancel'),
+          child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: onConfirm,
-          child: Text('Confirm'),
+          child: const Text('Confirm'),
         ),
       ],
     );

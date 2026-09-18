@@ -40,6 +40,7 @@ Future<void> confirmAndClearAllNotifications(BuildContext context) async {
 
   if (!confirmed) return;
 
+  if (!context.mounted) return;
   final controller = NotificationViewModel(
     userDomain: context.read<UserDomain>(),
     groupDomain: context.read<GroupDomain>(),

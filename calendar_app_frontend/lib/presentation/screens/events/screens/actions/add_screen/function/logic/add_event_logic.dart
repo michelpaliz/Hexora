@@ -62,7 +62,7 @@ abstract class AddEventLogic<T extends StatefulWidget>
   }) {
     this.groupDomain = groupDomain;
     this.userDomain = userDomain;
-    this.notificationDomain = notifMgmt;
+    notificationDomain = notifMgmt;
     user = this.userDomain!.user!;
   }
 
@@ -78,11 +78,12 @@ abstract class AddEventLogic<T extends StatefulWidget>
       devtools.log('⚠️ unable to fetch latest group for business hours: $e');
     }
 
-    setSelectedColor(ColorManager.eventColors.last.value);
+    setSelectedColor(ColorManager.eventColors.last.toARGB32());
     final now = DateTime.now();
     setStartDate(now);
     setEndDate(now.add(const Duration(hours: 1)));
 
+    if (!context.mounted) return;
     _eventDomain = Provider.of<EventDomain>(context, listen: false);
 
     try {
@@ -164,7 +165,9 @@ abstract class AddEventLogic<T extends StatefulWidget>
     if (!validateRecurrence(
       recurrenceRule: recurrenceRule,
       selectedStartDate: selectedStartDate,
-    )) return false;
+    )) {
+      return false;
+    }
 
     final hours = _group.businessHours;
     if (hours != null && hours.isConfigured) {
@@ -204,6 +207,7 @@ abstract class AddEventLogic<T extends StatefulWidget>
           await groupDomain!.groupRepository.getGroupById(_group.id);
       calId = refreshed.defaultCalendarId ?? refreshed.defaultCalendar?.id;
       if (calId == null) {
+        if (!context.mounted) return false;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('No calendar configured for this group')),
@@ -261,8 +265,10 @@ abstract class AddEventLogic<T extends StatefulWidget>
     );
 
     try {
-      devtools.log('ðŸ“¤ [addEvent] toBackendJson: ${newEvent.toBackendJson()}');
+      devtools
+          .log('ðŸ“¤ [addEvent] toBackendJson: ${newEvent.toBackendJson()}');
 
+      if (!context.mounted) return false;
       final created = await _eventDomain.createEvent(context, newEvent);
 
       await hydrateRecurrenceRuleIfNeeded(

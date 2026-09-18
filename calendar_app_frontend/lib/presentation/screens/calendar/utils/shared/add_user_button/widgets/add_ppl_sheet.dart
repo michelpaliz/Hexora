@@ -152,7 +152,7 @@ class _AddPeopleSheetState extends State<AddPeopleSheet> {
                               return ListTile(
                                 leading: CircleAvatar(
                                   backgroundColor:
-                                      cs.secondary.withOpacity(0.12),
+                                      cs.secondary.withValues(alpha: 0.12),
                                   backgroundImage:
                                       (u.photoUrl?.isNotEmpty ?? false)
                                           ? NetworkImage(u.photoUrl!)
@@ -173,7 +173,7 @@ class _AddPeopleSheetState extends State<AddPeopleSheet> {
                                 subtitle: Text(
                                   u.userName,
                                   style: t.bodySmall.copyWith(
-                                    color: onSheet.withOpacity(0.75),
+                                    color: onSheet.withValues(alpha: 0.75),
                                   ),
                                 ),
                                 trailing: selected

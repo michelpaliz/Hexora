@@ -7,13 +7,14 @@ class AddUserDialog extends StatefulWidget {
   final Function(String) onAddUser;
 
   const AddUserDialog({
+    super.key,
     required this.currentUser,
     required this.group,
     required this.onAddUser,
   });
 
   @override
-  _AddUserDialogState createState() => _AddUserDialogState();
+  State<AddUserDialog> createState() => _AddUserDialogState();
 }
 
 class _AddUserDialogState extends State<AddUserDialog> {
@@ -22,13 +23,13 @@ class _AddUserDialogState extends State<AddUserDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Add User'),
+      title: const Text('Add User'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _usernameController,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: 'Username',
               hintText: 'Enter a username',
             ),
@@ -38,7 +39,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel'),
+          child: const Text('Cancel'),
         ),
         ElevatedButton(
           onPressed: () {
@@ -47,7 +48,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
               Navigator.of(context).pop(); // Close dialog
             }
           },
-          child: Text('Add User'),
+          child: const Text('Add User'),
         ),
       ],
     );

@@ -4,53 +4,58 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
   Widget _buildEditorOverlay(
     AppLocalizations l,
     AppTypography t,
-    ColorScheme cs,
-  ) {
+    ColorScheme cs, {
+    bool scrim = true,
+    bool showHeaderTab = true,
+  }) {
     final editing = _latestExpenseSnapshot(_editingExpense!);
-    return ColoredBox(
-      color: Colors.black.withValues(alpha: 0.25),
-      child: FolderPanel(
-        title: 'Editar gasto',
-        onBack: _closeExpenseEditor,
-        contentTopPadding: 36,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final useSplitView = constraints.maxWidth >= 860;
-            if (useSplitView) {
-              return Row(
-                children: [
-                  Expanded(
-                    flex: 10,
-                    child: _buildEditorFormPanel(editing, l, t, cs),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 11,
-                    child: _buildEditorPreviewPanel(editing, l, t, cs),
-                  ),
-                ],
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    final panel = FolderPanel(
+      title: 'Editar gasto',
+      onBack: showHeaderTab ? _closeExpenseEditor : null,
+      showTab: showHeaderTab,
+      contentTopPadding: showHeaderTab ? 36 : 12,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final useSplitView = constraints.maxWidth >= 860;
+          if (useSplitView) {
+            return Row(
               children: [
-                _buildEditorPanelSwitcher(cs),
-                const SizedBox(height: 8),
                 Expanded(
-                  child: IndexedStack(
-                    index: _editorPanelIndex,
-                    children: [
-                      _buildEditorFormPanel(editing, l, t, cs),
-                      _buildEditorPreviewPanel(editing, l, t, cs),
-                    ],
-                  ),
+                  flex: 10,
+                  child: _buildEditorFormPanel(editing, l, t, cs),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 11,
+                  child: _buildEditorPreviewPanel(editing, l, t, cs),
                 ),
               ],
             );
-          },
-        ),
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildEditorPanelSwitcher(cs),
+              const SizedBox(height: 8),
+              Expanded(
+                child: IndexedStack(
+                  index: _editorPanelIndex,
+                  children: [
+                    _buildEditorFormPanel(editing, l, t, cs),
+                    _buildEditorPreviewPanel(editing, l, t, cs),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
+    );
+    if (!scrim) return panel;
+    return ColoredBox(
+      color: Colors.black.withValues(alpha: 0.25),
+      child: panel,
     );
   }
 

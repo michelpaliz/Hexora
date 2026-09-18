@@ -13,7 +13,7 @@ import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
-import 'package:hexora/services/blob_storage/blobServer.dart';
+import 'package:hexora/services/blob_storage/blob_server.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';

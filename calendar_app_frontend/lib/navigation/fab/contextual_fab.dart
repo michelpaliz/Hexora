@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/navigation/fab/fab_action.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 
 class ContextualFab extends StatelessWidget {
   const ContextualFab({super.key});

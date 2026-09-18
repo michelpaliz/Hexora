@@ -157,7 +157,7 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   }
 
   void _openDetails(Map<String, dynamic> log) {
-    final encoder = const JsonEncoder.withIndent('  ');
+    const encoder = JsonEncoder.withIndent('  ');
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(

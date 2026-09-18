@@ -9,7 +9,7 @@ class UserTile extends StatelessWidget {
   final Function(String userName) onDismissed; // Logical removal
   final Function(String userName) onChangeRole;
 
-  UserTile({
+  const UserTile({super.key,
     required this.userName,
     required this.user,
     required this.roleValue,
@@ -56,8 +56,8 @@ class UserTile extends StatelessWidget {
       background: Container(
         color: Colors.red,
         alignment: Alignment.centerRight,
-        padding: EdgeInsets.symmetric(horizontal: 20),
-        child: Icon(Icons.delete, color: Colors.white),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete, color: Colors.white),
       ),
       child: ListTile(
         title: Text(userName),
@@ -66,16 +66,16 @@ class UserTile extends StatelessWidget {
           radius: 30,
           backgroundImage: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
               ? NetworkImage(user.photoUrl!)
-              : AssetImage('assets/images/default_profile.png')
+              : const AssetImage('assets/images/default_profile.png')
                     as ImageProvider,
           // Default profile picture
         ),
         trailing: roleValue.trim() != 'Administrator'
             ? GestureDetector(
                 onTap: () => onChangeRole(userName),
-                child: Icon(Icons.settings, color: Colors.blue),
+                child: const Icon(Icons.settings, color: Colors.blue),
               )
-            : SizedBox.shrink(),
+            : const SizedBox.shrink(),
         onTap: roleValue.trim() != 'Administrator'
             ? () => onChangeRole(userName)
             : null,

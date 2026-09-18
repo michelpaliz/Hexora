@@ -6,7 +6,7 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/agenda/sections/agenda_header_section.dart';
 import 'package:hexora/presentation/screens/agenda/sections/agenda_list_section.dart';
 import 'package:hexora/presentation/screens/agenda/widgets/agenda_sliver.dart';

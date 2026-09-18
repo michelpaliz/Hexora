@@ -8,11 +8,11 @@ class EventColorDropdown extends StatelessWidget {
   final Function(Color) onColorSelected;
 
   const EventColorDropdown({
-    Key? key,
+    super.key,
     required this.selectedColor,
     required this.colorList,
     required this.onColorSelected,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class EventColorDropdown extends StatelessWidget {
       children: [
         Text(
           AppLocalizations.of(context)!.chooseEventColor,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             color: Color.fromARGB(255, 121, 122, 124),
           ),

@@ -224,9 +224,9 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
 
   // ---------------- State access ----------------
   /// Returns ARGB int color for widgets that expect an int
-  int? get selectedEventColor => _selectedEventColor.value;
+  int? get selectedEventColor => _selectedEventColor.toARGB32();
   List<int> get colorList =>
-      ColorManager.eventColors.map((c) => c.value).toList();
+      ColorManager.eventColors.map((c) => c.toARGB32()).toList();
 
   DateTime get selectedStartDate => _selectedStartDate;
   DateTime get selectedEndDate => _selectedEndDate;
@@ -313,6 +313,7 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
     );
 
     if (pickedDate != null) {
+      if (!context.mounted) return;
       final pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(

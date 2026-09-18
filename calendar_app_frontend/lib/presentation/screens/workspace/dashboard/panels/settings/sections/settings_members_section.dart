@@ -10,7 +10,7 @@ import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/add_user_controller.dart';
-import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
+import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/i_group_editor_port.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_ref.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_vm.dart';

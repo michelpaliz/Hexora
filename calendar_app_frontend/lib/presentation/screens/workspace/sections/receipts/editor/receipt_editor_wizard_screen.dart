@@ -257,14 +257,6 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
     return null;
   }
 
-  num get _subtotal {
-    num sum = 0;
-    for (final line in _lines) {
-      sum += line.total;
-    }
-    return sum;
-  }
-
   bool get _isManualLinesMode => _linesInputTabIndex == 0;
 
   void _markDraftDirty() {

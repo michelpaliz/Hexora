@@ -13,7 +13,7 @@ class EventContentBuilder {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: accent.withOpacity(0.9),
+        color: accent.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -40,7 +40,7 @@ class EventContentBuilder {
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(8),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),

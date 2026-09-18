@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 

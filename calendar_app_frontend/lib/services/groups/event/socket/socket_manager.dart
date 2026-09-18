@@ -1,15 +1,16 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 // socket_manager.dart
 import 'dart:async';
 
 import 'package:hexora/services/config/api_constants.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class SocketManager {
   static final SocketManager _instance = SocketManager._internal();
   factory SocketManager() => _instance;
   SocketManager._internal();
 
-  IO.Socket? _socket; // ✅ no 'late'
+  io.Socket? _socket; // ✅ no 'late'
   bool get isConnected => _socket?.connected == true;
 
   // ✅ NEW: keep latest token for reconnect attempts
@@ -42,7 +43,7 @@ class SocketManager {
     final socketUrl = ApiConstants.socketBaseUrl;
 
     // ✅ UPDATED: enable reconnection with sane defaults
-    _socket = IO.io(socketUrl, <String, dynamic>{
+    _socket = io.io(socketUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
       'reconnection': true, // ✅ NEW
@@ -67,7 +68,7 @@ class SocketManager {
     });
 
     _socket!.onConnect((_) {
-      print("✅ Socket connected");
+      debugPrint("✅ Socket connected");
 
       _rebindAllHandlers(); // attach any handlers registered "early"
 
@@ -95,13 +96,15 @@ class SocketManager {
       }
     });
 
-    _socket!.onDisconnect((_) => print("ðŸ”Œ Socket disconnected"));
-    _socket!.onError((err) => print("❌ Socket error: $err"));
-    _socket!.onConnectError((err) => print("❌ Socket connect error: $err"));
-    _socket!.onReconnect((_) => print("🔁 Socket reconnected")); // ✅ NEW
+    _socket!.onDisconnect((_) => debugPrint("ðŸ”Œ Socket disconnected"));
+    _socket!.onError((err) => debugPrint("❌ Socket error: $err"));
     _socket!
-        .onReconnectError((err) => print("⚠️ Reconnect error: $err")); // ✅ NEW
-    _socket!.onReconnectFailed((_) => print("🛑 Reconnect failed")); // ✅ NEW
+        .onConnectError((err) => debugPrint("❌ Socket connect error: $err"));
+    _socket!.onReconnect((_) => debugPrint("🔁 Socket reconnected")); // ✅ NEW
+    _socket!.onReconnectError(
+        (err) => debugPrint("⚠️ Reconnect error: $err")); // ✅ NEW
+    _socket!
+        .onReconnectFailed((_) => debugPrint("🛑 Reconnect failed")); // ✅ NEW
   }
 
   /// Register an event listener with deduplication.
@@ -117,7 +120,7 @@ class SocketManager {
     if (_socket != null) {
       _socket!.on(event, handler);
     } else {
-      // print('ℹ️ Queued handler for "$event" until socket connects.');
+      // debugPrint('ℹ️ Queued handler for "$event" until socket connects.');
     }
   }
 
@@ -136,7 +139,7 @@ class SocketManager {
     if (_socket == null || !isConnected) {
       // ✅ UPDATED: queue until connected (best-effort)
       _pendingEmits.add(_PendingEmit(event, data));
-      print('⚠️ emit("$event") queued (socket not ready)');
+      debugPrint('⚠️ emit("$event") queued (socket not ready)');
       return;
     }
     _socket!.emit(event, data);
@@ -155,7 +158,7 @@ class SocketManager {
       "photoUrl": photoUrl,
     };
     emit('user:join', _presenceJoin);
-    print("ðŸ“¡ Emitted user:join for $userName ($userId)");
+    debugPrint("ðŸ“¡ Emitted user:join for $userName ($userId)");
   }
 
   // ✅ NEW: simple hook for callers that need to wait for connectivity

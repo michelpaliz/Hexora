@@ -96,7 +96,7 @@ class ProfileHeaderSection extends StatelessWidget {
             Text(
               '@${user.userName}',
               style: t.bodyMedium.copyWith(
-                color: onHeader.withOpacity(.9),
+                color: onHeader.withValues(alpha: .9),
               ),
             ),
             const SizedBox(height: 10),
@@ -160,7 +160,7 @@ class _CircleAction extends StatelessWidget {
     return Column(
       children: [
         Material(
-          color: color.withOpacity(.16), // subtle, auto-contrasts the header
+          color: color.withValues(alpha: .16), // subtle, auto-contrasts the header
           shape: const CircleBorder(),
           clipBehavior: Clip.antiAlias,
           child: InkWell(

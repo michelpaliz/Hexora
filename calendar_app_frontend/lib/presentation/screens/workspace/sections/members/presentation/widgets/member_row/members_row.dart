@@ -119,7 +119,7 @@ class MemberRow extends StatelessWidget {
                       Icon(
                         Icons.chevron_right_rounded,
                         size: 18,
-                        color: onCardSecondary.withOpacity(0.6),
+                        color: onCardSecondary.withValues(alpha: 0.6),
                       ),
                     ],
                   ),

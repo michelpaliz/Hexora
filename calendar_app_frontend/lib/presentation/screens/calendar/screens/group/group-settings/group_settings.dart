@@ -3,7 +3,7 @@ import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/group_danger_zone_card.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/group_invitations_card.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/group_overview_card.dart';
@@ -115,9 +115,11 @@ class _GroupSettingsState extends State<GroupSettings> {
     if (_isRemoving) return;
     final user = _currentUser ?? await _getCurrentUserSafe();
     if (user == null) {
+      if (!mounted) return;
       _showSnack(AppLocalizations.of(context)!.failedToEditGroup);
       return;
     }
+    if (!mounted) return;
     final l = AppLocalizations.of(context)!;
     setState(() => _isRemoving = true);
     try {
@@ -202,7 +204,7 @@ class _GroupSettingsState extends State<GroupSettings> {
             Text(
               l.createdOnDay(created),
               style: theme.textTheme.bodySmall?.copyWith(
-                color: onTopBar.withOpacity(0.8),
+                color: onTopBar.withValues(alpha: 0.8),
               ),
             ),
           ],

@@ -390,32 +390,6 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     }
   }
 
-  Future<void> _openPreviewScreen({List<Invoice>? invoices}) async {
-    final selected = invoices ??
-        _invoices
-            .where((inv) => _selectedInvoiceIds.contains(inv.id))
-            .toList(growable: false);
-    final selectedPresupuestos = _presupuestos
-        .where((item) => _selectedPresupuestoIds.contains(_presupuestoId(item)))
-        .toList(growable: false);
-    final selectedReceipts = _receipts
-        .where((r) => _selectedReceiptIds.contains(r.id))
-        .toList(growable: false);
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _InvoiceSelectionPreviewScreen(
-          clientName: _selectedClient?.name ?? '-',
-          invoices: selected,
-          receipts: selectedReceipts,
-          presupuestos: selectedPresupuestos,
-          onPreviewInvoice: _openInvoicePdfPreview,
-          onPreviewReceipt: _openReceiptPdfPreview,
-          onPreviewPresupuesto: widget.state._openPresupuestoPdfPreviewById,
-        ),
-      ),
-    );
-  }
-
   Future<void> _openReceiptPdfPreview(Receipt receipt) async {
     final l = AppLocalizations.of(context)!;
     try {

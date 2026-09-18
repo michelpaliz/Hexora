@@ -34,7 +34,7 @@ class ReminderSection extends StatelessWidget {
     final activeTrack = cs.primary;
     final inactiveThumb = cs.onSurface; // visible on light & dark
     final inactiveTrack =
-        cs.outlineVariant.withOpacity(0.55); // distinct from surface
+        cs.outlineVariant.withValues(alpha: 0.55); // distinct from surface
 
     return cardBuilder(
       title: title,
@@ -46,7 +46,7 @@ class ReminderSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
             ),
             child: SwitchListTile(
               contentPadding:

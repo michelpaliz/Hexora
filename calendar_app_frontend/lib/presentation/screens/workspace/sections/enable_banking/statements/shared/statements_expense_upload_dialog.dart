@@ -281,7 +281,7 @@ class StatementsExpenseUploadDialog {
                               invoiceNumber: invoiceNumberController.text.trim().isEmpty
                                   ? null
                                   : invoiceNumberController.text.trim(),
-                              dueDate: dueDate == null ? null : dueDate.toIso8601String(),
+                              dueDate: dueDate?.toIso8601String(),
                               taxTotal: taxTotalController.text.trim().isEmpty
                                   ? null
                                   : taxTotalController.text.trim(),

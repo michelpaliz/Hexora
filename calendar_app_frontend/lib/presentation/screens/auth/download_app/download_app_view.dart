@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/utils/logo/logo_widget.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -26,6 +26,7 @@ class DownloadAppView extends StatelessWidget {
 
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened) {
+      if (!context.mounted) return;
       _showFailure(context, l10n.downloadAppOpenError);
     }
   }
@@ -79,7 +80,7 @@ class DownloadAppView extends StatelessWidget {
                       Text(
                         l10n.downloadAppSubtitle,
                         style: t.bodyLarge.copyWith(
-                          color: cs.onSurface.withOpacity(0.8),
+                          color: cs.onSurface.withValues(alpha: 0.8),
                         ),
                         textAlign: TextAlign.center,
                       ),

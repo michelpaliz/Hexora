@@ -96,7 +96,7 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
                       Text(
                         l.createdOnDay(createdStr),
                         style: t.bodySmall
-                            .copyWith(color: onTile.withOpacity(0.7)),
+                            .copyWith(color: onTile.withValues(alpha: 0.7)),
                       ),
                       const SizedBox(height: 12),
                       if (_loadingCounts) ...[
@@ -134,7 +134,7 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
               color: tileBg,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: cs.outlineVariant.withOpacity(0.25)),
+                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.25)),
               ),
               child: ListTile(
                 leading: const Icon(Icons.info_outline),
@@ -145,7 +145,7 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
                 ),
                 subtitle: Text(l.insightsSubtitle,
                     style:
-                        t.bodySmall.copyWith(color: onTile.withOpacity(0.8))),
+                        t.bodySmall.copyWith(color: onTile.withValues(alpha: 0.8))),
               ),
             ),
           ],
@@ -175,7 +175,7 @@ class _InfoPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.25)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -202,7 +202,7 @@ class _ShimmerPills extends StatelessWidget {
           width: w,
           height: 28,
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withOpacity(0.35),
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
             borderRadius: BorderRadius.circular(999),
           ),
         );

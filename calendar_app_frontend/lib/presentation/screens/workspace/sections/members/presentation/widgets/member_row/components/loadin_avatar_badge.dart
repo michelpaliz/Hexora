@@ -28,10 +28,10 @@ class LeadingAvatarBadge extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(
               color: isOwner
-                  ? cs.primary.withOpacity(0.3)
+                  ? cs.primary.withValues(alpha: 0.3)
                   : isAdmin
-                      ? cs.secondary.withOpacity(0.3)
-                      : cs.outlineVariant.withOpacity(0.3),
+                      ? cs.secondary.withValues(alpha: 0.3)
+                      : cs.outlineVariant.withValues(alpha: 0.3),
               width: 2,
             ),
           ),
@@ -56,7 +56,7 @@ class LeadingAvatarBadge extends StatelessWidget {
                   boxShadow: [
                     BoxShadow(
                       color: (isOwner ? cs.primary : cs.secondary)
-                          .withOpacity(0.3),
+                          .withValues(alpha: 0.3),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),

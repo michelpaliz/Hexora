@@ -12,11 +12,11 @@ class SolidHeader extends StatelessWidget {
   final Color? endColor;
 
   const SolidHeader({
-    Key? key,
+    super.key,
     this.height = 160,
     this.startColor,
     this.endColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +38,7 @@ class SolidHeader extends StatelessWidget {
             colors: [
               start,
               Color.lerp(start, end, 0.35)!, // smooth middle blend
-              end.withOpacity(0.85),
+              end.withValues(alpha: 0.85),
             ],
             stops: const [0.0, 0.6, 1.0],
           ),

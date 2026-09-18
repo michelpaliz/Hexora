@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/services/auth/token/token_service.dart';
 import 'package:hexora/services/config/api_constants.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 

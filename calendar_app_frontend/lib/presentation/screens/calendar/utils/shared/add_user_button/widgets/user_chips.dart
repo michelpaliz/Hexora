@@ -28,7 +28,7 @@ class SelectedUserChips extends StatelessWidget {
           final u = users[i];
           return InputChip(
             avatar: CircleAvatar(
-              backgroundColor: cs.secondary.withOpacity(0.12),
+              backgroundColor: cs.secondary.withValues(alpha: 0.12),
               backgroundImage: (u.photoUrl?.isNotEmpty ?? false)
                   ? NetworkImage(u.photoUrl!)
                   : null,

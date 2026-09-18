@@ -30,7 +30,7 @@ class TimelineStripWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor =
-        colorManager.getColor(event.eventColorIndex).withOpacity(0.2);
+        colorManager.getColor(event.eventColorIndex).withValues(alpha: 0.2);
     final borderColor = colorManager.getColor(event.eventColorIndex);
     final canEditEvent = canEdit(userRole);
 
@@ -89,7 +89,7 @@ class TimelineStripWidget extends StatelessWidget {
                       '🔁 ${event.recurrenceDescription}',
                       style: TextStyle(
                         fontSize: 9, // Reduced
-                        color: textColor.withOpacity(0.6),
+                        color: textColor.withValues(alpha: 0.6),
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),

@@ -87,6 +87,7 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
   Future<void> _copy(BuildContext context, String value) async {
     await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(AppLocalizations.of(context)!.copiedToClipboard)),
     );

@@ -16,6 +16,7 @@ Future<DateTime?> selectDate(
 
   if (pickedDate == null) return null;
 
+  if (!context.mounted) return null;
   final pickedTime = await showTimePicker(
     context: context,
     initialTime: isStartDate

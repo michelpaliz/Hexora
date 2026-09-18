@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/models/weather/day_summary.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/home/widgets/home_section_nav.dart';
 import 'package:hexora/presentation/screens/home/widgets/see_all_groups_button.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/models/create_group_data.dart';

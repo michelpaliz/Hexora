@@ -21,7 +21,7 @@ class GroupDangerZoneCard extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
 
     return Card(
-      color: theme.colorScheme.errorContainer.withOpacity(0.2),
+      color: theme.colorScheme.errorContainer.withValues(alpha: 0.2),
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(

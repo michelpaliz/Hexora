@@ -15,6 +15,7 @@ Future<void> syncReminderFor(BuildContext context, Event e) async {
   final trigger = e.startDate.subtract(Duration(minutes: e.reminderTime!));
   if (trigger.isBefore(DateTime.now())) return;
 
+  if (!context.mounted) return;
   final localizations = AppLocalizations.of(context);
   if (localizations == null) {
     debugPrint("❌ AppLocalizations is null — cannot set reminder.");
@@ -36,7 +37,6 @@ Future<void> syncReminderFor(BuildContext context, Event e) async {
     dateTime: trigger,
   );
 }
-
 
 /// Cancels notification for an event
 Future<void> cancelReminderFor(Event e) async {

@@ -3,21 +3,11 @@ part of 'invoice_detail_sheet.dart';
 mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
   final _invoicesApi = InvoicesApi();
   final _linesApi = InvoiceLinesApi();
-  final _emailApi = EmailApi();
   Invoice? _currentInvoice;
   bool _loading = true;
   String? _error;
   List<InvoiceLine> _lines = const [];
   bool _previewing = false;
-  bool _issuing = false;
-  bool _emailStatusLoading = true;
-  bool? _emailConfigured;
-  String? _emailStatusError;
-  bool _emailLogsLoading = true;
-  String? _emailLogsError;
-  List<Map<String, dynamic>> _emailLogs = const [];
-  bool _emailHistoryExpanded = false;
-  String? _resendingLogId;
   bool _downloadingPdf = false;
   bool _inlinePdfLoading = false;
   String? _inlinePdfError;
@@ -106,104 +96,6 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     }
   }
 
-  Future<void> _loadEmailStatus() async {
-    setState(() {
-      _emailStatusLoading = true;
-      _emailStatusError = null;
-    });
-    try {
-      final data = await _emailApi.getStatus();
-      final raw = data['configured'] ?? data['isConfigured'] ?? data['ready'];
-      final configured = raw is bool
-          ? raw
-          : raw is String
-              ? raw.toLowerCase() == 'true'
-              : false;
-      if (!mounted) return;
-      setState(() => _emailConfigured = configured);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _emailStatusError = e.toString());
-    } finally {
-      if (mounted) setState(() => _emailStatusLoading = false);
-    }
-  }
-
-  Future<void> _loadEmailLogs() async {
-    setState(() {
-      _emailLogsLoading = true;
-      _emailLogsError = null;
-    });
-    try {
-      final logs = await _emailApi.getLogs(
-        invoiceId: _invoice.id,
-        groupId: _invoice.groupId,
-      );
-      logs.sort((a, b) {
-        final aDate = _parseLogDate(a);
-        final bDate = _parseLogDate(b);
-        if (aDate == null && bDate == null) return 0;
-        if (aDate == null) return 1;
-        if (bDate == null) return -1;
-        return bDate.compareTo(aDate);
-      });
-      if (!mounted) return;
-      setState(() => _emailLogs = logs);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _emailLogsError = e.toString());
-    } finally {
-      if (mounted) setState(() => _emailLogsLoading = false);
-    }
-  }
-
-  DateTime? _parseLogDate(Map<String, dynamic> log) {
-    final raw = log['createdAt'] ?? log['sentAt'] ?? log['timestamp'];
-    if (raw is DateTime) return raw;
-    if (raw is String) return DateTime.tryParse(raw);
-    if (raw is num) {
-      return DateTime.fromMillisecondsSinceEpoch(raw.toInt(), isUtc: true)
-          .toLocal();
-    }
-    return null;
-  }
-
-  String _formatLogDate(DateTime? dt, AppLocalizations l) {
-    if (dt == null) return l.invoiceRegisteredUnknown;
-    return DateFormat.yMMMd(l.localeName).add_Hm().format(dt.toLocal());
-  }
-
-  String _buildPdfLink() {
-    final url = _invoice.pdfUrl?.trim();
-    if (url != null && url.isNotEmpty) return url;
-    return '${ApiConstants.baseUrl}/invoices/${_invoice.id}/pdf';
-  }
-
-  Future<void> _copyPdfLink() async {
-    final link = _buildPdfLink();
-    await Clipboard.setData(ClipboardData(text: link));
-    if (!mounted) return;
-    final l = AppLocalizations.of(context)!;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(l.copiedToClipboard)));
-  }
-
-  void _showEmailSettingsInfo(AppLocalizations l) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l.invoiceEmailConfigureCta),
-        content: Text(l.invoiceEmailSettingsNeedsSetup),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l.dialogClose),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _previewPdf() async {
     setState(() => _previewing = true);
     try {
@@ -280,26 +172,6 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     }
   }
 
-  Future<void> _openSendInvoice({required bool canSend}) async {
-    if (!canSend) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => SendInvoiceSheet(
-        invoice: _invoice,
-        client: widget.client,
-        emailApi: _emailApi,
-        pdfLink: _buildPdfLink(),
-        onSent: () async {
-          await _loadEmailLogs();
-          await _loadInvoiceDetail();
-          await _notifyInvoiceChanged();
-        },
-      ),
-    );
-  }
-
   Future<void> _markInvoiceSent({
     required String channel,
   }) async {
@@ -365,175 +237,6 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     } finally {
       if (mounted) setState(() => _updatingDelivery = false);
     }
-  }
-
-  static const _invoiceChronologyErrorMessage =
-      'Esta factura tiene una fecha anterior a la última factura emitida. '
-      'Para mantener la numeración cronológica, debes emitir primero las '
-      'facturas de fechas anteriores o corregir la fecha.';
-
-  DateTime? _invoiceChronologyDate(Invoice invoice) {
-    return invoice.issueDate ?? invoice.occurrenceDate ?? invoice.registeredAt;
-  }
-
-  bool _isBeforeCalendarDay(DateTime value, DateTime limit) {
-    final valueDay = DateTime(value.year, value.month, value.day);
-    final limitDay = DateTime(limit.year, limit.month, limit.day);
-    return valueDay.isBefore(limitDay);
-  }
-
-  Future<bool> _canIssueInvoiceByDate(Invoice invoice) async {
-    final selectedDate = _invoiceChronologyDate(invoice);
-    if (selectedDate == null) return true;
-    final issued =
-        await _invoicesApi.listByGroup(invoice.groupId, status: 'issued');
-    DateTime? latestIssuedDate;
-    for (final item in issued) {
-      final date = _invoiceChronologyDate(item);
-      if (date == null) continue;
-      if (latestIssuedDate == null || date.isAfter(latestIssuedDate)) {
-        latestIssuedDate = date;
-      }
-    }
-    if (latestIssuedDate == null) return true;
-    return !_isBeforeCalendarDay(selectedDate, latestIssuedDate);
-  }
-
-  Future<void> _issueInvoice() async {
-    if (_issuing) return;
-    setState(() => _issuing = true);
-    try {
-      final currentLines = await _linesApi.list(_invoice.id);
-      if (currentLines.isEmpty) {
-        if (!mounted) return;
-        final l = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.invoiceLinesRequired)),
-        );
-        return;
-      }
-      if (!await _canIssueInvoiceByDate(_invoice)) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(_invoiceChronologyErrorMessage)),
-        );
-        return;
-      }
-      final updated = await _invoicesApi.issue(_invoice.id);
-      if (!mounted) return;
-      setState(() {
-        _currentInvoice = updated;
-        if (updated.lines.isNotEmpty) {
-          _lines = updated.lines;
-        }
-      });
-      final l = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(l.invoiceIssueSuccessSnack(updated.invoiceNumber))),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      final msg = _safeErrorMessage(
-        context,
-        e,
-        fallback: l.invoiceIssueFailedSnack,
-      );
-      if (msg
-          .toLowerCase()
-          .contains('cannot issue invoice without line items')) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(msg)));
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(msg),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _issuing = false);
-    }
-  }
-
-  String _safeErrorMessage(
-    BuildContext context,
-    Object error, {
-    String? fallback,
-  }) {
-    final l = AppLocalizations.of(context)!;
-    final raw = error.toString().trim();
-    final msg = raw.startsWith('Exception: ')
-        ? raw.substring('Exception: '.length).trim()
-        : raw;
-    final normalized = msg.toLowerCase();
-    final technical = <String>[
-      'socketexception',
-      'clientexception',
-      'httpexception',
-      'handshakeexception',
-      'oserror',
-      'formatexception',
-    ];
-    if (msg.isEmpty || technical.any(normalized.contains)) {
-      return fallback ?? l.somethingWentWrong;
-    }
-    return msg;
-  }
-
-  String _logId(Map<String, dynamic> log) {
-    return (log['id'] ?? log['_id'] ?? '').toString();
-  }
-
-  Future<void> _resendEmail(Map<String, dynamic> log) async {
-    final id = _logId(log);
-    if (id.isEmpty) return;
-    setState(() => _resendingLogId = id);
-    try {
-      await _emailApi.resend(id);
-      if (mounted) {
-        await _loadEmailLogs();
-        final t = AppTypography.of(context);
-        final l = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              l.invoiceEmailResentSnack,
-              style: t.bodySmall,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _resendingLogId = null);
-    }
-  }
-
-  void _openEmailLogDetails(Map<String, dynamic> log) {
-    final encoder = const JsonEncoder.withIndent('  ');
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.invoiceEmailDetailsTitle),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: SelectableText(encoder.convert(log)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(AppLocalizations.of(context)!.dialogClose),
-          ),
-        ],
-      ),
-    );
   }
 
   Uint8List _validatePdf(http.Response r) {
@@ -646,7 +349,7 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  value: entityOptions.contains(entityCtrl.text.trim())
+                  initialValue: entityOptions.contains(entityCtrl.text.trim())
                       ? entityCtrl.text.trim()
                       : null,
                   decoration: InputDecoration(

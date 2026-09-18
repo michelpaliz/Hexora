@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:image_picker/image_picker.dart';
 
 class ImagePickerController {
@@ -8,7 +9,7 @@ class ImagePickerController {
       final pickedImage = await _picker.pickImage(source: ImageSource.gallery);
       return pickedImage;
     } catch (e) {
-      print("Error picking image: $e");
+      debugPrint("Error picking image: $e");
       return null;
     }
   }

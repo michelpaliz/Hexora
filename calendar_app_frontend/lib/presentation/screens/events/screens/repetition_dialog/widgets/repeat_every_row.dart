@@ -14,13 +14,13 @@ class RepeatEveryRow extends StatelessWidget {
   final Function(int) onIntervalChanged;
 
   const RepeatEveryRow({
-    Key? key,
+    super.key,
     required this.selectedFrequency,
     required this.repeatInterval,
     required this.selectedDays,
     required this.selectedStartDate,
     required this.onIntervalChanged,
-  }) : super(key: key);
+  });
 
   int _getMaxRepeatValue(String frequency) {
     switch (frequency) {

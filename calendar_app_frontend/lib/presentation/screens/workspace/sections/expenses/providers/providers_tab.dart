@@ -281,7 +281,7 @@ class ExpenseProvidersTab extends StatelessWidget {
                           return ListItemCard(
                             leading: CircleAvatar(
                               radius: 16,
-                              backgroundColor: scheme.primary.withOpacity(0.08),
+                              backgroundColor: scheme.primary.withValues(alpha: 0.08),
                               child: Text(
                                 name.trim().isEmpty
                                     ? '?'

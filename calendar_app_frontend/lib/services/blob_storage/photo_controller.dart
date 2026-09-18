@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:hexora/services/blob_storage/blobRepository.dart';
+import 'package:hexora/services/blob_storage/blob_repository.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:image_picker/image_picker.dart';

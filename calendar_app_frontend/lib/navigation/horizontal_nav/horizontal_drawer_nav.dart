@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/navigation/horizontal_nav/components/avatar_icon.dart';
 import 'package:hexora/navigation/horizontal_nav/models/nav_item_data.dart';
 import 'package:hexora/l10n/app_localizations.dart';

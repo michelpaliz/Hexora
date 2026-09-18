@@ -31,8 +31,8 @@ class ModernGroupCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     // Base surface, then a subtle hover tint
-    final baseCardColor = ThemeColors.cardBg(context).withOpacity(0.98);
-    final hoverOverlay = cs.primary.withOpacity(0.06);
+    final baseCardColor = ThemeColors.cardBg(context).withValues(alpha: 0.98);
+    final hoverOverlay = cs.primary.withValues(alpha: 0.06);
     final cardColor = isHovered
         ? Color.alphaBlend(hoverOverlay, baseCardColor)
         : baseCardColor;
@@ -53,7 +53,7 @@ class ModernGroupCard extends StatelessWidget {
           color: cardColor,
           borderRadius: BorderRadius.circular(_radius),
           border: Border.all(
-            color: cs.outlineVariant.withOpacity(isHovered ? 0.45 : 0.28),
+            color: cs.outlineVariant.withValues(alpha: isHovered ? 0.45 : 0.28),
             width: 1,
           ),
           boxShadow: [
@@ -66,7 +66,7 @@ class ModernGroupCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [cardColor, cardColor.withOpacity(0.98)],
+            colors: [cardColor, cardColor.withValues(alpha: 0.98)],
           ),
         ),
         child: Stack(
@@ -85,7 +85,7 @@ class ModernGroupCard extends StatelessWidget {
                     topRight: Radius.circular(_radius),
                   ),
                   gradient: LinearGradient(
-                    colors: [cs.primary, cs.primary.withOpacity(0.5)],
+                    colors: [cs.primary, cs.primary.withValues(alpha: 0.5)],
                   ),
                 ),
               ),
@@ -117,7 +117,7 @@ class ModernGroupCard extends StatelessWidget {
                                   fontWeight: FontWeight.w700,
                                 ),
                                 bodySmall: t.bodySmall.copyWith(
-                                  color: onCard.withOpacity(0.75),
+                                  color: onCard.withValues(alpha: 0.75),
                                 ),
                                 onSurface: onCard,
                                 maxLinesForTitle: 2,
@@ -136,7 +136,7 @@ class ModernGroupCard extends StatelessWidget {
                             ),
                             if (!isCompact)
                               Icon(Icons.chevron_right,
-                                  color: onCard.withOpacity(0.6)),
+                                  color: onCard.withValues(alpha: 0.6)),
                           ],
                         ),
                       ],
@@ -158,7 +158,7 @@ class ModernGroupCard extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                           bodySmall: t.bodySmall.copyWith(
-                            color: onCard.withOpacity(0.75),
+                            color: onCard.withValues(alpha: 0.75),
                           ),
                           onSurface: onCard,
                           maxLinesForTitle: 2,
@@ -173,7 +173,7 @@ class ModernGroupCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 2),
-                      Icon(Icons.chevron_right, color: onCard.withOpacity(0.6)),
+                      Icon(Icons.chevron_right, color: onCard.withValues(alpha: 0.6)),
                     ],
                   );
                 },

@@ -8,11 +8,11 @@ class RepetitionToggleWidget extends StatelessWidget {
   final Future<void> Function() onTap;
 
   const RepetitionToggleWidget({
-    Key? key,
+    super.key,
     required this.isRepetitive,
     required this.toggleWidth,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -84,8 +84,8 @@ class _ToggleButton extends StatelessWidget {
         child: InkWell(
           onTap: () async => await onTap(),
           borderRadius: BorderRadius.circular(18),
-          splashColor: cs.primary.withOpacity(0.12),
-          highlightColor: cs.primary.withOpacity(0.06),
+          splashColor: cs.primary.withValues(alpha: 0.12),
+          highlightColor: cs.primary.withValues(alpha: 0.06),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOut,
@@ -102,14 +102,14 @@ class _ToggleButton extends StatelessWidget {
               boxShadow: isOn
                   ? [
                       BoxShadow(
-                        color: cs.primary.withOpacity(0.25),
+                        color: cs.primary.withValues(alpha: 0.25),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
                     ]
                   : [
                       BoxShadow(
-                        color: cs.shadow.withOpacity(0.06),
+                        color: cs.shadow.withValues(alpha: 0.06),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -127,18 +127,16 @@ class _ToggleButton extends StatelessWidget {
                           ? Icons.repeat_rounded
                           : Icons.repeat_one_on_outlined,
                       size: 18,
-                      color: isOn ? fgActive : fgInactive.withOpacity(0.85),
+                      color:
+                          isOn ? fgActive : fgInactive.withValues(alpha: 0.85),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       isOn ? loc.repeatYes : loc.repeatNo,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      textScaler: TextScaler.linear(
-                        MediaQuery.textScaleFactorOf(context)
-                            .clamp(0.8, 1.4)
-                            .toDouble(),
-                      ),
+                      textScaler: MediaQuery.textScalerOf(context)
+                          .clamp(minScaleFactor: 0.8, maxScaleFactor: 1.4),
                       style: typo.bodySmall.copyWith(
                         color: isOn ? fgActive : fgInactive,
                         fontWeight: FontWeight.w700,

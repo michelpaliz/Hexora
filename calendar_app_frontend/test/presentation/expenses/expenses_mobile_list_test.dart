@@ -30,7 +30,7 @@ void main() {
               padding: const EdgeInsets.all(16),
               child: ExpenseRecentUploadsTab(
                 groupId: '',
-                recentUploads: [
+                recentUploads: const [
                   {
                     'id': 'one',
                     'vendor': 'Proveedor con un nombre muy largo de servicios',
@@ -60,6 +60,10 @@ void main() {
         ));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
+        await tester.tap(find.byTooltip('Filtrar por trimestre'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Todos').last);
+        await tester.pumpAndSettle();
         expect(find.text('2 gastos'), findsOneWidget);
         await tester.enterText(find.byType(TextField), 'Papelería');
         await tester.pumpAndSettle();

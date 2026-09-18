@@ -29,7 +29,7 @@ class StatementsHistoryList extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final thresholdOptions = const [3, 5, 7];
+    const thresholdOptions = [3, 5, 7];
     String labelFrom(String template) {
       final cleaned = template.replaceAll(':', '').trim();
       return cleaned.isEmpty ? template : cleaned;

@@ -107,9 +107,7 @@ class _MailInboxScreenState extends State<MailInboxScreen>
                         icon: const Icon(Icons.close_rounded),
                         onPressed: () {
                           _searchController.clear();
-                          context
-                              .read<MailDomain>()
-                              .updateSearchQuery('');
+                          context.read<MailDomain>().updateSearchQuery('');
                           setState(() {
                             _searchError = null;
                           });
@@ -166,8 +164,7 @@ class _MailInboxScreenState extends State<MailInboxScreen>
           Expanded(
             child: Consumer<MailDomain>(
               builder: (context, domain, _) {
-                final hasQuery =
-                    _searchController.text.trim().isNotEmpty;
+                final hasQuery = _searchController.text.trim().isNotEmpty;
                 if (hasQuery) {
                   return Column(
                     children: [
@@ -263,6 +260,7 @@ class _MailInboxScreenState extends State<MailInboxScreen>
       after: picked.start,
       before: picked.end,
     );
+    if (!mounted) return;
     context.read<MailDomain>().updateSearchFilters(nextFilters);
     _triggerSearch();
   }
@@ -576,9 +574,8 @@ class _MailSearchResultsListState extends State<MailSearchResultsList> {
 
         if (state.error != null && results.isEmpty) {
           final error = state.error!;
-          final displayError = error.contains('at least 2')
-              ? l.mailSearchMinChars
-              : error;
+          final displayError =
+              error.contains('at least 2') ? l.mailSearchMinChars : error;
           return Center(
             child: Text(
               displayError,

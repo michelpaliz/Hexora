@@ -7,7 +7,7 @@ import 'package:hexora/services/groups/event/domain/event_domain.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/edit_screen/screen/edit_event_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -60,6 +60,7 @@ class EventActionManager {
                 await groupDomain.updateGroup(refreshedGroup, userDomain);
 
                 // ðŸ” Refresh calendar events
+                if (!context.mounted) return;
                 await eventDomain.manualRefresh(context);
               }
             },

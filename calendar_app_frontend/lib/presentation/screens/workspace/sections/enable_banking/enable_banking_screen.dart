@@ -167,9 +167,14 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     if (_didInit) return;
     _didInit = true;
 
-    Future<void>(() => context.read<StatementsController>().listImports());
+    if (!context.mounted) return;
+    Future<void>(() async {
+      if (!mounted) return;
+      await context.read<StatementsController>().listImports();
+    });
 
     Future<void>(() async {
+      if (!mounted) return;
       final name = ModalRoute.of(context)?.settings.name;
       if (name == null) return;
       final uri = Uri.tryParse(name);

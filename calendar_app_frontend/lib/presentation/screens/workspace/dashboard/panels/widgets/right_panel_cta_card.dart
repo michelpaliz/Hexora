@@ -43,7 +43,7 @@ class CtaCard extends StatelessWidget {
           Text(
             subtitle,
             style: typo.bodySmall.copyWith(
-              color: onSurface.withOpacity(0.8),
+              color: onSurface.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 16),

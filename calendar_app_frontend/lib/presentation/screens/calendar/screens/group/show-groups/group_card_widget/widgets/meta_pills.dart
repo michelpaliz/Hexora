@@ -35,7 +35,7 @@ class MetaPills extends StatelessWidget {
           icon: Icons.person,
           label: '$participants',
           background: LinearGradient(
-            colors: [scheme.primary, scheme.primary.withOpacity(0.7)],
+            colors: [scheme.primary, scheme.primary.withValues(alpha: 0.7)],
           ),
           textStyle: pillTextStyle,
         ),
@@ -43,7 +43,7 @@ class MetaPills extends StatelessWidget {
           icon: Icons.verified_user,
           label: translatedRole,
           background: LinearGradient(
-            colors: [scheme.secondary, scheme.secondary.withOpacity(0.7)],
+            colors: [scheme.secondary, scheme.secondary.withValues(alpha: 0.7)],
           ),
           textStyle: pillTextStyle.copyWith(color: scheme.onSecondary),
           iconColor: scheme.onSecondary,

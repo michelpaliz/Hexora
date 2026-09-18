@@ -27,7 +27,7 @@ class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
     double? advanceAmount,
   }) async {
     lastTotalsAdvance = advanceAmount;
-    final gross = 200.0;
+    const gross = 200.0;
     final adv = (advanceAmount ?? 0).clamp(0, 999999).toDouble();
     final net = (gross - adv).clamp(0, gross).toDouble();
     return {

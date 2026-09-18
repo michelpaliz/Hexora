@@ -78,7 +78,7 @@ class MiniMonthPicker extends StatelessWidget {
             final fg = isSelected ? cs.onPrimary : cs.onSurface;
             final bg = isSelected ? cs.primary : Colors.transparent;
             final borderColor =
-                isToday ? cs.primary : cs.outlineVariant.withOpacity(0.5);
+                isToday ? cs.primary : cs.outlineVariant.withValues(alpha: 0.5);
 
             return InkWell(
               borderRadius: BorderRadius.circular(10),

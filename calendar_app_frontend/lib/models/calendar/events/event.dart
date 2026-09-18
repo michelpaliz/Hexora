@@ -456,24 +456,24 @@ class Event {
     if (rule == null) return '';
     final buffer = StringBuffer('Repeats ');
     switch (rule.recurrenceType) {
-      case RecurrenceType.Daily:
+      case RecurrenceType.daily:
         buffer.write('every ${rule.repeatInterval ?? 1} day(s)');
         break;
-      case RecurrenceType.Weekly:
+      case RecurrenceType.weekly:
         buffer.write('weekly');
         if (rule.daysOfWeek != null && rule.daysOfWeek!.isNotEmpty) {
           final days = rule.daysOfWeek!.map((d) => d.shortName).join(', ');
           buffer.write(' on $days');
         }
         break;
-      case RecurrenceType.Monthly:
+      case RecurrenceType.monthly:
         if (rule.dayOfMonth != null) {
           buffer.write('monthly on day ${rule.dayOfMonth}');
         } else {
           buffer.write('monthly');
         }
         break;
-      case RecurrenceType.Yearly:
+      case RecurrenceType.yearly:
         if (rule.month != null && rule.dayOfMonth != null) {
           buffer.write('yearly on ${rule.month}/${rule.dayOfMonth}');
         } else {

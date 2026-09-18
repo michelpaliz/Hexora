@@ -164,7 +164,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   List<int>? _detailPreviewPdfBytes;
   String? _detailPreviewForId;
   Map<String, dynamic>? _historyBudget;
-  int _linesInputTabIndex = 0;
   bool _jsonImportLoading = false;
   bool _jsonPromptLoading = false;
   String? _jsonImportError;
@@ -178,8 +177,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   String? _extractMethodUsed;
   List<String> _extractDiagnostics = const [];
 
-  bool get _isPhotoLinesMode => _linesInputTabIndex == 1;
-  bool get _isJsonLinesMode => _linesInputTabIndex == 2;
   bool get _isSpanishLocale =>
       Localizations.localeOf(context).languageCode == 'es';
   BudgetSortState get _effectiveBudgetSortState =>
@@ -432,7 +429,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           .where((item) => !presupuestoHasDocumentContent(item))
           .toList(growable: false);
       final now = DateTime.now();
-      DateTime? _budgetDate(Map<String, dynamic> b) {
+      DateTime? budgetDate(Map<String, dynamic> b) {
         final v = b['registeredAt'] ?? b['issueDate'] ?? b['createdAt'];
         if (v == null) return null;
         if (v is DateTime) return v;
@@ -440,19 +437,19 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       }
 
       final thisMonth = all.where((b) {
-        final d = _budgetDate(b);
+        final d = budgetDate(b);
         if (d == null) return false;
         return d.year == now.year && d.month == now.month;
       }).toList();
 
       final past = all.where((b) {
-        final d = _budgetDate(b);
+        final d = budgetDate(b);
         if (d == null) return true;
         return !(d.year == now.year && d.month == now.month);
       }).toList()
         ..sort((a, b) {
-          final da = _budgetDate(a);
-          final db = _budgetDate(b);
+          final da = budgetDate(a);
+          final db = budgetDate(b);
           if (da == null && db == null) return 0;
           if (da == null) return 1;
           if (db == null) return -1;
@@ -1193,35 +1190,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     return null;
   }
 
-  double _budgetDefaultTaxRate(Map<String, dynamic> item) {
-    double? parse(dynamic value) {
-      if (value is num) return value.toDouble();
-      return double.tryParse(
-        (value ?? '').toString().trim().replaceAll(',', '.'),
-      );
-    }
-
-    final lines = item['lines'];
-    if (lines is List) {
-      for (final raw in lines.whereType<Map>()) {
-        final tax =
-            parse(raw['taxRate'] ?? raw['tax'] ?? raw['vat'] ?? raw['iva']);
-        if (tax != null && tax >= 0) return tax;
-      }
-    }
-
-    final blocks = item['blocks'];
-    if (blocks is List) {
-      for (final raw in blocks.whereType<Map>()) {
-        final tax =
-            parse(raw['taxRate'] ?? raw['tax'] ?? raw['vat'] ?? raw['iva']);
-        if (tax != null && tax >= 0) return tax;
-      }
-    }
-
-    return 21;
-  }
-
   DateTime? _budgetDate(Map<String, dynamic> item) {
     final raw = item['issueDate'] ??
         item['registeredAt'] ??
@@ -1279,8 +1247,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     if (cleaned(billing.taxId).isEmpty) missing.add('taxId');
     if (cleaned(billing.addressStreet).isEmpty) missing.add('addressStreet');
     if (cleaned(billing.addressCity).isEmpty) missing.add('addressCity');
-    if (cleaned(billing.addressPostalCode).isEmpty)
+    if (cleaned(billing.addressPostalCode).isEmpty) {
       missing.add('addressPostalCode');
+    }
     if (cleaned(billing.addressCountry).isEmpty) missing.add('addressCountry');
     return missing;
   }
@@ -1767,20 +1736,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                 final percent = double.tryParse(
                                   percentCtrl.text.trim().replaceAll(',', '.'),
                                 );
-                                final base = baseCtrl.text.trim().isEmpty
-                                    ? null
-                                    : double.tryParse(
-                                        baseCtrl.text
-                                            .trim()
-                                            .replaceAll(',', '.'),
-                                      );
-                                final vat = vatCtrl.text.trim().isEmpty
-                                    ? null
-                                    : double.tryParse(
-                                        vatCtrl.text
-                                            .trim()
-                                            .replaceAll(',', '.'),
-                                      );
+
                                 if (percent == null) {
                                   setDialogState(() {
                                     errorText = isSpanish
@@ -1821,6 +1777,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                           : _extractInvoiceIdFromCreateResponse(
                                               result.raw);
                                   if (!mounted) return;
+                                  if (!ctx.mounted) return;
                                   Navigator.of(ctx).pop(true);
                                   showSuccessSnack(
                                       context,
@@ -2008,6 +1965,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                           : _extractInvoiceIdFromCreateResponse(
                                               result.raw);
                                   if (!mounted) return;
+                                  if (!ctx.mounted) return;
                                   Navigator.of(ctx).pop(true);
                                   showSuccessSnack(
                                       context,
@@ -4802,8 +4760,7 @@ class _BudgetSortMenuButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(9),
-          border:
-              Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
         ),
         child: Stack(
           clipBehavior: Clip.none,

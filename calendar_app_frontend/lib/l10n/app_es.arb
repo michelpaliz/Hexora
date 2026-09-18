@@ -3464,6 +3464,7 @@
   "telegramReply": "Responder",
   "telegramReplying": "Respondiendo",
   "telegramPreviewPdf": "Ver PDF",
+  "telegramPreviewUnavailable": "Vista previa no disponible para este archivo",
   "telegramDownloadDocument": "Descargar documento",
   "telegramClose": "Cerrar",
   "telegramTopicSubtitle": "Tema · {name}",

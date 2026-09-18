@@ -38,7 +38,7 @@ class ProfileDetailsCard extends StatelessWidget {
     final bg = ThemeColors.cardBg(context);
     final onBg = ThemeColors.textPrimary(context);
     final shadow = ThemeColors.cardShadow(context);
-    final divider = cs.outlineVariant.withOpacity(0.25);
+    final divider = cs.outlineVariant.withValues(alpha: 0.25);
 
     Widget tile({
       required IconData icon,
@@ -55,7 +55,7 @@ class ProfileDetailsCard extends StatelessWidget {
           height: 40,
           width: 40,
           decoration: BoxDecoration(
-            color: ic.withOpacity(0.12),
+            color: ic.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
@@ -64,7 +64,7 @@ class ProfileDetailsCard extends StatelessWidget {
         title: Text(
           title,
           style: t.bodyMedium.copyWith(
-            color: onBg.withOpacity(0.9),
+            color: onBg.withValues(alpha: 0.9),
             fontWeight: FontWeight.w700,
             letterSpacing: 0.2,
           ),
@@ -74,14 +74,14 @@ class ProfileDetailsCard extends StatelessWidget {
             : Text(
                 subtitle,
                 style: t.bodySmall.copyWith(
-                  color: onBg.withOpacity(0.75),
+                  color: onBg.withValues(alpha: 0.75),
                   height: 1.25,
                 ),
               ),
         trailing: trailing == null
             ? null
             : IconTheme(
-                data: IconThemeData(color: onBg.withOpacity(0.55), size: 18),
+                data: IconThemeData(color: onBg.withValues(alpha: 0.55), size: 18),
                 child: trailing,
               ),
         onTap: onTap,
@@ -101,7 +101,7 @@ class ProfileDetailsCard extends StatelessWidget {
             offset: const Offset(0, 6),
           ),
         ],
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.2), width: 1),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2), width: 1),
       ),
       child: Column(
         children: [

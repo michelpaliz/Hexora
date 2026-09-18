@@ -31,9 +31,9 @@ class DatePickersWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withOpacity(.5),
+        color: cs.surfaceContainerHighest.withValues(alpha: .5),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withOpacity(.6)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .6)),
       ),
       child: Row(
         children: [

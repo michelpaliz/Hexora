@@ -16,7 +16,6 @@ import 'package:hexora/models/mail/mail_thread.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
-import 'package:hexora/services/emails/email_api.dart';
 import 'package:hexora/services/errors/error_classes/error_classes.dart';
 import 'package:hexora/services/mail/domain/mail_domain.dart';
 import 'package:hexora/services/mail/models/mail_requests.dart';
@@ -106,13 +105,8 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   bool _showFooterManager = false;
   bool _showTemplateManager = false;
 
-  bool _loadingClient = false;
-  String? _clientError;
   GroupClient? _client;
 
-  bool _loadingInvoices = false;
-  String? _invoiceError;
-  List<Invoice> _invoices = const [];
   String? _selectedInvoiceId;
 
   bool _sendingReply = false;
@@ -127,7 +121,6 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   Timer? _threadDebounce;
   Timer? _threadSearchDebounce;
 
-  final EmailApi _emailApi = EmailApi();
   TextEditingController get _threadSearchController =>
       _threadSearchCtrl ??= TextEditingController();
 
@@ -287,11 +280,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       _replyTarget = null;
       _replyDraftMessageId = null;
       _client = null;
-      _clientError = null;
-      _loadingClient = false;
-      _loadingInvoices = false;
-      _invoices = const [];
-      _invoiceError = null;
+
       _selectedInvoiceId = null;
     });
     _replySubjectCtrl.clear();
@@ -328,9 +317,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     if (email == null || email.isEmpty) {
       setState(() {
         _client = null;
-        _clientError = null;
-        _invoices = const [];
-        _invoiceError = null;
+
         _selectedInvoiceId = null;
       });
       return;
@@ -340,11 +327,6 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     final clientId = _client?.id;
     if (clientId != null && clientId.isNotEmpty) {
       await _loadInvoices(clientId);
-    } else {
-      setState(() {
-        _invoices = const [];
-        _invoiceError = null;
-      });
     }
   }
 
@@ -370,10 +352,6 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     if (!mounted) return;
     final revision = _threadSelectionRevision;
     final threadKey = _selectedThreadKey;
-    setState(() {
-      _loadingClient = true;
-      _clientError = null;
-    });
     try {
       final groupId = _currentGroupId();
       if (groupId == null || groupId.isEmpty) {
@@ -409,11 +387,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       setState(() => _client = match);
     } catch (e) {
       if (!_isCurrentThreadRequest(revision, threadKey)) return;
-      setState(() => _clientError = e.toString());
-    } finally {
-      if (_isCurrentThreadRequest(revision, threadKey)) {
-        setState(() => _loadingClient = false);
-      }
+      debugPrint('Client lookup failed: $e');
     }
   }
 
@@ -421,10 +395,6 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     if (!mounted) return;
     final revision = _threadSelectionRevision;
     final threadKey = _selectedThreadKey;
-    setState(() {
-      _loadingInvoices = true;
-      _invoiceError = null;
-    });
     try {
       final uri = _invoicesUri(clientId);
       final r = await AuthenticatedHttpClient.get(uri, client: _http());
@@ -446,80 +416,11 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
           ? _selectedInvoiceId
           : (invoices.isNotEmpty ? invoices.first.id : null);
       setState(() {
-        _invoices = invoices;
         _selectedInvoiceId = nextSelected;
       });
     } catch (e) {
       if (!_isCurrentThreadRequest(revision, threadKey)) return;
-      setState(() => _invoiceError = e.toString());
-    } finally {
-      if (_isCurrentThreadRequest(revision, threadKey)) {
-        setState(() => _loadingInvoices = false);
-      }
-    }
-  }
-
-  Future<void> _resendInvoice(Invoice invoice) async {
-    final l = AppLocalizations.of(context)!;
-    final clientEmail = _client?.billing?.email ?? _client?.email;
-    if (clientEmail == null || clientEmail.isEmpty) {
-      _toast(l.mailConsoleClientEmailMissing);
-      return;
-    }
-    try {
-      await _emailApi.sendInvoice({
-        'invoiceId': invoice.id,
-        'groupId': invoice.groupId,
-        'to': clientEmail,
-        'subject': l.mailConsoleInvoiceSubject(invoice.invoiceNumber),
-        'text': l.mailConsoleInvoiceBody(invoice.invoiceNumber),
-        'html': '<p>${l.mailConsoleInvoiceBody(invoice.invoiceNumber)}</p>',
-        'attachPdf': true,
-        'applyDefaultFooter': true,
-      });
-      _toast(l.mailConsoleInvoiceResent);
-    } catch (e) {
-      _toast(l.mailConsoleActionFailed(e.toString()));
-    }
-  }
-
-  Future<void> _sendPaymentLink(Invoice invoice) async {
-    final l = AppLocalizations.of(context)!;
-    final clientEmail = _client?.billing?.email ?? _client?.email;
-    if (clientEmail == null || clientEmail.isEmpty) {
-      _toast(l.mailConsoleClientEmailMissing);
-      return;
-    }
-    final uri = _invoiceActionUri(invoice.id, 'send-payment-link');
-    try {
-      final r = await AuthenticatedHttpClient.post(
-        uri,
-        client: _http(),
-        body: jsonEncode({'email': clientEmail}),
-      );
-      if (r.statusCode < 200 || r.statusCode >= 300) {
-        throw Exception(r.body.isNotEmpty ? r.body : r.reasonPhrase);
-      }
-      _toast(l.mailConsolePaymentLinkSent);
-    } catch (e) {
-      _toast(l.mailConsoleActionFailed(e.toString()));
-    }
-  }
-
-  Future<void> _markPaid(Invoice invoice) async {
-    final l = AppLocalizations.of(context)!;
-    final uri = _invoiceActionUri(invoice.id, 'mark-paid');
-    try {
-      final r = await AuthenticatedHttpClient.post(uri, client: _http());
-      if (r.statusCode < 200 || r.statusCode >= 300) {
-        throw Exception(r.body.isNotEmpty ? r.body : r.reasonPhrase);
-      }
-      _toast(l.mailConsoleMarkedPaid);
-      if (_client != null) {
-        await _loadInvoices(_client!.id);
-      }
-    } catch (e) {
-      _toast(l.mailConsoleActionFailed(e.toString()));
+      debugPrint('Invoice lookup failed: $e');
     }
   }
 
@@ -1148,13 +1049,6 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     });
   }
 
-  Uri _invoiceActionUri(String invoiceId, String action) {
-    final base = ApiConstants.baseUrl.endsWith('/api')
-        ? '${ApiConstants.baseUrl}/invoices'
-        : '${ApiConstants.baseUrl}/api/invoices';
-    return Uri.parse('$base/$invoiceId/$action');
-  }
-
   http.Client _http() => context.read<http.Client>();
 
   @override
@@ -1182,6 +1076,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
         mimeType: mimeType,
       );
     } catch (e) {
+      if (!mounted) return;
       _toast(
           AppLocalizations.of(context)!.mailDetailDownloadFailed(e.toString()));
     } finally {

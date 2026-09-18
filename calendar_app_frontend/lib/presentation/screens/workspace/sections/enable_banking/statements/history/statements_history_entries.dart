@@ -53,7 +53,7 @@ class StatementsHistoryEntries extends StatelessWidget {
             .ceil()
             .clamp(1, 9999);
 
-    final inputPadding = const EdgeInsets.symmetric(horizontal: 8, vertical: 6);
+    const inputPadding = EdgeInsets.symmetric(horizontal: 8, vertical: 6);
     final inputStyle = t.bodySmall;
 
     return Padding(
@@ -159,10 +159,10 @@ class StatementsHistoryEntries extends StatelessWidget {
                 child: DropdownButtonFormField<String>(
                   initialValue: controller.entriesOrder,
                   style: inputStyle,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Orden',
                     isDense: true,
-                    border: const OutlineInputBorder(),
+                    border: OutlineInputBorder(),
                     contentPadding: inputPadding,
                   ),
                   items: const [
@@ -211,7 +211,7 @@ class StatementsHistoryEntries extends StatelessWidget {
           ),
             const SizedBox(height: 8),
             Card(
-              color: cs.surfaceContainerHighest.withOpacity(0.4),
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(

@@ -56,10 +56,10 @@ class GradientSurface extends StatelessWidget {
 
     // Neutral greys (soft, desaturated, theme-aware)
     final neutralStart = isDark
-        ? cs.surfaceContainerHighest.withOpacity(0.22)
-        : cs.surfaceContainerHighest.withOpacity(0.50);
+        ? cs.surfaceContainerHighest.withValues(alpha: 0.22)
+        : cs.surfaceContainerHighest.withValues(alpha: 0.50);
     final neutralEnd =
-        isDark ? cs.surface.withOpacity(0.32) : cs.surface.withOpacity(0.80);
+        isDark ? cs.surface.withValues(alpha: 0.32) : cs.surface.withValues(alpha: 0.80);
 
     final resolvedColors = colors ??
         (MobileTheme.isActive(context) && useNeutral
@@ -68,13 +68,13 @@ class GradientSurface extends StatelessWidget {
         (useNeutral
             ? <Color>[neutralStart, neutralEnd]
             : <Color>[
-                cs.primary.withOpacity(primaryOpacity),
-                cs.tertiary.withOpacity(tertiaryOpacity),
+                cs.primary.withValues(alpha: primaryOpacity),
+                cs.tertiary.withValues(alpha: tertiaryOpacity),
               ]);
 
     final borderColor = useNeutral
-        ? cs.outlineVariant.withOpacity(borderOpacity)
-        : cs.primary.withOpacity(borderOpacity);
+        ? cs.outlineVariant.withValues(alpha: borderOpacity)
+        : cs.primary.withValues(alpha: borderOpacity);
 
     return Container(
       margin: margin,
@@ -105,7 +105,6 @@ class GradientSurface extends StatelessWidget {
   }) {
     return GradientSurface(
       key: key,
-      child: child,
       margin: margin,
       padding: padding,
       radius: radius,
@@ -114,6 +113,7 @@ class GradientSurface extends StatelessWidget {
       border: border,
       borderOpacity: borderOpacity,
       useNeutral: true,
+      child: child,
     );
   }
 
@@ -136,19 +136,19 @@ class GradientSurface extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return GradientSurface(
       key: key,
-      child: child,
       margin: margin,
       padding: padding,
       radius: radius,
       begin: begin,
       end: end,
       colors: [
-        cs.primaryContainer.withOpacity(c1Opacity),
-        cs.tertiaryContainer.withOpacity(c2Opacity),
+        cs.primaryContainer.withValues(alpha: c1Opacity),
+        cs.tertiaryContainer.withValues(alpha: c2Opacity),
       ],
       border: border,
       borderOpacity: borderOpacity,
-      useNeutral: false, // explicitly colorful
+      useNeutral: false,
+      child: child, // explicitly colorful
     );
   }
 }

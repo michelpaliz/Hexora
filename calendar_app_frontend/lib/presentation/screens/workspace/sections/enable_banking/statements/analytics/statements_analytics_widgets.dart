@@ -43,14 +43,14 @@ class AnalyticsTrendChart extends StatelessWidget {
           SizedBox(
             height: 320,
             child: SfCartesianChart(
-              legend: Legend(isVisible: true, position: LegendPosition.bottom),
+              legend: const Legend(isVisible: true, position: LegendPosition.bottom),
               primaryXAxis: CategoryAxis(
                 labelRotation: hasMonths ? 45 : 0,
                 labelIntersectAction: hasMonths
                     ? AxisLabelIntersectAction.rotate45
                     : AxisLabelIntersectAction.hide,
               ),
-              primaryYAxis: NumericAxis(),
+              primaryYAxis: const NumericAxis(),
               tooltipBehavior: TooltipBehavior(
                 enable: true,
                 builder: (data, point, series, pointIndex, seriesIndex) {
@@ -130,7 +130,7 @@ class AnalyticsVolumeChart extends StatelessWidget {
               ? AxisLabelIntersectAction.rotate45
               : AxisLabelIntersectAction.hide,
         ),
-        primaryYAxis: NumericAxis(),
+        primaryYAxis: const NumericAxis(),
         tooltipBehavior: TooltipBehavior(
           enable: true,
           builder: (data, point, series, pointIndex, seriesIndex) {
@@ -188,7 +188,7 @@ class AnalyticsDonutChart extends StatelessWidget {
     return SizedBox(
       height: 280,
       child: SfCircularChart(
-        legend: Legend(isVisible: true, position: LegendPosition.bottom),
+        legend: const Legend(isVisible: true, position: LegendPosition.bottom),
         annotations: [
           CircularChartAnnotation(
             widget: Column(
@@ -285,10 +285,10 @@ class TopMerchantsChart extends StatelessWidget {
                 );
               },
             ),
-            primaryXAxis: CategoryAxis(
+            primaryXAxis: const CategoryAxis(
               labelIntersectAction: AxisLabelIntersectAction.hide,
             ),
-            primaryYAxis: NumericAxis(),
+            primaryYAxis: const NumericAxis(),
             series: <CartesianSeries<_MerchantPoint, String>>[
               BarSeries<_MerchantPoint, String>(
                 dataSource: points,

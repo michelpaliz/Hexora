@@ -24,8 +24,8 @@ class CustomSearchBar extends StatelessWidget {
 
     final bg = ThemeColors.cardBg(context);
     final onBg = ThemeColors.textPrimary(context);
-    final hint = onBg.withOpacity(0.6);
-    final border = cs.outlineVariant.withOpacity(0.35);
+    final hint = onBg.withValues(alpha: 0.6);
+    final border = cs.outlineVariant.withValues(alpha: 0.35);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 15),
@@ -63,7 +63,7 @@ class CustomSearchBar extends StatelessWidget {
             icon: const Icon(Icons.clear),
             tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
             onPressed: onClear,
-            color: onBg.withOpacity(0.8),
+            color: onBg.withValues(alpha: 0.8),
           ),
           IconButton(
             icon: const Icon(Icons.search),

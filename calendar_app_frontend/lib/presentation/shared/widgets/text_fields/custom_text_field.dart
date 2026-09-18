@@ -9,7 +9,7 @@ class CustomTextFieldWithIcons extends StatelessWidget {
   final IconData? suffixIcon;
   // final double height;
 
-  CustomTextFieldWithIcons({
+  const CustomTextFieldWithIcons({super.key,
     required this.text, // Pass the text directly
     required this.hintText,
     required this.fontFamily,
@@ -21,33 +21,33 @@ class CustomTextFieldWithIcons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 5.0, horizontal: 30.0),
+      margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 30.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             // height: height,
-            padding: EdgeInsets.all(1),
+            padding: const EdgeInsets.all(1),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10.0),
-              color: Color.fromARGB(255, 234, 240, 246),
+              color: const Color.fromARGB(255, 234, 240, 246),
               border: Border.all(
-                color: Color.fromARGB(255, 59, 99, 131),
+                color: const Color.fromARGB(255, 59, 99, 131),
                 width: 3.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Color.fromARGB(255, 41, 52, 61).withOpacity(0.1),
+                  color: const Color.fromARGB(255, 41, 52, 61).withValues(alpha: 0.1),
                   spreadRadius: 1,
                   blurRadius: 1,
-                  offset: Offset(0, 2),
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Column(
               children: [
                 Padding(
-                  padding: EdgeInsets.only(left: 10),
+                  padding: const EdgeInsets.only(left: 10),
                   child: Row(
                     children: [
                       Container(
@@ -55,25 +55,25 @@ class CustomTextFieldWithIcons extends StatelessWidget {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12.0),
                         ),
-                        padding: EdgeInsets.all(3.0),
+                        padding: const EdgeInsets.all(3.0),
                         child: Column(
                           children: [
                             Icon(
                               prefixIcon,
-                              color: Color.fromARGB(255, 10, 81, 136),
+                              color: const Color.fromARGB(255, 10, 81, 136),
                               size: 16.0,
                             ),
                           ],
                         ),
                       ),
-                      SizedBox(
+                      const SizedBox(
                         width: 8.0,
                       ),
                       Text(
                         hintText,
                         style: TextStyle(
                           fontSize: 13.0,
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
@@ -85,7 +85,7 @@ class CustomTextFieldWithIcons extends StatelessWidget {
                       child: Column(
                         children: [
                           Container(
-                            padding: EdgeInsets.only(
+                            padding: const EdgeInsets.only(
                               top: 6.0, // Padding for the top side
                               right: 16.0, // Padding for the right side
                               bottom: 10.0, // Padding for the bottom side
@@ -99,7 +99,7 @@ class CustomTextFieldWithIcons extends StatelessWidget {
                                 Clipboard.setData(
                                     ClipboardData(text: clipboardText ?? ''));
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
+                                  const SnackBar(
                                     content: Text('Text copied to clipboard'),
                                   ),
                                 );

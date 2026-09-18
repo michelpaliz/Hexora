@@ -17,8 +17,8 @@ class EditGroupData extends StatefulWidget {
     required this.group,
     required this.users,
     this.showAppBar = true,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<EditGroupData> createState() => _EditGroupDataState();

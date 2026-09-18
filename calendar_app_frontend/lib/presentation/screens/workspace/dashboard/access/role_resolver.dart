@@ -45,8 +45,9 @@ class RoleResolver {
 
       if (adminIds.contains(uid)) return GroupRole.admin;
       if (coAdminIds.contains(uid)) return GroupRole.coAdmin;
-      if (moderatorIds.contains(uid))
+      if (moderatorIds.contains(uid)) {
         return GroupRole.coAdmin; // treat as co-admin
+      }
     } catch (_) {
       // swallow and fall through
     }

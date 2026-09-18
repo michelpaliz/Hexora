@@ -10,7 +10,7 @@ import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/enums/category/broad_category.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/ocr/expense_ocr_reprocess_results_screen.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_payload_helper.dart';

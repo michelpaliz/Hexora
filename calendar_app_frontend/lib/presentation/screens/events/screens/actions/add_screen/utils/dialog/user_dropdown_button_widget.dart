@@ -6,11 +6,10 @@ import 'dialog_button_widget.dart';
 
 class UserDropdownTrigger extends StatefulWidget {
   final List<User> usersAvailable;
-  const UserDropdownTrigger({Key? key, required this.usersAvailable})
-      : super(key: key);
+  const UserDropdownTrigger({super.key, required this.usersAvailable});
 
   @override
-  _UserDropdownTriggerState createState() => _UserDropdownTriggerState();
+  State<UserDropdownTrigger> createState() => _UserDropdownTriggerState();
 }
 
 class _UserDropdownTriggerState extends State<UserDropdownTrigger> {

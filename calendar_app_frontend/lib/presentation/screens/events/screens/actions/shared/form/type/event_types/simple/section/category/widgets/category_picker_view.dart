@@ -62,7 +62,7 @@ class CategoryPickerView extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: cs.errorContainer.withOpacity(.2),
+          color: cs.errorContainer.withValues(alpha: .2),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: cs.errorContainer),
         ),
@@ -111,9 +111,9 @@ class CategoryPickerView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withOpacity(.5),
+              color: cs.surfaceContainerHighest.withValues(alpha: .5),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.outlineVariant.withOpacity(.6)),
+              border: Border.all(color: cs.outlineVariant.withValues(alpha: .6)),
             ),
             child: Row(
               children: [

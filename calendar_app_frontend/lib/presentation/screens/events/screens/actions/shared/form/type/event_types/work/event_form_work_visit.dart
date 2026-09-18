@@ -199,7 +199,9 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             cardBuilder: SectionCard.new,
             selectedColorValue: widget.logic.selectedEventColor,
             onColorChanged: (color) {
-              if (color != null) widget.logic.setSelectedColor(color.value);
+              if (color != null) {
+                widget.logic.setSelectedColor(color.toARGB32());
+              }
             },
             colorValues: widget.logic.colorList,
           ),
@@ -272,11 +274,9 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             valueListenable: widget.logic.canSubmit,
             builder: (context, canSubmit, _) {
               final cs = Theme.of(context).colorScheme;
-              final label =
-                  widget.isEditing ? loc.save : loc.addEvent;
-              final icon = widget.isEditing
-                  ? Icons.check_rounded
-                  : Icons.add_rounded;
+              final label = widget.isEditing ? loc.save : loc.addEvent;
+              final icon =
+                  widget.isEditing ? Icons.check_rounded : Icons.add_rounded;
 
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),

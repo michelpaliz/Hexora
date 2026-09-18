@@ -11,12 +11,12 @@ class UntilDatePicker extends StatelessWidget {
   final Function(DateTime) onDateSelected;
 
   const UntilDatePicker({
-    Key? key,
+    super.key,
     required this.isForever,
     required this.untilDate,
     required this.onForeverChanged,
     required this.onDateSelected,
-  }) : super(key: key);
+  });
 
   Future<void> _pickDate(BuildContext context) async {
     final DateTime initialDate = untilDate ?? DateTime.now();
@@ -58,7 +58,7 @@ class UntilDatePicker extends StatelessWidget {
           children: [
             Switch.adaptive(
               value: !isForever,
-              activeColor: cs.primary,
+              activeThumbColor: cs.primary,
               onChanged: (bool newValue) {
                 onForeverChanged(!newValue);
               },

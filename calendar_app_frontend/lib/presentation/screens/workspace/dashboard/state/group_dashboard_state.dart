@@ -85,6 +85,12 @@ class GroupDashboardState extends ChangeNotifier {
 
   // UI
   String activeSection = Sections.calendar;
+
+  void selectSection(String section) {
+    if (activeSection == section) return;
+    activeSection = section;
+    notifyListeners();
+  }
   CalendarDashboardActions? calendarActions;
 
   void setCalendarActions(CalendarDashboardActions? actions) {

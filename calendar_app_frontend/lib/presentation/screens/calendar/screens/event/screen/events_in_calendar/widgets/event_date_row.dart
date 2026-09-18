@@ -1,13 +1,12 @@
 import 'package:hexora/models/calendar/events/event.dart';
-import 'package:hexora/l10n/AppLocalitationMethod.dart';
+import 'package:hexora/l10n/app_localitation_method.dart';
 import 'package:flutter/material.dart';
 
 class EventDateRow extends StatelessWidget {
   final Event event;
   final Color textColor;
 
-  const EventDateRow({Key? key, required this.event, required this.textColor})
-    : super(key: key);
+  const EventDateRow({super.key, required this.event, required this.textColor});
 
   @override
   Widget build(BuildContext context) {

@@ -583,10 +583,10 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                           appointmentItemHeight:
                                               MediaQuery.sizeOf(context).width <
                                                       700
-                                                  ? 40 +
+                                                  ? 56 +
                                                       MediaQuery.textScalerOf(
                                                               context)
-                                                          .scale(120)
+                                                          .scale(20)
                                                   : 60,
                                         ),
 
@@ -623,10 +623,10 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                           agendaItemHeight:
                                               MediaQuery.sizeOf(context).width <
                                                       700
-                                                  ? 40 +
+                                                  ? 56 +
                                                       MediaQuery.textScalerOf(
                                                               context)
-                                                          .scale(120)
+                                                          .scale(20)
                                                   : 48,
                                           showAgenda: widget.showMonthAgenda,
                                         ),

@@ -30,13 +30,6 @@ IconData _folderIcon(MailFolder folder) {
   }
 }
 
-String _shortParticipants(List<String> participants) {
-  if (participants.isEmpty) return '';
-  if (participants.length <= 2) return participants.join(', ');
-  final rest = participants.length - 2;
-  return '${participants.take(2).join(', ')} +$rest';
-}
-
 String _friendlySender(List<String> participants, AppLocalizations l) {
   if (participants.isEmpty) return l.mailDetailUnknownSender;
   final raw = participants.first.trim();
@@ -71,7 +64,9 @@ String _formatRelativeDate(DateTime? date, {String locale = 'en'}) {
   final diff = now.difference(date);
   final es = locale.startsWith('es');
   if (diff.inMinutes < 1) return es ? 'ahora' : 'just now';
-  if (diff.inMinutes < 60) return es ? '${diff.inMinutes}min' : '${diff.inMinutes}m';
+  if (diff.inMinutes < 60) {
+    return es ? '${diff.inMinutes}min' : '${diff.inMinutes}m';
+  }
   if (diff.inHours < 24) return '${diff.inHours}h';
   if (diff.inDays < 7) return '${diff.inDays}d';
   final weeks = (diff.inDays / 7).floor();
@@ -89,7 +84,7 @@ String _formatFullDate(DateTime? date) {
 
 String? _formatBytes(int? bytes) {
   if (bytes == null) return null;
-  if (bytes < 1024) return '${bytes} B';
+  if (bytes < 1024) return '$bytes B';
   final kb = bytes / 1024;
   if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
   final mb = kb / 1024;

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/events/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';

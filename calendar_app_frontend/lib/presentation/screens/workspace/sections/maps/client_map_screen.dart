@@ -13,6 +13,7 @@ import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/geofenced_visits_view.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'widgets/azure_maps_view.dart';
 
@@ -50,6 +51,7 @@ class ClientMapScreen extends StatefulWidget {
     this.canEdit = true,
     this.mapsApi,
     this.clientsApi,
+    this.initialClientId,
   });
 
   final Group group;
@@ -57,6 +59,10 @@ class ClientMapScreen extends StatefulWidget {
   final bool canEdit;
   final MapsApi? mapsApi;
   final ClientsApi? clientsApi;
+
+  /// When set, the map focuses this client's configured location as soon
+  /// as it finishes loading (e.g. opened from an event's "Ubicación" row).
+  final String? initialClientId;
 
   @override
   State<ClientMapScreen> createState() => _ClientMapScreenState();
@@ -87,6 +93,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
   bool _searching = false;
   bool _locating = false;
   bool _autoLocationRequested = false;
+  bool _initialClientFocused = false;
   bool _enabled = true;
   double _radius = 75;
   int _cameraRequestId = 0;
@@ -121,11 +128,20 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
   }
 
   Future<void> _load() async {
+    // A fresh WebView (and its native renderer process) is only needed to
+    // recover a map that's broken or never loaded. A routine refresh (e.g.
+    // tapping "Refresh" on an already-working map) should reuse the
+    // existing WebView and just push updated tokens/pins through the
+    // AzureMapsView's live JS-bridge update path — bumping _mapGeneration
+    // unconditionally here used to tear down and recreate the whole
+    // Chromium renderer on every refresh tap, which is main-thread-heavy
+    // and can pile up orphaned renderer processes under repeated taps.
+    final needsFreshMap = !_mapReady || _mapError != null;
     setState(() {
       _loading = true;
       _error = null;
       _mapError = null;
-      _mapReady = false;
+      if (needsFreshMap) _mapReady = false;
     });
     try {
       final userDomain = context.read<UserDomain>();
@@ -149,13 +165,18 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
         _mapToken = mapToken;
         _clients = clients;
         _locations = _mergeLocations(clients, locations);
-        _mapGeneration++;
+        if (needsFreshMap) _mapGeneration++;
       });
       _scheduleTokenRefresh(mapToken);
-      _startMapReadyTimeout();
+      if (needsFreshMap) _startMapReadyTimeout();
       if (!_autoLocationRequested) {
         _autoLocationRequested = true;
         unawaited(_loadUserLocation(showErrors: false));
+      }
+      final initialClientId = widget.initialClientId;
+      if (!_initialClientFocused && initialClientId != null) {
+        _initialClientFocused = true;
+        _selectClient(initialClientId);
       }
     } catch (error) {
       if (!mounted) return;
@@ -792,40 +813,38 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       builder: (context, constraints) {
         final sectionContent = _buildSectionContent(token);
         if (constraints.maxWidth < CollapsibleSidebar.responsiveBreakpoint) {
+          final showGrid = constraints.maxWidth < 600 && navItems.length <= 4;
           return Column(
             children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
-                child: Row(
-                  children: [
-                    for (final item in navItems)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 7),
-                        child: ChoiceChip(
-                          selected: _section == item.section,
-                          showCheckmark: false,
-                          backgroundColor: cs.surfaceContainerLow,
-                          selectedColor: cs.primaryContainer,
-                          avatar: Icon(item.icon,
-                              size: 18,
-                              color: _section == item.section
-                                  ? cs.onPrimaryContainer
-                                  : cs.onSurfaceVariant),
-                          label: Text(item.mobileLabel,
-                              style: TextStyle(
-                                color: _section == item.section
-                                    ? cs.onPrimaryContainer
-                                    : cs.onSurface,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              )),
-                          onSelected: (_) => _selectSection(item.section),
+              if (showGrid)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final item in navItems)
+                        SizedBox(
+                          width: (constraints.maxWidth - 14) / 2,
+                          child: _buildMobileNavButton(context, item, cs),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
+                  child: Row(
+                    children: [
+                      for (final item in navItems)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: _buildMobileNavButton(context, item, cs),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
               Expanded(child: sectionContent),
             ],
           );
@@ -859,12 +878,51 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     );
   }
 
+  Widget _buildMobileNavButton(
+    BuildContext context,
+    _MapNavItem item,
+    ColorScheme cs,
+  ) {
+    final selected = _section == item.section;
+    return Semantics(
+      selected: selected,
+      child: TextButton(
+        onPressed: () => _selectSection(item.section),
+        style: TextButton.styleFrom(
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          foregroundColor:
+              selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+          backgroundColor:
+              selected ? cs.primaryContainer : cs.surfaceContainerLow,
+          side: BorderSide(
+            color: selected
+                ? cs.primary.withValues(alpha: 0.22)
+                : cs.outlineVariant,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          item.mobileLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+              ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionContent(AzureMapsToken token) {
     return switch (_section) {
       _MapSection.live => _buildNoticeSection(
           message: _isSpanish
-              ? 'Se muestran las ubicaciones configuradas de clientes y tu posición. Las posiciones en directo de trabajadores aún no están disponibles.'
-              : 'Configured client locations and your position are shown. Live worker positions are not available yet.',
+              ? 'Ves tus clientes y tu posición. La ubicación en directo de trabajadores aún no está disponible.'
+              : 'See your clients and your location. Live worker locations are not available yet.',
           child: _buildResponsiveBody(
             token,
             canManageLocations: false,
@@ -1077,13 +1135,14 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             ],
           );
         }
+        final phone = constraints.maxWidth < 600;
         return Column(
           children: [
-            Expanded(flex: 5, child: map),
+            Expanded(flex: phone ? 4 : 5, child: map),
             const SizedBox(height: 10),
             _buildActions(canManageLocations: canManageLocations),
             const SizedBox(height: 10),
-            Expanded(flex: 4, child: panel),
+            Expanded(flex: phone ? 5 : 4, child: panel),
           ],
         );
       },
@@ -1289,18 +1348,9 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             ),
           ),
         ),
-        if (selected != null && selectedLocation != null)
-          _SelectedClientCard(
-            client: selected,
-            location: selectedLocation,
-            isSpanish: _isSpanish,
-            canEdit: canManageLocations,
-            onEdit: () => _beginEditing(selected),
-            onRemove: () => _removeLocation(selected),
-            isRemoving: _removingLocation,
-          ),
         Expanded(
-          child: _filteredClients.isEmpty
+          child: _filteredClients.isEmpty &&
+                  (selected == null || selectedLocation == null)
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1320,8 +1370,23 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                 )
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 6),
-                  itemCount: _filteredClients.length,
+                  itemCount: _filteredClients.length +
+                      (selected != null && selectedLocation != null ? 1 : 0),
                   itemBuilder: (_, index) {
+                    if (selected != null && selectedLocation != null) {
+                      if (index == 0) {
+                        return _SelectedClientCard(
+                          client: selected,
+                          location: selectedLocation,
+                          isSpanish: _isSpanish,
+                          canEdit: canManageLocations,
+                          onEdit: () => _beginEditing(selected),
+                          onRemove: () => _removeLocation(selected),
+                          isRemoving: _removingLocation,
+                        );
+                      }
+                      index -= 1;
+                    }
                     final client = _filteredClients[index];
                     final location = _locationFor(client.id);
                     return _ClientLocationTile(
@@ -1535,6 +1600,24 @@ class _SelectedClientCard extends StatelessWidget {
   final VoidCallback onRemove;
   final bool isRemoving;
 
+  Future<void> _openDirections(BuildContext context) async {
+    final uri = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': '${location.latitude},${location.longitude}',
+      'travelmode': 'driving',
+    });
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isSpanish
+              ? 'No se pudo abrir la app de navegación.'
+              : 'Could not open the navigation app.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1593,7 +1676,11 @@ class _SelectedClientCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
@@ -1620,30 +1707,44 @@ class _SelectedClientCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Spacer(),
-              if (canEdit) ...[
-                IconButton(
-                  tooltip: isSpanish ? 'Eliminar ubicación' : 'Remove location',
-                  onPressed: isRemoving ? null : onRemove,
-                  color: cs.error,
-                  visualDensity: VisualDensity.compact,
-                  icon: isRemoving
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.location_off_outlined, size: 19),
+              if (canEdit)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip:
+                          isSpanish ? 'Eliminar ubicación' : 'Remove location',
+                      onPressed: isRemoving ? null : onRemove,
+                      color: cs.error,
+                      visualDensity: VisualDensity.compact,
+                      icon: isRemoving
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.location_off_outlined, size: 19),
+                    ),
+                    TextButton.icon(
+                      onPressed: isRemoving ? null : onEdit,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      ),
+                      icon: const Icon(Icons.edit_location_alt_outlined,
+                          size: 17),
+                      label: Text(isSpanish ? 'Editar' : 'Edit'),
+                    ),
+                  ],
                 ),
-                TextButton.icon(
-                  onPressed: isRemoving ? null : onEdit,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                  ),
-                  icon: const Icon(Icons.edit_location_alt_outlined, size: 17),
-                  label: Text(isSpanish ? 'Editar' : 'Edit'),
-                ),
-              ],
             ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: () => _openDirections(context),
+              icon: const Icon(Icons.directions_rounded, size: 18),
+              label: Text(isSpanish ? 'Cómo llegar' : 'Get directions'),
+            ),
           ),
         ],
       ),

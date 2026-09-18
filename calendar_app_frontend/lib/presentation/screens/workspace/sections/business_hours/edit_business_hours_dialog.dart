@@ -133,14 +133,14 @@ class _BusinessHoursDialogState extends State<_BusinessHoursDialog> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: cs.primaryContainer.withOpacity(0.15),
+                color: cs.primaryContainer.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.primary.withOpacity(0.2)),
+                border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
                   Icon(Icons.access_time_rounded,
-                      color: cs.primary.withOpacity(0.8)),
+                      color: cs.primary.withValues(alpha: 0.8)),
                   const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,7 +235,7 @@ class _TimeSelectionTile extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return Material(
-      color: cs.surfaceContainerHighest.withOpacity(0.35),
+      color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -247,7 +247,7 @@ class _TimeSelectionTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: cs.primary.withOpacity(0.12),
+                  color: cs.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child:

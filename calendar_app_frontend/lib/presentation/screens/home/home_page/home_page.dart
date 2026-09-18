@@ -5,7 +5,7 @@ import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/domain/socket_notification_listener.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/home/home_page/widgets/home_sliver_content.dart';
 import 'package:hexora/navigation/main_scaffold.dart';
 import 'package:hexora/l10n/app_localizations.dart';

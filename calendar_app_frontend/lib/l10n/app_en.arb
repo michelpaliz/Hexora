@@ -3495,6 +3495,7 @@
   "telegramReply": "Reply",
   "telegramReplying": "Replying",
   "telegramPreviewPdf": "Preview PDF",
+  "telegramPreviewUnavailable": "Preview unavailable for this file",
   "telegramDownloadDocument": "Download document",
   "telegramClose": "Close",
   "telegramTopicSubtitle": "Topic · {name}",

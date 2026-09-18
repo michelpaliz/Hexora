@@ -99,8 +99,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   final _expensesApi = ExpensesApi();
   Map<String, String>? _editingExpense;
   String? _autoOpenedExpenseId;
+  bool _editorPushedAsRoute = false;
   late final TabController _tabs;
-  int? _selectedQuarterFilter;
+  int? _selectedQuarterFilter = ((DateTime.now().month - 1) ~/ 3) + 1;
+  int? _selectedYearFilter = DateTime.now().year;
   _ExpenseListSortOption _selectedSort = _ExpenseListSortOption.newest;
   _ExpenseFileTypeFilter _selectedFileType = _ExpenseFileTypeFilter.all;
   bool _showOnlyDuplicateInvoiceIds = false;
@@ -442,10 +444,12 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
   List<Map<String, String>> get _visibleUploads {
     final quarter = _selectedQuarterFilter;
+    final year = _selectedYearFilter;
     final fileType = _selectedFileType;
     final q = _searchQuery.toLowerCase().trim();
     return widget.recentUploads.where((item) {
       if (quarter != null && _quarterForItem(item) != quarter) return false;
+      if (year != null && _yearForItem(item) != year) return false;
       if (!_itemMatchesFileType(item, fileType)) return false;
       if (_showOnlyDuplicateInvoiceIds && !_hasDuplicateInvoiceId(item)) {
         return false;
@@ -476,6 +480,22 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final parsed = DateTime.tryParse(raw);
     if (parsed == null) return null;
     return ((parsed.month - 1) ~/ 3) + 1;
+  }
+
+  int? _yearForItem(Map<String, String> item) {
+    final raw = (item['date'] ?? '').trim();
+    if (raw.isEmpty) return null;
+    final parsed = DateTime.tryParse(raw);
+    return parsed?.year;
+  }
+
+  List<int> get _availableUploadYears {
+    final years = <int>{
+      for (final item in widget.recentUploads)
+        if (_yearForItem(item) != null) _yearForItem(item)!,
+    }.toList()
+      ..sort((a, b) => b.compareTo(a));
+    return years;
   }
 
   int get _duplicateInvoiceItemCount {
@@ -541,6 +561,29 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     }
   }
 
+  void _setYearFilter(int? year) {
+    if (_selectedYearFilter == year) return;
+    final quarter = _selectedQuarterFilter;
+    final nextVisible = _sortUploads(
+      widget.recentUploads.where((item) {
+        if (year != null && _yearForItem(item) != year) return false;
+        if (quarter != null && _quarterForItem(item) != quarter) {
+          return false;
+        }
+        return true;
+      }).toList(growable: false),
+    );
+    final selectedId = (widget.selectedExpense?['id'] ?? '').trim();
+    final keepsCurrent = selectedId.isNotEmpty &&
+        nextVisible.any((item) => (item['id'] ?? '').trim() == selectedId);
+
+    setState(() => _selectedYearFilter = year);
+
+    if (!keepsCurrent && nextVisible.isNotEmpty) {
+      widget.onSelectExpense(nextVisible.first);
+    }
+  }
+
   void _setSortOption(_ExpenseListSortOption option) {
     if (_selectedSort == option) return;
     setState(() => _selectedSort = option);
@@ -568,11 +611,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       final currentId = (selected['id'] ?? '').trim();
       if (currentId.isEmpty || currentId != targetId) return;
 
-      setState(() {
-        _editingExpense = Map<String, String>.from(selected);
-        _editorPanelIndex = 0;
-        _autoOpenedExpenseId = targetId;
-      });
+      setState(() => _autoOpenedExpenseId = targetId);
+      unawaited(_activateExpenseEditor(Map<String, String>.from(selected)));
       widget.onAutoEditHandled?.call(targetId);
     });
   }
@@ -755,7 +795,9 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 760) {
-          if (_editingExpense != null) return _buildEditorOverlay(l, t, cs);
+          // Editing is presented as its own pushed route on mobile (see
+          // _activateExpenseEditor), so this layout never shows the editor
+          // inline nested under the tab's own app bar.
           if (_mobilePanelIndex == 1) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -850,11 +892,46 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       widget.onSelectExpense(item);
       return;
     }
+    widget.onSelectExpense(item);
+    await _activateExpenseEditor(item);
+  }
+
+  /// Shows the editor for [item]: inline (desktop/tablet split-view) when
+  /// there's room, or as its own full-screen route on mobile so it isn't
+  /// nested under this tab's own app bar.
+  Future<void> _activateExpenseEditor(Map<String, String> item) async {
     setState(() {
       _editingExpense = item;
       _editorPanelIndex = 0;
     });
-    widget.onSelectExpense(item);
+
+    if (!mounted || MediaQuery.sizeOf(context).width >= 760) return;
+
+    _editorPushedAsRoute = true;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (routeContext) => Scaffold(
+          appBar: AppBar(
+            leading: BackButton(onPressed: _closeExpenseEditor),
+            title: const Text('Editar gasto'),
+          ),
+          body: SafeArea(
+            top: false,
+            child: _buildEditorOverlay(
+              AppLocalizations.of(routeContext)!,
+              AppTypography.of(routeContext),
+              Theme.of(routeContext).colorScheme,
+              scrim: false,
+              showHeaderTab: false,
+            ),
+          ),
+        ),
+      ),
+    );
+    _editorPushedAsRoute = false;
+    if (mounted && _editingExpense != null) {
+      setState(() => _editingExpense = null);
+    }
   }
 
   void _setEditorPanelIndex(int index) {
@@ -933,7 +1010,11 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   }
 
   void _closeExpenseEditor() {
+    final wasPushedAsRoute = _editorPushedAsRoute;
     setState(() => _editingExpense = null);
+    if (wasPushedAsRoute && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   void _applyEditedExpense(Map<String, String> updated) {
@@ -1395,6 +1476,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                       const SizedBox(height: 8),
                       Text(
                         (_selectedQuarterFilter != null ||
+                                _selectedYearFilter != null ||
                                 _selectedFileType !=
                                     _ExpenseFileTypeFilter.all ||
                                 _showOnlyDuplicateInvoiceIds ||
@@ -1414,6 +1496,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                       const SizedBox(height: 4),
                       Text(
                         (_selectedQuarterFilter != null ||
+                                _selectedYearFilter != null ||
                                 _selectedFileType !=
                                     _ExpenseFileTypeFilter.all ||
                                 _showOnlyDuplicateInvoiceIds ||
@@ -1935,6 +2018,62 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       );
     }
 
+    Widget yearButton() {
+      final years = _availableUploadYears;
+      if (years.isEmpty) return const SizedBox.shrink();
+      return PopupMenuButton<int?>(
+        tooltip: isSpanish ? 'Filtrar por año' : 'Filter by year',
+        initialValue: _selectedYearFilter,
+        onSelected: _setYearFilter,
+        itemBuilder: (context) => [
+          PopupMenuItem<int?>(
+            value: null,
+            child: Text(isSpanish ? 'Todos los años' : 'All years'),
+          ),
+          for (final year in years)
+            PopupMenuItem<int?>(
+              value: year,
+              child: Text('$year'),
+            ),
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.35),
+            ),
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _selectedYearFilter?.toString() ?? (isSpanish ? 'Año' : 'Year'),
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.expand_more_rounded,
+                size: 15,
+                color: cs.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -1965,6 +2104,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          yearButton(),
           const SizedBox(width: 8),
           sortButton(),
         ],

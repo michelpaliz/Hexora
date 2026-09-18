@@ -15,14 +15,15 @@ Map<String, List<NotificationUser>> groupNotificationsByTime(
 
   for (var ntf in list) {
     final d = now.difference(ntf.timestamp);
-    if (d.inDays < 1)
+    if (d.inDays < 1) {
       grouped[loc.groupRecent]!.add(ntf);
-    else if (d.inDays < 7)
+    } else if (d.inDays < 7) {
       grouped[loc.groupLast7Days]!.add(ntf);
-    else if (d.inDays < 30)
+    } else if (d.inDays < 30) {
       grouped[loc.groupLast30Days]!.add(ntf);
-    else
+    } else {
       grouped[loc.groupOlder]!.add(ntf);
+    }
   }
 
   return grouped;

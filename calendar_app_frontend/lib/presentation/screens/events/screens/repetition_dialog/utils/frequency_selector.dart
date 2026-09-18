@@ -8,10 +8,10 @@ class RepeatFrequencySelector extends StatelessWidget {
   final Function(String) onSelectFrequency;
 
   const RepeatFrequencySelector({
-    Key? key,
+    super.key,
     required this.selectedFrequency,
     required this.onSelectFrequency,
-  }) : super(key: key);
+  });
 
   String _getTranslatedFrequency(BuildContext context, String frequency) {
     switch (frequency) {
@@ -53,12 +53,12 @@ class RepeatFrequencySelector extends StatelessWidget {
           onSelected: (_) => onSelectFrequency(frequency),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           selectedColor: cs.primaryContainer,
-          backgroundColor: cs.surfaceContainerHighest.withOpacity(0.65),
+          backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.65),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
               color:
-                  isSelected ? cs.primary : cs.outlineVariant.withOpacity(0.55),
+                  isSelected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.55),
             ),
           ),
         );

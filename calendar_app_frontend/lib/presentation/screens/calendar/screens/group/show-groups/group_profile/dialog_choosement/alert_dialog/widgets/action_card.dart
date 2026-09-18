@@ -29,7 +29,7 @@ class ActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    final borderColor = isPrimary ? color : color.withOpacity(0.3);
+    final borderColor = isPrimary ? color : color.withValues(alpha: 0.3);
     final bgColor = isPrimary ? color : cs.surfaceContainerHighest;
 
     // Sizes tuned for compact icon-only tiles
@@ -41,7 +41,7 @@ class ActionCard extends StatelessWidget {
       padding: EdgeInsets.all(iconPad),
       decoration: BoxDecoration(
         color:
-            isPrimary ? Colors.white.withOpacity(0.2) : color.withOpacity(0.15),
+            isPrimary ? Colors.white.withValues(alpha: 0.2) : color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Icon(
@@ -93,7 +93,7 @@ class ActionCard extends StatelessWidget {
                             style:
                                 Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: isPrimary
-                                          ? cs.onPrimary.withOpacity(0.8)
+                                          ? cs.onPrimary.withValues(alpha: 0.8)
                                           : cs.onSurfaceVariant,
                                       fontSize: 11,
                                     ),
@@ -105,7 +105,7 @@ class ActionCard extends StatelessWidget {
                       Icons.arrow_forward_ios_rounded,
                       size: 16,
                       color: isPrimary
-                          ? cs.onPrimary.withOpacity(0.7)
+                          ? cs.onPrimary.withValues(alpha: 0.7)
                           : cs.onSurfaceVariant,
                     ),
                   ],

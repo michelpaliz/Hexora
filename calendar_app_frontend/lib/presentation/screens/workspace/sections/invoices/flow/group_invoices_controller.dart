@@ -160,6 +160,7 @@ class GroupInvoicesController extends ChangeNotifier {
         }
       }
 
+      if (!context.mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => InvoiceEditorScreen(

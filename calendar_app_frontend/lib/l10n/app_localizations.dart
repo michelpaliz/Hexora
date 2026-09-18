@@ -13505,6 +13505,12 @@ abstract class AppLocalizations {
   /// **'Preview PDF'**
   String get telegramPreviewPdf;
 
+  /// No description provided for @telegramPreviewUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview unavailable for this file'**
+  String get telegramPreviewUnavailable;
+
   /// No description provided for @telegramDownloadDocument.
   ///
   /// In en, this message translates to:

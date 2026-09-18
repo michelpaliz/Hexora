@@ -60,7 +60,7 @@ class _UndoneEventsInlineBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
+
     final t = AppTypography.of(context);
     final vm = context.watch<GroupUndoneEventsViewModel>();
 

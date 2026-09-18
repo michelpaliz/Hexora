@@ -107,6 +107,7 @@ class UserRemovalService {
           await groupDomain.groupRepository.getGroupById(group.id);
       groupDomain.currentGroup = updatedGroup;
 
+      if (!context.mounted) return true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('User ${fetchedUser.userName} removed from the group.'),
@@ -116,6 +117,7 @@ class UserRemovalService {
       return true;
     } catch (e) {
       debugPrint("❌ Exception removing user: $e");
+      if (!context.mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

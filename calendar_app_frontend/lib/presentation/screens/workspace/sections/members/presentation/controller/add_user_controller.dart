@@ -1,7 +1,7 @@
 // lib/presentation/.../controller/add_user_controller.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/models/user/user.dart';
-import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
+import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/i_group_editor_port.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_bar.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -49,6 +49,7 @@ class AddUserController extends ChangeNotifier {
       // ✅ same here
       _searchResults = [];
       notifyListeners();
+      if (!context.mounted) return;
       HexoraSnackBar.show(
         context: context,
         message: 'Error searching user',

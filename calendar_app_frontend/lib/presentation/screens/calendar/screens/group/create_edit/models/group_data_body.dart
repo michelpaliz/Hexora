@@ -72,7 +72,7 @@ class GroupDataBody extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 24),
             decoration: BoxDecoration(
-              color: cs.primary.withOpacity(0.06),
+              color: cs.primary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(

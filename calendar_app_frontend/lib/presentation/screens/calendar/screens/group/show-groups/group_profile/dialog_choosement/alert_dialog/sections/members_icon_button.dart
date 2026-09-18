@@ -38,7 +38,7 @@ class MembersIconButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
-                  color: cs.shadow.withOpacity(0.2),
+                  color: cs.shadow.withValues(alpha: 0.2),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),

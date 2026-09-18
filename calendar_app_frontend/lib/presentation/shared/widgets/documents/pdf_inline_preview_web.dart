@@ -1,5 +1,5 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'dart:js_interop';
+import 'package:web/web.dart' as html;
 import 'dart:typed_data';
 import 'dart:ui_web' as ui;
 
@@ -23,14 +23,14 @@ class PdfInlinePreview extends StatefulWidget {
 
 class _PdfInlinePreviewState extends State<PdfInlinePreview> {
   late final String _viewType;
-  late html.IFrameElement _element;
+  late html.HTMLIFrameElement _element;
   String? _url;
 
   @override
   void initState() {
     super.initState();
     _viewType = 'pdf-inline-${DateTime.now().microsecondsSinceEpoch}';
-    _element = html.IFrameElement()
+    _element = html.HTMLIFrameElement()
       ..style.border = '0'
       ..style.width = '100%'
       ..style.height = '100%'
@@ -56,17 +56,18 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
 
   void _setUrl(Uint8List bytes) {
     if (_url != null) {
-      html.Url.revokeObjectUrl(_url!);
+      html.URL.revokeObjectURL(_url!);
     }
-    final blob = html.Blob([bytes], 'application/pdf');
-    _url = html.Url.createObjectUrlFromBlob(blob);
+    final blob = html.Blob(
+        [bytes.toJS].toJS, html.BlobPropertyBag(type: 'application/pdf'));
+    _url = html.URL.createObjectURL(blob);
     _element.src = '${_url!}#toolbar=1&navpanes=0&pagemode=none&view=FitH';
   }
 
   @override
   void dispose() {
     if (_url != null) {
-      html.Url.revokeObjectUrl(_url!);
+      html.URL.revokeObjectURL(_url!);
     }
     _element.src = 'about:blank';
     _element.remove();

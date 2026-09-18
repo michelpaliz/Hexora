@@ -8,8 +8,6 @@ import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/models/invoice/invoice_line.dart';
-import 'package:hexora/services/config/api_constants.dart';
-import 'package:hexora/services/emails/email_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/shared/content_disposition.dart';
@@ -19,7 +17,6 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_history_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_lines.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_party.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_email_widgets.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_payment_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';

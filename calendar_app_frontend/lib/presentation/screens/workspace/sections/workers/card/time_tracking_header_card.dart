@@ -32,7 +32,7 @@ class TimeTrackingHeaderCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: cs.outlineVariant.withOpacity(0.25), width: 1),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.25), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -50,7 +50,7 @@ class TimeTrackingHeaderCard extends StatelessWidget {
             Text(
               l.timeTrackingHeaderHint,
               style: t.bodySmall.copyWith(
-                color: onCard.withOpacity(0.7),
+                color: onCard.withValues(alpha: 0.7),
                 height: 1.35,
               ),
             ),
@@ -68,9 +68,9 @@ class TimeTrackingHeaderCard extends StatelessWidget {
                   icon: const Icon(Icons.stop_circle_outlined),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: onCard,
-                    backgroundColor: cs.primary.withOpacity(0.06),
+                    backgroundColor: cs.primary.withValues(alpha: 0.06),
                     side: BorderSide(color: cs.primary),
-                    overlayColor: cs.primary.withOpacity(0.08),
+                    overlayColor: cs.primary.withValues(alpha: 0.08),
                   ),
                   label: Text(l.disableTrackingCta, style: t.buttonText),
                 ),

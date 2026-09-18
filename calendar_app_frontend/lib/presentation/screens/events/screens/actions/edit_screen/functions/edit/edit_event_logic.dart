@@ -33,7 +33,8 @@ abstract class EditEventLogic<T extends StatefulWidget>
 
     // Base state setup from the existing event
     setReminderMinutes(event.reminderTime ?? 10);
-    setSelectedColor(ColorManager.eventColors[event.eventColorIndex].value);
+    setSelectedColor(
+        ColorManager.eventColors[event.eventColorIndex].toARGB32());
     setRecurrenceRule(event.recurrenceRule);
     setStartDate(event.startDate);
     setEndDate(event.endDate);
@@ -137,6 +138,7 @@ abstract class EditEventLogic<T extends StatefulWidget>
     if (eventDomain.onExternalEventUpdate != null) {
       eventDomain.onExternalEventUpdate!.call();
     } else {
+      if (!mounted) return;
       await eventDomain.manualRefresh(context);
     }
 

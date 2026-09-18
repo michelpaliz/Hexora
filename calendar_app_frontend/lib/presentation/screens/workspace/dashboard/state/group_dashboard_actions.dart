@@ -1,8 +1,11 @@
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
+import 'package:hexora/services/telegram/domain/telegram_domain.dart';
+import 'package:provider/provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/access/role_info_screen.dart';
 
@@ -14,8 +17,7 @@ class DashboardActions {
     final context = state.context;
 
     if (state.isWide) {
-      state.activeSection = section;
-      state.notifyListeners();
+      state.selectSection(section);
       return;
     }
 
@@ -99,6 +101,32 @@ class DashboardActions {
         if (!state.canSeeAdmin) return;
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const MailConsoleScreen()),
+        );
+        break;
+      case Sections.telegram:
+        if (!state.canSeeAdmin) return;
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => Consumer<TelegramDomain>(
+              builder: (context, telegramDomain, _) {
+                final chatOpen = telegramDomain.selectedChat != null;
+                return PopScope(
+                  canPop: !chatOpen,
+                  onPopInvokedWithResult: (didPop, _) {
+                    if (!didPop && chatOpen) telegramDomain.selectChat(null);
+                  },
+                  child: Scaffold(
+                    appBar:
+                        chatOpen ? null : AppBar(title: const Text('Telegram')),
+                    body: SafeArea(
+                      top: chatOpen,
+                      child: const TelegramSectionScreen(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         );
         break;
       case Sections.enableBanking:

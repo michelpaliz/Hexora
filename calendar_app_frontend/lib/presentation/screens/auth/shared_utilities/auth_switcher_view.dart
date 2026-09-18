@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/auth/forgot_password.dart';
 import 'package:hexora/presentation/screens/auth/login/form/login_form.dart';
 import 'package:hexora/presentation/screens/auth/register/ui/form/register_form.dart';

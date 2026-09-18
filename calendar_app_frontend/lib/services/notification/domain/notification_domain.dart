@@ -4,11 +4,15 @@ import 'dart:developer' as devtools show log;
 import 'package:flutter/material.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
+import 'package:hexora/services/notification/utils/result.dart';
 
 class NotificationDomain extends ChangeNotifier {
+  NotificationDomain({NotificationApiClient? notificationService})
+      : notificationService = notificationService ?? NotificationApiClient();
+
   List<NotificationUser> _notifications = [];
   List<String> _notificationIds = []; // Store IDs only
-  final NotificationApiClient notificationService = NotificationApiClient();
+  final NotificationApiClient notificationService;
   final _notificationViewModel =
       StreamController<List<NotificationUser>>.broadcast();
 
@@ -29,22 +33,30 @@ class NotificationDomain extends ChangeNotifier {
 
   Future<List<NotificationUser>> _fetchNotificationsByIds(
       List<String> ids) async {
-    // Run requests in parallel
-    final futures = ids.map((id) async {
-      try {
-        final notification = await notificationService.getNotificationById(id);
-        return notification;
-      } catch (e, st) {
-        // Log and skip this ID, but don't fail the whole fetch
-        print('⚠️ Failed to fetch $id: $e');
-        print(st);
-        return null;
-      }
-    });
+    const batchSize = 4;
+    final notifications = <NotificationUser>[];
+    for (var start = 0; start < ids.length; start += batchSize) {
+      final batch = ids.skip(start).take(batchSize);
+      final results = await Future.wait(batch.map((id) async {
+        try {
+          final result = await notificationService.getNotificationById(id);
+          return switch (result) {
+            NotifOk(:final value) => value,
+            NotifNotFound() => null,
+            NotifError(:final message) => _logFetchFailure(id, message),
+          };
+        } catch (error) {
+          return _logFetchFailure(id, error);
+        }
+      }));
+      notifications.addAll(results.whereType<NotificationUser>());
+    }
+    return notifications;
+  }
 
-    final results = await Future.wait(futures, eagerError: false);
-    // Drop nulls (not found / failed)
-    return results.whereType<NotificationUser>().toList();
+  NotificationUser? _logFetchFailure(String id, Object error) {
+    devtools.log('Failed to fetch notification $id: $error');
+    return null;
   }
 
   // Update notification stream
@@ -121,7 +133,7 @@ class NotificationDomain extends ChangeNotifier {
 
       return _notificationIds;
     } catch (e) {
-      print('Failed to mark notifications as read: $e');
+      devtools.log('Failed to mark notifications as read: $e');
       return _notificationIds;
     }
   }
@@ -144,7 +156,7 @@ class NotificationDomain extends ChangeNotifier {
 
       return _notificationIds;
     } catch (e) {
-      print('Failed to remove notification: $e');
+      devtools.log('Failed to remove notification: $e');
       return _notificationIds;
     }
   }
@@ -164,14 +176,15 @@ class NotificationDomain extends ChangeNotifier {
 
       return _notificationIds;
     } catch (e) {
-      print('Failed to remove notification: $e');
+      devtools.log('Failed to remove notification: $e');
       return _notificationIds;
     }
   }
 
   /// Update internal notification state from a new list of IDs.
   /// Caller is responsible for updating the user object in the DB.
-  Future<void> updateUserNotificationIds(List<String> newNotificationIds) async {
+  Future<void> updateUserNotificationIds(
+      List<String> newNotificationIds) async {
     try {
       // Update the internal list of notification IDs
       _notificationIds = newNotificationIds;

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 
 // This widget plugs into the AppBar and manages:
 //     Live unread notification badge

@@ -6,10 +6,10 @@ class UserExpandableCard extends StatefulWidget {
   final void Function(List<User>)? onSelectedUsersChanged;
 
   const UserExpandableCard({
-    Key? key,
+    super.key,
     required this.usersAvailable,
     this.onSelectedUsersChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<UserExpandableCard> createState() => _UserExpandableCardState();

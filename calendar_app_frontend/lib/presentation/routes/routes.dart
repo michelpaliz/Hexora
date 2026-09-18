@@ -5,7 +5,7 @@ import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/models/user/user.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/routes/calendar/group_calendar_loader.dart';
 import 'package:hexora/presentation/screens/home/home_page/home_page.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/group_dashboard.dart';

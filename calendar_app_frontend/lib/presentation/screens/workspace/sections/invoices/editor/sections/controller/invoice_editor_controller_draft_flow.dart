@@ -49,7 +49,9 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
         _issuedChangeReason = null;
         _dataRevision++;
         await refreshIssuedHistory();
-        await _refreshPreviewAfterIssuedUpdate(context);
+        if (context.mounted) {
+          await _refreshPreviewAfterIssuedUpdate(context);
+        }
         notifyListeners();
         return updated;
       }

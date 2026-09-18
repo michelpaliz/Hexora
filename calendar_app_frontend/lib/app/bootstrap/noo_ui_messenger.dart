@@ -8,7 +8,7 @@ import 'package:hexora/presentation/viewmodels/groups/use_cases/invite_members_u
 import 'package:hexora/presentation/viewmodels/groups/use_cases/search_users_usecase.dart';
 import 'package:hexora/presentation/viewmodels/groups/use_cases/update_group_usecase.dart';
 import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_photo_usecase.dart';
-import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
+import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/i_group_editor_port.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';

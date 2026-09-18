@@ -31,7 +31,7 @@ class VerifyStatusCard extends StatelessWidget {
 
     if (isVerifying) {
       bgColor = cs.surface;
-      borderColor = cs.outlineVariant.withOpacity(0.5);
+      borderColor = cs.outlineVariant.withValues(alpha: 0.5);
       content = Column(
         children: [
           const SizedBox(
@@ -86,8 +86,8 @@ class VerifyStatusCard extends StatelessWidget {
       );
     } else {
       // Idle / Default state
-      bgColor = cs.primaryContainer.withOpacity(0.3);
-      borderColor = cs.primary.withOpacity(0.2);
+      bgColor = cs.primaryContainer.withValues(alpha: 0.3);
+      borderColor = cs.primary.withValues(alpha: 0.2);
       content = Column(
         children: [
           Icon(Icons.mark_email_read_outlined, size: 64, color: cs.primary),

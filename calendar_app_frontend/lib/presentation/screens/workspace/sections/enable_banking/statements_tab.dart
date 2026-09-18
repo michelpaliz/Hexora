@@ -50,7 +50,7 @@ class _StatementsTabState extends State<StatementsTab>
       );
       return;
     }
-    final maxBytes = 10 * 1024 * 1024;
+    const maxBytes = 10 * 1024 * 1024;
     final tooLarge = file.bytes!.length > maxBytes;
     setState(() {
       _statementFileName = file.name;
@@ -74,7 +74,7 @@ class _StatementsTabState extends State<StatementsTab>
   }
 
   String _formatBytes(int bytes) {
-    if (bytes < 1024) return '${bytes} B';
+    if (bytes < 1024) return '$bytes B';
     final kb = bytes / 1024;
     if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
     final mb = kb / 1024;
@@ -187,7 +187,7 @@ class _StatementsTabState extends State<StatementsTab>
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withOpacity(0.25),
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: _fileError != null ? cs.error : cs.outlineVariant,
@@ -341,7 +341,7 @@ class _StatementsTabState extends State<StatementsTab>
             Container(
               height: 140,
               decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withOpacity(0.3),
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(child: Icon(Icons.table_chart_outlined)),
@@ -631,7 +631,7 @@ class _StatementsTabState extends State<StatementsTab>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest.withOpacity(0.15),
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: buildLeftPanel(_activeStep),

@@ -765,7 +765,7 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                 defaultTaxRate: defaultTaxRate,
               ),
               onCopyJsonPrompt: _copyBudgetPromptTemplate,
-              onPickImageForLineExtraction: _pickBudgetExtractFile,
+              photoExtractionPanel: _buildBudgetOpenAiExtractPanel(context),
               onSaveDraft: _saveDraftOnly,
               saveDraftLabel: _isIssuedEditable
                   ? (_isSpanishLocale

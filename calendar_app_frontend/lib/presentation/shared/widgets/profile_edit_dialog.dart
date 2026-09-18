@@ -8,7 +8,7 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
-import 'package:hexora/services/blob_storage/blobServer.dart';
+import 'package:hexora/services/blob_storage/blob_server.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/profile/edit/controller/profile_update_contract.dart';

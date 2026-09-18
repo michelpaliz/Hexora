@@ -44,7 +44,7 @@ class _NavPillButtonState extends State<NavPillButton> {
         ),
         decoration: BoxDecoration(
           color: showHighlight
-              ? widget.activeColor.withOpacity(0.12)
+              ? widget.activeColor.withValues(alpha: 0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(18),
         ),

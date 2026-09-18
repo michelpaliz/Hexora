@@ -3,7 +3,7 @@ import 'package:hexora/models/jobs/background_job.dart';
 import 'package:hexora/models/jobs/job_notification.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/enums/category/broad_category.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -25,6 +25,7 @@ class NotificationsTabView extends StatelessWidget {
     required this.onOpenDocument,
     required this.onOpenActiveJob,
     required this.onOpenJobNotification,
+    this.onRefresh,
   });
 
   final Stream<List<NotificationUser>> notificationsStream;
@@ -37,6 +38,10 @@ class NotificationsTabView extends StatelessWidget {
   final ValueChanged<NotificationUser> onOpenDocument;
   final ValueChanged<BackgroundJob> onOpenActiveJob;
   final ValueChanged<JobNotification> onOpenJobNotification;
+
+  /// When set, each category tab gets pull-to-refresh (e.g. for screens
+  /// backed by a one-shot fetch instead of a live stream).
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -156,27 +161,33 @@ class NotificationsTabView extends StatelessWidget {
             ),
             Expanded(
               child: TabBarView(
-                children: tabs
-                    .map(
-                      (tab) => _NotificationsList(
-                        notifications: tab.notifications,
-                        onDelete: (n) =>
-                            notificationViewModel.deleteNotification(n),
-                        onConfirm: onConfirm,
-                        onNegate: (n) =>
-                            notificationViewModel.handleNegation(n),
-                        onMarkRead: (n) =>
-                            notificationViewModel.markNotificationAsRead(n),
-                        onOpenEvent: (_, groupId) {
-                          Navigator.of(context).pushNamed(
-                            AppRoutes.groupCalendar,
-                            arguments: groupId,
+                children: tabs.map(
+                  (tab) {
+                    final list = _NotificationsList(
+                      notifications: tab.notifications,
+                      onDelete: (n) =>
+                          notificationViewModel.deleteNotification(n),
+                      onConfirm: onConfirm,
+                      onNegate: (n) => notificationViewModel.handleNegation(n),
+                      onMarkRead: (n) =>
+                          notificationViewModel.markNotificationAsRead(n),
+                      onOpenEvent: (_, groupId) {
+                        Navigator.of(context).pushNamed(
+                          AppRoutes.groupCalendar,
+                          arguments: groupId,
+                        );
+                      },
+                      onOpenDocument: onOpenDocument,
+                    );
+                    final refresh = onRefresh;
+                    return refresh == null
+                        ? list
+                        : RefreshIndicator(
+                            onRefresh: refresh,
+                            child: list,
                           );
-                        },
-                        onOpenDocument: onOpenDocument,
-                      ),
-                    )
-                    .toList(),
+                  },
+                ).toList(),
               ),
             ),
           ],
@@ -299,17 +310,28 @@ class _NotificationsListState extends State<_NotificationsList> {
     final t = Theme.of(context).textTheme;
 
     if (widget.notifications.isEmpty) {
-      return Center(
-        child: Text(
-          loc.zeroNotifications,
-          style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-        ),
+      // Stays scrollable (rather than a bare Center) so pull-to-refresh
+      // still works on an empty tab when this list is wrapped in one.
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.5,
+            child: Center(
+              child: Text(
+                loc.zeroNotifications,
+                style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
     final timeGrouped = groupNotificationsByTime(widget.notifications, loc);
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 88),
       children:
           timeGrouped.entries.where((e) => e.value.isNotEmpty).expand((entry) {

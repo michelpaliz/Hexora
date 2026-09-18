@@ -49,7 +49,6 @@ class LeftNavPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = typography;
-    final cs = colorScheme;
 
     return SizedBox(
       width: 280,

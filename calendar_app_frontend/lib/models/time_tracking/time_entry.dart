@@ -1,4 +1,4 @@
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart' show immutable;
 
 @immutable
 class TimeEntry {
@@ -43,30 +43,30 @@ class TimeEntry {
   /// Adjust keys if your API uses different names.
   factory TimeEntry.fromJson(Map<String, dynamic> json) {
     // Accept both camelCase and snake_case just in case.
-    String? _s(String a, String b) => (json[a] ?? json[b])?.toString();
+    String? s(String a, String b) => (json[a] ?? json[b])?.toString();
 
-    DateTime? _parseDT(dynamic v) {
+    DateTime? parseDT(dynamic v) {
       if (v == null) return null;
       // Ensure DateTime.parse handles Z/offset (ISO 8601)
       return DateTime.parse(v.toString());
     }
 
-    int? _int(dynamic v) {
+    int? parseInt(dynamic v) {
       if (v == null) return null;
       if (v is int) return v;
       return int.tryParse(v.toString());
     }
 
     return TimeEntry(
-      id: _s('id', '_id') ?? '',
-      workerId: _s('workerId', 'worker_id') ?? '',
-      start: _parseDT(json['start'] ?? json['startedAt'])!,
-      end: _parseDT(json['end'] ?? json['endedAt']),
+      id: s('id', '_id') ?? '',
+      workerId: s('workerId', 'worker_id') ?? '',
+      start: parseDT(json['start'] ?? json['startedAt'])!,
+      end: parseDT(json['end'] ?? json['endedAt']),
       durationMinutes:
-          _int(json['durationMinutes'] ?? json['duration_minutes']),
+          parseInt(json['durationMinutes'] ?? json['duration_minutes']),
       notes: json['notes'] as String?,
-      createdAt: _parseDT(json['createdAt'] ?? json['created_at']),
-      updatedAt: _parseDT(json['updatedAt'] ?? json['updated_at']),
+      createdAt: parseDT(json['createdAt'] ?? json['created_at']),
+      updatedAt: parseDT(json['updatedAt'] ?? json['updated_at']),
     );
   }
 

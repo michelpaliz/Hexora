@@ -9,11 +9,11 @@ class AnimatedUsersList extends StatelessWidget {
   final bool showRemoveButton;
 
   const AnimatedUsersList({
-    Key? key,
+    super.key,
     required this.users,
     this.onUserTap,
     this.showRemoveButton = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +32,7 @@ class AnimatedUsersList extends StatelessWidget {
                   Icon(
                     Icons.person_add_alt_rounded,
                     size: 32,
-                    color: cs.onSurfaceVariant.withOpacity(0.5),
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -71,7 +71,7 @@ class AnimatedUsersList extends StatelessWidget {
             color: cs.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: cs.outlineVariant.withOpacity(0.5),
+              color: cs.outlineVariant.withValues(alpha: 0.5),
               width: 1,
             ),
           ),
@@ -87,7 +87,7 @@ class AnimatedUsersList extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: cs.primary.withOpacity(0.3),
+                        color: cs.primary.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -158,10 +158,10 @@ class CompactUsersList extends StatelessWidget {
   final Function(User)? onRemove;
 
   const CompactUsersList({
-    Key? key,
+    super.key,
     required this.users,
     this.onRemove,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +201,7 @@ class CompactUsersList extends StatelessWidget {
         color: cs.secondaryContainer,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: cs.outline.withOpacity(0.2),
+          color: cs.outline.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -237,7 +237,7 @@ class CompactUsersList extends StatelessWidget {
               child: Icon(
                 Icons.close_rounded,
                 size: 16,
-                color: cs.onSecondaryContainer.withOpacity(0.7),
+                color: cs.onSecondaryContainer.withValues(alpha: 0.7),
               ),
             ),
           ],

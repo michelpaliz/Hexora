@@ -75,8 +75,8 @@ class _PendingEventDetailContent extends StatelessWidget {
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.person_outline,
-                  color: theme.colorScheme.primary),
+              leading:
+                  Icon(Icons.person_outline, color: theme.colorScheme.primary),
               title: Text(loc.createdByLabel),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,8 +96,8 @@ class _PendingEventDetailContent extends StatelessWidget {
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.place_outlined,
-                  color: theme.colorScheme.primary),
+              leading:
+                  Icon(Icons.place_outlined, color: theme.colorScheme.primary),
               title: Text(loc.details),
               subtitle: Text(
                 description,
@@ -125,9 +125,11 @@ class _PendingEventDetailContent extends StatelessWidget {
                 icon: const Icon(Icons.open_in_new),
                 label: Text(loc.viewDetails),
                 onPressed: () {
-                  Navigator.of(context).pop();
-                  Future.microtask(() {
-                    Navigator.of(context).push(MaterialPageRoute(
+                  final navigator = Navigator.of(context);
+                  navigator.pop();
+                  Future<void>.microtask(() {
+                    if (!navigator.mounted) return;
+                    navigator.push(MaterialPageRoute(
                       builder: (_) => EventDetailScreen(event: event),
                     ));
                   });

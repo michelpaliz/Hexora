@@ -29,13 +29,13 @@ class AddEventScreen extends StatefulWidget {
   final DateTime? initialEndDate;
 
   const AddEventScreen({
-    Key? key,
+    super.key,
     required this.group,
     this.embedded = false,
     this.onCreated,
     this.initialStartDate,
     this.initialEndDate,
-  }) : super(key: key);
+  });
 
   @override
   State<AddEventScreen> createState() => _AddEventScreenState();

@@ -7,7 +7,7 @@ Widget buildLeadingIcon(Color cardColor, Event event, {double size = 36}) {
     width: size,
     height: size,
     decoration: BoxDecoration(
-      color: cardColor.withOpacity(0.2),
+      color: cardColor.withValues(alpha: 0.2),
       shape: BoxShape.circle,
     ),
     child: Icon(

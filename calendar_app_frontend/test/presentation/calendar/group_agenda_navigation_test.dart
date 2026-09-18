@@ -5,7 +5,7 @@ import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/routes/routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_actions.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';

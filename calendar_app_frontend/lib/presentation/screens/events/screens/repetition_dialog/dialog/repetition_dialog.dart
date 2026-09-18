@@ -25,7 +25,7 @@ class RepetitionScreen extends StatefulWidget {
   });
 
   @override
-  _RepetitionScreenState createState() => _RepetitionScreenState();
+  State<RepetitionScreen> createState() => _RepetitionScreenState();
 }
 
 class _RepetitionScreenState extends State<RepetitionScreen> {
@@ -143,8 +143,8 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
     final onText = ThemeColors.textPrimary(context);
     final backdrop = ThemeColors.containerBg(context);
     final sectionBg = Color.alphaBlend(
-      cs.primaryContainer.withOpacity(
-        theme.brightness == Brightness.dark ? 0.18 : 0.12,
+      cs.primaryContainer.withValues(
+        alpha: theme.brightness == Brightness.dark ? 0.18 : 0.12,
       ),
       cs.surfaceContainerHighest,
     );
@@ -156,7 +156,7 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
         decoration: BoxDecoration(
           color: sectionBg,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: cs.outlineVariant.withOpacity(0.55)),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
           boxShadow: [
             BoxShadow(
               color: ThemeColors.cardShadow(context),
@@ -171,8 +171,8 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
 
     final dateRange =
         '${DateFormat.yMMMd(l.localeName).format(_selectedStartDate)}  •  ${DateFormat.yMMMd(l.localeName).format(_selectedEndDate)}';
-    final isWeb = kIsWeb;
-    final maxContentWidth = isWeb ? 1040.0 : 640.0;
+    const isWeb = kIsWeb;
+    const maxContentWidth = isWeb ? 1040.0 : 640.0;
 
     return Scaffold(
       backgroundColor: backdrop,
@@ -208,14 +208,14 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
+          padding: const EdgeInsets.fromLTRB(
             isWeb ? 24 : 16,
             isWeb ? 16 : 12,
             isWeb ? 24 : 16,
             isWeb ? 28 : 24,
           ),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxContentWidth),
+            constraints: const BoxConstraints(maxWidth: maxContentWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -313,8 +313,9 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
                     margin: const EdgeInsets.only(top: 4),
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: cs.errorContainer.withOpacity(
-                          theme.brightness == Brightness.dark ? 0.6 : 0.9),
+                      color: cs.errorContainer.withValues(
+                          alpha:
+                              theme.brightness == Brightness.dark ? 0.6 : 0.9),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -340,8 +341,9 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
                     margin: const EdgeInsets.only(top: 10),
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: cs.tertiaryContainer.withOpacity(
-                          theme.brightness == Brightness.dark ? 0.6 : 0.9),
+                      color: cs.tertiaryContainer.withValues(
+                          alpha:
+                              theme.brightness == Brightness.dark ? 0.6 : 0.9),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(

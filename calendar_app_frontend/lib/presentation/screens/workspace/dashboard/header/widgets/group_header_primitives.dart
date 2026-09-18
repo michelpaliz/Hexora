@@ -28,7 +28,7 @@ class MetaSeparatorDot extends StatelessWidget {
       width: 3,
       height: 3,
       decoration: BoxDecoration(
-        color: cs.onSurfaceVariant.withOpacity(0.7),
+        color: cs.onSurfaceVariant.withValues(alpha: 0.7),
         shape: BoxShape.circle,
       ),
     );

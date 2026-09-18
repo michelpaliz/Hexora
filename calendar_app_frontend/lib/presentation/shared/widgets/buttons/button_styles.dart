@@ -27,13 +27,13 @@ class ButtonStyles {
             return pressedBackgroundColor;
           } else if (states.contains(WidgetState.hovered)) {
             return defaultBackgroundColor
-                .withOpacity(0.9); // Slight effect on hover
+                .withValues(alpha: 0.9); // Slight effect on hover
           }
           return defaultBackgroundColor;
         },
       ),
       overlayColor: WidgetStateProperty.all<Color>(
-        textColor.withOpacity(0.1), // Light ripple color
+        textColor.withValues(alpha: 0.1), // Light ripple color
       ),
       padding: WidgetStateProperty.all<EdgeInsetsGeometry>(
         EdgeInsets.all(padding),

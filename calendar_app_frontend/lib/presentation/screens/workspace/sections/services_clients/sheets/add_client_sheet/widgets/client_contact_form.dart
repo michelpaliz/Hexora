@@ -150,13 +150,13 @@ class ClientContactForm extends StatelessWidget {
         ClientFormFields(
             first: DropdownButtonFormField<String>(
               isExpanded: true,
-              value: c.entityType.text.trim().isEmpty
+              initialValue: c.entityType.text.trim().isEmpty
                   ? null
                   : c.entityType.text.trim(),
               hint: Text(
                 '${l.select}...',
                 style: typo.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant.withOpacity(0.65),
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.65),
                 ),
               ),
               style: typo.bodySmall
@@ -184,13 +184,13 @@ class ClientContactForm extends StatelessWidget {
             ),
             second: DropdownButtonFormField<String>(
               isExpanded: true,
-              value: c.propertyKind.text.trim().isEmpty
+              initialValue: c.propertyKind.text.trim().isEmpty
                   ? null
                   : c.propertyKind.text.trim(),
               hint: Text(
                 '${l.select}...',
                 style: typo.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant.withOpacity(0.65),
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.65),
                 ),
               ),
               style: typo.bodySmall

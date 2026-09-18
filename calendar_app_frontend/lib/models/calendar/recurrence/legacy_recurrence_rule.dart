@@ -5,7 +5,15 @@ import 'package:hexora/models/calendar/recurrence/utils/recurrence_rule_utils.da
     as utils;
 import 'package:uuid/uuid.dart';
 
-enum RecurrenceType { Daily, Weekly, Monthly, Yearly }
+enum RecurrenceType {
+  daily('Daily'),
+  weekly('Weekly'),
+  monthly('Monthly'),
+  yearly('Yearly');
+
+  const RecurrenceType(this.wireValue);
+  final String wireValue;
+}
 
 /// A simplified model for legacy recurrence rules.
 /// Core serialization handled via [utils].
@@ -28,7 +36,7 @@ class LegacyRecurrenceRule {
     this.repeatInterval,
     required this.recurrenceType,
     this.untilDate,
-  }) : id = id ?? Uuid().v4();
+  }) : id = id ?? const Uuid().v4();
 
   /// Internal guard: strip any untilDate before the event’s start.
   static DateTime? _safeUntil(DateTime? until, DateTime start) {
@@ -43,7 +51,7 @@ class LegacyRecurrenceRule {
     required DateTime startDate,
   }) : this(
           name: 'Daily',
-          recurrenceType: RecurrenceType.Daily,
+          recurrenceType: RecurrenceType.daily,
           repeatInterval: repeatInterval,
           untilDate: _safeUntil(untilDate, startDate),
         );
@@ -56,7 +64,7 @@ class LegacyRecurrenceRule {
     required DateTime startDate,
   }) : this(
           name: 'Weekly',
-          recurrenceType: RecurrenceType.Weekly,
+          recurrenceType: RecurrenceType.weekly,
           daysOfWeek: daysOfWeek,
           repeatInterval: repeatInterval,
           untilDate: _safeUntil(untilDate, startDate),
@@ -70,7 +78,7 @@ class LegacyRecurrenceRule {
     required DateTime startDate,
   }) : this(
           name: 'Monthly',
-          recurrenceType: RecurrenceType.Monthly,
+          recurrenceType: RecurrenceType.monthly,
           dayOfMonth: dayOfMonth,
           repeatInterval: repeatInterval,
           untilDate: _safeUntil(untilDate, startDate),
@@ -85,7 +93,7 @@ class LegacyRecurrenceRule {
     required DateTime startDate,
   }) : this(
           name: 'Yearly',
-          recurrenceType: RecurrenceType.Yearly,
+          recurrenceType: RecurrenceType.yearly,
           month: month,
           dayOfMonth: dayOfMonth,
           repeatInterval: repeatInterval,

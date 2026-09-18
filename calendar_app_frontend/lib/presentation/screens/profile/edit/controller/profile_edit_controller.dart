@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
-import 'package:hexora/services/blob_storage/blobServer.dart';
+import 'package:hexora/services/blob_storage/blob_server.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/presentation/screens/profile/edit/controller/profile_update_contract.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -22,12 +22,15 @@ class ProfileEditController {
     if (picked == null) return;
 
     try {
+      if (!context.mounted) return;
       final auth = context.read<AuthProvider>();
       final token = await auth.getToken();
+      if (!context.mounted) return;
       final userDomain = context.read<UserDomain>();
       final user = userDomain.user;
 
       if (token == null || user == null) {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l.notAuthenticatedOrUserMissing)),
         );
@@ -49,6 +52,7 @@ class ProfileEditController {
       );
 
       if (commitResp.statusCode != 200) {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${l.failedToSavePhoto}: ${commitResp.statusCode}'),
@@ -57,16 +61,19 @@ class ProfileEditController {
         return;
       }
 
-      final updatedUserJson = jsonDecode(commitResp.body) as Map<String, dynamic>;
+      final updatedUserJson =
+          jsonDecode(commitResp.body) as Map<String, dynamic>;
       final updated = user.copyWith(
         photoUrl: updatedUserJson['photoUrl'] ?? result.photoUrl,
         photoBlobName: updatedUserJson['photoBlobName'] ?? result.blobName,
       );
 
       userDomain.updateCurrentUser(updated);
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(l.photoUpdated)));
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${l.failedToUploadImage}: $e')),
       );
@@ -141,8 +148,8 @@ class ProfileEditController {
           phoneNumber: (saved['phoneNumber'] as String?) ??
               (saved['phone'] as String?) ??
               (payload['phoneNumber'] as String?),
-          location:
-              (saved['location'] as String?) ?? (payload['location'] as String?),
+          location: (saved['location'] as String?) ??
+              (payload['location'] as String?),
           bio: (saved['bio'] as String?) ?? (payload['bio'] as String?),
         );
 

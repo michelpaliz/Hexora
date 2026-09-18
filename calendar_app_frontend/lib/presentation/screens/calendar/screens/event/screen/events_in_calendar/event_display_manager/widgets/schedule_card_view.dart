@@ -79,45 +79,58 @@ class ScheduleCardView extends StatelessWidget {
     if (MediaQuery.sizeOf(context).width < 700) {
       final tt = Theme.of(context).textTheme;
       return Card(
-        margin: const EdgeInsets.fromLTRB(4, 4, 8, 4),
+        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         elevation: 0,
         color: cs.surfaceContainerLow,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             side: BorderSide(color: cs.outlineVariant)),
         child: InkWell(
           onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => EventDetailScreen(event: event))),
+              builder: (_) => EventDetailScreen(
+                    event: event,
+                  ))),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            padding: const EdgeInsets.fromLTRB(12, 8, 2, 8),
+            child:
+                Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
               Expanded(
                   child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(event.title,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: tt.bodyMedium?.copyWith(
-                          color: cs.onSurface, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  Text(timeLabel,
-                      style:
-                          tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
-                  if (durLabel.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(durLabel,
-                        style: tt.labelMedium?.copyWith(color: cs.primary)),
-                  ],
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5)),
+                  const SizedBox(height: 3),
+                  Text.rich(
+                    TextSpan(children: [
+                      TextSpan(text: timeLabel),
+                      if (durLabel.isNotEmpty)
+                        TextSpan(
+                          text: ' · $durLabel',
+                          style: TextStyle(
+                              color: cs.primary, fontWeight: FontWeight.w700),
+                        ),
+                    ]),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
                 ],
               )),
               IconButton(
                 tooltip: _isSpanish(context)
                     ? 'Acciones del evento'
                     : 'Event actions',
-                icon: const Icon(Icons.more_vert),
+                icon: const Icon(Icons.more_vert, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: () => showEventActionsSheet(
                     context: context,
                     event: event,

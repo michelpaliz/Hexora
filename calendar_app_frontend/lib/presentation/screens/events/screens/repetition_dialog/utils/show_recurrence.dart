@@ -43,7 +43,7 @@ List<Event> expandRecurringEventForRange(
       );
     }).toList();
   } catch (e) {
-    print('⚠️ Failed to parse RRULE for event "${event.title}": $e');
+    debugPrint('⚠️ Failed to parse RRULE for event "${event.title}": $e');
     return [event];
   }
 }

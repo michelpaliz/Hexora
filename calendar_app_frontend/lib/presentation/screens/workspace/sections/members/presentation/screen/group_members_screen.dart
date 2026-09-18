@@ -42,7 +42,7 @@ class GroupMembersScreen extends StatelessWidget {
           final Color primary = cs.primary;
           final Color selectedText = ThemeColors.contrastOn(primary);
           final Color unselectedText =
-              ThemeColors.textPrimary(context).withOpacity(0.7);
+              ThemeColors.textPrimary(context).withValues(alpha: 0.7);
           final Color trackBg = ThemeColors.cardBg(context);
 
           return Scaffold(
@@ -57,7 +57,7 @@ class GroupMembersScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: trackBg,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: cs.onSurface.withOpacity(0.06)),
+                      border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
                     ),
                     child: TabBar(
                       isScrollable: true,

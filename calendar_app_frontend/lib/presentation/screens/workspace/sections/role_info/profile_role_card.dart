@@ -46,7 +46,7 @@ class ProfileRoleCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
+              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,8 +129,9 @@ class ProfileRoleCard extends StatelessWidget {
     final handle = (u.userName).trim();
     if (handle.isEmpty) return null;
     final at = handle.startsWith('@') ? handle : '@$handle';
-    if ((u.displayName ?? '').trim() == at || (u.name).trim() == at)
+    if ((u.displayName ?? '').trim() == at || (u.name).trim() == at) {
       return null;
+    }
     return at;
   }
 

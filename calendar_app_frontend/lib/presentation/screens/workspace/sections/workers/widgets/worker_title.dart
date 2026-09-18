@@ -28,12 +28,12 @@ class WorkerTile extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: cs.outlineVariant.withOpacity(0.25), width: 1),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.25), width: 1),
       ),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         leading: CircleAvatar(
-          backgroundColor: cs.secondary.withOpacity(0.12),
+          backgroundColor: cs.secondary.withValues(alpha: 0.12),
           child: Icon(Icons.person_outline, color: cs.secondary),
         ),
         title: Text(
@@ -48,14 +48,14 @@ class WorkerTile extends StatelessWidget {
         subtitle: Text(
           totalMinutes == null ? l.noTrackedYet : l.trackedTotal(tracked),
           style: t.bodySmall.copyWith(
-            color: onBg.withOpacity(0.75),
+            color: onBg.withValues(alpha: 0.75),
             height: 1.25,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         trailing:
-            Icon(Icons.chevron_right_rounded, color: onBg.withOpacity(0.6)),
+            Icon(Icons.chevron_right_rounded, color: onBg.withValues(alpha: 0.6)),
         onTap: () {
           // TODO: navigate to worker detail when available.
         },

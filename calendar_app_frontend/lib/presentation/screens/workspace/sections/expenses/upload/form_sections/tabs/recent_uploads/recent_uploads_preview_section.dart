@@ -494,10 +494,10 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                                 child:
                                     CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : Icon(
+                            : const Icon(
                                 Icons.document_scanner_outlined,
                                 size: 13,
-                                color: const Color(0xFFD97706),
+                                color: Color(0xFFD97706),
                               ),
                       ),
                     ),

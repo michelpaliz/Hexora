@@ -25,7 +25,7 @@ class MemberErrorRow extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: onCardSecondary.withOpacity(0.1),
+              color: onCardSecondary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.error_outline_rounded,

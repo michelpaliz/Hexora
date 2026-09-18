@@ -5,8 +5,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 class DescriptionInput extends StatelessWidget {
   final TextEditingController controller;
 
-  const DescriptionInput({Key? key, required this.controller})
-      : super(key: key);
+  const DescriptionInput({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {

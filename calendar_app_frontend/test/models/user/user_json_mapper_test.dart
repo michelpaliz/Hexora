@@ -31,4 +31,35 @@ void main() {
 
     expect(() => User.fromJson(json), throwsFormatException);
   });
+
+  test('copyWith preserves profile fields and only changes requested values',
+      () {
+    final original = User.fromJson({
+      ...profile(),
+      'emailVerified': true,
+      'bio': 'Maintenance team',
+      'phoneNumber': '+34000000000',
+      'location': 'Denia',
+      'photoUrl': 'https://example.com/avatar.png',
+      'photoBlobName': 'avatar.png',
+      'groupIds': ['group-1'],
+      'sharedCalendars': ['calendar-1'],
+      'notifications': ['notification-1'],
+      'autoStatementImportEnabled': true,
+    });
+
+    expect(original.copyWith().toJson(), original.toJson());
+    final changed = original.copyWith(
+      name: 'Updated member',
+      emailVerified: false,
+      autoStatementImportEnabled: false,
+    );
+    expect(changed.toJson(), {
+      ...original.toJson(),
+      'name': 'Updated member',
+      'emailVerified': false,
+      'autoStatementImportEnabled': false,
+    });
+    expect(original.name, 'Calendar Member');
+  });
 }

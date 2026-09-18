@@ -64,12 +64,12 @@ class InfoHelpButton extends StatelessWidget {
               Text(
                 hint,
                 style: t.bodyLarge.copyWith(
-                  color: onBg.withOpacity(0.92),
+                  color: onBg.withValues(alpha: 0.92),
                   height: 1.35,
                 ),
               ),
               const SizedBox(height: 14),
-              Divider(color: onBg.withOpacity(0.12), height: 1),
+              Divider(color: onBg.withValues(alpha: 0.12), height: 1),
               const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,7 +80,7 @@ class InfoHelpButton extends StatelessWidget {
                     child: Text(
                       loc.upcomingEventsForThisGroup,
                       style: t.bodyMedium.copyWith(
-                        color: onBg.withOpacity(0.8),
+                        color: onBg.withValues(alpha: 0.8),
                       ),
                     ),
                   ),

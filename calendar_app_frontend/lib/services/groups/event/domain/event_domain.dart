@@ -212,7 +212,9 @@ class EventDomain {
   Future<Event> createEvent(BuildContext context, Event event) async {
     final created = await _repo.createEvent(event);
     try {
-      await syncReminderFor(context, created);
+      if (context.mounted) {
+        await syncReminderFor(context, created);
+      }
     } catch (_) {}
 
     // 🔧 local mutation → bust cache + recompute
@@ -225,7 +227,9 @@ class EventDomain {
   Future<Event> updateEvent(BuildContext context, Event event) async {
     final updated = await _repo.updateEvent(event);
     try {
-      await syncReminderFor(context, updated);
+      if (context.mounted) {
+        await syncReminderFor(context, updated);
+      }
     } catch (_) {}
 
     // 🔧 local mutation → bust cache + recompute

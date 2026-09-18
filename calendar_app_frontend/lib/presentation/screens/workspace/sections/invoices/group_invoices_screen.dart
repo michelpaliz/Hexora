@@ -115,6 +115,12 @@ class GroupInvoicesScreen extends StatefulWidget {
 }
 
 class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
+  // Shared callbacks return here so the owning State controls its lifecycle.
+  void _updateView(VoidCallback change) {
+    if (!mounted) return;
+    setState(change);
+  }
+
   final _invoicesApi = InvoicesApi();
   final _billingApi = BillingProfileApi();
   final _clientsApi = ClientsApi();
@@ -158,7 +164,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   bool _loading = true;
   String? _error;
-  bool _busyProfile = false;
+  final bool _busyProfile = false;
   bool _disableReceiptPreviewInteraction = false;
   final Set<String> _updatingReceiptDeliveryIds = <String>{};
   String _selectedMenu = 'clients';
@@ -446,11 +452,12 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         setState(() => _error = message);
       }
     } finally {
-      if (!mounted) return;
-      if (sortingInvoices) {
-        setState(() => _sortingInvoices = false);
-      } else {
-        setState(() => _loading = false);
+      if (mounted) {
+        if (sortingInvoices) {
+          setState(() => _sortingInvoices = false);
+        } else {
+          setState(() => _loading = false);
+        }
       }
     }
   }
@@ -1187,6 +1194,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       ),
     );
     if (updated != null && mounted) {
+      if (!mounted) return;
       setState(() {
         final idx = _clients.indexWhere((c) => c.id == updated.id);
         if (idx != -1) _clients[idx] = updated;
@@ -1244,11 +1252,13 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         entityType: updated.entityType,
         propertyKind: updated.propertyKind,
       );
+      if (!mounted) return;
       setState(() {
         final idx = _clients.indexWhere((c) => c.id == updated.id);
         if (idx != -1) _clients[idx] = updated;
         if (_selectedClient?.id == updated.id) _selectedClient = updated;
       });
+      if (!mounted) return;
       showSuccessSnack(context, l.clientClassificationUpdatedSnack);
     } catch (e) {
       if (!mounted) return;

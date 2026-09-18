@@ -8,12 +8,12 @@ class DatePickersWidget extends StatelessWidget {
   final VoidCallback onEndDateTap;
 
   const DatePickersWidget({
-    Key? key,
+    super.key,
     required this.startDate,
     required this.endDate,
     required this.onStartDateTap,
     required this.onEndDateTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

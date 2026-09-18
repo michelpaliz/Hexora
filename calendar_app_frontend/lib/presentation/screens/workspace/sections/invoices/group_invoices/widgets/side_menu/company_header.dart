@@ -43,7 +43,7 @@ class GroupInvoicesCompanyHeader extends StatelessWidget {
                 child: hasLogo
                     ? ClipOval(
                         child: Image.network(
-                          logoUrl!,
+                          logoUrl,
                           width: 32,
                           height: 32,
                           fit: BoxFit.cover,

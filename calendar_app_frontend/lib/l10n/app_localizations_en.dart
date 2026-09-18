@@ -7506,6 +7506,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get telegramPreviewPdf => 'Preview PDF';
 
   @override
+  String get telegramPreviewUnavailable => 'Preview unavailable for this file';
+
+  @override
   String get telegramDownloadDocument => 'Download document';
 
   @override

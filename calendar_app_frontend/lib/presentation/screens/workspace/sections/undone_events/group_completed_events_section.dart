@@ -99,9 +99,9 @@ class _GroupCompletedEventsSectionBody extends StatelessWidget {
     final cardColor = cs.surface;
     final cardShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(14),
-      side: BorderSide(color: cs.outlineVariant.withOpacity(0.35)),
+      side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
     );
-    final shadow = Colors.black.withOpacity(
+    final shadow = Colors.black.withValues(alpha:
       theme.brightness == Brightness.dark ? 0.3 : 0.12,
     );
 
@@ -187,7 +187,7 @@ class _GroupCompletedEventsSectionBody extends StatelessWidget {
                     isDone: true,
                   ),
                 )
-                .toList(),
+                ,
           ],
         ],
       ),

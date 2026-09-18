@@ -11,7 +11,7 @@ import 'package:hexora/services/time_tracking/repository/time_tracking_repositor
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/header/widgets/group_header_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_count.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
@@ -321,6 +321,7 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     if (!mounted || resolvedUser == null) return;
     final roleWire = widget.group.userRoles[resolvedUser.id];
     final role = GroupRole.fromWire(roleWire);
+    if (!context.mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GroupUndoneEventsScreen(

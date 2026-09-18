@@ -1,10 +1,10 @@
 import 'package:hexora/services/auth/auth_provider.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class SplashView extends StatefulWidget {
-  const SplashView({Key? key}) : super(key: key);
+  const SplashView({super.key});
 
   @override
   State<SplashView> createState() => _SplashViewState();
@@ -23,8 +23,10 @@ class _SplashViewState extends State<SplashView> {
 
     final user = authProvider.currentUser;
     if (user != null) {
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.homePage);
     } else {
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.loginRoute);
     }
   }

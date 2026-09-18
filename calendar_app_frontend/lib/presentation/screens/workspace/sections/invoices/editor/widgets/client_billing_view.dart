@@ -63,7 +63,7 @@ class ClientBillingView extends StatelessWidget {
             child: Text(
               label,
               style: t.bodySmall.copyWith(
-                color: onSurface.withOpacity(0.7),
+                color: onSurface.withValues(alpha: 0.7),
                 fontWeight: FontWeight.w700,
               ),
             ),

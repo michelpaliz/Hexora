@@ -2,8 +2,9 @@ import 'package:hexora/models/notifications/user_invitation_status.dart';
 
 class InvitationMessageHelper {
   static String getInvitationMessage(UserInviteStatus? userInviteStatus) {
-    if (userInviteStatus == null)
+    if (userInviteStatus == null) {
       return 'No invitation record found for this user.';
+    }
 
     if (userInviteStatus.invitationAnswer == null) {
       return 'The invitation is pending. No action is required yet.';

@@ -6,19 +6,18 @@ class NumberSelector extends StatefulWidget {
   final int minValue;
   final int maxValue;
   final double inputFontSize;
-  final Key? key; // Add the Key parameter here
 
-  NumberSelector({
+  const NumberSelector({
+    super.key,
     this.value,
     required this.onChanged,
     required this.minValue,
     required this.maxValue,
     this.inputFontSize = 14.0,
-    this.key, // Initialize the Key parameter
   });
 
   @override
-  _NumberSelectorState createState() => _NumberSelectorState();
+  State<NumberSelector> createState() => _NumberSelectorState();
 }
 
 class _NumberSelectorState extends State<NumberSelector> {
@@ -68,7 +67,7 @@ class _NumberSelectorState extends State<NumberSelector> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
-          icon: Icon(Icons.remove),
+          icon: const Icon(Icons.remove),
           iconSize: 14,
           onPressed: (widget.value ?? 0) > widget.minValue
               ? () {
@@ -87,14 +86,14 @@ class _NumberSelectorState extends State<NumberSelector> {
             style: TextStyle(
               fontSize: widget.inputFontSize,
             ),
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               contentPadding: EdgeInsets.all(0),
               border: InputBorder.none,
             ),
           ),
         ),
         IconButton(
-          icon: Icon(Icons.add),
+          icon: const Icon(Icons.add),
           iconSize: 14,
           onPressed: () {
             final newValue = (widget.value ?? 0) + 1;

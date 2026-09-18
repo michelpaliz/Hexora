@@ -164,7 +164,7 @@ class GroupDashboardRightPanel extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: bg.withOpacity(0.9),
+        color: bg.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(16),
         boxShadow: kElevationToShadow[2],
       ),

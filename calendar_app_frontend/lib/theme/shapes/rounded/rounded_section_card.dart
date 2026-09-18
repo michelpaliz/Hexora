@@ -10,13 +10,13 @@ class RoundedSectionCard extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
 
   const RoundedSectionCard({
-    Key? key,
+    super.key,
     required this.child,
     this.title,
     this.backgroundColor, // Allows override, still respected
     this.padding,
     this.margin,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +42,7 @@ class RoundedSectionCard extends StatelessWidget {
           ),
         ],
         border: Border.all(
-          color: cs.outlineVariant.withOpacity(0.25),
+          color: cs.outlineVariant.withValues(alpha: 0.25),
           width: 1,
         ),
       ),

@@ -1,19 +1,19 @@
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart' show immutable;
 
 /// Must match backend TIME_ROUNDING_ENUM
-enum TimeRoundingPreset { nearest5_tie05_down }
+enum TimeRoundingPreset { nearest5Tie05Down }
 
 TimeRoundingPreset _presetFromJson(String? v) {
   switch (v) {
     case 'nearest5_tie05_down':
     default:
-      return TimeRoundingPreset.nearest5_tie05_down;
+      return TimeRoundingPreset.nearest5Tie05Down;
   }
 }
 
 String presetToJson(TimeRoundingPreset p) {
   switch (p) {
-    case TimeRoundingPreset.nearest5_tie05_down:
+    case TimeRoundingPreset.nearest5Tie05Down:
       return 'nearest5_tie05_down';
   }
 }
@@ -96,7 +96,7 @@ class GroupFeatures {
           ? TimeTrackingSettings.fromJson(tt)
           : const TimeTrackingSettings(
               enabled: false,
-              roundingPreset: TimeRoundingPreset.nearest5_tie05_down,
+              roundingPreset: TimeRoundingPreset.nearest5Tie05Down,
               currency: 'EUR',
             ),
     );

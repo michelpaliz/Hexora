@@ -8,7 +8,7 @@ import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'widgets/profile_details_card.dart';
 import 'widgets/profile_header_section.dart';
 
@@ -48,11 +48,11 @@ class ProfileViewScreen extends StatelessWidget {
       );
     }
 
-    void _goToProfileEdit() =>
+    void goToProfileEdit() =>
         Navigator.of(context).pushNamed(AppRoutes.profile);
-    void _goToGroups() => Navigator.of(context).pushNamed(AppRoutes.showGroups);
-    void _goToCalendars() => Navigator.of(context).pushNamed(AppRoutes.agenda);
-    void _goToNotifications() => Navigator.of(context)
+    void goToGroups() => Navigator.of(context).pushNamed(AppRoutes.showGroups);
+    void goToCalendars() => Navigator.of(context).pushNamed(AppRoutes.agenda);
+    void goToNotifications() => Navigator.of(context)
         .pushNamed(AppRoutes.showNotifications, arguments: user);
 
     return MainScaffold(
@@ -72,9 +72,9 @@ class ProfileViewScreen extends StatelessWidget {
               groupsCount: groupsCount,
               calendarsCount: calendarsCount,
               notificationsCount: notificationsCount,
-              onTapQuickGroups: _goToGroups,
-              onTapQuickCalendars: _goToCalendars,
-              onTapQuickNotifications: _goToNotifications,
+              onTapQuickGroups: goToGroups,
+              onTapQuickCalendars: goToCalendars,
+              onTapQuickNotifications: goToNotifications,
             ),
           ),
 
@@ -94,10 +94,10 @@ class ProfileViewScreen extends StatelessWidget {
                 onCopyEmail: () =>
                     copyToClipboard(user.email, loc.copiedToClipboard),
                 onCopyId: () => copyToClipboard(user.id, loc.copiedToClipboard),
-                onTapUsername: _goToProfileEdit,
-                onTapTeams: _goToGroups,
-                onTapCalendars: _goToCalendars,
-                onTapNotifications: _goToNotifications,
+                onTapUsername: goToProfileEdit,
+                onTapTeams: goToGroups,
+                onTapCalendars: goToCalendars,
+                onTapNotifications: goToNotifications,
               ),
             ),
           ),

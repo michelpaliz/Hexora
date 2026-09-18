@@ -8,6 +8,7 @@ environment:
   sdk: ">=3.2.0 <4.0.0"
 
 dependencies:
+  web: ^1.1.1
   flutter:
     sdk: flutter
 
@@ -66,6 +67,7 @@ dependencies:
   flutter_dropzone: 4.2.1
   flutter_dropzone_platform_interface: 2.2.0
   webview_flutter: 4.8.0
+  pdfrx: 2.2.24
 
 # 4.6.0+ unconditionally registers NMEA/GNSS listeners. On Android 16,
 # unregisterGnssNmeaCallback blocked the main thread during getCurrentPosition

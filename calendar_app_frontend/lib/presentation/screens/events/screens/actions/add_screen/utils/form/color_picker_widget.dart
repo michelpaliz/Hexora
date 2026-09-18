@@ -47,7 +47,7 @@ class ColorPickerWidget extends StatelessWidget {
             helperText: l.color, // optional helper; swap/remove if not desired
             helperStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
             // filled: true,
-            // fillColor: cs.surfaceVariant.withOpacity(.25),
+            // fillColor: cs.surfaceVariant.withValues(alpha: .25),
           ),
           iconEnabledColor: cs.onSurfaceVariant,
           items: colorList.map((color) {

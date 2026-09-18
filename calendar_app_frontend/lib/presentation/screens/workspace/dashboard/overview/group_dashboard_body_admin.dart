@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/business_hours/edit_business_hours_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/business_hours/group_business_hours_card.dart';
@@ -78,6 +78,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
     final domain = context.read<GroupDomain>();
     final rootNav = Navigator.of(context, rootNavigator: true);
 
+    if (!rootNav.mounted) return;
     showDialog<void>(
       context: rootNav.context,
       barrierDismissible: false,
@@ -207,6 +208,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                 Sections.expenses),
             destination(Icons.mail_outline_rounded, l.mailConsoleTitle,
                 Sections.emails),
+            destination(Icons.telegram, 'Telegram', Sections.telegram),
           ]),
           heading(es ? 'Equipo' : 'Team'),
           group([

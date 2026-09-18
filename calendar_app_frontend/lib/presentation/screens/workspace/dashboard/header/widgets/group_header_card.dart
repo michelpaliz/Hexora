@@ -61,7 +61,7 @@ class GroupHeaderCard extends StatelessWidget {
 
     final isInteractive = onTap != null;
     final cardColor = Color.alphaBlend(
-      cs.primaryContainer.withOpacity(
+      cs.primaryContainer.withValues(alpha:
         theme.brightness == Brightness.dark ? 0.22 : 0.14,
       ),
       ThemeColors.cardBg(context),
@@ -146,7 +146,7 @@ class GroupHeaderCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 color: cardColor,
                 border: Border.all(
-                  color: cs.primaryContainer.withOpacity(0.4),
+                  color: cs.primaryContainer.withValues(alpha: 0.4),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -266,7 +266,7 @@ class GroupHeaderCard extends StatelessWidget {
                   Divider(
                       height: 1,
                       thickness: 0.8,
-                      color: cs.outlineVariant.withOpacity(0.4)),
+                      color: cs.outlineVariant.withValues(alpha: 0.4)),
                   const SizedBox(height: 10),
 
                   GroupStatsPillsCompact(
@@ -294,7 +294,7 @@ class GroupHeaderCard extends StatelessWidget {
                   onPressed: onTap,
                   style: IconButton.styleFrom(
                     foregroundColor: cs.primary,
-                    backgroundColor: cs.surface.withOpacity(0.8),
+                    backgroundColor: cs.surface.withValues(alpha: 0.8),
                     padding: const EdgeInsets.all(8),
                   ),
                 ),

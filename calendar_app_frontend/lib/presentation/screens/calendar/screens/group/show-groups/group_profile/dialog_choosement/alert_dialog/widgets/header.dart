@@ -27,7 +27,7 @@ class Header extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
-            border: Border.all(color: scheme.outlineVariant.withOpacity(0.4)),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
           ),
           child: Padding(
             padding: const EdgeInsets.all(2.0),
@@ -55,7 +55,7 @@ class Header extends StatelessWidget {
               Text(
                 loc.createdOnDay(createdAt),
                 style: bodyS.copyWith(
-                  color: scheme.onSurface.withOpacity(0.7),
+                  color: scheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ],

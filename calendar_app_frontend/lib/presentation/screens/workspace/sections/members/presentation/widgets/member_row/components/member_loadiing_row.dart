@@ -16,7 +16,7 @@ class MemberLoadingRow extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: onCardSecondary.withOpacity(0.1),
+              color: onCardSecondary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Center(
@@ -36,7 +36,7 @@ class MemberLoadingRow extends StatelessWidget {
                   height: 12,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: onCardSecondary.withOpacity(0.1),
+                    color: onCardSecondary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                 ),
@@ -45,7 +45,7 @@ class MemberLoadingRow extends StatelessWidget {
                   height: 10,
                   width: 100,
                   decoration: BoxDecoration(
-                    color: onCardSecondary.withOpacity(0.08),
+                    color: onCardSecondary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),

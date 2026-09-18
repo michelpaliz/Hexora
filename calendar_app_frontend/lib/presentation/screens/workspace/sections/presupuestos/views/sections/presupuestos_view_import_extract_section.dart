@@ -141,6 +141,8 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
       allowedExtensions: const ['json'],
       withData: true,
     );
+    if (!mounted) return;
+    if (!mounted) return;
     final file =
         (picked?.files.isNotEmpty ?? false) ? picked!.files.first : null;
     final bytes = file?.bytes;
@@ -172,6 +174,7 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
       final id = await _ensureDraftCreated(forceRebuild: false);
       final response = await _presupuestosApi.getImportJsonPromptTemplate(id);
       final prompt = JsonImportService.extractPromptText(response);
+      if (!mounted) return;
       await copyTextWithManualFallbackDialog(
         context,
         text: prompt.isEmpty ? jsonEncode(response) : prompt,
@@ -290,32 +293,6 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
     );
   }
 
-  Future<void> _pickBudgetExtractFile() async {
-    if (_extractingBlocks) return;
-    final picked = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      type: FileType.custom,
-      allowedExtensions: const ['png', 'jpg', 'jpeg', 'jpe', 'webp', 'pdf'],
-      withData: true,
-    );
-    final file =
-        (picked?.files.isNotEmpty ?? false) ? picked!.files.first : null;
-    final bytes = file?.bytes;
-    if (file == null || bytes == null || bytes.isEmpty) return;
-    if (!_isSupportedOcrFile(file.name)) {
-      setState(() {
-        _extractError =
-            'Tipo de archivo no soportado. Usa: pdf, jpg, jpeg, jpe, png o webp.';
-      });
-      return;
-    }
-    setState(() {
-      _extractFileName = file.name;
-      _extractFileBytes = bytes;
-      _extractError = null;
-    });
-  }
-
   void _clearBudgetExtractedBlocks() {
     setState(() {
       _extractFileName = null;
@@ -325,132 +302,6 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
       _extractMethodUsed = null;
       _extractDiagnostics = const [];
     });
-  }
-
-  Future<void> _extractBudgetBlocksWithOpenAi() async {
-    if (_extractingBlocks) return;
-    final l = AppLocalizations.of(context)!;
-    final bytes = _extractFileBytes;
-    final name = (_extractFileName ?? '').trim();
-    if (bytes == null || bytes.isEmpty || name.isEmpty) {
-      setState(() => _extractError = l.invoiceLinesJsonImportNoFile);
-      return;
-    }
-    setState(() {
-      _extractingBlocks = true;
-      _extractError = null;
-    });
-    try {
-      final id = await _ensureWritableDraftForImport();
-      Map<String, dynamic> response;
-      try {
-        response = await _presupuestosApi.extractLinesOcr(
-          id: id,
-          bytes: bytes,
-          fileName: name,
-          preview: true,
-        );
-      } on PresupuestosApiException catch (e) {
-        if (e.statusCode == 404 || e.statusCode == 405) {
-          response = await _presupuestosApi.extractImageOpenAi(
-            id: id,
-            bytes: bytes,
-            fileName: name,
-          );
-        } else {
-          rethrow;
-        }
-      }
-      var raw =
-          response['draftLines'] ?? response['blocks'] ?? response['lines'];
-      if (raw is! List || raw.isEmpty) {
-        try {
-          final full = await _presupuestosApi.extractLinesOcr(
-            id: id,
-            bytes: bytes,
-            fileName: name,
-            preview: false,
-          );
-          response = full;
-          raw =
-              response['draftLines'] ?? response['blocks'] ?? response['lines'];
-        } catch (_) {
-          // Keep preview response/errors as source of truth.
-        }
-      }
-      final rows = raw is List
-          ? raw
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList(growable: false)
-          : const <Map<String, dynamic>>[];
-      final diagnosticsRaw = response['diagnostics'];
-      final diagnostics = <String>[
-        if (diagnosticsRaw is List)
-          ...diagnosticsRaw
-              .where((e) => e != null)
-              .map((e) => e.toString().trim())
-              .where((e) => e.isNotEmpty),
-        if (diagnosticsRaw is Map)
-          ...diagnosticsRaw.entries.map((e) => '${e.key}: ${e.value}'),
-        if (diagnosticsRaw is String && diagnosticsRaw.trim().isNotEmpty)
-          diagnosticsRaw.trim(),
-      ];
-      setState(() {
-        _extractedBlocks = rows;
-        _extractMethodUsed =
-            (response['methodUsed'] ?? response['method'])?.toString().trim();
-        _extractDiagnostics = diagnostics;
-        if (rows.isEmpty) {
-          _extractError =
-              'No se detectaron conceptos. Prueba con otra imagen o ajusta manualmente.';
-        }
-      });
-    } on PresupuestosApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _extractError =
-          _friendlyPresupuestoImportError(e.message, code: e.code));
-    } catch (e) {
-      if (!mounted) return;
-      setState(
-          () => _extractError = e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _extractingBlocks = false);
-    }
-  }
-
-  void _updateExtractedBlockField(int index, String key, String value) {
-    if (index < 0 || index >= _extractedBlocks.length) return;
-    final next = _extractedBlocks
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList(growable: true);
-    final current = Map<String, dynamic>.from(next[index]);
-    if (key == 'description' || key == 'title' || key == 'type') {
-      current[key] = value;
-    } else {
-      current[key] = double.tryParse(value.replaceAll(',', '.')) ?? 0;
-    }
-    next[index] = current;
-    setState(() => _extractedBlocks = next);
-  }
-
-  void _removeExtractedBlock(int index) {
-    if (index < 0 || index >= _extractedBlocks.length) return;
-    final next = _extractedBlocks.toList(growable: true)..removeAt(index);
-    setState(() => _extractedBlocks = next);
-  }
-
-  void _addExtractedBlock() {
-    final next = _extractedBlocks.toList(growable: true)
-      ..add({
-        'type': 'item',
-        'description': '',
-        'qty': 1,
-        'unitPrice': 0,
-        'discountRate': 0,
-        'taxRate': 21,
-      });
-    setState(() => _extractedBlocks = next);
   }
 
   Future<void> _importExtractedBudgetBlocks({
@@ -525,6 +376,133 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
     } finally {
       if (mounted) setState(() => _jsonImportLoading = false);
     }
+  }
+
+  Future<void> _extractBudgetBlocksWithOpenAi() async {
+    if (_extractingBlocks) return;
+    final l = AppLocalizations.of(context)!;
+    final bytes = _extractFileBytes;
+    final name = (_extractFileName ?? '').trim();
+    if (bytes == null || bytes.isEmpty || name.isEmpty) {
+      setState(() => _extractError = l.invoiceLinesJsonImportNoFile);
+      return;
+    }
+    setState(() {
+      _extractingBlocks = true;
+      _extractError = null;
+    });
+    try {
+      final id = await _ensureWritableDraftForImport();
+      Map<String, dynamic> response;
+      try {
+        response = await _presupuestosApi.extractLinesOcr(
+          id: id,
+          bytes: bytes,
+          fileName: name,
+          preview: true,
+        );
+      } on PresupuestosApiException catch (e) {
+        if (e.statusCode == 404 || e.statusCode == 405) {
+          response = await _presupuestosApi.extractImageOpenAi(
+            id: id,
+            bytes: bytes,
+            fileName: name,
+          );
+        } else {
+          rethrow;
+        }
+      }
+      var raw =
+          response['draftLines'] ?? response['blocks'] ?? response['lines'];
+      if (raw is! List || raw.isEmpty) {
+        try {
+          final full = await _presupuestosApi.extractLinesOcr(
+            id: id,
+            bytes: bytes,
+            fileName: name,
+            preview: false,
+          );
+          response = full;
+          raw =
+              response['draftLines'] ?? response['blocks'] ?? response['lines'];
+        } catch (_) {
+          // Keep preview response/errors as source of truth.
+        }
+      }
+      final rows = raw is List
+          ? raw
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList(growable: false)
+          : const <Map<String, dynamic>>[];
+      final diagnosticsRaw = response['diagnostics'];
+      final diagnostics = <String>[
+        if (diagnosticsRaw is List)
+          ...diagnosticsRaw
+              .where((e) => e != null)
+              .map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty),
+        if (diagnosticsRaw is Map)
+          ...diagnosticsRaw.entries.map((e) => '${e.key}: ${e.value}'),
+        if (diagnosticsRaw is String && diagnosticsRaw.trim().isNotEmpty)
+          diagnosticsRaw.trim(),
+      ];
+      if (!mounted) return;
+      setState(() {
+        _extractedBlocks = rows;
+        _extractMethodUsed =
+            (response['methodUsed'] ?? response['method'])?.toString().trim();
+        _extractDiagnostics = diagnostics;
+        if (rows.isEmpty) {
+          _extractError =
+              'No se detectaron conceptos. Prueba con otra imagen o ajusta manualmente.';
+        }
+      });
+    } on PresupuestosApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _extractError =
+          _friendlyPresupuestoImportError(e.message, code: e.code));
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+          () => _extractError = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _extractingBlocks = false);
+    }
+  }
+
+  void _updateExtractedBlockField(int index, String key, String value) {
+    if (index < 0 || index >= _extractedBlocks.length) return;
+    final next = _extractedBlocks
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList(growable: true);
+    final current = Map<String, dynamic>.from(next[index]);
+    if (key == 'description' || key == 'title' || key == 'type') {
+      current[key] = value;
+    } else {
+      current[key] = double.tryParse(value.replaceAll(',', '.')) ?? 0;
+    }
+    next[index] = current;
+    setState(() => _extractedBlocks = next);
+  }
+
+  void _removeExtractedBlock(int index) {
+    if (index < 0 || index >= _extractedBlocks.length) return;
+    final next = _extractedBlocks.toList(growable: true)..removeAt(index);
+    setState(() => _extractedBlocks = next);
+  }
+
+  void _addExtractedBlock() {
+    final next = _extractedBlocks.toList(growable: true)
+      ..add({
+        'type': 'item',
+        'description': '',
+        'qty': 1,
+        'unitPrice': 0,
+        'discountRate': 0,
+        'taxRate': 21,
+      });
+    setState(() => _extractedBlocks = next);
   }
 
   Widget _buildBudgetOpenAiExtractPanel(
@@ -744,5 +722,32 @@ extension _GroupInvoicesBudgetsViewImportExtractSection
         ],
       ),
     );
+  }
+
+  Future<void> _pickBudgetExtractFile() async {
+    if (_extractingBlocks) return;
+    final picked = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      type: FileType.custom,
+      allowedExtensions: const ['png', 'jpg', 'jpeg', 'jpe', 'webp', 'pdf'],
+      withData: true,
+    );
+    if (!mounted) return;
+    final file =
+        (picked?.files.isNotEmpty ?? false) ? picked!.files.first : null;
+    final bytes = file?.bytes;
+    if (file == null || bytes == null || bytes.isEmpty) return;
+    if (!_isSupportedOcrFile(file.name)) {
+      setState(() {
+        _extractError =
+            'Tipo de archivo no soportado. Usa: pdf, jpg, jpeg, jpe, png o webp.';
+      });
+      return;
+    }
+    setState(() {
+      _extractFileName = file.name;
+      _extractFileBytes = bytes;
+      _extractError = null;
+    });
   }
 }

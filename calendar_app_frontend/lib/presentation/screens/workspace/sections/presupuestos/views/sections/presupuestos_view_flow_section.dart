@@ -558,30 +558,6 @@ extension _GroupInvoicesBudgetsViewFlowSection
     return result?.trim().isEmpty == true ? null : result?.trim();
   }
 
-  Future<void> _validateAndSave() async {
-    final l = AppLocalizations.of(context)!;
-    if (!_hasClientInfo) {
-      setState(() {
-        _error = l.budgetValidationClientRequired;
-      });
-      return;
-    }
-    if (!_hasLineContent) {
-      setState(() {
-        _error = l.budgetValidationLineItemsRequired;
-      });
-      return;
-    }
-    await _createDraftAndPreparePreview(forceRebuild: true);
-    if (!mounted || _error != null) return;
-    showSuccessSnack(
-      context,
-      l.budgetDraftSavedSnackMessage,
-      title: l.budgetDraftSavedSnackTitle,
-      actionLabel: l.invoiceDraftSnackDismiss,
-    );
-  }
-
   List<Map<String, dynamic>> _previewRows() {
     if (_useBlocks) {
       return _budgetBlocks.where((b) => b.hasBillableContent).map((b) {

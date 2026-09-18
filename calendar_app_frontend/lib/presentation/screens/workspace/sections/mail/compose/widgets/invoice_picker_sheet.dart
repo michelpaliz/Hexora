@@ -25,10 +25,6 @@ class _InvoicePickerSheet extends StatefulWidget {
     required this.onLoadReceipts,
     required this.onLoadPresupuestos,
     required this.onPreviewPresupuesto,
-    this.embedded = false,
-    this.splitColumns = false,
-    this.onApply,
-    this.onClose,
   });
 
   final List<GroupClient> clients;
@@ -41,10 +37,10 @@ class _InvoicePickerSheet extends StatefulWidget {
   final Future<List<Map<String, dynamic>>> Function(String clientId)
       onLoadPresupuestos;
   final Future<void> Function(String presupuestoId) onPreviewPresupuesto;
-  final bool embedded;
-  final bool splitColumns;
-  final ValueChanged<_InvoicePickerResult>? onApply;
-  final VoidCallback? onClose;
+  final bool embedded = false;
+  final bool splitColumns = false;
+  final ValueChanged<_InvoicePickerResult>? onApply = null;
+  final VoidCallback? onClose = null;
 
   @override
   State<_InvoicePickerSheet> createState() => _InvoicePickerSheetState();

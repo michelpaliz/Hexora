@@ -64,14 +64,17 @@ class GroupUpdateController {
         );
       }
 
+      if (!context.mounted) return true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context)!.groupEdited)),
       );
 
+      if (!context.mounted) return true;
       Navigator.pop(context);
       return true;
     } catch (e) {
       debugPrint('❌ Error updating group: $e');
+      if (!context.mounted) return false;
       _showError(AppLocalizations.of(context)!.failedToEditGroup);
       return false;
     }

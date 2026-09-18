@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class TitleInputWidget extends StatelessWidget {
   final TextEditingController titleController;
 
-  const TitleInputWidget({
+  const TitleInputWidget({super.key,
     required this.titleController,
   });
 

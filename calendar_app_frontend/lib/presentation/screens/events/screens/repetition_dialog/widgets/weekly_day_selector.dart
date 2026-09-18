@@ -9,10 +9,10 @@ class WeeklyDaySelector extends StatelessWidget {
   final Function(CustomDayOfWeek, bool isSelected) onDayToggle;
 
   const WeeklyDaySelector({
-    Key? key,
+    super.key,
     required this.selectedDays,
     required this.onDayToggle,
-  }) : super(key: key);
+  });
 
   String _translateDayAbbreviation(BuildContext context, String dayAbbr) {
     switch (dayAbbr.toLowerCase()) {
@@ -79,13 +79,13 @@ class WeeklyDaySelector extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               visualDensity: VisualDensity.compact,
               selectedColor: cs.primaryContainer,
-              backgroundColor: cs.surfaceContainerHighest.withOpacity(0.65),
+              backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.65),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
                 side: BorderSide(
                   color: isSelected
                       ? cs.primary
-                      : cs.outlineVariant.withOpacity(0.55),
+                      : cs.outlineVariant.withValues(alpha: 0.55),
                 ),
               ),
             );
