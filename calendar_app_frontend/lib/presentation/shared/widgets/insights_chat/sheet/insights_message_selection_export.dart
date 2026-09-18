@@ -2,43 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:hexora/models/clients/client.dart';
-import 'package:hexora/models/service_catalog/service.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
-import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_controller.dart';
-import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_formatters.dart';
-import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_shared.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
-    as pdf_launcher;
 import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
-import 'package:hexora/services/clients/client_api.dart';
-import 'package:hexora/services/groups/domain/group_domain.dart';
-import 'package:hexora/services/groups/event/domain/event_domain.dart';
-import 'package:hexora/services/insights/insights_api.dart';
-import 'package:hexora/services/invoicing/invoice_api.dart';
-import 'package:hexora/services/service_catalog/service_api_client.dart';
-import 'package:hexora/services/statements/statements_api.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
-import 'package:provider/provider.dart';
 
-import '../dialogs/insights_event_edit_dialog.dart';
 import '../insights_action_tokens.dart';
-import '../insights_chat_enums.dart';
-import '../insights_chat_menu.dart';
 import '../insights_chat_message.dart';
-import '../insights_chat_runtime.dart';
-import '../insights_chat_sheet.dart';
-import '../insights_date_range.dart';
-import '../insights_json_utils.dart';
-import '../insights_markdown.dart';
-import '../insights_pending_invoice_link_edit.dart';
-import '../insights_remote_table_state.dart';
-import '../widgets/insights_async_icon_button.dart';
-import '../widgets/insights_chat_bubble.dart';
 import 'insights_chat_sheet_base.dart';
 
 mixin InsightsMessageSelectionExport on InsightsChatSheetStateBase {
