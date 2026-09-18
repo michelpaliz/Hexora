@@ -233,7 +233,8 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
 
   bool get _canViewAll => role != GroupRole.member;
   bool _canManageEvent(Event event) =>
-      event.ownerId == currentUserId || event.recipients.contains(currentUserId);
+      event.ownerId == currentUserId ||
+      event.recipients.contains(currentUserId);
 
   List<Event> _pendingEvents = const [];
   List<Event> _completedEvents = const [];
@@ -269,8 +270,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
 
   EventOwnerInfo? ownerInfoOf(String ownerId) => _ownerCache[ownerId];
 
-  bool isProcessing(String eventId) =>
-      _processingIds.contains(baseId(eventId));
+  bool isProcessing(String eventId) => _processingIds.contains(baseId(eventId));
 
   bool isUploadingEvidence(String eventId) =>
       _evidenceUploadingIds.contains(baseId(eventId));
@@ -362,7 +362,11 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   /// Lets the worker attach photo evidence. Always allowed regardless of
   /// whether the event requires it — the manager's toggle only gates
   /// "mark as finished", not the ability to attach evidence.
-  Future<void> addEvidencePhotos(BuildContext context, String eventId) async {
+  Future<void> addEvidencePhotos(
+    BuildContext context,
+    String eventId, {
+    String photoType = 'general',
+  }) async {
     final key = baseId(eventId);
     if (key.isEmpty || _evidenceUploadingIds.contains(key)) return;
 
@@ -371,7 +375,15 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
 
     List<XFile> picked;
     try {
-      picked = await ImagePicker().pickMultiImage(imageQuality: 85);
+      if (photoType == 'general') {
+        picked = await ImagePicker().pickMultiImage(imageQuality: 85);
+      } else {
+        final photo = await ImagePicker().pickImage(
+          source: ImageSource.camera,
+          imageQuality: 85,
+        );
+        picked = photo == null ? const <XFile>[] : <XFile>[photo];
+      }
     } catch (_) {
       picked = const <XFile>[];
     }
@@ -391,7 +403,8 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
         final uploadUrl = sas['uploadUrl'] as String?;
         final blobName = sas['blobName'] as String?;
         if (uploadUrl == null || blobName == null) {
-          throw Exception('Evidence upload SAS response missing uploadUrl/blobName');
+          throw Exception(
+              'Evidence upload SAS response missing uploadUrl/blobName');
         }
 
         final bytes = await File(xfile.path).readAsBytes();
@@ -412,6 +425,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
           eventId,
           blobName: blobName,
           mimeType: mimeType,
+          photoType: photoType,
         );
         _mergeEvent(updated);
         _applyFilterAndSplit();
@@ -462,15 +476,11 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
 
   void _applyFilterAndSplit() {
     final filtered = _allVisibleEvents.where(_matchesFilter).toList();
-    final pending = filtered
-        .where((event) => event.isDone != true)
-        .toList()
+    final pending = filtered.where((event) => event.isDone != true).toList()
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
-    final completed = filtered
-        .where((event) => event.isDone == true)
-        .toList()
-      ..sort((a, b) => (b.completedAt ?? b.endDate)
-          .compareTo(a.completedAt ?? a.endDate));
+    final completed = filtered.where((event) => event.isDone == true).toList()
+      ..sort((a, b) =>
+          (b.completedAt ?? b.endDate).compareTo(a.completedAt ?? a.endDate));
 
     _pendingEvents = pending;
     _completedEvents = completed;
@@ -530,7 +540,8 @@ class EventOwnerInfo {
   factory EventOwnerInfo.fromUser(User user) {
     final display = _resolveDisplayName(user);
     final username = _resolveUsername(user);
-    return EventOwnerInfo(id: user.id, displayName: display, username: username);
+    return EventOwnerInfo(
+        id: user.id, displayName: display, username: username);
   }
 
   factory EventOwnerInfo.fallback(String id) => EventOwnerInfo(

@@ -41,10 +41,8 @@ class NotificationCard extends StatelessWidget {
 
   // ── helpers ────────────────────────────────────────────────────────────────
 
-  bool get _isConcurrentEvent =>
-      isConcurrentEventNotification(notification);
-  bool get _isIssuedDocument =>
-      isIssuedDocumentNotification(notification);
+  bool get _isConcurrentEvent => isConcurrentEventNotification(notification);
+  bool get _isIssuedDocument => isIssuedDocumentNotification(notification);
   bool get _isEvent => isEventNotification(notification);
 
   @override
@@ -74,21 +72,21 @@ class NotificationCard extends StatelessWidget {
                   isSelected: isSelected,
                 )
               : _isEvent
-          ? _EventCard(
-              notification: notification,
-              onDelete: onDelete,
-              onMarkRead: onMarkRead,
-              onOpenEvent: onOpenEvent,
-              onTap: onTap,
-              isSelected: isSelected,
-            )
-          : _DefaultCard(
-              notification: notification,
-              onConfirm: onConfirm,
-              onNegate: onNegate,
-              onTap: onTap,
-              isSelected: isSelected,
-            ),
+                  ? _EventCard(
+                      notification: notification,
+                      onDelete: onDelete,
+                      onMarkRead: onMarkRead,
+                      onOpenEvent: onOpenEvent,
+                      onTap: onTap,
+                      isSelected: isSelected,
+                    )
+                  : _DefaultCard(
+                      notification: notification,
+                      onConfirm: onConfirm,
+                      onNegate: onNegate,
+                      onTap: onTap,
+                      isSelected: isSelected,
+                    ),
     );
   }
 
@@ -163,7 +161,8 @@ class _DefaultCard extends StatelessWidget {
         side: isSelected
             ? BorderSide(color: cs.primary.withValues(alpha: 0.45), width: 1.2)
             : isUnread
-                ? BorderSide(color: cs.primary.withValues(alpha: 0.20), width: 1)
+                ? BorderSide(
+                    color: cs.primary.withValues(alpha: 0.20), width: 1)
                 : BorderSide.none,
       ),
       child: InkWell(
@@ -281,8 +280,7 @@ class _ConcurrentEventCard extends StatelessWidget {
     final senderName = data.senderName;
     final isUnread = !notification.isRead;
     final effectiveGroupId = data.groupId ?? notification.groupId;
-    final canOpen =
-        data.eventId != null && effectiveGroupId.trim().isNotEmpty;
+    final canOpen = data.eventId != null && effectiveGroupId.trim().isNotEmpty;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
@@ -900,7 +898,9 @@ class _EventCard extends StatelessWidget {
                           // Quick actions
                           _ActionButton(
                             icon: Icons.open_in_new_rounded,
-                            label: isEs ? 'Abrir evento' : 'Open event',
+                            label: args.action == 'assigned'
+                                ? (isEs ? 'Abrir tarea' : 'Open task')
+                                : (isEs ? 'Abrir evento' : 'Open event'),
                             color: meta.color,
                             enabled: eventId != null,
                             onPressed: eventId != null && onOpenEvent != null

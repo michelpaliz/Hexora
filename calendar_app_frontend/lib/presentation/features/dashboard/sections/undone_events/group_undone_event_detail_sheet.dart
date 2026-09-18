@@ -79,17 +79,16 @@ class _PendingEventDetailContent extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InfoHeader(
-              title: liveEvent.title.isEmpty
-                  ? loc.untitledEvent
-                  : liveEvent.title,
+              title:
+                  liveEvent.title.isEmpty ? loc.untitledEvent : liveEvent.title,
               subtitle: subtitle,
               padding: EdgeInsets.zero,
             ),
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.person_outline,
-                  color: theme.colorScheme.primary),
+              leading:
+                  Icon(Icons.person_outline, color: theme.colorScheme.primary),
               title: Text(loc.createdByLabel),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,8 +108,8 @@ class _PendingEventDetailContent extends StatelessWidget {
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.place_outlined,
-                  color: theme.colorScheme.primary),
+              leading:
+                  Icon(Icons.place_outlined, color: theme.colorScheme.primary),
               title: Text(loc.details),
               subtitle: Text(
                 description,
@@ -121,7 +120,11 @@ class _PendingEventDetailContent extends StatelessWidget {
               _CompletionEvidenceSection(
                 event: liveEvent,
                 isUploading: isUploadingEvidence,
-                onAddPhotos: () => vm.addEvidencePhotos(context, liveEvent.id),
+                onAddPhotos: (photoType) => vm.addEvidencePhotos(
+                  context,
+                  liveEvent.id,
+                  photoType: photoType,
+                ),
                 fetchPhotoUrl: (blobName) =>
                     vm.evidencePhotoUrl(liveEvent.id, blobName),
               ),
@@ -194,7 +197,7 @@ class _CompletionEvidenceSection extends StatelessWidget {
 
   final Event event;
   final bool isUploading;
-  final VoidCallback onAddPhotos;
+  final ValueChanged<String> onAddPhotos;
   final Future<String> Function(String blobName) fetchPhotoUrl;
 
   @override
@@ -204,7 +207,13 @@ class _CompletionEvidenceSection extends StatelessWidget {
     final requirePhotos = event.completionRequirements.requirePhotos;
     final minPhotos = event.completionRequirements.minPhotos;
     final photos = event.completionPhotos;
-    final satisfied = !requirePhotos || photos.length >= minPhotos;
+    final requireBeforeAfter =
+        event.completionRequirements.requireBeforeAfterPhotos;
+    final hasBefore = photos.any((photo) => photo.photoType == 'before');
+    final hasAfter = photos.any((photo) => photo.photoType == 'after');
+    final satisfied = !requirePhotos ||
+        (photos.length >= minPhotos &&
+            (!requireBeforeAfter || (hasBefore && hasAfter)));
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -227,29 +236,55 @@ class _CompletionEvidenceSection extends StatelessWidget {
               Expanded(
                 child: Text(
                   requirePhotos
-                      ? '${photos.length}/$minPhotos photo${minPhotos == 1 ? '' : 's'} required'
+                      ? requireBeforeAfter
+                          ? 'Before: ${hasBefore ? 'done' : 'required'} · After: ${hasAfter ? 'done' : 'required'}'
+                          : '${photos.length}/$minPhotos photo${minPhotos == 1 ? '' : 's'} required'
                       : 'Photos (optional)',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: requirePhotos && !satisfied
-                        ? cs.error
-                        : cs.onSurface,
+                    color:
+                        requirePhotos && !satisfied ? cs.error : cs.onSurface,
                   ),
                 ),
               ),
-              TextButton.icon(
-                onPressed: isUploading ? null : onAddPhotos,
-                icon: isUploading
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.add_a_photo_outlined, size: 16),
-                label: Text(isUploading ? 'Uploading…' : 'Add photos'),
-              ),
+              if (!requireBeforeAfter)
+                TextButton.icon(
+                  onPressed: isUploading ? null : () => onAddPhotos('general'),
+                  icon: isUploading
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add_a_photo_outlined, size: 16),
+                  label: Text(isUploading ? 'Uploading…' : 'Add photos'),
+                ),
             ],
           ),
+          if (requireBeforeAfter) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: isUploading ? null : () => onAddPhotos('before'),
+                    icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                    label: Text(hasBefore ? 'Retake before' : 'Take before'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: isUploading || !hasBefore
+                        ? null
+                        : () => onAddPhotos('after'),
+                    icon: const Icon(Icons.camera_alt, size: 16),
+                    label: const Text('Take after'),
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (photos.isNotEmpty) ...[
             const SizedBox(height: 8),
             SizedBox(
@@ -260,8 +295,19 @@ class _CompletionEvidenceSection extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final photo = photos[index];
-                  return EvidencePhotoThumbnail(
-                    fetchUrl: () => fetchPhotoUrl(photo.blobName),
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: EvidencePhotoThumbnail(
+                          fetchUrl: () => fetchPhotoUrl(photo.blobName),
+                        ),
+                      ),
+                      if (photo.photoType != 'general')
+                        Text(
+                          photo.photoType == 'before' ? 'Before' : 'After',
+                          style: theme.textTheme.labelSmall,
+                        ),
+                    ],
                   );
                 },
               ),

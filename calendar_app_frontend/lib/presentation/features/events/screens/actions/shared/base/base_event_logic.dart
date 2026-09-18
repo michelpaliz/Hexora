@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:hexora/models/event/model/event.dart' show CompletionRequirements;
+import 'package:hexora/models/event/model/event.dart'
+    show CompletionRequirements;
 import 'package:hexora/models/recurrence_rule/recurrence_rule/legacy_recurrence_rule.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/features/events/utils/color_manager.dart';
@@ -71,6 +72,7 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
   /// OFF by default — the manager decides when photographic evidence is needed.
   bool _requirePhotos = false;
   int _minPhotos = 1;
+  bool _requireBeforeAfterPhotos = false;
 
   // ---------------- NEW: Event type & work-visit fields ----------------
   /// 'simple' | 'work_visit' (default)
@@ -207,6 +209,7 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
 
     _requirePhotos = false;
     _minPhotos = 1;
+    _requireBeforeAfterPhotos = false;
 
     recomputeValidity();
   }
@@ -303,17 +306,29 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
   // ---------------- Completion requirements ----------------
   bool get requirePhotos => _requirePhotos;
   int get minPhotos => _minPhotos;
+  bool get requireBeforeAfterPhotos => _requireBeforeAfterPhotos;
 
   CompletionRequirements get completionRequirements => CompletionRequirements(
         requirePhotos: _requirePhotos,
         minPhotos: _minPhotos,
+        requireBeforeAfterPhotos: _requireBeforeAfterPhotos,
       );
 
   void setRequirePhotos(bool value) {
     _requirePhotos = value;
     if (!value) _minPhotos = 1;
+    if (!value) _requireBeforeAfterPhotos = false;
     if (mounted) setState(() {});
     recomputeValidity();
+  }
+
+  void setRequireBeforeAfterPhotos(bool value) {
+    _requireBeforeAfterPhotos = value;
+    if (value) {
+      _requirePhotos = true;
+      if (_minPhotos < 2) _minPhotos = 2;
+    }
+    _safeRebuild();
   }
 
   void setMinPhotos(int value) {
@@ -325,6 +340,7 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
   void setCompletionRequirements(CompletionRequirements value) {
     _requirePhotos = value.requirePhotos;
     _minPhotos = value.minPhotos < 1 ? 1 : value.minPhotos;
+    _requireBeforeAfterPhotos = value.requireBeforeAfterPhotos;
     if (mounted) setState(() {});
     recomputeValidity();
   }

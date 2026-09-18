@@ -190,9 +190,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             : (_primaryServiceName ?? e.primaryServiceId!))
         : '';
     final ownerLabel = _ownerDisplayName ??
-        (_loadingOwner
-            ? '...'
-            : (e.ownerId.isNotEmpty ? e.ownerId : null));
+        (_loadingOwner ? '...' : (e.ownerId.isNotEmpty ? e.ownerId : null));
 
     final recText = e.recurrence_rule != null
         ? buildRecurrenceText(e.recurrence_rule, e.startDate, locale)
@@ -310,16 +308,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         ? '$ownerLabel  $_ownerUsername'
                         : ownerLabel,
                   ),
-                if (e.localization != null &&
-                    e.localization!.trim().isNotEmpty)
+                if (e.localization != null && e.localization!.trim().isNotEmpty)
                   _buildDetailRow(
                     context,
                     icon: Icons.location_on_outlined,
                     label: l.eventLocationHint,
                     value: e.localization!.trim(),
                   ),
-                if (e.description != null &&
-                    e.description!.trim().isNotEmpty)
+                if (e.description != null && e.description!.trim().isNotEmpty)
                   _buildDetailRow(
                     context,
                     icon: Icons.description_outlined,
@@ -396,8 +392,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: cs.secondaryContainer
-                                  .withValues(alpha: 0.4),
+                              color:
+                                  cs.secondaryContainer.withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -472,11 +468,39 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         itemBuilder: (context, index) {
                           final photo = e.completionPhotos[index];
                           final eventRepo = context.read<IEventRepository>();
-                          return EvidencePhotoThumbnail(
-                            fetchUrl: () => eventRepo.getEvidenceReadSas(
-                              e.id,
-                              blobName: photo.blobName,
-                            ),
+                          return Stack(
+                            children: [
+                              EvidencePhotoThumbnail(
+                                fetchUrl: () => eventRepo.getEvidenceReadSas(
+                                  e.id,
+                                  blobName: photo.blobName,
+                                ),
+                              ),
+                              if (photo.photoType != 'general')
+                                Positioned(
+                                  left: 3,
+                                  bottom: 3,
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black87,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4, vertical: 2),
+                                      child: Text(
+                                        photo.photoType == 'before'
+                                            ? 'Before'
+                                            : 'After',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           );
                         },
                       ),
@@ -508,16 +532,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             style: FilledButton.styleFrom(
                               backgroundColor: cs.primary,
                               foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
                           ),
                         ),
-                      if (widget.onEdit != null &&
-                          widget.onDuplicate != null)
+                      if (widget.onEdit != null && widget.onDuplicate != null)
                         const SizedBox(width: 10),
                       if (widget.onDuplicate != null)
                         Expanded(
@@ -534,10 +556,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ),
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                  color: cs.outlineVariant
-                                      .withValues(alpha: 0.5)),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                                  color:
+                                      cs.outlineVariant.withValues(alpha: 0.5)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -545,8 +566,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           ),
                         ),
                       if (widget.onDelete != null &&
-                          (widget.onEdit != null ||
-                              widget.onDuplicate != null))
+                          (widget.onEdit != null || widget.onDuplicate != null))
                         const SizedBox(width: 10),
                       if (widget.onDelete != null)
                         _DeleteButton(onDelete: widget.onDelete!),
@@ -685,8 +705,7 @@ class _DeleteButton extends StatelessWidget {
             color: cs.errorContainer.withValues(alpha: 0.35),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.delete_outline_rounded,
-              size: 24, color: cs.error),
+          child: Icon(Icons.delete_outline_rounded, size: 24, color: cs.error),
         ),
         title: Text(
           isSpanish ? 'Eliminar evento' : 'Delete event',
@@ -699,20 +718,17 @@ class _DeleteButton extends StatelessWidget {
               : 'Are you sure you want to delete this event? This cannot be undone.',
           textAlign: TextAlign.center,
           style: TextStyle(
-              fontSize: 13,
-              color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+              fontSize: 13, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
         ),
         actionsAlignment: MainAxisAlignment.center,
-        actionsPadding:
-            const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+        actionsPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             style: OutlinedButton.styleFrom(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: Text(isSpanish ? 'Cancelar' : 'Cancel'),
           ),
@@ -724,8 +740,7 @@ class _DeleteButton extends StatelessWidget {
               foregroundColor: cs.onError,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: Text(isSpanish ? 'Eliminar' : 'Delete'),
           ),

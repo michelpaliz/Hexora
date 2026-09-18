@@ -33,6 +33,7 @@ abstract class IEventRepository {
     String eventId, {
     required String blobName,
     String? mimeType,
+    String photoType = 'general',
   });
   Future<String> getEvidenceReadSas(String eventId, {required String blobName});
 

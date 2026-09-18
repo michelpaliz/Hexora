@@ -32,6 +32,7 @@ abstract class IEventApiClient {
     String eventId, {
     required String blobName,
     String? mimeType,
+    String photoType = 'general',
     required String token,
   });
   Future<String> getEvidenceReadSas(

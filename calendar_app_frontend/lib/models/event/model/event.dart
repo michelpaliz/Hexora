@@ -107,7 +107,10 @@ class Event {
   /// Whether "mark as finished" should stay locked pending more photo evidence.
   bool get needsMorePhotosToComplete =>
       completionRequirements.requirePhotos &&
-      completionPhotos.length < completionRequirements.minPhotos;
+      (completionPhotos.length < completionRequirements.minPhotos ||
+          (completionRequirements.requireBeforeAfterPhotos &&
+              (!completionPhotos.any((p) => p.photoType == 'before') ||
+                  !completionPhotos.any((p) => p.photoType == 'after'))));
 
   /// Adds an update record.
   void addUpdate(String userId) {
@@ -231,8 +234,7 @@ class Event {
 
         // NEW (completion evidence)
         'completionRequirements': completionRequirements.toMap(),
-        'completionPhotos':
-            completionPhotos.map((p) => p.toMap()).toList(),
+        'completionPhotos': completionPhotos.map((p) => p.toMap()).toList(),
         'completedByUserId': completedByUserId,
       };
 
@@ -609,29 +611,36 @@ class VisitService {
 class CompletionRequirements {
   final bool requirePhotos;
   final int minPhotos;
+  final bool requireBeforeAfterPhotos;
 
   const CompletionRequirements({
     required this.requirePhotos,
     required this.minPhotos,
+    this.requireBeforeAfterPhotos = false,
   });
 
   const CompletionRequirements.disabled()
       : requirePhotos = false,
-        minPhotos = 1;
+        minPhotos = 1,
+        requireBeforeAfterPhotos = false;
 
   CompletionRequirements copyWith({
     bool? requirePhotos,
     int? minPhotos,
+    bool? requireBeforeAfterPhotos,
   }) {
     return CompletionRequirements(
       requirePhotos: requirePhotos ?? this.requirePhotos,
       minPhotos: minPhotos ?? this.minPhotos,
+      requireBeforeAfterPhotos:
+          requireBeforeAfterPhotos ?? this.requireBeforeAfterPhotos,
     );
   }
 
   Map<String, dynamic> toMap() => {
         'requirePhotos': requirePhotos,
         'minPhotos': minPhotos,
+        'requireBeforeAfterPhotos': requireBeforeAfterPhotos,
       };
 
   factory CompletionRequirements.fromMap(Map<String, dynamic> map) {
@@ -640,6 +649,8 @@ class CompletionRequirements {
     return CompletionRequirements(
       requirePhotos: map['requirePhotos'] as bool? ?? false,
       minPhotos: (parsedMin ?? 1) < 1 ? 1 : (parsedMin ?? 1),
+      requireBeforeAfterPhotos:
+          map['requireBeforeAfterPhotos'] as bool? ?? false,
     );
   }
 
@@ -653,6 +664,7 @@ class CompletionPhoto {
   final String? id;
   final String blobName;
   final String? mimeType;
+  final String photoType;
   final String uploadedByUserId;
   final DateTime? uploadedAt;
 
@@ -660,6 +672,7 @@ class CompletionPhoto {
     this.id,
     required this.blobName,
     this.mimeType,
+    this.photoType = 'general',
     required this.uploadedByUserId,
     this.uploadedAt,
   });
@@ -668,6 +681,7 @@ class CompletionPhoto {
         'id': id,
         'blobName': blobName,
         'mimeType': mimeType,
+        'photoType': photoType,
         'uploadedByUserId': uploadedByUserId,
         'uploadedAt': uploadedAt?.toUtc().toIso8601String(),
       };
@@ -678,8 +692,10 @@ class CompletionPhoto {
       id: (map['id'] ?? map['_id'])?.toString(),
       blobName: map['blobName']?.toString() ?? '',
       mimeType: map['mimeType'] as String?,
+      photoType: map['photoType']?.toString() ?? 'general',
       uploadedByUserId: map['uploadedByUserId']?.toString() ?? '',
-      uploadedAt: rawUploadedAt != null ? DateTime.tryParse(rawUploadedAt) : null,
+      uploadedAt:
+          rawUploadedAt != null ? DateTime.tryParse(rawUploadedAt) : null,
     );
   }
 

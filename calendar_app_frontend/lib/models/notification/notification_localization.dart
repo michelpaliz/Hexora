@@ -44,6 +44,8 @@ extension NotificationLocalization on NotificationUser {
         return loc.notificationEventReminderTitle;
       case 'notification.event.created.title':
         return loc.notificationEventCreatedTitle;
+      case 'notification.event.assigned.title':
+        return isEs ? 'Tarea asignada' : 'Task assigned to you';
       case 'notification.event.updated.title':
         return loc.notificationEventUpdatedTitle;
       case 'notification.event.deleted.title':
@@ -55,7 +57,9 @@ extension NotificationLocalization on NotificationUser {
       case 'notification.eventReopened.title':
         return loc.notificationEventReopenedTitle;
       case 'notification.event.concurrentCreated.title':
-        return isEs ? 'Conflicto de evento detectado' : 'Concurrent event detected';
+        return isEs
+            ? 'Conflicto de evento detectado'
+            : 'Concurrent event detected';
       case 'notification.invoice.issued.title':
         return isEs ? 'Factura emitida' : 'Invoice issued';
       case 'notification.receipt.issued.title':
@@ -134,6 +138,23 @@ extension NotificationLocalization on NotificationUser {
         return loc.notificationEventReminderMessage(args['eventTitle'] ?? '');
       case 'notification.event.created.message':
         return loc.notificationEventCreatedMessage(args['eventTitle'] ?? '');
+      case 'notification.event.assigned.message':
+        final title = args['eventTitle']?.toString() ?? '';
+        final sender = args['senderName']?.toString() ?? '';
+        final requiresBeforeAfter = args['requiresBeforeAfterPhotos'] == true;
+        final requiresPhotos = args['requiresPhotos'] == true;
+        final evidence = requiresBeforeAfter
+            ? (isEs
+                ? ' Se requieren fotos de antes y después.'
+                : ' Before and after photos are required.')
+            : requiresPhotos
+                ? (isEs
+                    ? ' Se requiere evidencia fotográfica.'
+                    : ' Photo evidence is required.')
+                : '';
+        return isEs
+            ? '${sender.isEmpty ? 'Alguien' : sender} te asignó "$title".$evidence'
+            : '${sender.isEmpty ? 'Someone' : sender} assigned you "$title".$evidence';
       case 'notification.event.updated.message':
         return loc.notificationEventUpdatedMessage(args['eventTitle'] ?? '');
       case 'notification.event.deleted.message':
@@ -227,7 +248,8 @@ extension NotificationLocalization on NotificationUser {
       return loc.notificationRecurringDraftInvoiceCreatedMessage(
         clientName,
         recurrenceName,
-        _formatNotificationCurrency(amount, currency: currency, locale: loc.localeName),
+        _formatNotificationCurrency(amount,
+            currency: currency, locale: loc.localeName),
       );
     }
     if (clientName != null && recurrenceName != null) {
@@ -250,14 +272,12 @@ extension NotificationLocalization on NotificationUser {
       return null;
     }
 
-    final count =
-        _intArg(args, 'count') ??
+    final count = _intArg(args, 'count') ??
         _intArg(args, 'expenseCount') ??
         _intArg(args, 'expensesCount') ??
         _intArg(args, 'suspectCount') ??
         _intArg(args, 'detectedCount');
-    final amount =
-        _doubleArg(args, 'amount') ??
+    final amount = _doubleArg(args, 'amount') ??
         _doubleArg(args, 'totalAmount') ??
         _doubleArg(args, 'amountTotal') ??
         _doubleArg(args, 'total');

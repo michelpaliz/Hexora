@@ -222,6 +222,7 @@ class EventRepository implements IEventRepository {
     String eventId, {
     required String blobName,
     String? mimeType,
+    String photoType = 'general',
   }) {
     return _queue('__evidence:$eventId', () async {
       final token = await _token();
@@ -229,6 +230,7 @@ class EventRepository implements IEventRepository {
         eventId,
         blobName: blobName,
         mimeType: mimeType,
+        photoType: photoType,
         token: token,
       );
       final cid = _gidOf(updated);
@@ -248,7 +250,8 @@ class EventRepository implements IEventRepository {
   }
 
   @override
-  Future<String> getEvidenceReadSas(String eventId, {required String blobName}) async {
+  Future<String> getEvidenceReadSas(String eventId,
+      {required String blobName}) async {
     final token = await _token();
     return _api.getEvidenceReadSas(eventId, blobName: blobName, token: token);
   }

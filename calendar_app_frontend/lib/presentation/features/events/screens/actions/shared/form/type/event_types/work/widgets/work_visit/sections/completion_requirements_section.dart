@@ -10,8 +10,10 @@ class CompletionRequirementsSection extends StatelessWidget {
   final SectionCardBuilder cardBuilder;
   final bool requirePhotos;
   final int minPhotos;
+  final bool requireBeforeAfterPhotos;
   final ValueChanged<bool> onRequirePhotosChanged;
   final ValueChanged<int> onMinPhotosChanged;
+  final ValueChanged<bool> onRequireBeforeAfterPhotosChanged;
 
   const CompletionRequirementsSection({
     super.key,
@@ -19,8 +21,10 @@ class CompletionRequirementsSection extends StatelessWidget {
     required this.cardBuilder,
     required this.requirePhotos,
     required this.minPhotos,
+    required this.requireBeforeAfterPhotos,
     required this.onRequirePhotosChanged,
     required this.onMinPhotosChanged,
+    required this.onRequireBeforeAfterPhotosChanged,
   });
 
   @override
@@ -69,6 +73,15 @@ class CompletionRequirementsSection extends StatelessWidget {
                   onChanged: (v) => onMinPhotosChanged(v ?? 1),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Require before and after photos'),
+              subtitle: const Text(
+                  'The assigned user must upload Before first, then After.'),
+              value: requireBeforeAfterPhotos,
+              onChanged: onRequireBeforeAfterPhotosChanged,
             ),
           ],
         ],

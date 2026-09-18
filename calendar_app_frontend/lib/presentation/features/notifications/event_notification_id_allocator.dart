@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 enum EventNotificationKind {
   reminder,
   start,
+  assignment,
 }
 
 /// Assigns stable local-notification IDs to event notification kinds.

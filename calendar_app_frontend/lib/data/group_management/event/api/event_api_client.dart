@@ -210,6 +210,7 @@ class EventApiClient implements IEventApiClient {
     String eventId, {
     required String blobName,
     String? mimeType,
+    String photoType = 'general',
     required String token,
   }) async {
     final res = await AuthenticatedHttpClient.post(
@@ -218,6 +219,7 @@ class EventApiClient implements IEventApiClient {
       body: jsonEncode({
         'blobName': blobName,
         if (mimeType != null) 'mimeType': mimeType,
+        'photoType': photoType,
       }),
       client: _client,
     );

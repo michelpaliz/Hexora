@@ -207,15 +207,21 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
           // ── FINALIZACIÓN ─────────────────────────────────────────────────
           _FormSectionLabel(isSpanish ? 'Finalización' : 'Completion'),
           CompletionRequirementsSection(
-            title: isSpanish ? 'Requisitos de finalización' : 'Completion requirements',
+            title: isSpanish
+                ? 'Requisitos de finalización'
+                : 'Completion requirements',
             cardBuilder: SectionCard.new,
             requirePhotos: widget.logic.requirePhotos,
             minPhotos: widget.logic.minPhotos,
+            requireBeforeAfterPhotos: widget.logic.requireBeforeAfterPhotos,
             onRequirePhotosChanged: (v) {
               setState(() => widget.logic.setRequirePhotos(v));
             },
             onMinPhotosChanged: (v) {
               setState(() => widget.logic.setMinPhotos(v));
+            },
+            onRequireBeforeAfterPhotosChanged: (v) {
+              setState(() => widget.logic.setRequireBeforeAfterPhotos(v));
             },
           ),
 
@@ -287,11 +293,9 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             valueListenable: widget.logic.canSubmit,
             builder: (context, canSubmit, _) {
               final cs = Theme.of(context).colorScheme;
-              final label =
-                  widget.isEditing ? loc.save : loc.addEvent;
-              final icon = widget.isEditing
-                  ? Icons.check_rounded
-                  : Icons.add_rounded;
+              final label = widget.isEditing ? loc.save : loc.addEvent;
+              final icon =
+                  widget.isEditing ? Icons.check_rounded : Icons.add_rounded;
 
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),

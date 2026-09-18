@@ -46,8 +46,8 @@ Future<void> setupLocalNotifications() async {
 
 Future<void> requestLocalNotificationPermissions() async {
   // Android (Android 13+ runtime notifications permission)
-  final androidPlugin = flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
+  final androidPlugin =
+      flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
   await androidPlugin?.requestNotificationsPermission();
 
@@ -100,7 +100,8 @@ Future<ReminderScheduleMode> scheduleLocalNotification({
         presentBadge: true,
         presentSound: true,
       ),
-      macOS: DarwinNotificationDetails( // 👈 Add macOS details
+      macOS: DarwinNotificationDetails(
+        // 👈 Add macOS details
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
@@ -113,9 +114,43 @@ Future<ReminderScheduleMode> scheduleLocalNotification({
   return scheduleMode;
 }
 
+Future<void> showLocalEventNotification({
+  required int id,
+  required String title,
+  required String body,
+  required String eventId,
+}) async {
+  await flutterLocalNotificationsPlugin.show(
+    id,
+    title,
+    body,
+    const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'event_assignments',
+        'Event Assignments',
+        channelDescription:
+            'Notifications for tasks and events assigned to you',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+      macOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    ),
+    payload: eventId,
+  );
+}
+
 Future<ReminderScheduleMode> _resolveReminderScheduleMode() async {
-  final androidPlugin = flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
+  final androidPlugin =
+      flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
   if (androidPlugin == null) return ReminderScheduleMode.exact;
 

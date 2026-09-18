@@ -130,6 +130,21 @@ void initializeNotificationSocket(
     if (notification == null) return;
     if (!_isForActiveUser(notification)) return;
     await _activeNotificationDomain?.addInboundNotification(notification);
+    if (notification.args['action'] == 'assigned') {
+      final eventId = notification.args['eventId']?.toString() ?? '';
+      if (eventId.isNotEmpty) {
+        final notificationId = await eventNotificationIdAllocator.idFor(
+          eventId: eventId,
+          kind: EventNotificationKind.assignment,
+        );
+        await showLocalEventNotification(
+          id: notificationId,
+          title: notification.fallbackTitle,
+          body: notification.fallbackMessage,
+          eventId: eventId,
+        );
+      }
+    }
   });
 
   socket.on('event:reminder', (data) async {
