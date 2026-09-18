@@ -9,7 +9,7 @@
             "cwd": "${workspaceFolder}",
             "program": "lib/main.dart",
             "flutterMode": "debug",
-            "emulatorId": "Medium_Phone_API_36.0"
+            "deviceId": "emulator-5554"
         },
         {
             "name": "calendar_app_frontend (iPhone)",

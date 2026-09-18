@@ -94,226 +94,241 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
         _query.isNotEmpty ||
         archivedChats.any((chat) => chat.id == widget.selectedChatId);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Search + refresh row
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 38,
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (v) => setState(() => _query = v),
-                  decoration: InputDecoration(
-                    hintText: l.telegramSearchChats,
-                    hintStyle: TextStyle(
-                      color: cs.onSurface.withValues(alpha: 0.4),
-                      fontSize: 13,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      size: 18,
-                      color: cs.onSurface.withValues(alpha: 0.4),
-                    ),
-                    suffixIcon: _query.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 16),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _query = '');
-                            },
-                            padding: EdgeInsets.zero,
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: cs.onSurface.withValues(alpha: 0.05),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(
-                        color: _kTelegramBlue.withValues(alpha: 0.45),
-                        width: 1.4,
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Search + refresh row
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (v) => setState(() => _query = v),
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: l.telegramSearchChats,
+                      hintStyle: TextStyle(
+                        color: cs.onSurface.withValues(alpha: 0.4),
+                        fontSize: 13,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        size: 18,
+                        color: cs.onSurface.withValues(alpha: 0.4),
+                      ),
+                      suffixIcon: _query.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _query = '');
+                              },
+                              padding: EdgeInsets.zero,
+                              splashRadius: 18,
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: cs.onSurface.withValues(alpha: 0.05),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: _kTelegramBlue.withValues(alpha: 0.45),
+                          width: 1.4,
+                        ),
                       ),
                     ),
-                  ),
-                  style: const TextStyle(fontSize: 13),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 36,
-              height: 36,
-              child: IconButton.outlined(
-                onPressed: widget.isLoading ? null : widget.onRefresh,
-                icon: widget.isLoading
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: cs.primary,
-                        ),
-                      )
-                    : const Icon(Icons.refresh_rounded, size: 18),
-                style: IconButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    style: const TextStyle(fontSize: 13),
                   ),
                 ),
-                padding: EdgeInsets.zero,
               ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-
-        // Filter chips
-        if (widget.chats.isNotEmpty)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _FilterChip(
-                  label: l.telegramFilterAll,
-                  count: _countForMain(_ChatFilter.all),
-                  selected: _filter == _ChatFilter.all,
-                  onTap: () => setState(() => _filter = _ChatFilter.all),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: IconButton.outlined(
+                  onPressed: widget.isLoading ? null : widget.onRefresh,
+                  icon: widget.isLoading
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: cs.primary,
+                          ),
+                        )
+                      : const Icon(Icons.refresh_rounded, size: 18),
+                  style: IconButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    minimumSize: const Size(40, 40),
+                  ),
+                  padding: EdgeInsets.zero,
                 ),
-                const SizedBox(width: 6),
-                _FilterChip(
-                  label: l.telegramFilterGroups,
-                  count: _countForMain(_ChatFilter.groups),
-                  selected: _filter == _ChatFilter.groups,
-                  onTap: () => setState(() => _filter = _ChatFilter.groups),
-                ),
-                const SizedBox(width: 6),
-                _FilterChip(
-                  label: l.telegramFilterChannels,
-                  count: _countForMain(_ChatFilter.channels),
-                  selected: _filter == _ChatFilter.channels,
-                  onTap: () => setState(() => _filter = _ChatFilter.channels),
-                ),
-                const SizedBox(width: 6),
-                _FilterChip(
-                  label: l.telegramFilterPrivate,
-                  count: _countForMain(_ChatFilter.private),
-                  selected: _filter == _ChatFilter.private,
-                  onTap: () => setState(() => _filter = _ChatFilter.private),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
 
-        const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-        // Error state
-        if (widget.error != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: cs.errorContainer.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(10),
-              ),
+          // Filter chips
+          if (widget.chats.isNotEmpty)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(bottom: 2),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline_rounded, color: cs.error, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.error ?? l.telegramChatsLoadError,
-                      style:
-                          TextStyle(color: cs.onErrorContainer, fontSize: 13),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  _FilterChip(
+                    label: l.telegramFilterAll,
+                    count: _countForMain(_ChatFilter.all),
+                    selected: _filter == _ChatFilter.all,
+                    onTap: () => setState(() => _filter = _ChatFilter.all),
+                  ),
+                  const SizedBox(width: 6),
+                  _FilterChip(
+                    label: l.telegramFilterGroups,
+                    count: _countForMain(_ChatFilter.groups),
+                    selected: _filter == _ChatFilter.groups,
+                    onTap: () => setState(() => _filter = _ChatFilter.groups),
+                  ),
+                  const SizedBox(width: 6),
+                  _FilterChip(
+                    label: l.telegramFilterChannels,
+                    count: _countForMain(_ChatFilter.channels),
+                    selected: _filter == _ChatFilter.channels,
+                    onTap: () => setState(() => _filter = _ChatFilter.channels),
+                  ),
+                  const SizedBox(width: 6),
+                  _FilterChip(
+                    label: l.telegramFilterPrivate,
+                    count: _countForMain(_ChatFilter.private),
+                    selected: _filter == _ChatFilter.private,
+                    onTap: () => setState(() => _filter = _ChatFilter.private),
                   ),
                 ],
               ),
             ),
-          ),
 
-        // Empty / no-results state
-        if (!hasAnyChats && !widget.isLoading)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _query.isNotEmpty
-                        ? Icons.search_off_rounded
-                        : Icons.chat_bubble_outline_rounded,
-                    size: 40,
-                    color: cs.onSurface.withValues(alpha: 0.25),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _query.isNotEmpty
-                        ? l.telegramNoChatsMatch(_query)
-                        : l.telegramNoChatsAvailable,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.45),
+          const SizedBox(height: 12),
+
+          // Error state
+          if (widget.error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: cs.errorContainer.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        color: cs.error, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.error ?? l.telegramChatsLoadError,
+                        style: TextStyle(
+                          color: cs.onErrorContainer,
+                          fontSize: 13,
                         ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (_query.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() => _query = '');
-                      },
-                      child: Text(l.telegramClearSearch),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Empty / no-results state
+          if (!hasAnyChats && !widget.isLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _query.isNotEmpty
+                          ? Icons.search_off_rounded
+                          : Icons.chat_bubble_outline_rounded,
+                      size: 40,
+                      color: cs.onSurface.withValues(alpha: 0.25),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _query.isNotEmpty
+                          ? l.telegramNoChatsMatch(_query)
+                          : l.telegramNoChatsAvailable,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurface.withValues(alpha: 0.45),
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (_query.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                        child: Text(l.telegramClearSearch),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: 8),
+                children: [
+                  if (showArchivedSection)
+                    _ChatSectionHeader(
+                      title: l.telegramMainChatsSection,
+                      count: mainChats.length,
+                    ),
+                  if (mainChats.isEmpty && archivedChats.isNotEmpty)
+                    _SectionInfoBanner(
+                      message: l.telegramNoMainChatsInfo,
+                    ),
+                  ..._buildChatRows(mainChats),
+                  if (showArchivedSection) ...[
+                    const SizedBox(height: 12),
+                    _ArchiveSectionHeader(
+                      label: l.telegramArchivedChats,
+                      count: archivedChats.length,
+                      expanded: archivedExpanded,
+                      onTap: () => setState(
+                        () => _archivedExpanded = !_archivedExpanded,
+                      ),
+                    ),
+                    if (archivedExpanded) ...[
+                      const SizedBox(height: 6),
+                      ..._buildChatRows(archivedChats),
+                    ],
                   ],
                 ],
               ),
             ),
-          )
-        else
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                if (showArchivedSection)
-                  _ChatSectionHeader(
-                    title: l.telegramMainChatsSection,
-                    count: mainChats.length,
-                  ),
-                if (mainChats.isEmpty && archivedChats.isNotEmpty)
-                  _SectionInfoBanner(
-                    message: l.telegramNoMainChatsInfo,
-                  ),
-                ..._buildChatRows(mainChats),
-                if (showArchivedSection) ...[
-                  const SizedBox(height: 12),
-                  _ArchiveSectionHeader(
-                    label: l.telegramArchivedChats,
-                    count: archivedChats.length,
-                    expanded: archivedExpanded,
-                    onTap: () => setState(
-                      () => _archivedExpanded = !_archivedExpanded,
-                    ),
-                  ),
-                  if (archivedExpanded) ...[
-                    const SizedBox(height: 6),
-                    ..._buildChatRows(archivedChats),
-                  ],
-                ],
-              ],
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
