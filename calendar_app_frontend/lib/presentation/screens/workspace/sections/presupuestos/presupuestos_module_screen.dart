@@ -249,7 +249,7 @@ class _PresupuestosMenu extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
           child: Container(
-            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+            padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
               borderRadius: BorderRadius.circular(18),
@@ -260,42 +260,28 @@ class _PresupuestosMenu extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
                     color: cs.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(11),
                   ),
                   child: Icon(
                     Icons.request_quote_outlined,
-                    size: 18,
+                    size: 17,
                     color: cs.primary,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _budgetMenuTitle(context),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: cs.onSurface,
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                      Text(
-                        _budgetMenuSubtitle(context),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ],
+                  child: Text(
+                    _budgetMenuTitle(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                 ),
                 Tooltip(
@@ -323,7 +309,7 @@ class _PresupuestosMenu extends StatelessWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
             child: GroupInvoicesNavSection(
-              title: _documentMenuLabel(context),
+              title: _documentsSectionLabel(context),
               icon: Icons.description_outlined,
               expanded: documentMenuExpanded,
               onToggle: onToggleDocumentMenu,
@@ -566,12 +552,12 @@ class _PresupuestoMobileMenuChip extends StatelessWidget {
   }
 }
 
-String _documentMenuLabel(BuildContext context) {
+String _documentsSectionLabel(BuildContext context) {
   final isEs = Localizations.localeOf(context)
       .languageCode
       .toLowerCase()
       .startsWith('es');
-  return isEs ? 'Propuestas' : 'Proposals';
+  return isEs ? 'Documentos' : 'Documents';
 }
 
 String _budgetMenuTitle(BuildContext context) {
@@ -580,14 +566,6 @@ String _budgetMenuTitle(BuildContext context) {
       .toLowerCase()
       .startsWith('es');
   return isEs ? 'Propuestas' : 'Proposals';
-}
-
-String _budgetMenuSubtitle(BuildContext context) {
-  final isEs = Localizations.localeOf(context)
-      .languageCode
-      .toLowerCase()
-      .startsWith('es');
-  return isEs ? 'Documentos de propuesta' : 'Proposal documents';
 }
 
 String _collapseMenuLabel(BuildContext context) {

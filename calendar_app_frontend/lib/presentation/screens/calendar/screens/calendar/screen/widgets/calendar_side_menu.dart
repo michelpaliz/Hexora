@@ -86,7 +86,6 @@ class CalendarSideMenu extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
             child: _CalendarModuleHeader(
               title: isEs ? 'Calendario' : 'Calendar',
-              subtitle: isEs ? 'Menu de agenda' : 'Schedule menu',
               onToggleCollapse:
                   showCollapseToggle ? onToggleCollapse : null,
             ),
@@ -98,7 +97,7 @@ class CalendarSideMenu extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   GroupInvoicesNavSection(
-                    title: isEs ? 'Calendario' : 'Calendar',
+                    title: isEs ? 'Vistas' : 'Views',
                     icon: Icons.calendar_month_outlined,
                     expanded: viewsExpanded,
                     onToggle: onToggleViewsExpanded,
@@ -254,12 +253,10 @@ class CalendarSideMenu extends StatelessWidget {
 class _CalendarModuleHeader extends StatelessWidget {
   const _CalendarModuleHeader({
     required this.title,
-    required this.subtitle,
     required this.onToggleCollapse,
   });
 
   final String title;
-  final String subtitle;
   final VoidCallback? onToggleCollapse;
 
   @override
@@ -267,7 +264,7 @@ class _CalendarModuleHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
         borderRadius: BorderRadius.circular(18),
@@ -276,42 +273,28 @@ class _CalendarModuleHeader extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               color: cs.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(11),
             ),
             child: Icon(
               Icons.calendar_month_outlined,
-              size: 18,
+              size: 17,
               color: cs.primary,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ],
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w900,
+                  ),
             ),
           ),
           if (onToggleCollapse != null)

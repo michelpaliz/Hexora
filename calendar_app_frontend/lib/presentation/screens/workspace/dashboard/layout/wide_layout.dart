@@ -256,12 +256,6 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
 
     final sectionItems = [
       (
-        icon: Icons.view_agenda_outlined,
-        label: l.agenda,
-        section: Sections.agenda,
-        adminOnly: false,
-      ),
-      (
         icon: Icons.calendar_month_rounded,
         label: l.calendar,
         section: Sections.calendar,

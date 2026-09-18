@@ -216,7 +216,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
             child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+              padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
               decoration: BoxDecoration(
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
                 borderRadius: BorderRadius.circular(18),
@@ -227,44 +227,28 @@ class GroupInvoicesSideMenu extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: 30,
+                    height: 30,
                     decoration: BoxDecoration(
                       color: cs.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(11),
                     ),
                     child: Icon(
                       Icons.receipt_long_outlined,
-                      size: 18,
+                      size: 17,
                       color: cs.primary,
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Ingresos',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    color: cs.onSurface,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                        ),
-                        Text(
-                          'Menu de datos',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                        ),
-                      ],
+                    child: Text(
+                      'Ingresos',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w900,
+                          ),
                     ),
                   ),
                   Tooltip(
@@ -305,7 +289,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                       children: [
                         GroupInvoicesSubMenuItem(
                           icon: Icons.people_outline,
-                          label: 'Clientes',
+                          label: isEs ? 'Todos' : 'All',
                           selected: selectedMenu == 'clients',
                           onPressed: () => onMenuChanged('clients'),
                         ),
@@ -443,7 +427,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                         children: [
                           GroupInvoicesSubMenuItem(
                             icon: Icons.people_outline,
-                            label: 'Clientes',
+                            label: isEs ? 'Todos' : 'All',
                             selected: selectedMenu == 'clients',
                             onPressed: () => onMenuChanged('clients'),
                           ),

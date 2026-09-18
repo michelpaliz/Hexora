@@ -54,12 +54,10 @@ String _formatMoney(
 class _WorkersNavHeader extends StatelessWidget {
   const _WorkersNavHeader({
     required this.title,
-    required this.subtitle,
     required this.onCollapse,
   });
 
   final String title;
-  final String subtitle;
   final VoidCallback onCollapse;
 
   @override
@@ -70,7 +68,7 @@ class _WorkersNavHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+        padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
         decoration: BoxDecoration(
           color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
           borderRadius: BorderRadius.circular(18),
@@ -81,42 +79,28 @@ class _WorkersNavHeader extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 34,
-              height: 34,
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
                 color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(11),
               ),
               child: Icon(
                 Icons.group_outlined,
-                size: 18,
+                size: 17,
                 color: cs.primary,
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelLarge?.copyWith(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.labelLarge?.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
             Tooltip(
@@ -766,7 +750,6 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
         children: [
           _WorkersNavHeader(
             title: l.workersLabel,
-            subtitle: isEs ? 'Menu de datos' : 'Data menu',
             onCollapse: () => setState(() => _sideMenuCollapsed = true),
           ),
           Expanded(
