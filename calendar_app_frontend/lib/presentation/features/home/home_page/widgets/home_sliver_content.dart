@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/models/user/user.dart';
-import 'package:hexora/models/weather/day_summary.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/features/home/widgets/home_section_nav.dart';
 import 'package:hexora/presentation/features/home/widgets/see_all_groups_button.dart';
 import 'package:hexora/presentation/features/calendar/screens/group/create_edit/models/create_group_data.dart';
 import 'package:hexora/presentation/features/calendar/screens/group/show_groups/group_screen/group_list_section.dart';
-import 'package:hexora/presentation/features/calendar/screens/group/show_groups/motivational_phrase/motivation_banner.dart';
+import 'package:hexora/presentation/features/calendar/screens/group/show_groups/motivational_phrase/quotes/quotes_en.dart';
+import 'package:hexora/presentation/features/calendar/screens/group/show_groups/motivational_phrase/quotes/quotes_es.dart';
 import 'package:hexora/presentation/features/shared/widgets/user_profile_popup.dart';
 import 'package:hexora/theme/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
-import '../../widgets/greeting_card.dart';
 import '../../widgets/section_header.dart';
 
 class HomeSliverContent extends StatelessWidget {
@@ -89,106 +88,17 @@ class HomeSliverContent extends StatelessWidget {
               ),
             ),
           ),
-        // ── Wide: hero greeting + weather & quote side by side ────────
-        if (isWide) ...[
-          SliverToBoxAdapter(
-            key: summaryKey,
-            child: _HeroGreeting(user: user),
+        SliverToBoxAdapter(
+          key: summaryKey,
+          child: _HeroGreeting(user: user),
+        ),
+        SliverToBoxAdapter(
+          key: phraseKey,
+          child: const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: _DailyPhraseCard(),
           ),
-          SliverToBoxAdapter(
-            key: phraseKey,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      flex: 55,
-                      // ClipRect prevents the 1px rounding overflow from showing
-                      child: ClipRect(
-                        child: GreetingCard(
-                          user: user,
-                          showGreeting: false,
-                          daySummary: mapToDaySummary(
-                            weatherCode: 1, // TODO: replace with real weather code
-                            precip: 0,
-                            tempMax: 26,
-                            tempMin: 17,
-                          ),
-                          tempMax: 26,
-                          tempMin: 17,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 45,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: const MotivationBanner(
-                                  dailyRotate: true,
-                                  height: null,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 14,
-                              left: 18,
-                              child: _QuoteLabel(
-                                isEs: Localizations.localeOf(context)
-                                        .languageCode ==
-                                    'es',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ]
-        // ── Narrow: stacked weather then quote ────────────────────────
-        else ...[
-          SliverToBoxAdapter(
-            key: summaryKey,
-            child: GreetingCard(
-              user: user,
-              daySummary: mapToDaySummary(
-                weatherCode: 1, // TODO: replace with real weather code
-                precip: 0,
-                tempMax: 26,
-                tempMin: 17,
-              ),
-              tempMax: 26,
-              tempMin: 17,
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 10)),
-          SliverToBoxAdapter(
-            key: phraseKey,
-            child: SectionHeader(
-              title: loc.motivationSectionTitle,
-              markerHeight: 24,
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 2)),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: MotivationBanner(dailyRotate: true, height: 180),
-            ),
-          ),
-        ],
+        ),
         const SliverToBoxAdapter(child: SizedBox(height: 18)),
         SliverToBoxAdapter(
           key: groupsKey,
@@ -289,8 +199,7 @@ class _HeroGreeting extends StatelessWidget {
     final name = displayName.isEmpty
         ? 'Usuario'
         : displayName[0].toUpperCase() + displayName.substring(1);
-    final initial =
-        displayName.isEmpty ? 'U' : displayName[0].toUpperCase();
+    final initial = displayName.isEmpty ? 'U' : displayName[0].toUpperCase();
     final hasPhoto = user.photoUrl != null && user.photoUrl!.isNotEmpty;
 
     final now = DateTime.now();
@@ -313,8 +222,7 @@ class _HeroGreeting extends StatelessWidget {
                       barrierColor: Colors.black.withValues(alpha: 0.72),
                       builder: (_) => UserAvatarViewerDialog(user: user),
                     )
-                : () =>
-                    Navigator.pushNamed(context, AppRoutes.profileDetails),
+                : () => Navigator.pushNamed(context, AppRoutes.profileDetails),
             child: Container(
               width: 54,
               height: 54,
@@ -365,8 +273,7 @@ class _HeroGreeting extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Icon(greetingIcon,
-                        size: 18,
-                        color: cs.primary.withValues(alpha: 0.85)),
+                        size: 18, color: cs.primary.withValues(alpha: 0.85)),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
@@ -411,8 +318,7 @@ class _HeroGreeting extends StatelessWidget {
             icon: const Icon(Icons.settings_outlined),
             tooltip: loc.settings,
             color: cs.onSurfaceVariant,
-            onPressed: () =>
-                Navigator.pushNamed(context, AppRoutes.settings),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
           ),
         ],
       ),
@@ -420,35 +326,32 @@ class _HeroGreeting extends StatelessWidget {
   }
 }
 
-// ── "Quote of the day" frosted label overlaid on the motivation banner ─────────
-
-class _QuoteLabel extends StatelessWidget {
-  const _QuoteLabel({required this.isEs});
-
-  final bool isEs;
+class _DailyPhraseCard extends StatelessWidget {
+  const _DailyPhraseCard();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
-      ),
+    final now = DateTime.now();
+    final dayKey = now.year * 10000 + now.month * 100 + now.day;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final quotes = isEs ? quotesEs : quotesEn;
+    final (quote, author) = quotes[dayKey % quotes.length];
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.format_quote_rounded,
-              size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(
-            isEs ? 'Frase del día' : 'Quote of the day',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-              letterSpacing: 0.2,
+          Icon(Icons.format_quote_rounded, size: 18, color: cs.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '“$quote” — $author',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
             ),
           ),
         ],

@@ -21,6 +21,8 @@ class WeatherForecastDayDto {
   final double rainProbability;
   final double windSpeed;
   final String skyDescription;
+  final DateTime? sunrise;
+  final DateTime? sunset;
 
   const WeatherForecastDayDto({
     required this.date,
@@ -29,6 +31,8 @@ class WeatherForecastDayDto {
     required this.rainProbability,
     required this.windSpeed,
     required this.skyDescription,
+    this.sunrise,
+    this.sunset,
   });
 
   factory WeatherForecastDayDto.fromJson(Map<String, dynamic> json) {
@@ -50,6 +54,8 @@ class WeatherForecastDayDto {
       rainProbability: asDouble(json['rainProbability']),
       windSpeed: asDouble(json['windSpeed']),
       skyDescription: (json['skyDescription']?.toString() ?? '').trim(),
+      sunrise: DateTime.tryParse(json['sunrise']?.toString() ?? ''),
+      sunset: DateTime.tryParse(json['sunset']?.toString() ?? ''),
     );
   }
 }
@@ -57,10 +63,14 @@ class WeatherForecastDayDto {
 class WeatherForecastResponseDto {
   final String location;
   final List<WeatherForecastDayDto> forecast;
+  final String? timezone;
+  final bool isDay;
 
   const WeatherForecastResponseDto({
     required this.location,
     required this.forecast,
+    this.timezone,
+    required this.isDay,
   });
 
   factory WeatherForecastResponseDto.fromJson(Map<String, dynamic> json) {
@@ -80,6 +90,8 @@ class WeatherForecastResponseDto {
     return WeatherForecastResponseDto(
       location: (json['location']?.toString() ?? '').trim(),
       forecast: days,
+      timezone: json['timezone']?.toString(),
+      isDay: json['isDay'] as bool? ?? true,
     );
   }
 }

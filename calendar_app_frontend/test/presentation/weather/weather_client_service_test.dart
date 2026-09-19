@@ -19,6 +19,31 @@ void main() {
     });
   });
 
+  test('parses location daylight, sunrise, and sunset metadata', () {
+    final response = WeatherForecastResponseDto.fromJson({
+      'location': 'Tokyo, Japan',
+      'timezone': 'Asia/Tokyo',
+      'isDay': false,
+      'forecast': [
+        {
+          'date': '2030-01-01',
+          'minTemp': 4,
+          'maxTemp': 12,
+          'rainProbability': 0,
+          'windSpeed': 5,
+          'skyDescription': 'Clear sky',
+          'sunrise': '2030-01-01T06:50',
+          'sunset': '2030-01-01T16:40',
+        },
+      ],
+    });
+
+    expect(response.timezone, 'Asia/Tokyo');
+    expect(response.isDay, isFalse);
+    expect(response.forecast.single.sunrise, DateTime(2030, 1, 1, 6, 50));
+    expect(response.forecast.single.sunset, DateTime(2030, 1, 1, 16, 40));
+  });
+
   test(
     'WeatherService caches forecasts separately by normalized location',
     () async {

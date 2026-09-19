@@ -9,6 +9,7 @@ import 'package:hexora/presentation/features/dashboard/sections/members/presenta
 import 'package:hexora/presentation/features/dashboard/sections/role_info/profile_role_card.dart';
 import 'package:hexora/presentation/features/dashboard/sections/undone_events/group_undone_events_section.dart';
 import 'package:hexora/presentation/features/dashboard/sections/upcoming_events/group_upcoming_events.dart';
+import 'package:hexora/presentation/features/dashboard/sections/weather/work_conditions_card.dart';
 import 'package:hexora/presentation/utils/roles/group_role/group_role.dart';
 import 'package:hexora/theme/app_colors/palette/tools_colors/theme_colors.dart';
 import 'package:hexora/theme/font_type/typography_extension.dart';
@@ -64,6 +65,8 @@ class GroupDashboardBodyMember extends StatelessWidget {
                 onTap: () =>
                     context.read<GroupDashboardState>().openSection('profile'),
               ),
+              const SizedBox(height: 20),
+              WorkConditionsCard(groupId: group.id),
               const SizedBox(height: 20),
               SectionHeader(
                   title: l.sectionBusinessHours, textStyle: sectionTitle),
