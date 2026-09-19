@@ -7,6 +7,7 @@ import 'package:hexora/presentation/features/dashboard/sections/members/presenta
 import 'package:hexora/presentation/features/settings/dialogs/change_password_dialog.dart';
 import 'package:hexora/presentation/features/settings/dialogs/change_username_dialog.dart';
 import 'package:hexora/presentation/features/settings/widgets/account_section.dart';
+import 'package:hexora/presentation/features/settings/widgets/contact_section.dart';
 import 'package:hexora/presentation/features/settings/widgets/language_sheet.dart';
 import 'package:hexora/presentation/features/settings/widgets/preferences_section.dart';
 import 'package:hexora/presentation/features/settings/widgets/section_card.dart';
@@ -17,6 +18,7 @@ import 'package:hexora/theme/app_colors/themes/theme_provider/theme_provider.dar
 import 'package:hexora/theme/font_type/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Settings extends StatefulWidget {
   const Settings({Key? key}) : super(key: key);
@@ -179,6 +181,16 @@ class _SettingsState extends State<Settings> {
         .showSnackBar(SnackBar(content: Text(text, style: bodyS)));
   }
 
+  Future<void> _email(String address) async {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final uri = Uri(scheme: 'mailto', path: address);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (opened || !mounted) return;
+    _snack(isEs
+        ? 'No se pudo abrir la aplicación de correo.'
+        : 'Could not open the email application.');
+  }
+
   Future<void> _toggleAutoStatementImport(bool enabled) async {
     if (_autoStatementImportLoading) return;
     setState(() => _autoStatementImportLoading = true);
@@ -200,8 +212,6 @@ class _SettingsState extends State<Settings> {
     final loc = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final typography = AppTypography.of(context);
-    final bodyM = typography.bodyMedium;
-    final bodyS = typography.bodySmall;
     final isDark = theme.brightness == Brightness.dark;
     final bg = isDark ? AppDarkColors.background : AppColors.background;
     final cs = Theme.of(context).colorScheme;
@@ -270,6 +280,22 @@ class _SettingsState extends State<Settings> {
                         false,
                 autoStatementImportBusy: _autoStatementImportLoading,
                 onToggleAutoStatementImport: _toggleAutoStatementImport,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SectionHeader(
+              title: Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Contactar con Hexora'
+                  : 'Contact Hexora',
+              textStyle: typography.bodyLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            SectionCard(
+              child: ContactSection(
+                isSpanish: Localizations.localeOf(context).languageCode == 'es',
+                onEmail: _email,
               ),
             ),
             const SizedBox(height: 24),
@@ -380,7 +406,8 @@ class _ProfileHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: cs.primary.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(999),
