@@ -3090,6 +3090,8 @@
   "groupPhotoUpdateFailed": "Error al actualizar la foto del grupo",
   "premiumRequiredSingleGroupMessage": "Tu plan actual permite solo 1 grupo. Mejora a Premium para crear o unirte a grupos adicionales.",
   "premiumRequiredJoinGroupOnlyMessage": "Ya estás en un grupo. Mejora a Premium para unirte a más grupos.",
+  "managedGroupLimitCreateMessage": "Ya gestionas 2 empresas. Sal de una o cambia a trabajador antes de crear otra.",
+  "managedGroupLimitJoinMessage": "Ya gestionas 2 empresas. Puedes unirte como trabajador, pero no aceptar otro rol de administrador o coadministrador.",
   "upgradeToPremium": "Mejorar a Premium",
   "contractsTitle": "Contratos",
   "contractsForClient": "Contratos de {client}",

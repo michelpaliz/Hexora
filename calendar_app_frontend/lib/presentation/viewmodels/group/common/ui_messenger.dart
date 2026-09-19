@@ -7,6 +7,7 @@ abstract class UiMessenger {
   void showSnack(String message);
   Future<void> showError(String message);
   Future<void> showPremiumRequired(GroupMembershipErrorContext errorContext);
+  Future<void> showManagedGroupLimit(GroupMembershipErrorContext errorContext);
   void pop(); // for simple back/close
 }
 
@@ -44,6 +45,15 @@ class MaterialUiMessenger implements UiMessenger {
     await showPremiumUpgradeDialog(
       context,
       message: GroupMembershipErrorMapper.messageFor(l, errorContext),
+    );
+  }
+
+  @override
+  Future<void> showManagedGroupLimit(
+      GroupMembershipErrorContext errorContext) async {
+    final l = AppLocalizations.of(context)!;
+    await showError(
+      GroupMembershipErrorMapper.managedLimitMessageFor(l, errorContext),
     );
   }
 

@@ -96,6 +96,16 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
       await _load();
     } catch (e) {
       if (!mounted) return;
+      if (GroupMembershipErrorMapper.isManagedGroupLimitError(e)) {
+        await showManagedGroupLimitDialog(
+          context,
+          message: GroupMembershipErrorMapper.managedLimitMessageFor(
+            l,
+            GroupMembershipErrorContext.joinGroup,
+          ),
+        );
+        return;
+      }
       if (GroupMembershipErrorMapper.isPremiumMultiGroupError(e)) {
         await showPremiumUpgradeDialog(
           context,

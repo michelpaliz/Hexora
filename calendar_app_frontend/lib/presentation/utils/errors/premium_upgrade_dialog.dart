@@ -35,3 +35,23 @@ Future<void> showPremiumUpgradeDialog(
     },
   );
 }
+
+Future<void> showManagedGroupLimitDialog(
+  BuildContext context, {
+  required String message,
+}) async {
+  final l = AppLocalizations.of(context)!;
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.error),
+      content: Text(message),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: Text(l.confirm),
+        ),
+      ],
+    ),
+  );
+}

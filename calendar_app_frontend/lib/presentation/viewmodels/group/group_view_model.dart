@@ -199,6 +199,12 @@ class GroupEditorViewModel extends ChangeNotifier {
     } catch (e) {
       status = GroupEditorStatus.error;
       notifyListeners();
+      if (GroupMembershipErrorMapper.isManagedGroupLimitError(e)) {
+        await ui.showManagedGroupLimit(
+          GroupMembershipErrorContext.createGroup,
+        );
+        return;
+      }
       if (GroupMembershipErrorMapper.isPremiumMultiGroupError(e)) {
         await ui.showPremiumRequired(GroupMembershipErrorContext.createGroup);
         return;

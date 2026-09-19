@@ -173,6 +173,16 @@ class _ShowNotificationsState extends State<ShowNotifications>
       );
     } catch (e) {
       if (!mounted) return;
+      if (GroupMembershipErrorMapper.isManagedGroupLimitError(e)) {
+        await showManagedGroupLimitDialog(
+          context,
+          message: GroupMembershipErrorMapper.managedLimitMessageFor(
+            loc,
+            GroupMembershipErrorContext.joinGroup,
+          ),
+        );
+        return;
+      }
       if (GroupMembershipErrorMapper.isPremiumMultiGroupError(e)) {
         await showPremiumUpgradeDialog(
           context,
@@ -290,9 +300,8 @@ class _ShowNotificationsState extends State<ShowNotifications>
       return int.tryParse(value?.toString() ?? '');
     }
 
-    final status = (args['downloadStatus'] ?? args['status'] ?? '')
-        .toString()
-        .trim();
+    final status =
+        (args['downloadStatus'] ?? args['status'] ?? '').toString().trim();
 
     return DownloadJob(
       id: jobId?.isNotEmpty == true ? jobId! : notification.id,

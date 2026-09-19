@@ -6618,6 +6618,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'You are already in a group. Upgrade to Premium to join more groups.';
 
   @override
+  String get managedGroupLimitCreateMessage =>
+      'You already manage 2 businesses. Leave or become a worker in one before creating another.';
+
+  @override
+  String get managedGroupLimitJoinMessage =>
+      'You already manage 2 businesses. You can still join as a worker, but you cannot accept another administrator or co-administrator role.';
+
+  @override
   String get upgradeToPremium => 'Upgrade to Premium';
 
   @override

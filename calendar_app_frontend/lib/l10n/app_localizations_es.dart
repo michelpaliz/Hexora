@@ -6694,6 +6694,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Ya estás en un grupo. Mejora a Premium para unirte a más grupos.';
 
   @override
+  String get managedGroupLimitCreateMessage =>
+      'Ya gestionas 2 empresas. Sal de una o cambia a trabajador antes de crear otra.';
+
+  @override
+  String get managedGroupLimitJoinMessage =>
+      'Ya gestionas 2 empresas. Puedes unirte como trabajador, pero no aceptar otro rol de administrador o coadministrador.';
+
+  @override
   String get upgradeToPremium => 'Mejorar a Premium';
 
   @override

@@ -3121,6 +3121,8 @@
   "groupPhotoUpdateFailed": "Failed to update group photo",
   "premiumRequiredSingleGroupMessage": "Your current plan allows only 1 group. Upgrade to Premium to create or join additional groups.",
   "premiumRequiredJoinGroupOnlyMessage": "You are already in a group. Upgrade to Premium to join more groups.",
+  "managedGroupLimitCreateMessage": "You already manage 2 businesses. Leave or become a worker in one before creating another.",
+  "managedGroupLimitJoinMessage": "You already manage 2 businesses. You can still join as a worker, but you cannot accept another administrator or co-administrator role.",
   "upgradeToPremium": "Upgrade to Premium",
   "contractsTitle": "Contracts",
   "contractsForClient": "Contracts for {client}",

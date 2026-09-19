@@ -2511,27 +2511,136 @@ abstract class AppLocalizations {
   /// **'Tasks'**
   String get tasks;
 
+  /// No description provided for @calendarTasksSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick reminders without the work-visit form.'**
   String get calendarTasksSubtitle;
+
+  /// No description provided for @calendarTasksLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load tasks.'**
   String get calendarTasksLoadError;
+
+  /// No description provided for @calendarTasksUpdateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update task.'**
   String get calendarTasksUpdateError;
+
+  /// No description provided for @calendarTasksNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New task'**
   String get calendarTasksNew;
+
+  /// No description provided for @calendarTasksTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
   String get calendarTasksTitleLabel;
+
+  /// No description provided for @calendarTasksNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
   String get calendarTasksNoteLabel;
+
+  /// No description provided for @calendarTasksDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Due'**
   String get calendarTasksDue;
+
+  /// No description provided for @calendarTasksReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
   String get calendarTasksReminder;
+
+  /// No description provided for @calendarTasksReminderAtDueTime.
+  ///
+  /// In en, this message translates to:
+  /// **'At due time'**
   String get calendarTasksReminderAtDueTime;
+
+  /// No description provided for @calendarTasksReminder10Minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'10 min before'**
   String get calendarTasksReminder10Minutes;
+
+  /// No description provided for @calendarTasksReminder30Minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'30 min before'**
   String get calendarTasksReminder30Minutes;
+
+  /// No description provided for @calendarTasksReminder1Hour.
+  ///
+  /// In en, this message translates to:
+  /// **'1 h before'**
   String get calendarTasksReminder1Hour;
+
+  /// No description provided for @calendarTasksNotifyOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify owner'**
   String get calendarTasksNotifyOwner;
+
+  /// No description provided for @calendarTasksAssignUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign users'**
   String get calendarTasksAssignUsers;
+
+  /// No description provided for @calendarTasksCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create task'**
   String get calendarTasksCreate;
+
+  /// No description provided for @calendarTasksCreateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create task.'**
   String get calendarTasksCreateError;
+
+  /// No description provided for @calendarTasksPendingPlural.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
   String get calendarTasksPendingPlural;
+
+  /// No description provided for @calendarTasksDonePlural.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
   String get calendarTasksDonePlural;
+
+  /// No description provided for @calendarTasksMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
   String get calendarTasksMine;
+
+  /// No description provided for @calendarTasksEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks found for this filter.'**
   String get calendarTasksEmpty;
+
+  /// No description provided for @calendarTasksDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
   String get calendarTasksDone;
+
+  /// No description provided for @calendarTasksPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
   String get calendarTasksPending;
 
   /// No description provided for @deadlines.
@@ -11805,6 +11914,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You are already in a group. Upgrade to Premium to join more groups.'**
   String get premiumRequiredJoinGroupOnlyMessage;
+
+  /// No description provided for @managedGroupLimitCreateMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You already manage 2 businesses. Leave or become a worker in one before creating another.'**
+  String get managedGroupLimitCreateMessage;
+
+  /// No description provided for @managedGroupLimitJoinMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You already manage 2 businesses. You can still join as a worker, but you cannot accept another administrator or co-administrator role.'**
+  String get managedGroupLimitJoinMessage;
 
   /// No description provided for @upgradeToPremium.
   ///
