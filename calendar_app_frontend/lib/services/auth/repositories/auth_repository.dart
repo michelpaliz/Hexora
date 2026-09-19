@@ -1,0 +1,31 @@
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/services/auth/models/verification_result.dart';
+
+abstract class AuthRepository {
+  User? get currentUser; // <- getter only (remove setter)
+
+  Future<User?> logIn({required String email, required String password});
+  Future<String> createUser({
+    required String name,
+    required String userName,
+    required String email,
+    required String password,
+  });
+  Future<void> logOut();
+  Future<void> sendEmailVerification();
+  Future<void> resendVerificationEmail({required String email});
+  Future<VerificationResult> verifyEmailToken({required String token});
+  Future<void> initialize();
+  Future<User?> getCurrentUserModel();
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+    String confirmPassword,
+  );
+  Future<void> forgotPassword(String email);
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  });
+  Future<String?> getToken();
+}

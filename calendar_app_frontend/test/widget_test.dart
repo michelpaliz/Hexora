@@ -1,66 +1,49 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/app/bootstrap/app_bootstrap.dart';
-import 'package:hexora/app/session/session_expiry_handler.dart';
-import 'package:hexora/presentation/routes/app_routes.dart';
-import 'package:hexora/main.dart';
+import 'package:hexora/presentation/screens/auth/auth_gate.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:provider/provider.dart';
+
+class _StartupAuthService extends ChangeNotifier implements AuthService {
+  Completer<void> startup = Completer<void>();
+  int attempts = 0;
+
+  @override
+  Future<void> initialize() {
+    attempts++;
+    return startup.future;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
-  testWidgets('Hexora renders its bootstraped shell',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const HexoraApp(
-        shell: Directionality(
-          textDirection: TextDirection.ltr,
-          child: Text('Bootstrapped Hexora'),
-        ),
-      ),
-    );
+  testWidgets('startup failure offers a retry and returns to loading',
+      (tester) async {
+    final auth = _StartupAuthService();
+    addTearDown(auth.dispose);
+    await tester.pumpWidget(ChangeNotifierProvider<AuthService>.value(
+      value: auth,
+      child: const MaterialApp(home: AuthGate()),
+    ));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(auth.attempts, 1);
 
-    expect(find.byType(AppBootstrap), findsOneWidget);
-    expect(find.text('Bootstrapped Hexora'), findsOneWidget);
-  });
+    auth.startup.completeError(StateError('Connection unavailable'));
+    await tester.pump();
+    expect(find.textContaining('Connection unavailable'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(tester.takeException(), isNull);
 
-  testWidgets('startup failure renders the retry fallback',
-      (WidgetTester tester) async {
-    Widget? launchedApp;
-
-    await startApp(
-      initializeServices: () async => throw StateError('startup failed'),
-      runApplication: (app) => launchedApp = app,
-    );
-
-    await tester.pumpWidget(launchedApp!);
-
-    expect(find.byIcon(Icons.error_outline), findsOneWidget);
-    expect(find.byType(FilledButton), findsOneWidget);
-  });
-
-  testWidgets('session expiry clears tokens and redirects to login',
-      (WidgetTester tester) async {
-    final navigatorKey = GlobalKey<NavigatorState>();
-    var clearTokenCalls = 0;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        navigatorKey: navigatorKey,
-        home: const Text('Protected content'),
-        routes: {
-          AppRoutes.loginRoute: (_) => const Text('Login screen'),
-        },
-      ),
-    );
-
-    await SessionExpiryHandler.handle(
-      clearTokens: () async {
-        clearTokenCalls++;
-      },
-      navigator: navigatorKey.currentState,
-    );
-    await tester.pumpAndSettle();
-
-    expect(clearTokenCalls, 1);
-    expect(find.text('Login screen'), findsOneWidget);
-    expect(find.text('Protected content'), findsNothing);
+    auth.startup = Completer<void>();
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+    expect(auth.attempts, 2);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Retry'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }

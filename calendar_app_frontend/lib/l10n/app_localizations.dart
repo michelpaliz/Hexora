@@ -662,6 +662,66 @@ abstract class AppLocalizations {
   /// **'Repetition details'**
   String get repetitionDetails;
 
+  /// No description provided for @recurrenceFrequency.
+  ///
+  /// In en, this message translates to:
+  /// **'Frequency'**
+  String get recurrenceFrequency;
+
+  /// No description provided for @recurrenceEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'End date'**
+  String get recurrenceEndDate;
+
+  /// No description provided for @recurrenceNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Does not end'**
+  String get recurrenceNever;
+
+  /// No description provided for @recurrenceChooseDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an end date'**
+  String get recurrenceChooseDate;
+
+  /// No description provided for @repeatIntervalDecrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease repeat interval'**
+  String get repeatIntervalDecrease;
+
+  /// No description provided for @repeatIntervalIncrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase repeat interval'**
+  String get repeatIntervalIncrease;
+
+  /// No description provided for @recurrenceDailySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Every day} other{Every {count} days}}'**
+  String recurrenceDailySummary(int count);
+
+  /// No description provided for @recurrenceWeeklySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Every week} other{Every {count} weeks}} · {days}'**
+  String recurrenceWeeklySummary(int count, String days);
+
+  /// No description provided for @recurrenceMonthlySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Every month} other{Every {count} months}} · day {day}'**
+  String recurrenceMonthlySummary(int count, int day);
+
+  /// No description provided for @recurrenceYearlySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Every year} other{Every {count} years}} · {date}'**
+  String recurrenceYearlySummary(int count, String date);
+
   /// Concurrence for the event
   ///
   /// In en, this message translates to:
@@ -2337,12 +2397,6 @@ abstract class AppLocalizations {
   /// **' and '**
   String get andSeparator;
 
-  /// No description provided for @termsAndPrivacyUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Terms and Privacy Policy are currently unavailable.'**
-  String get termsAndPrivacyUnavailable;
-
   /// No description provided for @alreadyHaveAccount.
   ///
   /// In en, this message translates to:
@@ -2511,138 +2565,6 @@ abstract class AppLocalizations {
   /// **'Tasks'**
   String get tasks;
 
-  /// No description provided for @calendarTasksSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Quick reminders without the work-visit form.'**
-  String get calendarTasksSubtitle;
-
-  /// No description provided for @calendarTasksLoadError.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not load tasks.'**
-  String get calendarTasksLoadError;
-
-  /// No description provided for @calendarTasksUpdateError.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not update task.'**
-  String get calendarTasksUpdateError;
-
-  /// No description provided for @calendarTasksNew.
-  ///
-  /// In en, this message translates to:
-  /// **'New task'**
-  String get calendarTasksNew;
-
-  /// No description provided for @calendarTasksTitleLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Title'**
-  String get calendarTasksTitleLabel;
-
-  /// No description provided for @calendarTasksNoteLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Note'**
-  String get calendarTasksNoteLabel;
-
-  /// No description provided for @calendarTasksDue.
-  ///
-  /// In en, this message translates to:
-  /// **'Due'**
-  String get calendarTasksDue;
-
-  /// No description provided for @calendarTasksReminder.
-  ///
-  /// In en, this message translates to:
-  /// **'Reminder'**
-  String get calendarTasksReminder;
-
-  /// No description provided for @calendarTasksReminderAtDueTime.
-  ///
-  /// In en, this message translates to:
-  /// **'At due time'**
-  String get calendarTasksReminderAtDueTime;
-
-  /// No description provided for @calendarTasksReminder10Minutes.
-  ///
-  /// In en, this message translates to:
-  /// **'10 min before'**
-  String get calendarTasksReminder10Minutes;
-
-  /// No description provided for @calendarTasksReminder30Minutes.
-  ///
-  /// In en, this message translates to:
-  /// **'30 min before'**
-  String get calendarTasksReminder30Minutes;
-
-  /// No description provided for @calendarTasksReminder1Hour.
-  ///
-  /// In en, this message translates to:
-  /// **'1 h before'**
-  String get calendarTasksReminder1Hour;
-
-  /// No description provided for @calendarTasksNotifyOwner.
-  ///
-  /// In en, this message translates to:
-  /// **'Notify owner'**
-  String get calendarTasksNotifyOwner;
-
-  /// No description provided for @calendarTasksAssignUsers.
-  ///
-  /// In en, this message translates to:
-  /// **'Assign users'**
-  String get calendarTasksAssignUsers;
-
-  /// No description provided for @calendarTasksCreate.
-  ///
-  /// In en, this message translates to:
-  /// **'Create task'**
-  String get calendarTasksCreate;
-
-  /// No description provided for @calendarTasksCreateError.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not create task.'**
-  String get calendarTasksCreateError;
-
-  /// No description provided for @calendarTasksPendingPlural.
-  ///
-  /// In en, this message translates to:
-  /// **'Pending'**
-  String get calendarTasksPendingPlural;
-
-  /// No description provided for @calendarTasksDonePlural.
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get calendarTasksDonePlural;
-
-  /// No description provided for @calendarTasksMine.
-  ///
-  /// In en, this message translates to:
-  /// **'Mine'**
-  String get calendarTasksMine;
-
-  /// No description provided for @calendarTasksEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No tasks found for this filter.'**
-  String get calendarTasksEmpty;
-
-  /// No description provided for @calendarTasksDone.
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get calendarTasksDone;
-
-  /// No description provided for @calendarTasksPending.
-  ///
-  /// In en, this message translates to:
-  /// **'Pending'**
-  String get calendarTasksPending;
-
   /// No description provided for @deadlines.
   ///
   /// In en, this message translates to:
@@ -2720,18 +2642,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No reminder will be sent'**
   String get notifyMeOffSubtitle;
-
-  /// No description provided for @reminderScheduledInexact.
-  ///
-  /// In en, this message translates to:
-  /// **'Reminder scheduled; it may arrive late because exact alarms are unavailable.'**
-  String get reminderScheduledInexact;
-
-  /// No description provided for @reminderUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'The event was saved, but its reminder could not be scheduled.'**
-  String get reminderUnavailable;
 
   /// No description provided for @noInvitableUsers.
   ///
@@ -4071,10 +3981,16 @@ abstract class AppLocalizations {
   /// **'Enable tracking to start counting hours and add workers.'**
   String get noWorkersYetSubtitle;
 
+  /// No description provided for @workerTimeEntryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select workers and the time you want to record.'**
+  String get workerTimeEntryHint;
+
   /// No description provided for @timeTrackingTitle.
   ///
   /// In en, this message translates to:
-  /// **'Time tracking'**
+  /// **'Workers'**
   String get timeTrackingTitle;
 
   /// No description provided for @sectionWorkersHours.
@@ -4287,24 +4203,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Worker created successfully!'**
   String get workerCreated;
-
-  /// No description provided for @workerSaveValidationError.
-  ///
-  /// In en, this message translates to:
-  /// **'Please check the worker details and try again.'**
-  String get workerSaveValidationError;
-
-  /// No description provided for @workerSaveUnauthorizedError.
-  ///
-  /// In en, this message translates to:
-  /// **'You do not have permission to save this worker.'**
-  String get workerSaveUnauthorizedError;
-
-  /// No description provided for @workerSaveUnexpectedError.
-  ///
-  /// In en, this message translates to:
-  /// **'We could not save the worker. Please try again.'**
-  String get workerSaveUnexpectedError;
 
   /// No description provided for @createWorkerCta.
   ///
@@ -4779,6 +4677,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assigned users'**
   String get assignedUsers;
+
+  /// No description provided for @delegateVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign workers'**
+  String get delegateVisit;
+
+  /// No description provided for @delegateVisitHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose who will carry out this visit'**
+  String get delegateVisitHint;
+
+  /// No description provided for @delegateNoWorkers.
+  ///
+  /// In en, this message translates to:
+  /// **'No other group members available'**
+  String get delegateNoWorkers;
 
   /// No description provided for @repetition.
   ///
@@ -10814,8 +10730,14 @@ abstract class AppLocalizations {
   /// No description provided for @mailConsoleReplySent.
   ///
   /// In en, this message translates to:
-  /// **'Reply sent.'**
+  /// **'Reply sent successfully.'**
   String get mailConsoleReplySent;
+
+  /// No description provided for @mailConsoleReplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The reply could not be sent.'**
+  String get mailConsoleReplyFailed;
 
   /// Reply placeholder with recipient name.
   ///
@@ -10852,6 +10774,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Forward'**
   String get mailConversationForward;
+
+  /// No description provided for @mailConversationSortNewestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest first'**
+  String get mailConversationSortNewestFirst;
+
+  /// No description provided for @mailConversationSortOldestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest first'**
+  String get mailConversationSortOldestFirst;
+
+  /// Message count shown above a thread's conversation list.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {# message} other {# messages}}'**
+  String mailConversationMessageCount(int count);
 
   /// No description provided for @mailLegalNoticeShow.
   ///
@@ -13325,23 +13265,11 @@ abstract class AppLocalizations {
   /// **'Attachment ready · use the text box as a caption'**
   String get chatComposerHintAttachment;
 
-  /// No description provided for @chatComposerAttachMenuTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Attach'**
-  String get chatComposerAttachMenuTooltip;
-
   /// No description provided for @chatComposerAttachFile.
   ///
   /// In en, this message translates to:
   /// **'Local file'**
   String get chatComposerAttachFile;
-
-  /// No description provided for @chatComposerAttachImage.
-  ///
-  /// In en, this message translates to:
-  /// **'Photo'**
-  String get chatComposerAttachImage;
 
   /// No description provided for @chatComposerAttachClientPdf.
   ///
@@ -13673,6 +13601,12 @@ abstract class AppLocalizations {
   /// **'Preview PDF'**
   String get telegramPreviewPdf;
 
+  /// No description provided for @telegramPreviewUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview unavailable for this file'**
+  String get telegramPreviewUnavailable;
+
   /// No description provided for @telegramDownloadDocument.
   ///
   /// In en, this message translates to:
@@ -13890,6 +13824,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A recurring draft invoice was created.'**
   String get notificationRecurringDraftInvoiceCreatedMessageFallback;
+
+  /// No description provided for @requireCompletionPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Require photos'**
+  String get requireCompletionPhotos;
+
+  /// No description provided for @requireCompletionPhotosHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Workers must attach photos before completing this visit'**
+  String get requireCompletionPhotosHint;
+
+  /// No description provided for @addCompletionPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Add photos'**
+  String get addCompletionPhotos;
+
+  /// No description provided for @completionPhotosCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos: {count}/{minimum}'**
+  String completionPhotosCount(int count, int minimum);
+
+  /// No description provided for @completionPhotoError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add photos or complete this visit. Please try again.'**
+  String get completionPhotoError;
+
+  /// No description provided for @addBeforePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take before photo'**
+  String get addBeforePhoto;
+
+  /// No description provided for @addAfterPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take after photo'**
+  String get addAfterPhoto;
+
+  /// No description provided for @eventFormCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'To complete'**
+  String get eventFormCompletion;
+
+  /// No description provided for @eventFormOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Options'**
+  String get eventFormOptions;
+
+  /// No description provided for @eventFormMoreOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get eventFormMoreOptions;
+
+  /// No description provided for @eventFormOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get eventFormOff;
+
+  /// No description provided for @eventFormPhotoHintOne.
+  ///
+  /// In en, this message translates to:
+  /// **'At least one photo is needed to finish'**
+  String get eventFormPhotoHintOne;
+
+  /// No description provided for @eventFormPhotoHintMany.
+  ///
+  /// In en, this message translates to:
+  /// **'At least {count} photos are needed to finish'**
+  String eventFormPhotoHintMany(int count);
+
+  /// No description provided for @eventFormTitleField.
+  ///
+  /// In en, this message translates to:
+  /// **'title'**
+  String get eventFormTitleField;
+
+  /// No description provided for @eventFormCompleteFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete: {fields}'**
+  String eventFormCompleteFields(String fields);
+
+  /// No description provided for @groupSettingsInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Information'**
+  String get groupSettingsInformation;
+
+  /// No description provided for @groupSettingsMembersPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Members and permissions'**
+  String get groupSettingsMembersPermissions;
+
+  /// No description provided for @groupSettingsMembersRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Members and roles'**
+  String get groupSettingsMembersRoles;
+
+  /// No description provided for @groupSettingsEditInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit information'**
+  String get groupSettingsEditInformation;
+
+  /// No description provided for @groupSettingsOwnerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get groupSettingsOwnerLabel;
+
+  /// No description provided for @groupSettingsPendingCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 pending} other{{count} pending}}'**
+  String groupSettingsPendingCount(int count);
+
+  /// No description provided for @groupSettingsDeleteNamePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Type “{name}” to confirm permanent deletion. This cannot be undone.'**
+  String groupSettingsDeleteNamePrompt(String name);
+
+  /// No description provided for @groupSettingsDeleteGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete group'**
+  String get groupSettingsDeleteGroup;
+
+  /// No description provided for @agendaCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get agendaCompleted;
+
+  /// No description provided for @agendaEmptyDay.
+  ///
+  /// In en, this message translates to:
+  /// **'No jobs for this day. Select another date or All.'**
+  String get agendaEmptyDay;
 }
 
 class _AppLocalizationsDelegate

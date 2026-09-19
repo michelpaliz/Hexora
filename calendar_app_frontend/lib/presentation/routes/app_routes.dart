@@ -38,14 +38,14 @@ class AppRoutes {
   static const editEvent = '/edit-note';
   static const eventDetail = '/event-detail';
 
-  static const showGroups = '/show_groups';
-  static const showNotifications = '/show_notifications';
+  static const showGroups = '/show-groups';
+  static const showNotifications = '/show-notifications';
   static const groupNotifications = '/group-notifications';
   static const expenseOcrReprocessResults = '/expense-ocr-reprocess-results';
 
   static const editGroup = '/edit-group';
   static const editGroupData = '/edit-group-data';
-  static const groupSettings = '/group_settings';
+  static const groupSettings = '/group-settings';
 
   static const createGroupData = '/create-group-data';
   static const createGroupSearchBar = '/create-group-search-bar';

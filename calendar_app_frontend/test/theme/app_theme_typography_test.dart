@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/theme/app_colors/themes/context_colors/theme_data.dart';
+import 'package:hexora/theme/themes/app_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

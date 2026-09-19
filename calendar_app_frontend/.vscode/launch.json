@@ -1,6 +1,16 @@
 {
     "version": "0.2.0",
     "configurations": [
+
+        {
+            "name": "Hexora (Android Emulator)",
+            "request": "launch",
+            "type": "dart",
+            "cwd": "${workspaceFolder}",
+            "program": "lib/main.dart",
+            "flutterMode": "debug",
+            "deviceId": "emulator-5554"
+        },
         {
             "name": "calendar_app_frontend (iPhone)",
             "request": "launch",

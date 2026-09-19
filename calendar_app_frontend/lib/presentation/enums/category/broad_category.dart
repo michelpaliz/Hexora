@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:hexora/models/notification/notification_user.dart';
-import 'package:hexora/presentation/features/notifications/show_notifications/utils/notification_payload_helper.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
+import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_payload_helper.dart';
 
 enum BroadCategory { group, user, system, other }
 

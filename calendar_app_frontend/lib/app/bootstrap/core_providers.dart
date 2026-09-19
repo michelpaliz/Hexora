@@ -1,20 +1,20 @@
-import 'package:hexora/data/auth/api/auth_api_client.dart';
-import 'package:hexora/data/auth/api/i_auth_api_client.dart';
-import 'package:hexora/data/auth/auth/auth_services/auth_provider.dart';
-import 'package:hexora/data/auth/auth/auth_services/auth_service.dart';
-import 'package:hexora/data/auth/auth/token/service/token_service.dart';
-import 'package:hexora/data/auth/auth/token/token_store/Itoken_store.dart';
-import 'package:hexora/data/auth/auth/token/token_store/token_store.dart';
-import 'package:hexora/data/notification/domain/notification_domain.dart';
-import 'package:hexora/data/user/api/i_user_api_client.dart';
-import 'package:hexora/data/user/api/user_api_client.dart';
-import 'package:hexora/data/user/domain/user_agenda_domain.dart';
-import 'package:hexora/data/user/domain/user_domain.dart';
-import 'package:hexora/data/user/presence_domain.dart';
-import 'package:hexora/data/user/repository/i_user_repository.dart';
-import 'package:hexora/data/user/repository/user_repository.dart';
-import 'package:hexora/state/local/LocaleProvider.dart';
-import 'package:hexora/theme/app_colors/themes/theme_provider/theme_provider.dart';
+import 'package:hexora/services/auth/api/auth_api_client.dart';
+import 'package:hexora/services/auth/api/i_auth_api_client.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:hexora/services/auth/token/token_service.dart';
+import 'package:hexora/services/auth/token/i_token_store.dart';
+import 'package:hexora/services/auth/token/token_store.dart';
+import 'package:hexora/services/notification/domain/notification_domain.dart';
+import 'package:hexora/services/user/api/i_user_api_client.dart';
+import 'package:hexora/services/user/api/user_api_client.dart';
+import 'package:hexora/services/user/domain/user_agenda_domain.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/services/user/presence_domain.dart';
+import 'package:hexora/services/user/repository/i_user_repository.dart';
+import 'package:hexora/services/user/repository/user_repository.dart';
+import 'package:hexora/state/locale_provider.dart';
+import 'package:hexora/theme/theme_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
@@ -29,7 +29,13 @@ final List<SingleChildWidget> coreProviders = [
   ChangeNotifierProvider(create: (_) => NotificationDomain()),
 
   // ðŸ” Token store (single source of truth)
-  Provider<TokenStore>(create: (_) => SecureTokenStore()),
+  Provider<TokenStore>(
+    create: (_) {
+      final store = SecureTokenStore();
+      TokenService.configureStore(store);
+      return store;
+    },
+  ),
 
   // User stack (token from injected store, not static)
   Provider<IUserApiClient>(create: (_) => UserApiClient()),

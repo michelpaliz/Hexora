@@ -347,6 +347,13 @@ class Invoice {
 
   DateTime? get issuedAtResolved => issuedAt ?? issueDate;
 
+  bool get isDraft => (status ?? '').trim().toLowerCase() == 'draft';
+
+  String displayNumber({required String draftLabel}) {
+    final number = invoiceNumber.trim();
+    return isDraft || number.isEmpty ? draftLabel : number;
+  }
+
   factory Invoice.fromJson(Map<String, dynamic> json) {
     String readId(dynamic v) {
       if (v == null) return '';
@@ -564,7 +571,7 @@ class Invoice {
       entityType: json['entityType']?.toString(),
       pdfUrl: json['pdfUrl']?.toString(),
       currency: json['currency']?.toString(),
-      registeredAt: parseDate(json['registeredAt']),
+      registeredAt: parseDate(json['registeredAt'] ?? json['createdAt']),
       status: json['status']?.toString(),
       sequenceNumber: json['sequenceNumber'] is num
           ? (json['sequenceNumber'] as num).toInt()
@@ -717,7 +724,6 @@ class Invoice {
         .toList(growable: false);
 
     return {
-      'invoiceNumber': invoiceNumber,
       'groupId': groupId,
       'clientId': clientId,
       if (pdfUrl != null && pdfUrl!.trim().isNotEmpty) 'pdfUrl': pdfUrl!.trim(),
@@ -727,8 +733,6 @@ class Invoice {
         'registeredAt': registeredAt!.toUtc().toIso8601String(),
       if (status != null) 'status': status,
       if (issueDate != null) 'issueDate': _dateOnlyUtcIso(issueDate!),
-      if (sequenceNumber != null) 'sequenceNumber': sequenceNumber,
-      if (yearYY != null) 'yearYY': yearYY,
       if (notes != null && notes!.trim().isNotEmpty) 'notes': notes!.trim(),
       if (subtotal != null) 'subtotal': subtotal,
       if (taxTotal != null) 'taxTotal': taxTotal,

@@ -1,0 +1,39 @@
+import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+
+class ActiveSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const ActiveSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: false,
+      value: value,
+      onChanged: onChanged,
+      title: Text(
+        l.active,
+        style: text.bodyLarge!.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(
+        value ? l.clientWillBeActive : l.clientWillBeInactive,
+        style: text.bodyMedium!.copyWith(
+          color: cs.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}

@@ -1,9 +1,9 @@
 // lib/presentation/routes/group_calendar_loader.dart
 import 'package:flutter/material.dart';
-import 'package:hexora/models/group/group.dart';
-import 'package:hexora/data/group_management/group/domain/group_domain.dart';
-import 'package:hexora/data/user/domain/user_domain.dart';
-import 'package:hexora/presentation/features/calendar/screens/calendar/screen/main_calendar_view.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/presentation/routes/calendar/no_calendar_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -90,9 +90,7 @@ class _GroupCalendarLoaderState extends State<GroupCalendarLoader> {
 
           // If the "first to finish" was the stream and returned null,
           // fall back to repo result explicitly.
-          if (g == null) {
-            g = await repoFuture;
-          }
+          g ??= await repoFuture;
         } catch (_) {
           // As a last resort, try repo once more to surface a clear error
           try {

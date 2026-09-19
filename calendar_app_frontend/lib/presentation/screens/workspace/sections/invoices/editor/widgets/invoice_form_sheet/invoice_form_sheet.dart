@@ -1,0 +1,279 @@
+import 'package:flutter/material.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/services/invoicing/invoice_api.dart';
+import 'package:hexora/services/invoicing/invoice_lines_api.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
+import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
+
+class InvoiceFormSheet extends StatefulWidget {
+  final String groupId;
+  final List<GroupClient> clients;
+  final InvoicesApi api;
+  final InvoiceLinesApi linesApi;
+  final String? selectedClientId;
+  const InvoiceFormSheet({
+    super.key,
+    required this.groupId,
+    required this.clients,
+    required this.api,
+    required this.linesApi,
+    this.selectedClientId,
+  });
+
+  @override
+  State<InvoiceFormSheet> createState() => _InvoiceFormSheetState();
+}
+
+class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _pdfUrl = TextEditingController();
+  final _notes = TextEditingController();
+  String? _clientId;
+  DateTime? _registeredAt;
+  bool _saving = false;
+  final List<LineDraft> _lines = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.clients.isNotEmpty) {
+      _clientId = widget.selectedClientId ?? widget.clients.first.id;
+    }
+    _lines.add(LineDraft(position: 1));
+  }
+
+  @override
+  void dispose() {
+    _pdfUrl.dispose();
+    _notes.dispose();
+    for (final l in _lines) {
+      l.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _pickRegisteredAt() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _registeredAt ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (date == null) return;
+    if (!mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_registeredAt ?? now),
+    );
+    if (time == null) return;
+    setState(() {
+      _registeredAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  Future<void> _submit() async {
+    final l = AppLocalizations.of(context)!;
+    if (!_formKey.currentState!.validate()) return;
+    if (_lines.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l.invoiceLinesRequired)));
+      return;
+    }
+    final lineDrafts = _lines.map((d) => d.toLine()).toList();
+    setState(() => _saving = true);
+    try {
+      final invoice = Invoice(
+        id: '',
+        invoiceNumber: '',
+        groupId: widget.groupId,
+        clientId: _clientId!,
+        pdfUrl: _pdfUrl.text.trim().isEmpty ? null : _pdfUrl.text.trim(),
+        currency: 'EUR',
+        registeredAt: _registeredAt,
+        status: 'draft',
+        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        lines: lineDrafts,
+      );
+      final created = await widget.api.create(invoice);
+
+      if (!mounted) return;
+      Navigator.of(context).pop<Invoice>(
+        created.copyWith(
+          lines: created.lines.isNotEmpty ? created.lines : lineDrafts,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final raw = e.toString().trim();
+      final msg =
+          raw.startsWith('Exception: ') ? raw.substring(11).trim() : raw;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg.isEmpty ? l.somethingWentWrong : msg)));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final pad = MediaQuery.of(context).viewInsets.bottom + 16;
+
+    final inputBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+    );
+
+    final total = _lines.fold<num>(0, (sum, line) {
+      final qty = line.quantity ?? 1;
+      final price = line.unitPrice ?? 0;
+      final taxRate = line.taxRate ?? 21;
+      final subtotal = qty * price;
+      final tax = subtotal * (taxRate / 100);
+      return sum + subtotal + tax;
+    });
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, pad),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.receipt_long_outlined, color: cs.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l.createInvoiceCta,
+                      style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  Chip(
+                    label: Text(
+                      l.statusDraft,
+                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _clientId,
+                decoration: InputDecoration(
+                  labelText: l.invoiceClientLabel,
+                  enabledBorder: inputBorder,
+                  focusedBorder: inputBorder.copyWith(
+                    borderSide: BorderSide(color: cs.primary, width: 1.5),
+                  ),
+                ),
+                items: widget.clients
+                    .map(
+                      (c) => DropdownMenuItem(
+                        value: c.id,
+                        child: Text(c.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _clientId = v),
+                validator: (v) => v == null ? l.invoiceClientRequired : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _pdfUrl,
+                decoration: InputDecoration(
+                  labelText: l.invoicePdfUrl,
+                  prefixIcon: const Icon(Icons.link),
+                  enabledBorder: inputBorder,
+                  focusedBorder: inputBorder.copyWith(
+                    borderSide: BorderSide(color: cs.primary, width: 1.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_today_outlined),
+                title: Text(l.invoiceRegisteredAt),
+                subtitle: Text(
+                  _registeredAt == null
+                      ? l.optionalLabel
+                      : DateFormat.yMMMd(l.localeName)
+                          .add_Hm()
+                          .format(_registeredAt!.toLocal()),
+                ),
+                trailing: TextButton(
+                  onPressed: _pickRegisteredAt,
+                  child: Text(
+                    _registeredAt == null ? l.select : l.change,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _notes,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: l.invoiceNotesLabel,
+                  enabledBorder: inputBorder,
+                  focusedBorder: inputBorder.copyWith(
+                    borderSide: BorderSide(color: cs.primary, width: 1.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              InvoiceLinesEditor(
+                  lines: _lines, onChanged: () => setState(() {})),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${l.invoiceTotalLabel}: ${NumberFormat.simpleCurrency(name: '').format(total)}',
+                  style: t.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _saving ? null : _submit,
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: Text(
+                    _saving ? l.saving : l.createInvoiceCta,
+                    style: t.bodySmall.copyWith(
+                      color: cs.onPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

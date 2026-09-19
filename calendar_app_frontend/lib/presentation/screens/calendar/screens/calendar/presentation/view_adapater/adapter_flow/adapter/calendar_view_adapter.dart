@@ -1,0 +1,115 @@
+// lib/presentation/c-group-calendar-section/screens/calendar/presentation/view_adapater/adapter_flow/adapter/calendar_view_adapter.dart
+import 'package:flutter/material.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/weather/day_summary.dart';
+import 'package:hexora/services/groups/event/domain/event_domain.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/presentation/screens/calendar/screens/calendar/presentation/icapability/supports_view_mode.dart';
+import 'package:hexora/presentation/screens/calendar/screens/calendar/presentation/view_adapater/adapter_flow/view/calendar_surface.dart'
+    as widgets;
+import 'package:hexora/presentation/screens/calendar/screens/event/screen/events_in_calendar/bridge/event_display_manager.dart';
+
+import '../view/appointment_builder_bridge.dart';
+import 'calendar_binding.dart';
+import 'calendar_state.dart';
+
+class CalendarViewAdapter implements SupportsViewMode {
+  final GroupDomain groupDomain;
+  final String userRole;
+  final EventDisplayManager _displayManager;
+  EventDomain _eventDomain;
+
+  late final CalendarState _state;
+  late final CalendarBinding _binding;
+  late final AppointmentBuilderBridge _bridge;
+
+  CalendarViewAdapter({
+    required EventDomain eventDomain,
+    required EventDisplayManager eventDisplayManager,
+    required this.groupDomain,
+    required this.userRole,
+  })  : _displayManager = eventDisplayManager,
+        _eventDomain = eventDomain {
+    _state = CalendarState();
+    _binding = CalendarBinding(eventDomain, _state);
+    _bridge = AppointmentBuilderBridge(
+      displayManager: _displayManager,
+      userRole: userRole,
+    );
+  }
+
+  // ---- Public controls ------------------------------------------------------
+
+  void jumpToToday() {
+    _state.jumpToToday();
+  }
+
+  void jumpTo(DateTime date) {
+    _state.jumpTo(date);
+  }
+
+  void rebindEventDomain(EventDomain newDomain) {
+    _eventDomain = newDomain;
+    _binding.rebind(newDomain);
+  }
+
+  @override
+  void setViewMode(String mode) {
+    // Delegate to CalendarState (expected to notify listeners & rebuild)
+    _state.setViewMode(mode);
+  }
+
+  @override
+  String get currentViewMode => _state.currentViewMode;
+
+  void setWeatherForecast(Map<DateTime, DaySummary> forecast) {
+    _state.setWeatherForecast(forecast);
+  }
+
+  void setShowWeatherIcons(bool value) {
+    _state.setShowWeatherIcons(value);
+  }
+
+  bool get showWeatherIcons => _state.showWeatherIcons.value;
+
+  void setEventFilter({String? userId}) {
+    _state.setEventFilter(userId);
+  }
+
+  String? get currentEventFilterUserId => _state.currentFilterUserId;
+
+  ValueNotifier<List<Event>> get allEventsNotifier => _state.allEvents;
+  ValueNotifier<List<Event>> get dailyEventsNotifier => _state.dailyEvents;
+  ValueNotifier<DateTime> get selectedDateNotifier => _state.anchorDate;
+  ValueNotifier<Map<DateTime, DaySummary>> get weatherForecastNotifier =>
+      _state.weatherForecast;
+
+  // ---- UI -------------------------------------------------------------------
+
+  Widget buildCalendar(
+    BuildContext context, {
+    double? height,
+    double? width,
+    String? forcedViewMode,
+    bool showMonthAgenda = true,
+    widgets.TimeRangeSelected? onTimeRangeSelected,
+  }) {
+    return SizedBox(
+      height: height,
+      width: width,
+      child: widgets.CalendarSurface(
+        state: _state,
+        apptBridge: _bridge,
+        eventDomain: _eventDomain,
+        forcedViewMode: forcedViewMode,
+        showMonthAgenda: showMonthAgenda,
+        onTimeRangeSelected: onTimeRangeSelected,
+      ),
+    );
+  }
+
+  void dispose() {
+    _binding.dispose();
+    _state.dispose();
+  }
+}

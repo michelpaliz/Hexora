@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/presentation/utils/weather/weather_api_client.dart';
-import 'package:hexora/presentation/utils/weather/weather_service.dart';
+import 'package:hexora/services/weather/weather_api_client.dart';
+import 'package:hexora/services/weather/weather_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 

@@ -318,6 +318,68 @@ class AppLocalizationsEn extends AppLocalizations {
   String get repetitionDetails => 'Repetition details';
 
   @override
+  String get recurrenceFrequency => 'Frequency';
+
+  @override
+  String get recurrenceEndDate => 'End date';
+
+  @override
+  String get recurrenceNever => 'Does not end';
+
+  @override
+  String get recurrenceChooseDate => 'Choose an end date';
+
+  @override
+  String get repeatIntervalDecrease => 'Decrease repeat interval';
+
+  @override
+  String get repeatIntervalIncrease => 'Increase repeat interval';
+
+  @override
+  String recurrenceDailySummary(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Every $count days',
+      one: 'Every day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recurrenceWeeklySummary(int count, String days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Every $count weeks',
+      one: 'Every week',
+    );
+    return '$_temp0 · $days';
+  }
+
+  @override
+  String recurrenceMonthlySummary(int count, int day) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Every $count months',
+      one: 'Every month',
+    );
+    return '$_temp0 · day $day';
+  }
+
+  @override
+  String recurrenceYearlySummary(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Every $count years',
+      one: 'Every year',
+    );
+    return '$_temp0 · $date';
+  }
+
+  @override
   String dailyRepetitionInf(int concurrenceDay) {
     return 'This event will repeat every $concurrenceDay day';
   }
@@ -1287,10 +1349,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get andSeparator => ' and ';
 
   @override
-  String get termsAndPrivacyUnavailable =>
-      'Terms and Privacy Policy are currently unavailable.';
-
-  @override
   String get alreadyHaveAccount => 'Already have an account?';
 
   @override
@@ -1383,73 +1441,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tasks => 'Tasks';
 
   @override
-  String get calendarTasksSubtitle =>
-      'Quick reminders without the work-visit form.';
-
-  @override
-  String get calendarTasksLoadError => 'Could not load tasks.';
-
-  @override
-  String get calendarTasksUpdateError => 'Could not update task.';
-
-  @override
-  String get calendarTasksNew => 'New task';
-
-  @override
-  String get calendarTasksTitleLabel => 'Title';
-
-  @override
-  String get calendarTasksNoteLabel => 'Note';
-
-  @override
-  String get calendarTasksDue => 'Due';
-
-  @override
-  String get calendarTasksReminder => 'Reminder';
-
-  @override
-  String get calendarTasksReminderAtDueTime => 'At due time';
-
-  @override
-  String get calendarTasksReminder10Minutes => '10 min before';
-
-  @override
-  String get calendarTasksReminder30Minutes => '30 min before';
-
-  @override
-  String get calendarTasksReminder1Hour => '1 h before';
-
-  @override
-  String get calendarTasksNotifyOwner => 'Notify owner';
-
-  @override
-  String get calendarTasksAssignUsers => 'Assign users';
-
-  @override
-  String get calendarTasksCreate => 'Create task';
-
-  @override
-  String get calendarTasksCreateError => 'Could not create task.';
-
-  @override
-  String get calendarTasksPendingPlural => 'Pending';
-
-  @override
-  String get calendarTasksDonePlural => 'Done';
-
-  @override
-  String get calendarTasksMine => 'Mine';
-
-  @override
-  String get calendarTasksEmpty => 'No tasks found for this filter.';
-
-  @override
-  String get calendarTasksDone => 'Done';
-
-  @override
-  String get calendarTasksPending => 'Pending';
-
-  @override
   String get deadlines => 'Deadlines';
 
   @override
@@ -1489,14 +1480,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notifyMeOffSubtitle => 'No reminder will be sent';
-
-  @override
-  String get reminderScheduledInexact =>
-      'Reminder scheduled; it may arrive late because exact alarms are unavailable.';
-
-  @override
-  String get reminderUnavailable =>
-      'The event was saved, but its reminder could not be scheduled.';
 
   @override
   String get noInvitableUsers => 'No users available to invite';
@@ -2287,7 +2270,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enable tracking to start counting hours and add workers.';
 
   @override
-  String get timeTrackingTitle => 'Time tracking';
+  String get workerTimeEntryHint =>
+      'Select workers and the time you want to record.';
+
+  @override
+  String get timeTrackingTitle => 'Workers';
 
   @override
   String get sectionWorkersHours => 'Workers\' hours';
@@ -2403,18 +2390,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workerCreated => 'Worker created successfully!';
-
-  @override
-  String get workerSaveValidationError =>
-      'Please check the worker details and try again.';
-
-  @override
-  String get workerSaveUnauthorizedError =>
-      'You do not have permission to save this worker.';
-
-  @override
-  String get workerSaveUnexpectedError =>
-      'We could not save the worker. Please try again.';
 
   @override
   String get createWorkerCta => 'Add Worker';
@@ -2663,6 +2638,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assignedUsers => 'Assigned users';
+
+  @override
+  String get delegateVisit => 'Assign workers';
+
+  @override
+  String get delegateVisitHint => 'Choose who will carry out this visit';
+
+  @override
+  String get delegateNoWorkers => 'No other group members available';
 
   @override
   String get repetition => 'Repetition';
@@ -6001,7 +5985,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailConsoleReplySending => 'Sending…';
 
   @override
-  String get mailConsoleReplySent => 'Reply sent.';
+  String get mailConsoleReplySent => 'Reply sent successfully.';
+
+  @override
+  String get mailConsoleReplyFailed => 'The reply could not be sent.';
 
   @override
   String mailConversationReplyTo(Object name) {
@@ -6024,6 +6011,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mailConversationForward => 'Forward';
+
+  @override
+  String get mailConversationSortNewestFirst => 'Newest first';
+
+  @override
+  String get mailConversationSortOldestFirst => 'Oldest first';
+
+  @override
+  String mailConversationMessageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# messages',
+      one: '# message',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get mailLegalNoticeShow => 'Show legal notice';
@@ -7402,13 +7406,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Attachment ready · use the text box as a caption';
 
   @override
-  String get chatComposerAttachMenuTooltip => 'Attach';
-
-  @override
   String get chatComposerAttachFile => 'Local file';
-
-  @override
-  String get chatComposerAttachImage => 'Photo';
 
   @override
   String get chatComposerAttachClientPdf => 'Client PDF';
@@ -7591,6 +7589,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get telegramPreviewPdf => 'Preview PDF';
 
   @override
+  String get telegramPreviewUnavailable => 'Preview unavailable for this file';
+
+  @override
   String get telegramDownloadDocument => 'Download document';
 
   @override
@@ -7717,4 +7718,98 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notificationRecurringDraftInvoiceCreatedMessageFallback =>
       'A recurring draft invoice was created.';
+
+  @override
+  String get requireCompletionPhotos => 'Require photos';
+
+  @override
+  String get requireCompletionPhotosHint =>
+      'Workers must attach photos before completing this visit';
+
+  @override
+  String get addCompletionPhotos => 'Add photos';
+
+  @override
+  String completionPhotosCount(int count, int minimum) {
+    return 'Photos: $count/$minimum';
+  }
+
+  @override
+  String get completionPhotoError =>
+      'Could not add photos or complete this visit. Please try again.';
+
+  @override
+  String get addBeforePhoto => 'Take before photo';
+
+  @override
+  String get addAfterPhoto => 'Take after photo';
+
+  @override
+  String get eventFormCompletion => 'To complete';
+
+  @override
+  String get eventFormOptions => 'Options';
+
+  @override
+  String get eventFormMoreOptions => 'More options';
+
+  @override
+  String get eventFormOff => 'Off';
+
+  @override
+  String get eventFormPhotoHintOne => 'At least one photo is needed to finish';
+
+  @override
+  String eventFormPhotoHintMany(int count) {
+    return 'At least $count photos are needed to finish';
+  }
+
+  @override
+  String get eventFormTitleField => 'title';
+
+  @override
+  String eventFormCompleteFields(String fields) {
+    return 'Complete: $fields';
+  }
+
+  @override
+  String get groupSettingsInformation => 'Information';
+
+  @override
+  String get groupSettingsMembersPermissions => 'Members and permissions';
+
+  @override
+  String get groupSettingsMembersRoles => 'Members and roles';
+
+  @override
+  String get groupSettingsEditInformation => 'Edit information';
+
+  @override
+  String get groupSettingsOwnerLabel => 'Owner';
+
+  @override
+  String groupSettingsPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pending',
+      one: '1 pending',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupSettingsDeleteNamePrompt(String name) {
+    return 'Type “$name” to confirm permanent deletion. This cannot be undone.';
+  }
+
+  @override
+  String get groupSettingsDeleteGroup => 'Delete group';
+
+  @override
+  String get agendaCompleted => 'Completed';
+
+  @override
+  String get agendaEmptyDay =>
+      'No jobs for this day. Select another date or All.';
 }

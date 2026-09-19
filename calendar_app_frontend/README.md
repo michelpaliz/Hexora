@@ -1,5 +1,8 @@
 # Hexora
 
+> Backend handoff: [Backend fixes required](BACKEND_FIXES_REQUIRED.md) — confirmed blockers, investigation items, and acceptance checks.
+> Additional findings: [App issues review](APP_ISSUES_REVIEW.md) — frontend issues and cross-app contract risks.
+
 Hexora is the operating system I am building around the real needs of my
 business. It brings scheduling, employees, clients, presupuestos, invoices,
 receipts, expenses, banking, documents, email, and Telegram into one shared
@@ -33,37 +36,68 @@ tool shaped by the problems encountered in day-to-day operations.
 
 Targets: Android, iOS, Web, Windows, macOS, and Linux from a single codebase.
 
+## Install or update Hexora on an Android phone
+
+Enable USB debugging, connect the phone with a data cable, and accept its
+authorization prompt. From the project folder, run:
+
+```bash
+./scripts/install_android.sh
+```
+
+The script builds a release APK and installs it on the single connected phone
+using `adb install -r`, preserving existing app data. It does not select an
+emulator automatically. If several phones are connected, choose one with
+`./scripts/install_android.sh --device SERIAL` (see `adb devices`).
+
+Without a connected phone, the script saves `build/phone/Hexora-latest.apk`
+for manual transfer. Use `./scripts/install_android.sh --build-only` to always
+build without installing. Open the transferred APK on the phone to install it.
+
+Updates require the same application ID and signing key. The current release
+configuration uses the local development signing key; keep that key for future
+updates. Installation failures never trigger an automatic uninstall.
+
+Offline script checks: `python3 scripts/tests/test_install_android.py`.
+
 ---
 
 ## Project layout
 
-The app follows a layered structure under `lib/`, with each layer prefixed
-`a-`, `b-`, `c-`, … to keep the dependency direction obvious at a glance
-(lower letters are lower-level).
+The app uses descriptive layer names, with screens grouped by product area.
+See the [project structure guide](docs/project_structure.md) for a source map,
+feature locations, placement rules, and the previous-to-current path mapping.
 
 ### `lib/models/`
-Plain Dart data models and DTOs — no Flutter, no backend calls.
-`group_model/`, `invoice/`, `receipt/`, `notification_model/`, `user_model/`,
-`mail/`, `jobs/`, `telegram/`, `downloads/`, `weather/`.
 
-### `lib/data/`
+Data models, DTOs, and serialization.
+`groups/`, `clients/`, `workers/`, `time_tracking/`, `calendar/`, `user/`,
+`notifications/`, `documents/`, `service_catalog/`, `invoice/`, `presupuesto/`,
+`receipt/`, `mail/`, `jobs/`, `telegram/`, `downloads/`, `weather/`.
+See the [model ownership guide](lib/models/README.md).
+
+### `lib/services/`
+
 The API/service layer — one folder per domain, each talking to the backend
 over `http`/`dio` and (where relevant) sockets:
-`auth_user/`, `group_management/` (groups, events, recurrence, invites,
-categories, agenda), `invoicing/`, `receipts/`, `vat/`, `expenses/`,
+`auth/`, `groups/` (groups, events, recurrence, invites,
+categories, agenda), `clients/`, `time_tracking/`, `service_catalog/`,
+`invoicing/`, `presupuestos/`, `receipts/`, `vat/`, `expenses/`,
 `statements/`, `enable_banking/`, `truelayer/`, `documents/` (private
 documents), `mail/`, `emails/`, `notification/`, `telegram/`, `providers/`,
-`insights/`, `blob_uploader/`, `downloads/`, `user/`, `config/` (API
+`insights/`, `blob_storage/`, `downloads/`, `user/`, `config/` (API
 constants/client), `shared/`, `errors/`.
 
-### `lib/presentation/features/`
+### `lib/presentation/screens/`
+
 All screens and widgets, grouped by product area:
 
 * **home/** — landing/home page
-* **dashboard/** — the main group workspace: dashboard shell
-  (`dashboard_screen/`) plus feature sections under `sections/`:
-  `invoices/` (invoice + presupuesto editors, VAT summary, clients/receipts
-  views), `workers/` (time tracking, monthly overview), `enable_banking/`
+* **workspace/** — the main group workspace: dashboard shell
+  (`dashboard/`) plus feature sections under `sections/`:
+  `invoices/` (invoice editor, VAT summary, client views), `presupuestos/`
+  (documents, templates, invoice conversion), `receipts/` (receipt views,
+  editor, recurring receipts), `workers/` (time tracking, monthly overview), `enable_banking/`
   (bank statements, invoice linking), `expenses/`, `mail/` (compose,
   inline invoice wizard), `telegram/`, `private_documents/` (vault,
   upload/detail dialogs), `services_clients/`, `members/`, `notifications/`,
@@ -77,28 +111,42 @@ All screens and widgets, grouped by product area:
 * **agenda/** — agenda/list view of events
 * **profile/** — user profile
 * **settings/** — app settings
-* **shared/** — cross-cutting widgets (app bar, side panels, popups)
+
+Cross-cutting widgets (app bars, side panels, popups) live in
+`lib/presentation/shared/`, alongside `routes/`, `utils/`, and `viewmodels/`.
 
 ### `lib/state/`
-App-wide state (locale, and other local providers) — `local/`, `docs/`.
+
+App-wide local state, currently `locale_provider.dart`.
 
 ### `lib/navigation/`
+
 App shell navigation: contextual FAB and drawer.
 
+`main_scaffold.dart` holds the shell; `fab/`, `horizontal_nav/`, and `drawer/`
+contain their respective navigation components.
+
 ### `lib/theme/`
+
 Light/dark theming, color tokens, typography, shapes.
 
+Definitions live in `themes/`, palettes in `colors/`, text styles in
+`typography/`, and themed surfaces/buttons in `components/`.
+
 ### `lib/l10n/`
+
 Localization sources (`app_en.arb`, `app_es.arb`) and the generated
 `app_localizations*.dart` files (via `flutter gen-l10n`, configured in
 `l10n.yaml`). **Do not hand-edit the generated files** — edit the `.arb`
 files and regenerate.
 
 ### `lib/app/`
+
 App bootstrap/initialization (`bootstrap/`, `init_main.dart`) and session
 handling (`session/`, e.g. session-expiry redirects).
 
 ### `lib/main.dart`
+
 Entry point: initializes services, sets up local notifications, and mounts
 `HexoraApp` (theme, locale, routes, deep-link handling via
 `onGenerateRoute`).
@@ -141,7 +189,7 @@ flutter test
 ```
 
 API endpoints and other environment-specific values live in
-`lib/data/config/`.
+`lib/services/config/`.
 
 ### Deployment
 
@@ -154,13 +202,13 @@ API endpoints and other environment-specific values live in
 
 * **Entry point:** `lib/main.dart`
 * **Routing:** `lib/presentation/routes/`
-* **Dashboard shell & nav:** `lib/presentation/features/dashboard/dashboard_screen/`
-* **Calendar UI:** `lib/presentation/features/calendar/`
-* **Events:** `lib/presentation/features/events/`
-* **Invoicing:** `lib/presentation/features/dashboard/sections/invoices/`
-* **Worker time tracking:** `lib/presentation/features/dashboard/sections/workers/`
-* **API layer:** `lib/data/`
-* **State management:** `lib/state/`
+* **Dashboard shell & nav:** `lib/presentation/screens/workspace/dashboard/`
+* **Calendar UI:** `lib/presentation/screens/calendar/`
+* **Events:** `lib/presentation/screens/events/`
+* **Invoicing:** `lib/presentation/screens/workspace/sections/invoices/`
+* **Worker time tracking:** `lib/presentation/screens/workspace/sections/workers/`
+* **API layer:** `lib/services/`
+* **State management:** `lib/state/` (local preferences), domain providers under `lib/services/`
 * **Localization:** `lib/l10n/` (edit `.arb`, then `flutter gen-l10n`)
 * **Theming:** `lib/theme/`
-* **Tests:** `test/` (mirrors `lib/` layer names, e.g. `test/a_models/`, `test/b_backend/`, `test/c_frontend/`)
+* **Tests:** `test/` (mirrors `lib/` layer names, e.g. `test/models/`, `test/services/`, `test/presentation/`)

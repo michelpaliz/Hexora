@@ -1,31 +1,33 @@
 import 'package:flutter/foundation.dart';
-import 'package:hexora/data/auth/auth/auth_services/auth_service.dart';
-import 'package:hexora/data/group_management/business_logic/worker/api/i_time_tracking_api_client.dart';
-import 'package:hexora/data/group_management/business_logic/worker/api/time_tracking_api_client.dart';
-import 'package:hexora/data/group_management/business_logic/worker/repository/time_tracking_repository.dart';
-import 'package:hexora/data/group_management/event/api/event_api_client.dart';
-import 'package:hexora/data/group_management/event/api/i_event_api_client.dart';
-import 'package:hexora/data/group_management/event/domain/event_domain.dart';
-import 'package:hexora/data/group_management/event/repository/event_repository.dart';
-import 'package:hexora/data/group_management/event/repository/i_event_repository.dart';
-import 'package:hexora/data/group_management/event/resolver/event_group_resolver.dart';
-import 'package:hexora/data/group_management/group/api/group_api_client.dart';
-import 'package:hexora/data/group_management/group/api/i_group_api_client.dart';
-import 'package:hexora/data/group_management/group/domain/group_domain.dart';
-import 'package:hexora/data/group_management/group/repository/group_repository.dart';
-import 'package:hexora/data/group_management/group/repository/i_group_repository.dart';
-import 'package:hexora/data/group_management/invite/api/invite_api_client.dart';
-import 'package:hexora/data/group_management/invite/domain/invite_domain.dart';
-import 'package:hexora/data/group_management/invite/repository/invite_repository.dart';
-import 'package:hexora/data/group_management/recurrence_rule/recurrence_rule_api_client.dart';
-import 'package:hexora/data/mail/api/i_mail_api_client.dart';
-import 'package:hexora/data/mail/api/mail_api_client.dart';
-import 'package:hexora/data/mail/domain/mail_domain.dart';
-import 'package:hexora/data/mail/repository/i_mail_repository.dart';
-import 'package:hexora/data/mail/repository/mail_repository.dart';
-import 'package:hexora/data/telegram/api/telegram_api_client.dart';
-import 'package:hexora/data/telegram/domain/telegram_domain.dart';
-import 'package:hexora/data/user/repository/i_user_repository.dart';
+import 'package:hexora/services/auth/auth_service.dart';
+import 'package:hexora/services/time_tracking/api/i_time_tracking_api_client.dart';
+import 'package:hexora/services/time_tracking/api/time_tracking_api_client.dart';
+import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
+import 'package:hexora/services/groups/event/api/event_api_client.dart';
+import 'package:hexora/services/groups/event/api/i_event_api_client.dart';
+import 'package:hexora/services/groups/event/domain/event_domain.dart';
+import 'package:hexora/services/groups/event/repository/event_repository.dart';
+import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
+import 'package:hexora/services/groups/event/resolver/event_group_resolver.dart';
+import 'package:hexora/services/groups/api/group_api_client.dart';
+import 'package:hexora/services/groups/api/i_group_api_client.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/groups/repository/group_repository.dart';
+import 'package:hexora/services/groups/repository/i_group_repository.dart';
+import 'package:hexora/services/groups/invite/api/invite_api_client.dart';
+import 'package:hexora/services/groups/invite/domain/invite_domain.dart';
+import 'package:hexora/services/groups/invite/repository/invite_repository.dart';
+import 'package:hexora/services/groups/recurrence/recurrence_rule_api_client.dart';
+import 'package:hexora/services/mail/api/i_mail_api_client.dart';
+import 'package:hexora/services/mail/api/mail_api_client.dart';
+import 'package:hexora/services/mail/domain/mail_domain.dart';
+import 'package:hexora/services/mail/repository/i_mail_repository.dart';
+import 'package:hexora/services/mail/repository/mail_repository.dart';
+import 'package:hexora/services/telegram/api/telegram_api_client.dart';
+import 'package:hexora/services/telegram/domain/telegram_domain.dart';
+import 'package:hexora/services/user/repository/i_user_repository.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/presentation/utils/location/geofenced_visit_tracking_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
@@ -118,6 +120,12 @@ final List<SingleChildWidget> featureProviders = [
   Provider<ITimeTrackingApiClient>(create: (_) => TimeTrackingApiClient()),
   Provider<ITimeTrackingRepository>(
     create: (ctx) => TimeTrackingRepository(ctx.read<ITimeTrackingApiClient>()),
+  ),
+  ChangeNotifierProvider<GeofencedVisitTrackingService>(
+    create: (ctx) => GeofencedVisitTrackingService(
+      api: ctx.read<ITimeTrackingApiClient>(),
+      userDomain: ctx.read<UserDomain>(),
+    )..restore(),
   ),
 
   // EventDomain: depends on GroupDomain + IEventRepository

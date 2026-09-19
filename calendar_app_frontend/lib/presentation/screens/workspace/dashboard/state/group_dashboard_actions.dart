@@ -1,0 +1,192 @@
+import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
+import 'package:hexora/services/telegram/domain/telegram_domain.dart';
+import 'package:provider/provider.dart';
+import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/access/role_info_screen.dart';
+
+import '../navigation/dashboard_sections.dart';
+import 'group_dashboard_state.dart';
+
+class DashboardActions {
+  static void openSection(GroupDashboardState state, String section) {
+    final context = state.context;
+
+    if (state.isWide) {
+      state.selectSection(section);
+      return;
+    }
+
+    switch (section) {
+      case Sections.agenda:
+        Navigator.pushNamed(context, AppRoutes.agenda, arguments: state.group);
+        break;
+
+      case Sections.calendar:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupCalendar,
+          arguments: state.group,
+        );
+        break;
+
+      case Sections.notifications:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupNotifications,
+          arguments: state.group,
+        );
+        break;
+
+      case Sections.settings:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupSettings,
+          arguments: state.group,
+        );
+        break;
+      case Sections.members:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupMembers,
+          arguments: state.group,
+        );
+        break;
+      case Sections.services:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupServicesClients,
+          arguments: state.group,
+        );
+        break;
+      case Sections.maps:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ClientMapScreen(
+              group: state.group,
+              canEdit: state.canSeeAdmin,
+            ),
+          ),
+        );
+        break;
+      case Sections.invoices:
+        if (!state.canSeeAdmin) return;
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupIncome,
+          arguments: state.group,
+        );
+        break;
+      case Sections.budgets:
+        if (!state.canSeeAdmin) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PresupuestosModuleScreen(group: state.group),
+          ),
+        );
+        break;
+      case Sections.expenses:
+        if (!state.canSeeAdmin) return;
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupExpenses,
+          arguments: state.group,
+        );
+        break;
+      case Sections.emails:
+        if (!state.canSeeAdmin) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const MailConsoleScreen()),
+        );
+        break;
+      case Sections.telegram:
+        if (!state.canSeeAdmin) return;
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => Consumer<TelegramDomain>(
+              builder: (context, telegramDomain, _) {
+                final chatOpen = telegramDomain.selectedChat != null;
+                return PopScope(
+                  canPop: !chatOpen,
+                  onPopInvokedWithResult: (didPop, _) {
+                    if (!didPop && chatOpen) telegramDomain.selectChat(null);
+                  },
+                  child: Scaffold(
+                    appBar:
+                        chatOpen ? null : AppBar(title: const Text('Telegram')),
+                    body: SafeArea(
+                      top: chatOpen,
+                      child: const TelegramSectionScreen(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+        break;
+      case Sections.enableBanking:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.enableBanking,
+          arguments: state.group,
+        );
+        break;
+      case Sections.insights:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupInsights,
+          arguments: state.group,
+        );
+        break;
+      case Sections.workers:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.groupTimeTracking,
+          arguments: state.group,
+        );
+        break;
+      case Sections.profile:
+        if (state.user != null && state.role != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RoleInfoScreen(
+                group: state.group,
+                user: state.user!,
+                role: state.role!,
+                fetchReadSas: state.fetchReadSas,
+              ),
+            ),
+          );
+        }
+        break;
+      case Sections.undone:
+        if (state.user != null && state.role != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => GroupUndoneEventsScreen(
+                group: state.group,
+                user: state.user!,
+                role: state.role!,
+              ),
+            ),
+          );
+        }
+        break;
+      case Sections.editGroup:
+        Navigator.pushNamed(
+          context,
+          AppRoutes.editGroup,
+          arguments: state.group,
+        );
+        break;
+
+      default:
+        break;
+    }
+  }
+}

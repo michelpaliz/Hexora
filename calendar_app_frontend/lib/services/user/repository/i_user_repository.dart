@@ -1,0 +1,39 @@
+// lib/services/auth/user/repository/i_user_repository.dart
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
+import 'package:hexora/models/user/user.dart';
+
+abstract class IUserRepository {
+  // Blobs / Avatars
+  Future<String> getFreshAvatarUrl({required String blobName});
+
+  // 🔐 Auth
+  Future<String> getAuthToken({bool forceRefresh = false}); // <-- ADD
+
+  // CRUD
+  Future<User> createUser(User user);
+  Future<User> getUserById(String id);
+  Future<User> getUserByEmail(String email);
+  Future<User> getUserByAuthID(String authID);
+  Future<User> updateUser(User user);
+  Future<User> updateUserByUsername(String username, User user);
+  Future<void> deleteUser(String id);
+  Future<List<User>> getAllUsers();
+
+  // Lookups
+  Future<User> getUserByUsername(String username);
+  Future<List<String>> searchUsernames(String query);
+
+  // Helpers
+  Future<List<User>> getUsersForGroup(Group group);
+  Future<List<User>> getUsersByIds(List<String> ids);
+
+  // Notifications
+  Future<List<NotificationUser>> getNotificationsByUser(String userName);
+
+  // Auto statement import
+  Future<bool> setAutoStatementImportEnabled({required bool enabled});
+
+  // Generic selector
+  Future<User> getUserBySelector(String selector);
+}

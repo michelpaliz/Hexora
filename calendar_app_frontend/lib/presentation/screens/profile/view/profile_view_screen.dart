@@ -1,0 +1,164 @@
+import 'package:hexora/theme/theme_provider.dart';
+import 'package:hexora/services/notification/domain/notification_domain.dart';
+// lib/presentation/b-calendar-section/screens/profile/profile_view_screen.dart
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/navigation/main_scaffold.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
+
+import 'package:hexora/presentation/routes/app_routes.dart';
+import 'widgets/profile_details_card.dart';
+import 'widgets/profile_header_section.dart';
+
+class ProfileViewScreen extends StatelessWidget {
+  const ProfileViewScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+
+    final user = context.watch<UserDomain>().user;
+    if (user == null) {
+      return MainScaffold(
+        showAppBar: false,
+        body: Center(
+          child: Text(
+            loc.noUserLoaded,
+            style: textTheme.bodyMedium,
+          ),
+        ),
+      );
+    }
+
+    final isDark = theme.brightness == Brightness.dark;
+    final headerColor = isDark ? AppDarkColors.primary : AppColors.primary;
+
+    final groupsCount = user.groupIds.length;
+    final calendarsCount = user.sharedCalendars.length;
+    final notificationsCount =
+        context.watch<NotificationDomain>().notifications.length;
+
+    void copyToClipboard(String text, String toast) {
+      Clipboard.setData(ClipboardData(text: text));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(toast, style: textTheme.bodyMedium)),
+      );
+    }
+
+    void goToProfileEdit() =>
+        Navigator.of(context).pushNamed(AppRoutes.profile);
+    void goToGroups() => Navigator.of(context).pushNamed(AppRoutes.showGroups);
+    void goToCalendars() => Navigator.of(context).pushNamed(AppRoutes.agenda);
+    void goToNotifications() => Navigator.of(context)
+        .pushNamed(AppRoutes.showNotifications, arguments: user);
+
+    return MainScaffold(
+      showAppBar: false,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        slivers: [
+          // Header
+          SliverToBoxAdapter(
+            child: ProfileHeaderSection(
+              headerColor: headerColor,
+              onEdit: goToProfileEdit,
+              user: user,
+              onCopyEmail: () =>
+                  copyToClipboard(user.email, loc.copiedToClipboard),
+              groupsCount: groupsCount,
+              calendarsCount: calendarsCount,
+              notificationsCount: notificationsCount,
+              onTapQuickGroups: goToGroups,
+              onTapQuickCalendars: goToCalendars,
+              onTapQuickNotifications: goToNotifications,
+            ),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+          // Details card
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ProfileDetailsCard(
+                email: user.email,
+                username: '@${user.userName}',
+                userId: user.id,
+                groupsCount: groupsCount,
+                calendarsCount: calendarsCount,
+                notificationsCount: notificationsCount,
+                onCopyEmail: () =>
+                    copyToClipboard(user.email, loc.copiedToClipboard),
+                onCopyId: () => copyToClipboard(user.id, loc.copiedToClipboard),
+                onTapUsername: goToProfileEdit,
+                onTapTeams: goToGroups,
+                onTapCalendars: goToCalendars,
+                onTapNotifications: goToNotifications,
+              ),
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Consumer<ThemeModeProvider>(
+                    builder: (context, provider, _) =>
+                        DropdownButtonFormField<ThemeMode>(
+                      key: ValueKey(provider.mode),
+                      initialValue: provider.mode,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.palette_outlined),
+                        labelText: loc.localeName.startsWith('es')
+                            ? 'Tema de la app'
+                            : 'App theme',
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                            value: ThemeMode.system,
+                            child: Text(loc.localeName.startsWith('es')
+                                ? 'Usar tema del dispositivo'
+                                : 'Use device theme')),
+                        DropdownMenuItem(
+                            value: ThemeMode.light,
+                            child: Text(loc.localeName.startsWith('es')
+                                ? 'Claro'
+                                : 'Light')),
+                        DropdownMenuItem(
+                            value: ThemeMode.dark,
+                            child: Text(loc.localeName.startsWith('es')
+                                ? 'Oscuro'
+                                : 'Dark')),
+                      ],
+                      onChanged: provider.isLoaded
+                          ? (mode) {
+                              if (mode != null) provider.setMode(mode);
+                            }
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom spacing
+          const SliverToBoxAdapter(child: SizedBox(height: 88)),
+          const SliverToBoxAdapter(
+            child: SafeArea(top: false, child: SizedBox(height: 8)),
+          ),
+        ],
+      ),
+    );
+  }
+}

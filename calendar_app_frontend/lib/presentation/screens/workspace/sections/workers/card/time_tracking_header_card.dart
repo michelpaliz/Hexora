@@ -1,0 +1,85 @@
+import 'package:flutter/material.dart';
+
+class TimeTrackingHeaderCard extends StatelessWidget {
+  final String groupName;
+  final VoidCallback onEnable;
+  final VoidCallback onDisable;
+  final bool busy;
+
+  const TimeTrackingHeaderCard({
+    super.key,
+    required this.groupName,
+    required this.onEnable,
+    required this.onDisable,
+    required this.busy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox.shrink();
+
+    /*
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final l = AppLocalizations.of(context)!;
+
+    final cardBg = ThemeColors.cardBg(context);
+    final onCard = ThemeColors.textPrimary(context);
+
+    return Card(
+      color: cardBg,
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.25), width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.trackHoursFor(groupName),
+              style: t.titleLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: onCard,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.timeTrackingHeaderHint,
+              style: t.bodySmall.copyWith(
+                color: onCard.withValues(alpha: 0.7),
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: busy ? null : onEnable,
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: Text(l.enableTrackingCta, style: t.buttonText),
+                ),
+                OutlinedButton.icon(
+                  onPressed: busy ? null : onDisable,
+                  icon: const Icon(Icons.stop_circle_outlined),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: onCard,
+                    backgroundColor: cs.primary.withValues(alpha: 0.06),
+                    side: BorderSide(color: cs.primary),
+                    overlayColor: cs.primary.withValues(alpha: 0.08),
+                  ),
+                  label: Text(l.disableTrackingCta, style: t.buttonText),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    */
+  }
+}

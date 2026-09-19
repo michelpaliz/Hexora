@@ -1,16 +1,16 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hexora/models/group/group.dart';
-import 'package:hexora/models/worker/time_entry.dart';
-import 'package:hexora/models/worker/worker.dart';
-import 'package:hexora/models/notification/notification_user.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/time_tracking/time_entry.dart';
+import 'package:hexora/models/workers/worker.dart';
+import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/models/user/user.dart';
-import 'package:hexora/data/group_management/business_logic/worker/repository/time_tracking_repository.dart';
-import 'package:hexora/data/notification/domain/notification_domain.dart';
-import 'package:hexora/data/user/domain/user_domain.dart';
-import 'package:hexora/data/user/repository/i_user_repository.dart';
-import 'package:hexora/presentation/features/dashboard/sections/workers/worker/entry_screen/tracking/controller/worker_time_tracking_controller.dart';
+import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
+import 'package:hexora/services/notification/domain/notification_domain.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/services/user/repository/i_user_repository.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/controller/worker_time_tracking_controller.dart';
 
 class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
   double? lastTotalsAdvance;
@@ -27,7 +27,7 @@ class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
     double? advanceAmount,
   }) async {
     lastTotalsAdvance = advanceAmount;
-    final gross = 200.0;
+    const gross = 200.0;
     final adv = (advanceAmount ?? 0).clamp(0, 999999).toDouble();
     final net = (gross - adv).clamp(0, gross).toDouble();
     return {
@@ -178,7 +178,8 @@ class _FakeTimeTrackingRepository implements ITimeTrackingRepository {
       throw UnimplementedError();
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError(invocation.memberName.toString());
 }
 
 class _FakeUserRepository implements IUserRepository {

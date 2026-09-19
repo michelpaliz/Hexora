@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/app/session/session_connection_cleanup.dart';
-import 'package:hexora/data/auth/auth/token/service/token_service.dart';
+import 'package:hexora/services/auth/token/token_service.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 
 /// Centralized session-expiry reaction used by low-level HTTP/auth code.
 class SessionExpiryHandler {
@@ -11,17 +11,14 @@ class SessionExpiryHandler {
       GlobalKey<NavigatorState>();
   static bool _handling = false;
 
-  static Future<void> handle({
-    Future<void> Function()? clearTokens,
-    NavigatorState? navigator,
-  }) async {
+  static Future<void> handle() async {
     if (_handling) return;
     _handling = true;
     try {
-      resetSessionConnections();
-      await (clearTokens ?? TokenService.clearTokens)();
+      OcrImportJobsStore.instance.resetForSession();
+      await TokenService.clearTokens();
 
-      final nav = navigator ?? navigatorKey.currentState;
+      final nav = navigatorKey.currentState;
       if (nav == null) return;
 
       nav.pushNamedAndRemoveUntil(

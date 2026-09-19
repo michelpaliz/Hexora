@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/user/user.dart';
-import 'package:hexora/data/user/domain/user_domain.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
-import 'package:hexora/presentation/utils/errors/premium_upgrade_dialog.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -121,6 +121,11 @@ class UserViewModel extends ChangeNotifier {
         if (ctx != null &&
             err != null &&
             GroupMembershipErrorMapper.isPremiumMultiGroupError(err)) {
+          if (!ctx.mounted) {
+            saving = false;
+            notifyListeners();
+            return false;
+          }
           await showPremiumUpgradeDialog(
             ctx,
             message: GroupMembershipErrorMapper.messageFor(

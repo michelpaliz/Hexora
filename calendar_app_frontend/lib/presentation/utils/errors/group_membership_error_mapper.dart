@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:hexora/data/errors/error_classes/error_classes.dart';
-import 'package:hexora/data/shared/backend_api_exception.dart';
+import 'package:hexora/services/errors/error_classes/error_classes.dart';
+import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 enum GroupMembershipErrorContext {

@@ -1,0 +1,81 @@
+import 'package:flutter/material.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/services/groups/event/domain/event_domain.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+
+Future<void> saveEditedEvent({
+  required BuildContext context,
+  required EventDomain eventDomain,
+  required Event updatedData,
+  required List<Event> eventList,
+  required Group group,
+  required GroupDomain groupDomain,
+  required String?
+      currentUserName, // (unused; keep if needed for logging/audit)
+  required bool startDateChanged,
+}) async {
+  const bool allowRepetitiveHours = true;
+
+  bool isStartHourUnique = true;
+
+  if (allowRepetitiveHours) {
+    final startDateOnly = DateTime(
+      updatedData.startDate.year,
+      updatedData.startDate.month,
+      updatedData.startDate.day,
+    );
+
+    isStartHourUnique = eventList.every((e) {
+      final eventStartDateOnly = DateTime(
+        e.startDate.year,
+        e.startDate.month,
+        e.startDate.day,
+      );
+
+      if (!startDateChanged && e.id == updatedData.id) return true;
+      return eventStartDateOnly != startDateOnly;
+    });
+  }
+
+  if (isStartHourUnique || !allowRepetitiveHours) {
+    try {
+      await eventDomain.updateEvent(context, updatedData);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.eventEdited)),
+        );
+      }
+
+      // ✅ Use repository (handles token) instead of service
+      final updatedGroup =
+          await groupDomain.groupRepository.getGroupById(group.id);
+      groupDomain.currentGroup = updatedGroup;
+
+      // Optional: refresh calendar data
+      if (!context.mounted) return;
+      await eventDomain.manualRefresh(context);
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.eventEditFailed)),
+      );
+    }
+  } else {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.repetitionEvent),
+        content: Text(AppLocalizations.of(context)!.repetitionEventInfo),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}

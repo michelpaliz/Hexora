@@ -1,51 +1,50 @@
 // routes.dart
 
 import 'package:flutter/material.dart';
-import 'package:hexora/models/event/model/event.dart';
-import 'package:hexora/models/group/group.dart';
-import 'package:hexora/models/worker/worker.dart';
+import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/routes/calendar/group_calendar_loader.dart';
-import 'package:hexora/presentation/routes/group_invoices_route_args.dart';
-import 'package:hexora/presentation/features/home/home_page/home_page.dart';
-import 'package:hexora/presentation/features/dashboard/dashboard_screen/dashboard/group_dashboard.dart';
-import 'package:hexora/presentation/features/dashboard/dashboard_screen/header/header_section.dart';
-import 'package:hexora/presentation/features/dashboard/sections/enable_banking/enable_banking_callback_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/enable_banking/enable_banking_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/enable_banking/statements/analytics/statements_analytics_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/expenses/gastos_module_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/graphs/group_insights_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/members/presentation/screen/group_members_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/notifications/group_notifications_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/services_clients/services_clients_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/invoices/group_invoices_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/invoices/group_invoices/widgets/expense_ocr_reprocess_results_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/invoices/recurring_invoices/recurring_invoices_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/workers/workers_hub_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/workers/worker/create_worker/form/create_worker_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
-import 'package:hexora/presentation/features/dashboard/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
-import 'package:hexora/presentation/features/calendar/screens/group/create_edit/models/create_group_data.dart';
-import 'package:hexora/presentation/features/calendar/screens/group/create_edit/models/edit_group_data.dart';
-import 'package:hexora/presentation/features/calendar/screens/group/group_settings/group_settings.dart';
-import 'package:hexora/presentation/features/calendar/screens/group/show_groups/group_profile/dialog_selection/action/edit_group_arg.dart';
-import 'package:hexora/presentation/features/calendar/screens/group/show_groups/group_screen/group_list_section.dart';
-import 'package:hexora/presentation/features/events/screens/actions/add_screen/screen/add_event_screen.dart';
-import 'package:hexora/presentation/features/events/screens/actions/edit_screen/screen/edit_event_screen.dart';
-import 'package:hexora/presentation/features/events/screens/event_screen/event_detail/event_detail_screen.dart';
-import 'package:hexora/presentation/features/auth/download_app/download_app_view.dart';
-import 'package:hexora/presentation/features/auth/forgot_password.dart';
-import 'package:hexora/presentation/features/auth/login/form/login_view.dart';
-import 'package:hexora/presentation/features/auth/reset_password/reset_password_screen.dart';
-import 'package:hexora/presentation/features/auth/register/ui/register_view.dart';
-import 'package:hexora/presentation/features/auth/verify_email/verify_email_view.dart';
-import 'package:hexora/presentation/features/auth/verify_email/verify_success_view.dart';
-import 'package:hexora/presentation/features/notifications/show_notifications/show_notifications.dart';
-import 'package:hexora/presentation/features/agenda/agenda_screen.dart';
-import 'package:hexora/presentation/features/profile/edit/profile_edit_screen.dart';
-import 'package:hexora/presentation/features/profile/view/profile_view_screen.dart';
-import 'package:hexora/presentation/features/settings/screens/settings.dart';
+import 'package:hexora/presentation/screens/home/home_page/home_page.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/group_dashboard.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/header/header_section.dart';
+import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_callback_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/analytics/statements_analytics_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/expenses/gastos_module_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/graphs/group_insights_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/members/presentation/screen/group_members_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/notifications/group_notifications_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/services_clients_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/expenses/ocr/expense_ocr_reprocess_results_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/recurring_invoices_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/workers_hub_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker/create_worker/form/create_worker_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/models/create_group_data.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/models/edit_group_data.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/group_settings.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_screen/group_list_section.dart';
+import 'package:hexora/presentation/screens/events/screens/actions/add_screen/screen/add_event_screen.dart';
+import 'package:hexora/presentation/screens/events/screens/actions/edit_screen/screen/edit_event_screen.dart';
+import 'package:hexora/presentation/screens/events/screens/event_screen/event_detail/event_detail_screen.dart';
+import 'package:hexora/presentation/screens/auth/download_app/download_app_view.dart';
+import 'package:hexora/presentation/screens/auth/forgot_password.dart';
+import 'package:hexora/presentation/screens/auth/login/form/login_view.dart';
+import 'package:hexora/presentation/screens/auth/reset_password/reset_password_screen.dart';
+import 'package:hexora/presentation/screens/auth/register/ui/register_view.dart';
+import 'package:hexora/presentation/screens/auth/verify_email/verify_email_view.dart';
+import 'package:hexora/presentation/screens/auth/verify_email/verify_success_view.dart';
+import 'package:hexora/presentation/screens/notifications/show-notifications/show_notifications.dart';
+import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
+import 'package:hexora/presentation/screens/profile/edit/profile_edit_screen.dart';
+import 'package:hexora/presentation/screens/profile/view/profile_view_screen.dart';
+import 'package:hexora/presentation/screens/settings/screens/settings.dart';
 
 final Map<String, WidgetBuilder> routes = {
   AppRoutes.settings: (context) => const Settings(),
@@ -149,29 +148,65 @@ final Map<String, WidgetBuilder> routes = {
     return ServicesClientsScreen(group: group);
   },
   AppRoutes.groupIncome: (context) {
-    final args = resolveGroupInvoicesRouteArgs(
-      ModalRoute.of(context)?.settings.arguments,
-    );
-    if (args == null) return const SizedBox.shrink();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    Group? group;
+    String? initialMenu;
+    String? initialInvoiceId;
+    String? initialReceiptId;
+    String? initialBudgetId;
+    if (args is Group) {
+      group = args;
+    } else if (args is GroupInvoicesRouteArgs) {
+      group = args.group;
+      initialMenu = args.initialMenu;
+      initialInvoiceId = args.initialInvoiceId;
+      initialReceiptId = args.initialReceiptId;
+      initialBudgetId = args.initialBudgetId;
+    } else if (args is Map) {
+      group = args['group'] as Group?;
+      initialMenu = args['initialMenu']?.toString();
+      initialInvoiceId = args['initialInvoiceId']?.toString();
+      initialReceiptId = args['initialReceiptId']?.toString();
+      initialBudgetId = args['initialBudgetId']?.toString();
+    }
+    if (group == null) return const SizedBox.shrink();
     return GroupInvoicesScreen(
-      group: args.group,
-      initialMenu: args.initialMenu,
-      initialInvoiceId: args.initialInvoiceId,
-      initialReceiptId: args.initialReceiptId,
-      initialBudgetId: args.initialBudgetId,
+      group: group,
+      initialMenu: initialMenu,
+      initialInvoiceId: initialInvoiceId,
+      initialReceiptId: initialReceiptId,
+      initialBudgetId: initialBudgetId,
     );
   },
   AppRoutes.groupInvoices: (context) {
-    final args = resolveGroupInvoicesRouteArgs(
-      ModalRoute.of(context)?.settings.arguments,
-    );
-    if (args == null) return const SizedBox.shrink();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    Group? group;
+    String? initialMenu;
+    String? initialInvoiceId;
+    String? initialReceiptId;
+    String? initialBudgetId;
+    if (args is Group) {
+      group = args;
+    } else if (args is GroupInvoicesRouteArgs) {
+      group = args.group;
+      initialMenu = args.initialMenu;
+      initialInvoiceId = args.initialInvoiceId;
+      initialReceiptId = args.initialReceiptId;
+      initialBudgetId = args.initialBudgetId;
+    } else if (args is Map) {
+      group = args['group'] as Group?;
+      initialMenu = args['initialMenu']?.toString();
+      initialInvoiceId = args['initialInvoiceId']?.toString();
+      initialReceiptId = args['initialReceiptId']?.toString();
+      initialBudgetId = args['initialBudgetId']?.toString();
+    }
+    if (group == null) return const SizedBox.shrink();
     return GroupInvoicesScreen(
-      group: args.group,
-      initialMenu: args.initialMenu,
-      initialInvoiceId: args.initialInvoiceId,
-      initialReceiptId: args.initialReceiptId,
-      initialBudgetId: args.initialBudgetId,
+      group: group,
+      initialMenu: initialMenu,
+      initialInvoiceId: initialInvoiceId,
+      initialReceiptId: initialReceiptId,
+      initialBudgetId: initialBudgetId,
     );
   },
   AppRoutes.groupExpenses: (context) {
@@ -184,7 +219,13 @@ final Map<String, WidgetBuilder> routes = {
     if (group == null) return const SizedBox.shrink();
     return RecurringInvoicesScreen(group: group);
   },
-  AppRoutes.agenda: (_) => const AgendaScreen(),
+  AppRoutes.agenda: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments;
+    return AgendaScreen(
+      groupId: group is Group ? group.id : null,
+      groupName: group is Group ? group.name : null,
+    );
+  },
 
   // NEW: Profile details (read-only / pretty view)
   AppRoutes.profileDetails: (_) => const ProfileViewScreen(),

@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Hexora: install release on Android emulator",
+            "type": "process",
+            "command": "${workspaceFolder}/scripts/install_android.sh",
+            "args": [
+                "--device",
+                "emulator-5554"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-// lib/presentation/calendar/screens/calendar/no_calendar_screen.dart
+// lib/presentation/c-group-calendar-section/screens/calendar/no_calendar_screen.dart
 import 'package:flutter/material.dart';
 
 class NoCalendarScreen extends StatelessWidget {

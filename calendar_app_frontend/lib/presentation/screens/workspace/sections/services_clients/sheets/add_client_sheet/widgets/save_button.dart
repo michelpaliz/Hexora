@@ -1,0 +1,42 @@
+import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+
+class SaveButton extends StatelessWidget {
+  final bool saving;
+  final bool isEdit;
+  final VoidCallback? onPressed;
+
+  const SaveButton({
+    super.key,
+    required this.saving,
+    required this.isEdit,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        icon: saving
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.save_outlined, size: 16),
+        label: Text(
+          saving ? l.saving : (isEdit ? l.saveChanges : l.saveClient),
+        ),
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 48),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          visualDensity: VisualDensity.compact,
+        ),
+      ),
+    );
+  }
+}

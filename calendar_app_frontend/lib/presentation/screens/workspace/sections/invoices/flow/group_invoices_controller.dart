@@ -1,0 +1,391 @@
+import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/invoice/billing_profile.dart';
+import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/services/clients/client_api.dart';
+import 'package:hexora/services/invoicing/billing_profile_api.dart';
+import 'package:hexora/services/invoicing/invoice_api.dart';
+import 'package:hexora/services/invoicing/invoice_lines_api.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/invoice_editor_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/billing_profile_sheet/billing_profile_sheet.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+
+import 'group_invoices_state.dart';
+
+class GroupInvoicesController extends ChangeNotifier {
+  final Group group;
+
+  GroupInvoicesController({required this.group});
+
+  final _invoicesApi = InvoicesApi();
+  final _billingApi = BillingProfileApi();
+  final _clientsApi = ClientsApi();
+  final _linesApi = InvoiceLinesApi();
+
+  GroupInvoicesState _s = const GroupInvoicesState();
+  GroupInvoicesState get state => _s;
+
+  void _set(GroupInvoicesState next) {
+    _s = next;
+    notifyListeners();
+  }
+
+  Future<void> loadAll({Set<String> clearSelectedInvoiceIds = const {}}) async {
+    _set(_s.copyWith(loading: true, error: null));
+    try {
+      final results = await Future.wait([
+        _clientsApi.list(groupId: group.id, active: null),
+        _invoicesApi.listByGroup(group.id, status: 'issued'),
+        _invoicesApi.listByGroup(group.id, status: 'draft'),
+        _billingApi.getByGroup(group.id),
+      ]);
+
+      final clients = results[0] as List<GroupClient>;
+      final invoices = [...results[1] as List<Invoice>]
+        ..sort(_compareInvoicesNewestFirst);
+      final drafts = [...results[2] as List<Invoice>]
+        ..sort(_compareInvoicesNewestFirst);
+      final billing = results[3] as BillingProfile?;
+
+      // keep selection if still exists, but replace it with the refreshed object
+      Invoice? selectedInvoice;
+      final selectedInvoiceId = _s.selectedInvoice?.id;
+      if (selectedInvoiceId != null &&
+          !clearSelectedInvoiceIds.contains(selectedInvoiceId)) {
+        for (final invoice in [...drafts, ...invoices]) {
+          if (invoice.id == selectedInvoiceId) {
+            selectedInvoice = invoice;
+            break;
+          }
+        }
+      }
+
+      selectedInvoice ??= drafts.isNotEmpty
+          ? drafts.first
+          : (invoices.isNotEmpty ? invoices.first : null);
+
+      _set(
+        _s.copyWith(
+          clients: clients,
+          invoices: invoices,
+          drafts: drafts,
+          billingProfile: billing,
+          selectedClient: clients.isNotEmpty ? clients.first : null,
+          selectedInvoice: selectedInvoice,
+          loading: false,
+          error: null,
+        ),
+      );
+    } catch (e) {
+      _set(_s.copyWith(loading: false, error: e.toString()));
+    }
+  }
+
+  int _compareInvoicesNewestFirst(Invoice a, Invoice b) {
+    final aDate = a.issueDate ?? a.registeredAt;
+    final bDate = b.issueDate ?? b.registeredAt;
+    if (aDate != null && bDate != null) {
+      final dateComparison = bDate.compareTo(aDate);
+      if (dateComparison != 0) return dateComparison;
+    } else if (aDate != null) {
+      return -1;
+    } else if (bDate != null) {
+      return 1;
+    }
+    return a.id.compareTo(b.id);
+  }
+
+  // --- UI state toggles ---
+  void setMenu(String key) => _set(_s.copyWith(selectedMenu: key));
+  void toggleBusinessExpanded() =>
+      _set(_s.copyWith(businessExpanded: !_s.businessExpanded));
+  void toggleTotalsExpanded() =>
+      _set(_s.copyWith(totalsExpanded: !_s.totalsExpanded));
+  void selectClient(GroupClient c) => _set(_s.copyWith(selectedClient: c));
+  void selectInvoice(Invoice? i) => _set(_s.copyWith(selectedInvoice: i));
+
+  // --- derived lists ---
+  List<Invoice> visibleInvoicesForSelectedClient() {
+    final c = _s.selectedClient;
+    if (c == null) return _s.invoices;
+    return _s.invoices.where((inv) => inv.clientId == c.id).toList();
+  }
+
+  List<Invoice> visibleDraftsForSelectedClient() {
+    final c = _s.selectedClient;
+    if (c == null) return _s.drafts;
+    return _s.drafts.where((inv) => inv.clientId == c.id).toList();
+  }
+
+  // --- actions ---
+  Future<void> openCreateInvoice(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+
+    if (_s.clients.isEmpty || _s.selectedClient == null) {
+      showInfoSnack(context, l.noClientsYet);
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => InvoiceEditorScreen(
+          group: group,
+          clients: _s.clients,
+          initialClientId: _s.selectedClient?.id,
+        ),
+      ),
+    );
+
+    if (context.mounted) {
+      await loadAll();
+    }
+  }
+
+  Future<void> openEditDraft(BuildContext context, Invoice draft) async {
+    if (_s.clients.isEmpty) return;
+    if (draft.id.trim().isEmpty) {
+      if (!context.mounted) return;
+      showErrorSnack(context, 'Draft is missing an id');
+      return;
+    }
+    try {
+      var full = await _invoicesApi.getById(draft.id);
+      if (full.lines.isEmpty && full.blocks.isEmpty) {
+        final lines = await _linesApi.list(draft.id);
+        if (lines.isNotEmpty) {
+          full = full.copyWith(lines: lines);
+        }
+      }
+
+      if (!context.mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => InvoiceEditorScreen(
+            group: group,
+            clients: _s.clients,
+            initialClientId: draft.clientId,
+            initialInvoice: full,
+          ),
+        ),
+      );
+      if (context.mounted) {
+        await loadAll();
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      final l = AppLocalizations.of(context)!;
+      final reason = e.toString().replaceFirst('Exception: ', '').trim();
+      showErrorSnack(context, l.invoiceDraftOpenFailed(reason));
+    }
+  }
+
+  Future<void> openBillingProfile(BuildContext context) async {
+    _set(_s.copyWith(busyProfile: true));
+    try {
+      final updated = await showModalBottomSheet<BillingProfile>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (_) => BillingProfileSheet(
+          initial: _s.billingProfile,
+          groupId: group.id,
+          api: _billingApi,
+        ),
+      );
+
+      if (updated != null && context.mounted) {
+        _set(_s.copyWith(billingProfile: updated));
+        final l = AppLocalizations.of(context)!;
+        showSuccessSnack(context, l.billingProfileSaved);
+      }
+    } finally {
+      if (context.mounted) _set(_s.copyWith(busyProfile: false));
+    }
+  }
+
+  Future<void> openEditClient(BuildContext context, GroupClient client) async {
+    final updated = await showModalBottomSheet<GroupClient>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => AddClientSheet(
+        groupId: group.id,
+        api: _clientsApi,
+        client: client,
+      ),
+    );
+
+    if (updated != null && context.mounted) {
+      final nextClients = [..._s.clients];
+      final idx = nextClients.indexWhere((c) => c.id == updated.id);
+      if (idx != -1) nextClients[idx] = updated;
+
+      _set(
+        _s.copyWith(
+          clients: nextClients,
+          selectedClient: (_s.selectedClient?.id == updated.id)
+              ? updated
+              : _s.selectedClient,
+        ),
+      );
+
+      final l = AppLocalizations.of(context)!;
+      showSuccessSnack(context, l.clientUpdatedWithName(updated.name));
+    }
+  }
+
+  void openInvoiceDetailSheet(
+    BuildContext context, {
+    required Invoice invoice,
+  }) {
+    // NOTE: we keep this logic in the screen/widgets because it needs InvoiceDetailSheet
+    // (if you want, we can move it here too by passing a builder callback).
+  }
+
+  Future<void> deleteInvoice(BuildContext context, Invoice invoice) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(
+          (invoice.status ?? '').toLowerCase().contains('draft')
+              ? 'Remove draft?'
+              : 'Remove invoice?',
+        ),
+        content: Text(
+          'This will delete the invoice ${invoice.invoiceNumber.isNotEmpty ? invoice.invoiceNumber : ''}'
+              .trim(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await _invoicesApi.delete(invoice.id);
+      if (!context.mounted) return;
+
+      final nextInvoices =
+          _s.invoices.where((inv) => inv.id != invoice.id).toList();
+      final nextDrafts =
+          _s.drafts.where((inv) => inv.id != invoice.id).toList();
+      final nextSelected =
+          (_s.selectedInvoice?.id == invoice.id) ? null : _s.selectedInvoice;
+
+      _set(_s.copyWith(
+          invoices: nextInvoices,
+          drafts: nextDrafts,
+          selectedInvoice: nextSelected));
+
+      final l = AppLocalizations.of(context)!;
+      showSuccessSnack(context, l.groupInvoicesRemovedSnack);
+    } catch (e) {
+      if (!context.mounted) return;
+      final l = AppLocalizations.of(context)!;
+      final reason = e.toString().replaceFirst('Exception: ', '').trim();
+      showErrorSnack(context, l.groupInvoicesRemoveFailedSnack(reason));
+    }
+  }
+
+  Future<void> issueAllDrafts(
+    BuildContext context,
+    List<Invoice> drafts,
+  ) async {
+    final draftIds = drafts
+        .where((invoice) => invoice.isDraft)
+        .map((invoice) => invoice.id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (draftIds.isEmpty) return;
+
+    final l = AppLocalizations.of(context)!;
+    final isSpanish = l.localeName.toLowerCase().startsWith('es');
+    try {
+      final result = await _invoicesApi.issueAll(
+        groupId: group.id,
+        invoiceIds: draftIds,
+      );
+      if (!context.mounted) return;
+      await loadAll(clearSelectedInvoiceIds: draftIds.toSet());
+      if (!context.mounted) return;
+      showSuccessSnack(
+        context,
+        l.invoiceBatchIssueSuccessSnack(result.issuedCount.toString()),
+      );
+    } on InvoicesBatchIssueException catch (e) {
+      final issuedCount = e.failure?.issuedCount ?? 0;
+      final failedInvoiceId = e.failure?.failedInvoiceId;
+      Invoice? failedDraft;
+      if (failedInvoiceId != null) {
+        for (final draft in drafts) {
+          if (draft.id == failedInvoiceId) {
+            failedDraft = draft;
+            break;
+          }
+        }
+      }
+      if (context.mounted) {
+        try {
+          await loadAll();
+        } catch (_) {}
+      }
+      if (!context.mounted) return;
+      final message = e.message.trim().isEmpty
+          ? l.invoiceIssueFailedSnack
+          : e.message.trim();
+      final parts = <String>[
+        if (issuedCount > 0)
+          isSpanish
+              ? '$issuedCount facturas emitidas antes del error'
+              : '$issuedCount invoices issued before the error',
+        if (failedInvoiceId != null)
+          isSpanish
+              ? 'Fila fallida: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)'
+              : 'Failed row: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)',
+        message,
+      ];
+      final text = parts.join(' · ');
+      if (issuedCount > 0) {
+        showInfoSnack(context, text);
+      } else {
+        showErrorSnack(context, text);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        try {
+          await loadAll();
+        } catch (_) {}
+      }
+      if (!context.mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '').trim();
+      showErrorSnack(
+        context,
+        message.isEmpty ? l.invoiceIssueFailedSnack : message,
+      );
+    }
+  }
+
+  String formatBillingAddress(BillingProfile p) {
+    final parts = [
+      p.addressStreet,
+      p.addressExtra,
+      p.addressCity,
+      p.addressProvince,
+      p.addressPostalCode,
+      p.addressCountry,
+    ].whereType<String>().where((e) => e.trim().isNotEmpty).toList();
+    return parts.isEmpty ? '-' : parts.join(', ');
+  }
+}

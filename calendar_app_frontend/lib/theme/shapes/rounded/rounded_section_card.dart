@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/font_type/typography_extension.dart';
-import 'package:hexora/theme/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/colors/theme_colors.dart';
 
 class RoundedSectionCard extends StatelessWidget {
   final Widget child;
@@ -10,13 +10,13 @@ class RoundedSectionCard extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
 
   const RoundedSectionCard({
-    Key? key,
+    super.key,
     required this.child,
     this.title,
     this.backgroundColor, // Allows override, still respected
     this.padding,
     this.margin,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +42,7 @@ class RoundedSectionCard extends StatelessWidget {
           ),
         ],
         border: Border.all(
-          color: cs.outlineVariant.withOpacity(0.25),
+          color: cs.outlineVariant.withValues(alpha: 0.25),
           width: 1,
         ),
       ),

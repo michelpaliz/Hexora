@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/app_colors/palette/tools_colors/theme_colors.dart';
+import 'package:hexora/theme/colors/theme_colors.dart';
 
 class GradientHeader extends StatelessWidget {
   final double height;
@@ -9,11 +9,11 @@ class GradientHeader extends StatelessWidget {
   final Color? endColor;
 
   const GradientHeader({
-    Key? key,
+    super.key,
     this.height = 160,
     this.startColor,
     this.endColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +31,7 @@ class GradientHeader extends StatelessWidget {
           colors: [
             start,
             Color.lerp(start, end, 0.35)!, // soft mid blend
-            end.withOpacity(0.9),
+            end.withValues(alpha: 0.9),
           ],
           stops: const [0.0, 0.6, 1.0],
         ),

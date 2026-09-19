@@ -3,141 +3,43 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hexora/app/bootstrap/app_bootstrap.dart';
 import 'package:hexora/app/init_main.dart';
 import 'package:hexora/app/session/session_expiry_handler.dart';
-import 'package:hexora/data/auth/auth/auth_services/auht_gate.dart';
-import 'package:hexora/data/auth/auth/token/service/authenticated_http_client.dart';
+import 'package:hexora/presentation/screens/auth/auth_gate.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/presentation/routes/routes.dart';
-import 'package:hexora/state/local/LocaleProvider.dart';
-import 'package:hexora/data/config/api_constants.dart';
-import 'package:hexora/theme/app_colors/themes/context_colors/theme_data.dart';
-import 'package:hexora/theme/app_colors/themes/theme_provider/theme_provider.dart';
+import 'package:hexora/presentation/screens/notifications/show-notifications/notify_phone/local_notification_helper.dart';
+import 'package:hexora/state/locale_provider.dart';
+import 'package:hexora/services/config/api_constants.dart';
+import 'package:hexora/theme/themes/app_theme.dart';
+import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/l10n/l10n.dart';
 import 'package:provider/provider.dart';
 
 const String _appBuildTag = String.fromEnvironment('APP_BUILD_TAG');
 
-Future<void> main() async {
-  await startApp();
-}
-
-Future<void> startApp({
-  Future<void> Function()? initializeServices,
-  void Function(Widget app)? runApplication,
-}) async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final initialize = initializeServices ?? initializeAppServices;
-  final launch = runApplication ?? runApp;
+  await initializeAppServices();
+  await setupLocalNotifications();
 
-  try {
-    await initialize();
-
-    // Quick visibility into which API the app is targeting at runtime.
-    // Remove or adjust as needed for production logging policies.
-    debugPrint('ðŸ“¡ API base: ${ApiConstants.baseUrl}');
-    debugPrint('ðŸ“¦ CDN base: ${ApiConstants.cdnBaseUrl}');
-    if (_appBuildTag.isNotEmpty) {
-      debugPrint('ðŸ§± Build tag: $_appBuildTag');
-    }
-
-    launch(const HexoraApp());
-  } catch (error, stackTrace) {
-    debugPrint('App startup failed: $error\n$stackTrace');
-    launch(
-      _StartupErrorApp(
-        onRetry: () => startApp(
-          initializeServices: initialize,
-          runApplication: launch,
-        ),
-      ),
-    );
-  }
-}
-
-class _StartupErrorApp extends StatelessWidget {
-  const _StartupErrorApp({required this.onRetry});
-
-  final Future<void> Function() onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ],
-      supportedLocales: L10n.all,
-      home: _StartupErrorScreen(onRetry: onRetry),
-    );
-  }
-}
-
-class _StartupErrorScreen extends StatefulWidget {
-  const _StartupErrorScreen({required this.onRetry});
-
-  final Future<void> Function() onRetry;
-
-  @override
-  State<_StartupErrorScreen> createState() => _StartupErrorScreenState();
-}
-
-class _StartupErrorScreenState extends State<_StartupErrorScreen> {
-  var _isRetrying = false;
-
-  Future<void> _retry() async {
-    setState(() => _isRetrying = true);
-    await widget.onRetry();
-    if (mounted) {
-      setState(() => _isRetrying = false);
-    }
+  // Quick visibility into which API the app is targeting at runtime.
+  // Remove or adjust as needed for production logging policies.
+  debugPrint('ðŸ“¡ API base: ${ApiConstants.baseUrl}');
+  debugPrint('ðŸ“¦ CDN base: ${ApiConstants.cdnBaseUrl}');
+  if (_appBuildTag.isNotEmpty) {
+    debugPrint('ðŸ§± Build tag: $_appBuildTag');
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48),
-              const SizedBox(height: 16),
-              Text(
-                localizations.somethingWentWrong,
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _isRetrying ? null : _retry,
-                child: _isRetrying
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(localizations.tryAgain),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  runApp(const HexoraApp());
 }
 
 class HexoraApp extends StatelessWidget {
-  const HexoraApp({super.key, this.shell});
-
-  final Widget? shell;
+  const HexoraApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AppBootstrap(
-      child: shell ?? const _AppShell(),
+    return const AppBootstrap(
+      child: _AppShell(),
     );
   }
 }

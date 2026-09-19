@@ -1,15 +1,15 @@
 // feature_providers.dart (or a new file)
-import 'package:hexora/data/auth/auth/auth_services/auth_provider.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
-import 'package:hexora/presentation/viewmodels/group/group_view_model.dart';
-import 'package:hexora/presentation/viewmodels/group/common/ui_messenger.dart';
-import 'package:hexora/presentation/viewmodels/group/use_cases/create_group_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group/use_cases/invite_members_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group/use_cases/search_users_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group/use_cases/update_group_usecase.dart';
-import 'package:hexora/presentation/viewmodels/group/use_cases/upload_group_photo_usecase.dart';
-import 'package:hexora/presentation/features/dashboard/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
-import 'package:hexora/presentation/features/dashboard/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
+import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
+import 'package:hexora/presentation/viewmodels/groups/ui_messenger.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/create_group_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/invite_members_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/search_users_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/update_group_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_photo_usecase.dart';
+import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/i_group_editor_port.dart';
+import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 

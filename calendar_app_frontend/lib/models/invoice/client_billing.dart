@@ -1,6 +1,4 @@
 class ClientBilling {
-  static const Object _unset = Object();
-
   final String? legalName;
   final String? taxId;
   final String? addressStreet;
@@ -32,54 +30,34 @@ class ClientBilling {
   });
 
   ClientBilling copyWith({
-    Object? legalName = _unset,
-    Object? taxId = _unset,
-    Object? addressStreet = _unset,
-    Object? addressExtra = _unset,
-    Object? addressCity = _unset,
-    Object? addressProvince = _unset,
-    Object? addressPostalCode = _unset,
-    Object? addressCountry = _unset,
-    Object? email = _unset,
-    Object? phone = _unset,
-    Object? isComplete = _unset,
-    Object? documentType = _unset,
-    Object? updatedAt = _unset,
+    String? legalName,
+    String? taxId,
+    String? addressStreet,
+    String? addressExtra,
+    String? addressCity,
+    String? addressProvince,
+    String? addressPostalCode,
+    String? addressCountry,
+    String? email,
+    String? phone,
+    bool? isComplete,
+    String? documentType,
+    DateTime? updatedAt,
   }) {
     return ClientBilling(
-      legalName: identical(legalName, _unset)
-          ? this.legalName
-          : legalName as String?,
-      taxId: identical(taxId, _unset) ? this.taxId : taxId as String?,
-      addressStreet: identical(addressStreet, _unset)
-          ? this.addressStreet
-          : addressStreet as String?,
-      addressExtra: identical(addressExtra, _unset)
-          ? this.addressExtra
-          : addressExtra as String?,
-      addressCity: identical(addressCity, _unset)
-          ? this.addressCity
-          : addressCity as String?,
-      addressProvince: identical(addressProvince, _unset)
-          ? this.addressProvince
-          : addressProvince as String?,
-      addressPostalCode: identical(addressPostalCode, _unset)
-          ? this.addressPostalCode
-          : addressPostalCode as String?,
-      addressCountry: identical(addressCountry, _unset)
-          ? this.addressCountry
-          : addressCountry as String?,
-      email: identical(email, _unset) ? this.email : email as String?,
-      phone: identical(phone, _unset) ? this.phone : phone as String?,
-      isComplete: identical(isComplete, _unset)
-          ? this.isComplete
-          : isComplete as bool?,
-      documentType: identical(documentType, _unset)
-          ? this.documentType
-          : documentType as String?,
-      updatedAt: identical(updatedAt, _unset)
-          ? this.updatedAt
-          : updatedAt as DateTime?,
+      legalName: legalName ?? this.legalName,
+      taxId: taxId ?? this.taxId,
+      addressStreet: addressStreet ?? this.addressStreet,
+      addressExtra: addressExtra ?? this.addressExtra,
+      addressCity: addressCity ?? this.addressCity,
+      addressProvince: addressProvince ?? this.addressProvince,
+      addressPostalCode: addressPostalCode ?? this.addressPostalCode,
+      addressCountry: addressCountry ?? this.addressCountry,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      isComplete: isComplete ?? this.isComplete,
+      documentType: documentType ?? this.documentType,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
