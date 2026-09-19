@@ -46,7 +46,8 @@ class ReminderSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
             ),
             child: SwitchListTile(
               contentPadding:

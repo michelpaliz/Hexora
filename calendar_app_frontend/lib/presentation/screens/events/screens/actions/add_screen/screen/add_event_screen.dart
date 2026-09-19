@@ -114,14 +114,45 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
     if (initialStart == null) return;
     final initialEnd =
         widget.initialEndDate ?? initialStart.add(const Duration(hours: 1));
-    final alreadyApplied =
-        _lastAppliedStartDate == initialStart && _lastAppliedEndDate == initialEnd;
+    final alreadyApplied = _lastAppliedStartDate == initialStart &&
+        _lastAppliedEndDate == initialEnd;
     if (alreadyApplied) return;
     _lastAppliedStartDate = initialStart;
     _lastAppliedEndDate = initialEnd;
     setStartDate(initialStart);
     setEndDate(initialEnd);
     if (mounted) setState(() {});
+  }
+
+  Future<void> _submitEvent() async {
+    final l = AppLocalizations.of(context)!;
+    final ok = await withLoadingDialog<bool>(
+      context,
+      () => addEvent(context),
+      message: l.createEventMessage,
+    );
+    if (!mounted) return;
+    if (ok == true) {
+      widget.onCreated?.call();
+      if (!widget.embedded) Navigator.pop(context, true);
+    } else {
+      showErrorDialog(context);
+    }
+  }
+
+  String _submitHint(AppLocalizations l) {
+    if (selectedEndDate.isBefore(selectedStartDate)) {
+      return l.endDateMustBeAfterStartDate;
+    }
+    final missing = <String>[
+      if (titleController.text.trim().isEmpty) l.eventFormTitleField,
+      if (clientId == null || clientId!.isEmpty) l.client.toLowerCase(),
+      if (primaryServiceId == null || primaryServiceId!.isEmpty)
+        l.primaryService.toLowerCase(),
+    ];
+    return missing.isEmpty
+        ? l.requiredTextFields
+        : l.eventFormCompleteFields(missing.join(', '));
   }
 
   @override
@@ -137,6 +168,7 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
     final typo = AppTypography.of(context);
     final isWide = MediaQuery.sizeOf(context).width >= 900;
     final isEmbeddedWeb = widget.embedded && kIsWeb;
+    final useStickySubmit = !isWide && !isEmbeddedWeb;
 
     // single source of truth for CategoryApi
     final categoryApi = CategoryApi(
@@ -157,28 +189,14 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
               child: SingleChildScrollView(
                 padding: isEmbeddedWeb
                     ? const EdgeInsets.fromLTRB(0, 4, 0, 4)
-                    : const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                    : const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     EventFormRouter(
                       logic: this,
-                      onSubmit: () async {
-                        final ok = await withLoadingDialog<bool>(
-                          context,
-                          () => addEvent(context),
-                          message: l.createEventMessage,
-                        );
-                        if (!context.mounted) return;
-                        if (ok == true) {
-                          widget.onCreated?.call();
-                          if (!widget.embedded) {
-                            Navigator.pop(context, true);
-                          }
-                        } else {
-                          showErrorDialog(context);
-                        }
-                      },
+                      onSubmit: _submitEvent,
+                      showSubmitButton: !useStickySubmit,
                       ownerUserId: context.read<UserDomain>().user!.id,
                       isEditing: false,
                       categoryApi: categoryApi,
@@ -200,13 +218,51 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
       appBar: AppBar(
         title: Text(
           l.addEvent,
-          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w800),
+          style: typo.titleLarge.copyWith(fontWeight: FontWeight.w700),
         ),
         iconTheme: IconThemeData(color: cs.onSurface),
         backgroundColor: ThemeColors.cardBg(context),
         elevation: 0,
       ),
       body: body,
+      bottomNavigationBar: _isLoading || !useStickySubmit
+          ? null
+          : ValueListenableBuilder<bool>(
+              valueListenable: canSubmit,
+              builder: (context, ready, _) => Material(
+                color: cs.surface,
+                elevation: 8,
+                child: SafeArea(
+                  top: false,
+                  minimum: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (!ready) ...[
+                        Text(
+                          _submitHint(l),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: typo.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      SizedBox(
+                        height: 52,
+                        child: FilledButton.icon(
+                          onPressed: ready ? _submitEvent : null,
+                          icon: const Icon(Icons.add_rounded),
+                          label: Text(l.addEvent),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
     );
   }
 

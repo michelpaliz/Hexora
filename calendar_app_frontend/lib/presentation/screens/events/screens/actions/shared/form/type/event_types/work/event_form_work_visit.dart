@@ -1,6 +1,7 @@
 // presentation/d-event-section/screens/actions/add_screen/screen/event_form_work_visit.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/add_screen/utils/form/reminder_options.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/shared/form/event_dialogs.dart';
@@ -16,6 +17,7 @@ class EventFormWorkVisit extends StatefulWidget {
   final Future<void> Function() onSubmit;
   final String ownerUserId;
   final bool isEditing;
+  final bool showSubmitButton;
 
   /// Optional: lets the parent/router provide a dialog implementation.
   final EventDialogs? dialogs;
@@ -29,6 +31,7 @@ class EventFormWorkVisit extends StatefulWidget {
     required this.onSubmit,
     required this.ownerUserId,
     this.isEditing = false,
+    this.showSubmitButton = true,
     this.dialogs,
     this.enableClientServicePickers = true,
   });
@@ -42,6 +45,7 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
   late DateTime endDate;
   int? _reminder;
   bool _notifyMe = true;
+  bool _advancedExpanded = false;
 
   String? _clientId;
   String? _primaryServiceId;
@@ -109,6 +113,83 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
     });
   }
 
+  Future<void> _handleRepetitionTap() async {
+    final wasRepeated = widget.logic.isRepetitive;
+    if (widget.logic.onShowRepetitionDialog == null) {
+      widget.logic.toggleRepetition(!wasRepeated, null);
+      setState(() {});
+      return;
+    }
+
+    final result = await widget.logic.onShowRepetitionDialog!(
+      context,
+      selectedStartDate: widget.logic.selectedStartDate,
+      selectedEndDate: widget.logic.selectedEndDate,
+      initialRule: widget.logic.recurrenceRule,
+    );
+    if (!mounted || result == null || result.isEmpty) return;
+    final rule = result[0] as LegacyRecurrenceRule?;
+    final isRepeated = result.length > 1 ? result[1] as bool : true;
+    widget.logic.toggleRepetition(isRepeated, rule);
+    setState(() {});
+  }
+
+  Future<void> _chooseReminder() async {
+    final loc = AppLocalizations.of(context)!;
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height * 0.65,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(loc.reminderLabel,
+                      style: Theme.of(sheetContext).textTheme.titleLarge),
+                ),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    ListTile(
+                      title: Text(loc.eventFormOff),
+                      trailing:
+                          !_notifyMe ? const Icon(Icons.check_rounded) : null,
+                      onTap: () => Navigator.pop(sheetContext, -1),
+                    ),
+                    ...getLocalizedReminderOptions(sheetContext)
+                        .map((option) => ListTile(
+                              title: Text(option.label),
+                              trailing: _notifyMe && option.value == _reminder
+                                  ? const Icon(Icons.check_rounded)
+                                  : null,
+                              onTap: () =>
+                                  Navigator.pop(sheetContext, option.value),
+                            )),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+    setState(() {
+      _notifyMe = selected >= 0;
+      if (selected >= 0) _reminder = selected;
+    });
+    widget.logic.setReminderMinutes(selected < 0 ? 0 : selected);
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
@@ -128,14 +209,11 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
         children: [
           // ── EVENTO ──────────────────────────────────────────────────────
           // Title — no label, it's the form header
-          SectionCard(
+          TitleSection(
             title: loc.title(15),
-            child: TitleSection(
-              title: loc.title(15),
-              cardBuilder: SectionCard.new,
-              controller: widget.logic.titleController,
-              hintText: loc.titleHint,
-            ),
+            cardBuilder: SectionCard.new,
+            controller: widget.logic.titleController,
+            hintText: loc.titleHint,
           ),
 
           // Cliente + Servicio on the same row (responsive)
@@ -159,6 +237,20 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             ),
           ],
 
+          // ── RESPONSABLES ──────────────────────────────────────────────
+          const SizedBox(height: 16),
+          AssignedUsersSection(
+            title: loc.delegateVisit,
+            cardBuilder: SectionCard.new,
+            usersAvailable: widget.logic.users,
+            initiallySelected: widget.logic.selectedUsers,
+            excludeUserId: widget.ownerUserId,
+            onSelectedUsersChanged: (selected) {
+              widget.logic.setSelectedUsers(selected);
+              setState(() {});
+            },
+          ),
+
           // ── HORARIO ──────────────────────────────────────────────────────
           _FormSectionLabel(isSpanish ? 'Horario' : 'Schedule'),
           DateTimeSection(
@@ -170,20 +262,22 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             onEndTap: () => _handleDateSelection(false),
           ),
 
-          // ── RECORDATORIO ─────────────────────────────────────────────────
-          _FormSectionLabel(isSpanish ? 'Recordatorio' : 'Reminder'),
-          ReminderSection(
-            title: loc.notifyMe,
-            cardBuilder: SectionCard.new,
-            notifyMe: _notifyMe,
+          // ── AL COMPLETAR ────────────────────────────────────────────────
+          _FormSectionLabel(loc.eventFormCompletion),
+          _PhotoRequirementTile(
+            value: widget.logic.requiresCompletionPhotos,
+            minimumPhotos: widget.logic.completionRequirements.minPhotos,
+            onChanged: widget.logic.setRequiresCompletionPhotos,
+          ),
+
+          // ── OPCIONES ────────────────────────────────────────────────────
+          _FormSectionLabel(loc.eventFormOptions),
+          _OptionsCard(
+            reminderEnabled: _notifyMe,
             reminderMinutes: _reminder,
-            onNotifyChanged: (v) {
-              setState(() {
-                _notifyMe = v;
-                if (!v) _reminder = 0;
-              });
-            },
-            onReminderChanged: (val) => _reminder = val,
+            onReminderTap: _chooseReminder,
+            isRepetitive: widget.logic.isRepetitive,
+            onRepetitionTap: _handleRepetitionTap,
           ),
 
           // ── DETALLES ─────────────────────────────────────────────────────
@@ -193,142 +287,211 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             cardBuilder: SectionCard.new,
             controller: widget.logic.descriptionController,
           ),
-          const SizedBox(height: 8),
-          ColorSection(
-            title: loc.colorLabel,
-            cardBuilder: SectionCard.new,
-            selectedColorValue: widget.logic.selectedEventColor,
-            onColorChanged: (color) {
-              if (color != null) {
-                widget.logic.setSelectedColor(color.toARGB32());
-              }
-            },
-            colorValues: widget.logic.colorList,
-          ),
-
-          // ── PARTICIPANTES ────────────────────────────────────────────────
-          _FormSectionLabel(isSpanish ? 'Participantes' : 'Participants'),
-          AssignedUsersSection(
-            title: loc.assignedUsers,
-            cardBuilder: SectionCard.new,
-            usersAvailable: widget.logic.users,
-            initiallySelected: widget.logic.selectedUsers,
-            excludeUserId: widget.ownerUserId,
-            onSelectedUsersChanged: (selected) {
-              widget.logic.setSelectedUsers(selected);
-              setState(() {});
-            },
-          ),
-
-          // ── RECURRENCIA ──────────────────────────────────────────────────
-          _FormSectionLabel(isSpanish ? 'Recurrencia' : 'Recurrence'),
-          RepetitionSection(
-            title: loc.repetition,
-            cardBuilder: SectionCard.new,
-            isRepetitive: widget.logic.isRepetitive,
-            toggleWidth: widget.logic.toggleWidth,
-            onTap: () async {
-              final wasRepeated = widget.logic.isRepetitive;
-
-              if (widget.logic.onShowRepetitionDialog == null) {
-                setState(() {
-                  widget.logic.toggleRepetition(
-                    !wasRepeated,
-                    wasRepeated ? null : widget.logic.recurrenceRule,
-                  );
-                });
-                return;
-              }
-
-              final result = await widget.logic.onShowRepetitionDialog!(
-                context,
-                selectedStartDate: widget.logic.selectedStartDate,
-                selectedEndDate: widget.logic.selectedEndDate,
-                initialRule: widget.logic.recurrenceRule,
-              );
-
-              if (result == null || result.isEmpty) {
-                setState(() {
-                  widget.logic.toggleRepetition(
-                    !wasRepeated,
-                    wasRepeated ? null : widget.logic.recurrenceRule,
-                  );
-                });
-                return;
-              }
-
-              final LegacyRecurrenceRule? rule =
-                  result[0] as LegacyRecurrenceRule?;
-              final bool isRepeated =
-                  result.length > 1 ? result[1] as bool : true;
-
-              setState(() {
-                widget.logic.toggleRepetition(isRepeated, rule);
-              });
-            },
+          const SizedBox(height: 16),
+          Material(
+            color: Theme.of(context).colorScheme.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ExpansionTile(
+              initiallyExpanded: _advancedExpanded,
+              onExpansionChanged: (value) =>
+                  setState(() => _advancedExpanded = value),
+              title: Text(loc.eventFormMoreOptions),
+              subtitle: widget.logic.selectedEventColor == null
+                  ? null
+                  : Text(
+                      '${loc.colorLabel} · ${ColorManager.getColorName(
+                        Color(widget.logic.selectedEventColor!),
+                        localeCode:
+                            Localizations.localeOf(context).languageCode,
+                      )}',
+                    ),
+              leading: const Icon(Icons.tune_rounded),
+              tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              shape: const RoundedRectangleBorder(),
+              collapsedShape: const RoundedRectangleBorder(),
+              children: [
+                ColorSection(
+                  title: loc.colorLabel,
+                  cardBuilder: SectionCard.new,
+                  selectedColorValue: widget.logic.selectedEventColor,
+                  onColorChanged: (color) {
+                    if (color != null) {
+                      widget.logic.setSelectedColor(color.toARGB32());
+                    }
+                  },
+                  colorValues: widget.logic.colorList,
+                ),
+              ],
+            ),
           ),
 
           // ── SUBMIT ───────────────────────────────────────────────────────
-          WorkVisitStyle.afterSubmitGap,
-          ValueListenableBuilder<bool>(
-            valueListenable: widget.logic.canSubmit,
-            builder: (context, canSubmit, _) {
-              final cs = Theme.of(context).colorScheme;
-              final label = widget.isEditing ? loc.save : loc.addEvent;
-              final icon =
-                  widget.isEditing ? Icons.check_rounded : Icons.add_rounded;
+          if (widget.showSubmitButton) ...[
+            WorkVisitStyle.afterSubmitGap,
+            ValueListenableBuilder<bool>(
+              valueListenable: widget.logic.canSubmit,
+              builder: (context, canSubmit, _) {
+                final cs = Theme.of(context).colorScheme;
+                final label = widget.isEditing ? loc.save : loc.addEvent;
+                final icon =
+                    widget.isEditing ? Icons.check_rounded : Icons.add_rounded;
 
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: double.infinity,
-                height: 50,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: canSubmit
-                      ? [
-                          BoxShadow(
-                            color: cs.primary.withValues(alpha: 0.28),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : [],
-                ),
-                child: FilledButton.icon(
-                  onPressed: canSubmit
-                      ? () async {
-                          widget.logic.setReminderMinutes(
-                            _notifyMe
-                                ? (_reminder ?? kDefaultReminderMinutes)
-                                : 0,
-                          );
-                          await widget.onSubmit();
-                        }
-                      : null,
-                  icon: Icon(icon, size: 18),
-                  label: Text(
-                    label,
-                    style: typo.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: canSubmit ? Colors.white : null,
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: double.infinity,
+                  constraints: const BoxConstraints(minHeight: 50),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: canSubmit
+                        ? [
+                            BoxShadow(
+                              color: cs.primary.withValues(alpha: 0.28),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: FilledButton.icon(
+                    onPressed: canSubmit
+                        ? () async {
+                            widget.logic.setReminderMinutes(
+                              _notifyMe
+                                  ? (_reminder ?? kDefaultReminderMinutes)
+                                  : 0,
+                            );
+                            await widget.onSubmit();
+                          }
+                        : null,
+                    icon: Icon(icon, size: 18),
+                    label: Text(
+                      label,
+                      style: typo.buttonText,
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: canSubmit ? cs.primary : null,
+                      foregroundColor: canSubmit ? cs.onPrimary : null,
+                      disabledBackgroundColor:
+                          cs.onSurface.withValues(alpha: 0.1),
+                      disabledForegroundColor:
+                          cs.onSurface.withValues(alpha: 0.35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: canSubmit ? cs.primary : null,
-                    foregroundColor: canSubmit ? Colors.white : null,
-                    disabledBackgroundColor:
-                        cs.onSurface.withValues(alpha: 0.1),
-                    disabledForegroundColor:
-                        cs.onSurface.withValues(alpha: 0.35),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              );
-            },
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PhotoRequirementTile extends StatelessWidget {
+  const _PhotoRequirementTile({
+    required this.value,
+    required this.minimumPhotos,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final int minimumPhotos;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SwitchListTile.adaptive(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        secondary: Icon(Icons.add_a_photo_outlined, color: cs.primary),
+        title: Text(l.requireCompletionPhotos),
+        subtitle: Text(minimumPhotos == 1
+            ? l.eventFormPhotoHintOne
+            : l.eventFormPhotoHintMany(minimumPhotos)),
+        value: value,
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _OptionsCard extends StatelessWidget {
+  const _OptionsCard({
+    required this.reminderEnabled,
+    required this.reminderMinutes,
+    required this.onReminderTap,
+    required this.isRepetitive,
+    required this.onRepetitionTap,
+  });
+
+  final bool reminderEnabled;
+  final int? reminderMinutes;
+  final VoidCallback onReminderTap;
+  final bool isRepetitive;
+  final VoidCallback onRepetitionTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final reminderLabel = getLocalizedReminderOptions(context)
+        .where((option) => option.value == reminderMinutes)
+        .map((option) => option.label)
+        .firstOrNull;
+
+    return Material(
+      color: cs.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+            dense: true,
+            leading: Icon(Icons.notifications_outlined, color: cs.primary),
+            title: Text(
+              '${l.reminderLabel} · ${reminderEnabled ? (reminderLabel ?? l.reminderOption10min) : l.eventFormOff}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing:
+                Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+            onTap: onReminderTap,
+          ),
+          Divider(height: 1, thickness: 1, color: cs.outlineVariant),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+            dense: true,
+            leading: Icon(Icons.repeat_rounded, color: cs.primary),
+            title: Text(
+              '${l.repetition} · ${isRepetitive ? l.repeatYes : l.repeatNo}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing:
+                Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+            onTap: onRepetitionTap,
           ),
         ],
       ),
@@ -345,18 +508,17 @@ class _FormSectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 16, 2, 4),
+      padding: const EdgeInsets.fromLTRB(2, 24, 2, 8),
       child: Row(
         children: [
-          Text(
-            label.toUpperCase(),
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.9,
-              fontSize: 10,
+          Flexible(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
           const SizedBox(width: 8),

@@ -110,6 +110,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   bool _showOnlyZeroVat = false;
   int _mobilePanelIndex = 0;
   int _editorPanelIndex = 0;
+  StateSetter? _editorRouteSetState;
   bool _suspendBackgroundPreview = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
@@ -910,24 +911,30 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     _editorPushedAsRoute = true;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (routeContext) => Scaffold(
-          appBar: AppBar(
-            leading: BackButton(onPressed: _closeExpenseEditor),
-            title: const Text('Editar gasto'),
-          ),
-          body: SafeArea(
-            top: false,
-            child: _buildEditorOverlay(
-              AppLocalizations.of(routeContext)!,
-              AppTypography.of(routeContext),
-              Theme.of(routeContext).colorScheme,
-              scrim: false,
-              showHeaderTab: false,
-            ),
-          ),
+        builder: (routeContext) => StatefulBuilder(
+          builder: (routeContext, routeSetState) {
+            _editorRouteSetState = routeSetState;
+            return Scaffold(
+              appBar: AppBar(
+                leading: BackButton(onPressed: _closeExpenseEditor),
+                title: const Text('Editar gasto'),
+              ),
+              body: SafeArea(
+                top: false,
+                child: _buildEditorOverlay(
+                  AppLocalizations.of(routeContext)!,
+                  AppTypography.of(routeContext),
+                  Theme.of(routeContext).colorScheme,
+                  scrim: false,
+                  showHeaderTab: false,
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
+    _editorRouteSetState = null;
     _editorPushedAsRoute = false;
     if (mounted && _editingExpense != null) {
       setState(() => _editingExpense = null);
@@ -937,6 +944,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   void _setEditorPanelIndex(int index) {
     if (_editorPanelIndex == index) return;
     setState(() => _editorPanelIndex = index);
+    _editorRouteSetState?.call(() {});
   }
 
   Widget _buildMobilePanelTabs(AppTypography t, ColorScheme cs) {

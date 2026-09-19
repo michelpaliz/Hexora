@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/routes/app_routes.dart';
 // lib/presentation/b-calendar-section/screens/agenda/widgets/agenda_list_sliver.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -39,7 +40,8 @@ class AgendaListSliver extends StatelessWidget {
 
 class AgendaTile extends StatelessWidget {
   final AgendaItem item;
-  const AgendaTile({super.key, required this.item});
+  final VoidCallback? onTap;
+  const AgendaTile({super.key, required this.item, this.onTap});
 
   bool get _isDone {
     final e = item.event;
@@ -64,7 +66,6 @@ class AgendaTile extends StatelessWidget {
     final start = e.startDate.toLocal();
     final end = e.endDate.toLocal();
     final isDone = _isDone;
-    final color = item.color;
     final multiDay = !_sameDay(start, end) && !e.allDay;
 
     final timeStr = _formatTimeRange(context, start, e.allDay ? null : end);
@@ -76,194 +77,73 @@ class AgendaTile extends StatelessWidget {
           );
     final location = (e.localization ?? '').trim();
 
+    final l = AppLocalizations.of(context)!;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(13),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              // TODO: deep-link to event or group calendar
-            },
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: isDone
-                    ? cs.surfaceContainerHighest.withValues(alpha: 0.14)
-                    : cs.surfaceContainerHighest.withValues(alpha: 0.26),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.13),
-                ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Material(
+        color: cs.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap ??
+              () => Navigator.pushNamed(context, AppRoutes.eventDetail,
+                  arguments: e),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(
+                    isDone ? Icons.check_circle_outline : _icon(multiDay),
+                    size: 20,
+                    color: cs.onPrimaryContainer),
               ),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Left stripe ─────────────────────────────────────
-                    Container(
-                      width: 4,
-                      color:
-                          isDone ? color.withValues(alpha: 0.4) : color,
-                    ),
-
-                    // ── Icon box ─────────────────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 9),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: color.withValues(
-                              alpha: isDone ? 0.07 : 0.14),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: isDone
-                            ? Icon(Icons.check_rounded,
-                                size: 18,
-                                color: color.withValues(alpha: 0.55))
-                            : Icon(_icon(multiDay),
-                                size: 18, color: color),
-                      ),
-                    ),
-
-                    // ── Content ──────────────────────────────────────────
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Title
-                            Text(
-                              e.title,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: isDone
-                                    ? cs.onSurface.withValues(alpha: 0.42)
-                                    : cs.onSurface,
-                                decoration: isDone
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                decorationColor:
-                                    cs.onSurface.withValues(alpha: 0.42),
-                                height: 1.2,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            // Time + optional location
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.schedule_outlined,
-                                  size: 10,
-                                  color: cs.onSurfaceVariant
-                                      .withValues(alpha: 0.6),
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  timeStr,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.8),
-                                    height: 1.2,
-                                  ),
-                                ),
-                                if (location.isNotEmpty) ...[
-                                  Text(
-                                    '  ·  ',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: cs.onSurfaceVariant
-                                          .withValues(alpha: 0.4),
-                                    ),
-                                  ),
-                                  Flexible(
-                                    child: Text(
-                                      location,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: cs.onSurfaceVariant
-                                            .withValues(alpha: 0.65),
-                                        height: 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                ] else if (item.groupName != null) ...[
-                                  Text(
-                                    '  ·  ',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: cs.onSurfaceVariant
-                                          .withValues(alpha: 0.4),
-                                    ),
-                                  ),
-                                  Flexible(
-                                    child: Text(
-                                      item.groupName!,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: cs.onSurfaceVariant
-                                            .withValues(alpha: 0.65),
-                                        height: 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // ── Duration badge ───────────────────────────────────
-                    if (durationStr != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 11, horizontal: 6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: color.withValues(
-                                alpha: isDone ? 0.06 : 0.11),
-                            borderRadius: BorderRadius.circular(9),
-                            border: Border.all(
-                              color: color.withValues(
-                                  alpha: isDone ? 0.18 : 0.32),
-                            ),
-                          ),
-                          child: Text(
-                            durationStr,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: color.withValues(
-                                  alpha: isDone ? 0.45 : 1.0),
-                              letterSpacing: 0.1,
-                              height: 1.0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    const SizedBox(width: 4),
-                  ],
-                ),
-              ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(e.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600, color: cs.onSurface)),
+                    const SizedBox(height: 4),
+                    Text(
+                        [timeStr, if (durationStr != null) durationStr]
+                            .join(' · '),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: cs.onSurfaceVariant)),
+                    if (location.isNotEmpty)
+                      Text(location,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant)),
+                    if (isDone) ...[
+                      const SizedBox(height: 6),
+                      Text('✓ ${l.agendaCompleted}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelMedium
+                              ?.copyWith(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w700)),
+                    ],
+                  ])),
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_right, color: cs.onSurfaceVariant, size: 20),
+            ]),
           ),
         ),
       ),
@@ -299,8 +179,7 @@ class _DateHeader extends StatelessWidget {
         children: [
           if (isToday)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
               decoration: BoxDecoration(
                 color: cs.primary,
                 borderRadius: BorderRadius.circular(999),
@@ -317,13 +196,12 @@ class _DateHeader extends StatelessWidget {
             )
           else if (isTomorrow)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
               decoration: BoxDecoration(
                 color: cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.5)),
+                border:
+                    Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
               ),
               child: Text(
                 label,

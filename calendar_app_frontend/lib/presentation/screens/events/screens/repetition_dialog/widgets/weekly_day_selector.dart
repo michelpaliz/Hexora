@@ -48,11 +48,13 @@ class WeeklyDaySelector extends StatelessWidget {
           children: [
             Icon(Icons.calendar_today_outlined, size: 18, color: cs.primary),
             const SizedBox(width: 8),
-            Text(
-              AppLocalizations.of(context)!.selectDay,
-              style: t.bodyLarge.copyWith(
-                fontWeight: FontWeight.w700,
-                color: onText,
+            Expanded(
+              child: Text(
+                AppLocalizations.of(context)!.selectDay,
+                style: t.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: onText,
+                ),
               ),
             ),
           ],
@@ -79,7 +81,8 @@ class WeeklyDaySelector extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               visualDensity: VisualDensity.compact,
               selectedColor: cs.primaryContainer,
-              backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.65),
+              backgroundColor:
+                  cs.surfaceContainerHighest.withValues(alpha: 0.65),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
                 side: BorderSide(

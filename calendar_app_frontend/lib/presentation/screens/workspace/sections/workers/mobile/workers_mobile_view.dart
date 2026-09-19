@@ -32,6 +32,13 @@ class WorkersMobileView extends StatefulWidget {
 
 class _WorkersMobileViewState extends State<WorkersMobileView> {
   String _query = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,19 +67,32 @@ class _WorkersMobileViewState extends State<WorkersMobileView> {
                         widget.summary,
                         const SizedBox(height: 16),
                         TextField(
+                          controller: _searchController,
                           onChanged: (value) => setState(
                               () => _query = value.trim().toLowerCase()),
                           decoration: InputDecoration(
                             hintText:
                                 isEs ? 'Buscar trabajador' : 'Search workers',
                             prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _query.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: isEs
+                                        ? 'Limpiar búsqueda'
+                                        : 'Clear search',
+                                    icon: const Icon(Icons.close_rounded),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _query = '');
+                                    },
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 12),
                         Row(children: [
                           Expanded(
                               child: Text(
-                                  '${l.employeesHeader} (${workers.length})',
+                                  '${l.workersLabel} (${workers.length})',
                                   style:
                                       Theme.of(context).textTheme.titleMedium)),
                           IconButton(
@@ -172,7 +192,7 @@ class WorkerMobileCard extends StatelessWidget {
       child: InkWell(
         onTap: onAddHours,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 4, 14),
+          padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
                 child: Column(

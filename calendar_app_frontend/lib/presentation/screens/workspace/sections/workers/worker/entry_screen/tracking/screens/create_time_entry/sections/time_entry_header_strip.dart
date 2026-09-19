@@ -47,7 +47,7 @@ class TimeEntryHeaderStrip extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  l.timeTrackingHeaderHint,
+                  l.workerTimeEntryHint,
                   style: t.caption.copyWith(
                     color: ThemeColors.textSecondary(context),
                   ),

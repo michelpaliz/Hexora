@@ -345,7 +345,7 @@ class GroupDashboardState extends ChangeNotifier {
         if (!isWide && canSeeAdmin)
           IconButton(
             tooltip: l.groupSettingsTitle,
-            icon: const Icon(Icons.tune_rounded),
+            icon: const Icon(Icons.settings_outlined),
             onPressed: () => openSection(Sections.settings),
           ),
       ],

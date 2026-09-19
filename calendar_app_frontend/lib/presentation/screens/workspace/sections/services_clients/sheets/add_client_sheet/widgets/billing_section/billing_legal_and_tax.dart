@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../add_client_controller.dart';
@@ -24,8 +23,7 @@ class BillingLegalAndTax extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final typo = AppTypography.of(context);
-    final fieldFontSize = MediaQuery.sizeOf(context).width < 600 ? 16.0 : 13.0;
+    final text = Theme.of(context).textTheme;
 
     return Column(
       children: [
@@ -35,7 +33,7 @@ class BillingLegalAndTax extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingLegalName,
-            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+            style: text.bodyLarge,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
@@ -65,7 +63,7 @@ class BillingLegalAndTax extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingTaxId,
-            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+            style: text.bodyLarge,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,

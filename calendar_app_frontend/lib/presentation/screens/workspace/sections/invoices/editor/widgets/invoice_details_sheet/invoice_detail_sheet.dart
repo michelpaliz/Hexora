@@ -175,6 +175,14 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
       controller: scrollCtrl,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
       children: [
+        if (widget.fullPage) ...[
+          OutlinedButton.icon(
+            onPressed: _previewing ? null : _previewPdf,
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: Text(l.invoicePreviewCta),
+          ),
+          const SizedBox(height: 12),
+        ],
         // Sheet title
         Padding(
           padding: const EdgeInsets.only(bottom: 20),

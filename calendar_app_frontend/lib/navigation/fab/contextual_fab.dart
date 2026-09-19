@@ -4,7 +4,8 @@ import 'package:hexora/navigation/fab/fab_action.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 
 class ContextualFab extends StatelessWidget {
-  const ContextualFab({super.key});
+  const ContextualFab({super.key, this.extendedLabel});
+  final String? extendedLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +31,15 @@ class ContextualFab extends StatelessWidget {
             : routeName == AppRoutes.profileDetails
                 ? (isSpanish ? 'Acciones de perfil' : 'Profile actions')
                 : (isSpanish ? 'Crear grupo' : 'Create group');
+
+    if (extendedLabel != null) {
+      return FloatingActionButton.extended(
+        tooltip: extendedLabel,
+        onPressed: action.onPressed,
+        icon: const Icon(Icons.add),
+        label: Text(extendedLabel!),
+      );
+    }
 
     return FloatingActionButton(
       tooltip: tooltip,

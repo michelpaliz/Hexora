@@ -2,7 +2,6 @@ import 'client_form_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../add_client_controller.dart';
@@ -33,8 +32,7 @@ class ClientContactForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
-    final fieldFontSize = MediaQuery.sizeOf(context).width < 600 ? 16.0 : 13.0;
+    final text = Theme.of(context).textTheme;
 
     List<String> ensureCurrent(List<String> options, String current) {
       final v = current.trim();
@@ -55,7 +53,7 @@ class ClientContactForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.name,
-            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+            style: text.bodyLarge,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
@@ -81,7 +79,7 @@ class ClientContactForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.phone,
-            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+            style: text.bodyLarge,
             keyboardType: TextInputType.phone,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
@@ -102,7 +100,7 @@ class ClientContactForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.email,
-            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+            style: text.bodyLarge,
             keyboardType: TextInputType.emailAddress,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
@@ -128,10 +126,9 @@ class ClientContactForm extends StatelessWidget {
             Expanded(
               child: Text(
                 l.clientClassificationSectionTitle,
-                style: typo.bodySmall.copyWith(
+                style: text.bodyLarge!.copyWith(
                   color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -139,7 +136,7 @@ class ClientContactForm extends StatelessWidget {
               onPressed: onManageClassification,
               style: TextButton.styleFrom(
                 visualDensity: VisualDensity.compact,
-                textStyle: const TextStyle(fontSize: 11),
+                textStyle: text.labelLarge,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               ),
               child: Text(l.clientClassificationManageCta),
@@ -155,12 +152,11 @@ class ClientContactForm extends StatelessWidget {
                   : c.entityType.text.trim(),
               hint: Text(
                 '${l.select}...',
-                style: typo.bodySmall.copyWith(
+                style: text.bodyLarge!.copyWith(
                   color: cs.onSurfaceVariant.withValues(alpha: 0.65),
                 ),
               ),
-              style: typo.bodySmall
-                  .copyWith(fontSize: fieldFontSize, color: cs.onSurface),
+              style: text.bodyLarge?.copyWith(color: cs.onSurface),
               items: [
                 ...entityOptions.map(
                   (e) => DropdownMenuItem(
@@ -189,12 +185,11 @@ class ClientContactForm extends StatelessWidget {
                   : c.propertyKind.text.trim(),
               hint: Text(
                 '${l.select}...',
-                style: typo.bodySmall.copyWith(
+                style: text.bodyLarge!.copyWith(
                   color: cs.onSurfaceVariant.withValues(alpha: 0.65),
                 ),
               ),
-              style: typo.bodySmall
-                  .copyWith(fontSize: fieldFontSize, color: cs.onSurface),
+              style: text.bodyLarge?.copyWith(color: cs.onSurface),
               items: [
                 ...propertyOptions.map(
                   (e) => DropdownMenuItem(

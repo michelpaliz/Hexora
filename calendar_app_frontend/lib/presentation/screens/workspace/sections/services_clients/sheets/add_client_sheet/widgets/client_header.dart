@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class ClientHeader extends StatelessWidget {
@@ -11,7 +10,7 @@ class ClientHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
+    final text = Theme.of(context).textTheme;
 
     return Row(
       children: [
@@ -32,9 +31,8 @@ class ClientHeader extends StatelessWidget {
         Expanded(
           child: Text(
             isEdit ? l.editClient : l.createClient,
-            style: typo.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: 13,
+            style: text.titleLarge!.copyWith(
+              fontWeight: FontWeight.w600,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

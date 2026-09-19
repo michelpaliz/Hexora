@@ -320,6 +320,68 @@ class AppLocalizationsEs extends AppLocalizations {
   String get repetitionDetails => 'Detalles de repetición';
 
   @override
+  String get recurrenceFrequency => 'Frecuencia';
+
+  @override
+  String get recurrenceEndDate => 'Fecha de fin';
+
+  @override
+  String get recurrenceNever => 'No termina';
+
+  @override
+  String get recurrenceChooseDate => 'Elegir fecha de fin';
+
+  @override
+  String get repeatIntervalDecrease => 'Reducir intervalo de repetición';
+
+  @override
+  String get repeatIntervalIncrease => 'Aumentar intervalo de repetición';
+
+  @override
+  String recurrenceDailySummary(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Cada $count días',
+      one: 'Cada día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recurrenceWeeklySummary(int count, String days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Cada $count semanas',
+      one: 'Cada semana',
+    );
+    return '$_temp0 · $days';
+  }
+
+  @override
+  String recurrenceMonthlySummary(int count, int day) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Cada $count meses',
+      one: 'Cada mes',
+    );
+    return '$_temp0 · día $day';
+  }
+
+  @override
+  String recurrenceYearlySummary(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Cada $count años',
+      one: 'Cada año',
+    );
+    return '$_temp0 · $date';
+  }
+
+  @override
   String dailyRepetitionInf(int concurrenceDay) {
     return 'Este evento se repetirá cada $concurrenceDay día';
   }
@@ -2228,7 +2290,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Habilita el seguimiento para comenzar a contar las horas y añadir trabajadores.';
 
   @override
-  String get timeTrackingTitle => 'Seguimiento de tiempo';
+  String get workerTimeEntryHint =>
+      'Selecciona trabajadores y el horario que quieres registrar.';
+
+  @override
+  String get timeTrackingTitle => 'Trabajadores';
 
   @override
   String get sectionWorkersHours => 'Horas del personal';
@@ -2600,6 +2666,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get assignedUsers => 'Usuarios asignados';
 
   @override
+  String get delegateVisit => 'Delegar visita';
+
+  @override
+  String get delegateVisitHint => 'Elige quién realizará este trabajo';
+
+  @override
+  String get delegateNoWorkers => 'No hay otros miembros disponibles';
+
+  @override
   String get repetition => 'Repetición';
 
   @override
@@ -2660,7 +2735,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get refreshButton => 'Actualizar';
 
   @override
-  String get titleHint => 'Itroduce el titulo';
+  String get titleHint => 'Introduce el título';
 
   @override
   String get descriptionHint => 'Introduce la descripcion';
@@ -7722,4 +7797,99 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get notificationRecurringDraftInvoiceCreatedMessageFallback =>
       'Se ha creado un borrador de factura recurrente.';
+
+  @override
+  String get requireCompletionPhotos => 'Fotos obligatorias';
+
+  @override
+  String get requireCompletionPhotosHint =>
+      'Los trabajadores deben adjuntar fotos antes de completar la visita';
+
+  @override
+  String get addCompletionPhotos => 'Añadir fotos';
+
+  @override
+  String completionPhotosCount(int count, int minimum) {
+    return 'Fotos: $count/$minimum';
+  }
+
+  @override
+  String get completionPhotoError =>
+      'No se pudieron añadir las fotos o completar la visita. Inténtalo de nuevo.';
+
+  @override
+  String get addBeforePhoto => 'Foto antes';
+
+  @override
+  String get addAfterPhoto => 'Foto después';
+
+  @override
+  String get eventFormCompletion => 'Al completar';
+
+  @override
+  String get eventFormOptions => 'Opciones';
+
+  @override
+  String get eventFormMoreOptions => 'Más opciones';
+
+  @override
+  String get eventFormOff => 'Desactivado';
+
+  @override
+  String get eventFormPhotoHintOne =>
+      'Se requiere al menos una foto para finalizar';
+
+  @override
+  String eventFormPhotoHintMany(int count) {
+    return 'Se requieren al menos $count fotos para finalizar';
+  }
+
+  @override
+  String get eventFormTitleField => 'título';
+
+  @override
+  String eventFormCompleteFields(String fields) {
+    return 'Completa: $fields';
+  }
+
+  @override
+  String get groupSettingsInformation => 'Información';
+
+  @override
+  String get groupSettingsMembersPermissions => 'Miembros y permisos';
+
+  @override
+  String get groupSettingsMembersRoles => 'Miembros y roles';
+
+  @override
+  String get groupSettingsEditInformation => 'Editar información';
+
+  @override
+  String get groupSettingsOwnerLabel => 'Propietario';
+
+  @override
+  String groupSettingsPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pendientes',
+      one: '1 pendiente',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupSettingsDeleteNamePrompt(String name) {
+    return 'Escribe «$name» para confirmar la eliminación permanente. Esta acción no se puede deshacer.';
+  }
+
+  @override
+  String get groupSettingsDeleteGroup => 'Eliminar grupo';
+
+  @override
+  String get agendaCompleted => 'Completado';
+
+  @override
+  String get agendaEmptyDay =>
+      'No hay trabajos para este día. Selecciona otra fecha o Todos.';
 }

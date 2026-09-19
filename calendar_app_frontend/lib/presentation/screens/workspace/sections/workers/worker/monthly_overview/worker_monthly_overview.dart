@@ -153,11 +153,15 @@ class _WorkerMonthlyOverviewScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.worker.displayName ?? 'Worker',
+              widget.worker.displayName ?? l.workersLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: t.titleLarge.copyWith(fontWeight: FontWeight.w700),
             ),
             Text(
               '${widget.group.name} • $selectedLabel',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: t.bodyMedium.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),

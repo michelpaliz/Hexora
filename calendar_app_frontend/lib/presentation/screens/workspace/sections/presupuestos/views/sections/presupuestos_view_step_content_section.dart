@@ -1252,212 +1252,219 @@ extension _GroupInvoicesBudgetsViewStepContentSection
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 4,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      metricCard(
-                        icon: Icons.format_list_bulleted_rounded,
-                        label: _isSpanishLocale ? 'Líneas' : 'Lines',
-                        value: '${rows.length}',
-                      ),
-                      const SizedBox(width: 10),
-                      metricCard(
-                        icon: Icons.payments_outlined,
-                        label: 'Total',
-                        value: money.format(total),
-                        accent: cs.secondary,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.25),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+        LayoutBuilder(builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 700;
+          return Flex(
+            direction: narrow ? Axis.vertical : Axis.horizontal,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
+                fit: narrow ? FlexFit.loose : FlexFit.tight,
+                flex: narrow ? 0 : 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Icon(Icons.receipt_long_outlined,
-                                size: 17, color: cs.primary),
-                            const SizedBox(width: 8),
-                            Text(
-                              _isSpanishLocale
-                                  ? 'Resumen del contenido'
-                                  : 'Content summary',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                          ],
+                        metricCard(
+                          icon: Icons.format_list_bulleted_rounded,
+                          label: _isSpanishLocale ? 'Líneas' : 'Lines',
+                          value: '${rows.length}',
                         ),
-                        const SizedBox(height: 12),
-                        if (rows.isEmpty)
-                          Text(
-                            _isSpanishLocale
-                                ? 'Sin líneas para previsualizar.'
-                                : 'No lines to preview.',
-                            style: TextStyle(color: cs.onSurfaceVariant),
-                          )
-                        else
-                          ...rows.take(6).map((row) {
-                            final label = row['label']?.toString() ?? '-';
-                            final qty = row['qty'];
-                            final unitPrice = row['unitPrice'];
-                            final discountRate =
-                                (row['discountRate'] as num?) ?? 0;
-                            final lineTotal = row['total'];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          label,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            color: cs.onSurface,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '$qty x ${money.format(unitPrice)}'
-                                          '${discountRate > 0 ? ' · Dto. $discountRate%' : ''}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: cs.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    money.format(lineTotal),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      color: cs.onSurface,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-                        if (rows.length > 6)
-                          Text(
-                            '+${rows.length - 6}',
-                            style: TextStyle(color: cs.onSurfaceVariant),
-                          ),
+                        const SizedBox(width: 10),
+                        metricCard(
+                          icon: Icons.payments_outlined,
+                          label: 'Total',
+                          value: money.format(total),
+                          accent: cs.secondary,
+                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_previewError != null && _previewError!.isNotEmpty)
+                    const SizedBox(height: 12),
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: cs.errorContainer.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(14),
-                        border:
-                            Border.all(color: cs.error.withValues(alpha: 0.32)),
+                        color:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.25),
+                        ),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Icon(Icons.error_outline_rounded,
-                              size: 18, color: cs.error),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _previewError!,
-                              style: TextStyle(color: cs.error),
+                          Row(
+                            children: [
+                              Icon(Icons.receipt_long_outlined,
+                                  size: 17, color: cs.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isSpanishLocale
+                                    ? 'Resumen del contenido'
+                                    : 'Content summary',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (rows.isEmpty)
+                            Text(
+                              _isSpanishLocale
+                                  ? 'Sin líneas para previsualizar.'
+                                  : 'No lines to preview.',
+                              style: TextStyle(color: cs.onSurfaceVariant),
+                            )
+                          else
+                            ...rows.take(6).map((row) {
+                              final label = row['label']?.toString() ?? '-';
+                              final qty = row['qty'];
+                              final unitPrice = row['unitPrice'];
+                              final discountRate =
+                                  (row['discountRate'] as num?) ?? 0;
+                              final lineTotal = row['total'];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            label,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              color: cs.onSurface,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '$qty x ${money.format(unitPrice)}'
+                                            '${discountRate > 0 ? ' · Dto. $discountRate%' : ''}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: cs.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      money.format(lineTotal),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        color: cs.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          if (rows.length > 6)
+                            Text(
+                              '+${rows.length - 6}',
+                              style: TextStyle(color: cs.onSurfaceVariant),
                             ),
-                          ),
-                          TextButton.icon(
-                            onPressed: () => _loadPreviewPdf(force: true),
-                            icon: const Icon(Icons.refresh, size: 16),
-                            label: Text(l.tryAgain),
-                          ),
                         ],
                       ),
                     ),
-                  if (_previewError == null || _previewError!.isEmpty)
-                    FilledButton.icon(
-                      onPressed: _loadingPreview || _issuing
-                          ? null
-                          : _previewPdfBytes == null
-                              ? () => _createDraftAndPreparePreview()
-                              : () async {
-                                  final fileName = previewId.isEmpty
-                                      ? 'presupuesto-preview.pdf'
-                                      : 'presupuesto-$previewId-preview.pdf';
-                                  await pdf_launcher.launchPdfPreview(
-                                    Uint8List.fromList(_previewPdfBytes!),
-                                    fileName: fileName,
-                                  );
-                                },
-                      icon: Icon(_previewPdfBytes == null
-                          ? Icons.visibility_outlined
-                          : Icons.open_in_new_outlined),
-                      label: Text(l.budgetPreviewOpenCta),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 6,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.28),
-                  ),
-                ),
-                child: _loadingPreview
-                    ? const SizedBox(
-                        height: 620,
-                        child: Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
+                    const SizedBox(height: 12),
+                    if (_previewError != null && _previewError!.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cs.errorContainer.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: cs.error.withValues(alpha: 0.32)),
                         ),
-                      )
-                    : _previewPdfBytes != null
-                        ? PdfInlinePreview(
-                            bytes: Uint8List.fromList(_previewPdfBytes!),
-                            height: 620,
-                          )
-                        : _budgetPreviewWidget(l),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.error_outline_rounded,
+                                size: 18, color: cs.error),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _previewError!,
+                                style: TextStyle(color: cs.error),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _loadPreviewPdf(force: true),
+                              icon: const Icon(Icons.refresh, size: 16),
+                              label: Text(l.tryAgain),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_previewError == null || _previewError!.isEmpty)
+                      FilledButton.icon(
+                        onPressed: _loadingPreview || _issuing
+                            ? null
+                            : _previewPdfBytes == null
+                                ? () => _createDraftAndPreparePreview()
+                                : () async {
+                                    final fileName = previewId.isEmpty
+                                        ? 'presupuesto-preview.pdf'
+                                        : 'presupuesto-$previewId-preview.pdf';
+                                    await pdf_launcher.launchPdfPreview(
+                                      Uint8List.fromList(_previewPdfBytes!),
+                                      fileName: fileName,
+                                    );
+                                  },
+                        icon: Icon(_previewPdfBytes == null
+                            ? Icons.visibility_outlined
+                            : Icons.open_in_new_outlined),
+                        label: Text(l.budgetPreviewOpenCta),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+              SizedBox(width: narrow ? 0 : 16, height: narrow ? 16 : 0),
+              Flexible(
+                fit: narrow ? FlexFit.loose : FlexFit.tight,
+                flex: narrow ? 0 : 6,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: _loadingPreview
+                      ? const SizedBox(
+                          height: 620,
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        )
+                      : _previewPdfBytes != null
+                          ? PdfInlinePreview(
+                              bytes: Uint8List.fromList(_previewPdfBytes!),
+                              height: 620,
+                            )
+                          : _budgetPreviewWidget(l),
+                ),
+              ),
+            ],
+          );
+        }),
       ],
     );
   }

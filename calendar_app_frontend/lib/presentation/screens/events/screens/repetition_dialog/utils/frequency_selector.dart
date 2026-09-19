@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -30,39 +29,72 @@ class RepeatFrequencySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final frequencies = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
+    const frequencies = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final onText = ThemeColors.textPrimary(context);
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: frequencies.map((frequency) {
-        final isSelected = frequency == selectedFrequency;
-
-        return ChoiceChip(
-          label: Text(
-            _getTranslatedFrequency(context, frequency),
-            style: t.bodyMedium.copyWith(
-              fontWeight: FontWeight.w700,
-              color: isSelected ? cs.onPrimaryContainer : onText,
-            ),
-          ),
-          selected: isSelected,
-          onSelected: (_) => onSelectFrequency(frequency),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          selectedColor: cs.primaryContainer,
-          backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.65),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color:
-                  isSelected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.55),
-            ),
-          ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 8.0;
+        final columns = constraints.maxWidth >= 560 ? 4 : 2;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: frequencies.map((frequency) {
+            final isSelected = frequency == selectedFrequency;
+            final label = _getTranslatedFrequency(context, frequency);
+            return SizedBox(
+              width: width,
+              height: 52,
+              child: Semantics(
+                button: true,
+                selected: isSelected,
+                label: label,
+                child: Material(
+                  color: isSelected ? cs.primaryContainer : cs.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: isSelected ? cs.primary : cs.outlineVariant,
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => onSelectFrequency(frequency),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (isSelected) ...[
+                          Icon(Icons.check,
+                              size: 18, color: cs.onPrimaryContainer),
+                          const SizedBox(width: 6),
+                        ],
+                        Flexible(
+                          child: Text(
+                            label,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodyMedium.copyWith(
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              color: isSelected
+                                  ? cs.onPrimaryContainer
+                                  : cs.onSurface,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 }

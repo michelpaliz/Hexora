@@ -66,6 +66,7 @@ abstract class EditEventLogic<T extends StatefulWidget>
     // ðŸ”§ Preselect client & service from the event being edited
     setClientId?.call(event.clientId);
     setPrimaryServiceId?.call(event.primaryServiceId);
+    setCompletionRequirements(event.completionRequirements);
 
     if (mounted) {
       isLoading = false;
@@ -129,6 +130,8 @@ abstract class EditEventLogic<T extends StatefulWidget>
       subcategoryId: _event.subcategoryId,
       visitServices:
           _event.visitServices, // keep as-is unless you also edit these in UI
+      completionRequirements: completionRequirements,
+      completionPhotos: _event.completionPhotos,
       rawRuleId: _event.rawRuleId,
     );
 

@@ -148,54 +148,52 @@ class StatementsMobileCard extends StatelessWidget {
           padding:
               EdgeInsets.symmetric(horizontal: 12, vertical: mobile ? 8 : 12),
           child: LayoutBuilder(builder: (context, constraints) {
-            final details = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            final title = Text(
+              desc.isEmpty ? l.statementsNoDescription : desc,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodyMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: cs.onSurface,
+                fontSize: mobile ? 13.5 : null,
+              ),
+            );
+            final metadata = Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
-                  desc.isEmpty ? l.statementsNoDescription : desc,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: cs.onSurface,
-                    fontSize: mobile ? 13.5 : null,
+                  dateDisplay,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: mobile ? 11.5 : 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 3),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      dateDisplay,
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontSize: mobile ? 11.5 : 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (hasNoProcede)
-                      _Badge(
-                        label: 'No procede',
-                        bg: cs.tertiaryContainer,
-                        fg: cs.onTertiaryContainer,
-                      )
-                    else if (docNumber.isNotEmpty)
-                      _Badge(
-                        label: docNumber,
-                        bg: cs.primaryContainer,
-                        fg: cs.onPrimaryContainer,
-                      )
-                    else if (isUnlinked)
-                      _Badge(
-                        label: l.statementsUnlinked,
-                        bg: cs.surfaceContainerHighest,
-                        fg: cs.onSurfaceVariant,
-                      ),
-                  ],
-                ),
+                if (hasNoProcede)
+                  _Badge(
+                    label: 'No procede',
+                    bg: cs.tertiaryContainer,
+                    fg: cs.onTertiaryContainer,
+                  )
+                else if (docNumber.isNotEmpty)
+                  _Badge(
+                    label: docNumber,
+                    bg: cs.primaryContainer,
+                    fg: cs.onPrimaryContainer,
+                  )
+                else if (isUnlinked)
+                  _Badge(
+                    label: l.statementsUnlinked,
+                    bg: cs.surfaceContainerHighest,
+                    fg: cs.onSurfaceVariant,
+                  ),
               ],
+            );
+            final details = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [title, const SizedBox(height: 3), metadata],
             );
             final amountBadge = Container(
               padding: EdgeInsets.symmetric(
@@ -237,8 +235,8 @@ class StatementsMobileCard extends StatelessWidget {
                     ),
                     padding: EdgeInsets.zero,
                     constraints: BoxConstraints(
-                      minWidth: mobile ? 32 : 28,
-                      minHeight: mobile ? 32 : 28,
+                      minWidth: mobile ? 48 : 28,
+                      minHeight: mobile ? 48 : 28,
                     ),
                     style: IconButton.styleFrom(
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -251,32 +249,58 @@ class StatementsMobileCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: mobile ? 16 : 18,
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.55),
-                ),
+                if (!mobile)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: mobile ? 16 : 18,
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.55),
+                  ),
               ],
             );
             if (mobile) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              final amountLabel =
+                  StatementsFormatters.formatCurrency(context, amount);
+              final amountStyle = t.bodyMedium.copyWith(
+                fontWeight: FontWeight.w800,
+                color: amountColor,
+                fontSize: 13.5,
+              );
+              final amountPainter = TextPainter(
+                text: TextSpan(text: amountLabel, style: amountStyle),
+                textDirection: Directionality.of(context),
+                textScaler: MediaQuery.textScalerOf(context),
+              )..layout();
+              // Keep a useful description width; let large text and amounts
+              // use their own line instead of clipping financial information.
+              final stackAmount =
+                  constraints.maxWidth - 48 - 8 - amountPainter.width < 88;
+              amountPainter.dispose();
+              final amountText = Text(amountLabel, style: amountStyle);
+              return Row(
                 children: [
-                  details,
-                  const SizedBox(height: 5),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: amountBadge,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      actions,
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (stackAmount) ...[
+                          title,
+                          const SizedBox(height: 3),
+                          amountText,
+                        ] else
+                          Row(
+                            children: [
+                              Expanded(child: title),
+                              const SizedBox(width: 8),
+                              amountText,
+                            ],
+                          ),
+                        const SizedBox(height: 4),
+                        metadata,
+                      ],
+                    ),
                   ),
+                  actions,
                 ],
               );
             }

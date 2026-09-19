@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
 class NumberSelector extends StatefulWidget {
   final int? value;
@@ -63,47 +65,60 @@ class _NumberSelectorState extends State<NumberSelector> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.remove),
-          iconSize: 14,
-          onPressed: (widget.value ?? 0) > widget.minValue
-              ? () {
-                  final newValue = (widget.value ?? 0) - 1;
-                  _controller.text = newValue.toString();
-                  widget.onChanged(newValue);
-                }
-              : null,
-        ),
-        SizedBox(
-          width: 30, // Adjust the width as needed
-          child: TextField(
-            controller: _controller,
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            style: TextStyle(
-              fontSize: widget.inputFontSize,
-            ),
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.all(0),
-              border: InputBorder.none,
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border.all(color: cs.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 40,
+            child: IconButton(
+              icon: const Icon(Icons.remove, size: 18),
+              tooltip: AppLocalizations.of(context)!.repeatIntervalDecrease,
+              padding: EdgeInsets.zero,
+              onPressed: (widget.value ?? 0) > widget.minValue
+                  ? () =>
+                      _controller.text = ((widget.value ?? 0) - 1).toString()
+                  : null,
             ),
           ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.add),
-          iconSize: 14,
-          onPressed: () {
-            final newValue = (widget.value ?? 0) + 1;
-            if (newValue <= widget.maxValue) {
-              _controller.text = newValue.toString();
-              widget.onChanged(newValue);
-            }
-          },
-        ),
-      ],
+          Container(width: 1, color: cs.outlineVariant),
+          SizedBox(
+            width: 44,
+            child: TextField(
+              controller: _controller,
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: TextStyle(fontSize: widget.inputFontSize),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          Container(width: 1, color: cs.outlineVariant),
+          SizedBox(
+            width: 40,
+            child: IconButton(
+              icon: const Icon(Icons.add, size: 18),
+              tooltip: AppLocalizations.of(context)!.repeatIntervalIncrease,
+              padding: EdgeInsets.zero,
+              onPressed: (widget.value ?? 0) < widget.maxValue
+                  ? () =>
+                      _controller.text = ((widget.value ?? 0) + 1).toString()
+                  : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

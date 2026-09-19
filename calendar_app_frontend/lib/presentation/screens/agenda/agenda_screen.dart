@@ -42,6 +42,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   String? _error;
   List<AgendaItem> _items = [];
   int _daysRange = 14;
+  DateTime? _selectedDay = DateUtils.dateOnly(DateTime.now());
 
   @override
   void initState() {
@@ -145,10 +146,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
           slivers: [
             AgendaHeaderSection(
               items: filtered,
+              selectedDay: _selectedDay,
+              onSelectDay: (day) => setState(() => _selectedDay = day),
               daysRange: _daysRange,
               onToggleDays: () {
                 setState(() {
                   _daysRange = _daysRange >= 30 ? 14 : 30;
+                  _selectedDay = DateUtils.dateOnly(DateTime.now());
                   _loading = true;
                 });
                 _loadAgenda();
@@ -176,7 +180,15 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   ),
                 ),
               ),
-            AgendaListSection(filteredItems: filtered),
+            AgendaListSection(
+                selectedDayOnly: _selectedDay != null,
+                filteredItems: _selectedDay == null
+                    ? filtered
+                    : filtered
+                        .where((item) =>
+                            DateUtils.isSameDay(item.startLocal, _selectedDay))
+                        .toList()),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
       );
@@ -187,13 +199,22 @@ class _AgendaScreenState extends State<AgendaScreen> {
     if (!widget.showBottomNav) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(widget.groupName == null
-              ? loc.agenda
-              : '${loc.agenda} · ${widget.groupName}'),
+          title:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(loc.agenda),
+            if (widget.groupName != null)
+              Text(widget.groupName!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall),
+          ]),
           leading: const BackButton(),
         ),
         body: SafeArea(top: false, child: body),
-        floatingActionButton: const ContextualFab(),
+        floatingActionButton: ContextualFab(
+            extendedLabel: loc.localeName.startsWith('es')
+                ? 'Crear evento'
+                : 'Create event'),
       );
     }
 
@@ -872,7 +893,7 @@ class _SelectableEventTile extends StatelessWidget {
                 ]
               : null,
         ),
-        child: AgendaTile(item: item),
+        child: AgendaTile(item: item, onTap: onTap),
       ),
     );
   }

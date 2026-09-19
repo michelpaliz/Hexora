@@ -302,6 +302,22 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
                           ? null
                           : () => run(() async {
                                 final response = await _presupuestosApi
+                                    .previewPdf(_budgetId(document));
+                                final bytes =
+                                    InvoiceEditorPdf.validatePdf(response);
+                                await pdf_launcher.launchPdfPreview(bytes,
+                                    fileName:
+                                        'presupuesto-${_budgetNumber(document)}.pdf');
+                              }, close: false),
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      label:
+                          Text(AppLocalizations.of(context)!.invoicePreviewCta),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => run(() async {
+                                final response = await _presupuestosApi
                                     .downloadPdf(_budgetId(document));
                                 await launchFileDownload(response.bodyBytes,
                                     fileName:

@@ -29,13 +29,13 @@ class WorkerSelectionSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        Wrap(
+          spacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Expanded(
-              child: Text(
-                l.workersLabel,
-                style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-              ),
+            Text(
+              l.workersLabel,
+              style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
             ),
             TextButton(onPressed: onSelectAll, child: Text(l.selectAll)),
             TextButton(onPressed: onClear, child: Text(l.clearSelection)),
@@ -49,12 +49,15 @@ class WorkerSelectionSection extends StatelessWidget {
             final selected = selectedIds.contains(w.id);
             final fg =
                 selected ? cs.onPrimary : ThemeColors.textPrimary(context);
-            final bg =
-                selected ? cs.primary : cs.surfaceContainerHighest.withValues(alpha: 0.65);
-            return ChoiceChip(
+            final bg = selected
+                ? cs.primary
+                : cs.surfaceContainerHighest.withValues(alpha: 0.65);
+            return FilterChip(
               selected: selected,
               label: Text(
                 w.displayName ?? w.id,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: t.bodySmall.copyWith(
                   color: fg,
                   fontWeight: FontWeight.w700,

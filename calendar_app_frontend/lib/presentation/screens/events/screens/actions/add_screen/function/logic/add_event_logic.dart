@@ -256,10 +256,14 @@ abstract class AddEventLogic<T extends StatefulWidget>
       eventColorIndex: ColorManager().getColorIndex(Color(selectedEventColor!)),
       recipients: selectedUsers.map((u) => u.id).toList(),
       ownerId: user.id,
+      reminderTime: reminderMinutes,
       type: isWorkVisit ? 'work_visit' : 'simple',
       clientId: isWorkVisit ? clientId : null,
       primaryServiceId: isWorkVisit ? primaryServiceId : null,
       visitServices: vs,
+      completionRequirements: isWorkVisit
+          ? completionRequirements
+          : const CompletionRequirements.disabled(),
       categoryId: isWorkVisit ? null : categoryId,
       subcategoryId: isWorkVisit ? null : subcategoryId,
     );

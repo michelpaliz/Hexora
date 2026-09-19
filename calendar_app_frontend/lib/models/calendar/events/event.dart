@@ -43,6 +43,8 @@ class Event {
 
   /// Whether the owner should receive notifications (default true).
   bool notifyOwner;
+  CompletionRequirements completionRequirements;
+  List<CompletionPhoto> completionPhotos;
 
   Event({
     required this.id,
@@ -68,6 +70,8 @@ class Event {
     this.categoryId,
     this.subcategoryId,
     this.notifyOwner = true,
+    CompletionRequirements? completionRequirements,
+    List<CompletionPhoto>? completionPhotos,
 
     // NEW
     this.type = 'simple',
@@ -77,7 +81,17 @@ class Event {
     List<VisitService>? visitServices,
   })  : recipients = recipients ?? [],
         updateHistory = updateHistory ?? [],
-        visitServices = visitServices ?? [];
+        visitServices = visitServices ?? [],
+        completionRequirements =
+            completionRequirements ?? const CompletionRequirements.disabled(),
+        completionPhotos = completionPhotos ?? [];
+
+  bool get needsMorePhotosToComplete =>
+      completionRequirements.requirePhotos &&
+      (completionPhotos.length < completionRequirements.minPhotos ||
+          (completionRequirements.requireBeforeAfterPhotos &&
+              (!completionPhotos.any((p) => p.photoType == 'before') ||
+                  !completionPhotos.any((p) => p.photoType == 'after'))));
 
   // -------- Convenience --------
   bool get ownerMuted => notifyOwner == false;
@@ -118,6 +132,8 @@ class Event {
     String? categoryId,
     String? subcategoryId,
     bool? notifyOwner,
+    CompletionRequirements? completionRequirements,
+    List<CompletionPhoto>? completionPhotos,
 
     // NEW
     String? type,
@@ -152,6 +168,9 @@ class Event {
       categoryId: categoryId ?? this.categoryId,
       subcategoryId: subcategoryId ?? this.subcategoryId,
       notifyOwner: notifyOwner ?? this.notifyOwner,
+      completionRequirements:
+          completionRequirements ?? this.completionRequirements,
+      completionPhotos: completionPhotos ?? List.of(this.completionPhotos),
 
       // NEW
       type: type ?? this.type,
@@ -186,6 +205,8 @@ class Event {
         'ownerId': ownerId,
         'updateHistory': updateHistory.map((u) => u.toMap()).toList(),
         'notifyOwner': notifyOwner,
+        'completionRequirements': completionRequirements.toMap(),
+        'completionPhotos': completionPhotos.map((p) => p.toMap()).toList(),
         'status': status,
 
         // Legacy (simple)
@@ -284,6 +305,15 @@ class Event {
               .toList() ??
           [],
       notifyOwner: map['notifyOwner'] as bool? ?? true,
+      completionRequirements: map['completionRequirements'] is Map
+          ? CompletionRequirements.fromMap(
+              (map['completionRequirements'] as Map).cast<String, dynamic>())
+          : const CompletionRequirements.disabled(),
+      completionPhotos: (map['completionPhotos'] as List?)
+              ?.map((p) =>
+                  CompletionPhoto.fromMap((p as Map).cast<String, dynamic>()))
+              .toList() ??
+          [],
       status: (map['status'] as String?)?.toLowerCase(),
 
       // legacy
@@ -373,6 +403,7 @@ class Event {
       'ownerId': ownerId,
       'updateHistory': updateHistory.map((u) => u.toMap()).toList(),
       'notifyOwner': notifyOwner,
+      'completionRequirements': completionRequirements.toMap(),
 
       // Type + work-visit fields
       'type': effectiveType,
@@ -418,6 +449,7 @@ class Event {
         'recipients: $recipients, '
         'ownerId: $ownerId, '
         'notifyOwner: $notifyOwner, '
+        'completionRequirements: $completionRequirements, '
         'status: $status, '
         'categoryId: $categoryId, '
         'subcategoryId: $subcategoryId, '
@@ -541,4 +573,61 @@ class VisitService {
   @override
   String toString() =>
       'VisitService(serviceId: $serviceId, planned: $plannedMinutes, actual: $actualMinutes)';
+}
+
+class CompletionRequirements {
+  const CompletionRequirements({
+    required this.requirePhotos,
+    this.minPhotos = 1,
+    this.requireBeforeAfterPhotos = false,
+  });
+
+  const CompletionRequirements.disabled()
+      : requirePhotos = false,
+        minPhotos = 1,
+        requireBeforeAfterPhotos = false;
+
+  final bool requirePhotos;
+  final int minPhotos;
+  final bool requireBeforeAfterPhotos;
+
+  CompletionRequirements copyWith({bool? requirePhotos}) =>
+      CompletionRequirements(
+        requirePhotos: requirePhotos ?? this.requirePhotos,
+        minPhotos: minPhotos,
+        requireBeforeAfterPhotos: requireBeforeAfterPhotos,
+      );
+
+  Map<String, dynamic> toMap() => {
+        'requirePhotos': requirePhotos,
+        'minPhotos': minPhotos,
+        'requireBeforeAfterPhotos': requireBeforeAfterPhotos,
+      };
+
+  factory CompletionRequirements.fromMap(Map<String, dynamic> map) {
+    final raw = map['minPhotos'];
+    final count = raw is num ? raw.toInt() : int.tryParse('$raw') ?? 1;
+    return CompletionRequirements(
+      requirePhotos: map['requirePhotos'] == true,
+      minPhotos: count < 1 ? 1 : count,
+      requireBeforeAfterPhotos: map['requireBeforeAfterPhotos'] == true,
+    );
+  }
+}
+
+class CompletionPhoto {
+  const CompletionPhoto({required this.blobName, this.photoType = 'general'});
+
+  final String blobName;
+  final String photoType;
+
+  Map<String, dynamic> toMap() => {
+        'blobName': blobName,
+        'photoType': photoType,
+      };
+
+  factory CompletionPhoto.fromMap(Map<String, dynamic> map) => CompletionPhoto(
+        blobName: map['blobName']?.toString() ?? '',
+        photoType: map['photoType']?.toString() ?? 'general',
+      );
 }

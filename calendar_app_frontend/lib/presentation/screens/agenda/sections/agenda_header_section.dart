@@ -4,6 +4,8 @@ import 'package:hexora/presentation/screens/agenda/widgets/agenda_header.dart';
 import 'package:flutter/material.dart';
 
 class AgendaHeaderSection extends StatelessWidget {
+  final DateTime? selectedDay;
+  final ValueChanged<DateTime?>? onSelectDay;
   final List<AgendaItem> items; // pass FILTERED list here
   final int daysRange;
   final VoidCallback onToggleDays;
@@ -11,6 +13,8 @@ class AgendaHeaderSection extends StatelessWidget {
 
   const AgendaHeaderSection({
     super.key,
+    this.selectedDay,
+    this.onSelectDay,
     required this.items,
     required this.daysRange,
     required this.onToggleDays,
@@ -21,8 +25,10 @@ class AgendaHeaderSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.only(top: 28),
+        padding: const EdgeInsets.only(top: 8),
         child: AgendaHeader(
+          selectedDay: selectedDay,
+          onSelectDay: onSelectDay,
           items: items, // <- filtered by caller
           daysRange: daysRange,
           onExpandRange: onToggleDays,

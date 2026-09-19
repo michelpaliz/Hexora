@@ -130,6 +130,12 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
       children: [
         if (widget.fullPage)
+          OutlinedButton.icon(
+            onPressed: widget.onPreviewPdf,
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: Text(l.invoicePreviewCta),
+          ),
+        if (widget.fullPage)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: OutlinedButton.icon(

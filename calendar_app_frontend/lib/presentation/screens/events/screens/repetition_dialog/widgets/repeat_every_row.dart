@@ -37,29 +37,11 @@ class RepeatEveryRow extends StatelessWidget {
     }
   }
 
-  String _getTranslatedSpecificFrequency(
-    BuildContext context,
-    String frequency,
-  ) {
-    switch (frequency) {
-      case 'Daily':
-        return AppLocalizations.of(context)!.dailys;
-      case 'Weekly':
-        return AppLocalizations.of(context)!.weeklys;
-      case 'Monthly':
-        return AppLocalizations.of(context)!.monthlies;
-      case 'Yearly':
-        return AppLocalizations.of(context)!.yearlys;
-      default:
-        return '';
-    }
-  }
-
   String _getTranslatedFrequencyDays(
     BuildContext context,
     List<String> dayNames,
   ) {
-    List<String> translated = dayNames.map((day) {
+    final translated = dayNames.map((day) {
       switch (day.toLowerCase()) {
         case 'monday':
           return AppLocalizations.of(context)!.monday;
@@ -85,7 +67,9 @@ class RepeatEveryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat('d of MMMM').format(selectedStartDate);
+    final l = AppLocalizations.of(context)!;
+    final formattedDate =
+        DateFormat.MMMMd(l.localeName).format(selectedStartDate);
     final selectedDayNames = selectedDays.map((day) => day.name).toList();
     final t = AppTypography.of(context);
     final onText = ThemeColors.textPrimary(context);
@@ -97,53 +81,19 @@ class RepeatEveryRow extends StatelessWidget {
       return orderA.compareTo(orderB);
     });
 
-    String repeatMessage = '';
-    switch (selectedFrequency) {
-      case 'Daily':
-        repeatMessage = AppLocalizations.of(
-          context,
-        )!
-            .dailyRepetitionInf(repeatInterval);
-        break;
-      case 'Weekly':
-        if (selectedDayNames.length > 1) {
-          final lastDay = selectedDayNames.removeLast();
-          final mainDays = _getTranslatedFrequencyDays(
-            context,
-            selectedDayNames,
-          );
-          final last = _getTranslatedFrequencyDays(context, [lastDay]);
-          repeatMessage = AppLocalizations.of(
-            context,
-          )!
-              .weeklyRepetitionInf(repeatInterval, "", last, mainDays);
-        } else if (selectedDayNames.length == 1) {
-          final onlyDay = _getTranslatedFrequencyDays(
-            context,
-            selectedDayNames,
-          );
-          repeatMessage = AppLocalizations.of(
-            context,
-          )!
-              .weeklyRepetitionInf1(repeatInterval, onlyDay);
-        } else {
-          repeatMessage = AppLocalizations.of(context)!.noDaysSelected;
-        }
-        break;
-      case 'Monthly':
-        repeatMessage = AppLocalizations.of(
-          context,
-        )!
-            .monthlyRepetitionInf(
-                formattedDate, repeatInterval, repeatInterval);
-        break;
-      case 'Yearly':
-        repeatMessage = AppLocalizations.of(
-          context,
-        )!
-            .yearlyRepetitionInf(formattedDate, repeatInterval, repeatInterval);
-        break;
-    }
+    final repeatMessage = switch (selectedFrequency) {
+      'Daily' => l.recurrenceDailySummary(repeatInterval),
+      'Weekly' => selectedDayNames.isEmpty
+          ? l.noDaysSelected
+          : l.recurrenceWeeklySummary(
+              repeatInterval,
+              _getTranslatedFrequencyDays(context, selectedDayNames),
+            ),
+      'Monthly' =>
+        l.recurrenceMonthlySummary(repeatInterval, selectedStartDate.day),
+      'Yearly' => l.recurrenceYearlySummary(repeatInterval, formattedDate),
+      _ => '',
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,50 +103,43 @@ class RepeatEveryRow extends StatelessWidget {
             Icon(Icons.auto_graph_rounded,
                 size: 18, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 8),
-            Text(
-              AppLocalizations.of(context)!.repetitionDetails,
-              style: t.bodyLarge.copyWith(
-                fontWeight: FontWeight.w700,
-                color: onText,
+            Expanded(
+              child: Text(
+                l.repetitionDetails,
+                style: t.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: onText,
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8.0),
-        Text(
-          repeatMessage,
-          style: t.bodySmall.copyWith(
-            color: secondaryText,
-          ),
-        ),
-        const SizedBox(height: 12.0),
+        const SizedBox(height: 12),
         Row(
           children: [
             Text(
-              AppLocalizations.of(context)!.every,
+              l.every,
               style: t.bodyMedium.copyWith(
                 fontWeight: FontWeight.w700,
                 color: onText,
               ),
             ),
-            const SizedBox(width: 10),
+            const Spacer(),
             NumberSelector(
               key: Key(selectedFrequency),
               value: repeatInterval,
               minValue: 1,
               maxValue: _getMaxRepeatValue(selectedFrequency),
-              onChanged: (int? value) {
-                if (value != null) {
-                  onIntervalChanged(value); // still calls your original logic
-                }
+              onChanged: (value) {
+                if (value != null) onIntervalChanged(value);
               },
             ),
-            const SizedBox(width: 10),
-            Text(
-              _getTranslatedSpecificFrequency(context, selectedFrequency),
-              style: t.bodyMedium.copyWith(color: onText),
-            ),
           ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          repeatMessage,
+          style: t.bodySmall.copyWith(color: secondaryText),
         ),
       ],
     );

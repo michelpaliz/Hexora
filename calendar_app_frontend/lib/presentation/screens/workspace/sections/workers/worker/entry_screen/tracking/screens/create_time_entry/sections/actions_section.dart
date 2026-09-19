@@ -15,29 +15,40 @@ class ActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: saving ? null : () => Navigator.of(context).pop(false),
-            child: Text(l.cancel),
+    return LayoutBuilder(builder: (context, constraints) {
+      final stacked = constraints.maxWidth < 360 ||
+          MediaQuery.textScalerOf(context).scale(14) > 20;
+      return Flex(
+        direction: stacked ? Axis.vertical : Axis.horizontal,
+        crossAxisAlignment:
+            stacked ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
+        children: [
+          Flexible(
+            flex: stacked ? 0 : 1,
+            fit: stacked ? FlexFit.loose : FlexFit.tight,
+            child: OutlinedButton(
+              onPressed: saving ? null : () => Navigator.of(context).pop(false),
+              child: Text(l.cancel),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: saving ? null : onSave,
-            icon: saving
-                ? const SizedBox(
-                    height: 16,
-                    width: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_outlined),
-            label: Text(saving ? l.savingLabel : l.addTimeEntryCta),
+          SizedBox(width: stacked ? 0 : 12, height: stacked ? 8 : 0),
+          Flexible(
+            flex: stacked ? 0 : 1,
+            fit: stacked ? FlexFit.loose : FlexFit.tight,
+            child: FilledButton.icon(
+              onPressed: saving ? null : onSave,
+              icon: saving
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: Text(saving ? l.savingLabel : l.addTimeEntryCta),
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    });
   }
 }

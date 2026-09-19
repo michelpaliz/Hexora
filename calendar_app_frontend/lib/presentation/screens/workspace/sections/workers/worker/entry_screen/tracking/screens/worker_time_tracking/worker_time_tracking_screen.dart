@@ -546,51 +546,102 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                   (c.totals?['currency'] ?? c.worker.currency)?.toString(),
             ),
             actions: [
-              _toolbarActionButton(
-                context,
-                tooltip: l.toggleEmptyDays,
-                icon: _showMissingDays
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                selected: _showMissingDays,
-                onPressed: () =>
-                    setState(() => _showMissingDays = !_showMissingDays),
-              ),
-              _toolbarActionButton(
-                context,
-                tooltip: l.exportExcel,
-                icon: Icons.grid_on_rounded,
-                onPressed: () => _exportExcel(context),
-              ),
-              _toolbarActionButton(
-                context,
-                tooltip: isSpanish ? 'Importar Excel' : 'Import Excel',
-                icon: Icons.upload_file_outlined,
-                onPressed: () => _openExcelImport(context),
-              ),
-              _toolbarActionButton(
-                context,
-                tooltip: monthlyCalendarPdfLabel,
-                icon: Icons.calendar_month_outlined,
-                color: const Color(0xFF2E6E5A),
-                loading: _previewingMonthlyCalendarPdf,
-                onPressed: () => _previewMonthlyCalendarPdf(context),
-              ),
-              _toolbarActionButton(
-                context,
-                tooltip: '$previewPdfLabel - monthly payroll (hours and pay).',
-                icon: Icons.picture_as_pdf_outlined,
-                color: const Color(0xFFC62828),
-                loading: _previewingPayrollPdf,
-                onPressed: () => _previewPayrollPdf(context),
-              ),
-              _toolbarActionButton(
-                context,
-                tooltip: '$downloadPdfLabel - monthly payroll (hours and pay).',
-                icon: Icons.file_download_outlined,
-                loading: _downloadingPayrollPdf,
-                onPressed: () => _downloadPayrollPdf(context),
-              ),
+              if (MediaQuery.sizeOf(context).width < 760)
+                PopupMenuButton<int>(
+                  tooltip: l.timeTrackingActionsCta,
+                  onSelected: (value) {
+                    switch (value) {
+                      case 0:
+                        setState(() => _showMissingDays = !_showMissingDays);
+                      case 1:
+                        _exportExcel(context);
+                      case 2:
+                        _openExcelImport(context);
+                      case 3:
+                        _previewMonthlyCalendarPdf(context);
+                      case 4:
+                        _previewPayrollPdf(context);
+                      case 5:
+                        _downloadPayrollPdf(context);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    CheckedPopupMenuItem(
+                        value: 0,
+                        checked: _showMissingDays,
+                        child: Text(l.toggleEmptyDays)),
+                    PopupMenuItem(value: 1, child: Text(l.exportExcel)),
+                    PopupMenuItem(
+                        value: 2,
+                        child: Text(
+                            isSpanish ? 'Importar Excel' : 'Import Excel')),
+                    PopupMenuItem(
+                        value: 3,
+                        enabled: !_previewingMonthlyCalendarPdf,
+                        child: Text(monthlyCalendarPdfLabel)),
+                    PopupMenuItem(
+                        value: 4,
+                        enabled: !_previewingPayrollPdf,
+                        child: Text(isSpanish
+                            ? 'Ver PDF de horas y pagos'
+                            : 'Preview hours and pay PDF')),
+                    PopupMenuItem(
+                        value: 5,
+                        enabled: !_downloadingPayrollPdf,
+                        child: Text(isSpanish
+                            ? 'Descargar PDF de horas y pagos'
+                            : 'Download hours and pay PDF')),
+                  ],
+                )
+              else ...[
+                _toolbarActionButton(
+                  context,
+                  tooltip: l.toggleEmptyDays,
+                  icon: _showMissingDays
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  selected: _showMissingDays,
+                  onPressed: () =>
+                      setState(() => _showMissingDays = !_showMissingDays),
+                ),
+                _toolbarActionButton(
+                  context,
+                  tooltip: l.exportExcel,
+                  icon: Icons.grid_on_rounded,
+                  onPressed: () => _exportExcel(context),
+                ),
+                _toolbarActionButton(
+                  context,
+                  tooltip: isSpanish ? 'Importar Excel' : 'Import Excel',
+                  icon: Icons.upload_file_outlined,
+                  onPressed: () => _openExcelImport(context),
+                ),
+                _toolbarActionButton(
+                  context,
+                  tooltip: monthlyCalendarPdfLabel,
+                  icon: Icons.calendar_month_outlined,
+                  color: const Color(0xFF2E6E5A),
+                  loading: _previewingMonthlyCalendarPdf,
+                  onPressed: () => _previewMonthlyCalendarPdf(context),
+                ),
+                _toolbarActionButton(
+                  context,
+                  tooltip:
+                      '$previewPdfLabel - monthly payroll (hours and pay).',
+                  icon: Icons.picture_as_pdf_outlined,
+                  color: const Color(0xFFC62828),
+                  loading: _previewingPayrollPdf,
+                  onPressed: () => _previewPayrollPdf(context),
+                ),
+                _toolbarActionButton(
+                  context,
+                  tooltip:
+                      '$downloadPdfLabel - monthly payroll (hours and pay).',
+                  icon: Icons.file_download_outlined,
+                  loading: _downloadingPayrollPdf,
+                  onPressed: () => _downloadPayrollPdf(context),
+                ),
+              ],
             ],
           ),
           body: content,

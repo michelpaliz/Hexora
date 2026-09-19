@@ -75,6 +75,13 @@ void main() {
         await tester.enterText(find.byType(TextField), 'sin coincidencias');
         await tester.pumpAndSettle();
         expect(find.text('No hay trabajadores que coincidan.'), findsOneWidget);
+        await tester.tap(find.byTooltip('Limpiar búsqueda'));
+        await tester.pumpAndSettle();
+        expect(find.text('No hay trabajadores que coincidan.'), findsNothing);
+        expect(
+            tester.widget<TextField>(find.byType(TextField)).controller!.text,
+            isEmpty);
+        expect(l.timeTrackingTitle, 'Trabajadores');
       });
     }
   }

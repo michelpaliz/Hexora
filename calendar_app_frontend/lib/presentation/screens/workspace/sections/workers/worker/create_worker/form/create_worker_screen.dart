@@ -366,49 +366,59 @@ class _RoleCard extends StatelessWidget {
               style: t.bodyMedium,
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: rateCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: l.hourlyRateLabel,
-                      hintText: l.hourlyRateHint,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+            LayoutBuilder(builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 400;
+              return Flex(
+                direction: stacked ? Axis.vertical : Axis.horizontal,
+                crossAxisAlignment: stacked
+                    ? CrossAxisAlignment.stretch
+                    : CrossAxisAlignment.center,
+                children: [
+                  Flexible(
+                    flex: stacked ? 0 : 1,
+                    fit: stacked ? FlexFit.loose : FlexFit.tight,
+                    child: TextFormField(
+                      controller: rateCtrl,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: l.hourlyRateLabel,
+                        hintText: l.hourlyRateHint,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
+                      style: t.bodyMedium,
                     ),
-                    style: t.bodyMedium,
                   ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 150,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: selectedCurrency,
-                    decoration: InputDecoration(
-                      labelText: l.currencyLabel,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  SizedBox(width: stacked ? 0 : 12, height: stacked ? 12 : 0),
+                  SizedBox(
+                    width: stacked ? double.infinity : 150,
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue: selectedCurrency,
+                      decoration: InputDecoration(
+                        labelText: l.currencyLabel,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
+                      items: workerCurrencyOptions
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) onCurrencyChanged(value);
+                      },
                     ),
-                    items: workerCurrencyOptions
-                        .map(
-                          (c) => DropdownMenuItem(
-                            value: c,
-                            child: Text(c),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) onCurrencyChanged(value);
-                    },
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+            }),
           ],
         ),
       ),
@@ -453,7 +463,8 @@ class _NotesCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                fillColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
               style: t.bodyMedium.copyWith(
                 color: ThemeColors.textPrimary(context),

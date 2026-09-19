@@ -1022,16 +1022,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       final r = await _invoicesApi.previewPdf(inv.id);
       final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
 
-      if (kIsWeb) {
-        _previewPdfBytes = bytes;
-      } else {
-        await pdf_launcher.launchPdfPreview(
-          bytes,
-          fileName: _savedInvoice!.isDraft
-              ? 'invoice-draft-${_savedInvoice!.id}.pdf'
-              : 'invoice-${_savedInvoice!.invoiceNumber}.pdf',
-        );
-      }
+      _previewPdfBytes = bytes;
       _previewedPdf = true;
       notifyListeners();
     } catch (e) {

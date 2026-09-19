@@ -22,6 +22,12 @@ abstract class IEventRepository {
   Future<Event> updateEvent(Event ev);
   Future<void> deleteEvent(String id);
   Future<Event> markEventAsDone(String id, {required bool isDone});
+  Future<Map<String, dynamic>> getEvidenceUploadSas(String id,
+      {required String mimeType});
+  Future<Event> addEvidencePhoto(String id,
+      {required String blobName,
+      required String mimeType,
+      String photoType = 'general'});
   Future<List<Event>> getEventsByGroupId(String groupId);
   Future<List<Event>> getTasks({
     required String groupId,

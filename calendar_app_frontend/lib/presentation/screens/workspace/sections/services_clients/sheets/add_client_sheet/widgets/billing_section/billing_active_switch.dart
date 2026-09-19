@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class ActiveSwitch extends StatelessWidget {
@@ -16,26 +15,23 @@ class ActiveSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
+    final text = Theme.of(context).textTheme;
 
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
-      dense: true,
-      visualDensity: VisualDensity.compact,
+      dense: false,
       value: value,
       onChanged: onChanged,
       title: Text(
         l.active,
-        style: typo.bodySmall.copyWith(
+        style: text.bodyLarge!.copyWith(
           fontWeight: FontWeight.w600,
-          fontSize: 13,
         ),
       ),
       subtitle: Text(
         value ? l.clientWillBeActive : l.clientWillBeInactive,
-        style: typo.bodySmall.copyWith(
+        style: text.bodyMedium!.copyWith(
           color: cs.onSurfaceVariant,
-          fontSize: 11,
         ),
       ),
     );

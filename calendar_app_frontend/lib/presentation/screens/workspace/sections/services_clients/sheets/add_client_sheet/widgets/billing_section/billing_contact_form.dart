@@ -1,7 +1,6 @@
 import '../client_form_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../add_client_controller.dart';
@@ -26,8 +25,7 @@ class BillingContactForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final typo = AppTypography.of(context);
-    final fieldFontSize = MediaQuery.sizeOf(context).width < 600 ? 16.0 : 13.0;
+    final text = Theme.of(context).textTheme;
 
     return ClientFormFields(
         first: Focus(
@@ -36,7 +34,7 @@ class BillingContactForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingEmail,
-            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+            style: text.bodyLarge,
             keyboardType: TextInputType.emailAddress,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
@@ -71,7 +69,7 @@ class BillingContactForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingPhone,
-            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+            style: text.bodyLarge,
             keyboardType: TextInputType.phone,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(

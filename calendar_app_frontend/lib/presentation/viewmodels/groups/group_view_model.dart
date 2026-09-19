@@ -16,6 +16,7 @@ import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_pho
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/presentation/utils/roles/role_policy.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
 enum GroupEditorStatus { idle, loading, error, success }
 
@@ -243,6 +244,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   final Set<String> _processingIds = <String>{};
+  final Set<String> _evidenceUploadingIds = <String>{};
   bool _isDisposed = false;
   String? _filterUserId;
 
@@ -256,7 +258,10 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   int get bulkFinished => _bulkFinished;
   int get bulkTotal => _bulkTotal;
   List<Event> get completablePendingEvents => pendingEvents
-      .where((event) => canManageEvent(event) && !isProcessing(event.id))
+      .where((event) =>
+          canManageEvent(event) &&
+          !isProcessing(event.id) &&
+          !event.needsMorePhotosToComplete)
       .toList();
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -278,6 +283,83 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   EventOwnerInfo? ownerInfoOf(String ownerId) => _ownerCache[ownerId];
 
   bool isProcessing(String eventId) => _processingIds.contains(baseId(eventId));
+  bool isUploadingEvidence(String eventId) =>
+      _evidenceUploadingIds.contains(baseId(eventId));
+  Event? eventById(String eventId) {
+    final key = baseId(eventId);
+    for (final event in _allVisibleEvents) {
+      if (baseId(event.id) == key) return event;
+    }
+    return null;
+  }
+
+  Future<bool> addEvidencePhotos(String eventId,
+      {String photoType = 'general'}) async {
+    final key = baseId(eventId);
+    final target = eventById(eventId);
+    if (key.isEmpty ||
+        target == null ||
+        !_canManageEvent(target) ||
+        _evidenceUploadingIds.contains(key)) {
+      return false;
+    }
+    late final List<XFile> photos;
+    try {
+      if (photoType == 'general') {
+        photos = await ImagePicker().pickMultiImage(imageQuality: 85);
+      } else {
+        final photo = await ImagePicker()
+            .pickImage(source: ImageSource.camera, imageQuality: 85);
+        photos = photo == null ? [] : [photo];
+      }
+    } catch (error) {
+      _errorMessage = error.toString();
+      _notify();
+      return false;
+    }
+    if (photos.isEmpty) return false;
+    _evidenceUploadingIds.add(key);
+    _errorMessage = null;
+    _notify();
+    try {
+      for (final photo in photos) {
+        final path = photo.path.toLowerCase();
+        final mimeType = path.endsWith('.png')
+            ? 'image/png'
+            : path.endsWith('.webp')
+                ? 'image/webp'
+                : 'image/jpeg';
+        final sas = await _eventRepository.getEvidenceUploadSas(eventId,
+            mimeType: mimeType);
+        final uploadUrl = sas['uploadUrl'] as String?;
+        final blobName = sas['blobName'] as String?;
+        if (uploadUrl == null || blobName == null) {
+          throw StateError(
+              'Evidence upload response is missing a URL or blob name');
+        }
+        final response = await http.put(Uri.parse(uploadUrl),
+            headers: {'x-ms-blob-type': 'BlockBlob', 'Content-Type': mimeType},
+            body: await photo.readAsBytes());
+        if (response.statusCode != 200 && response.statusCode != 201) {
+          throw StateError('Photo upload failed: ${response.statusCode}');
+        }
+        final updated = await _eventRepository.addEvidencePhoto(eventId,
+            blobName: blobName, mimeType: mimeType, photoType: photoType);
+        _allVisibleEvents = [
+          ..._allVisibleEvents.where((e) => baseId(e.id) != key),
+          updated,
+        ];
+        _applyFilterAndSplit();
+      }
+      return true;
+    } catch (error) {
+      _errorMessage = error.toString();
+      return false;
+    } finally {
+      _evidenceUploadingIds.remove(key);
+      _notify();
+    }
+  }
 
   void _notify() {
     if (_isDisposed) return;
@@ -365,6 +447,11 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
     }
 
     if (target == null || target.isDone == true || !_canManageEvent(target)) {
+      return false;
+    }
+    if (target.needsMorePhotosToComplete) {
+      _errorMessage = 'Required photos must be uploaded before completion';
+      _notify();
       return false;
     }
 

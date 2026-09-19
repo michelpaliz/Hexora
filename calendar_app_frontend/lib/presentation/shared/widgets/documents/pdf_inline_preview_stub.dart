@@ -1,6 +1,10 @@
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
 
+import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+import 'package:pdfrx/pdfrx.dart';
+
+/// Native PDF rendering shared by expenses, invoices, receipts and quotes.
 class PdfInlinePreview extends StatelessWidget {
   const PdfInlinePreview({
     super.key,
@@ -16,20 +20,35 @@ class PdfInlinePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
+    return SizedBox(
       height: height,
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        'PDF preview is only available on web.',
-        style: Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(color: cs.onSurfaceVariant),
+        child: IgnorePointer(
+          ignoring: !interactive,
+          child: PdfViewer.data(
+            bytes,
+            // A replacement document must not reuse the previous PDF cache.
+            sourceName: 'preview-${identityHashCode(bytes)}.pdf',
+            key: ObjectKey(bytes),
+            params: PdfViewerParams(
+              backgroundColor: cs.surfaceContainerHighest,
+              loadingBannerBuilder: (_, __, ___) => const Center(
+                child: CircularProgressIndicator(),
+              ),
+              errorBannerBuilder: (context, error, stack, document) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    AppLocalizations.of(context)!.invoicePdfPreviewFailedSnack,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: cs.onSurface),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

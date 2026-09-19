@@ -54,9 +54,11 @@ void main() {
         expect(tester.takeException(), isNull);
         if (scale == 1.0) {
           final card = find.byType(StatementsMobileCard).first;
-          expect(tester.getSize(card).height, lessThan(200));
+          expect(tester.getSize(card).height, lessThan(90));
           final note =
               find.descendant(of: card, matching: find.byType(IconButton));
+          final titleRect = tester
+              .getRect(find.text('Mantenimiento de jardines y servicios'));
           final amount = find
               .descendant(of: card, matching: find.byType(Text))
               .evaluate()
@@ -64,9 +66,9 @@ void main() {
                   (element) => (element.widget as Text).data!.contains('443'))
               .single;
           final amountRect = tester.getRect(find.byWidget(amount.widget));
-          final noteRect = tester.getRect(note);
+          expect(tester.getSize(note).height, greaterThanOrEqualTo(48));
           expect(
-              (amountRect.center.dy - noteRect.center.dy).abs(), lessThan(2));
+              (amountRect.center.dy - titleRect.center.dy).abs(), lessThan(2));
         }
         expect(find.byType(ChoiceChip), findsNothing);
         expect(find.text('Este mes · Todos'), findsOneWidget);

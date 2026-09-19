@@ -1077,74 +1077,82 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Left: summary + actions ───────────────────────────────────
-            Expanded(
-              flex: 4,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    previewNumber,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 16),
-                  if ((_previewError ?? '').trim().isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: cs.errorContainer.withValues(alpha: 0.35),
-                      ),
-                      child: Text(
-                        _previewError!,
-                        style: t.bodySmall.copyWith(color: cs.onErrorContainer),
-                      ),
+        child: LayoutBuilder(builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 600;
+          return Flex(
+            direction: narrow ? Axis.vertical : Axis.horizontal,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Left: summary + actions ───────────────────────────────────
+              Flexible(
+                fit: narrow ? FlexFit.loose : FlexFit.tight,
+                flex: narrow ? 0 : 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      previewNumber,
+                      style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
+                    if ((_previewError ?? '').trim().isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: cs.errorContainer.withValues(alpha: 0.35),
+                        ),
+                        child: Text(
+                          _previewError!,
+                          style:
+                              t.bodySmall.copyWith(color: cs.onErrorContainer),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    OutlinedButton.icon(
+                      onPressed: canRenderPreview
+                          ? () =>
+                              _loadDraftPreview(receiptId: _draftReceipt!.id)
+                          : null,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(l.preview),
+                    ),
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: _savingDraft ? null : _saveDraft,
+                      icon: _savingDraft
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save_outlined),
+                      label: Text(l.saveDraft),
+                    ),
                   ],
-                  OutlinedButton.icon(
-                    onPressed: canRenderPreview
-                        ? () => _loadDraftPreview(receiptId: _draftReceipt!.id)
-                        : null,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: Text(l.preview),
-                  ),
-                  const SizedBox(height: 8),
-                  FilledButton.icon(
-                    onPressed: _savingDraft ? null : _saveDraft,
-                    icon: _savingDraft
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_outlined),
-                    label: Text(l.saveDraft),
-                  ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            // ── Right: PDF preview ────────────────────────────────────────
-            Expanded(
-              flex: 6,
-              child: _loadingPreview
-                  ? const SizedBox(
-                      height: 520,
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  : _previewPdfBytes != null
-                      ? PdfInlinePreview(
-                          bytes: _previewPdfBytes!,
-                          height: 520,
-                        )
-                      : const SizedBox(height: 520),
-            ),
-          ],
-        ),
+              SizedBox(width: narrow ? 0 : 16, height: narrow ? 16 : 0),
+              // ── Right: PDF preview ────────────────────────────────────────
+              Flexible(
+                fit: narrow ? FlexFit.loose : FlexFit.tight,
+                flex: narrow ? 0 : 6,
+                child: _loadingPreview
+                    ? const SizedBox(
+                        height: 520,
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : _previewPdfBytes != null
+                        ? PdfInlinePreview(
+                            bytes: _previewPdfBytes!,
+                            height: 520,
+                          )
+                        : const SizedBox(height: 520),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }

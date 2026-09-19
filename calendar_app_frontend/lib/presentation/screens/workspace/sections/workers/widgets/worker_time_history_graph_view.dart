@@ -352,7 +352,7 @@ class _WorkerTimeHistoryGraphViewState
                   children: [
                     Text(
                       isSpanish
-                          ? 'Graficas de horas trabajadas'
+                          ? 'Gráficas de horas trabajadas'
                           : 'Worked-hours graphs',
                       style: typo.titleLarge.copyWith(
                         fontWeight: FontWeight.w900,
@@ -362,7 +362,7 @@ class _WorkerTimeHistoryGraphViewState
                     const SizedBox(height: 3),
                     Text(
                       isSpanish
-                          ? 'Analiza la evolucion de horas trabajadas por trabajador o para todo el grupo.'
+                          ? 'Analiza la evolución de horas trabajadas por trabajador o para todo el grupo.'
                           : 'Track worked hours over time for one worker or for the whole group.',
                       style: typo.bodySmall.copyWith(
                         color: cs.onSurfaceVariant,
@@ -565,8 +565,8 @@ class _WorkerTimeHistoryGraphViewState
                           ),
                           Text(
                             isSpanish
-                                ? 'La serie principal usa bucket.totalHours. En vista de grupo, el tooltip añade el desglose por trabajador.'
-                                : 'The main series uses bucket.totalHours. In group view, the tooltip adds the worker breakdown.',
+                                ? 'Toca un punto de la gráfica para ver las horas y el desglose por trabajador.'
+                                : 'Tap a point on the chart to see hours and the breakdown by worker.',
                             style: typo.bodySmall.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -967,7 +967,7 @@ class _FilterPanel extends StatelessWidget {
                   key: ValueKey(granularity),
                   initialValue: granularity,
                   decoration: inputDecoration.copyWith(
-                    labelText: isSpanish ? 'Granularidad' : 'Granularity',
+                    labelText: isSpanish ? 'Agrupar por' : 'Group by',
                   ),
                   items: [
                     DropdownMenuItem<String>(

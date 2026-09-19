@@ -280,9 +280,10 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => Padding(
+      useSafeArea: true,
+      builder: (sheetContext) => SingleChildScrollView(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
         ),
         child: EditWorkerSheet(
           group: group,

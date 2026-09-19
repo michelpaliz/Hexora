@@ -1,7 +1,6 @@
 // presentation/d-event-section/screens/actions/shared/form/sections/title_section.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/shared/form/type/event_types/work/widgets/work_visit/sections/section_card_builder.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 
 class TitleSection extends StatelessWidget {
   final String title;
@@ -21,7 +20,7 @@ class TitleSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final typo = AppTypography.of(context);
+    final text = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
 
     return cardBuilder(
@@ -29,16 +28,14 @@ class TitleSection extends StatelessWidget {
       child: TextField(
         controller: controller,
         textInputAction: TextInputAction.next,
-        style: typo.bodyMedium.copyWith(
+        style: text.bodyLarge!.copyWith(
           color: cs.onSurface,
-          fontWeight: FontWeight.w600,
         ),
         maxLength: maxLength,
         decoration: InputDecoration(
           hintText: hintText ?? '',
-          hintStyle: typo.bodyMedium.copyWith(
-            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-            fontWeight: FontWeight.w500,
+          hintStyle: text.bodyLarge!.copyWith(
+            color: cs.onSurfaceVariant,
           ),
           counterText: '',
           filled: true,

@@ -13,8 +13,10 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 class GroupMembersScreen extends StatelessWidget {
-  const GroupMembersScreen({super.key, required this.group});
+  const GroupMembersScreen(
+      {super.key, required this.group, this.initialTab = 0});
   final Group group;
+  final int initialTab;
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +33,7 @@ class GroupMembersScreen extends StatelessWidget {
       )..refreshAll(),
       child: DefaultTabController(
         length: 3,
+        initialIndex: initialTab,
         child: Builder(builder: (context) {
           final vm = context.watch<MembersVM>();
 
@@ -57,7 +60,8 @@ class GroupMembersScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: trackBg,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
+                      border: Border.all(
+                          color: cs.onSurface.withValues(alpha: 0.06)),
                     ),
                     child: TabBar(
                       isScrollable: true,

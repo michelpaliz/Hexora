@@ -202,6 +202,48 @@ class EventApiClient implements IEventApiClient {
   }
 
   @override
+  Future<Map<String, dynamic>> getEvidenceUploadSas(
+    String eventId, {
+    required String mimeType,
+    required String token,
+  }) async {
+    final res = await AuthenticatedHttpClient.post(
+      Uri.parse('$baseUrl/${baseId(eventId)}/evidence/upload-sas'),
+      headers: _authHeaders(token),
+      body: jsonEncode({'mimeType': mimeType}),
+      client: _client,
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to create evidence upload SAS: ${res.body}');
+  }
+
+  @override
+  Future<Event> addEvidencePhoto(
+    String eventId, {
+    required String blobName,
+    required String mimeType,
+    String photoType = 'general',
+    required String token,
+  }) async {
+    final res = await AuthenticatedHttpClient.post(
+      Uri.parse('$baseUrl/${baseId(eventId)}/evidence/photos'),
+      headers: _authHeaders(token),
+      body: jsonEncode({
+        'blobName': blobName,
+        'mimeType': mimeType,
+        'photoType': photoType,
+      }),
+      client: _client,
+    );
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return Event.fromJson(jsonDecode(res.body));
+    }
+    throw Exception('Failed to register evidence photo: ${res.body}');
+  }
+
+  @override
   Future<List<Event>> getEventsByGroupId(String groupId, String token) async {
     final res = await AuthenticatedHttpClient.get(
       Uri.parse('$baseUrl/group/$groupId'),

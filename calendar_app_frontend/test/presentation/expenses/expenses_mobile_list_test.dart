@@ -70,6 +70,29 @@ void main() {
         expect(find.text('1 gasto'), findsOneWidget);
         expect(find.text('Proveedor con un nombre muy largo de servicios'),
             findsNothing);
+        if (scale == 1.0) {
+          await tester.tap(find.text('Papelería').last);
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+          expect(find.text('Editar gasto'), findsOneWidget);
+          await tester.tap(find.text('Documento'));
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+          final panels =
+              tester.widgetList<IndexedStack>(find.byType(IndexedStack));
+          expect(panels.any((panel) => panel.index == 1), isTrue);
+          await tester.tap(find.text('Formulario').first);
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+          expect(
+              tester
+                  .widgetList<IndexedStack>(find.byType(IndexedStack))
+                  .every((panel) => panel.index == 0),
+              isTrue);
+          await tester.tap(find.byType(BackButton));
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+        }
         await tester.tap(find.byTooltip('Acciones del gasto'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
