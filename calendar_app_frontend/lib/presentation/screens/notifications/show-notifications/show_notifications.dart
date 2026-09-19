@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/models/notifications/notification_localization.dart';
+import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
+import 'utils/event_args_helper.dart';
+import 'utils/notification_destination.dart';
 import 'package:hexora/models/downloads/download_job.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/jobs/background_job.dart';
@@ -44,6 +48,10 @@ class _ShowNotificationsState extends State<ShowNotifications>
     with WidgetsBindingObserver {
   late final NotificationViewModel _notificationViewModel;
   late final Stream<List<NotificationUser>> _notificationsStream;
+  final _acceptingInvites = <String>{};
+  final _openingJobs = <String>{};
+  bool _openingNotification = false;
+  Future<void>? _refreshInFlight;
   bool _clearing = false; // prevent double taps while clearing
   final NotificationApiClient _notificationApiClient = NotificationApiClient();
   final DownloadsApi _downloadsApi = DownloadsApi();
@@ -87,14 +95,14 @@ class _ShowNotificationsState extends State<ShowNotifications>
     }
   }
 
-  Future<void> _refreshExpenseActivity() async {
+  Future<void> _refreshExpenseActivity({bool reportErrors = false}) async {
     await Future.wait([
       OcrImportJobsStore.instance.refresh(),
-      _loadJobNotifications(),
+      _loadJobNotifications(reportErrors: reportErrors),
     ]);
   }
 
-  Future<void> _loadJobNotifications() async {
+  Future<void> _loadJobNotifications({bool reportErrors = false}) async {
     if (mounted) {
       setState(() => _loadingJobNotifications = true);
     }
@@ -110,6 +118,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
     } catch (_) {
       if (!mounted) return;
       setState(() => _loadingJobNotifications = false);
+      if (reportErrors) rethrow;
     }
   }
 
@@ -135,13 +144,17 @@ class _ShowNotificationsState extends State<ShowNotifications>
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(loc.confirm,
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError),
+            child: Text(loc.clearAll,
                 style: t.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     );
 
+    if (!mounted) return;
     if (confirm == true) {
       setState(() => _clearing = true);
       try {
@@ -162,7 +175,29 @@ class _ShowNotificationsState extends State<ShowNotifications>
     }
   }
 
+  Future<void> _runReportedAction(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              AppLocalizations.of(context)!.localeName.startsWith('es')
+                  ? 'No se pudo completar la acción. Inténtalo de nuevo.'
+                  : 'Could not complete this action. Please try again.')));
+    }
+  }
+
+  Future<void> _refreshNotifications() {
+    return _refreshInFlight ??= _runReportedAction(() async {
+      await _notificationViewModel.fetchAndUpdateNotifications(widget.user,
+          reportErrors: true);
+      if (mounted) await _refreshExpenseActivity(reportErrors: true);
+    }).whenComplete(() => _refreshInFlight = null);
+  }
+
   Future<void> _handleInviteConfirmation(NotificationUser notification) async {
+    if (!_acceptingInvites.add(notification.id)) return;
     final loc = AppLocalizations.of(context)!;
     try {
       await _notificationViewModel.handleConfirmation(notification);
@@ -186,6 +221,8 @@ class _ShowNotificationsState extends State<ShowNotifications>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${loc.error}: $e')),
       );
+    } finally {
+      _acceptingInvites.remove(notification.id);
     }
   }
 
@@ -224,7 +261,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
     final groupId = (documentIssuedNotification(notification).groupId ??
             notification.groupId)
         .trim();
-    if (groupId.isEmpty) return;
+    if (groupId.isEmpty) throw StateError('Missing document group');
     try {
       final group = await context
           .read<GroupDomain>()
@@ -232,8 +269,8 @@ class _ShowNotificationsState extends State<ShowNotifications>
           .getGroupById(groupId);
       if (!mounted) return;
       final args = _documentRouteArgs(group, notification);
-      if (args == null) return;
-      Navigator.of(context).pushNamed(
+      if (args == null) throw StateError('Missing document destination');
+      await Navigator.of(context).pushNamed(
         AppRoutes.groupInvoices,
         arguments: args,
       );
@@ -245,25 +282,16 @@ class _ShowNotificationsState extends State<ShowNotifications>
     }
   }
 
-  bool _isInvoiceZipDownloadNotification(NotificationUser notification) {
-    final rawCategory = notification.args['category']?.toString().trim();
-    final categoryMatches =
-        notification.category.index == 8 || rawCategory == '8';
-    final jobType = notification.args['jobType']?.toString().trim();
-    return categoryMatches && jobType == 'invoice_zip';
-  }
+  bool _isInvoiceZipDownloadNotification(NotificationUser notification) =>
+      isInvoiceZipNotification(notification);
 
-  bool _isReadyDownloadNotification(NotificationUser notification) {
-    if (!_isInvoiceZipDownloadNotification(notification)) return false;
-    final status = notification.args['downloadStatus']?.toString().trim();
-    return status == 'ready';
-  }
+  bool _isReadyDownloadNotification(NotificationUser notification) =>
+      isInvoiceZipNotification(notification) &&
+      notificationDownloadStatus(notification) == 'ready';
 
-  bool _isFailedDownloadNotification(NotificationUser notification) {
-    if (!_isInvoiceZipDownloadNotification(notification)) return false;
-    final status = notification.args['downloadStatus']?.toString().trim();
-    return status == 'failed';
-  }
+  bool _isFailedDownloadNotification(NotificationUser notification) =>
+      isInvoiceZipNotification(notification) &&
+      notificationDownloadStatus(notification) == 'failed';
 
   DownloadJob? _downloadJobFromNotification(NotificationUser notification) {
     if (!_isInvoiceZipDownloadNotification(notification)) return null;
@@ -289,9 +317,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
       return int.tryParse(value?.toString() ?? '');
     }
 
-    final status = (args['downloadStatus'] ?? args['status'] ?? '')
-        .toString()
-        .trim();
+    final status = notificationDownloadStatus(notification);
 
     return DownloadJob(
       id: jobId?.isNotEmpty == true ? jobId! : notification.id,
@@ -324,7 +350,9 @@ class _ShowNotificationsState extends State<ShowNotifications>
 
   Future<void> _downloadNotificationFile(NotificationUser notification) async {
     final job = _downloadJobFromNotification(notification);
-    if (job == null || !job.canDownload) return;
+    if (job == null || !job.canDownload) {
+      throw StateError('Download link unavailable');
+    }
     try {
       final response = await _downloadsApi.downloadFile(job);
       await launchFileDownload(
@@ -343,6 +371,24 @@ class _ShowNotificationsState extends State<ShowNotifications>
   }
 
   Future<void> _handleNotificationOpen(NotificationUser notification) async {
+    if (_openingNotification) return;
+    _openingNotification = true;
+    try {
+      await _openNotificationDestination(notification);
+    } catch (_) {
+      if (!mounted) return;
+      final es = AppLocalizations.of(context)!.localeName.startsWith('es');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? 'No se pudo abrir el contenido. Puede que ya no esté disponible o no tengas acceso. Inténtalo de nuevo.'
+              : 'Could not open this content. It may no longer be available or you may not have access. Please try again.')));
+    } finally {
+      _openingNotification = false;
+    }
+  }
+
+  Future<void> _openNotificationDestination(
+      NotificationUser notification) async {
     if (_isReadyDownloadNotification(notification)) {
       await _downloadNotificationFile(notification);
       return;
@@ -361,7 +407,70 @@ class _ShowNotificationsState extends State<ShowNotifications>
     }
     if (isIssuedDocumentNotification(notification)) {
       await _openDocumentNotification(notification);
+      return;
     }
+    final args = EventArgsHelper(notification.args);
+    final destination = resolveNotificationDestination(notification);
+    if (destination == NotificationDestination.event && args.eventId != null) {
+      final event =
+          await context.read<IEventRepository>().getEventById(args.eventId!);
+      if (!mounted) return;
+      await Navigator.of(context)
+          .pushNamed(AppRoutes.eventDetail, arguments: event);
+      return;
+    }
+    final groupId = args.groupId ?? notification.groupId;
+    if ({
+      NotificationDestination.expenses,
+      NotificationDestination.members,
+      NotificationDestination.group,
+      NotificationDestination.invoiceDraft
+    }.contains(destination)) {
+      if (groupId.trim().isEmpty) {
+        throw StateError('Missing notification group');
+      }
+      final group = await _groupFromId(groupId);
+      if (!mounted || group == null) return;
+      if (destination == NotificationDestination.invoiceDraft) {
+        final invoiceId = (notification.args['invoiceId'] ??
+                notification.args['documentId'] ??
+                '')
+            .toString()
+            .trim();
+        if (invoiceId.isEmpty) throw StateError('Missing draft invoice');
+        await Navigator.of(context).pushNamed(AppRoutes.groupInvoices,
+            arguments: GroupInvoicesRouteArgs(
+                group: group,
+                initialMenu: 'invoices_issued',
+                initialInvoiceId: invoiceId));
+      } else {
+        await Navigator.of(context).pushNamed(
+            switch (destination) {
+              NotificationDestination.expenses => AppRoutes.groupExpenses,
+              NotificationDestination.members => AppRoutes.groupMembers,
+              _ => AppRoutes.groupDashboard,
+            },
+            arguments: group);
+      }
+      return;
+    }
+    // Informational, deleted-event and invitation messages retain their full
+    // text instead of linking to an unrelated page or silently doing nothing.
+    if (!mounted) return;
+    final loc = AppLocalizations.of(context)!;
+    await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              title: Text(notification.getLocalizedTitle(loc)),
+              content: SingleChildScrollView(
+                  child: Text(notification.getLocalizedMessage(loc))),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(
+                        loc.localeName.startsWith('es') ? 'Cerrar' : 'Close'))
+              ],
+            ));
   }
 
   bool _isExpenseJobNotification(JobNotification notification) {
@@ -418,6 +527,15 @@ class _ShowNotificationsState extends State<ShowNotifications>
     return context.read<GroupDomain>().groupRepository.getGroupById(trimmed);
   }
 
+  Future<void> _openJobOnce(String id, Future<void> Function() action) async {
+    if (!_openingJobs.add(id)) return;
+    try {
+      await _runReportedAction(action);
+    } finally {
+      _openingJobs.remove(id);
+    }
+  }
+
   Future<void> _openExpenseJob(BackgroundJob job) async {
     final latest = await OcrImportJobsStore.instance.fetchJob(job.id) ?? job;
     final groupId =
@@ -437,7 +555,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
     }
     final group = await _groupFromId(groupId);
     if (!mounted || group == null) return;
-    Navigator.of(context).pushNamed(
+    await Navigator.of(context).pushNamed(
       AppRoutes.groupInvoices,
       arguments: GroupInvoicesRouteArgs(
         group: group,
@@ -447,10 +565,6 @@ class _ShowNotificationsState extends State<ShowNotifications>
   }
 
   Future<void> _openJobNotification(JobNotification notification) async {
-    try {
-      await _notificationApiClient.markJobNotificationRead(notification.id);
-    } catch (_) {}
-
     var groupId = '';
     String? fallbackStatus;
     final jobId = notification.jobId?.trim() ?? '';
@@ -478,12 +592,18 @@ class _ShowNotificationsState extends State<ShowNotifications>
     if (!mounted) return;
     if (groupId.isEmpty) {
       await _loadJobNotifications();
-      return;
+      throw StateError('Import notification has no group destination');
     }
 
     final group = await _groupFromId(groupId);
     if (!mounted || group == null) return;
-    Navigator.of(context).pushNamed(
+    if (notification.unread) {
+      try {
+        await _notificationApiClient.markJobNotificationRead(notification.id);
+      } catch (_) {/* Reading failure must not block access to the result. */}
+      if (!mounted) return;
+    }
+    await Navigator.of(context).pushNamed(
       AppRoutes.groupInvoices,
       arguments: GroupInvoicesRouteArgs(
         group: group,
@@ -505,30 +625,63 @@ class _ShowNotificationsState extends State<ShowNotifications>
       showBottomNavAndFab: widget.showBottomNav,
       appBarBackgroundColor: Theme.of(context).colorScheme.surface,
       iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
-      centerTitle: true,
+      centerTitle: false,
+      showFab: false,
       titleWidget: ShowNotificationsHeader(
         onClear: _clearing ? null : () => _confirmAndClearAll(loc),
         clearing: _clearing,
       ),
       actions: [
-        Tooltip(
-          message: loc.clearAll,
-          child: IconButton(
-            icon: _clearing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.clear_all),
-            onPressed: _clearing ? null : () => _confirmAndClearAll(loc),
-          ),
+        PopupMenuButton<String>(
+          tooltip: loc.localeName.startsWith('es')
+              ? 'Opciones de notificaciones'
+              : 'Notification options',
+          enabled: !_clearing,
+          icon: _clearing
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.more_vert),
+          onSelected: (action) async {
+            if (action == 'clear') {
+              await _confirmAndClearAll(loc);
+            } else {
+              await _refreshNotifications();
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+                value: 'refresh',
+                child: Row(children: [
+                  const Icon(Icons.refresh),
+                  const SizedBox(width: 12),
+                  Text(loc.localeName.startsWith('es')
+                      ? 'Actualizar'
+                      : 'Refresh'),
+                ])),
+            const PopupMenuDivider(),
+            PopupMenuItem(
+                value: 'clear',
+                child: Row(children: [
+                  Icon(Icons.delete_outline,
+                      color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 12),
+                  Flexible(
+                      child: Text(loc.clearAll,
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.error))),
+                ])),
+          ],
         ),
       ],
       body: ListenableBuilder(
         listenable: OcrImportJobsStore.instance,
         builder: (context, _) => NotificationsTabView(
+          onRefresh: _refreshNotifications,
           notificationsStream: _notificationsStream,
+          initialNotifications:
+              context.read<NotificationDomain>().notifications,
           notificationViewModel: _notificationViewModel,
           activeJobs: OcrImportJobsStore.instance.activeJobs,
           jobNotifications: _jobNotifications,
@@ -538,8 +691,10 @@ class _ShowNotificationsState extends State<ShowNotifications>
           onOpenDocument: (notification) {
             _handleNotificationOpen(notification);
           },
-          onOpenActiveJob: _openExpenseJob,
-          onOpenJobNotification: _openJobNotification,
+          onOpenActiveJob: (job) =>
+              _openJobOnce(job.id, () => _openExpenseJob(job)),
+          onOpenJobNotification: (notification) => _openJobOnce(
+              notification.id, () => _openJobNotification(notification)),
         ),
       ),
     );

@@ -68,6 +68,36 @@ class NotificationDomain extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Apply a complete server refresh while retaining changes made locally
+  /// after that request started (socket arrivals, reads and deletions).
+  Future<void> applyFetchedNotifications(
+    List<NotificationUser> fetched, {
+    required Map<String, bool> readStateAtStart,
+  }) async {
+    final current = {for (final n in _notifications) n.id: n};
+    final next = <String, NotificationUser>{};
+    for (final n in fetched) {
+      if (readStateAtStart.containsKey(n.id) && !current.containsKey(n.id)) {
+        continue; // Deleted locally while the request was in flight.
+      }
+      final local = current[n.id];
+      if (local != null &&
+          (!readStateAtStart.containsKey(n.id) ||
+              local.isRead != readStateAtStart[n.id])) {
+        next[n.id] = local;
+      } else {
+        next[n.id] = n;
+      }
+    }
+    for (final n in current.values) {
+      if (!readStateAtStart.containsKey(n.id)) next[n.id] = n;
+    }
+    _notifications = _sortNotificationsByDate(next.values.toList());
+    _notificationIds = next.keys.toList();
+    _notificationViewModel.add(_notifications);
+    notifyListeners();
+  }
+
   Future<void> addInboundNotification(NotificationUser notification) async {
     final existingIndex =
         _notifications.indexWhere((item) => item.id == notification.id);
@@ -105,8 +135,8 @@ class NotificationDomain extends ChangeNotifier {
     for (final notification in primary) {
       byId[notification.id] = notification;
     }
-    _notificationIds = byId.keys.toList(growable: false);
-    return _sortNotificationsByDate(byId.values.toList(growable: false));
+    _notificationIds = byId.keys.toList();
+    return _sortNotificationsByDate(byId.values.toList());
   }
 
   /// Mark all notifications as read on the service and locally.

@@ -50,6 +50,8 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
   final _name = TextEditingController();
   final _minutes = TextEditingController();
   bool _active = true;
+  String _workEnvironment = 'indoor';
+  bool _weatherSensitive = false;
   bool _saving = false;
   bool _showValidation = false;
   bool _nameTouched = false;
@@ -76,6 +78,8 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
       _name.text = s.name;
       if (s.defaultMinutes != null) _minutes.text = s.defaultMinutes.toString();
       _active = s.isActive;
+      _workEnvironment = s.workEnvironment;
+      _weatherSensitive = s.weatherSensitive;
       _color = s.color ?? _swatches.first;
       if (!_swatches.contains(_color)) _swatches.insert(0, _color);
     } else {
@@ -115,11 +119,25 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
           'defaultMinutes': minutes,
           'color': _color,
           'isActive': _active,
+          if (_workEnvironment != 'unspecified')
+            'workEnvironment': _workEnvironment,
+          'weatherSensitive': _weatherSensitive,
         };
 
         final updated =
             await widget.api.updateFields(widget.service!.id, patch);
         if (!mounted) return;
+        if ((_workEnvironment != 'unspecified' &&
+                updated.workEnvironment != _workEnvironment) ||
+            updated.weatherSensitive != _weatherSensitive) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(
+            l.localeName.startsWith('es')
+                ? 'El servidor no ha confirmado el entorno seleccionado. El cambio no se puede dar por guardado.'
+                : 'The server did not confirm the selected environment. This change cannot be confirmed as saved.',
+          )));
+          return;
+        }
         widget.onSaved?.call(updated);
         if (widget.closeOnSave) {
           Navigator.of(context).pop<Service>(updated);
@@ -135,6 +153,8 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
                 : int.tryParse(_minutes.text.trim()),
             color: _color,
             isActive: _active,
+            workEnvironment: _workEnvironment,
+            weatherSensitive: _weatherSensitive,
             createdAt: DateTime.now(),
           ),
         );
@@ -159,6 +179,7 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
     final cs = Theme.of(context).colorScheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
     final typo = AppTypography.of(context);
@@ -325,6 +346,44 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
             ),
 
             const SizedBox(height: 16),
+
+            DropdownButtonFormField<String>(
+              initialValue: _workEnvironment,
+              decoration: buildServiceInputDecoration(
+                label: isEs ? 'Entorno de trabajo' : 'Work environment',
+                prefixIcon: const Icon(Icons.home_work_outlined),
+              ),
+              items: [
+                if (_workEnvironment == 'unspecified')
+                  DropdownMenuItem(
+                      value: 'unspecified',
+                      enabled: false,
+                      child: Text(isEs ? 'Sin especificar' : 'Unspecified')),
+                DropdownMenuItem(
+                    value: 'indoor', child: Text(isEs ? 'Interior' : 'Indoor')),
+                DropdownMenuItem(
+                    value: 'outdoor',
+                    child: Text(isEs ? 'Exterior' : 'Outdoor')),
+                DropdownMenuItem(
+                    value: 'mixed', child: Text(isEs ? 'Mixto' : 'Mixed')),
+              ],
+              onChanged: (value) =>
+                  setState(() => _workEnvironment = value ?? 'indoor'),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: _weatherSensitive,
+              onChanged: (value) => setState(() => _weatherSensitive = value),
+              title: Text(isEs ? 'Sensible al clima' : 'Weather sensitive'),
+              subtitle: Text(
+                isEs
+                    ? 'Incluye este servicio en las alertas meteorológicas operativas.'
+                    : 'Include this service in operational weather warnings.',
+              ),
+            ),
+
+            const SizedBox(height: 8),
 
             // Color label
             Align(

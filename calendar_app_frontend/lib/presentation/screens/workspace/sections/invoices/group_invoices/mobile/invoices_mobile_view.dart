@@ -19,6 +19,7 @@ class _InvoicesMobileView extends StatefulWidget {
 class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  bool _initialDocumentOpened = false;
 
   static const _tabs = [
     _InvoicesMobileTab.facturas,
@@ -36,7 +37,18 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    final route = widget.state.widget;
+    final menu = route.initialMenu ?? '';
+    final initialTab =
+        route.initialBudgetId != null || menu.startsWith('budgets')
+            ? 2
+            : route.initialReceiptId != null || menu.startsWith('receipts')
+                ? 1
+                : menu == 'clients'
+                    ? 3
+                    : 0;
+    _tabController = TabController(
+        length: _tabs.length, initialIndex: initialTab, vsync: this);
     _loadBudgets();
   }
 
@@ -44,6 +56,43 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _openInitialDocument() {
+    final s = widget.state;
+    if (_initialDocumentOpened || s._loading) return;
+    _initialDocumentOpened = true;
+    final route = s.widget;
+    final budgetId = route.initialBudgetId?.trim() ?? '';
+    final receiptId = route.initialReceiptId?.trim() ?? '';
+    final invoiceId = route.initialInvoiceId?.trim() ?? '';
+    if (budgetId.isEmpty && receiptId.isEmpty && invoiceId.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (budgetId.isNotEmpty) {
+        _openBudgetDetail({'_id': budgetId});
+        return;
+      }
+      if (receiptId.isNotEmpty) {
+        for (final receipt in [...s._receipts, ...s._receiptDrafts]) {
+          if (receipt.id == receiptId) {
+            _openReceiptDetail(receipt);
+            return;
+          }
+        }
+      } else {
+        for (final invoice in [...s._invoices, ...s._drafts]) {
+          if (invoice.id == invoiceId) {
+            _openInvoiceDetail(invoice);
+            return;
+          }
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(Localizations.localeOf(context).languageCode == 'es'
+              ? 'No se encontró el documento. Actualiza la lista o comprueba tu acceso.'
+              : 'Document not found. Refresh the list or check your access.')));
+    });
   }
 
   // ── helpers ─────────────────────────────────────────────────────────────────
@@ -676,6 +725,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
 
   @override
   Widget build(BuildContext context) {
+    _openInitialDocument();
     final l = AppLocalizations.of(context)!;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final s = widget.state;

@@ -1,5 +1,8 @@
 # Hexora
 
+> Backend handoff: [Backend fixes required](BACKEND_FIXES_REQUIRED.md) — confirmed blockers, investigation items, and acceptance checks.
+> Additional findings: [App issues review](APP_ISSUES_REVIEW.md) — frontend issues and cross-app contract risks.
+
 Hexora is the operating system I am building around the real needs of my
 business. It brings scheduling, employees, clients, presupuestos, invoices,
 receipts, expenses, banking, documents, email, and Telegram into one shared

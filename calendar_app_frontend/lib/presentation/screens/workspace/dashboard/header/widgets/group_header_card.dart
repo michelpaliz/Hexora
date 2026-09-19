@@ -61,8 +61,8 @@ class GroupHeaderCard extends StatelessWidget {
 
     final isInteractive = onTap != null;
     final cardColor = Color.alphaBlend(
-      cs.primaryContainer.withValues(alpha:
-        theme.brightness == Brightness.dark ? 0.22 : 0.14,
+      cs.primaryContainer.withValues(
+        alpha: theme.brightness == Brightness.dark ? 0.22 : 0.14,
       ),
       ThemeColors.cardBg(context),
     );
@@ -74,15 +74,17 @@ class GroupHeaderCard extends StatelessWidget {
         color: cs.surfaceContainerLow,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                AvatarUtils.groupAvatar(context, photoUrl, radius: 24),
+                AvatarUtils.groupAvatar(context, photoUrl, radius: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: t.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
                 ),
                 if (onTap != null)
@@ -93,39 +95,50 @@ class GroupHeaderCard extends StatelessWidget {
                   ),
               ]),
               if (hasDescription) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
                 Text(description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: t.bodySmall
                         .copyWith(color: cs.onSurfaceVariant, height: 1.5)),
               ],
               if (presenceStrip != null) presenceStrip!,
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
               if (isLoading)
                 const LinearProgressIndicator()
               else
-                Wrap(spacing: 8, runSpacing: 4, children: [
-                  TextButton.icon(
-                      onPressed: onMembersTap,
-                      icon: const Icon(Icons.group_outlined, size: 18),
-                      label: Text('$members ${l.membersTitle.toLowerCase()}')),
-                  if (pendingEventsCount != null)
-                    TextButton.icon(
-                        onPressed: onPendingEventsTap,
-                        icon: const Icon(Icons.pending_actions_outlined,
-                            size: 18),
-                        label: Text(
-                            '$pendingEventsCount ${l.statusPending.toLowerCase()}')),
-                  if (clientCount != null)
-                    TextButton(
-                        onPressed: onClientsTap,
-                        child:
-                            Text('$clientCount ${l.tabClients.toLowerCase()}')),
-                  if (workerCount != null)
-                    TextButton(
-                        onPressed: onWorkersTap,
-                        child: Text(
-                            '$workerCount ${l.localeName.startsWith('es') ? 'trabajadores' : 'workers'}')),
-                ]),
+                TextButtonTheme(
+                    data: TextButtonThemeData(
+                        style: TextButton.styleFrom(
+                      textStyle:
+                          t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 48),
+                    )),
+                    child: Wrap(spacing: 4, runSpacing: 0, children: [
+                      TextButton.icon(
+                          onPressed: onMembersTap,
+                          icon: const Icon(Icons.group_outlined, size: 18),
+                          label:
+                              Text('$members ${l.membersTitle.toLowerCase()}')),
+                      if (pendingEventsCount != null)
+                        TextButton.icon(
+                            onPressed: onPendingEventsTap,
+                            icon: const Icon(Icons.pending_actions_outlined,
+                                size: 18),
+                            label: Text(
+                                '$pendingEventsCount ${l.statusPending.toLowerCase()}')),
+                      if (clientCount != null)
+                        TextButton(
+                            onPressed: onClientsTap,
+                            child: Text(
+                                '$clientCount ${l.tabClients.toLowerCase()}')),
+                      if (workerCount != null)
+                        TextButton(
+                            onPressed: onWorkersTap,
+                            child: Text(
+                                '$workerCount ${l.localeName.startsWith('es') ? 'trabajadores' : 'workers'}')),
+                    ])),
             ],
           ),
         ),

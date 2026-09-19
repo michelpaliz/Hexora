@@ -294,7 +294,8 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
   }
 
   Future<bool> addEvidencePhotos(String eventId,
-      {String photoType = 'general'}) async {
+      {String photoType = 'general',
+      ImageSource source = ImageSource.gallery}) async {
     final key = baseId(eventId);
     final target = eventById(eventId);
     if (key.isEmpty ||
@@ -305,7 +306,7 @@ class GroupUndoneEventsViewModel extends ChangeNotifier {
     }
     late final List<XFile> photos;
     try {
-      if (photoType == 'general') {
+      if (photoType == 'general' && source == ImageSource.gallery) {
         photos = await ImagePicker().pickMultiImage(imageQuality: 85);
       } else {
         final photo = await ImagePicker()

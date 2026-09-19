@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/events/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/shared/header_info.dart';
@@ -58,7 +59,30 @@ class _PendingEventDetailContent extends StatelessWidget {
     final owner = vm.ownerInfoOf(event.ownerId);
 
     Future<void> addPhoto(String type) async {
-      final success = await vm.addEvidencePhotos(event.id, photoType: type);
+      ImageSource source = ImageSource.camera;
+      if (type == 'general') {
+        final es = loc.localeName.startsWith('es');
+        final selected = await showModalBottomSheet<ImageSource>(
+          context: context,
+          showDragHandle: true,
+          builder: (context) => SafeArea(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+            ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: Text(es ? 'Hacer foto' : 'Take photo'),
+                onTap: () => Navigator.pop(context, ImageSource.camera)),
+            ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title:
+                    Text(es ? 'Elegir de la galería' : 'Choose from gallery'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery)),
+          ])),
+        );
+        if (selected == null || !context.mounted) return;
+        source = selected;
+      }
+      final success =
+          await vm.addEvidencePhotos(event.id, photoType: type, source: source);
       if (!success && context.mounted && vm.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(loc.completionPhotoError)),
@@ -119,22 +143,33 @@ class _PendingEventDetailContent extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (liveEvent.completionRequirements.requirePhotos ||
+                if (!alreadyDone && !vm.canManageEvent(liveEvent))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(loc.localeName.startsWith('es')
+                        ? 'Solo quien creó el evento o sus destinatarios asignados pueden añadir fotos y marcarlo como completado.'
+                        : 'Only the event creator or assigned recipients can add photos and mark it complete.'),
+                  ),
+                if ((!alreadyDone && vm.canManageEvent(liveEvent)) ||
                     liveEvent.completionPhotos.isNotEmpty) ...[
                   Text(
-                    loc.completionPhotosCount(
-                      liveEvent.completionPhotos.length,
-                      liveEvent.completionRequirements.minPhotos,
-                    ),
+                    liveEvent.completionRequirements.requirePhotos
+                        ? loc.completionPhotosCount(
+                            liveEvent.completionPhotos.length,
+                            liveEvent.completionRequirements.minPhotos)
+                        : (loc.localeName.startsWith('es')
+                            ? 'Fotos adjuntas: ${liveEvent.completionPhotos.length} · Opcionales'
+                            : 'Attached photos: ${liveEvent.completionPhotos.length} · Optional'),
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: isBusy || alreadyDone
-                          ? null
-                          : () => addPhoto('general'),
+                      onPressed:
+                          isBusy || alreadyDone || !vm.canManageEvent(liveEvent)
+                              ? null
+                              : () => addPhoto('general'),
                       icon: const Icon(Icons.add_a_photo_outlined),
                       label: Text(loc.addCompletionPhotos),
                     ),
@@ -146,7 +181,9 @@ class _PendingEventDetailContent extends StatelessWidget {
                       spacing: 8,
                       children: [
                         OutlinedButton(
-                          onPressed: isBusy || alreadyDone
+                          onPressed: isBusy ||
+                                  alreadyDone ||
+                                  !vm.canManageEvent(liveEvent)
                               ? null
                               : () => addPhoto('before'),
                           child: Text(loc.addBeforePhoto),

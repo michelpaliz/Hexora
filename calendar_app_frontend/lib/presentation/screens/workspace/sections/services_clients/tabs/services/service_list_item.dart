@@ -51,7 +51,7 @@ class _ServiceListItemState extends State<ServiceListItem> {
           borderRadius: BorderRadius.circular(16),
           onTap: widget.onTap,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -62,18 +62,44 @@ class _ServiceListItemState extends State<ServiceListItem> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(widget.service.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: widget.nameStyle.copyWith(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         )),
+                    const SizedBox(height: 4),
+                    Text(
+                        [
+                          if (widget.service.defaultMinutes != null)
+                            durationText,
+                          switch (widget.service.workEnvironment) {
+                            'outdoor' => l.localeName.startsWith('es')
+                                ? 'Exterior'
+                                : 'Outdoor',
+                            'mixed' =>
+                              l.localeName.startsWith('es') ? 'Mixto' : 'Mixed',
+                            'indoor' => l.localeName.startsWith('es')
+                                ? 'Interior'
+                                : 'Indoor',
+                            _ => l.localeName.startsWith('es')
+                                ? 'Entorno sin especificar'
+                                : 'Environment unspecified',
+                          },
+                        ].join(' · '),
+                        style: widget.metaStyle
+                            .copyWith(color: cs.onSurfaceVariant)),
                     const SizedBox(height: 6),
-                    Text(durationText,
-                        style: widget.metaStyle.copyWith(
-                          fontSize: 13,
-                          color: cs.onSurfaceVariant,
-                        )),
-                    const SizedBox(height: 10),
-                    _StatusChip(active: isActive),
+                    Wrap(spacing: 8, runSpacing: 4, children: [
+                      _StatusChip(active: isActive),
+                      if (widget.service.weatherSensitive)
+                        Text(
+                            l.localeName.startsWith('es')
+                                ? 'Depende del tiempo'
+                                : 'Weather sensitive',
+                            style:
+                                widget.metaStyle.copyWith(color: cs.primary)),
+                    ]),
                   ],
                 )),
                 const SizedBox(width: 8),

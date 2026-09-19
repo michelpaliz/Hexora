@@ -11,33 +11,35 @@ class EventArgsHelper {
   final Map<String, dynamic> args;
 
   // ── Core identifiers ───────────────────────────────────────────────────────
-  String? get eventTitle        => _str('eventTitle');
-  String? get eventId           => _str('eventId');
+  String? get eventTitle => _str('eventTitle');
+  String? get eventId => _str('eventId');
 
   // ── Scheduling ─────────────────────────────────────────────────────────────
-  DateTime? get startDate       => _date('startDate');
-  DateTime? get endDate         => _date('endDate');
-  bool?     get allDay          => _bool('allDay');
-  int?      get reminderTime    => _int('reminderTime'); // minutes before start
+  DateTime? get startDate => _date('startDate');
+  DateTime? get endDate => _date('endDate');
+  bool? get allDay => _bool('allDay');
+  int? get reminderTime => _int('reminderTime'); // minutes before start
 
   // ── Status / classification ────────────────────────────────────────────────
-  String?   get status          => _str('status');     // pending|confirmed|cancelled|completed
-  String?   get eventType       => _str('eventType');  // work_visit|meeting|appointment|…
-  String?   get action          => _str('action');     // created|updated|deleted|reminder|started|…
-  bool?     get isDone          => _bool('isDone');
+  String? get status => _str('status'); // pending|confirmed|cancelled|completed
+  String? get eventType =>
+      _str('eventType'); // work_visit|meeting|appointment|…
+  String? get action =>
+      _str('action'); // created|updated|deleted|reminder|started|…
+  bool? get isDone => _bool('isDone');
 
   // ── Ownership / context ────────────────────────────────────────────────────
-  String?   get groupId         => _str('groupId');
-  String?   get ownerId         => _str('ownerId');
-  String?   get ownerName       => _str('ownerName');
-  bool?     get notifyOwner     => _bool('notifyOwner');
-  String?   get senderName      => _str('senderName');
-  String?   get senderId        => _str('senderId');
+  String? get groupId => _str('groupId');
+  String? get ownerId => _str('ownerId');
+  String? get ownerName => _str('ownerName');
+  bool? get notifyOwner => _bool('notifyOwner');
+  String? get senderName => _str('senderName');
+  String? get senderId => _str('senderId');
 
   /// Name of the user who created the event.
   /// Reads common creator-name fields first, then falls back to `ownerName` / `senderName`.
   /// Returns null when none of the fields are present in args.
-  String?   get createdByName   =>
+  String? get createdByName =>
       _str('createdByName') ??
       _str('creatorName') ??
       _str('createdByUserName') ??
@@ -47,24 +49,24 @@ class EventArgsHelper {
       _str('senderName');
 
   // ── Classification ─────────────────────────────────────────────────────────
-  String?   get categoryId      => _str('categoryId');
-  String?   get subcategoryId   => _str('subcategoryId');
-  String?   get recurrenceRuleId => _str('recurrenceRuleId');
+  String? get categoryId => _str('categoryId');
+  String? get subcategoryId => _str('subcategoryId');
+  String? get recurrenceRuleId => _str('recurrenceRuleId');
 
   // ── Content ────────────────────────────────────────────────────────────────
-  String?   get location        => _str('location');
-  String?   get localization    => _str('localization');
-  String?   get description     => _str('description');
-  String?   get note            => _str('note');
+  String? get location => _str('location');
+  String? get localization => _str('localization');
+  String? get description => _str('description');
+  String? get note => _str('note');
 
   // ── Work-visit specific ────────────────────────────────────────────────────
-  String?   get clientId        => _str('clientId');
-  String?   get clientName      => _str('clientName');
-  String?   get primaryServiceId => _str('primaryServiceId');
-  String?   get stopId          => _str('stopId');
+  String? get clientId => _str('clientId');
+  String? get clientName => _str('clientName');
+  String? get primaryServiceId => _str('primaryServiceId');
+  String? get stopId => _str('stopId');
 
   // ── Grouping / legacy ──────────────────────────────────────────────────────
-  String?   get groupName       => _str('groupName');
+  String? get groupName => _str('groupName');
 
   // ── Formatted helpers ──────────────────────────────────────────────────────
 
@@ -149,7 +151,12 @@ class EventArgsHelper {
   String? _fmtDate(DateTime? d, String locale) {
     if (d == null) return null;
     try {
-      return DateFormat('EEE, MMM d · hh:mm a', locale).format(d.toLocal());
+      return DateFormat(
+              locale.startsWith('es')
+                  ? 'EEE, d MMM · HH:mm'
+                  : 'EEE, MMM d · h:mm a',
+              locale)
+          .format(d.toLocal());
     } catch (_) {
       return null;
     }

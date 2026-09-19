@@ -5,13 +5,11 @@ import 'package:hexora/presentation/screens/profile/edit/controller/profile_edit
 import 'package:hexora/presentation/screens/profile/edit/controller/profile_update_contract.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 import 'package:hexora/navigation/main_scaffold.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'widgets/labeled_field.dart';
-import 'widgets/profile_header.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -105,7 +103,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     if (!localValidation.isValid) {
       _applyValidation(localValidation);
       setState(() {
-        _formError = 'Please fix the highlighted fields.';
+        _formError = AppLocalizations.of(context)!.localeName.startsWith('es')
+            ? 'Revisa los campos indicados.'
+            : 'Please fix the highlighted fields.';
       });
       return;
     }
@@ -135,7 +135,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         _bioError = result.validation!.bioError;
       }
       _formError = result.success ? null : result.message;
-      _usernameCtrl.text = ProfileUpdateContract.normalizeUsername(_usernameCtrl.text);
+      _usernameCtrl.text =
+          ProfileUpdateContract.normalizeUsername(_usernameCtrl.text);
     });
 
     if (result.success) {
@@ -160,197 +161,122 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       );
     }
 
-    final cardBg = ThemeColors.cardBg(context);
-    final cardShadow = ThemeColors.cardShadow(context);
-    final onCard = ThemeColors.textPrimary(context);
-
-    return MainScaffold(
-      showAppBar: false,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
+    final spanish = l.localeName.startsWith('es');
+    Widget section(String title, List<Widget> fields) => Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+              color: cs.surface, borderRadius: BorderRadius.circular(18)),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(title,
+                style: t.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 18),
+            ...fields,
+          ]),
+        );
+    return Scaffold(
+      appBar: AppBar(title: Text(spanish ? 'Editar perfil' : 'Edit profile')),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: FilledButton.icon(
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          onPressed: _saving ? null : _handleSave,
+          icon: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.check),
+          label: Text(_saving
+              ? l.saving
+              : (spanish ? 'Guardar cambios' : 'Save changes')),
         ),
-        slivers: [
-          const SliverToBoxAdapter(
-            child: SafeArea(top: true, bottom: false, child: SizedBox(height: 8)),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: ProfileHeader(title: l.profile, subtitle: user.email),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Center(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: cardShadow,
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: UserAvatar(
-                        user: user,
-                        fetchReadSas: (_) async => null,
-                        radius: 52,
-                      ),
-                    ),
-                    Positioned(
-                      right: -2,
-                      bottom: -2,
-                      child: Material(
-                        color: cs.primary,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          onTap: _handleChangePhoto,
-                          customBorder: const CircleBorder(),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Icon(
-                              Icons.camera_alt_rounded,
-                              color: ThemeColors.contrastOn(cs.primary),
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cardShadow,
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        l.details,
-                        style: t.titleLarge.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: onCard,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    LabeledField(
-                      label: l.displayName,
-                      controller: _displayNameCtrl,
-                      errorText: _displayNameError,
-                      maxLength: ProfileUpdateContract.maxDisplayNameLength,
-                    ),
-                    const SizedBox(height: 12),
-                    LabeledField(
-                      label: l.username,
-                      controller: _usernameCtrl,
-                      errorText: _usernameError,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9._-]')),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    LabeledField(
-                      label: l.phoneLabel,
-                      controller: _phoneCtrl,
-                      keyboardType: TextInputType.phone,
-                      errorText: _phoneError,
-                      maxLength: ProfileUpdateContract.maxPhoneLength,
-                    ),
-                    const SizedBox(height: 12),
-                    LabeledField(
-                      label: l.location,
-                      controller: _locationCtrl,
-                      errorText: _locationError,
-                      maxLength: ProfileUpdateContract.maxLocationLength,
-                    ),
-                    const SizedBox(height: 12),
-                    LabeledField(
-                      label: 'Bio',
-                      controller: _bioCtrl,
-                      maxLines: 4,
-                      maxLength: ProfileUpdateContract.maxBioLength,
-                      errorText: _bioError,
-                    ),
-                    const SizedBox(height: 12),
-                    LabeledField(
-                      label: l.email,
-                      controller: _emailCtrl,
-                      enabled: false,
-                    ),
-                    if (_formError != null) ...[
-                      const SizedBox(height: 8),
-                      Align(
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.all(16),
+            children: [
+              Row(children: [
+                UserAvatar(
+                    user: user, fetchReadSas: (_) async => null, radius: 32),
+                const SizedBox(width: 16),
+                Expanded(
+                    child: Align(
                         alignment: Alignment.centerLeft,
-                        child: Text(
-                          _formError!,
-                          style: t.bodySmall.copyWith(color: cs.error),
-                        ),
-                      ),
-                    ],
-                  ],
+                        child: TextButton.icon(
+                          onPressed: _saving ? null : _handleChangePhoto,
+                          icon: const Icon(Icons.add_a_photo_outlined),
+                          label:
+                              Text(spanish ? 'Cambiar foto' : 'Change photo'),
+                        ))),
+              ]),
+              const SizedBox(height: 20),
+              section(
+                  spanish ? 'Información personal' : 'Personal information', [
+                LabeledField(
+                    label: l.displayName,
+                    controller: _displayNameCtrl,
+                    enabled: !_saving,
+                    errorText: _displayNameError,
+                    maxLength: ProfileUpdateContract.maxDisplayNameLength),
+                const SizedBox(height: 16),
+                LabeledField(
+                    label: l.username,
+                    controller: _usernameCtrl,
+                    enabled: !_saving,
+                    errorText: _usernameError,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'[a-zA-Z0-9._-]'))
+                    ]),
+                const SizedBox(height: 16),
+                LabeledField(
+                    label: spanish ? 'Biografía' : 'Bio',
+                    controller: _bioCtrl,
+                    enabled: !_saving,
+                    maxLines: 3,
+                    maxLength: ProfileUpdateContract.maxBioLength,
+                    errorText: _bioError),
+              ]),
+              const SizedBox(height: 16),
+              section(
+                  spanish ? 'Contacto y ubicación' : 'Contact and location', [
+                LabeledField(
+                    label: l.phoneLabel,
+                    controller: _phoneCtrl,
+                    enabled: !_saving,
+                    keyboardType: TextInputType.phone,
+                    errorText: _phoneError,
+                    maxLength: ProfileUpdateContract.maxPhoneLength),
+                const SizedBox(height: 16),
+                LabeledField(
+                    label: l.location,
+                    controller: _locationCtrl,
+                    enabled: !_saving,
+                    errorText: _locationError,
+                    maxLength: ProfileUpdateContract.maxLocationLength),
+                const SizedBox(height: 16),
+                LabeledField(
+                    label: l.email, controller: _emailCtrl, enabled: false),
+                const SizedBox(height: 8),
+                Text(
+                    spanish
+                        ? 'El correo de tu cuenta no se puede editar aquí.'
+                        : 'Your account email cannot be edited here.',
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
+              ]),
+              if (_formError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(_formError!, style: TextStyle(color: cs.error)),
                 ),
-              ),
-            ),
+              const SizedBox(height: 16),
+            ],
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: SizedBox(
-                  height: 48,
-                  child: FilledButton.icon(
-                    onPressed: _saving ? null : _handleSave,
-                    icon: _saving
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: ThemeColors.contrastOn(cs.primary),
-                            ),
-                          )
-                        : const Icon(Icons.save_rounded),
-                    label: Text(
-                      _saving ? l.saving : l.save,
-                      style: t.buttonText.copyWith(
-                        color: ThemeColors.contrastOn(cs.primary),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
+        ),
       ),
     );
   }

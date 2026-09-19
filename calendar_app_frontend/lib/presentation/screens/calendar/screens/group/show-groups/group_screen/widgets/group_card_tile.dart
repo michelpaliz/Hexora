@@ -3,7 +3,7 @@ import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_card_widget/widgets/build_group_card.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -29,6 +29,7 @@ class GroupCardTile extends StatefulWidget {
 
 class _GroupCardTileState extends State<GroupCardTile> {
   bool _hovering = false;
+  bool _opening = false;
 
   @override
   Widget build(BuildContext context) {
@@ -36,12 +37,8 @@ class _GroupCardTileState extends State<GroupCardTile> {
     final tt = Theme.of(context).textTheme;
     final loc = AppLocalizations.of(context)!;
 
-    final createdLabel = MaterialLocalizations.of(context).formatMediumDate(
-      widget.group.createdTime,
-    );
-
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovering = true),
         onExit: (_) => setState(() => _hovering = false),
@@ -56,7 +53,7 @@ class _GroupCardTileState extends State<GroupCardTile> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: cs.shadow.withValues(alpha: _hovering ? 0.16 : 0.1),
+                  color: cs.shadow.withValues(alpha: _hovering ? 0.10 : 0.03),
                   blurRadius: _hovering ? 14 : 10,
                   offset: Offset(0, _hovering ? 5 : 3),
                 ),
@@ -67,17 +64,19 @@ class _GroupCardTileState extends State<GroupCardTile> {
               borderRadius: BorderRadius.circular(16),
               child: InkWell(
                 borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  showProfileAlertDialog(
-                    context,
-                    widget.group,
-                    widget.currentUser,
-                    widget.currentUser,
-                    widget.userDomain,
-                    widget.groupDomain,
-                    widget.updateRole,
-                  );
-                },
+                onTap: _opening
+                    ? null
+                    : () async {
+                        setState(() => _opening = true);
+                        widget.groupDomain.currentGroup = widget.group;
+                        try {
+                          await Navigator.pushNamed(
+                              context, AppRoutes.groupDashboard,
+                              arguments: widget.group);
+                        } finally {
+                          if (mounted) setState(() => _opening = false);
+                        }
+                      },
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -87,7 +86,7 @@ class _GroupCardTileState extends State<GroupCardTile> {
                       end: Alignment.bottomRight,
                       colors: [
                         cs.surface,
-                        cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                        cs.primaryContainer.withValues(alpha: 0.22),
                       ],
                     ),
                     border: Border.all(
@@ -130,7 +129,7 @@ class _GroupCardTileState extends State<GroupCardTile> {
                           children: [
                             Text(
                               widget.group.name,
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: tt.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w800,
@@ -146,7 +145,8 @@ class _GroupCardTileState extends State<GroupCardTile> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: tt.bodySmall?.copyWith(
-                                  color: cs.onSurfaceVariant.withValues(alpha: 0.82),
+                                  color: cs.onSurfaceVariant
+                                      .withValues(alpha: 0.82),
                                   height: 1.4,
                                 ),
                               ),
@@ -155,21 +155,24 @@ class _GroupCardTileState extends State<GroupCardTile> {
                             Row(
                               children: [
                                 Icon(
-                                  Icons.calendar_today_rounded,
+                                  Icons.people_outline_rounded,
                                   size: 12,
-                                  color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                                  color: cs.onSurfaceVariant
+                                      .withValues(alpha: 0.6),
                                 ),
                                 const SizedBox(width: 4),
-                                Text(
-                                  '${loc.createdOn} $createdLabel',
+                                Flexible(
+                                    child: Text(
+                                  '${widget.group.userIds.length} ${loc.membersTitle.toLowerCase()}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: tt.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant.withValues(alpha: 0.72),
+                                    color: cs.onSurfaceVariant
+                                        .withValues(alpha: 0.72),
                                     height: 1.1,
                                     fontWeight: FontWeight.w500,
                                   ),
-                                ),
+                                )),
                               ],
                             ),
                           ],
@@ -183,14 +186,12 @@ class _GroupCardTileState extends State<GroupCardTile> {
                           shape: BoxShape.circle,
                           color: _hovering
                               ? cs.primary.withValues(alpha: 0.14)
-                              : cs.onSurface.withValues(alpha: 0.05),
+                              : cs.primaryContainer,
                         ),
                         child: Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 14,
-                          color: _hovering
-                              ? cs.primary
-                              : cs.onSurfaceVariant.withValues(alpha: 0.7),
+                          Icons.arrow_forward_rounded,
+                          size: 20,
+                          color: _hovering ? cs.primary : cs.onPrimaryContainer,
                         ),
                       ),
                     ],

@@ -32,6 +32,64 @@ class ProfileDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    if (MediaQuery.sizeOf(context).width < 700) {
+      final cs = Theme.of(context).colorScheme;
+      Widget row(IconData icon, String title, VoidCallback onTap,
+              {String? detail, String? count, bool copy = false}) =>
+          ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+            leading: Icon(icon, color: cs.primary, size: 22),
+            title: Text(title, style: Theme.of(context).textTheme.bodyMedium),
+            subtitle: detail == null
+                ? null
+                : Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis),
+            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (count != null) ...[
+                Text(count,
+                    style: TextStyle(
+                        color: cs.primary, fontWeight: FontWeight.w700)),
+                const SizedBox(width: 8)
+              ],
+              Icon(copy ? Icons.copy_outlined : Icons.chevron_right,
+                  size: 18, color: cs.onSurfaceVariant),
+            ]),
+            onTap: onTap,
+          );
+      return Material(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          row(Icons.mail_outline, l10n.email, onCopyEmail,
+              detail: email, copy: true),
+          const Divider(height: 1, indent: 50),
+          row(Icons.groups_outlined, l10n.teams, onTapTeams,
+              count: '$groupsCount'),
+          row(Icons.calendar_month_outlined, l10n.calendars, onTapCalendars,
+              count: '$calendarsCount'),
+          row(Icons.notifications_outlined, l10n.notifications,
+              onTapNotifications,
+              count: '$notificationsCount'),
+          const Divider(height: 1, indent: 50),
+          ExpansionTile(
+            leading: Icon(Icons.badge_outlined,
+                color: cs.onSurfaceVariant, size: 22),
+            title: Text(
+                l10n.localeName.startsWith('es')
+                    ? 'Datos de la cuenta'
+                    : 'Account details',
+                style: Theme.of(context).textTheme.bodyMedium),
+            children: [
+              row(Icons.alternate_email, l10n.username, onTapUsername,
+                  detail: username),
+              row(Icons.fingerprint, l10n.userId, onCopyId,
+                  detail: userId, copy: true),
+            ],
+          ),
+        ]),
+      );
+    }
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
@@ -81,7 +139,8 @@ class ProfileDetailsCard extends StatelessWidget {
         trailing: trailing == null
             ? null
             : IconTheme(
-                data: IconThemeData(color: onBg.withValues(alpha: 0.55), size: 18),
+                data: IconThemeData(
+                    color: onBg.withValues(alpha: 0.55), size: 18),
                 child: trailing,
               ),
         onTap: onTap,
@@ -101,7 +160,8 @@ class ProfileDetailsCard extends StatelessWidget {
             offset: const Offset(0, 6),
           ),
         ],
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2), width: 1),
+        border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.2), width: 1),
       ),
       child: Column(
         children: [

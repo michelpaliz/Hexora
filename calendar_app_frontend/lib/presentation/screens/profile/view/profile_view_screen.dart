@@ -1,4 +1,5 @@
 import 'package:hexora/theme/theme_provider.dart';
+import 'package:hexora/services/notification/domain/notification_domain.dart';
 // lib/presentation/b-calendar-section/screens/profile/profile_view_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -39,7 +40,8 @@ class ProfileViewScreen extends StatelessWidget {
 
     final groupsCount = user.groupIds.length;
     final calendarsCount = user.sharedCalendars.length;
-    final notificationsCount = user.notifications.length;
+    final notificationsCount =
+        context.watch<NotificationDomain>().notifications.length;
 
     void copyToClipboard(String text, String toast) {
       Clipboard.setData(ClipboardData(text: text));
@@ -66,6 +68,7 @@ class ProfileViewScreen extends StatelessWidget {
           SliverToBoxAdapter(
             child: ProfileHeaderSection(
               headerColor: headerColor,
+              onEdit: goToProfileEdit,
               user: user,
               onCopyEmail: () =>
                   copyToClipboard(user.email, loc.copiedToClipboard),
@@ -150,7 +153,7 @@ class ProfileViewScreen extends StatelessWidget {
           ),
 
           // Bottom spacing
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          const SliverToBoxAdapter(child: SizedBox(height: 88)),
           const SliverToBoxAdapter(
             child: SafeArea(top: false, child: SizedBox(height: 8)),
           ),

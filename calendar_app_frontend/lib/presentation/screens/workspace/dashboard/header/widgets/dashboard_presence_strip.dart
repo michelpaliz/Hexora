@@ -20,27 +20,38 @@ class DashboardPresenceStrip extends StatelessWidget {
         .toList();
 
     final es = Localizations.localeOf(context).languageCode == 'es';
+    final details = online.isNotEmpty
+        ? UserStatusRow(userList: online, showAllOption: false)
+        : Text(
+            presence.hasReceivedPresence
+                ? (es ? 'No hay miembros en línea' : 'No members online')
+                : (es
+                    ? 'Esperando estado de conexión…'
+                    : 'Waiting for online status…'),
+            style: Theme.of(context).textTheme.bodySmall,
+          );
+    if (MediaQuery.sizeOf(context).width < 700) {
+      return ExpansionTile(
+        key: ValueKey(group.id),
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: 8),
+        dense: true,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        title: Text(
+            es ? '${online.length} en línea' : '${online.length} online',
+            style: Theme.of(context).textTheme.bodySmall),
+        children: [details],
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(es ? 'En línea (${online.length})' : 'Online (${online.length})',
-              style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          if (online.isNotEmpty)
-            UserStatusRow(userList: online, showAllOption: false)
-          else
-            Text(
-              presence.hasReceivedPresence
-                  ? (es ? 'No hay miembros en línea' : 'No members online')
-                  : (es
-                      ? 'Esperando estado de conexión…'
-                      : 'Waiting for online status…'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-        ],
-      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(es ? 'En línea (${online.length})' : 'Online (${online.length})',
+            style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 4),
+        details,
+      ]),
     );
   }
 }

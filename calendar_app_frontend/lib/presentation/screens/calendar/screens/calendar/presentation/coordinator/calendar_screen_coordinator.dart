@@ -26,7 +26,8 @@ import 'package:provider/provider.dart';
 
 class CalendarScreenCoordinator {
   static const String _defaultWeatherLocation = 'Denia';
-  static const int _calendarWeatherForecastDays = 31;
+  // Open-Meteo supports forecasts up to 16 days.
+  static const int _calendarWeatherForecastDays = 16;
   final BuildContext context;
 
   // Public loading state for the widget to listen to

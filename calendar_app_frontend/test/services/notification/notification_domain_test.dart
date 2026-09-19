@@ -39,6 +39,48 @@ class _FakeNotificationApiClient extends NotificationApiClient {
 }
 
 void main() {
+  NotificationUser notice(String id, {bool read = false}) =>
+      NotificationUser.fromJson({'id': id, 'isRead': read});
+
+  test('successful refresh removes remote deletions and updates counts',
+      () async {
+    final domain = NotificationDomain();
+    addTearDown(domain.dispose);
+    await domain.addInboundNotification(notice('removed'));
+    await domain.addInboundNotification(notice('kept'));
+    await domain.applyFetchedNotifications([notice('kept', read: true)],
+        readStateAtStart: {'removed': false, 'kept': false});
+    expect(domain.notificationIds, ['kept']);
+    expect(domain.notifications.single.isRead, isTrue);
+  });
+
+  test('refresh preserves arrivals, local reads and deletions during request',
+      () async {
+    final domain = NotificationDomain();
+    addTearDown(domain.dispose);
+    await domain.addInboundNotification(notice('read'));
+    await domain.addInboundNotification(notice('deleted'));
+    final start = {for (final n in domain.notifications) n.id: n.isRead};
+    await domain.addInboundNotification(notice('arrived'));
+    await domain.addInboundNotification(notice('read', read: true));
+    await domain.removeNotificationById('deleted');
+    await domain.applyFetchedNotifications([notice('read'), notice('deleted')],
+        readStateAtStart: start);
+    expect(domain.notificationIds.toSet(), {'read', 'arrived'});
+    expect(
+        domain.notifications.firstWhere((n) => n.id == 'read').isRead, isTrue);
+  });
+
+  test('empty server refresh clears old items', () async {
+    final domain = NotificationDomain();
+    addTearDown(domain.dispose);
+    await domain.addInboundNotification(notice('old'));
+    await domain
+        .applyFetchedNotifications([], readStateAtStart: {'old': false});
+    expect(domain.notifications, isEmpty);
+    expect(domain.notificationIds, isEmpty);
+  });
+
   test('loads successful notifications while limiting concurrent requests',
       () async {
     final api = _FakeNotificationApiClient();

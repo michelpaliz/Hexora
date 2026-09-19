@@ -1,9 +1,11 @@
 // lib/presentation/b-calendar-section/screens/profile/widgets/profile_header_section.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
+
 class ProfileHeaderSection extends StatelessWidget {
   final Color headerColor;
   final User user;
@@ -43,6 +45,62 @@ class ProfileHeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < 700) {
+      final cs = Theme.of(context).colorScheme;
+      final loc = AppLocalizations.of(context)!;
+      return SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: .35),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: [
+                    UserAvatar(
+                        user: user,
+                        fetchReadSas: (_) async => null,
+                        radius: 30),
+                    const SizedBox(width: 14),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          Text(user.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 4),
+                          Text('@${user.userName}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: cs.onSurfaceVariant)),
+                        ])),
+                  ]),
+                  if (onEdit != null) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                        onPressed: onEdit,
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: Text(loc.localeName.startsWith('es')
+                            ? 'Editar perfil'
+                            : 'Edit profile'),
+                        style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48))),
+                  ],
+                ]),
+          ),
+        ),
+      );
+    }
     final t = AppTypography.of(context);
 
     // Text/icon color that contrasts with the header background
@@ -160,7 +218,8 @@ class _CircleAction extends StatelessWidget {
     return Column(
       children: [
         Material(
-          color: color.withValues(alpha: .16), // subtle, auto-contrasts the header
+          color:
+              color.withValues(alpha: .16), // subtle, auto-contrasts the header
           shape: const CircleBorder(),
           clipBehavior: Clip.antiAlias,
           child: InkWell(

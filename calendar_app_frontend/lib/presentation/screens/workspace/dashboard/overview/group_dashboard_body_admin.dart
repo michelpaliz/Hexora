@@ -12,6 +12,7 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/role_info/profile_role_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/upcoming_events/group_upcoming_events.dart';
+import 'package:hexora/presentation/screens/workspace/sections/weather/work_conditions_card.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -118,7 +119,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
         context.read<GroupDashboardState>().openSection(section);
 
     Widget heading(String text) => Padding(
-          padding: const EdgeInsets.only(top: 24, bottom: 10),
+          padding: const EdgeInsets.only(top: 16, bottom: 8),
           child: Text(text,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -162,13 +163,6 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           GroupHeaderView(group: _group),
-          heading(es ? 'Accesos rápidos' : 'Quick access'),
-          group([
-            destination(Icons.design_services_outlined, l.servicesClientsTitle,
-                Sections.services),
-            destination(Icons.map_outlined,
-                es ? 'Mapa y visitas' : 'Map and visits', Sections.maps),
-          ]),
           heading(l.sectionEvents),
           group([
             destination(Icons.view_agenda_outlined, l.agenda, Sections.agenda),
@@ -193,6 +187,15 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             role: widget.role,
             currentUserId: widget.user.id,
           ),
+          const SizedBox(height: 12),
+          WorkConditionsCard(groupId: _group.id),
+          heading(es ? 'Accesos rápidos' : 'Quick access'),
+          group([
+            destination(Icons.design_services_outlined, l.servicesClientsTitle,
+                Sections.services),
+            destination(Icons.map_outlined,
+                es ? 'Mapa y visitas' : 'Map and visits', Sections.maps),
+          ]),
           const SizedBox(height: 12),
           group([
             destination(
@@ -286,6 +289,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                 context.read<GroupDashboardState>().openSection('profile'),
           ),
 
+          const SizedBox(height: 20),
+          WorkConditionsCard(groupId: _group.id),
           const SizedBox(height: 20),
           SectionHeader(title: l.sectionBusinessHours, textStyle: sectionTitle),
           GroupBusinessHoursCard(
