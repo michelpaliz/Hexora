@@ -784,9 +784,11 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     await showDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        clipBehavior: Clip.antiAlias,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 560),
+          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 680),
           child: _ComposeTemplatePicker(
             templates: _composeTemplates,
             selectedId: _selectedComposeTemplateId,

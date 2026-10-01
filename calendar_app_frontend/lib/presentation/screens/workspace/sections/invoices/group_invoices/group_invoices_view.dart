@@ -108,57 +108,73 @@ class _GroupInvoicesView extends StatelessWidget {
       final showInvoiceConceptExport =
           activeMenu == 'invoices' || activeMenu == 'invoices_issued';
       final invoiceActionButtonStyle = OutlinedButton.styleFrom(
-        visualDensity: VisualDensity.compact,
-        minimumSize: const Size(0, 40),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        side: BorderSide(color: cs.primary.withValues(alpha: 0.24)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        minimumSize: const Size(0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        side: BorderSide(color: cs.primary.withValues(alpha: 0.18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         foregroundColor: cs.primary,
-        backgroundColor: cs.primary.withValues(alpha: 0.045),
+        backgroundColor: cs.primary.withValues(alpha: 0.04),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
       );
       final invoiceActions = showInvoiceActions
           ? <Widget>[
-              Tooltip(
-                message: l.createInvoiceCta,
-                child: FilledButton(
-                  onPressed: state._openCreateInvoice,
-                  style: compactPrimaryButtonStyle,
-                  child: const Icon(Icons.add_rounded, size: 18),
+              FilledButton.icon(
+                onPressed: state._openCreateInvoice,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  backgroundColor: const Color(0xFF397DDA),
+                  foregroundColor: Colors.white,
+                  textStyle: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 22),
+                label: Text(l.invoiceToolbarNew),
+              ),
+              _InvoiceExportMenuButton(
+                state: state,
+                showExcel: showInvoiceConceptExport,
+                style: invoiceActionButtonStyle,
+              ),
+              OutlinedButton.icon(
+                onPressed: state._showStoredInvoiceZipDownloads,
+                style: invoiceActionButtonStyle,
+                icon: state._loadingInvoiceZipDownloads
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.history_rounded, size: 22),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l.invoiceToolbarHistory),
+                    if (state._invoiceZipDownloads.isNotEmpty) ...[
+                      const SizedBox(width: 10),
+                      Badge(
+                        backgroundColor: cs.error,
+                        textColor: cs.onError,
+                        label: Text('${state._invoiceZipDownloads.length}'),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              Tooltip(
-                message: '${l.download} PDFs',
-                child: _InvoiceExportMenuButton(
-                  state: state,
+              IconButton.outlined(
+                tooltip: l.refreshAction,
+                onPressed: state._refreshInvoiceListsOnly,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.65)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  foregroundColor: cs.onSurfaceVariant,
                 ),
-              ),
-              if (showInvoiceConceptExport)
-                Tooltip(
-                  message: Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Exporta las facturas con una categoría calculada según los conceptos de sus líneas.'
-                      : 'Export invoices with a calculated category based on line concepts.',
-                  child: OutlinedButton.icon(
-                    onPressed: state._exportingInvoiceConcepts
-                        ? null
-                        : state._exportInvoiceConceptsExcel,
-                    style: invoiceActionButtonStyle,
-                    icon: state._exportingInvoiceConcepts
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.table_view_outlined, size: 16),
-                    label: const Text('Excel'),
-                  ),
-                ),
-              Tooltip(
-                message: l.refreshAction,
-                child: IconButton(
-                  onPressed: state._refreshInvoiceListsOnly,
-                  style: compactIconButtonStyle,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                ),
+                icon: const Icon(Icons.refresh_rounded, size: 24),
               ),
             ]
           : null;
@@ -478,96 +494,70 @@ class _GroupInvoicesView extends StatelessWidget {
 }
 
 class _InvoiceExportMenuButton extends StatelessWidget {
-  const _InvoiceExportMenuButton({required this.state});
+  const _InvoiceExportMenuButton({
+    required this.state,
+    required this.showExcel,
+    required this.style,
+  });
 
   final _GroupInvoicesScreenState state;
+  final bool showExcel;
+  final ButtonStyle style;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    final hasExports = state._invoiceZipDownloads.isNotEmpty;
-    final label = isSpanish ? 'Exportar' : 'Export';
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: SegmentedButton<_InvoiceExportAction>(
-        showSelectedIcon: false,
-        emptySelectionAllowed: true,
-        style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
-          padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          ),
-          side: WidgetStatePropertyAll(
-            BorderSide(color: cs.primary.withValues(alpha: 0.24)),
-          ),
-          shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
-          foregroundColor: WidgetStatePropertyAll(cs.primary),
-          backgroundColor: WidgetStatePropertyAll(
-            cs.primary.withValues(alpha: 0.045),
-          ),
+    final l = AppLocalizations.of(context)!;
+    final busy = state._downloadingAllPdfs || state._exportingInvoiceConcepts;
+    return MenuAnchor(
+      style: MenuStyle(
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(8)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
-        segments: [
-          ButtonSegment(
-            value: _InvoiceExportAction.queuePdf,
-            icon: state._downloadingAllPdfs
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.picture_as_pdf_outlined, size: 16),
-            label: Text(label),
+      ),
+      menuChildren: [
+        MenuItemButton(
+          onPressed:
+              state._downloadingAllPdfs ? null : state._showBulkDownloadDialog,
+          leadingIcon: const Icon(Icons.picture_as_pdf_outlined,
+              color: Color(0xFFC62828)),
+          child: Text(l.invoiceToolbarPdf),
+        ),
+        if (showExcel)
+          MenuItemButton(
+            onPressed: state._exportingInvoiceConcepts
+                ? null
+                : state._exportInvoiceConceptsExcel,
+            leadingIcon:
+                const Icon(Icons.table_view_outlined, color: Color(0xFF21834A)),
+            child: Text(l.invoiceToolbarExcel),
           ),
-          ButtonSegment(
-            value: _InvoiceExportAction.recent,
-            icon: state._loadingInvoiceZipDownloads
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Badge(
-                    isLabelVisible: hasExports,
-                    label: Text('${state._invoiceZipDownloads.length}'),
-                    child: const Icon(Icons.history_rounded, size: 16),
-                  ),
-            label: Text(isSpanish ? 'Recientes' : 'Recent'),
-          ),
-        ],
-        selected: const <_InvoiceExportAction>{},
-        onSelectionChanged: state._downloadingAllPdfs
+      ],
+      builder: (context, controller, child) => OutlinedButton.icon(
+        style: style,
+        onPressed: busy
             ? null
-            : (selection) {
-                final action = selection.isEmpty ? null : selection.first;
-                switch (action) {
-                  case _InvoiceExportAction.queuePdf:
-                    state._showBulkDownloadDialog();
-                  case _InvoiceExportAction.recent:
-                    state._showStoredInvoiceZipDownloads();
-                  case null:
-                    break;
-                }
+            : () {
+                controller.isOpen ? controller.close() : controller.open();
               },
+        icon: busy
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.description_outlined, size: 22),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(l.invoiceToolbarExport),
+            const SizedBox(width: 12),
+            const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+          ],
+        ),
       ),
     );
   }
 }
-
-enum _InvoiceExportAction { queuePdf, recent }
 
 class _InvoiceZipDownloadsDialog extends StatefulWidget {
   const _InvoiceZipDownloadsDialog({required this.state});
@@ -646,132 +636,329 @@ class _InvoiceZipDownloadsDialogState
     return '$d/$m/$y $hh:$mm';
   }
 
+  String _statusLabel(AppLocalizations l, String status) => switch (status) {
+        'completed' => l.invoiceZipStatusCompleted,
+        'ready' => l.invoiceZipStatusReady,
+        'queued' => l.invoiceZipStatusQueued,
+        'processing' => l.invoiceZipStatusProcessing,
+        'failed' => l.invoiceZipStatusFailed,
+        _ => l.invoiceZipStatusUnknown,
+      };
+
+  ({Color foreground, Color background, IconData icon}) _statusStyle(
+    ColorScheme cs,
+    String status,
+  ) =>
+      switch (status) {
+        'completed' || 'ready' => (
+            foreground: const Color(0xFF19713A),
+            background: const Color(0xFFE6F5EA),
+            icon: Icons.check_circle_outline_rounded,
+          ),
+        'failed' => (
+            foreground: cs.error,
+            background: cs.errorContainer.withValues(alpha: 0.6),
+            icon: Icons.error_outline_rounded,
+          ),
+        'queued' => (
+            foreground: cs.onSurfaceVariant,
+            background: cs.surfaceContainerHighest,
+            icon: Icons.schedule_rounded,
+          ),
+        _ => (
+            foreground: cs.primary,
+            background: cs.primaryContainer.withValues(alpha: 0.55),
+            icon: Icons.sync_rounded,
+          ),
+      };
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final l = AppLocalizations.of(context)!;
+    final size = MediaQuery.sizeOf(context);
+    final compact = size.width < 600;
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          const Icon(Icons.folder_zip_outlined, size: 20),
-          const SizedBox(width: 8),
-          Text(isSpanish ? 'ZIPs exportados' : 'Exported ZIPs'),
-        ],
+    return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: compact ? 12 : 32,
+        vertical: compact ? 20 : 40,
       ),
-      content: SizedBox(
-        width: 560,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 620,
+          maxHeight: size.height * (compact ? 0.92 : 0.84),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if ((widget.state._lastExportFileId ?? '').isNotEmpty ||
-                (widget.state._lastExportFileUrl ?? '').isNotEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  [
-                    if ((widget.state._lastExportFileId ?? '').isNotEmpty)
-                      'ID: ${widget.state._lastExportFileId}',
-                    if ((widget.state._lastExportFileUrl ?? '').isNotEmpty)
-                      'URL: ${widget.state._lastExportFileUrl}',
-                  ].join('\n'),
-                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 20, 12, 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.folder_zip_outlined,
+                        size: 22, color: cs.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.invoiceZipDialogTitle,
+                            style: t.bodyLarge.copyWith(
+                              fontWeight: FontWeight.w800,
+                            )),
+                        const SizedBox(height: 2),
+                        Text(
+                          l.invoiceZipDialogSubtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: l.invoiceZipCloseAction,
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-            ],
+            ),
+            Container(
+              color: cs.surfaceContainerLow,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+              child: Row(
+                children: [
+                  Text(
+                    l.invoiceZipCountLabel(_downloads.length),
+                    style: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  TextButton.icon(
+                    onPressed: _loading ? null : _refresh,
+                    icon: const Icon(Icons.refresh_rounded, size: 17),
+                    label: Text(l.invoiceZipRefreshAction),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
             Flexible(
               child: _loading && _downloads.isEmpty
                   ? const SizedBox(
-                      height: 120,
+                      height: 200,
                       child: Center(child: CircularProgressIndicator()),
                     )
                   : _downloads.isEmpty
                       ? Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          child: Text(
-                            isSpanish
-                                ? 'Todavia no hay ZIPs de facturas guardados.'
-                                : 'No stored invoice ZIP exports yet.',
-                            style: t.bodyMedium.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 52,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.folder_off_outlined,
+                                  size: 38, color: cs.onSurfaceVariant),
+                              const SizedBox(height: 12),
+                              Text(
+                                l.invoiceZipEmptyTitle,
+                                textAlign: TextAlign.center,
+                                style: t.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                l.invoiceZipEmptyMessage,
+                                textAlign: TextAlign.center,
+                                style: t.bodySmall.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
                         )
-                      : ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 420),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: _downloads.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              final item = _downloads[index];
-                              final fileName = item.fileName.trim().isEmpty
-                                  ? 'invoices.zip'
-                                  : item.fileName.trim();
-                              final status =
-                                  (item.status ?? '').trim().toLowerCase();
-                              final canDownload = item.fileUrl != null ||
-                                  status == 'completed' ||
-                                  status == 'ready';
-                              final errorMessage =
-                                  item.errorMessage?.trim() ?? '';
-                              return ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: Icon(
-                                  Icons.folder_zip_outlined,
-                                  color: status == 'failed'
-                                      ? cs.error
-                                      : cs.primary,
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _downloads.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 7),
+                          itemBuilder: (context, index) {
+                            final item = _downloads[index];
+                            final fileName = item.fileName.trim().isEmpty
+                                ? l.invoiceZipFileFallback
+                                : item.fileName.trim();
+                            final status =
+                                (item.status ?? '').trim().toLowerCase();
+                            final canDownload = item.fileUrl != null ||
+                                status == 'completed' ||
+                                status == 'ready';
+                            final errorMessage =
+                                item.errorMessage?.trim() ?? '';
+                            final statusStyle = _statusStyle(cs, status);
+
+                            return Material(
+                              color: cs.surfaceContainerLowest,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(
+                                  color:
+                                      cs.outlineVariant.withValues(alpha: 0.55),
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: ListTile(
+                                onTap: canDownload
+                                    ? () =>
+                                        widget.state._openStoredInvoiceZip(item)
+                                    : null,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 5,
+                                ),
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: cs.primaryContainer
+                                        .withValues(alpha: 0.42),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(Icons.folder_zip_outlined,
+                                      size: 20, color: cs.primary),
                                 ),
                                 title: Text(
                                   fileName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
+                                  style: t.bodyMedium.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                                subtitle: Text(
-                                  [
-                                    _formatDate(item.createdAt),
-                                    _formatSize(item.sizeBytes),
-                                    item.status ?? '-',
-                                    if (status == 'failed' &&
-                                        errorMessage.isNotEmpty)
-                                      errorMessage,
-                                  ].join(' · '),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 5),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Wrap(
+                                        spacing: 7,
+                                        runSpacing: 4,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        children: [
+                                          Text(_formatDate(item.createdAt)),
+                                          Text('•',
+                                              style: TextStyle(
+                                                  color: cs.outlineVariant)),
+                                          Text(_formatSize(item.sizeBytes)),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 7,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: statusStyle.background,
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(statusStyle.icon,
+                                                    size: 12,
+                                                    color:
+                                                        statusStyle.foreground),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  _statusLabel(l, status),
+                                                  style: t.bodySmall.copyWith(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                    color:
+                                                        statusStyle.foreground,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (status == 'failed' &&
+                                          errorMessage.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          errorMessage,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: t.bodySmall.copyWith(
+                                            color: cs.error,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
-                                trailing: IconButton(
-                                  tooltip: isSpanish ? 'Descargar' : 'Download',
+                                trailing: IconButton.filledTonal(
+                                  tooltip: l.invoiceZipDownloadAction(fileName),
                                   onPressed: canDownload
                                       ? () => widget.state
                                           ._openStoredInvoiceZip(item)
                                       : null,
-                                  icon: const Icon(Icons.download_rounded),
+                                  icon: const Icon(Icons.download_rounded,
+                                      size: 20),
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            );
+                          },
                         ),
+            ),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l.invoiceZipCloseAction),
+                ),
+              ),
             ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _loading ? null : _refresh,
-          child: Text(isSpanish ? 'Actualizar' : 'Refresh'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(isSpanish ? 'Cerrar' : 'Close'),
-        ),
-      ],
     );
   }
 }

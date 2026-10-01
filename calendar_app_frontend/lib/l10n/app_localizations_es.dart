@@ -4142,6 +4142,84 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get invoiceZipExportAction => 'Exportar PDF';
+
+  @override
+  String get invoiceToolbarNew => 'Nueva factura';
+
+  @override
+  String get invoiceToolbarExport => 'Exportar';
+
+  @override
+  String get invoiceToolbarHistory => 'Historial';
+
+  @override
+  String get invoiceToolbarPdf => 'Exportar en PDF';
+
+  @override
+  String get invoiceToolbarExcel => 'Exportar en Excel';
+
+  @override
+  String get invoiceZipRecentAction => 'Historial de exportaciones';
+
+  @override
+  String get invoiceZipDialogTitle => 'Exportaciones de facturas';
+
+  @override
+  String get invoiceZipDialogSubtitle =>
+      'Descarga los archivos ZIP generados recientemente';
+
+  @override
+  String get invoiceZipEmptyTitle => 'Aún no hay exportaciones';
+
+  @override
+  String get invoiceZipEmptyMessage =>
+      'Los ZIP de facturas que generes aparecerán aquí.';
+
+  @override
+  String get invoiceZipRefreshAction => 'Actualizar';
+
+  @override
+  String get invoiceZipCloseAction => 'Cerrar';
+
+  @override
+  String invoiceZipDownloadAction(String fileName) {
+    return 'Descargar $fileName';
+  }
+
+  @override
+  String get invoiceZipStatusCompleted => 'Disponible';
+
+  @override
+  String get invoiceZipStatusReady => 'Disponible';
+
+  @override
+  String get invoiceZipStatusQueued => 'En cola';
+
+  @override
+  String get invoiceZipStatusProcessing => 'Procesando';
+
+  @override
+  String get invoiceZipStatusFailed => 'Error';
+
+  @override
+  String get invoiceZipStatusUnknown => 'Desconocido';
+
+  @override
+  String get invoiceZipFileFallback => 'facturas.zip';
+
+  @override
+  String invoiceZipCountLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count exportaciones',
+      one: '1 exportación',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get clientsTitle => 'Clientes';
 
   @override
