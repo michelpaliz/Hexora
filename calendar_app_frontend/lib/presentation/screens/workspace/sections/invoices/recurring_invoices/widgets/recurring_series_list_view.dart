@@ -434,6 +434,10 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
                         key: ValueKey('generated-$selectedSeriesId'),
                         api: widget.api!,
                         series: selectedSeries,
+                        client: widget.clients
+                            .where((client) =>
+                                client.id == _seriesClientId(selectedSeries))
+                            .firstOrNull,
                         receiptsMode: widget.receiptsMode,
                       ),
                     ),

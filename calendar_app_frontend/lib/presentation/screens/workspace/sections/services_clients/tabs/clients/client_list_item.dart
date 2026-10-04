@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/client_property_image.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -83,13 +84,17 @@ class _ClientListItemState extends State<ClientListItem> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: cs.primaryContainer,
-                    foregroundColor: cs.onPrimaryContainer,
-                    child:
-                        Text(_initials, style: const TextStyle(fontSize: 13)),
-                  ),
+                  if (widget.client.imageVersion != null)
+                    ClientPropertyImage(
+                        client: widget.client, width: 34, height: 34)
+                  else
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: cs.primaryContainer,
+                      foregroundColor: cs.onPrimaryContainer,
+                      child:
+                          Text(_initials, style: const TextStyle(fontSize: 13)),
+                    ),
                   const SizedBox(width: 10),
                   Expanded(
                       child: Column(
@@ -177,24 +182,27 @@ class _ClientListItemState extends State<ClientListItem> {
                 // Avatar with initials
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _initials,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: cs.primary,
+                  child: widget.client.imageVersion != null
+                      ? ClientPropertyImage(
+                          client: widget.client, width: 34, height: 34)
+                      : Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _initials,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: cs.primary,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
                 ),
                 const SizedBox(width: 10),
 

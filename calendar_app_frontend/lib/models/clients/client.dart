@@ -12,6 +12,7 @@ class GroupClient {
 
   /// Optional property type classification (free text, lowercase suggested)
   String? propertyKind;
+  String? imageVersion;
 
   // Nested contact info
   String? phone;
@@ -36,6 +37,7 @@ class GroupClient {
     this.groupId,
     this.entityType,
     this.propertyKind,
+    this.imageVersion,
     this.phone,
     this.email,
     this.isActive = true,
@@ -56,6 +58,7 @@ class GroupClient {
     String? groupId,
     String? entityType,
     String? propertyKind,
+    String? imageVersion,
     String? phone,
     String? email,
     bool? isActive,
@@ -75,6 +78,7 @@ class GroupClient {
       groupId: groupId ?? this.groupId,
       entityType: entityType ?? this.entityType,
       propertyKind: propertyKind ?? this.propertyKind,
+      imageVersion: imageVersion ?? this.imageVersion,
       phone: phone ?? this.phone,
       email: email ?? this.email,
       isActive: isActive ?? this.isActive,
@@ -138,6 +142,7 @@ class GroupClient {
       groupId: json['groupId']?.toString(),
       entityType: json['entityType']?.toString(),
       propertyKind: json['propertyKind']?.toString(),
+      imageVersion: (json['image'] as Map?)?['updatedAt']?.toString(),
       phone: contact?['phone']?.toString(),
       email: contact?['email']?.toString(),
       isActive: json['isActive'] is bool ? json['isActive'] as bool : true,

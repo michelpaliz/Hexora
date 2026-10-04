@@ -98,6 +98,48 @@ abstract class AppLocalizations {
     Locale('es')
   ];
 
+  /// No description provided for @clientImageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Client / location image'**
+  String get clientImageLabel;
+
+  /// No description provided for @clientImageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional · JPEG, PNG or WebP · up to 5 MB. Without an image, initials are shown.'**
+  String get clientImageHint;
+
+  /// No description provided for @clientImageAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add image'**
+  String get clientImageAdd;
+
+  /// No description provided for @clientImageReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace image'**
+  String get clientImageReplace;
+
+  /// No description provided for @clientImageRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove image'**
+  String get clientImageRemove;
+
+  /// No description provided for @clientImageInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a JPEG, PNG or WebP image up to 5 MB.'**
+  String get clientImageInvalid;
+
+  /// No description provided for @clientImageSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Client details saved, but the image could not be saved. Please try again.'**
+  String get clientImageSaveFailed;
+
   /// No description provided for @darkMode.
   ///
   /// In en, this message translates to:

@@ -1,4 +1,11 @@
 {
+    "clientImageLabel": "Imagen del cliente / ubicación",
+    "clientImageHint": "Opcional · JPEG, PNG o WebP · hasta 5 MB. Sin imagen, se muestran las iniciales.",
+    "clientImageAdd": "Añadir imagen",
+    "clientImageReplace": "Cambiar imagen",
+    "clientImageRemove": "Quitar imagen",
+    "clientImageInvalid": "Selecciona una imagen JPEG, PNG o WebP de hasta 5 MB.",
+    "clientImageSaveFailed": "Los datos del cliente se han guardado, pero no la imagen. Inténtalo de nuevo.",
   "darkMode": "Modo oscuro",
   "groups": "Grupos",
   "calendar": "Calendario",

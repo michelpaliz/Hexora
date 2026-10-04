@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/client_property_image.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/services/clients/client_contracts_api.dart';
@@ -151,6 +152,22 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               initialIndex: widget.initialTabIndex.clamp(0, 3),
               child: Column(
                 children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(children: [
+                      ClientPropertyImage(client: widget.selectedClient!),
+                      const SizedBox(width: 16),
+                      Expanded(
+                          child: Text(widget.selectedClient!.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodyLarge)),
+                      IconButton(
+                          onPressed: widget.onEditSelectedClient,
+                          tooltip: l.editClient,
+                          icon: const Icon(Icons.edit_outlined)),
+                    ]),
+                  ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
                     child: _ClientTabs(

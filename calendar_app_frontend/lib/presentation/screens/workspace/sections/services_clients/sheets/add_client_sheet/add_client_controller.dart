@@ -17,7 +17,7 @@ class AddClientController {
 
   final ClientsApi api;
   final String groupId;
-  final GroupClient? client;
+  GroupClient? client;
 
   final formKey = GlobalKey<FormState>();
 

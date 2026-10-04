@@ -1,4 +1,11 @@
 {
+    "clientImageLabel": "Client / location image",
+    "clientImageHint": "Optional · JPEG, PNG or WebP · up to 5 MB. Without an image, initials are shown.",
+    "clientImageAdd": "Add image",
+    "clientImageReplace": "Replace image",
+    "clientImageRemove": "Remove image",
+    "clientImageInvalid": "Choose a JPEG, PNG or WebP image up to 5 MB.",
+    "clientImageSaveFailed": "Client details saved, but the image could not be saved. Please try again.",
     "darkMode": "Dark Mode",
     "groups": "Groups",
     "calendar": "Calendar",

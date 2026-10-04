@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/presentation/shared/widgets/client_property_image.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/recurring_invoices_api.dart';
@@ -17,11 +19,13 @@ class RecurringSeriesGeneratedPanel extends StatefulWidget {
     super.key,
     required this.api,
     required this.series,
+    this.client,
     this.receiptsMode = false,
   });
 
   final RecurringInvoicesApi api;
   final Map<String, dynamic> series;
+  final GroupClient? client;
   final bool receiptsMode;
 
   @override
@@ -146,6 +150,18 @@ class _RecurringSeriesGeneratedPanelState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.client != null) ...[
+            Row(children: [
+              ClientPropertyImage(client: widget.client!),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Text(widget.client!.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodyLarge)),
+            ]),
+            const SizedBox(height: 16),
+          ],
           Row(
             children: [
               Container(

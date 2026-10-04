@@ -9,6 +9,30 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get clientImageLabel => 'Imagen del cliente / ubicación';
+
+  @override
+  String get clientImageHint =>
+      'Opcional · JPEG, PNG o WebP · hasta 5 MB. Sin imagen, se muestran las iniciales.';
+
+  @override
+  String get clientImageAdd => 'Añadir imagen';
+
+  @override
+  String get clientImageReplace => 'Cambiar imagen';
+
+  @override
+  String get clientImageRemove => 'Quitar imagen';
+
+  @override
+  String get clientImageInvalid =>
+      'Selecciona una imagen JPEG, PNG o WebP de hasta 5 MB.';
+
+  @override
+  String get clientImageSaveFailed =>
+      'Los datos del cliente se han guardado, pero no la imagen. Inténtalo de nuevo.';
+
+  @override
   String get darkMode => 'Modo oscuro';
 
   @override
