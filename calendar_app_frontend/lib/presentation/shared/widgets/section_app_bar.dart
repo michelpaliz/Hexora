@@ -48,7 +48,7 @@ class SectionAppBar extends StatelessWidget implements PreferredSizeWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.titleLarge?.copyWith(
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: FontWeight.w600,
           color: cs.onSurface,
         ),

@@ -235,7 +235,28 @@ class _GroupInvoicesView extends StatelessWidget {
             ]
           : null;
       final List<Widget>? classificationActions =
-          activeMenu == 'client_classifications' ? const [] : null;
+          activeMenu == 'client_classifications'
+              ? [
+                  FilledButton.icon(
+                    onPressed: state._openClientClassificationManager,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text(
+                        Localizations.localeOf(context).languageCode == 'es'
+                            ? 'Nueva clasificación'
+                            : 'New classification'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 38),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      textStyle: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  )
+                ]
+              : activeMenu == 'client_invoice_stats'
+                  ? const []
+                  : null;
       final folderActions = classificationActions ??
           expenseListActions ??
           receiptActions ??

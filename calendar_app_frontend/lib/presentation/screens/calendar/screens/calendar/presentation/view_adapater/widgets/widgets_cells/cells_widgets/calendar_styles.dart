@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 Color getTextColor(BuildContext context) =>
@@ -22,23 +22,25 @@ CalendarHeaderStyle buildHeaderStyle(double fontSize, Color textColor) =>
     CalendarHeaderStyle(
       textAlign: TextAlign.center,
       backgroundColor: Colors.transparent,
-      textStyle: GoogleFonts.poppins(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w600,
-        color: textColor,
-      ),
+      textStyle: AppTypography.light().titleLarge.copyWith(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
     );
 
 ViewHeaderStyle buildViewHeaderStyle(
         double fontSize, Color textColor, bool isDarkMode) =>
     ViewHeaderStyle(
       backgroundColor: Colors.transparent,
-      dateTextStyle: GoogleFonts.poppins(fontSize: fontSize, color: textColor),
-      dayTextStyle: GoogleFonts.poppins(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w600,
-        color: textColor,
-      ),
+      dateTextStyle: AppTypography.light()
+          .bodyMedium
+          .copyWith(fontSize: fontSize, color: textColor),
+      dayTextStyle: AppTypography.light().bodyMedium.copyWith(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
     );
 
 double responsiveMonthHeaderHeight(BuildContext context) {
@@ -66,10 +68,12 @@ ScheduleViewSettings buildScheduleSettings(
         // If you’re rendering an image in the header builder, keep this transparent
         // so the image isn’t covered by a solid color.
         backgroundColor: Colors.transparent,
-        monthTextStyle: GoogleFonts.poppins(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w500,
-        ),
+        monthTextStyle: AppTypography.materialTextTheme(
+          brightness: ThemeData.estimateBrightnessForColor(backgroundColor),
+        ).titleLarge!.copyWith(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w500,
+            ),
       ),
     );
 

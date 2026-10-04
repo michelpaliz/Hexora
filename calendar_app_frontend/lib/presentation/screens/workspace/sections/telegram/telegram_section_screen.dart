@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -955,7 +956,10 @@ class _TelegramSideMenu extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      NavigationSurface(builder: _buildNavigation);
+
+  Widget _buildNavigation(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final sub = _subtitle;
 
@@ -1119,9 +1123,7 @@ class _TelegramMenuItem extends StatelessWidget {
             margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: selected
-                  ? cs.primary.withValues(alpha: 0.12)
-                  : Colors.transparent,
+              color: selected ? cs.primaryContainer : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: selected

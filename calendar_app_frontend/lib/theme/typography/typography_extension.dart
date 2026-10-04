@@ -42,19 +42,26 @@ class AppTypography extends ThemeExtension<AppTypography> {
     ).textTheme;
     final bodyTheme = GoogleFonts.manropeTextTheme(base);
 
-    TextStyle? heading(TextStyle? style) =>
-        style == null ? null : GoogleFonts.poppins(textStyle: style);
+    TextStyle? heading(TextStyle? style, double size) => style == null
+        ? null
+        : GoogleFonts.poppins(textStyle: style.copyWith(fontSize: size));
 
     return bodyTheme.copyWith(
-      displayLarge: heading(bodyTheme.displayLarge),
-      displayMedium: heading(bodyTheme.displayMedium),
-      displaySmall: heading(bodyTheme.displaySmall),
-      headlineLarge: heading(bodyTheme.headlineLarge),
-      headlineMedium: heading(bodyTheme.headlineMedium),
-      headlineSmall: heading(bodyTheme.headlineSmall),
-      titleLarge: heading(bodyTheme.titleLarge),
-      titleMedium: heading(bodyTheme.titleMedium),
-      titleSmall: heading(bodyTheme.titleSmall),
+      displayLarge: heading(bodyTheme.displayLarge, 26),
+      displayMedium: heading(bodyTheme.displayMedium, 24),
+      displaySmall: heading(bodyTheme.displaySmall, 22),
+      headlineLarge: heading(bodyTheme.headlineLarge, 22),
+      headlineMedium: heading(bodyTheme.headlineMedium, 20),
+      headlineSmall: heading(bodyTheme.headlineSmall, 18),
+      titleLarge: heading(bodyTheme.titleLarge, 18),
+      titleMedium: heading(bodyTheme.titleMedium, 15),
+      titleSmall: heading(bodyTheme.titleSmall, 13),
+      bodyLarge: bodyTheme.bodyLarge?.copyWith(fontSize: 14),
+      bodyMedium: bodyTheme.bodyMedium?.copyWith(fontSize: 13),
+      bodySmall: bodyTheme.bodySmall?.copyWith(fontSize: 12),
+      labelLarge: bodyTheme.labelLarge?.copyWith(fontSize: 13),
+      labelMedium: bodyTheme.labelMedium?.copyWith(fontSize: 12),
+      labelSmall: bodyTheme.labelSmall?.copyWith(fontSize: 11),
     );
   }
 
@@ -67,32 +74,32 @@ class AppTypography extends ThemeExtension<AppTypography> {
     return AppTypography(
       displayLarge: _scale(
           display(
-              fontSize: 32,
+              fontSize: 24,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary),
           scale),
       displayMedium: _scale(
           display(
-              fontSize: 28,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary),
           scale),
       titleLarge: _scale(
           display(
-              fontSize: 22,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary),
           scale),
 
       bodyLarge:
-          _scale(body(fontSize: 16, color: AppColors.textPrimary), scale),
+          _scale(body(fontSize: 14, color: AppColors.textPrimary), scale),
       bodyMedium:
-          _scale(body(fontSize: 14, color: AppColors.textSecondary), scale),
+          _scale(body(fontSize: 13, color: AppColors.textSecondary), scale),
       bodySmall:
           _scale(body(fontSize: 12, color: AppColors.textSecondary), scale),
 
       buttonText:
-          _scale(body(fontSize: 16, fontWeight: FontWeight.w600), scale),
+          _scale(body(fontSize: 13, fontWeight: FontWeight.w600), scale),
       caption: _scale(
           body(
               fontSize: 12,
@@ -103,13 +110,13 @@ class AppTypography extends ThemeExtension<AppTypography> {
       // Accent—keep subtle (or point to display/body if you don’t want an accent family)
       accentHeading: _scale(
           display(
-              fontSize: 20,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.primary),
           scale),
       accentText: _scale(
-          display(
-              fontSize: 16,
+          body(
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               color: AppColors.primary),
           scale),
@@ -124,30 +131,30 @@ class AppTypography extends ThemeExtension<AppTypography> {
     return AppTypography(
       displayLarge: _scale(
           display(
-              fontSize: 32,
+              fontSize: 24,
               fontWeight: FontWeight.w700,
               color: AppDarkColors.textPrimary),
           scale),
       displayMedium: _scale(
           display(
-              fontSize: 28,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
               color: AppDarkColors.textPrimary),
           scale),
       titleLarge: _scale(
           display(
-              fontSize: 22,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
               color: AppDarkColors.textPrimary),
           scale),
       bodyLarge:
-          _scale(body(fontSize: 16, color: AppDarkColors.textPrimary), scale),
+          _scale(body(fontSize: 14, color: AppDarkColors.textPrimary), scale),
       bodyMedium:
-          _scale(body(fontSize: 14, color: AppDarkColors.textSecondary), scale),
+          _scale(body(fontSize: 13, color: AppDarkColors.textSecondary), scale),
       bodySmall:
           _scale(body(fontSize: 12, color: AppDarkColors.textSecondary), scale),
       buttonText:
-          _scale(body(fontSize: 16, fontWeight: FontWeight.w600), scale),
+          _scale(body(fontSize: 13, fontWeight: FontWeight.w600), scale),
       caption: _scale(
           body(
               fontSize: 12,
@@ -156,13 +163,13 @@ class AppTypography extends ThemeExtension<AppTypography> {
           scale),
       accentHeading: _scale(
           display(
-              fontSize: 20,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppDarkColors.primary),
           scale),
       accentText: _scale(
-          display(
-              fontSize: 16,
+          body(
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               color: AppDarkColors.primary),
           scale),

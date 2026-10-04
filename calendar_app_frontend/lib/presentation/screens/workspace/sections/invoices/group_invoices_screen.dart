@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -118,6 +119,16 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   // Shared callbacks return here so the owning State controls its lifecycle.
   void _updateView(VoidCallback change) {
     if (!mounted) return;
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      // Child disposal can clear toolbar actions while the tree is locked.
+      // Apply the change in order, but wait until finalization ends to rebuild.
+      change();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return;
+    }
     setState(change);
   }
 
@@ -428,10 +439,14 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
             : (_invoices.isNotEmpty ? _invoices.first : null);
 
         if (_selectedReceipt != null) {
-          final stillExists =
-              _receipts.any((r) => r.id == _selectedReceipt!.id) ||
-                  _receiptDrafts.any((r) => r.id == _selectedReceipt!.id);
-          if (!stillExists) _selectedReceipt = null;
+          final selectedId = _selectedReceipt!.id;
+          _selectedReceipt = null;
+          for (final receipt in [..._receipts, ..._receiptDrafts]) {
+            if (receipt.id == selectedId) {
+              _selectedReceipt = receipt;
+              break;
+            }
+          }
         }
         _selectedReceipt ??= _receiptDrafts.isNotEmpty
             ? _receiptDrafts.first
@@ -601,6 +616,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       context: context,
       builder: (_) => ClientClassificationManagerDialog(
         groupId: widget.group.id,
+        clients: _clients,
       ),
     );
     if (!mounted) return;

@@ -32,12 +32,14 @@ class _SidebarItemState extends State<SidebarItem> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
-    final inactiveColor =
-        isDark ? AppDarkColors.textSecondary : AppColors.textSecondary;
+    final cs = Theme.of(context).colorScheme;
+    final navy = cs.surface == AppColors.dashboardTopBar;
+    final activeColor = cs.primary;
+    final inactiveColor = cs.onSurfaceVariant;
 
-    final fg = widget.isSelected ? activeColor : inactiveColor;
+    final fg = widget.isSelected
+        ? (navy ? cs.onPrimaryContainer : activeColor)
+        : inactiveColor;
     final showBg = widget.isSelected || _hovering;
     final borderColor = widget.isSelected
         ? activeColor.withValues(alpha: 0.26)
@@ -55,9 +57,12 @@ class _SidebarItemState extends State<SidebarItem> {
           curve: Curves.easeOut,
           height: 44,
           decoration: BoxDecoration(
-            color: showBg
-                ? activeColor.withValues(alpha: widget.isSelected ? 0.1 : 0.06)
-                : Colors.transparent,
+            color: widget.isSelected && navy
+                ? cs.primaryContainer
+                : showBg
+                    ? activeColor.withValues(
+                        alpha: widget.isSelected ? 0.1 : 0.06)
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: borderColor, width: 1),
           ),

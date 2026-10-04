@@ -37,21 +37,21 @@ class _GroupInvoicesSubMenuItemState extends State<GroupInvoicesSubMenuItem> {
     const animationDuration = Duration(milliseconds: 170);
     final hovered = enabled && _hovering;
     final fg = widget.selected
-        ? cs.primary
+        ? cs.onPrimaryContainer
         : hovered
             ? cs.onSurface
             : widget.primaryAction
                 ? cs.onSurfaceVariant
                 : (enabled ? cs.onSurfaceVariant : cs.outline);
     final iconColor = widget.selected
-        ? cs.primary
+        ? cs.onPrimaryContainer
         : hovered
             ? cs.primary
             : widget.primaryAction
                 ? cs.primary.withValues(alpha: 0.82)
                 : fg;
     final bg = widget.selected
-        ? cs.primary.withValues(alpha: 0.105)
+        ? cs.primaryContainer
         : hovered
             ? cs.surfaceContainerHighest.withValues(alpha: 0.34)
             : widget.primaryAction

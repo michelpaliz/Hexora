@@ -48,6 +48,7 @@ Future<void> pumpScreen(WidgetTester tester, double width,
     home: Scaffold(
         body: ClientClassificationsView(
       groupId: 'group',
+      showCreateAction: false,
       clients: clients,
       onDeleteClient: delete,
       onUpdateClient: update,
@@ -135,7 +136,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<DataTable>(find.byType(DataTable)).rows.length, 1);
     expect(find.text('0 seleccionados'), findsOneWidget);
-    await tester.enterText(search, '');
+    await tester.tap(find.byTooltip('Limpiar búsqueda'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<DataTable>(find.byType(DataTable)).rows.length, 8);
+    expect(find.text('Nueva clasificación'), findsNothing);
     await tester.tap(find.widgetWithText(ListTile, 'Sin clasificar').first);
     await tester.pumpAndSettle();
     expect(find.text('Sin asignar'), findsOneWidget);

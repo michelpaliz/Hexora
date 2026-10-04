@@ -446,7 +446,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                   children: [
                     Text(
                       _titleText,
-                      style: typo.bodyLarge.copyWith(
+                      style: typo.titleLarge.copyWith(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                       ),

@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -164,7 +165,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     final isLight = Theme.of(context).brightness == Brightness.light;
 
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.zero,
       child: Container(
         color: isLight ? Colors.white : Colors.transparent,
         child: Column(
@@ -177,7 +178,10 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
                   _buildSideMenu(context),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildContent(context),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
+                      child: _buildContent(context),
+                    ),
                   ),
                 ],
               ),
@@ -188,10 +192,12 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     );
   }
 
-  Widget _buildSideMenu(BuildContext context) {
+  Widget _buildSideMenu(BuildContext context) =>
+      NavigationSurface(builder: _buildNavigation);
+
+  Widget _buildNavigation(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final isLight = Theme.of(context).brightness == Brightness.light;
     const menuWidth = 220.0;
 
     return SizedBox(
@@ -199,14 +205,9 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isLight
-              ? Colors.white
-              : cs.surfaceContainerHighest.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isLight
-                ? Colors.transparent
-                : cs.outlineVariant.withValues(alpha: 0.35),
+          color: cs.surface,
+          border: Border(
+            right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
           ),
         ),
         child: Column(
@@ -341,11 +342,9 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final fg = selected ? cs.primary : cs.onSurfaceVariant;
+    final fg = selected ? cs.onPrimaryContainer : cs.onSurfaceVariant;
     final bg = selected
-        ? (isLight
-            ? cs.primary.withValues(alpha: 0.08)
-            : cs.primaryContainer.withValues(alpha: 0.44))
+        ? (isLight ? cs.primary.withValues(alpha: 0.08) : cs.primaryContainer)
         : Colors.transparent;
     final borderColor =
         selected ? cs.primary.withValues(alpha: 0.22) : Colors.transparent;

@@ -295,7 +295,7 @@ class _ClientInvoiceComparisonViewState
         children: [
           if (_mode == _IncomeAnalyticsMode.clients)
             _buildModeSelector(context),
-          const SizedBox(height: 12),
+          if (_mode == _IncomeAnalyticsMode.clients) const SizedBox(height: 12),
           Expanded(
             child: _mode == _IncomeAnalyticsMode.monthly
                 ? _buildMonthlyIncomePanel(context)
@@ -313,6 +313,7 @@ class _ClientInvoiceComparisonViewState
 
     return Align(
       alignment: Alignment.centerLeft,
+      widthFactor: 1,
       child: SegmentedButton<_IncomeAnalyticsMode>(
         segments: [
           ButtonSegment(
@@ -341,7 +342,19 @@ class _ClientInvoiceComparisonViewState
           }
         },
         style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
+          minimumSize: const WidgetStatePropertyAll(Size(0, 42)),
+          shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          textStyle: const WidgetStatePropertyAll(
+              TextStyle(fontWeight: FontWeight.w600)),
+          backgroundColor: WidgetStateProperty.resolveWith((states) =>
+              states.contains(WidgetState.selected)
+                  ? cs.primaryContainer
+                  : Colors.transparent),
+          foregroundColor: WidgetStateProperty.resolveWith((states) =>
+              states.contains(WidgetState.selected)
+                  ? cs.onPrimaryContainer
+                  : cs.onSurfaceVariant),
           side: WidgetStatePropertyAll(
             BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
           ),

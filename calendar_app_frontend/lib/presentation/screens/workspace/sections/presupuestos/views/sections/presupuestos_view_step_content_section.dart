@@ -1211,7 +1211,7 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                   children: [
                     Text(
                       _isSpanishLocale ? 'Revisión final' : 'Final review',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
                         color: cs.onSurface,

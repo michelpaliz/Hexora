@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/time_tracking/time_entry.dart';
 import 'package:hexora/models/time_tracking/working_time_history.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/right_panel_workers_inline.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/worker_monthly_overview_inline.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/month_list.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker/monthly_overview/widgets/year_switcher.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/status_filter_chips.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/worker_directory_view.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/workers_form_panel.dart';
@@ -59,6 +64,9 @@ class _Repository implements ITimeTrackingRepository {
     if (invocation.memberName == #getWorkingTimeHistory) {
       return Future.value(WorkingTimeHistoryResponse.fromJson({}));
     }
+    if (invocation.memberName == #getTimeEntries) {
+      return Future.value(<TimeEntry>[]);
+    }
     return super.noSuchMethod(invocation);
   }
 }
@@ -106,6 +114,44 @@ void main() {
         .workers
         .map((w) => w.id)
         .toList();
+    expect(visibleIds(), ['worker']);
+    await tester.tap(find.byTooltip('Resumen mensual').first);
+    await tester.pumpAndSettle();
+    expect(find.byType(WorkerMonthlyOverviewInline), findsOneWidget);
+    expect(find.byType(WorkerDirectoryView), findsNothing);
+    expect(
+        Navigator.of(tester.element(find.byType(WorkersInlinePanel))).canPop(),
+        isFalse);
+    expect(find.text('Registrar horas'), findsWidgets);
+    expect(
+        tester
+            .widget<WorkerMonthlyOverviewInline>(
+                find.byType(WorkerMonthlyOverviewInline))
+            .worker
+            .id,
+        'worker');
+    expect(tester.takeException(), isNull);
+    final monthsRect = tester.getRect(find.byType(MonthList));
+    final valuesRect = tester.getRect(find.byType(WorkerTimeTrackingScreen));
+    expect(monthsRect.right, lessThan(valuesRect.left));
+    WorkerTimeTrackingScreen tracking() =>
+        tester.widget<WorkerTimeTrackingScreen>(
+            find.byType(WorkerTimeTrackingScreen));
+    expect(tracking().embedded, isTrue);
+    expect(tracking().worker.id, 'worker');
+    final monthList = tester.widget<MonthList>(find.byType(MonthList));
+    final nextMonth = monthList.selectedMonth == 1 ? 2 : 1;
+    monthList.onTapMonth(nextMonth);
+    await tester.pumpAndSettle();
+    expect(tracking().initialMonth, nextMonth);
+    final years = tester.widget<YearSwitcher>(find.byType(YearSwitcher));
+    years.onYearChanged(years.year - 1);
+    await tester.pumpAndSettle();
+    expect(tracking().initialYear, years.year - 1);
+    expect(tracking().initialMonth, nextMonth);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
     expect(visibleIds(), ['worker']);
     await tester.tap(find.byKey(const ValueKey('directory-partners')));
     await tester.pumpAndSettle();

@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -86,48 +87,46 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
     final title = _isEs ? 'Propuestas' : 'Proposals';
-    final body = FolderPanel(
-      title: title,
-      showTab: !isNarrow,
-      contentTopPadding: isNarrow ? 10 : 18,
-      child: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _ErrorState(message: _error!, onRetry: _loadClients)
-              : isNarrow
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _PresupuestosMobileMenu(
+    final content = _loading
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null
+            ? _ErrorState(message: _error!, onRetry: _loadClients)
+            : isNarrow
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _PresupuestosMobileMenu(
+                        selected: _menu,
+                        onSelected: _selectMenu,
+                      ),
+                      Expanded(child: _content()),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: _sideMenuCollapsed ? 64 : 224,
+                        child: _PresupuestosMenu(
                           selected: _menu,
                           onSelected: _selectMenu,
+                          documentMenuExpanded: _documentMenuExpanded,
+                          onToggleDocumentMenu: _toggleDocumentMenuExpanded,
+                          collapsed: _sideMenuCollapsed,
+                          onToggleCollapse: _toggleSideMenuCollapsed,
                         ),
-                        Expanded(child: _content()),
-                      ],
-                    )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(
-                          width: _sideMenuCollapsed ? 64 : 224,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: _PresupuestosMenu(
-                              selected: _menu,
-                              onSelected: _selectMenu,
-                              documentMenuExpanded: _documentMenuExpanded,
-                              onToggleDocumentMenu: _toggleDocumentMenuExpanded,
-                              collapsed: _sideMenuCollapsed,
-                              onToggleCollapse: _toggleSideMenuCollapsed,
-                            ),
-                          ),
-                        ),
-                        const VerticalDivider(width: 1),
-                        Expanded(child: _content()),
-                      ],
-                    ),
-    );
-
+                      ),
+                      Expanded(child: _content()),
+                    ],
+                  );
+    final body = isNarrow
+        ? FolderPanel(
+            title: title,
+            showTab: false,
+            contentTopPadding: 10,
+            child: content,
+          )
+        : content;
     if (!widget.embedded && isNarrow) {
       return Scaffold(
         appBar: SectionAppBar(
@@ -231,7 +230,10 @@ class _PresupuestosMenu extends StatelessWidget {
   final VoidCallback onToggleCollapse;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      NavigationSurface(builder: _buildNavigation);
+
+  Widget _buildNavigation(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     const childIndent = 12.0;
 

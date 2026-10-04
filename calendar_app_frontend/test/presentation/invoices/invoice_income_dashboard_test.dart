@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/invoice/invoice.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/invoice_income_dashboard.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_invoice_comparison_view.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
@@ -23,7 +23,7 @@ void main() {
         home: Scaffold(
             body: Padding(
                 padding: const EdgeInsets.all(12),
-                child: InvoiceIncomeDashboard(
+                child: ClientInvoiceComparisonView(
                   invoices: List.generate(
                       4,
                       (i) => Invoice(
@@ -37,7 +37,8 @@ void main() {
                           paidAmount: i == 0 ? 100 : 0,
                           paidAt: i == 0 ? DateTime.now() : null)),
                   clients: const [],
-                  modeSelector: const Text('Ingresos mensuales'),
+                  selectedClient: null,
+                  onSelectClient: (_) {},
                   onRefresh: () async {
                     refreshes++;
                   },

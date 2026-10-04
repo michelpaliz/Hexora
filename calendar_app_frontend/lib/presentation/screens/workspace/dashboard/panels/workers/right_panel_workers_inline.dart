@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -309,10 +310,10 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   bool _showPartners = false;
   bool _showWorkerForm = false;
   Worker? _selectedWorker;
+  Worker? _overviewWorker;
   _InlineSection _section = _InlineSection.workers;
   late final TabController _tabController;
   WorkerStatusFilter _statusFilter = WorkerStatusFilter.all;
-  bool _showOverview = false;
   Map<String, dynamic>? _activeTotals;
   bool _activeTotalsLoading = false;
   String? _activeTotalsError;
@@ -662,30 +663,28 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     setState(() {
       _selectedWorker = w;
       _showWorkerForm = true;
-      _showOverview = false;
     });
     return null;
   }
 
-  void _openOverviewInline(Worker w) {
-    setState(() {
-      _selectedWorker = w;
-      _showWorkerForm = true;
-      _showOverview = true;
-    });
+  void _openMonthlyOverview(Worker w) {
+    setState(() => _overviewWorker = w);
   }
 
   void _openCreateWorkerForm() {
     _tabController.animateTo(1);
     setState(() {
       _section = _InlineSection.workers;
+      _overviewWorker = null;
       _selectedWorker = null;
       _showWorkerForm = true;
-      _showOverview = false;
     });
   }
 
-  Widget _buildSideMenu(BuildContext context) {
+  Widget _buildSideMenu(BuildContext context) =>
+      NavigationSurface(builder: _buildNavigation);
+
+  Widget _buildNavigation(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
 
@@ -837,7 +836,6 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       onTabChanged: (value) => setState(() {
         _showPartners = value;
         _selectedWorker = null;
-        _showOverview = false;
         _showWorkerForm = false;
         _tabController.animateTo(0);
       }),
@@ -852,46 +850,34 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       onCreate: _openCreateWorkerForm,
       onEdit: _openEditWorkerDialog,
       onAddHours: _addHoursForWorker,
-      onOverview: _openOverviewInline,
+      onOverview: _openMonthlyOverview,
     );
-    final details = _selectedWorker != null && _showOverview
-        ? WorkerMonthlyOverviewInline(
-            group: widget.group,
-            worker: _selectedWorker!,
-            repo: _repo,
-            getToken: _token,
-            onDataChanged: _reloadActiveTotals,
-            onBack: () => setState(() {
-              _showOverview = false;
-              _showWorkerForm = false;
-            }),
-          )
-        : WorkersFormPanel(
-            group: widget.group,
-            repo: _repo,
-            getToken: _token,
-            selectedWorker: _selectedWorker,
-            allWorkers: _workers,
-            onSaved: (created, savedWorker) async {
-              final loc = AppLocalizations.of(context)!;
-              final messenger = ScaffoldMessenger.of(context);
-              await _load();
-              if (!mounted) return;
-              messenger.showSnackBar(SnackBar(
-                  content: Text(
-                created ? loc.workerCreated : loc.workerUpdated,
-              )));
-              setState(() {
-                _selectedWorker = savedWorker;
-                _showPartners = isPartnerWorker(savedWorker, widget.group);
-                _showWorkerForm = false;
-                _tabController.animateTo(0);
-              });
-            },
-            tabController: _tabController,
-            enableAddHoursTab: kIsWeb,
-            onTimeEntryChanged: _reloadActiveTotals,
-          );
+    final details = WorkersFormPanel(
+      group: widget.group,
+      repo: _repo,
+      getToken: _token,
+      selectedWorker: _selectedWorker,
+      allWorkers: _workers,
+      onSaved: (created, savedWorker) async {
+        final loc = AppLocalizations.of(context)!;
+        final messenger = ScaffoldMessenger.of(context);
+        await _load();
+        if (!mounted) return;
+        messenger.showSnackBar(SnackBar(
+            content: Text(
+          created ? loc.workerCreated : loc.workerUpdated,
+        )));
+        setState(() {
+          _selectedWorker = savedWorker;
+          _showPartners = isPartnerWorker(savedWorker, widget.group);
+          _showWorkerForm = false;
+          _tabController.animateTo(0);
+        });
+      },
+      tabController: _tabController,
+      enableAddHoursTab: kIsWeb,
+      onTimeEntryChanged: _reloadActiveTotals,
+    );
 
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth >= 1040) {
@@ -903,7 +889,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       }
       return Stack(children: [
         Positioned.fill(child: directory),
-        if (_showWorkerForm || _showOverview)
+        if (_showWorkerForm)
           Positioned.fill(
               child: Material(
             color: Theme.of(context).colorScheme.surface,
@@ -915,7 +901,6 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                       child: TextButton.icon(
                         onPressed: () => setState(() {
                           _showWorkerForm = false;
-                          _showOverview = false;
                         }),
                         icon: const Icon(Icons.arrow_back_rounded),
                         label: Text(_isSpanish(context)
@@ -1045,7 +1030,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     }
 
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1056,24 +1041,42 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                 _buildSideMenu(context),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: FolderPanel(
-                    title: _sectionTitle(context),
-                    showTab: _section != _InlineSection.workers,
-                    contentTopPadding:
-                        _section == _InlineSection.workers ? 12 : 30,
-                    child: IndexedStack(
-                      index: _section.index,
-                      children: [
-                        _buildWorkersSection(context),
-                        WorkerTimeHistoryGraphView(
-                          key: ValueKey(
-                              'inline-worker-graphs-${widget.group.id}'),
-                          group: widget.group,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
+                    child: FolderPanel(
+                      title: _sectionTitle(context),
+                      showTab: _section != _InlineSection.workers,
+                      contentTopPadding:
+                          _section == _InlineSection.workers ? 12 : 30,
+                      child: IndexedStack(
+                        index: _section.index,
+                        children: [
+                        IndexedStack(
+                          index: _overviewWorker == null ? 0 : 1,
+                          children: [
+                            _buildWorkersSection(context),
+                            if (_overviewWorker != null)
+                              WorkerMonthlyOverviewInline(
+                                group: widget.group,
+                                worker: _overviewWorker!,
+                                repo: _repo,
+                                getToken: _token,
+                                onBack: () =>
+                                    setState(() => _overviewWorker = null),
+                                onDataChanged: _reloadActiveTotals,
+                              ),
+                          ],
                         ),
-                        _buildHistorialSection(context),
-                        TelegramWorkerHoursImportView(group: widget.group),
-                        _buildRegisterHoursImportSection(context),
-                      ],
+                          WorkerTimeHistoryGraphView(
+                            key: ValueKey(
+                                'inline-worker-graphs-${widget.group.id}'),
+                            group: widget.group,
+                          ),
+                          _buildHistorialSection(context),
+                          TelegramWorkerHoursImportView(group: widget.group),
+                          _buildRegisterHoursImportSection(context),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1091,7 +1094,6 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       setState(() {
         _selectedWorker = w;
         _showWorkerForm = true;
-        _showOverview = false;
       });
       return;
     }

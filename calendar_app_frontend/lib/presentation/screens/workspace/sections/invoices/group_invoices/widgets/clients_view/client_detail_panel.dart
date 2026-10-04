@@ -1,3 +1,4 @@
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -263,7 +264,7 @@ class _ClientTabs extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.25),
+        color: AppColors.dashboardTopBar,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
       ),
@@ -276,7 +277,7 @@ class _ClientTabs extends StatelessWidget {
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          color: cs.primaryContainer,
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(999),
           boxShadow: [
             BoxShadow(
@@ -286,8 +287,8 @@ class _ClientTabs extends StatelessWidget {
             ),
           ],
         ),
-        labelColor: cs.onPrimaryContainer,
-        unselectedLabelColor: cs.onSurfaceVariant,
+        labelColor: Colors.white,
+        unselectedLabelColor: AppColors.navigationForeground,
         labelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
         unselectedLabelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
         indicatorPadding: EdgeInsets.zero,

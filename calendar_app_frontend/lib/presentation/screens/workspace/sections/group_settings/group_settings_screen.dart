@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 // lib/presentation/screens/workspace/settings/group_settings_screen.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -106,7 +107,10 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     );
   }
 
-  Widget _buildSideMenu(BuildContext context) {
+  Widget _buildSideMenu(BuildContext context) =>
+      NavigationSurface(builder: _buildNavigation);
+
+  Widget _buildNavigation(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     const menuWidth = 214.0;
 

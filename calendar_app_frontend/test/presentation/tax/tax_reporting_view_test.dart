@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/services/tax/tax_reporting_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/tax/tax_reporting_view.dart';
@@ -522,7 +523,7 @@ void main() {
       expect(
           label('Impuestos').style,
           theme.textTheme.labelLarge?.copyWith(
-            color: theme.colorScheme.onSurface,
+            color: AppColors.navigationForeground,
             fontWeight: FontWeight.w900,
           ));
       expect(tester.takeException(), isNull);

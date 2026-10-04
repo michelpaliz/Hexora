@@ -19,9 +19,11 @@ String formatTaxEur(dynamic value) {
 const double _summaryBarItemHeight = 66;
 
 class TaxReportingView extends StatefulWidget {
-  const TaxReportingView({super.key, required this.groupId, this.api});
+  const TaxReportingView(
+      {super.key, required this.groupId, this.api, this.header});
   final String groupId;
   final TaxReportingApi? api;
+  final Widget? header;
 
   @override
   State<TaxReportingView> createState() => _TaxReportingViewState();
@@ -200,8 +202,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
           fontSize: 11,
           letterSpacing: 0.1,
         );
-    const valueStyle =
-        TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5);
+    const valueStyle = TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5);
     if (_section == TaxReportSection.quarterly) {
       return _FilterSurface(
         boxed: boxed,
@@ -428,6 +429,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
                           icon: const Icon(Icons.menu),
                           onPressed: () => Scaffold.of(context).openDrawer(),
                         )),
+              if (widget.header != null) widget.header!,
               Expanded(child: _body()),
             ]);
         if (narrow) {
@@ -468,9 +470,8 @@ class _FilterSurface extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final inner = Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: footer == null
-            ? MainAxisAlignment.center
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            footer == null ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -489,8 +490,8 @@ class _FilterSurface extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: cs.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border:
-                      Border.all(color: cs.outlineVariant.withValues(alpha: .7)),
+                  border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: .7)),
                   boxShadow: [
                     BoxShadow(
                       color: cs.shadow.withValues(alpha: .04),

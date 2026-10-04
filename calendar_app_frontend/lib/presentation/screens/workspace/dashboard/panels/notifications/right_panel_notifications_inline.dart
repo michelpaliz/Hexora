@@ -577,79 +577,79 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                     : _markAllJobNotificationsRead,
               );
 
+              final filter = NotificationCategoryFilterBar(
+                sidebar: isWide,
+                notifications: _notifications,
+                selectedWorkflow: _selectedWorkflow,
+                onWorkflowSelected: (workflow) {
+                  setState(() {
+                    _selectedWorkflow = workflow;
+                    _downloadsMode = false;
+                    _ocrJobsMode =
+                        workflow == NotificationWorkflowFilter.automations &&
+                            ocrJobs.isNotEmpty;
+                    if (_ocrJobsMode) {
+                      _selectedCategory = null;
+                      _selectedOcrJob ??=
+                          ocrJobs.isNotEmpty ? ocrJobs.first : null;
+                      return;
+                    }
+                    final filtered = _filteredNotifications;
+                    if (_selected != null &&
+                        !filtered.any((n) => n.id == _selected!.id)) {
+                      _selected = filtered.isEmpty ? null : filtered.first;
+                    }
+                  });
+                },
+                selectedCategory: _selectedCategory,
+                downloadsCount: downloads.length,
+                downloadsSelected: _downloadsMode,
+                onDownloadsSelected: downloads.isEmpty
+                    ? null
+                    : () => setState(() {
+                          _downloadsMode = true;
+                          _selectedWorkflow =
+                              NotificationWorkflowFilter.automations;
+                          _selectedCategory = null;
+                          _selectedDownload ??=
+                              downloads.isNotEmpty ? downloads.first : null;
+                        }),
+                ocrJobsCount: ocrJobs.length,
+                ocrJobsSelected: _ocrJobsMode,
+                onOcrJobsSelected: ocrJobs.isEmpty
+                    ? null
+                    : () => setState(() {
+                          _ocrJobsMode = true;
+                          _selectedWorkflow =
+                              NotificationWorkflowFilter.automations;
+                          _downloadsMode = false;
+                          _selectedCategory = null;
+                          _selectedOcrJob ??=
+                              ocrJobs.isNotEmpty ? ocrJobs.first : null;
+                        }),
+                onCategorySelected: (category) {
+                  setState(() {
+                    _downloadsMode = false;
+                    _ocrJobsMode = false;
+                    _selectedCategory = category;
+                    if (category != null) {
+                      _selectedWorkflow = NotificationWorkflowFilter.all;
+                    }
+                    final filtered = _filteredNotifications;
+                    if (_selected != null &&
+                        !filtered.any((n) => n.id == _selected!.id)) {
+                      _selected = filtered.isEmpty ? null : filtered.first;
+                    }
+                  });
+                },
+              );
               final listWithFilter = Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-                    child: NotificationCategoryFilterBar(
-                      notifications: _notifications,
-                      selectedWorkflow: _selectedWorkflow,
-                      onWorkflowSelected: (workflow) {
-                        setState(() {
-                          _selectedWorkflow = workflow;
-                          _downloadsMode = false;
-                          _ocrJobsMode = workflow ==
-                                  NotificationWorkflowFilter.automations &&
-                              ocrJobs.isNotEmpty;
-                          if (_ocrJobsMode) {
-                            _selectedCategory = null;
-                            _selectedOcrJob ??=
-                                ocrJobs.isNotEmpty ? ocrJobs.first : null;
-                            return;
-                          }
-                          final filtered = _filteredNotifications;
-                          if (_selected != null &&
-                              !filtered.any((n) => n.id == _selected!.id)) {
-                            _selected =
-                                filtered.isEmpty ? null : filtered.first;
-                          }
-                        });
-                      },
-                      selectedCategory: _selectedCategory,
-                      downloadsCount: downloads.length,
-                      downloadsSelected: _downloadsMode,
-                      onDownloadsSelected: downloads.isEmpty
-                          ? null
-                          : () => setState(() {
-                                _downloadsMode = true;
-                                _selectedWorkflow =
-                                    NotificationWorkflowFilter.automations;
-                                _selectedCategory = null;
-                                _selectedDownload ??= downloads.isNotEmpty
-                                    ? downloads.first
-                                    : null;
-                              }),
-                      ocrJobsCount: ocrJobs.length,
-                      ocrJobsSelected: _ocrJobsMode,
-                      onOcrJobsSelected: ocrJobs.isEmpty
-                          ? null
-                          : () => setState(() {
-                                _ocrJobsMode = true;
-                                _selectedWorkflow =
-                                    NotificationWorkflowFilter.automations;
-                                _downloadsMode = false;
-                                _selectedCategory = null;
-                                _selectedOcrJob ??=
-                                    ocrJobs.isNotEmpty ? ocrJobs.first : null;
-                              }),
-                      onCategorySelected: (category) {
-                        setState(() {
-                          _downloadsMode = false;
-                          _ocrJobsMode = false;
-                          _selectedCategory = category;
-                          if (category != null) {
-                            _selectedWorkflow = NotificationWorkflowFilter.all;
-                          }
-                          final filtered = _filteredNotifications;
-                          if (_selected != null &&
-                              !filtered.any((n) => n.id == _selected!.id)) {
-                            _selected =
-                                filtered.isEmpty ? null : filtered.first;
-                          }
-                        });
-                      },
+                  if (!isWide)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+                      child: filter,
                     ),
-                  ),
                   Expanded(
                     child: _ocrJobsMode
                         ? ocrJobsList
@@ -664,6 +664,8 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    filter,
+                    const SizedBox(width: 12),
                     Expanded(
                       flex: 3,
                       child: FolderPanel(

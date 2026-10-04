@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/nav_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
@@ -53,6 +55,16 @@ class CalendarSideMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Theme(
+      data: navigationTheme(Theme.of(context)),
+      child: ColoredBox(
+        color: AppColors.dashboardTopBar,
+        child: Builder(builder: _buildMenu),
+      ),
+    );
+  }
+
+  Widget _buildMenu(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isEs = _isSpanish(context);
@@ -83,11 +95,10 @@ class CalendarSideMenu extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
+            padding: const EdgeInsets.fromLTRB(10, 16, 10, 8),
             child: _CalendarModuleHeader(
               title: isEs ? 'Calendario' : 'Calendar',
-              onToggleCollapse:
-                  showCollapseToggle ? onToggleCollapse : null,
+              onToggleCollapse: showCollapseToggle ? onToggleCollapse : null,
             ),
           ),
           Expanded(
@@ -266,8 +277,8 @@ class _CalendarModuleHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-        borderRadius: BorderRadius.circular(18),
+        color: cs.primaryContainer,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.38)),
       ),
       child: Row(
@@ -282,7 +293,7 @@ class _CalendarModuleHeader extends StatelessWidget {
             child: Icon(
               Icons.calendar_month_outlined,
               size: 17,
-              color: cs.primary,
+              color: cs.onPrimaryContainer,
             ),
           ),
           const SizedBox(width: 10),

@@ -19,7 +19,7 @@ import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
+import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -35,22 +35,11 @@ class WideLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1800),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
-          child: Column(
-            children: [
-              // ── Horizontal top nav ───────────────────────
-              _DashboardTopNav(state: state, l: l, user: state.user),
-              const SizedBox(height: 10),
-              // ── Content ──────────────────────────────────
-              Expanded(child: _buildContent(state, context, l)),
-            ],
-          ),
-        ),
-      ),
+    return Column(
+      children: [
+        _DashboardTopNav(state: state, l: l, user: state.user),
+        Expanded(child: _buildContent(state, context, l)),
+      ],
     );
   }
 
@@ -179,8 +168,8 @@ class _DashboardTopNav extends StatefulWidget {
 }
 
 class _DashboardTopNavState extends State<_DashboardTopNav> {
-  static const _compactPreferenceKey = 'dashboard_top_nav_compact';
-  bool _compact = true;
+  static const _compactPreferenceKey = 'dashboard_top_nav_compact_v2';
+  bool _compact = false;
 
   @override
   void initState() {
@@ -192,7 +181,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
     final preferences = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _compact = preferences.getBool(_compactPreferenceKey) ?? true;
+      _compact = preferences.getBool(_compactPreferenceKey) ?? false;
     });
   }
 
@@ -243,11 +232,9 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
     final state = widget.state;
     final l = widget.l;
     final user = widget.user;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
-    final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
-    final bg = ThemeColors.cardBg(context);
+    const textColor = AppColors.navigationForeground;
+    const activeColor = AppColors.primary;
+    const bg = AppColors.dashboardTopBar;
     final unreadNotifications = context
         .watch<NotificationDomain>()
         .notifications
@@ -393,19 +380,20 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
           curve: Curves.easeOutCubic,
           alignment: Alignment.topCenter,
           child: Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_compact ? 10 : 14),
+            margin: EdgeInsets.zero,
+            elevation: 0,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.zero,
             ),
             color: bg,
             child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: _compact ? 12 : 26,
-                vertical: _compact ? 4 : 12,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
               ),
               child: Row(
                 children: [
-                  // Group avatar + name
+                  // Workspace brand
                   GestureDetector(
                     onTap: state.canSeeAdmin
                         ? () => state.openSection(Sections.settings)
@@ -413,37 +401,19 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircleAvatar(
-                          radius: _compact ? 14 : 16,
-                          backgroundColor: textColor.withValues(alpha: 0.12),
-                          backgroundImage:
-                              state.group.photoUrl?.trim().isNotEmpty == true
-                                  ? NetworkImage(state.group.photoUrl!.trim())
-                                  : null,
-                          child: state.group.photoUrl?.trim().isNotEmpty == true
-                              ? null
-                              : Icon(
-                                  Icons.business_rounded,
-                                  color: textColor.withValues(alpha: 0.65),
-                                  size: 16,
-                                ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                              'assets/images/branding/logo_icon.png',
+                              width: 32,
+                              height: 32),
                         ),
-                        if (!_compact) ...[
-                          const SizedBox(width: 8),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 140),
-                            child: Text(
-                              state.group.name,
-                              style:
-                                  AppTypography.of(context).bodyMedium.copyWith(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                        const SizedBox(width: 8),
+                        Text('HEXORA',
+                            style: AppTypography.of(context).bodyLarge.copyWith(
+                                color: textColor,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8)),
                       ],
                     ),
                   ),
@@ -493,6 +463,39 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
                       ],
                     ),
                   ),
+                  if (width >= 1350) ...[
+                    const SizedBox(width: 12),
+                    SearchAnchor(
+                      builder: (context, controller) => TextButton.icon(
+                        onPressed: controller.openView,
+                        icon: const Icon(Icons.search_rounded, size: 18),
+                        label: Text(l.localeName.startsWith('es')
+                            ? 'Buscar...'
+                            : 'Search...'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: textColor,
+                          backgroundColor: Colors.white.withValues(alpha: 0.08),
+                          minimumSize: const Size(150, 38),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                      suggestionsBuilder: (context, controller) {
+                        final query = controller.text.trim().toLowerCase();
+                        return allowedItems
+                            .where((item) =>
+                                item.label.toLowerCase().contains(query))
+                            .map((item) => ListTile(
+                                  leading: Icon(item.icon),
+                                  title: Text(item.label),
+                                  onTap: () {
+                                    controller.closeView(null);
+                                    state.openSection(item.section);
+                                  },
+                                ));
+                      },
+                    ),
+                  ],
                   Tooltip(
                     message: _compact
                         ? (l.localeName.startsWith('es')
@@ -518,6 +521,38 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
                   // User profile avatar
                   SizedBox(width: _compact ? 8 : 18),
                   UserProfilePopup(user: user),
+                  if (!_compact && width >= 1100 && user != null) ...[
+                    const SizedBox(width: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 140),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                              user.displayName?.isNotEmpty == true
+                                  ? user.displayName!
+                                  : user.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.of(context)
+                                  .bodySmall
+                                  .copyWith(
+                                      color: textColor,
+                                      fontWeight: FontWeight.w700)),
+                          if (state.role != null)
+                            Text(roleLabelOf(context, state.role!),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.of(context)
+                                    .caption
+                                    .copyWith(
+                                        color:
+                                            textColor.withValues(alpha: 0.75))),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 12),
                   // Back to groups
                   Tooltip(
@@ -858,8 +893,8 @@ class _TopNavItemState extends State<_TopNavItem>
     final t = AppTypography.of(context);
     final showHighlight = widget.isSelected || _hovering;
     final fg = widget.isSelected
-        ? widget.activeColor
-        : widget.textColor.withValues(alpha: _hovering ? 0.85 : 0.6);
+        ? Colors.white
+        : widget.textColor.withValues(alpha: _hovering ? 1 : 0.85);
 
     final cs = Theme.of(context).colorScheme;
     final hasUnread = (widget.unreadCount ?? 0) > 0;
@@ -964,7 +999,8 @@ class _TopNavItemState extends State<_TopNavItem>
                 ),
                 decoration: BoxDecoration(
                   color: showHighlight
-                      ? widget.activeColor.withValues(alpha: 0.10)
+                      ? widget.activeColor
+                          .withValues(alpha: widget.isSelected ? 1 : 0.25)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),

@@ -1543,7 +1543,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
           body: SafeArea(
             child: isWide
                 ? Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                    padding: EdgeInsets.zero,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

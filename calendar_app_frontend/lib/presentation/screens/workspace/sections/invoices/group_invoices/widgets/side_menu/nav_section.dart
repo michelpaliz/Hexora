@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class GroupInvoicesNavSection extends StatelessWidget {
@@ -21,18 +22,19 @@ class GroupInvoicesNavSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final navy = cs.surface == AppColors.dashboardTopBar;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 190),
       curve: Curves.easeOutCubic,
       margin: const EdgeInsets.only(bottom: 7),
       padding: EdgeInsets.fromLTRB(7, 5, 7, expanded ? 6 : 5),
       decoration: BoxDecoration(
-        color: expanded
+        color: expanded && !navy
             ? cs.surfaceContainerHighest.withValues(alpha: 0.115)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: expanded
+          color: expanded && !navy
               ? cs.outlineVariant.withValues(alpha: 0.18)
               : Colors.transparent,
         ),

@@ -67,7 +67,7 @@ class MobileTheme {
       borderSide: BorderSide(color: border),
     );
     final buttonText = textTheme.labelLarge?.copyWith(
-      fontSize: 16,
+      fontSize: 13,
       fontWeight: FontWeight.w600,
     );
 
@@ -83,11 +83,11 @@ class MobileTheme {
       materialTapTargetSize: MaterialTapTargetSize.padded,
       textTheme: textTheme.copyWith(
         titleLarge: textTheme.titleLarge
-            ?.copyWith(fontSize: 20, fontWeight: FontWeight.w600),
-        bodyLarge: textTheme.bodyLarge?.copyWith(fontSize: 16),
-        bodyMedium: textTheme.bodyMedium?.copyWith(fontSize: 16),
+            ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+        bodyLarge: textTheme.bodyLarge?.copyWith(fontSize: 14),
+        bodyMedium: textTheme.bodyMedium?.copyWith(fontSize: 13),
         bodySmall:
-            textTheme.bodySmall?.copyWith(fontSize: 14, color: secondaryText),
+            textTheme.bodySmall?.copyWith(fontSize: 12, color: secondaryText),
         labelLarge: buttonText,
       ),
       extensions: [
@@ -95,14 +95,14 @@ class MobileTheme {
         typography.copyWith(
           displayLarge: typography.displayLarge.copyWith(color: text),
           displayMedium: typography.displayMedium.copyWith(color: text),
-          titleLarge: typography.titleLarge.copyWith(color: text, fontSize: 20),
-          bodyLarge: typography.bodyLarge.copyWith(color: text, fontSize: 16),
-          bodyMedium: typography.bodyMedium.copyWith(color: text, fontSize: 16),
+          titleLarge: typography.titleLarge.copyWith(color: text, fontSize: 18),
+          bodyLarge: typography.bodyLarge.copyWith(color: text, fontSize: 14),
+          bodyMedium: typography.bodyMedium.copyWith(color: text, fontSize: 13),
           bodySmall:
-              typography.bodySmall.copyWith(color: secondaryText, fontSize: 14),
+              typography.bodySmall.copyWith(color: secondaryText, fontSize: 12),
           caption:
-              typography.caption.copyWith(color: secondaryText, fontSize: 14),
-          buttonText: typography.buttonText.copyWith(fontSize: 16),
+              typography.caption.copyWith(color: secondaryText, fontSize: 12),
+          buttonText: typography.buttonText.copyWith(fontSize: 13),
           accentHeading: typography.accentHeading.copyWith(color: primary),
           accentText: typography.accentText.copyWith(color: primary),
         ),
@@ -119,7 +119,7 @@ class MobileTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: textTheme.titleLarge
-            ?.copyWith(fontSize: 20, fontWeight: FontWeight.w600),
+            ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
         iconTheme: IconThemeData(color: text, size: 24),
         systemOverlayStyle:
             (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)

@@ -716,10 +716,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                 : _buildMapHub(token);
 
     if (widget.embedded) {
-      return Padding(
-        padding: const EdgeInsets.all(4),
-        child: content,
-      );
+      return content;
     }
     return Scaffold(
       appBar: SectionAppBar(
@@ -871,7 +868,12 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
               ],
             ),
             const SizedBox(width: 10),
-            Expanded(child: sectionContent),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(0, 4, 4, 4),
+                child: sectionContent,
+              ),
+            ),
           ],
         );
       },

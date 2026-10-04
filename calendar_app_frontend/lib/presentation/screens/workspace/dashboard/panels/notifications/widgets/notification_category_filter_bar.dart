@@ -1,6 +1,7 @@
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
@@ -18,6 +19,7 @@ class NotificationCategoryFilterBar extends StatefulWidget {
     this.ocrJobsCount = 0,
     this.ocrJobsSelected = false,
     this.onOcrJobsSelected,
+    this.sidebar = false,
   });
 
   final List<NotificationUser> notifications;
@@ -31,6 +33,7 @@ class NotificationCategoryFilterBar extends StatefulWidget {
   final int ocrJobsCount;
   final bool ocrJobsSelected;
   final VoidCallback? onOcrJobsSelected;
+  final bool sidebar;
 
   @override
   State<NotificationCategoryFilterBar> createState() =>
@@ -49,6 +52,7 @@ class _NotificationCategoryFilterBarState
     extends State<NotificationCategoryFilterBar> {
   final ScrollController _controller = ScrollController();
   bool _showMoreFilters = false;
+  bool _collapsed = false;
 
   List<Category> get _activeCategories {
     final seen = <Category>{};
@@ -82,6 +86,40 @@ class _NotificationCategoryFilterBarState
       if (widget.ocrJobsCount > 0 && widget.onOcrJobsSelected != null)
         _SecondaryFilterItem.ocrJobs(),
     ];
+
+    if (widget.sidebar) {
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      return CollapsibleSidebar(
+        title: isEs ? 'Notificaciones' : 'Notifications',
+        headerIcon: Icons.notifications_outlined,
+        collapsed: _collapsed,
+        onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
+        expandTooltip: isEs ? 'Expandir menú' : 'Expand menu',
+        collapseTooltip: isEs ? 'Contraer menú' : 'Collapse menu',
+        items: [
+          for (final filter in primaryWorkflowFilters)
+            CollapsibleSidebarItem(
+              icon: _workflowIcon(filter),
+              label:
+                  '${_workflowLabel(filter, context)} (${_workflowCount(filter)})',
+              selected: widget.selectedWorkflow == filter &&
+                  !widget.downloadsSelected &&
+                  !widget.ocrJobsSelected,
+              onTap: () => widget.onWorkflowSelected(filter),
+            ),
+        ],
+        secondaryItems: [
+          for (final item in secondaryItems)
+            CollapsibleSidebarItem(
+              icon: _secondaryIcon(item),
+              label:
+                  '${_secondaryLabel(item, context)} (${_secondaryCount(item)})',
+              selected: _isSecondarySelected(item),
+              onTap: () => _selectSecondary(item),
+            ),
+        ],
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {

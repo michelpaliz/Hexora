@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -77,6 +79,16 @@ class GroupInvoicesSideMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Theme(
+      data: navigationTheme(Theme.of(context)),
+      child: ColoredBox(
+        color: AppColors.dashboardTopBar,
+        child: Builder(builder: _buildMenu),
+      ),
+    );
+  }
+
+  Widget _buildMenu(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final menuWidth = collapsed ? collapsedWidth : expandedWidth;
     final cs = Theme.of(context).colorScheme;
@@ -214,12 +226,12 @@ class GroupInvoicesSideMenu extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
+            padding: const EdgeInsets.fromLTRB(10, 16, 10, 8),
             child: Container(
               padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
               decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-                borderRadius: BorderRadius.circular(18),
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: cs.outlineVariant.withValues(alpha: 0.38),
                 ),

@@ -408,6 +408,7 @@ class _ReceiptLineRowState extends State<_ReceiptLineRow> {
                     child: DropdownButtonFormField<String>(
                       initialValue: widget.line.unit,
                       isDense: true,
+                      isExpanded: true,
                       borderRadius: BorderRadius.circular(14),
                       style: t.bodySmall.copyWith(
                         color: cs.onSurface,

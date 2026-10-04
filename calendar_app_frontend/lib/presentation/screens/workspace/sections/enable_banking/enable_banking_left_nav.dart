@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -35,7 +36,10 @@ class EnableBankingLeftNav extends StatelessWidget {
   final VoidCallback onToggleCollapse;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      NavigationSurface(builder: _buildNavigation);
+
+  Widget _buildNavigation(BuildContext context) {
     const expandedWidth = 218.0;
     const collapsedWidth = 50.0;
 
@@ -184,9 +188,7 @@ class _CollapsedRail extends StatelessWidget {
             width: 36,
             height: 34,
             decoration: BoxDecoration(
-              color: isSel
-                  ? cs.primary.withValues(alpha: 0.14)
-                  : Colors.transparent,
+              color: isSel ? cs.primaryContainer : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: isSel
@@ -652,7 +654,7 @@ class _NavSubItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
-    final fg = selected ? cs.primary : cs.onSurfaceVariant;
+    final fg = selected ? cs.onPrimaryContainer : cs.onSurfaceVariant;
     return Padding(
       padding: const EdgeInsets.only(left: 6, right: 2, bottom: 4),
       child: InkWell(
@@ -664,9 +666,7 @@ class _NavSubItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(13),
-            color: selected
-                ? cs.primary.withValues(alpha: 0.14)
-                : Colors.transparent,
+            color: selected ? cs.primaryContainer : Colors.transparent,
             border: Border.all(
               color: selected
                   ? cs.primary.withValues(alpha: 0.20)

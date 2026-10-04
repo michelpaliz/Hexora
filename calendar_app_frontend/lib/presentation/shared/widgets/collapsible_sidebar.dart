@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 
@@ -61,7 +62,10 @@ class CollapsibleSidebar extends StatelessWidget {
   final TextStyle? selectedItemTextStyle;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      NavigationSurface(builder: _buildNavigation);
+
+  Widget _buildNavigation(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isCollapsed = collapsed && !drawer;
     final width = drawer
@@ -77,9 +81,9 @@ class CollapsibleSidebar extends StatelessWidget {
       width: width,
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.zero,
+        border: Border(
+          right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
         ),
       ),
       child: LayoutBuilder(
@@ -119,11 +123,12 @@ class CollapsibleSidebar extends StatelessWidget {
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: titleTextStyle ??
-                              Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
-                                  ?.copyWith(fontWeight: FontWeight.w800),
+                          style:
+                              titleTextStyle?.copyWith(color: cs.onSurface) ??
+                                  Theme.of(context)
+                                      .textTheme
+                                      .labelLarge
+                                      ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ),
                     ],

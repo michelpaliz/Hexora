@@ -19,7 +19,9 @@ class ClientClassificationsView extends StatefulWidget {
       this.onUpdateClient,
       this.onDeleteClient,
       this.onManageClassifications,
+      this.showCreateAction = true,
       this.loadOptions});
+  final bool showCreateAction;
   final String groupId;
   final List<GroupClient> clients;
   final List<Invoice> invoices;
@@ -395,16 +397,38 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
               .colorScheme
               .outlineVariant
               .withValues(alpha: .45)));
-  Widget search(String hint, ValueChanged<String> onChanged) => TextField(
-      onChanged: onChanged,
-      style: const TextStyle(fontSize: 13),
-      decoration: InputDecoration(
-          hintText: hint,
-          isDense: true,
-          prefixIcon: const Icon(Icons.search, size: 18),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10)));
+  InputDecoration fieldDecoration(String hint,
+      {Widget? prefix, Widget? suffix}) {
+    final cs = Theme.of(context).colorScheme;
+    OutlineInputBorder border(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+            borderRadius: BorderRadius.circular(11),
+            borderSide: BorderSide(color: color, width: width));
+    return InputDecoration(
+      hintText: hint,
+      isDense: true,
+      filled: true,
+      fillColor: cs.surfaceContainerLow.withValues(alpha: .7),
+      hintStyle: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+      prefixIcon: prefix,
+      suffixIcon: suffix,
+      prefixIconColor: cs.onSurfaceVariant,
+      enabledBorder: border(cs.outlineVariant.withValues(alpha: .5)),
+      disabledBorder: border(cs.outlineVariant.withValues(alpha: .25)),
+      focusedBorder: border(cs.primary, 1.5),
+      border: border(cs.outlineVariant.withValues(alpha: .5)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    );
+  }
+
+  Widget search(String hint, ValueChanged<String> onChanged) =>
+      _ClassificationSearchField(
+        hint: hint,
+        decoration: fieldDecoration(hint,
+            prefix: const Icon(Icons.search_rounded, size: 19)),
+        clearLabel: tr('Limpiar búsqueda', 'Clear search'),
+        onChanged: onChanged,
+      );
   Widget stat(IconData icon, String number, String title,
       {VoidCallback? onTap, Color? color}) {
     final cs = Theme.of(context).colorScheme;
@@ -427,13 +451,19 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                       Text(number,
-                          style: TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.w700,
-                              color: tone)),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium!
+                              .copyWith(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: tone)),
                       Text(title,
-                          style: TextStyle(
-                              fontSize: 12, color: cs.onSurfaceVariant)),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium!
+                              .copyWith(
+                                  fontSize: 12, color: cs.onSurfaceVariant)),
                     ])),
                 if (onTap != null)
                   Icon(Icons.chevron_right, size: 18, color: tone),
@@ -446,7 +476,10 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(tr('Clasificaciones', 'Classifications'),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium!
+                .copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
         const SizedBox(height: 12),
         search(tr('Buscar clasificación…', 'Search classifications…'),
             (v) => setState(() => _categoryQuery = norm(v))),
@@ -461,7 +494,7 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                     entity
                         ? tr('TIPO DE ENTIDAD', 'ENTITY TYPE')
                         : tr('TIPO DE PROPIEDAD', 'PROPERTY TYPE'),
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color:
@@ -490,10 +523,16 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                   : Icons.home_work_outlined,
                           size: 19),
                       title: Text(label(category),
-                          style: const TextStyle(fontSize: 13)),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium!
+                              .copyWith(fontSize: 13)),
                       trailing: Text('${count(category, entity)}',
-                          style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w600)),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium!
+                              .copyWith(
+                                  fontSize: 12, fontWeight: FontWeight.w600)),
                       onTap: _busy ? null : () => choose(category, entity))),
           ],
         ])),
@@ -504,14 +543,15 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
           key: ValueKey('$hint-$selected'),
           initialValue: selected,
           isExpanded: true,
-          decoration: InputDecoration(
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
-          hint: Text(hint, style: const TextStyle(fontSize: 12)),
-          style: TextStyle(
+          icon: const Icon(Icons.expand_more_rounded, size: 20),
+          borderRadius: BorderRadius.circular(12),
+          decoration: fieldDecoration(hint),
+          hint: Text(hint,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium!
+                  .copyWith(fontSize: 12)),
+          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
               fontSize: 12, color: Theme.of(context).colorScheme.onSurface),
           items: items,
           onChanged: _busy ? null : changed);
@@ -557,13 +597,21 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                   ? tr('Selecciona una clasificación',
                                       'Select a classification')
                                   : label(_category),
-                              style: const TextStyle(
-                                  fontSize: 19, fontWeight: FontWeight.w700)),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium!
+                                  .copyWith(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700)),
                           const SizedBox(height: 4),
                           Text(
                               '${assigned.length} ${tr('clientes', 'clients')} · ${_entity ? tr('Tipo de entidad', 'Entity type') : tr('Tipo de propiedad', 'Property type')}',
-                              style: TextStyle(
-                                  fontSize: 12, color: cs.onSurfaceVariant)),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium!
+                                  .copyWith(
+                                      fontSize: 12,
+                                      color: cs.onSurfaceVariant)),
                         ]),
                     OutlinedButton.icon(
                         onPressed: !_busy &&
@@ -648,7 +696,7 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                   children: [
                     Text(
                         '${_selected.length} ${tr('seleccionados', 'selected')}',
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                             fontSize: 12, fontWeight: FontWeight.w600)),
                     PopupMenuButton<bool>(
                       enabled: enabled && widget.onUpdateClient != null,
@@ -669,11 +717,15 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                           child: Text(
                               tr('Cambiar clasificación',
                                   'Change classification'),
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: enabled
-                                      ? cs.primary
-                                      : cs.onSurface.withValues(alpha: .38)))),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium!
+                                  .copyWith(
+                                      fontSize: 12,
+                                      color: enabled
+                                          ? cs.primary
+                                          : cs.onSurface
+                                              .withValues(alpha: .38)))),
                     ),
                     TextButton.icon(
                         onPressed: enabled ? _export : null,
@@ -760,8 +812,11 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                                         ? '?'
                                                         : c.name[0]
                                                             .toUpperCase(),
-                                                    style: const TextStyle(
-                                                        fontSize: 12))),
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodyMedium!
+                                                        .copyWith(
+                                                            fontSize: 12))),
                                             const SizedBox(width: 10),
                                             Expanded(
                                                 child: Column(
@@ -776,18 +831,25 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                                       maxLines: 1,
                                                       overflow:
                                                           TextOverflow.ellipsis,
-                                                      style: const TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.w600)),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodyMedium!
+                                                          .copyWith(
+                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600)),
                                                   Text(label(c.entityType),
                                                       maxLines: 1,
                                                       overflow:
                                                           TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                          fontSize: 10,
-                                                          color: cs
-                                                              .onSurfaceVariant)),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodyMedium!
+                                                          .copyWith(
+                                                              fontSize: 10,
+                                                              color: cs
+                                                                  .onSurfaceVariant)),
                                                 ]))
                                           ])),
                                       onTap:
@@ -795,7 +857,10 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                               ? null
                                               : () => widget.onEditClient!(c)),
                                   DataCell(Text(label(c.propertyKind),
-                                      style: const TextStyle(fontSize: 12))),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium!
+                                          .copyWith(fontSize: 12))),
                                   DataCell(SizedBox(
                                       width: 140,
                                       child: Text(
@@ -804,15 +869,15 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                               : location(c),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style:
-                                              const TextStyle(fontSize: 12)))),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium!
+                                              .copyWith(fontSize: 12)))),
                                   DataCell(Container(
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                          color: (c.isActive
-                                                  ? Colors.green
-                                                  : cs.error)
+                                          color: (c.isActive ? Colors.green : cs.error)
                                               .withValues(alpha: .1),
                                           borderRadius:
                                               BorderRadius.circular(20)),
@@ -820,14 +885,16 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                           c.isActive
                                               ? tr('Activo', 'Active')
                                               : tr('Inactivo', 'Inactive'),
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: c.isActive
-                                                  ? (cs.brightness ==
-                                                          Brightness.dark
-                                                      ? Colors.green.shade200
-                                                      : Colors.green.shade800)
-                                                  : cs.error)))),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium!
+                                              .copyWith(
+                                                  fontSize: 11,
+                                                  color: c.isActive
+                                                      ? (cs.brightness == Brightness.dark
+                                                          ? Colors.green.shade200
+                                                          : Colors.green.shade800)
+                                                      : cs.error)))),
                                   DataCell(Text(
                                       latest[c.id] == null
                                           ? '—'
@@ -836,7 +903,10 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                                           context)
                                                       .toString())
                                               .format(latest[c.id]!),
-                                      style: const TextStyle(fontSize: 12))),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium!
+                                          .copyWith(fontSize: 12))),
                                   DataCell(PopupMenuButton<String>(
                                       tooltip: tr('Acciones del cliente',
                                           'Client actions'),
@@ -891,7 +961,10 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                             : tr(
                                 'Mostrando ${page * _pageSize + 1}–${page * _pageSize + current.length} de ${rows.length} clientes',
                                 'Showing ${page * _pageSize + 1}–${page * _pageSize + current.length} of ${rows.length} clients'),
-                        style: const TextStyle(fontSize: 12)),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium!
+                            .copyWith(fontSize: 12)),
                     Row(mainAxisSize: MainAxisSize.min, children: [
                       DropdownButton<int>(
                           value: _pageSize,
@@ -902,7 +975,10 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                   value: size,
                                   child: Text(
                                       '$size ${tr('por página', 'per page')}',
-                                      style: const TextStyle(fontSize: 12)))
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium!
+                                          .copyWith(fontSize: 12)))
                           ],
                           onChanged: (v) {
                             if (v != null) {
@@ -919,7 +995,10 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                               : () => setState(() => _page = page - 1),
                           icon: const Icon(Icons.chevron_left)),
                       Text('${page + 1} / $pages',
-                          style: const TextStyle(fontSize: 12)),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium!
+                              .copyWith(fontSize: 12)),
                       IconButton(
                           tooltip: tr('Página siguiente', 'Next page'),
                           onPressed: page == pages - 1
@@ -933,7 +1012,6 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
       return Center(
@@ -964,41 +1042,16 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
       ];
       final body =
           Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            runSpacing: 10,
-            children: [
-              Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                        color: cs.primaryContainer.withValues(alpha: .5),
-                        borderRadius: BorderRadius.circular(13)),
-                    child: Icon(Icons.groups_outlined, color: cs.primary)),
-                const SizedBox(width: 16),
-                Flexible(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text(
-                          tr('Clasificación de clientes',
-                              'Client classification'),
-                          style: const TextStyle(
-                              fontSize: 23, fontWeight: FontWeight.w700)),
-                      Text(
-                          tr('Organiza a tus clientes por tipo de entidad y propiedad',
-                              'Organize clients by entity and property type'),
-                          style: TextStyle(
-                              fontSize: 12, color: cs.onSurfaceVariant)),
-                    ])),
-              ]),
-              FilledButton.icon(
-                  onPressed: _busy ? null : _manage,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(tr('Nueva clasificación', 'New classification'))),
-            ]),
-        const SizedBox(height: 14),
+        if (widget.showCreateAction)
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _busy ? null : _manage,
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(tr('Nueva clasificación', 'New classification')),
+            ),
+          ),
+        if (widget.showCreateAction) const SizedBox(height: 14),
         Wrap(spacing: 10, runSpacing: 10, children: [
           for (final card in cards)
             SizedBox(
@@ -1023,9 +1076,40 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
           SizedBox(height: 660, child: tablePanel())
         ],
       ]);
-      return Padding(
-          padding: const EdgeInsets.all(10),
-          child: wide ? body : SingleChildScrollView(child: body));
+      final theme = Theme.of(context);
+      final cs = theme.colorScheme;
+      final shape =
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10));
+      return Theme(
+        data: theme.copyWith(
+          outlinedButtonTheme: OutlinedButtonThemeData(
+              style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  shape: shape,
+                  backgroundColor: cs.surfaceContainerLow,
+                  side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: .5)),
+                  textStyle: Theme.of(context)
+                      .textTheme
+                      .bodyMedium!
+                      .copyWith(fontSize: 13, fontWeight: FontWeight.w600))),
+          textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 38),
+                  shape: shape,
+                  backgroundColor: cs.primary.withValues(alpha: .05),
+                  textStyle: Theme.of(context)
+                      .textTheme
+                      .bodyMedium!
+                      .copyWith(fontSize: 12, fontWeight: FontWeight.w600))),
+          iconButtonTheme: IconButtonThemeData(
+              style: IconButton.styleFrom(
+                  shape: shape, foregroundColor: cs.primary)),
+        ),
+        child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: wide ? body : SingleChildScrollView(child: body)),
+      );
     });
   }
 }
@@ -1106,4 +1190,52 @@ class _ClassificationNameDialogState extends State<_ClassificationNameDialog> {
               child: Text(es ? 'Continuar' : 'Continue')),
         ]);
   }
+}
+
+class _ClassificationSearchField extends StatefulWidget {
+  const _ClassificationSearchField(
+      {required this.hint,
+      required this.decoration,
+      required this.clearLabel,
+      required this.onChanged});
+  final String hint, clearLabel;
+  final InputDecoration decoration;
+  final ValueChanged<String> onChanged;
+  @override
+  State<_ClassificationSearchField> createState() =>
+      _ClassificationSearchFieldState();
+}
+
+class _ClassificationSearchFieldState
+    extends State<_ClassificationSearchField> {
+  final _controller = TextEditingController();
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => TextField(
+        controller: _controller,
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(fontSize: 13),
+        textInputAction: TextInputAction.search,
+        onChanged: (value) {
+          setState(() {});
+          widget.onChanged(value);
+        },
+        decoration: widget.decoration.copyWith(
+          suffixIcon: _controller.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: widget.clearLabel,
+                  icon: const Icon(Icons.close_rounded, size: 17),
+                  onPressed: () {
+                    _controller.clear();
+                    setState(() {});
+                    widget.onChanged('');
+                  },
+                ),
+        ),
+      );
 }

@@ -301,6 +301,7 @@ class _GroupInvoicesContent extends StatelessWidget {
           'client_classifications_${state._classificationViewRefreshTick}',
         ),
         onManageClassifications: state._openClientClassificationManager,
+        showCreateAction: false,
         groupId: state.widget.group.id,
         clients: state._clients,
         invoices: state._invoices,

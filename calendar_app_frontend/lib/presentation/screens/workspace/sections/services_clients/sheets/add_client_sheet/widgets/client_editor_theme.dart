@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-/// A single font family for the client form, without changing other screens.
+/// Keep the shared heading/body font roles while adapting form labels.
 ThemeData clientEditorThemeOf(BuildContext context) {
   final base = Theme.of(context);
   final cs = base.colorScheme;
-  final text = GoogleFonts.manropeTextTheme(base.textTheme);
+  final text = base.textTheme;
   final label = text.bodyLarge!.copyWith(fontWeight: FontWeight.w500);
   final floatingLabel = WidgetStateTextStyle.resolveWith((states) {
     final color = states.contains(WidgetState.error)
@@ -20,8 +19,7 @@ ThemeData clientEditorThemeOf(BuildContext context) {
   return base.copyWith(
     textTheme: text,
     appBarTheme: base.appBarTheme.copyWith(
-      titleTextStyle: GoogleFonts.manrope(
-        textStyle: base.appBarTheme.titleTextStyle ?? text.titleLarge,
+      titleTextStyle: text.titleLarge?.copyWith(
         fontWeight: FontWeight.w600,
         color: cs.onSurface,
       ),

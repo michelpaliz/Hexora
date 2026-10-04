@@ -10,6 +10,20 @@ final ThemeData lightTheme = ThemeData(
     seedColor: AppColors.primary, // blue base
     brightness: Brightness.light,
   ).copyWith(
+    primary: AppColors.primary,
+    onPrimary: Colors.white,
+    primaryContainer: AppColors.primaryContainer,
+    onPrimaryContainer: AppColors.primaryDark,
+    surface: AppColors.surface,
+    onSurface: AppColors.textPrimary,
+    onSurfaceVariant: AppColors.textSecondary,
+    surfaceContainerLowest: AppColors.surface,
+    surfaceContainerLow: AppColors.background,
+    surfaceContainer: const Color(0xFFEEF3FA),
+    surfaceContainerHigh: const Color(0xFFE8EFF8),
+    surfaceContainerHighest: const Color(0xFFE1EAF6),
+    outline: const Color(0xFF7A8BA5),
+    outlineVariant: AppColors.outline,
     // keep your chosen secondary if you want the amber accent
     secondary: AppColors.secondary,
     onSecondary: ThemeData.estimateBrightnessForColor(AppColors.secondary) ==

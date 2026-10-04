@@ -175,78 +175,107 @@ class _InvoiceIncomeDashboardState extends State<InvoiceIncomeDashboard> {
       return SingleChildScrollView(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Wrap(
+        panel(
+          Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: 16,
-            runSpacing: 14,
+            runSpacing: 12,
             children: [
-              Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                        color: _blue.withValues(alpha: .08),
-                        borderRadius: BorderRadius.circular(16)),
-                    child: const Icon(Icons.insights_rounded,
-                        color: _blue, size: 30)),
-                const SizedBox(width: 16),
-                Flexible(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text(t('Análisis de ingresos', 'Income analysis'),
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 4),
-                      muted(t(
-                          'Evolución de las facturas emitidas y los pagos registrados.',
-                          'Issued invoices and recorded payments over time.')),
-                    ])),
+              widget.modeSelector,
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final n in [6, 12, 24, 0])
+                  ChoiceChip(
+                    label: Text(n == 0
+                        ? t('Todo', 'All')
+                        : '$n ${t('meses', 'months')}'),
+                    selected: _months == n,
+                    showCheckmark: false,
+                    selectedColor:
+                        Theme.of(context).colorScheme.primaryContainer,
+                    labelStyle: TextStyle(
+                      fontWeight:
+                          _months == n ? FontWeight.w700 : FontWeight.w500,
+                      color: _months == n
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : null,
+                    ),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9)),
+                    side: BorderSide(
+                        color: _months == n
+                            ? Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: .4)
+                            : Theme.of(context)
+                                .colorScheme
+                                .outlineVariant
+                                .withValues(alpha: .45)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+                    onSelected: (_) => setState(() => _months = n),
+                  ),
               ]),
               Wrap(
                   spacing: 8,
+                  runSpacing: 8,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    OutlinedButton.icon(
+                    Tooltip(
+                      message: t('Cambiar el último mes del periodo',
+                          'Change the last month of the period'),
+                      child: OutlinedButton.icon(
                         onPressed: _chooseEnd,
-                        icon: const Icon(Icons.date_range_outlined, size: 19),
-                        label: Text(range)),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 42),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          side: BorderSide(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant
+                                  .withValues(alpha: .55)),
+                        ),
+                        icon:
+                            const Icon(Icons.calendar_month_outlined, size: 18),
+                        label: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Flexible(
+                              child:
+                                  Text(range, overflow: TextOverflow.ellipsis)),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.expand_more, size: 18),
+                        ]),
+                      ),
+                    ),
                     IconButton.outlined(
-                        tooltip: t('Actualizar', 'Refresh'),
-                        onPressed: widget.onRefresh == null || _refreshing
-                            ? null
-                            : _refresh,
-                        icon: _refreshing
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2))
-                            : const Icon(Icons.refresh)),
+                      tooltip: t('Actualizar', 'Refresh'),
+                      onPressed: widget.onRefresh == null || _refreshing
+                          ? null
+                          : _refresh,
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(42, 42),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        side: BorderSide(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outlineVariant
+                                .withValues(alpha: .55)),
+                      ),
+                      icon: _refreshing
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.refresh_rounded, size: 20),
+                    ),
                   ]),
-            ]),
-        const SizedBox(height: 22),
-        Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            runSpacing: 12,
-            spacing: 12,
-            children: [
-              widget.modeSelector,
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final n in [6, 12, 24, 0])
-                  ChoiceChip(
-                      label: Text(n == 0
-                          ? t('Todo', 'All')
-                          : '$n ${t('meses', 'months')}'),
-                      selected: _months == n,
-                      showCheckmark: false,
-                      onSelected: (_) => setState(() => _months = n))
-              ]),
-            ]),
-        const SizedBox(height: 18),
+            ],
+          ),
+          padding: const EdgeInsets.all(12),
+        ),
+        const SizedBox(height: 14),
         Wrap(spacing: 12, runSpacing: 12, children: [
           for (final card in cards) SizedBox(width: cardWidth, child: card)
         ]),

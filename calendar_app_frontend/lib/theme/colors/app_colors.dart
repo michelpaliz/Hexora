@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // ðŸ©µ Surfaces & backgrounds
-  static const Color background = Color(0xFFF9FAFB); // light neutral
+  static const Color background = Color(0xFFF5F8FD);
   static const Color surface = Color(0xFFFFFFFF); // pure white
 
   // ðŸ”· Primary (Blue)
-  static const Color primary = Color(0xFF1E88E5); // calmer blue
+  static const Color primary = Color(0xFF1760CF);
+  static const Color primaryContainer = Color(0xFFE6EFFF);
+  static const Color outline = Color(0xFFDCE5F2);
+  static const Color navigationForeground = Color(0xFFF1F5FC);
   static const Color primaryLight = Color(0xFF64B5F6);
   static const Color primaryDark = Color(0xFF1565C0);
-  static const Color dashboardTopBar =
-      Color(0xFF2B3850); // muted blue-gray for cards/top bars
+  static const Color dashboardTopBar = Color(0xFF152538);
 
   // ðŸŸ  Secondary (Amber / Warm accent)
   static const Color secondary = Color(0xFFFFB74D);
@@ -18,8 +20,8 @@ class AppColors {
   static const Color secondaryDark = Color(0xFFF57C00);
 
   // ✍️ Text & icons
-  static const Color textPrimary = Color(0xFF1B1F23);
-  static const Color textSecondary = Color(0xFF6C757D);
+  static const Color textPrimary = Color(0xFF142138);
+  static const Color textSecondary = Color(0xFF586A86);
 
   static const Color icon = primary;
 

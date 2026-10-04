@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -6,7 +7,7 @@ import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/e
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
-import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'tax/tax_reporting_view.dart';
 
@@ -125,52 +126,37 @@ class _GastosModuleBody extends StatelessWidget {
         ),
       );
     }
-    return Padding(
-      padding: EdgeInsets.fromLTRB(10, showFolderTab ? 0 : 8, 10, 8),
-      child: FolderPanel(
-        title: title,
-        showTab: showFolderTab,
-        contentTopPadding: !isNarrow ? 48 : topPadding,
-        tabContent: !isNarrow
-            ? _GastosTopTabs(
-                controller: tabs,
-                isEs: isEs,
-                isNarrow: isNarrow,
-                inFolderActions: true,
-              )
-            : null,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (isNarrow)
-              _GastosTopTabs(controller: tabs, isEs: isEs, isNarrow: true),
-            Expanded(
-              child: TabBarView(
-                controller: tabs,
-                children: [
-                  _GastosTab(
-                    isNarrow: isNarrow,
-                    group: group,
-                    selectedSection: gastosSection,
-                    onSectionSelected: onGastosSectionSelected,
-                    sideRailCollapsed: sideRailCollapsed,
-                    onToggleSideRailCollapsed: onToggleSideRailCollapsed,
-                  ),
-                  TaxReportingView(groupId: group.id),
-                  _AnaliticaTab(
-                    isNarrow: isNarrow,
-                    group: group,
-                    vatApi: vatApi,
-                    sideRailCollapsed: sideRailCollapsed,
-                    onToggleSideRailCollapsed: onToggleSideRailCollapsed,
-                  ),
-                  const _ModelosTab(),
-                ],
-              ),
-            ),
-          ],
+    Widget topTabs() => Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          child: _GastosTopTabs(
+              controller: tabs,
+              isEs: isEs,
+              isNarrow: false,
+              inFolderActions: true),
+        );
+    return TabBarView(
+      controller: tabs,
+      children: [
+        _GastosTab(
+          isNarrow: false,
+          group: group,
+          selectedSection: gastosSection,
+          onSectionSelected: onGastosSectionSelected,
+          sideRailCollapsed: sideRailCollapsed,
+          onToggleSideRailCollapsed: onToggleSideRailCollapsed,
+          header: topTabs(),
         ),
-      ),
+        TaxReportingView(groupId: group.id, header: topTabs()),
+        _AnaliticaTab(
+          isNarrow: false,
+          group: group,
+          vatApi: vatApi,
+          sideRailCollapsed: sideRailCollapsed,
+          onToggleSideRailCollapsed: onToggleSideRailCollapsed,
+          header: topTabs(),
+        ),
+        Column(children: [topTabs(), const Expanded(child: _ModelosTab())]),
+      ],
     );
   }
 }
@@ -387,6 +373,7 @@ class _GastosTab extends StatelessWidget {
     required this.onSectionSelected,
     this.sideRailCollapsed = false,
     this.onToggleSideRailCollapsed,
+    this.header,
   });
 
   final bool isNarrow;
@@ -395,6 +382,7 @@ class _GastosTab extends StatelessWidget {
   final ValueChanged<String> onSectionSelected;
   final bool sideRailCollapsed;
   final VoidCallback? onToggleSideRailCollapsed;
+  final Widget? header;
 
   @override
   Widget build(BuildContext context) {
@@ -502,7 +490,11 @@ class _GastosTab extends StatelessWidget {
         children: [
           rail,
           const SizedBox(height: 12),
-          Expanded(child: content),
+          Expanded(
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [if (header != null) header!, Expanded(child: content)],
+          )),
         ],
       );
     }
@@ -511,7 +503,11 @@ class _GastosTab extends StatelessWidget {
       children: [
         SizedBox(width: sideRailCollapsed ? 62 : 220, child: rail),
         const SizedBox(width: 10),
-        Expanded(child: content),
+        Expanded(
+            child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [if (header != null) header!, Expanded(child: content)],
+        )),
       ],
     );
   }
@@ -524,6 +520,7 @@ class _AnaliticaTab extends StatelessWidget {
     required this.vatApi,
     this.sideRailCollapsed = false,
     this.onToggleSideRailCollapsed,
+    this.header,
   });
 
   final bool isNarrow;
@@ -531,6 +528,7 @@ class _AnaliticaTab extends StatelessWidget {
   final VatSummaryApi vatApi;
   final bool sideRailCollapsed;
   final VoidCallback? onToggleSideRailCollapsed;
+  final Widget? header;
 
   @override
   Widget build(BuildContext context) {
@@ -586,7 +584,11 @@ class _AnaliticaTab extends StatelessWidget {
         children: [
           rail,
           const SizedBox(height: 12),
-          Expanded(child: content),
+          Expanded(
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [if (header != null) header!, Expanded(child: content)],
+          )),
         ],
       );
     }
@@ -595,7 +597,11 @@ class _AnaliticaTab extends StatelessWidget {
       children: [
         SizedBox(width: sideRailCollapsed ? 62 : 220, child: rail),
         const SizedBox(width: 10),
-        Expanded(child: content),
+        Expanded(
+            child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [if (header != null) header!, Expanded(child: content)],
+        )),
       ],
     );
   }
@@ -644,7 +650,10 @@ class _GastosSideRail extends StatelessWidget {
   final ValueChanged<String>? onSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      NavigationSurface(builder: _buildNavigation);
+
+  Widget _buildNavigation(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isEs = Localizations.localeOf(context)
         .languageCode
